@@ -68,7 +68,7 @@ int setGPSTerminalOptions(int fd)
     struct termios options;
 /* port settings */
     retVal=tcgetattr(fd, &options); /* get current port settings */
-    if(!retVal) {
+    if(retVal<0) {
 	syslog(LOG_ERR,"tcgetattr on fd %d: %s",fd,strerror(errno));
 	return -1;
     }
@@ -96,7 +96,7 @@ int setGPSTerminalOptions(int fd)
 /*     options.c_oflag |= ( ONLCR | OPOST); */
  
     retVal=tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
-    if(!retVal) {
+    if(retVal<0) {
 	syslog(LOG_ERR,"tcsetattr on fd %d: %s",fd,strerror(errno));
 	return -1;
     }
@@ -113,7 +113,7 @@ int setMagnetometerTerminalOptions(int fd)
     struct termios options;
 /* port settings */
     retVal=tcgetattr(fd, &options);            /* get current port settings */
-    if(!retVal) {
+    if(retVal<0) {
 	syslog(LOG_ERR,"tcgetattr on fd %d: %s",fd,strerror(errno));
 	return -1;
     }
@@ -132,7 +132,7 @@ int setMagnetometerTerminalOptions(int fd)
 
  
     retVal=tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
-    if(!retVal) {
+    if(retVal<0) {
 	syslog(LOG_ERR,"tcsetattr on fd %d: %s",fd,strerror(errno));
 	return -1;
     }
@@ -157,7 +157,7 @@ int toggleCRTCTS(char devName[])
 
 /* port settings */
     retVal=tcgetattr(fd, &options);            /* get current port settings */
-    if(!retVal) {
+    if(retVal<0) {
 	syslog(LOG_ERR,"tcgetattr on fd %d: %s",fd,strerror(errno));
 	return -1;
     }
@@ -185,7 +185,7 @@ int toggleCRTCTS(char devName[])
 /*     options.c_oflag |= ( ONLCR | OPOST); */
  
     tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
-    if(!retVal) {
+    if(retVal<0) {
 	syslog(LOG_ERR,"tcsetattr on fd %d: %s",fd,strerror(errno));
 	return -1;
     }
