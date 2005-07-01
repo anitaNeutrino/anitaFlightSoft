@@ -1,0 +1,52 @@
+Tue Jun 21 18:01:44 BST 2005
+
+At the moment the code which interacts with the hardware is not all nicley coherent and together as a set of daemons. Instead there are several individual programs (mainly in the outside directory) that are used for hardware interaction. These reflect the hardware taht was available at the Palestine test (the only time I've had everything access to so many pieces of hardware). In summary:
+outside/surfTurf/crate/crate_test  -- to read out SURF and TURF
+outside/gps/g12_command -- nasty hacked code to set time using G12 GPS
+outside/gps/adu5_command -- should be, but strangely isn't, code to read out poition and attitude from adu5
+outside/magnetometer/magnetometer -- simple code to read out magnetometer over whiteheat
+programs/Hkd/Hkd -- to read out both SBS on-board temps and Acromag (although at the moment of commented out the bit that reads out the SBS temps)
+programs/Hkd/RelayControl -- does exactly what it says on the tin, only maybe it doesn't as can't quite remember how I left it. (It's functionality will be incorporated into the final Hkd and will control the relay when instructed to do so by Cmdd)
+
+Wed Jun 15 11:51:23 BST 2005
+
+Start of an actual README file that will contain useful information, instead of the general nonsense that used to be here. The flightSoft package contains (okay will contain) all of the ANITA software. 
+
+The directory structure can be summarised as:
+bin/ -- will contain the statically linked binaries
+common/ -- conatins some general libararies that the standalone programs use (for reading/writing config files, etc.)
+config/ -- the formatted text configuration files
+doc/ -- documentation, in theory both the doxygen generated and other documentation.
+lib/ -- contains the libraries
+outside/ -- code that is not part of the flight software or code that comes from a third party (eg. acromag code), test programs, old code (i.e. all the useful code at the moment)
+programs/ -- the basis of the actual flight software
+script/ -- the main setup script script/anitaFlightSoftSetup.sh and some little toy test scripts
+testing/. -- old test programs
+
+To setup the flight software edit the script/anitaFlightSoftSetup.sh to point to the write base directory and source the script:
+source script/anitaFlightSoftSetup.sh (may only work under bash)
+
+Then type:
+make
+
+To make the doxygen documentaton type:
+make docs
+
+Having made the software you will not be much better off, as most of the test routines are actually located in the outside directory. If we have a look in the outside directory we'll find:
+acromag/ -- The third-party code for libAcromag
+cr7/ -- third party code for SBS stuff
+gps/ -- Mike's original (and now modified to work gps code)
+magnetometer/ -- My silly program to read out the magnetometer (through whiteheat)
+oldhkd/ -- The anita-lite hkd code
+surfTurf/ -- code for reading out the SURF and TURF (Look at README.surfTurf in surfTurf directory)
+
+
+
+Started July 15th 2004
+
+The fledgling ANITA flight software will start to take development here.
+
+It's all going to be lovely ansi c, and will hopefully work really well.
+
+Ryan
+rjn@mps.ohio-state.edu

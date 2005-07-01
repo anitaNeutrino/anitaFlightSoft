@@ -1,0 +1,178 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  builddriver
+#      Abstract     :  Builds a specific PLX driver
+#      Last Revision:  09-30-03
+#      SDK Version  :  4.20
+#
+#-----------------------------------------------------------------------------
+
+
+clear
+
+# Remove comment to display script commands as it runs
+#set -x
+
+
+#=============================================================================
+# Modify the "declare" statement below to set 'PLX_SDK_DIR' to the location
+# of the PLX Linux installation path.  Some examples are:
+#
+#      declare -x PLX_SDK_DIR=/usr/src/PlxLinux
+#      declare -x PLX_SDK_DIR=/home/$USER/PlxLinux
+#=============================================================================
+if [ "${PLX_SDK_DIR}1" == "1" ]; then
+    # Add PLX_SDK_DIR environment variable
+    declare -x PLX_SDK_DIR=/usr/src/PlxLinux
+
+    echo
+    echo "  Note:"
+    echo
+    echo "      The required environment variable, PLX_SDK_DIR, is not defined"
+    echo "      in the environment.  The default value (\"$PLX_SDK_DIR\")"
+    echo "      will be used instead.  Please update your environment to override"
+    echo "      the default, or modify this script accordingly.  To set an"
+    echo "      environment variable, use the \"declare\" command as follows:"
+    echo
+    echo "         declare -x PLX_SDK_DIR=<root of PLX Linux installation>"
+    echo
+else
+    # Make sure that PLX_SDK_DIR is in the environment, not just a shell variable
+    declare -x PLX_SDK_DIR=${PLX_SDK_DIR}
+fi
+
+
+#=============================================================================
+# The following determines the kernel version (2.2 or 2.4).  It uses the
+# fact that kgcc does not exist in the 2.4 installation.  The environment
+# variable KERNEL_VER can be set to override the setting in this macro.
+#=============================================================================
+if [ "${KERNEL_VER}" == "" ]; then
+    # Add KERNEL_VER environment variable
+    if [ -f /usr/bin/kgcc ]; then
+        declare -x KERNEL_VER=2.2
+    else
+        declare -x KERNEL_VER=2.4
+    fi
+fi
+
+
+# Check for debug version
+if [ "$2" == "d" ]; then
+    # Add DEBUG environment variable
+    declare -x DEBUG=1
+    Param=$3
+else
+    # Make sure DEBUG is not in environment
+    unset DEBUG
+    Param=$2
+fi
+
+
+# Verify command-line
+if [ "$1" = "" ]; then
+    plx_error=1
+else
+    plx_error=1
+
+    if [ "$1" = "9050" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9030" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9080" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9054" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9056" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9656" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "6000" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "PlxPci" ]; then
+        plx_error=0
+    fi
+fi
+
+if [ "${plx_error}" == "1" ]; then
+    echo
+    echo "PLX Linux module build script"
+    echo "Copyright (c) 2003, PLX Technology, Inc."
+    echo
+    echo "  Usage: builddriver {PLX_Chip_Type} [DebugOption] [CleanOption]"
+    echo
+    echo "        PLX_Chip_Type = 9050"
+    echo "                        9030"
+    echo "                        9080"
+    echo "                        9054"
+    echo "                        9056"
+    echo "                        9656"
+    echo "                        6000"
+    echo "                        PlxPci"
+    echo
+    echo "        DebugOption   = <none> : Build Release build of module"
+    echo "                        'd'    : Build Debug build of module"
+    echo
+    echo "        CleanOption   = <none>     : Build the driver"
+    echo "                        'clean'    : Remove intermediate build files"
+    echo "                        'cleanall' : Remove all build files"
+    echo
+    echo "  E.g.: builddriver 9054 d     - Build 9054 module debug version"
+    echo "        builddriver PlxPci     - Build PlxPci service module release version"
+    echo "        builddriver 9656 clean - Remove intermediate build files of 9656 module"
+    echo
+    exit
+fi
+
+
+# Set driver path & PLX Chip type
+if [ "$1" == "PlxPci" ]; then
+    declare -x PLX_CHIP=PlxPci
+    DriverDir=PlxPci
+else
+    declare -x PLX_CHIP=$1
+    DriverDir=Pci${PLX_CHIP}
+fi
+
+# Save current directory
+CurrDir=`pwd`
+
+# Create the driver directory
+if [ -d $DriverDir ]; then
+    echo
+else
+    mkdir $DriverDir
+    chmod 0755 ${DriverDir}
+fi
+
+
+# Switch to driver directory
+cd ${DriverDir}
+
+# Build the driver
+make -f ../../makefiles/MakeDriver.def $Param
+
+
+# Return to original directory
+cd $CurrDir
+
+
+# Delete the directory only if empty
+rmdir --ignore-fail-on-non-empty $DriverDir
+
+
+echo
