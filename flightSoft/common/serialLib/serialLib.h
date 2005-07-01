@@ -28,6 +28,10 @@
 #define CHARACTER_SIZE CS8
 
 /* Function that just toggles the CRTSCTS flag, needed after a reboot for some reason. */
-void toggleCRTCTS(char devName[]);
+int openGPSDevice(char devName[]);
+int openMagnetometerDevice(char devName[]);
+int toggleCRTCTS(char devName[]);
+int setGPSTerminalOptions(int fd);
+int setMagnetometerTerminalOptions(int fd);
 
 #endif /* SERIALLIB_H */
