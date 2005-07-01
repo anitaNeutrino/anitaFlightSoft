@@ -10,8 +10,8 @@
 #export CVSROOT=:ext:rjn@auger1.mps.ohio-state.edu:/work1/anitaCVS
 #export CVS_RSH=ssh
 
-## Where us the main directory
-export ANITA_FLIGHT_SOFT_DIR=/mnt/data/anitaCVS/flightSoft
+## Where is the main directory
+export ANITA_FLIGHT_SOFT_DIR=/home/anita/flightSoft
 
 ## Shouldn't need to change this
 export ANITA_CONFIG_DIR=${ANITA_FLIGHT_SOFT_DIR}/config
