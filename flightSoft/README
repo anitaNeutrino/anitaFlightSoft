@@ -1,3 +1,7 @@
+Thu Jul  7 10:05:49 EDT 2005
+
+Testing whether anita is a read only account or not
+
 Tue Jun 21 18:01:44 BST 2005
 
 At the moment the code which interacts with the hardware is not all nicley coherent and together as a set of daemons. Instead there are several individual programs (mainly in the outside directory) that are used for hardware interaction. These reflect the hardware taht was available at the Palestine test (the only time I've had everything access to so many pieces of hardware). In summary:
