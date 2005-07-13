@@ -21,5 +21,21 @@
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
+enum Priorities_t {
+    priForced = 0,
+    priCalib = 1,
+    pri1 = 1,
+    pri2,
+    pri3,
+    pri4,
+    priTimeout,
+    pri6, 
+    pri7,
+    pri8,
+    priPayload
+};
+
+    
+
 #endif /* ANITA_FLIGHT_H */
 
