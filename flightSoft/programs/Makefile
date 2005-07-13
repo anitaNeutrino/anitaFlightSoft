@@ -4,7 +4,7 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-SUBDIRS = Acqd Calibd Eventd GPSd Hkd other Prioritizerd
+SUBDIRS = Acqd Calibd Eventd GPSd Hkd SIPd other Prioritizerd
 
 all: subdirs
 
