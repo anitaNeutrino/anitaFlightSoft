@@ -11,8 +11,10 @@
 #include "crc_simple.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <string.h>
 
 #include <pthread.h>
 #include <unistd.h>
@@ -590,18 +592,18 @@ sipcom_highrate_write(unsigned char *buf, int nbytes)
 	ender.filler[0] = ender.filler[1] = ender.filler[2] = '\0';
 
 	// Write header.
-	if (retval = highrate_write_bytes(
-	    	(unsigned char *)&header, sizeof(header))) {
+	if ((retval = highrate_write_bytes(
+	    	(unsigned char *)&header, sizeof(header)))) {
 	    return retval;
 	}
 
 	// Write data.
-	if (retval = highrate_write_bytes(buf, nbytes)) {
+	if ((retval = highrate_write_bytes(buf, nbytes))) {
 	    return retval;
 	}
 
 	// Write ender.
-	if (retval = highrate_write_bytes((unsigned char *)&ender, sizeof(ender))) {
+	if ((retval = highrate_write_bytes((unsigned char *)&ender, sizeof(ender)))) {
 	    return retval;
 	}
 
