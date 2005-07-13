@@ -14,6 +14,9 @@
 #include <stdarg.h>
 #include <errno.h>
 
+#include <pthread.h>
+#include <unistd.h>
+
 #include <assert.h>
 
 #include <sys/types.h>
@@ -33,8 +36,8 @@
 // Fd - file descriptors for COMM1, COMM2, and highrate TDRSS.
 static int Fd[3];
 
-// Reader_pid - process id for the COMM1 and COMM2 reader processes.
-static pid_t Reader_pid[2] = { -1, -1};
+// Reader_thread - thread handles for the COMM1 and COMM2 reader threads.
+static pthread_t *Reader_thread[2] = {NULL, NULL};
 
 // Slowrate_callback - slowrate callback function pointers. Set by
 // sipcom_set_slowrate_callback(). One for each of COMM1 and COMM2.
@@ -43,13 +46,14 @@ static slowrate_callback Slowrate_callback[2] = { NULL, NULL};
 // Init - nonzero if we have already been initialized.
 static int Init = 0;
 
-static int start_reader(int comm); // fork process to read COMM1 or COMM2
-				   // slow rate lines.
-static void read_comm(int comm);  // parse the input from COMM1 or COMM2
+static void cancel_thread(int comm);
 static int get_mesg(int comm, unsigned char *buf, int n, char *mesgtype);
+static int highrate_write_bytes(unsigned char *p, int bytes_to_write);
+static void read_comm(int *comm);  // parse the input from COMM1 or COMM2
 static int readn(int fd, unsigned char *buf, int n);
 static void showbuf(unsigned char *buf, int size);
-static int write_bytes(unsigned char *p, int bytes_to_write);
+static int start_reader(int comm); // start threads to read COMM1 or COMM2
+				   // slow rate lines.
 
 #define ERROR_STRING_LEN 2048
 static char Error_string[ERROR_STRING_LEN];
@@ -103,7 +107,9 @@ enum {
 static int Cmdlen[NCMD];
 
 static cmd_callback Cmdf = NULL; // User-supplied function for science commands.
-static void cmd_accum(unsigned char *buf);
+
+static void cmd_accum(unsigned char *buf, unsigned char *cmd_so_far,
+    int *length_so_far);
 
 #ifdef USE_STOR
 FILE *Comm_stor_pipe[2];
@@ -115,6 +121,14 @@ char *Comm_data_dir[2] = {
 FILE *Highrate_stor_pipe;
 char *Highrate_data_dir = "/data/highrate";
 #endif
+
+// Quit is non-zero until sipcom_end() sets it to 1. Quit_mutex guards the
+// Quit variable. Quit_cv is signalled by sipcom_end() to let sipcom_wait()
+// (which has been waiting on Quit_cv) know that it should stop waiting and
+// cancel the two reader threads.
+static int Quit = 0;
+static pthread_mutex_t Quit_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t Quit_cv = PTHREAD_COND_INITIALIZER;
 
 int
 sipcom_init(unsigned long throttle_rate)
@@ -166,9 +180,8 @@ sipcom_init(unsigned long throttle_rate)
     }
 #endif
 
-    // Fork the SIP reader processes.
+    // Start the SIP reader threads.
     {
-	int ret;
 	if (start_reader(COMM1)) {
 	    return -2;
 	}
@@ -183,19 +196,31 @@ sipcom_init(unsigned long throttle_rate)
 void
 sipcom_end()
 {
-    if (Reader_pid[COMM1] != -1) {
-	kill(Reader_pid[COMM1], SIGKILL);
-    }
-    if (Reader_pid[COMM2] != -1) {
-	kill(Reader_pid[COMM2], SIGKILL);
+    pthread_mutex_lock(&Quit_mutex);
+    Quit = 1;
+    pthread_cond_signal(&Quit_cv);
+    pthread_mutex_unlock(&Quit_mutex);
+}
+
+static void
+cancel_thread(int comm)
+{
+    if (Reader_thread[comm] != NULL) {
+	//fprintf(stderr, "cancel_thread %d\n", comm);
+	pthread_cancel(*Reader_thread[comm]);
+	free(Reader_thread[comm]);
     }
 }
 
 void
 sipcom_wait()
 {
-    (void)wait(NULL);
-    (void)wait(NULL);
+    pthread_mutex_lock(&Quit_mutex);
+    while (!Quit) {
+	pthread_cond_wait(&Quit_cv, &Quit_mutex);
+    }
+    cancel_thread(COMM1);
+    cancel_thread(COMM2);
 }
 
 void
@@ -232,28 +257,28 @@ sipcom_strerror()
 static int
 start_reader(int comm)
 {
-    pid_t reader;
+    int ret;
 
     assert(COMM1 == comm || COMM2 == comm);
-    reader = fork();
 
-    if (reader > 0) {
-	// parent - fork okay
-	// fprintf(stderr, "Parent okay\n");
-	Reader_pid[comm] = reader;
-	return 0;
-    } else if (reader == -1) {
-	// parent - bad fork
-	// fprintf(stderr, "Parent bad\n");
-	set_error_string("start_reader(%d): bad fork (%s)\n",
+    Reader_thread[comm] = (pthread_t *)malloc(sizeof(pthread_t));
+
+    if (Reader_thread[comm] == NULL) {
+	set_error_string("start_reader(%d): can't malloc (%s)\n",
 	    comm, strerror(errno));
 	return -1;
-    } else {
-	// child
-	// fprintf(stderr, "Child %d okay\n", comm);
-	read_comm(comm);
-	exit(0);
     }
+
+    ret = pthread_create(Reader_thread[comm], NULL,
+	(void *)read_comm, (void *)&comm);
+    if (ret) {
+	set_error_string("start_reader(%d): bad pthread_create (%s)\n",
+	    comm, strerror(errno));
+	return -1;
+    }
+    pthread_detach(*Reader_thread[comm]);
+
+    return 0;
 }
 
 int
@@ -274,28 +299,43 @@ sipcom_set_cmd_length(unsigned char id, unsigned char len)
 }
 
 static void
-read_comm(int comm)
+read_comm(int *comm)
 {
     ssize_t bytes_read;
     unsigned char ch;
     int state;	// automaton state
+    int mycomm = *comm;
+
+#define CMD_MAX_LEN 32
+    unsigned char cmd_so_far[CMD_MAX_LEN];
+    int length_so_far = 0;
 
 #define MESGBUFSIZE 32
     unsigned char mesgbuf[MESGBUFSIZE];
 
-    assert(COMM1 == comm || COMM2 == comm);
+    assert(COMM1 == mycomm || COMM2 == mycomm);
     memset(mesgbuf, '\0', MESGBUFSIZE);
     state = WANT_DLE;
 
+    {
+	// We make this thread cancellable by any thread, at any time. This
+	// should be okay since we don't have any state to undo or locks to
+	// release.
+	int oldtype;
+	int oldstate;
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+    }
+
     while (1) {
-	bytes_read = read(Fd[comm], &ch, 1);
+	bytes_read = read(Fd[mycomm], &ch, 1);
 	if (bytes_read == 0) {
 	    // EOF
 	    break;
 	} else if (bytes_read == -1) {
 	    // error
 	    set_error_string("read_comm(%d) bad read (%s)\n",
-	    	comm, strerror(errno));
+	    	mycomm, strerror(errno));
 	    break;
 	}
 
@@ -308,37 +348,37 @@ read_comm(int comm)
 	} else if (state == WANT_ID) {
 	    // Kind of message
 	    if (ch == GPS_POS) {
-		if (get_mesg(comm,mesgbuf, 15, "GPS_POS") == -1) {
+		if (get_mesg(mycomm,mesgbuf, 15, "GPS_POS") == -1) {
 		    continue;
 		}
-		fprintf(stderr, "GPS_POS (%d): \n", comm);
+		fprintf(stderr, "GPS_POS (%d): \n", mycomm);
 	    
 	    } else if (ch == GPS_TIME) {
-		if (get_mesg(comm,mesgbuf, 15, "GPS_TIME") == -1) {
+		if (get_mesg(mycomm,mesgbuf, 15, "GPS_TIME") == -1) {
 		    continue;
 		}
-		fprintf(stderr, "GPS_TIME (%d): \n", comm);
+		fprintf(stderr, "GPS_TIME (%d): \n", mycomm);
 
 	    } else if (ch == MKS_ALT) {
-		if (get_mesg(comm,mesgbuf, 6, "MKS_ALT") == -1) {
+		if (get_mesg(mycomm,mesgbuf, 6, "MKS_ALT") == -1) {
 		    continue;
 		}
-		fprintf(stderr, "MKS_ALT (%d): \n", comm);
+		fprintf(stderr, "MKS_ALT (%d): \n", mycomm);
 
 	    } else if (ch == REQ_DATA) {
-		if (get_mesg(comm,mesgbuf, 1, "REQ_DATA") == -1) {
+		if (get_mesg(mycomm,mesgbuf, 1, "REQ_DATA") == -1) {
 		    continue;
 		}
-		if (Slowrate_callback[comm] != NULL) {
-		    Slowrate_callback[comm]();
+		if (Slowrate_callback[mycomm] != NULL) {
+		    Slowrate_callback[mycomm]();
 		}
-		//fprintf(stderr, "REQ_DATA (%d): \n", comm);
+		//fprintf(stderr, "REQ_DATA (%d): \n", mycomm);
 
 	    } else if (ch == SCI_CMD) {
-		if (get_mesg(comm,mesgbuf, 4, "SCI_CMD") == -1) {
+		if (get_mesg(mycomm,mesgbuf, 4, "SCI_CMD") == -1) {
 		    continue;
 		}
-		cmd_accum(mesgbuf);
+		cmd_accum(mesgbuf, cmd_so_far, &length_so_far);
 
 	    } else {
 		// Unknown id.
@@ -480,7 +520,7 @@ showbuf(unsigned char *buf, int size)
 }
 
 static void
-cmd_accum(unsigned char *buf)
+cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
 {
     /* Note that each science command is broken into pieces by NSBF. Each
      * piece has the following format: DLE (0x10), ID (0x14), length
@@ -490,32 +530,29 @@ cmd_accum(unsigned char *buf)
      * takes care of restoring the original command and then passing to
      * back to the callback. We receive here as input only the last 4 bytes
      * of each command packet, ie: length, sequence, cmd, and etx bytes. */
-#define CMD_MAX_LEN 32
-    static unsigned char cmd_so_far[CMD_MAX_LEN];
-    static int length_so_far = 0;
     unsigned char id;
 
     unsigned char seq = buf[1];
     unsigned char cmdbyte = buf[2];
 
-    if (seq != length_so_far) {
+    if (seq != *length_so_far) {
 	// Out of sequence packet. Reset everything.
-	length_so_far = 0;
+	*length_so_far = 0;
 	return;
     }
 
-    cmd_so_far[length_so_far] = cmdbyte;
+    cmd_so_far[*length_so_far] = cmdbyte;
 
-    ++length_so_far;
+    ++(*length_so_far);
 
     id = cmd_so_far[0];
 
-    if (Cmdlen[id] == length_so_far) {
+    if (Cmdlen[id] == *length_so_far) {
 	// We have a complete command. Execute the callback.
     	if (Cmdf != NULL) {
 	    Cmdf(cmd_so_far);
 	}
-	length_so_far = 0;
+	*length_so_far = 0;
 	return;
 
     } else if (Cmdlen[id] == -1) {
@@ -523,7 +560,7 @@ cmd_accum(unsigned char *buf)
 	if (Cmdf != NULL) {
 	    Cmdf(cmd_so_far);
 	}
-	length_so_far = 0;
+	*length_so_far = 0;
 	return;
     }
 }
@@ -553,17 +590,18 @@ sipcom_highrate_write(unsigned char *buf, int nbytes)
 	ender.filler[0] = ender.filler[1] = ender.filler[2] = '\0';
 
 	// Write header.
-	if (retval = write_bytes((unsigned char *)&header, sizeof(header))) {
+	if (retval = highrate_write_bytes(
+	    	(unsigned char *)&header, sizeof(header))) {
 	    return retval;
 	}
 
 	// Write data.
-	if (retval = write_bytes(buf, nbytes)) {
+	if (retval = highrate_write_bytes(buf, nbytes)) {
 	    return retval;
 	}
 
 	// Write ender.
-	if (retval = write_bytes((unsigned char *)&ender, sizeof(ender))) {
+	if (retval = highrate_write_bytes((unsigned char *)&ender, sizeof(ender))) {
 	    return retval;
 	}
 
@@ -581,7 +619,7 @@ sipcom_highrate_set_throttle(unsigned long rate)
 }
 
 static int
-write_bytes(unsigned char *p, int bytes_to_write)
+highrate_write_bytes(unsigned char *p, int bytes_to_write)
 {
     int bytes_avail = 0;
     int retval = 0;

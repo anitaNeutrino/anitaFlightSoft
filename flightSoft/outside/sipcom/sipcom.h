@@ -49,7 +49,7 @@ typedef void (*cmd_callback)(unsigned char *);
  *   	- Initializes the serial ports for COMM1, COMM2, and high rate
  *   	  TDRSS data.
  *   	- Initializes the SIP throttling module.
- *   	- Forks two processes that read input from COMM1 and COMM2.
+ *   	- Starts two threads that read input from COMM1 and COMM2.
  *
  * Parameters:
  * 	throttle_rate - maximum number of bytes/sec to write to SIP.
@@ -69,11 +69,12 @@ int sipcom_init(unsigned long throttle_rate);
 
 /*
  * Function: sipcom_end
- * 	Terminates sipcom operations.
+ * 	Terminates sipcom operations if sipcom_wait() has been called.
  *
  * Description:
- * 	This function kills the two SIP input reading processes. This has
- * 	the side-effect of causing <sip_wait> to return.
+ *	This function causes sipcom_wait() to stop waiting and to terminate
+ *	the two SIP input reading threads. If sipcom_wait() has not been
+ *	called, then sipcom will not terminate.
  *
  * See also:
  * 	- <sipcom_init>
@@ -93,14 +94,16 @@ void sipcom_end();
 char *sipcom_strerror();
 
 /* Function: sipcom_wait
- * 	Wait for sipcom processes to terminate.
+ * 	Wait for sipcom_end to tell us to stop waiting and then terminate
+ *	the two reader threads.
  *
  * Description:
- * 	Recall that <sipcom_init> starts two processes (one to read input
+ * 	Recall that <sipcom_init> starts two threads (one to read input
  * 	from the SIP on port COMM1 and one on port COMM2). <sipcom_wait>
- * 	will block until both of these processes have terminated. It should
- * 	be called at the point in your program where you want to turn
- * 	control over to sipcom.
+ * 	will block until <sipcom_end> signals that it is time to quit; then
+ * 	both of these threads will be cancelled. It should be called at the
+ * 	point in your program where you want to turn control over to
+ * 	sipcom.
  */
 void sipcom_wait();
 
@@ -113,8 +116,8 @@ void sipcom_wait();
  * 	Ordinarily, <sipcom_init> should only be run once.
  * 	If it becomes necessary to run <sipcom_init> more than once, this
  * 	function <sipcom_reset> must be run first. Note that before doing
- * 	that, you should make sure that the two SIP reader processes have
- * 	terminated.
+ * 	that, you should make sure that the two SIP reader threads have
+ * 	terminated (by having called sipcom_wait() and then sipcom_end()).
  *
  * See also:
  * 	- <sipcom_init>

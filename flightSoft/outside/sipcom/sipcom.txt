@@ -37,10 +37,20 @@ ANITA notes:
 	- /dev/ttyS1 (com2) connects to SIP COMM2 port.
 	- /dev/ttyS2 (com3) connects to SIP high rate TDRSS port.
 
-	On the ANITA flight computer, the following command must be run at
-	boot time. I put it in /etc/rc.local. It puts the third serial line
-	at the correct IRQ.
+	On the ANITA SBS flight computer, the following command must be
+	run at boot time. I put it in /etc/rc.local. It puts the third
+	serial line at the correct IRQ.
 >		/bin/setserial /dev/ttyS2 irq 11
+
+	Also, the bios settings must be changed on the "peripheral
+	setup" page:
+
+>               Desc                    orig    now
+>               OnBoard Serial Port 1   Auto    3F8h
+>               "       "      "    2   Auto    2F8h
+>               "       "      "    3   Auto    3E8h,IRQ11
+>               "       "      "    4   Auto    Auto
+ 
 
 Callback functions:
 
@@ -55,6 +65,10 @@ that sipcom will execute whenever it parses
 
 If you do not provide a callback for a particular item, then sipcom will
 take no action when it encounters it.
+
+Compiling:
+
+Since sipcom uses the pthreads library, you must link using -lpthread.
 
 Example code:
 

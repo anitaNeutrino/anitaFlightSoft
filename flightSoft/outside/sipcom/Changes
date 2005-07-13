@@ -1,5 +1,17 @@
 Don't forget to update the VERSION file!
 
+1.10	11 Jul 05	MAO
+	sipcom.c
+	demo/driver.c
+	    Use pthreads instead of forking separate processes.
+	sipcom.h
+	    Documentation changes.
+
+1.9	06 Jul 05	MAO
+	sipcom.c
+	    Preparation for switching to pthreads instead of fork.
+	    Made cmd_accum() re-entrant.
+
 1.8	24 Jun 05	MAO
 	sipcom.c
 	    Use the stor library to write a local copy of all data if

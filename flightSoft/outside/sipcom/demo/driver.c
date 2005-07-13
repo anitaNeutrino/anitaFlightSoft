@@ -9,13 +9,13 @@ char Usage_msg[] = "[-p port]";
 
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
 
 char *Progname;
-int Sleepsec = -1;
-pid_t Hwriter;
+pthread_t Hr_thread;
 
 #define SLBUF_SIZE 240
 
@@ -31,8 +31,7 @@ usage()
 void handle_command(unsigned char *cmd);
 void handle_slowrate_comm1();
 void handle_slowrate_comm2();
-void write_highrate();
-void sleep_then_quit(int sec);
+void write_highrate(int *ignore);
 
 int
 main(int argc, char *argv[])
@@ -46,15 +45,12 @@ main(int argc, char *argv[])
 
     Progname = argv[0];
 
-    while ((c = getopt(argc, argv, "p:s:")) != EOF) {
+    while ((c = getopt(argc, argv, "p:")) != EOF) {
 	switch (c) {
 	    case 'p':
 		fprintf(stderr, "Sorry, port option not implemented.\n");
 		usage();
 		exit(1);
-		break;
-	    case 's':
-	    	Sleepsec = atoi(optarg);
 		break;
 	    default:
 	    case '?':
@@ -90,49 +86,18 @@ main(int argc, char *argv[])
     }
 
     // Start the high rate writer process.
-    Hwriter = fork();
-    if (Hwriter == 0) {
-	// child
-	fprintf(stderr, "Hwriter here: pid %d\n", getpid());
-	write_highrate();
-	exit(0);
-    } else if (Hwriter < 0) {
-	// parent
-	fprintf(stderr, "Bad fork #1 (%s)\n", strerror(errno));
-	exit(1);
-    }
+    pthread_create(&Hr_thread, NULL, (void *)write_highrate, NULL);
+    pthread_detach(Hr_thread);
 
-    // Parent continues here normally.
     fprintf(stderr, "I am pid %d\n", getpid());
-    fprintf(stderr, "Hwriter is pid %d\n", Hwriter);
-
-    {
-	pid_t quitter = fork();
-	if (quitter == 0) {
-	    // child
-	    sleep_then_quit(Sleepsec);
-	    exit(0);
-	} else if (quitter < 0) {
-	    // parent
-	    fprintf(stderr, "Bad fork #2 (%s)\n", strerror(errno));
-	    exit(1);
-	}
-
-	// Parent continues here normally.
-
-    }
-
-    fprintf(stderr, "At sipcom_wait()\n");
     sipcom_wait();
-
-    fprintf(stderr, "At waitpid()\n");
-    waitpid(Hwriter, NULL, 0);	// wait for Hwriter
-
+    pthread_cancel(Hr_thread);
+    fprintf(stderr, "Bye bye\n");
     exit(0);
 }
 
 void
-write_highrate()
+write_highrate(int *ignore)
 {
     long amtb;
 #define BSIZE 2048
@@ -152,6 +117,17 @@ write_highrate()
     rand_no_seed(getpid());
     
     lim = 2000;
+
+    {
+	// We make this thread cancellable by any thread, at any time. This
+	// should be okay since we don't have any state to undo or locks to
+	// release.
+	int oldtype;
+	int oldstate;
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+    }
+
     while (1) {
 
 #ifdef NOTDEF
@@ -189,6 +165,10 @@ handle_command(unsigned char *cmd)
 
     if (cmd[0] == 129) {
 	fprintf(stderr, "DISABLE_DATA_COLL\n");
+    } else if (cmd[0] == 131) {
+	// Use this command to quit.
+	fprintf(stderr, "QUIT CMD\n");
+	sipcom_end();
     } else if (cmd[0] == 138) {
 	fprintf(stderr, "HV_PWR_ON\n");
     } else if (cmd[0] == 159) {
@@ -250,21 +230,4 @@ handle_slowrate_comm2()
     if (ret) {
 	fprintf(stderr, "handle_slowrate_comm1: %s\n", sipcom_strerror());
     }
-}
-
-void
-sleep_then_quit(int sec)
-{
-    if (sec == -1) {
-	fprintf(stderr, "======================= not sleeping\n");
-	return;
-    }
-    fprintf(stderr, "======================= sleeping %d seconds\n", sec);
-    sleep(sec);
-    fprintf(stderr, "======================= done sleeping\n", sec);
-
-    sipcom_end();
-
-    // Kill Hwriter while we're at it.
-    kill(Hwriter, SIGKILL);
 }
