@@ -16,13 +16,14 @@ EXCEPTION     =
 
 CC           = gcc
 INCLUDES      = -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
--I$(ANITA_FLIGHT_SOFT_DIR)/common/includes -I$(ANITA_FLIGHT_SOFT_DIR)/outside/cr7/include -I$(ANITA_FLIGHT_SOFT_DIR)/outside/acromag 
+-I$(ANITA_FLIGHT_SOFT_DIR)/common/includes -I$(ANITA_FLIGHT_SOFT_DIR)/outside/cr7/include -I$(ANITA_FLIGHT_SOFT_DIR)/outside/acromag -I$(ANITA_FLIGHT_SOFT_DIR)/outside/sipcom
 CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE
 LD            = gcc
 LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR)
 ANITA_LIBS    =  -lkvp -lConfig -lUtil -lcr7 -lm # -lSocket
 ANITA_HKD_LIBS = -lAcromag
 ANITA_GPS_LIBS = -lSerial
+ANITA_SIP_LIBS = -lSipcom
 
 
 all: $(Target)
