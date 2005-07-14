@@ -373,3 +373,48 @@ ConfigErrorCode configValidate (
    }
    return (status) ;
 }
+
+
+
+/********************************************************************
+*
+* readBlocks - Read block names from file
+*
+* <Insert longer description here>
+*
+* RETURNS: 0 => success, -1 => error
+*
+*/
+ConfigErrorCode readBlocks(char *fileName,char blockList[MAX_BLOCKS][BLOCKNAME_MAX],int *numBlocks)
+{
+   int status ;
+   char* fileSpec ;
+   char thisBlock[BLOCKNAME_MAX] ;
+   int blockNum=0;
+   fileSpec = configFileSpec (fileName) ;
+   config = fopen (fileSpec, "r") ;
+   
+   if (config != NULL) {
+      do {
+	  status=0;
+	  status = getTag (thisBlock) ;
+	  if (status == CONFIG_E_OK) {
+	      strncpy(blockList[blockNum],thisBlock,BLOCKNAME_MAX);
+	      blockNum++;
+	  }
+      } while ( status == CONFIG_E_OK);
+      fclose (config) ;
+   }
+   else {
+      if (errno == ENOENT) {
+         syslog (LOG_ERR,"readBlocks: %s not found", fileSpec) ;
+         status = CONFIG_E_NOFILE ;
+      }
+      else {
+         syslog (LOG_ERR,"readBlocks: error %d opening %s", errno, fileSpec) ;
+         status = CONFIG_E_SYSTEM ;
+      }
+   }
+   *numBlocks=blockNum;
+   return (status) ;
+}

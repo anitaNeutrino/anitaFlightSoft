@@ -45,6 +45,7 @@ INCLUDE FILES: <place list of any relevant header files here>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
 
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -58,6 +59,84 @@ INCLUDE FILES: <place list of any relevant header files here>
 /* locals */
 
 /* forward declarations */
+
+
+
+/********************************************************************
+*
+* configReplace - Copies one file to another and archives replaced file
+*
+* <Insert longer description here>
+*
+* RETURNS: 0 => success,  -1 => failure
+*
+*/
+ConfigErrorCode configReplace(char *oldFileName, char *newFileName)
+{
+    int retVal=0;
+   //   char* errMessage ;
+   char *configPath = 0 ;
+   struct passwd *myPwent ;
+   int myUid ;
+   struct stat fileStat ;
+   char oldFileSpec[FILENAME_MAX] ;
+   char archiveFileSpec[FILENAME_MAX] ;
+   char newFileSpec[FILENAME_MAX] ;
+   char mvCommand[2*FILENAME_MAX];
+   time_t rawTime;
+
+   configPath = getenv ("ANITA_CONFIG_DIR") ;
+   if (configPath == NULL) {
+      /* Environment variable not set so use current dir if there's
+         already a config file here */
+      if (stat (oldFileName, &fileStat) == 0) {
+         configPath = "./" ;
+      }
+      else {
+         /* Finally default to home directory */
+         myUid = getuid () ;
+         myPwent = getpwuid (myUid) ;
+         configPath = myPwent->pw_dir ;
+      }
+   }
+   time ( &rawTime );
+
+   strcpy (oldFileSpec, configPath) ;
+   strcat (oldFileSpec, "/") ;
+   strcat (oldFileSpec, oldFileName) ;
+
+   sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,oldFileName,rawTime);
+
+   strcpy (newFileSpec, configPath) ;
+   strcat (newFileSpec, "/") ;
+   strcat (newFileSpec, newFileName) ;
+
+   if(stat (newFileSpec, &fileStat) != 0) {
+       syslog(LOG_ERR,"configReplace couldn't find: %s",newFileSpec);
+       return CONFIG_E_NOFILE;
+   }
+   if(stat (oldFileSpec, &fileStat) != 0) {
+       syslog(LOG_ERR,"configReplace couldn't find: %s",oldFileSpec);
+       return CONFIG_E_NOFILE;
+   }
+
+   // mv oldFileSpec archiveFileSpec
+   // mv newFileSpec oldFileSpec
+   sprintf(mvCommand,"mv %s %s\n",oldFileSpec,archiveFileSpec);
+   retVal=system(mvCommand);
+   if(retVal<0) {
+       syslog(LOG_ERR,"Problem archiving config: %s %s ",archiveFileSpec,strerror(errno));
+       return CONFIG_E_SYSTEM;
+   }
+   sprintf(mvCommand,"mv %s %s\n",newFileSpec,oldFileSpec);
+   retVal=system(mvCommand);
+   if(retVal<0) {
+       syslog(LOG_ERR,"Problem replacing config: %s %s ",archiveFileSpec,strerror(errno));
+       return CONFIG_E_SYSTEM;
+   }
+   syslog(LOG_INFO,"configReplace arvhived: %s", archiveFileSpec);   
+   return CONFIG_E_OK;
+}
 
 /********************************************************************
 *
@@ -123,3 +202,177 @@ ConfigErrorCode configStore (
    }
 }
 
+ConfigErrorCode configAppend (
+                             char* fileName,
+                             char* blockName
+                             )
+{
+   int config ;
+   //   char* errMessage ;
+   char *configPath = 0 ;
+   struct passwd *myPwent ;
+   int myUid ;
+   struct stat fileStat ;
+   char fileSpec[FILENAME_MAX] ;
+   int status ;
+   char tag[BLOCKNAME_MAX+3] ;
+
+   configPath = getenv ("ANITA_CONFIG_DIR") ;
+   if (configPath == NULL) {
+      /* Environment variable not set so use current dir if there's
+         already a config file here */
+      if (stat (fileName, &fileStat) == 0) {
+         configPath = "./" ;
+      }
+      else {
+         /* Finally default to home directory */
+         myUid = getuid () ;
+         myPwent = getpwuid (myUid) ;
+         configPath = myPwent->pw_dir ;
+      }
+   }
+
+   strcpy (fileSpec, configPath) ;
+   strcat (fileSpec, "/") ;
+   strcat (fileSpec, fileName) ;
+   syslog(LOG_INFO,"configAppend writing params to: %s", fileSpec) ;
+
+   config = open (fileSpec,O_CREAT|O_WRONLY|O_APPEND,0664) ;
+   if (config == -1) {
+      syslog (LOG_ERR,"configAppend: error %d creating %s", errno, fileSpec) ;
+      return (CONFIG_E_SYSTEM) ;
+   }
+   else {
+      snprintf (tag, BLOCKNAME_MAX+2, "\n\n<%s>\n", blockName) ;
+      write (config, tag, strlen (tag)) ;
+      status = kvpWrite (config) ;
+      if (status == -1) {
+	  /*errMessage = kvpErrorString (kvpError()) ;*/
+         syslog (LOG_ERR,"configAppend: kvpWrite failed %s",kvpErrorString (kvpError()) ) ;
+         return (CONFIG_E_KVP) ;
+      }
+      snprintf (tag, BLOCKNAME_MAX+3, "\n</%s>\n", blockName) ;
+      write (config, tag, strlen (tag)) ;
+      return (CONFIG_E_OK) ;
+   }
+}
+
+
+
+ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value)
+/* Will tidy it up so that 
+Does exactly what it says on the tin */
+{
+    /* Config file thingies */
+    int status=0;
+    KvpErrorCode kvpStatus=0;
+//    char* eString;
+    char blockList[MAX_BLOCKS][BLOCKNAME_MAX];
+    int numBlocks=0,blockNum;
+    char tempFile[FILENAME_MAX];
+    sprintf(tempFile,"%s.new",fileName);
+    /* Load Config */
+    kvpReset () ;
+    readBlocks(fileName,blockList,&numBlocks);
+    for(blockNum=0;blockNum<numBlocks;blockNum++) {
+	kvpReset () ;
+	status = configLoad (fileName,blockList[blockNum]) ;
+	if(status == CONFIG_E_OK) {	
+	    if (strcmp (blockName, blockList[blockNum]) == 0) {
+//		printf("Here\n");
+		kvpStatus=kvpUpdateInt(key,value);
+		if(kvpStatus!=KVP_E_OK) {
+		    printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
+		}
+	    }
+//	    printf("%s\t%s\n",blockName,blockList[blockNum]);
+	    if(blockNum==0)
+		status = configStore(tempFile,blockList[blockNum]);
+	    else
+		status = configAppend(tempFile,blockList[blockNum]);
+	    if(status != CONFIG_E_OK) {
+		printf("Bugger\n");
+	    }
+	}
+    }
+    return status;
+}
+
+
+ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value)
+/* Will tidy it up so that 
+Does exactly what it says on the tin */
+{
+    /* Config file thingies */
+    int status=0;
+    KvpErrorCode kvpStatus=0;
+//    char* eString;
+    char blockList[MAX_BLOCKS][BLOCKNAME_MAX];
+    int numBlocks=0,blockNum;
+    char tempFile[FILENAME_MAX];
+    sprintf(tempFile,"%s.new",fileName);
+    /* Load Config */
+    kvpReset () ;
+    readBlocks(fileName,blockList,&numBlocks);
+    for(blockNum=0;blockNum<numBlocks;blockNum++) {
+	kvpReset () ;
+	status = configLoad (fileName,blockList[blockNum]) ;
+	if(status == CONFIG_E_OK) {	
+	    if (strcmp (blockName, blockList[blockNum]) == 0) {
+//		printf("Here\n");
+		kvpStatus=kvpUpdateFloat(key,value);
+		if(kvpStatus!=KVP_E_OK) {
+		    printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
+		}
+	    }
+//	    printf("%s\t%s\n",blockName,blockList[blockNum]);
+	    if(blockNum==0)
+		status = configStore(tempFile,blockList[blockNum]);
+	    else
+		status = configAppend(tempFile,blockList[blockNum]);
+	    if(status != CONFIG_E_OK) {
+		printf("Bugger\n");
+	    }
+	}
+    }
+    return status;
+}
+
+ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value)
+/* Will tidy it up so that 
+Does exactly what it says on the tin */
+{
+    /* Config file thingies */
+    int status=0;
+    KvpErrorCode kvpStatus=0;
+//    char* eString;
+    char blockList[MAX_BLOCKS][BLOCKNAME_MAX];
+    int numBlocks=0,blockNum;
+    char tempFile[FILENAME_MAX];
+    sprintf(tempFile,"%s.new",fileName);
+    /* Load Config */
+    kvpReset () ;
+    readBlocks(fileName,blockList,&numBlocks);
+    for(blockNum=0;blockNum<numBlocks;blockNum++) {
+	kvpReset () ;
+	status = configLoad (fileName,blockList[blockNum]) ;
+	if(status == CONFIG_E_OK) {	
+	    if (strcmp (blockName, blockList[blockNum]) == 0) {
+//		printf("Here\n");
+		kvpStatus=kvpUpdateString(key,value);
+		if(kvpStatus!=KVP_E_OK) {
+		    printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
+		}
+	    }
+//	    printf("%s\t%s\n",blockName,blockList[blockNum]);
+	    if(blockNum==0)
+		status = configStore(tempFile,blockList[blockNum]);
+	    else
+		status = configAppend(tempFile,blockList[blockNum]);
+	    if(status != CONFIG_E_OK) {
+		printf("Bugger\n");
+	    }
+	}
+    }
+    return status;
+}

@@ -67,6 +67,17 @@ extern "C" {
    ConfigErrorCode configStore (char* fileName, char* blockName) ;
    char* configErrorString (ConfigErrorCode code) ;
    ConfigErrorCode configValidate (char* fileName) ;
+
+/* RJN additions */
+    ConfigErrorCode configAppend (char* fileName, char* blockName) ;
+    ConfigErrorCode readBlocks(char *fileName,char blockList[MAX_BLOCKS][BLOCKNAME_MAX],int *numBlocks);
+
+    ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value);
+    ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value);
+    ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value);
+
+    ConfigErrorCode configReplace(char *oldFileName, char *newFileName);
+
 #ifdef __cplusplus 
 } 
 #endif /* __cplusplus */ 

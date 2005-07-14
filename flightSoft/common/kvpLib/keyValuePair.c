@@ -1182,6 +1182,42 @@ KvpErrorCode kvpUpdateInt (
 
 /********************************************************************
 *
+* kvpUpdateFloat - Update a key value pair with an float value
+*
+* <Insert longer description here>
+*
+* RETURNS: <insert return values here>
+*
+*/
+KvpErrorCode kvpUpdateFloat (
+                           const char* key,
+                           float value
+                        )
+{
+   return (kvpUpdate (key, &value, KT_FLOAT, 1)) ;
+}
+
+
+/********************************************************************
+*
+* kvpUpdateString - Update a key value pair with an string value
+*
+* <Insert longer description here>
+*
+* RETURNS: <insert return values here>
+*
+*/
+KvpErrorCode kvpUpdateString (
+                           const char* key,
+                           const char *value
+                        )
+{
+   return (kvpUpdate (key, value, KT_STRING, 1)) ;
+}
+
+
+/********************************************************************
+*
 * kvpSetFloat - Store a key value pair with a float value
 *
 * <Insert longer description here>
@@ -1215,7 +1251,8 @@ int kvpWrite (
    int lengthWritten ;
 
    buffer = malloc (kvpBufferSize) ;
-   reclen = kvpFormat (buffer, kvpBufferSize) + 1 ;
+   reclen = kvpFormat (buffer, kvpBufferSize) ;
+/*    printf("%s\t%d\t%d\n",buffer,strlen(buffer),reclen); */
    lengthWritten = write (stream, buffer, reclen)  ;
    free (buffer) ;
    return (lengthWritten) ;

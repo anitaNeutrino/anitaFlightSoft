@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
    /* Load Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status &= configLoad ("SIPd.config","cmd") ;
+    status &= configLoad ("Cmdd.config","lengths") ;
     eString = configErrorString (status) ;
 
 

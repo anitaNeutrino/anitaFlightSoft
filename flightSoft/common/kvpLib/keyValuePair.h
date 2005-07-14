@@ -141,7 +141,9 @@ typedef enum {
    KvpErrorCode kvpGetStringArray (const char* key, char* values,
                                    int  maxlen, int* entries) ;
 
-   KvpErrorCode kvpUpdateInt (const char* key, int value) ;
+    KvpErrorCode kvpUpdateInt (const char* key, int value) ;
+    KvpErrorCode kvpUpdateFloat (const char* key, float value) ;
+    KvpErrorCode kvpUpdateString (const char* key,const char *value);
 
    int kvpWrite (int stream) ;
    int kvpFormat (char* buffer, int length) ;
