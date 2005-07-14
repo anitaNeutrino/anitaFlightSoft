@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 
 
 /* Flight soft includes */
@@ -20,9 +21,12 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "serialLib/serialLib.h"
+#include "utilLib/utilLib.h"
 #include "anitaStructures.h"
 
 // Forward declarations
+int readConfigFile();
+int openDevices();
 int setupG12();
 int setupADU5();
 int checkG12();
@@ -36,8 +40,15 @@ int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output);
 #define G12_DATA_SIZE 1024
 #define ADU5_DATA_SIZE 1024
 
+
+// Device names;
+char g12DevName[FILENAME_MAX];
+char adu5ADevName[FILENAME_MAX];
+char adu5BDevName[FILENAME_MAX];
+
 // File desciptors for GPS serial ports
 int fdG12,fdAdu5A,fdAdu5B;//,fdMag
+
 
 // Config stuff for G12
 float g12PPSPeriod=1;
@@ -56,19 +67,17 @@ float adu5RelV12[3]={0};
 float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
 
+
 int main (int argc, char *argv[])
 {
-    int retVal,printToScreen=0;
-    int tempNum=3;
+    int retVal;
 
-    // Device names;
-    char g12DevName[FILENAME_MAX];
-    char adu5ADevName[FILENAME_MAX];
-    char adu5BDevName[FILENAME_MAX];
+// GPSd config stuff
+    char gpsdPidFile[FILENAME_MAX];
 
     /* Config file thingies */
     int status=0;
-    KvpErrorCode kvpStatus=0;
+//    KvpErrorCode kvpStatus=0;
     char* eString ;
 
     /* Log stuff */
@@ -78,22 +87,66 @@ int main (int argc, char *argv[])
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
 
+    /* Set signal handlers */
+    signal(SIGINT, sigIntHandler);
+    signal(SIGTERM,sigTermHandler);
    
-    /* Load Config */
+    /* Load Global Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status &= configLoad (GLOBAL_CONF_FILE,"whiteheat") ;
-    status &= configLoad ("GPSd.config","output") ;
-    status &= configLoad ("GPSd.config","g12") ;
-    status &= configLoad ("GPSd.config","adu5") ;
     eString = configErrorString (status) ;
 
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
+	strncpy(gpsdPidFile,kvpGetString("gpsdPidFile"),FILENAME_MAX-1);
+	writePidFile(gpsdPidFile);
 	strncpy(g12DevName,kvpGetString("g12DevName"),FILENAME_MAX-1);
 	strncpy(adu5ADevName,kvpGetString("adu5PortADevName"),FILENAME_MAX-1);
 	strncpy(adu5BDevName,kvpGetString("adu5PortBDevName"),FILENAME_MAX-1);
 	strncpy(g12LogDir,kvpGetString("gpsdG12LogDir"),FILENAME_MAX-1);
+    }
+
+//    retVal=openDevices();
+
+    while(currentState==PROG_STATE_INIT) {
+	printf("Initalizing GPSd\n");
+	retVal=readConfigFile();
+	if(retVal<0) {
+	    printf("Problem reading GPSd.config\n");
+	    exit(1);
+	}
+	
+//	retVal=setupG12();
+//	retVal=setupADU5();
+
+	currentState=PROG_STATE_RUN;
+	while(currentState==PROG_STATE_RUN) {
+	    sleep(1);
+	}
+    }
+    printf("Terminating GPSd\n");
+    removeFile(gpsdPidFile);
+    
+	
+    return 0;
+}
+
+
+int readConfigFile() 
+/* Load GPSd config stuff */
+{
+    /* Config file thingies */
+    int status=0,printToScreen=0;
+    int tempNum=3;;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+    kvpReset();
+    status = configLoad ("GPSd.config","output") ;
+    status &= configLoad ("GPSd.config","g12") ;
+    status &= configLoad ("GPSd.config","adu5") ;
+
+   if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",-1);
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
@@ -123,22 +176,49 @@ int main (int argc, char *argv[])
 	    syslog(LOG_WARNING,"kvpGetFloatArray(calibV14): %s",
 		   kvpErrorString(kvpStatus));
     }
+   else {
+       eString=configErrorString (status) ;
+       syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
+   }
 
 //    printf("%f %f %f\n",adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
 //    printf("%f %f %f\n",adu5RelV13[0],adu5RelV13[1],adu5RelV13[2]);
 //    printf("%f %f %f\n",adu5RelV14[0],adu5RelV14[1],adu5RelV14[2]);
 
 //    printf("%d %s %s %s\n",printToScreen,g12DevName,adu5ADevName,adu5BDevName);
-    // Initialize the various devices    
+   return status;
+}
+
+int openDevices()
+/*!
+  Open connections to the GPS devices
+*/
+{
+    int retVal;
+// Initialize the various devices    
     retVal=openGPSDevice(g12DevName);
     if(retVal<=0) {
 	printf("Couldn't open: %s\n",g12DevName);
 	exit(1);
     }
     else fdG12=retVal;
+      
+    retVal=openGPSDevice(adu5ADevName);	
+    if(retVal<=0) {
+	printf("Couldn't open: %s\n",adu5ADevName);
+	exit(1);
+    }
+    else fdAdu5A=retVal;
 
+    retVal=openGPSDevice(adu5BDevName);	
+    if(retVal<=0) {
+	printf("Couldn't open: %s\n",adu5BDevName);
+	exit(1);
+    }
+    else fdAdu5B=retVal;
     return 0;
 }
+
 
 int setupG12()
 /*! Initializes the G12 with the correct PPS and ZDA settings */

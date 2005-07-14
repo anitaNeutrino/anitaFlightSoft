@@ -15,6 +15,10 @@
 #include <string.h>
 #include <sys/dir.h>
 #include <errno.h>
+#include <libgen.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 
 extern  int versionsort(const void *a, const void *b);
 
@@ -233,3 +237,34 @@ int writeBody(anita_event_body *bodyPtr, char *filename)
     fclose(pFILE);
     return 0;
 }
+
+ 
+void sigIntHandler(int sig)
+{
+    currentState=PROG_STATE_INIT;
+} 
+
+void sigTermHandler(int sig)
+{
+    currentState=PROG_STATE_TERMINATE;
+} 
+
+void writePidFile(char *fileName)
+{
+    FILE *fpPid ;
+    char theDir[FILENAME_MAX];
+    char tempFileName[FILENAME_MAX];
+    strncpy(tempFileName,fileName,FILENAME_MAX-1);
+    strncpy(theDir,dirname(tempFileName),FILENAME_MAX-1);
+    makeDirectories(theDir);
+//    pid_t thePid;
+    if (!(fpPid=fopen(fileName, "w"))) {
+	fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	exit(1) ;
+    }
+    fprintf(fpPid,"%d\n", getpid()) ;
+    fclose(fpPid) ;
+}
+
+

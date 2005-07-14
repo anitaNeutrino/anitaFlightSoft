@@ -72,6 +72,20 @@ typedef struct {
     char status;
 } calibStruct;
 
-    
+
+typedef enum {
+    PRI_FORCED = 0,
+    PRI_CALIB = 1,
+    PRI_1 = 1,
+    PRI_2,
+    PRI_3,
+    PRI_4,
+    PRI_TIMEOUT,
+    PRI_6, 
+    PRI_7,
+    PRI_8,
+    PRI_PAYLOAD
+} PriorityCode;
+
 
 #endif /* ANITA_STRUCTURES_H */

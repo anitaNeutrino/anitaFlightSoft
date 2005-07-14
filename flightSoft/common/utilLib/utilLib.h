@@ -5,11 +5,18 @@
     October 2004  rjn@mps.ohio-state.edu
 */
 
-/* Includes */
 
 #ifndef UTILLIB_H
 #define UTILLIB_H
 
+typedef enum {
+    PROG_STATE_INIT=0,
+    PROG_STATE_RUN=1,
+    PROG_STATE_TERMINATE
+} ProgramStateCode;
+
+
+/* Includes */
 #include <dirent.h>
 #include "anitaStructures.h"
 
@@ -31,5 +38,14 @@ int fillCalibStruct(calibStruct *theStruct, char *filename);
 
 int writeHeader(anita_event_header *hdPtr, char *filename);
 int writeBody(anita_event_body *bodyPtr, char *filename);
+
+// Signal handling routines
+
+// Signal handling stuff
+// this variable is used when catching signals 
+ProgramStateCode currentState; 
+void sigIntHandler(int sig); 
+void sigTermHandler(int sig);
+void writePidFile(char *fileName);
 
 #endif /* UTILLIB_H */

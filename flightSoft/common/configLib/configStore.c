@@ -73,6 +73,7 @@ INCLUDE FILES: <place list of any relevant header files here>
 */
 ConfigErrorCode configReplace(char *oldFileName, char *newFileName)
 {
+/*     printf("configReplace %s %s\n",oldFileName,newFileName); */
     int retVal=0;
    //   char* errMessage ;
    char *configPath = 0 ;
@@ -295,7 +296,7 @@ Does exactly what it says on the tin */
 	    }
 	}
     }
-    return status;
+    return configReplace(fileName,tempFile);
 }
 
 
@@ -335,7 +336,7 @@ Does exactly what it says on the tin */
 	    }
 	}
     }
-    return status;
+    return configReplace(fileName,tempFile);
 }
 
 ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value)
@@ -374,5 +375,6 @@ Does exactly what it says on the tin */
 	    }
 	}
     }
-    return status;
+    return configReplace(fileName,tempFile);
+
 }

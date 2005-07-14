@@ -212,12 +212,10 @@ int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr)
 
     /* What can we do without having to calculate FFTS? */
     if(headerPtr->calibStatus!=0) 
-	return headerPtr->priority=priCalib;
+	return headerPtr->priority=PRI_CALIB;
     if(headerPtr->Dtype<0) 
-	return headerPtr->priority=priTimeout;
+	return headerPtr->priority=PRI_TIMEOUT;
     
-
-
     /* Get ready to get power spectra */
     np2=(int)(log10(headerPtr->numSamples)/log10(2)); 
     numPoints = 1 << np2; /* An integer power of two (probably was anyhow) */
@@ -238,13 +236,13 @@ int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr)
 /*     printf("Num Peaks in Trig Window %d, expected %d\n",numPeaksMatch,expectedPeaks);  */
 
     if(numPeaksMatch>expectedPeaks+20) 
-	return headerPtr->priority=pri1;
+	return headerPtr->priority=PRI_1;
     if(numPeaksMatch>expectedPeaks+15) 
-	return headerPtr->priority=pri2;
+	return headerPtr->priority=PRI_2;
     if(numPeaksMatch>expectedPeaks+10) 
-	return headerPtr->priority=pri3;
+	return headerPtr->priority=PRI_3;
     if(numPeaksMatch>expectedPeaks+5) 
-	return headerPtr->priority=pri4;
+	return headerPtr->priority=PRI_4;
     
     return headerPtr->priority;
 }

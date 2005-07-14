@@ -93,7 +93,7 @@ int main (int argc, char *argv[])
 
 int executeCommand() 
 {
-    modifyConfigInt("GPSd.config","output","printToScreen",0);
+    configModifyInt("GPSd.config","output","printToScreen",0);
     return 0;
 }
 
