@@ -1,0 +1,14 @@
+Thu Jul 21 09:52:40 2005	program starting.
+Thu Jul 21 09:52:40 2005	link is 0, route is 9.
+Thu Jul 21 09:53:03 2005	Finished
+Thu Jul 21 10:03:08 2005	program starting.
+Thu Jul 21 10:03:08 2005	link is 0, route is 9.
+Thu Jul 21 10:03:31 2005	NSBF response; no response after 10 seconds
+Thu Jul 21 10:03:31 2005	CMD 150; Turn on GPS/Magnetometer.
+Thu Jul 21 10:08:47 2005	NSBF response; no response after 10 seconds
+Thu Jul 21 10:08:47 2005	CMD 132; Program  4 respawned.
+Thu Jul 21 10:09:54 2005	NSBF response; no response after 10 seconds
+Thu Jul 21 10:09:54 2005	CMD 211; Return to default configuration.
+Thu Jul 21 10:10:34 2005	NSBF response; no response after 10 seconds
+Thu Jul 21 10:10:34 2005	CMD 211; Return to default configuration.
+Thu Jul 21 10:11:45 2005	Finished
