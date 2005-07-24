@@ -88,4 +88,16 @@ typedef enum {
 } PriorityCode;
 
 
+// TURFIO data structure, TV test
+typedef struct {
+  unsigned short rawtrig; // raw trigger number
+  unsigned short L3Atrig; // same as raw trig
+  unsigned long pps1;     // 1PPS
+  unsigned long time;     // trig time
+  unsigned long interval; // interval since last trig
+  unsigned int rate[2][4]; // Antenna trigger output rates (Hz)
+} TurfioStruct;
+  
+
+
 #endif /* ANITA_STRUCTURES_H */
