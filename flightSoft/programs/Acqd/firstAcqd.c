@@ -12,12 +12,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-// Plx includes
-#include "PciRegs.h"
-#include "PlxApi.h"
-/*  #include "PlxInit.h" */
-/*  #include "RegDefs.h" */
-#include "Reg9030.h"
 
 // Anita includes
 #include "anitaFlight.h"
@@ -25,51 +19,9 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
+#include "Acqd.h"
 
 
-//Definitions
-#define EVT_F 0x800
-#define LAB_F 0x40000
-
-#define MAX_SURFS 12
-
-typedef HANDLE PlxHandle_t;
-typedef DEVICE_LOCATION PlxDevLocation_t;
-typedef RETURN_CODE PlxReturnCode_t;
-
-typedef enum __SURF_control_act
-{  ClrAll,
-   ClrEvt,
-   LTrig,
-   EvNoD,
-   LabD,
-   SclD,
-   RFpwD
-} SurfControlAction ;
-
-typedef enum __TURF_control_act
-{ RstTurf,
-  ClrTrg
-} TurfControlAction ;
-
-typedef struct {
-    int bus;
-    int slot;
-} BoardLocStruct;
-      
-
-//Forward Declarations
-int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc);
-void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
-void setDACThresholds(PlxHandle_t *surfHandles, int threshold); //Only does one threshold at the moment
-PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction action);
-PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction action);
-char *surfControlActionAsString(SurfControlAction action);
-char *turfControlActionAsString(TurfControlAction action);
-int readConfigFile();
-int init_param(int argn, char **argv, char **directory, int *n, int *dacVal);
-void writeData(char *directory, unsigned short *wv_data,unsigned long evNum);
-void writeTurf(char *directory, TurfioStruct *data_turf,unsigned long evNum);
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
     return (a>>8)+(a<<8);
 }
@@ -106,28 +58,18 @@ int doDacCycle = TRUE; /* Do a cycle of the DAC values */
 int rstturf = FALSE ;
 
 
-/********************************************************
- *               Global Variables
- ********************************************************/
-/*  BOOLEAN mgEventCompleted; */
-//U32     ChipTypeSelected;
-//U8      ChipRevision;
+int main(int argc, char **argv) {
 
-
-
-/* ----------------===============----------------------- */
-int main(int argnum, char **argval) {
-
-    PlxHandle_t surfHandles[numSurfs];
+    PlxHandle_t surfHandles[MAX_SURFS];
     PlxHandle_t turfioHandle;
-    PlxDevLocation_t surfLocation[numSurfs];
+    PlxDevLocation_t surfLocation[MAX_SURFS];
     PlxDevLocation_t turfioLocation;
     PlxReturnCode_t      rc ;
     //  U32              port, var[7] ;
     int retVal=0;
     unsigned short  dataWord=0;
     unsigned short  evNo=0;
-    unsigned short data_array[numSurfs][N_CHN][N_SCA]; 
+    unsigned short data_array[MAX_SURFS][N_CHN][N_SCA]; 
 // Read only one chip per trigger. PM
     unsigned short data_scl[N_RF];
     unsigned short data_rfpw[N_RF];
@@ -136,13 +78,13 @@ int main(int argnum, char **argval) {
     int i=0, j, ftmo=0,tmo=0,doingEvent=0 ; 
     int numDevices, n_ev=0 ;
     float mean_dt=0;
-    float mean_rms[numSurfs][N_CHP][N_CHN];
-    double chanMean[numSurfs][N_CHP][N_CHN];
-    double chanMeanSqd[numSurfs][N_CHP][N_CHN];
-    unsigned long chanNumReads[numSurfs][N_CHP][N_CHN];
+    float mean_rms[MAX_SURFS][N_CHP][N_CHN];
+    double chanMean[MAX_SURFS][N_CHP][N_CHN];
+    double chanMeanSqd[MAX_SURFS][N_CHP][N_CHN];
+    unsigned long chanNumReads[MAX_SURFS][N_CHP][N_CHN];
     char *dir_n ;
     int tmpGPIO;
-    int dacVal=0;
+    int dacVal=255;
     int surf,chan,chip,samp,rf;
 
   
@@ -158,7 +100,7 @@ int main(int argnum, char **argval) {
     printf(" Start test program !!\n") ;
 
     retVal=readConfigFile();
-    init_param(argnum, argval, &dir_n, &n_ev, &dacVal) ;
+    init_param(argc, argv, &dir_n, &n_ev, &dacVal) ;
     if (dir_n == NULL) dir_n = "./data" ; /* this is default directory name. */
     /*   if (n_ev == 0) n_ev = 1000 ; */
 
@@ -173,7 +115,7 @@ int main(int argnum, char **argval) {
 
     // Clear devices 
     clearDevices(surfHandles,turfioHandle);
-
+//    exit(0);
 /* special initialization of TURF.  may not be necessary.  12-Jul-05 SM. */
     if (rstturf) {
 	setTurfControl(turfioHandle,RstTurf) ;
@@ -224,9 +166,9 @@ int main(int argnum, char **argval) {
 	    if (PlxBusIopRead(surfHandles[surf], IopSpace0, 0x0, TRUE, &dataWord, 2, BitSize16)
 		!= ApiSuccess)
 		printf("  failed to read event number on SURF %d\n", surf) ;
-	    if(verbose) printf("SURF %d, ID %d, event no %d\n",surf,dataWord>>14,dataWord);
+	    if(verbose) printf("SURF %d, ID %d, event no %d\n",surf,dataWord>>14,dataWord&DATA_MASK);
 	    
-	    if(surf==0) evNo=dataWord&0xfff;
+	    if(surf==0) evNo=dataWord&DATA_MASK;
 	    if(setSurfControl(surfHandles[surf],EvNoD)!=ApiSuccess)
 		printf("Failed to set EvNoD on SURF %d\n",surf);
 
@@ -257,15 +199,15 @@ int main(int argnum, char **argval) {
 			printf("  failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
 		    else readOkay=1;
 		    // Record which chip is being read out
-		    if( (((dataWord&0xfff)-2750)>400) && !(dataWord & 0x1000) ) 
-			printf("SURF %d, chip#= %d Chan#= %d SCA#= %d: %d\n",surf,(dataWord>>14),chan,samp,((dataWord&0xfff)-2750));
+		    if( (((dataWord&DATA_MASK)-2750)>400) && !(dataWord & 0x1000) ) 
+			printf("SURF %d, chip#= %d Chan#= %d SCA#= %d: %d\n",surf,(dataWord>>14),chan,samp,((dataWord&DATA_MASK)-2750));
 		    if(verbose>2) 
-			printf("SURF %d, CHP %d,CHN %d, SCA %d: %d (HITBUS=%d) %d\n",surf,dataWord>>14,chan,samp,dataWord,dataWord & 0x1000,dataWord&0xfff);
+			printf("SURF %d, CHP %d,CHN %d, SCA %d: %d (HITBUS=%d) %d\n",surf,dataWord>>14,chan,samp,dataWord,dataWord & 0x1000,dataWord&DATA_MASK);
 		    
 		    // Check if 13 bit is zero
 		    if ((dataWord&0x2000) != 0)
 			printf(" data xfer error; bit 13 != 0 on surf=%d, chn=%d sca=%d\n",surf,i,samp);	  
-		    data_array[surf][i][samp] = dataWord ;//& 0xfff ; 
+		    data_array[surf][chan][samp] = dataWord ;//& DATA_MASK ; 
 		}
 	    }
 	    
@@ -278,13 +220,16 @@ int main(int argnum, char **argval) {
 		    != ApiSuccess)
 		    printf("  failed to read IO. surf=%d, rf scl=%d\n", surf, i) ;
 		data_scl[i]=dataWord;
-		//	if(verbose>1) 
-		//	if(( (i % 8) ) == 0) {
-		//	    printf("\n");
-		//	    printf("SURF %d, SCL %d: %d",surf,i,dataWord);
-		//	} else 
-		//	  printf(" %d",dataWord);
+		if(verbose>1) {
+		    if(( (i % 8) ) == 0) {
+			printf("\n");
+			printf("SURF %d, SCL %d: %d",surf,i,dataWord);
+		    } 
+		    else printf(" %d",dataWord);
+		}
+		
 	    }
+	    if(verbose>1) printf("\n");
       
 	    if(setSurfControl(surfHandles[surf],SclD)!=ApiSuccess)
 		printf("Failed to set SclD on SURF %d\n",surf);
@@ -383,7 +328,7 @@ int main(int argnum, char **argval) {
 		int tempNum[N_CHP]={0};
 		for(samp=0;samp<N_SCA;++samp) {
 		    int tempChip=data_array[surf][chan][samp]>>14;
-		    int tempData=data_array[surf][chan][samp] & 0xfff;
+		    int tempData=data_array[surf][chan][samp] & DATA_MASK;
 		    if(tempData) {
 /* 	    printf("%d\t%d\n",tempChip,tempData); */
 			sum[tempChip]+=tempData;
@@ -590,6 +535,18 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction actio
 
 }
 
+void copyPlxLocation(PlxDevLocation_t *dest, PlxDevLocation_t source)
+{
+    int count;
+    dest->BusNumber=source.BusNumber;
+    dest->SlotNumber=source.SlotNumber;
+    dest->DeviceId=source.DeviceId;
+    dest->VendorId=source.VendorId;
+    for(count=0;count<12;count++)
+	dest->SerialNumber[count]=source.SerialNumber[count];
+
+}
+
 
 int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc)
 /*! 
@@ -600,6 +557,7 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
     int i,j,countSurfs=0;
     U32  numDevices ;
     PlxDevLocation_t tempLoc[MAX_SURFS+1];
+    PlxReturnCode_t rc;
     //  U32  n=0 ;  /* this is the numebr of board from furthest from CPU. */
 
     for(i=0;i<MAX_SURFS+1;++i){
@@ -609,6 +567,7 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	tempLoc[i].DeviceId        = (U16)-1;
 	tempLoc[i].SerialNumber[0] = '\0';
     }
+    
 
     /* need to go through PlxPciDeviceFind twice.  1st for counting devices
        with "numDevices=FIND_AMOUNT_MATCHED" and 2nd to get device info. */
@@ -623,14 +582,23 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	if (PlxPciDeviceFind(&tempLoc[i], &i) != ApiSuccess) 
 	    return -1 ;
 
-	if (verbose) 
+	if (verbose>1) 
 	    printf("init_device: device found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
 		   tempLoc[i].DeviceId, tempLoc[i].VendorId, tempLoc[i].SerialNumber, 
 		   tempLoc[i].BusNumber, tempLoc[i].SlotNumber);
     
+	
+
 	if(tempLoc[i].BusNumber==turfioPos.bus && tempLoc[i].SlotNumber==turfioPos.slot) {
 	    // Have got the TURFIO
-	    (*turfioLoc)=tempLoc[i];
+	    copyPlxLocation(turfioLoc,tempLoc[i]);
+
+	    
+	    if (verbose)
+		printf("TURFIO found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+		       (*turfioLoc).DeviceId, (*turfioLoc).VendorId, 
+		       (*turfioLoc).SerialNumber,
+		       (*turfioLoc).BusNumber, (*turfioLoc).SlotNumber);
 	    if (PlxPciDeviceOpen(turfioLoc, turfioHandle) != ApiSuccess) {
 		syslog(LOG_ERR,"Error opening TURFIO device");
 		fprintf(stderr,"Error opening TURFIO device\n");
@@ -639,18 +607,33 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	    PlxPciBoardReset(turfioHandle);
 	}
 	else {
-	    for(j=0;j<MAX_SURFS;j++) {
+	    for(j=countSurfs;j<MAX_SURFS;j++) {
+/* 		printf("tempLoc[%d] %d %d \t surfPos[%d] %d %d\n", */
+/* 		       i,tempLoc[i].BusNumber,tempLoc[i].SlotNumber,j, */
+/* 		       surfPos[j].bus,surfPos[j].slot); */
+		       
 		if(tempLoc[i].BusNumber==surfPos[j].bus && tempLoc[i].SlotNumber==surfPos[j].slot) {
 		    // Got a SURF
-		    surfLoc[countSurfs]=tempLoc[i];
-		    if (PlxPciDeviceOpen(&surfLoc[countSurfs], 
-					 &surfHandles[countSurfs]) != ApiSuccess) {
-			syslog(LOG_ERR,"Error opening SURF device");
-			fprintf(stderr,"Error opening SURF device\n");
+
+		    copyPlxLocation(&surfLoc[countSurfs],tempLoc[i]);
+//		    surfLoc[countSurfs]=tempLoc[i];   
+		    if (verbose)
+			printf("SURF found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+			       surfLoc[countSurfs].DeviceId, 
+			       surfLoc[countSurfs].VendorId, 
+			       surfLoc[countSurfs].SerialNumber,
+			       surfLoc[countSurfs].BusNumber, 
+			       surfLoc[countSurfs].SlotNumber);
+		    rc=PlxPciDeviceOpen(&surfLoc[countSurfs], 
+					&surfHandles[countSurfs]);
+		    if ( rc!= ApiSuccess) {
+			syslog(LOG_ERR,"Error opening SURF device %d",rc);
+			fprintf(stderr,"Error opening SURF device %d\n",rc);
 			return -1 ;
 		    }		
 		    PlxPciBoardReset(surfHandles[countSurfs]) ;
 		    countSurfs++;    
+		    break;
 		}
 	    }
 	}
@@ -659,27 +642,24 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	printf("initializeDevices: Initialized %d SURF board(s)\n",countSurfs);
     }
 
-
-    for(i=0;i<countSurfs;i++) {    
-	if (verbose)
-	    printf("SURF found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-		   surfLoc[i].DeviceId, surfLoc[i].VendorId, 
-		   surfLoc[i].SerialNumber,
-		   surfLoc[i].BusNumber, surfLoc[i].SlotNumber);
-    }    
-    if (verbose)
-	printf("TURFIO found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-	       (*turfioLoc).DeviceId, (*turfioLoc).VendorId, 
-	       (*turfioLoc).SerialNumber,
-	       (*turfioLoc).BusNumber, (*turfioLoc).SlotNumber);
+/*     for(i =0; i<countSurfs+1;i++) */
+/* 	if (verbose) */
+/* 	    printf("Something found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n", */
+/* 		   tempLoc[i].DeviceId,  */
+/* 		   tempLoc[i].VendorId,  */
+/* 		   tempLoc[i].SerialNumber, */
+/* 		   tempLoc[i].BusNumber,  */
+/* 		   tempLoc[i].SlotNumber); */
+ 
 
 
     if(countSurfs!=numSurfs) {
 	syslog(LOG_WARNING,"Expected %d SURFs, but only found %d",numSurfs,countSurfs);
 	fprintf(stderr,"Expected %d SURFs, but only found %d\n",numSurfs,countSurfs);
 	numSurfs=countSurfs;
+	if(numSurfs==0) exit(0);
     }
-  
+//    exit(0);
     return (int)numDevices ;
 }
 
@@ -708,7 +688,7 @@ int readConfigFile()
 	}
 
 	turfioPos.bus=kvpGetInt("turfioBus",3); //in seconds
-	turfioPos.slot=kvpGetFloat("turfioSlot",10); //in seconds 
+	turfioPos.slot=kvpGetInt("turfioSlot",10); //in seconds 
 	kvpStatus = kvpGetIntArray("surfBus",surfBuses,&tempNum);
 	if(kvpStatus!=KVP_E_OK) 
 	    syslog(LOG_WARNING,"kvpGetFloatArray(surfBus): %s",
@@ -722,13 +702,16 @@ int readConfigFile()
 	    }
 	} 
 	kvpStatus = kvpGetIntArray("surfSlot",surfSlots,&tempNum);
-	if(kvpStatus!=KVP_E_OK) 
+	if(kvpStatus!=KVP_E_OK) {
 	    syslog(LOG_WARNING,"kvpGetFloatArray(surfSlot): %s",
 		   kvpErrorString(kvpStatus));
+	    fprintf(stderr,"kvpGetFloatArray(surfSlot): %s",
+		   kvpErrorString(kvpStatus));
+	}
 	else {
 	    for(count=0;count<tempNum;count++) {
 		if(surfSlots[count]!=-1) {
-		    surfPos[count].bus=surfSlots[count];
+		    surfPos[count].slot=surfSlots[count];
 		    surfSlotCount++;
 		}
 	    }
@@ -760,6 +743,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 // Prepare SURF boards
     for(i=0;i<numSurfs;++i){
 	/* init. 9030 I/O descripter (to enable READY# input |= 0x02.) */
+	printf("Trying to set Sp0 on SURF %d\n",i);
 	if(PlxRegisterWrite(surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
 	   != ApiSuccess)  printf("  failed to set Sp0 descriptor on SURF %d.\n",i ) ;    
 	/*  Get PLX Chip Type */

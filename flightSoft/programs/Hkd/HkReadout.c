@@ -218,7 +218,8 @@ int ip320_Setup()
       ip320_raw_data[i] = 0;                /* clear raw input buffer */
       ip320_cor_data[i] = 0;                /* clear corrected data buffer */
     }
-  cblk_320.range = RANGE_5TO5;       /* full range */
+  cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
+  /* full range */
   cblk_320.trigger = STRIG;            /* 0 = software triggering */
   cblk_320.mode = SEI;                 /* differential input */
   cblk_320.gain = GAIN_X1;             /* gain for analog input */
@@ -272,14 +273,17 @@ void prettyprint()
         {
       if (desc[i].active)
 	{
-	  printf("%5.5s: %+7.2f ", desc[i].description, (ip320_cor_data[i]*10.0/4095.-5.0)*desc[i].conversion+desc[i].offset);
+	    /* RJN HACK */
+	    printf("%5.5s: %+7.3f ", desc[i].description, (ip320_cor_data[i]*20.0/4095.-10.0));//*desc[i].conversion+desc[i].offset);
+//	  printf("%5.5s: %+7.2f ", desc[i].description, (ip320_cor_data[i]*20.0/4095.-10.0));
+//	  printf("%5.5s: %+7.2f ", desc[i].description,ip320_cor_data[i]);
 	  linecount++;
 	  if (!(linecount%5)) printf("\n");
 	}
         }
       else
         {
-          printf("CH%2.2d: %5.2f ", i+1, (ip320_cor_data[i]*10.0/4095.-5.0));
+          printf("CH%2.2d: %5.3f ", i+1, (ip320_cor_data[i]*10.0/4095.-5.0));
           if (!((i+1)%5)) printf("\n");
         }
     }
@@ -291,7 +295,9 @@ void prettyprint()
       for (j=0;j<MAX_COLUMN;j++) {
           if (rowaddr[i][j]) {
              int chan = rowaddr[i][j]-1;  
-             printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
+	    /* RJN HACK */
+             printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+//             printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
           } else printf("               ");
       }
       printf("\n");
