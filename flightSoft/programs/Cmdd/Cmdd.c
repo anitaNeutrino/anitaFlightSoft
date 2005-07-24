@@ -19,6 +19,7 @@
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
 #include "anitaFlight.h"
+#include "anitaCommand.h"
 
 int executeCommand();
 
@@ -67,7 +68,7 @@ int main (int argc, char *argv[])
 /*     } */
     
     /* For now I'm just going to write this as a command line program, 
-       at some point in the future it will metamorphosis into a proper
+       at some point in the future it will metamorphose, into a proper
        daemon that either listens on a socket or looks in a directory for 
        commands. */
     if(argc>1) {
@@ -93,7 +94,10 @@ int main (int argc, char *argv[])
 
 int executeCommand() 
 {
-    configModifyInt("GPSd.config","output","printToScreen",0);
+    printf("%d %d %d %d\n",ACQD_ID_MASK,CALIBD_ID_MASK,CMDD_ID_MASK,
+	   ALL_ID_MASK);
+
+//    configModifyInt("GPSd.config","output","printToScreen",0);
     return 0;
 }
 

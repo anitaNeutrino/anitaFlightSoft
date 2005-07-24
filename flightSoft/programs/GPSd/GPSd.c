@@ -48,7 +48,7 @@ char adu5BDevName[FILENAME_MAX];
 
 // File desciptors for GPS serial ports
 int fdG12,fdAdu5A,fdAdu5B;//,fdMag
-
+int printToScreen=0;
 
 // Config stuff for G12
 float g12PPSPeriod=1;
@@ -137,7 +137,7 @@ int readConfigFile()
 /* Load GPSd config stuff */
 {
     /* Config file thingies */
-    int status=0,printToScreen=0;
+    int status=0;
     int tempNum=3;;
     KvpErrorCode kvpStatus=0;
     char* eString ;
