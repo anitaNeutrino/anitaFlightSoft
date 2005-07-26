@@ -81,29 +81,29 @@ typedef enum {
 #define MAX_SOCKETS  10   
 
 
-/* Simple functions that creates socket on port port on localhost */
-/* the return value is the File Descriptor of the socket */ 
-int makeServerSocket (uint16_t port);
-int makeClientSocket (uint16_t port);
+/* /\* Simple functions that creates socket on port port on localhost *\/ */
+/* /\* the return value is the File Descriptor of the socket *\/  */
+/* int makeServerSocket (uint16_t port); */
+/* int makeClientSocket (uint16_t port); */
 
 
 
-/* The simple functions that create the socket addresses */
-void initSockAddrLocal (struct sockaddr_in *name, uint16_t port);
-SocketErrorCode initSockAddr (struct sockaddr_in *name,const char *hostname,
-			      uint16_t port);
+/* /\* The simple functions that create the socket addresses *\/ */
+/* void initSockAddrLocal (struct sockaddr_in *name, uint16_t port); */
+/* SocketErrorCode initSockAddr (struct sockaddr_in *name,const char *hostname, */
+/* 			      uint16_t port); */
 
 
-/* Simple read write functions */
-int sendToSocket (int filedes, void *buffer, int length, int flags);
-int recvFromSocket (int filedes, void *buffer, int flags);
+/* /\* Simple read write functions *\/ */
+/* int sendToSocket (int filedes, void *buffer, int length, int flags); */
+/* int recvFromSocket (int filedes, void *buffer, int flags); */
 
 
-/* Check for new connections to the server socket */
-/* Returns zero if there aren't any, the filedes of the new connection */
-/* if there is, and -1 if it gets confused. */
-/* This will have to be improved */
-int checkForNewClientConnection(int filedes);
+/* /\* Check for new connections to the server socket *\/ */
+/* /\* Returns zero if there aren't any, the filedes of the new connection *\/ */
+/* /\* if there is, and -1 if it gets confused. *\/ */
+/* /\* This will have to be improved *\/ */
+/* int checkForNewClientConnection(int filedes); */
 
 
 /* Simplest most encapsulated functions to check if there is data to be
@@ -113,63 +113,63 @@ int isSocketReadyForReceivingNow(int filedes);
 int isSocketReadyForSending(int filedes, struct timeval *waitTimePtr);
 int isSocketReadyForReceiving(int filedes, struct timeval *waitTimePtr);
 
-/* Simple functions for handshaking */
-/* After client connects it sends its magic word, server receives clients magic word and responds in kind. */
-int serverSideHandshake(int fileDes, char *myMagicWord, char *yourMagicWord);
-int clientSideHandshake(int fileDes, char *myMagicWord, char *yourMagicWord);
+/* /\* Simple functions for handshaking *\/ */
+/* /\* After client connects it sends its magic word, server receives clients magic word and responds in kind. *\/ */
+/* int serverSideHandshake(int fileDes, char *myMagicWord, char *yourMagicWord); */
+/* int clientSideHandshake(int fileDes, char *myMagicWord, char *yourMagicWord); */
 
 
-/* Simple check socket that reads any available data */
-int checkAndReadSocketNow(int filedes, void *buffer);
-int checkAndReadSocket(int filedes, void *buffer, struct timeval *waitTimePtr);
+/* /\* Simple check socket that reads any available data *\/ */
+/* int checkAndReadSocketNow(int filedes, void *buffer); */
+/* int checkAndReadSocket(int filedes, void *buffer, struct timeval *waitTimePtr); */
 
 
-/* Checks for new client connections, and does the silly handshake 
-   if they are there */
-int checkForNewClientAndShake(int theSock,char *myMagicWord,
-			      char *yourMagicWord);
-int connectToServerAndShake(uint16_t thePort,char *myMagicWord,char *yourMagicWord);
+/* /\* Checks for new client connections, and does the silly handshake  */
+/*    if they are there *\/ */
+/* int checkForNewClientAndShake(int theSock,char *myMagicWord, */
+/* 			      char *yourMagicWord); */
+/* int connectToServerAndShake(uint16_t thePort,char *myMagicWord,char *yourMagicWord); */
 
 
-/* These functions provide the most encapsualted access to the sockets.
-   socketLib maintains a list of all open and pending sockets, and upon request
-   services them. */
-static int getServerIndex(uint16_t thePort);
-static int getClientIndex(uint16_t thePort);
+/* /\* These functions provide the most encapsualted access to the sockets. */
+/*    socketLib maintains a list of all open and pending sockets, and upon request */
+/*    services them. *\/ */
+/* static int getServerIndex(uint16_t thePort); */
+/* static int getClientIndex(uint16_t thePort); */
 
-static int serverSideShake(int servIndex);
-static int clientSideShake(int clientIndex);
+/* static int serverSideShake(int servIndex); */
+/* static int clientSideShake(int clientIndex); */
 
-/* Prep functions just store the port numbers we're interested in and ready 
-   the sockets for connection */
-int prepServer(uint16_t thePort);
-int prepServerWithNames(uint16_t thePort,char *myName,char *hisName);
-int prepClient(uint16_t thePort);
-int prepClientWithNames(uint16_t thePort,char *myName,char *hisName);
+/* /\* Prep functions just store the port numbers we're interested in and ready  */
+/*    the sockets for connection *\/ */
+/* int prepServer(uint16_t thePort); */
+/* int prepServerWithNames(uint16_t thePort,char *myName,char *hisName); */
+/* int prepClient(uint16_t thePort); */
+/* int prepClientWithNames(uint16_t thePort,char *myName,char *hisName); */
 
-/* These functions actually make the connections, performing handshaking if
-   requested. These are single port only functions. There will be other
-   functions that look at all the interesting ports together. */
-int checkForNewConns(uint16_t thePort);
-int tryToConnectToServer(uint16_t thePort);
+/* /\* These functions actually make the connections, performing handshaking if */
+/*    requested. These are single port only functions. There will be other */
+/*    functions that look at all the interesting ports together. *\/ */
+/* int checkForNewConns(uint16_t thePort); */
+/* int tryToConnectToServer(uint16_t thePort); */
 
-/* Does exactly what it says on the tin. Send data to port blah */
-int sendDataOnPort(uint16_t thePort, void *theBuffer, int length);
-static int sendDataToServerSocket(int theIndex, void *theBuffer, int length);
-static int sendDataToClientSocket(int theIndex, void *theBuffer, int length);
+/* /\* Does exactly what it says on the tin. Send data to port blah *\/ */
+/* int sendDataOnPort(uint16_t thePort, void *theBuffer, int length); */
+/* static int sendDataToServerSocket(int theIndex, void *theBuffer, int length); */
+/* static int sendDataToClientSocket(int theIndex, void *theBuffer, int length); */
 
-/* Checks port for data and reads it if it's sitting there 
-   waiting to be read. */
-int readDataFromPort(uint16_t thePort,void *theBuffer);
-static int readDataFromServerSocket(int theIndex, void *theBuffer);
-static int readDataFromClientSocket(int theIndex, void *theBuffer);
+/* /\* Checks port for data and reads it if it's sitting there  */
+/*    waiting to be read. *\/ */
+/* int readDataFromPort(uint16_t thePort,void *theBuffer); */
+/* static int readDataFromServerSocket(int theIndex, void *theBuffer); */
+/* static int readDataFromClientSocket(int theIndex, void *theBuffer); */
 
-/* This function looks at the connected sockets, and checks for new data on 
-   them. */
-int checkOpenConnections();
+/* /\* This function looks at the connected sockets, and checks for new data on  */
+/*    them. *\/ */
+/* int checkOpenConnections(); */
 
-/* These functions look at all unconnected sockets, and sees if it can connect
-   them. */
-int tryToOpenAllServerConnections();
-int tryToOpenAllClientConnections();
+/* /\* These functions look at all unconnected sockets, and sees if it can connect */
+/*    them. *\/ */
+/* int tryToOpenAllServerConnections(); */
+/* int tryToOpenAllClientConnections(); */
 

@@ -22,6 +22,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "serialLib/serialLib.h"
 #include "utilLib/utilLib.h"
+#include "socketLib/socketLib.h"
 #include "anitaStructures.h"
 
 // Forward declarations
@@ -30,10 +31,14 @@ int openDevices();
 int setupG12();
 int setupADU5();
 int checkG12();
+int checkADU5A();
 void processG12Output(char *tempBuffer, int length);
+void processADU5Output(char *tempBuffer, int length);
 int updateClockFromG12(time_t gpsRawTime);
 int breakdownG12TimeString(char *subString,int *hour,int *minute,int *second);
 int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output);
+int checkChecksum(char *gpsString,int gpsLength);
+
 
 // Definitions
 #define LEAP_SECONDS 13
@@ -107,25 +112,37 @@ int main (int argc, char *argv[])
 	strncpy(g12LogDir,kvpGetString("gpsdG12LogDir"),FILENAME_MAX-1);
     }
 
-//    retVal=openDevices();
-
-    while(currentState==PROG_STATE_INIT) {
-	printf("Initalizing GPSd\n");
+    
+    retVal=readConfigFile();
+    if(retVal<0) {
+	syslog(LOG_ERR,"Problem reading GPSd.config");
+	printf("Problem reading GPSd.config\n");
+	exit(1);
+    }
+    retVal=openDevices();
+    
+    do {
+	if(printToScreen) printf("Initalizing GPSd\n");
 	retVal=readConfigFile();
 	if(retVal<0) {
+	    syslog(LOG_ERR,"Problem reading GPSd.config");
 	    printf("Problem reading GPSd.config\n");
 	    exit(1);
 	}
-	
-//	retVal=setupG12();
-//	retVal=setupADU5();
+	if(printToScreen) 
+	    printf("Device fd's: %d %d %d\n",fdG12,fdAdu5A,fdAdu5B);
+	retVal=setupG12();
+	retVal=setupADU5();
 
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
-	    sleep(1);
+//	    checkG12();
+	    checkADU5A();
+	    usleep(1);
 	}
-    }
-    printf("Terminating GPSd\n");
+    } while(currentState==PROG_STATE_INIT);
+
+    if(printToScreen) printf("Terminating GPSd\n");
     removeFile(gpsdPidFile);
     
 	
@@ -198,21 +215,24 @@ int openDevices()
 // Initialize the various devices    
     retVal=openGPSDevice(g12DevName);
     if(retVal<=0) {
-	printf("Couldn't open: %s\n",g12DevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",g12DevName);
+	if(printToScreen) printf("Couldn't open: %s\n",g12DevName);
 	exit(1);
     }
     else fdG12=retVal;
       
     retVal=openGPSDevice(adu5ADevName);	
     if(retVal<=0) {
-	printf("Couldn't open: %s\n",adu5ADevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",adu5ADevName);
+	if(printToScreen) printf("Couldn't open: %s\n",adu5ADevName);
 	exit(1);
     }
     else fdAdu5A=retVal;
 
     retVal=openGPSDevice(adu5BDevName);	
     if(retVal<=0) {
-	printf("Couldn't open: %s\n",adu5BDevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",adu5BDevName);
+	if(printToScreen) printf("Couldn't open: %s\n",adu5BDevName);
 	exit(1);
     }
     else fdAdu5B=retVal;
@@ -268,12 +288,18 @@ int checkG12()
 // Data stuff for G12
     static char g12Output[G12_DATA_SIZE]="";
     static int g12OutputLength=0;
-
+    retVal=isThereDataNow(fdG12);
+//    printf("Check G12 got retVal %d\n",retVal);
+    if(retVal!=1) return 0;
     retVal=read(fdG12, tempData, G12_DATA_SIZE);
     if(retVal>0) {
 	for(i=0; i < retVal; i++) {
 /* 	 printf("%c", data[i]); */
-	    if(tempData[i]=='$') {
+	    if(tempData[i]=='*' && (retVal-i)>=2) {
+		g12Output[g12OutputLength++]=tempData[i++];
+		g12Output[g12OutputLength++]=tempData[i++];
+		g12Output[g12OutputLength++]=tempData[i++];
+
 /* 	 printf("%d\n",currentIndex); */
 		if(g12OutputLength) {
 		    processG12Output(g12Output,g12OutputLength);
@@ -281,15 +307,58 @@ int checkG12()
 /* 		 for(i=0; i < DATA_SIZE; i++) tempBuffer[i]=0; */
 		}
 		g12OutputLength=0;
-	 }
-	 g12Output[g12OutputLength++]=tempData[i];
+	    }
+	    g12Output[g12OutputLength++]=tempData[i];
 /* 	 printf("%d\n",currentIndex); */
-	 tempData[i]=0;
-     }
-
+	    tempData[i]=0;
+	}
+	
     }
     else if(retVal<0) {
 	syslog(LOG_ERR,"G12 read error: %s",strerror(errno));
+    }
+    return retVal;
+}
+
+
+int checkADU5A()
+/*! Try to read ADU5 */
+{
+    // Working variables
+    char tempData[ADU5_DATA_SIZE];
+    int retVal,i;
+// Data stuff for ADU5
+    static char adu5Output[ADU5_DATA_SIZE]="";
+    static int adu5OutputLength=0;
+    retVal=isThereDataNow(fdAdu5B);
+    usleep(5);
+//    printf("Check ADU5 got retVal %d\n",retVal);
+    if(retVal!=1) return 0;
+    retVal=read(fdAdu5B, tempData, ADU5_DATA_SIZE);
+    if(retVal>0) {
+	for(i=0; i < retVal; i++) {
+/* 	 printf("%c", data[i]); */
+	    if(tempData[i]=='*' && (retVal-i)>2) {
+		adu5Output[adu5OutputLength++]=tempData[i++];
+		adu5Output[adu5OutputLength++]=tempData[i++];
+		adu5Output[adu5OutputLength++]=tempData[i++];
+
+/* 	 printf("%d\n",currentIndex); */
+		if(adu5OutputLength) {
+		    processADU5Output(adu5Output,adu5OutputLength);
+/* 		 printf("%d\t%s\n",time(NULL),tempBuffer); */
+/* 		 for(i=0; i < DATA_SIZE; i++) tempBuffer[i]=0; */
+		}
+		adu5OutputLength=0;
+	    }
+	    adu5Output[adu5OutputLength++]=tempData[i];
+/* 	 printf("%d\n",currentIndex); */
+	    tempData[i]=0;
+	}
+	
+    }
+    else if(retVal<0) {
+	syslog(LOG_ERR,"ADU5 read error: %s",strerror(errno));
     }
     return retVal;
 }
@@ -299,30 +368,52 @@ void processG12Output(char *tempBuffer, int length)
 /* Processes each G12 output string, writes it to file and, if so inclined, sets the clock. */
 {
     char gpsString[G12_DATA_SIZE];
+    char gpsCopy[G12_DATA_SIZE];
+    int gpsLength=0;
     int count=0;
+//    char theCheckSum=0;
     char *subString;
     int hour,minute,second,subSecond;
     int day=-1,month=-1,year=-1;
     int tzHour,tzMin;
     time_t rawtime,gpsRawTime;
     struct tm timeinfo;    
-    char checksum[3];
-   
-    strncpy(gpsString,tempBuffer,length);
-    gpsString[length]='\0';
+//    char checksum[3];   
+//    strncpy(gpsString,tempBuffer,length);
 
-    printf("%s",gpsString);
+    for(count=0;count<length;count++) {
+	if(gpsLength) gpsString[gpsLength++]=tempBuffer[count];
+	else if(tempBuffer[count]=='$') 
+	    gpsString[gpsLength++]=tempBuffer[count];
+    }
+    if(!gpsLength) {
+	return; //Crap data
+    }
+    gpsString[gpsLength]='\0';
+    if(checkChecksum(gpsString,gpsLength)!=1) {
+	syslog(LOG_WARNING,"Checksum failed: %s",gpsString);
+	if(printToScreen) printf("Checksum failed %s\n",gpsString);
+	return;
+    }
+
+//    printf("%s\n",tempBuffer);
+//    printf("GPS Length %d\n",gpsLength);
+
+    strncpy(gpsCopy,gpsString,G12_DATA_SIZE);
+    if(printToScreen) printf("%s\t%d\n",gpsString,gpsLength);
 
     /* Should do checksum */
+    count=0;
     subString = strtok (gpsString,",");
-    if(!strcmp(subString,"$GPZDA") && length==39) {
+    if(!strcmp(subString,"$GPZDA") && gpsLength==37) {
+//	if(printToScreen) printf("Got GPZDA\n");
 	while (subString != NULL)
 	{
 	    switch(count) {
 		case 1: 
 /* 		    printf("subString: %s\n",subString); */
 		    breakdownG12TimeString(subString,&hour,&minute,&second);
-/* 		    printf("Length %d\n",strlen(subString)); */
+//		    printf("Length %d\n",strlen(subString));
 		    break;
 		case 2:
 		    subSecond=atoi(subString);
@@ -343,17 +434,19 @@ void processG12Output(char *tempBuffer, int length)
 		    tzMin=atoi(subString);
 		    break;
 		case 8:
-		    checksum[0]=subString[0];
-		    checksum[1]=subString[1];
-		    checksum[2]='\0';		    
+/* 		    checksum[0]=subString[0]; */
+/* 		    checksum[1]=subString[1]; */
+/* 		    checksum[2]='\0';		   */  
 		    break;
 		default: 
 		    break;
 	    }
+// 	    printf ("%d\t%d\t%s\n",count,strlen(subString),subString); 
 	    count++;
-/* 	    printf ("%d\t%s\n",strlen(subString),subString); */
 	    subString = strtok (NULL, " ,.*");
 	}
+
+
 	    
 /* 	printf("%02d:%02d:%02d.%02d %02d %02d %02d\n%s\n",hour,minute,second,subSecond,day,month,year,ctime(&rawtime)); */
 	timeinfo.tm_hour=hour;
@@ -371,10 +464,50 @@ void processG12Output(char *tempBuffer, int length)
 	if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock) {
 	    updateClockFromG12(gpsRawTime);
 	}
-	writeG12TimeFile(rawtime,gpsRawTime,tempBuffer);
+	writeG12TimeFile(rawtime,gpsRawTime,gpsCopy);
 	    
     }
 
+}
+
+
+void processADU5Output(char *tempBuffer, int length)
+/* Processes each ADU5 output string, writes it to file and, if so inclined, sets the clock. */
+{
+    char gpsString[ADU5_DATA_SIZE];
+    char gpsCopy[ADU5_DATA_SIZE];
+    int gpsLength=0;
+    int count=0;
+//    char theCheckSum=0;
+/*     char *subString; */
+/*     int hour,minute,second,subSecond; */
+/*     int day=-1,month=-1,year=-1; */
+/*     int tzHour,tzMin; */
+/*     time_t rawtime,gpsRawTime; */
+/*     struct tm timeinfo;     */
+//    char checksum[3];   
+//    strncpy(gpsString,tempBuffer,length);
+
+    for(count=0;count<length;count++) {
+	if(gpsLength) gpsString[gpsLength++]=tempBuffer[count];
+	else if(tempBuffer[count]=='$') 
+	    gpsString[gpsLength++]=tempBuffer[count];
+    }
+    if(!gpsLength) {
+	return; //Crap data
+    }
+    gpsString[gpsLength]='\0';
+    if(checkChecksum(gpsString,gpsLength)!=1) {
+	syslog(LOG_WARNING,"Checksum failed: %s",gpsString);
+	if(printToScreen) printf("Checksum failed %s\n",gpsString);
+	return;
+    }
+
+//    printf("%s\n",tempBuffer);
+//    printf("GPS Length %d\n",gpsLength);
+
+    strncpy(gpsCopy,gpsString,ADU5_DATA_SIZE);
+    if(printToScreen) printf("%s\t%d\n",gpsString,gpsLength);
 }
 
 
@@ -425,19 +558,28 @@ int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output)
 {
     int retVal;
     static int firstTime=1;
-    static char logFileName[FILENAME_MAX]="";
+    static char logFileName[FILENAME_MAX];
     FILE *fpG12;
     
+//    printf("%ld\n",compTime);
+//    printf("%ld\n",gpsTime);
+//    printf("%s\n",g12Output);
+
     if(firstTime) {
 	sprintf(logFileName,"%s/g12Times.%ld",g12LogDir,compTime);
+	if(printToScreen) printf("G12 Log File%s\n",logFileName);
+	firstTime=0;
     }
 
     fpG12 = fopen(logFileName,"wat");
     if(fpG12<0) {
 	syslog(LOG_ERR,"Error writing to g12 log file: %s",strerror(errno));
+	if(printToScreen) 
+	    fprintf(stderr,"Error writing to g12 log file");
     }
-    retVal=fprintf(fpG12,"%ld %ld %s\n",compTime,gpsTime,g12Output);
-    fclose(fpG12);
+//    printf("%ld %ld %s\n",compTime,gpsTime,g12Output);
+    retVal=fprintf(fpG12,"%ld %ld %s\n",compTime,gpsTime,g12Output); 
+    fclose(fpG12); 
     return retVal;
 }
 
@@ -462,19 +604,53 @@ int setupADU5()
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHS,NME,ALL,A,OFF\r\n");
     strcat(adu5Command,"$PASHS,NME,ALL,B,OFF\r\n");
-    sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%d",adu5PatPeriod);
+    strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
+    sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%d\r\n",adu5PatPeriod);
     strcat(adu5Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,SAT,B,ON,%d",adu5SatPeriod);
+    sprintf(tempCommand,"$PASHS,NME,SAT,A,ON,%d\r\n",adu5SatPeriod);
     strcat(adu5Command,tempCommand);
 
-
+    if(printToScreen) printf("%s\n",adu5Command);
     retVal=write(fdAdu5A, adu5Command, strlen(adu5Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to ADU5 Serial port\n, write: %s",
 	       strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to ADU5 Serial port\n");
     }
     else {
 	syslog(LOG_INFO,"Sent %d bytes to ADU5 serial port",retVal);
+	if(printToScreen)
+	    printf("Sent %d bytes to ADU5 serial port\n",retVal);
     }
     return retVal;
+}
+
+int checkChecksum(char *gpsString,int gpsLength) 
+// Returns 1 if checksum checks out
+{
+    char theCheckSum=0;
+    char temp;
+    int count;
+/*     char checksum[3]; */
+    for(count=1;count<gpsLength-3;count++) {
+	memcpy(&temp,&gpsString[count],sizeof(char));
+//	printf("%c ",gpsString[count]);
+	theCheckSum^=temp;	
+    }
+    char hexChars[16]={'0','1','2','3','4','5','6','7','8','9','A',
+		       'B','C','D','E','F'};
+    int otherSum=0;
+    for(count=0;count<16;count++) {
+	if(gpsString[gpsLength-1]==hexChars[count]) otherSum+=count;
+	if(gpsString[gpsLength-2]==hexChars[count]) otherSum+=count*16;
+    }
+
+/*     checksum[0]=gpsString[gpsLength-2]; */
+/*     checksum[1]=gpsString[gpsLength-1]; */
+/*     checksum[2]='\0'; */
+/*     printf("%s %x %x\n",checksum,theCheckSum,otherSum); */
+//    printf("\n\n\n%d %x\n",theCheckSum,theCheckSum);
+    
+    return (theCheckSum==otherSum);
 }

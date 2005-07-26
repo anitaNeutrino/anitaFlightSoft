@@ -85,15 +85,15 @@ int readAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir, const char *theGps
     int numTriggers,count;
     char filename[FILENAME_MAX];
     FILE *pFile;
-    gpsSubTimeStruct *gpsArray;
+    GpsSubTime_t *gpsArray;
     int retVal;
     numTriggers=getListofLinks("/tmp/anita/trigGPSd/link",&triggerList);
     if(numTriggers>0) {
 	
 
 
-	gpsArray=(gpsSubTimeStruct*) 
-	    malloc(numTriggers*sizeof(gpsSubTimeStruct));
+	gpsArray=(GpsSubTime_t*) 
+	    malloc(numTriggers*sizeof(GpsSubTime_t));
 	for(count=0;count<numTriggers;count++) {
 	    sprintf(filename,"/tmp/anita/trigGPSd/%s",
 		    triggerList[count]->d_name);

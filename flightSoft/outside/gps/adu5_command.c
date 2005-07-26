@@ -77,8 +77,12 @@ int main() {
  /*    strcat(buff, "$PASHS,3DF,ANG,10\r\n"); /\* set the maximum search angle  *\/ */
 /*     strcat(buff, "$PASHS,3DF,FLT,Y\r\n");  /\* set smoothing filter on  *\/ */
 /*     strcat(buff, "$PASHS,KFP,ON\r\n");     /\* enable the Kalman filter  *\/ */
+    strcat(buff, "$PASHS,NME,ALL,B,OFF\r\n");
     strcat(buff, "$PASHQ,PRT\r\n");
-
+    strcat(buff, "$PASHQ,SAT\r\n");    
+    strcat(buff, "$PASHS,NME,TTT,B,ON\r\n");
+    strcat(buff, "$PASHS,NME,PAT,B,ON\r\n");
+    strcat(buff, "$PASHS,NME,PER,5\r\n");
 /* send the commands to ADU5  */
     write(fd, buff, strlen(buff));
 
@@ -92,8 +96,8 @@ int main() {
 	bytesRead=read(fd, data, DATA_SIZE);
 	printf("read  returned: %d\n",bytesRead);
 	if(bytesRead>0) {
-	    for(i=0; i <=bytesRead; i++) printf("%c ", data[i]);
-	    printf("\n");
+	    for(i=0; i <bytesRead; i++) printf("%c", data[i]);
+//	    printf("\n");
 	}
 	usleep(5000000);
     }

@@ -132,7 +132,7 @@ int filterOnDats(const struct dirent *dir)
 }
 
 
-int fillCalibStruct(calibStruct *theStruct, char *filename)
+int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 {
     /* Takes a pointer to the next struct in the array */
     
@@ -149,7 +149,7 @@ int fillCalibStruct(calibStruct *theStruct, char *filename)
 }
 
 
-int fillHeader(anita_event_header *theEventHdPtr, char *filename)
+int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
     /* Returns 0 if successful */
     int numObjs;
@@ -160,7 +160,7 @@ int fillHeader(anita_event_header *theEventHdPtr, char *filename)
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 1;
     }
-    numObjs=fread(theEventHdPtr,sizeof(anita_event_header),1,pFile);
+    numObjs=fread(theEventHdPtr,sizeof(AnitaEventHeader_t),1,pFile);
 /*     printf("Read %d objects from %s\n",numObjs,filename); */
     fclose (pFile); 
     if(numObjs==1) return 0; /*Success*/
@@ -168,7 +168,7 @@ int fillHeader(anita_event_header *theEventHdPtr, char *filename)
 }
 
 
-int fillBody(anita_event_body *theEventBodyPtr, char *filename)
+int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 {
     /* Returns 0 if successful */
     int numObjs;
@@ -179,7 +179,7 @@ int fillBody(anita_event_body *theEventBodyPtr, char *filename)
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 1;
     }
-    numObjs=fread(theEventBodyPtr,sizeof(anita_event_body),1,pFile);
+    numObjs=fread(theEventBodyPtr,sizeof(AnitaEventBody_t),1,pFile);
 /*     printf("Read %d objects from %s\n",numObjs,filename); */
     fclose (pFile); 
     if(numObjs==1) return 0; /*Success*/
@@ -187,7 +187,7 @@ int fillBody(anita_event_body *theEventBodyPtr, char *filename)
 }
 
 
-int fillGpsStruct(gpsSubTimeStruct *theGpsStruct, char *filename)
+int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename)
 {
     /* Takes a pointer to the next struct in the array */
     /* Returns number of lines read*/
@@ -210,7 +210,7 @@ int fillGpsStruct(gpsSubTimeStruct *theGpsStruct, char *filename)
 }
 
 
-int writeHeader(anita_event_header *hdPtr, char *filename)
+int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 /* Writes the header pointed to by hdPtr to filename */
 {
     int numObjs;
@@ -219,12 +219,12 @@ int writeHeader(anita_event_header *hdPtr, char *filename)
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(hdPtr,sizeof(anita_event_header),1,pFILE);
+    numObjs=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,pFILE);
     fclose(pFILE);
     return 0;
 }
 
-int writeBody(anita_event_body *bodyPtr, char *filename)
+int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
     int numObjs;
@@ -233,7 +233,7 @@ int writeBody(anita_event_body *bodyPtr, char *filename)
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(bodyPtr,sizeof(anita_event_body),1,pFILE);
+    numObjs=fwrite(bodyPtr,sizeof(AnitaEventBody_t),1,pFILE);
     fclose(pFILE);
     return 0;
 }

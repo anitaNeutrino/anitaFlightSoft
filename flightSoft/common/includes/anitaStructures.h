@@ -16,6 +16,16 @@
 #include "includes/anitaFlight.h"
 
 
+// TURFIO data structure, TV test
+typedef struct {
+  unsigned short rawtrig; // raw trigger number
+  unsigned short L3Atrig; // same as raw trig
+  unsigned long pps1;     // 1PPS
+  unsigned long time;     // trig time
+  unsigned long interval; // interval since last trig
+  unsigned int rate[2][4]; // Antenna trigger output rates (Hz)
+} TurfioStruct_t;
+  
 
 typedef struct {
     short ch_id;      /* does exactly what it says on the tin */
@@ -25,52 +35,47 @@ typedef struct {
     char  ch_bw;      /* flag for type of bw limit */
     signed char ch_mean;      /*  mean, percent of full scale */
     unsigned char ch_sdev;    /*  std deviation, percent of full scale */
-} channel_header;
+} SurfChannelHeader_t;
 
 
 typedef struct {
-    channel_header header;
-    short data[MAX_NUMBER_SAMPLES];
-} channel_full;
+//    SurfChannelHeader_t header;
+    unsigned short data[MAX_NUMBER_SAMPLES];
+} SurfChannelFull_t;
 
 
 typedef struct {
     int eventNumber;    /* Global event number */
-    int unixTime;       /* unix UTC*/
-    int gpsSubTime;     /* the GPS fraction of second (in ns) */
+    int unixTime;       /* unix UTC sec*/
+    int unixTimeMs;     /* unix UTC msec */
+    int gpsSubTime;     /* the GPS fraction of second (in ns) (for the one event per second that gets tagged with it */
     short numChannels;  /* In case we turn part of array off, or whatever. */
     short numSamples;   /* total number of samples per waveform == 256*/
-    unsigned short sampInt; /* sample interval in units of 10 ps */
-    short trigDelay;      /* signed delay in number of samples*/
-    char holdOff;      /* number of 100ms intervals to hold between triggers */
-    char clocktype;    /* start/stop external=4, external=2, continuous ext.=1, internal=0 */
-    char Dtype;         /* +:triggered; -:timeout, abs(Dtype)= #10sec segs before trigger */
-    char trigCouple;    /* flag for type of coupling, 0=DC, 1=AC */
-    char trigSlope;     /* flag for trigger slope, pos.=0, neg.=1 */
     signed char trigSource; /* flag for trigger source, -1=ext 1, -2=ext 2, N=chan N */
     short trigLevel;    /* trigger level in 0.5 mV increments */
     char calibStatus;   /* Were we calibrating? */
+    TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
     char priority;
-} anita_event_header;
+} AnitaEventHeader_t;
 
 typedef struct {
-    channel_full channel[NUM_DIGITZED_CHANNELS];
-} anita_event_body;
+    SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
+} AnitaEventBody_t;
 
 typedef struct {
-    anita_event_header header;
-    anita_event_body body;
-} anita_event_full;
+    AnitaEventHeader_t header;
+    AnitaEventBody_t body;
+} AnitaEventFull_t;
 
 typedef struct {
     int unixTime;
     int subTime;
-} gpsSubTimeStruct;
+} GpsSubTime_t;
 
 typedef struct {
     int unixTime;
     char status;
-} calibStruct;
+} CalibStruct_t;
 
 
 typedef enum {
@@ -88,16 +93,6 @@ typedef enum {
 } PriorityCode;
 
 
-// TURFIO data structure, TV test
-typedef struct {
-  unsigned short rawtrig; // raw trigger number
-  unsigned short L3Atrig; // same as raw trig
-  unsigned long pps1;     // 1PPS
-  unsigned long time;     // trig time
-  unsigned long interval; // interval since last trig
-  unsigned int rate[2][4]; // Antenna trigger output rates (Hz)
-} TurfioStruct;
-  
 
 
 #endif /* ANITA_STRUCTURES_H */

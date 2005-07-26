@@ -24,6 +24,10 @@
 #ifndef SERIALLIB_H
 #define SERIALLIB_H
 
+
+#include <sys/socket.h>
+#include <sys/time.h>
+
 #define BAUDRATE B9600
 #define CHARACTER_SIZE CS8
 
@@ -33,5 +37,9 @@ int openMagnetometerDevice(char devName[]);
 int toggleCRTCTS(char devName[]);
 int setGPSTerminalOptions(int fd);
 int setMagnetometerTerminalOptions(int fd);
+
+int isThereDataNow(int filedes);
+int isThereData(int filedes, struct timeval *waitTimePtr);
+
 
 #endif /* SERIALLIB_H */

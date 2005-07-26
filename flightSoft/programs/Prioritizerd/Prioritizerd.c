@@ -39,13 +39,13 @@ typedef struct {
 
 /* Function Definitions */
 
-int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr);
-void convertToVoltageAndGetStats(anita_event_body *bodyPtr, event_volts *voltsPtr, double means[], double rmss[], int peakBins[], int trigPeakBins[], int trigBin, int trigHalfWindow);
+int setPriority(AnitaEventHeader_t *headerPtr, AnitaEventBody_t *bodyPtr);
+void convertToVoltageAndGetStats(AnitaEventBody_t *bodyPtr, event_volts *voltsPtr, double means[], double rmss[], int peakBins[], int trigPeakBins[], int trigBin, int trigHalfWindow);
 void nrFFTForward(complex data[], int nn);
 void nrFFT(float data[], int nn, int isign);
 void getPowerSpec(event_volts *voltsPtr, float *pwr[], float *freq, float fs1);
 int checkPayloadFrequencies( float *power[], float freq[], int numChannels, int numFreqs);
-int writeOutputFiles(anita_event_header *hdPtr, anita_event_body *bodyPtr, char eventDir[], char backupDir[], char linkBaseDir[], float probWriteOut9);
+int writeOutputFiles(AnitaEventHeader_t *hdPtr, AnitaEventBody_t *bodyPtr, char eventDir[], char backupDir[], char linkBaseDir[], float probWriteOut9);
 
 
 
@@ -77,8 +77,8 @@ int main (int argc, char *argv[])
     char *progName=basename(argv[0]);
 
    /*Event object*/
-    anita_event_header theEventHeader;
-    anita_event_body theEventBody;
+    AnitaEventHeader_t theEventHeader;
+    AnitaEventBody_t theEventBody;
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -153,7 +153,7 @@ int main (int argc, char *argv[])
     }	
 }
 
-int writeOutputFiles(anita_event_header *hdPtr, anita_event_body *bodyPtr, char eventDir[], char backupDir[], char linkBaseDir[], float probWriteOut9)
+int writeOutputFiles(AnitaEventHeader_t *hdPtr, AnitaEventBody_t *bodyPtr, char eventDir[], char backupDir[], char linkBaseDir[], float probWriteOut9)
 /* Writes out upto two versions of the header and body files, and makes links for the telemetry programs. */
 {
     char hdName[FILENAME_MAX];
@@ -190,7 +190,7 @@ int writeOutputFiles(anita_event_header *hdPtr, anita_event_body *bodyPtr, char 
     return 0;
 }
 
-int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr)
+int setPriority(AnitaEventHeader_t *headerPtr, AnitaEventBody_t *bodyPtr)
 /* Argh not quite sure what to do here */
 {
     event_volts voltEvent;
@@ -200,21 +200,21 @@ int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr)
     int trigPeakBins[NUM_DIGITZED_CHANNELS];
     float *power[NUM_DIGITZED_CHANNELS];
     float *freqArray;
-    float sampFreq;
-    int np2,numPoints,chan,trigBin,trigHalfWindow,numPeaksMatch;
+    float sampFreq=1./3e-9;;
+    int np2,numPoints,chan,trigBin=100,trigHalfWindow,numPeaksMatch;
     int expectedPeaks;
 
     voltEvent.numSamples=headerPtr->numSamples;
     voltEvent.numChannels=headerPtr->numChannels;
-    trigBin=TRIGGER_OFFSET+headerPtr->trigDelay; /* Got to work out sign convention */
+//    trigBin=TRIGGER_OFFSET+headerPtr->trigDelay; /* Got to work out sign convention */
     trigHalfWindow=30; /* Made up number, should maybe be configurable */
     convertToVoltageAndGetStats(bodyPtr,&voltEvent,theMeans,theRMSs,peakBins,trigPeakBins,trigBin,trigHalfWindow);
 
     /* What can we do without having to calculate FFTS? */
     if(headerPtr->calibStatus!=0) 
 	return headerPtr->priority=PRI_CALIB;
-    if(headerPtr->Dtype<0) 
-	return headerPtr->priority=PRI_TIMEOUT;
+    //  if(headerPtr->Dtype<0) 
+//	return headerPtr->priority=PRI_TIMEOUT;
     
     /* Get ready to get power spectra */
     np2=(int)(log10(headerPtr->numSamples)/log10(2)); 
@@ -223,7 +223,7 @@ int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr)
 	power[chan] = (float*) calloc((numPoints/2)+1,sizeof(float));
     }
     freqArray = (float*) calloc((numPoints/2)+1,sizeof(float));
-    sampFreq=1./(((float)headerPtr->sampInt)*10.e-12);  /* 2 Gsamp/sec unless otherwise set  */
+//    sampFreq=1./(((float)headerPtr->sampInt)*10.e-12);  /* 2 Gsamp/sec unless otherwise set  */
     getPowerSpec(&voltEvent,power,freqArray,sampFreq);
     headerPtr->priority=checkPayloadFrequencies(power,freqArray,headerPtr->numChannels,numPoints/2);
     if(headerPtr->priority==9) return headerPtr->priority; /* Reject */
@@ -248,23 +248,23 @@ int setPriority(anita_event_header *headerPtr, anita_event_body *bodyPtr)
 }
 
 
-void convertToVoltageAndGetStats(anita_event_body *bodyPtr, event_volts *voltsPtr, double means[], double rmss[], int peakBins[], int trigPeakBins[], int trigBin, int trigHalfWindow)
+void convertToVoltageAndGetStats(AnitaEventBody_t *bodyPtr, event_volts *voltsPtr, double means[], double rmss[], int peakBins[], int trigPeakBins[], int trigBin, int trigHalfWindow)
 /* This will need to be updated to whatever the correct format is */
 {
     int chan,samp;
     int raw, temp;
     float volts,mean,meanSqd,rms,peak,trigPeak;
-    int offset, trigLow,trigHigh;
-    float scale;
+    int offset=2048, trigLow,trigHigh;
+    float scale=1.0;
     
     trigLow= (trigBin>trigHalfWindow) ? trigBin-trigHalfWindow : 0;
     trigHigh = (trigBin>=voltsPtr->numSamples-trigHalfWindow) ? voltsPtr->numSamples : trigBin+trigHalfWindow;
     for(chan=0;chan<voltsPtr->numChannels;chan++) {
 	mean=0;
 	meanSqd=0;
-	offset=bodyPtr->channel[chan].header.ch_offs;
-	scale=((float)bodyPtr->channel[chan].header.ch_fs)/
-	    (float)(ADC_MAX*1000/2);
+//	offset=bodyPtr->channel[chan].header.ch_offs;
+//	scale=((float)bodyPtr->channel[chan].header.ch_fs)/
+//	    (float)(ADC_MAX*1000/2);
 	peak=0;
 	trigPeak=0;
 /* 	printf("%d %f\n",offset,scale);  */
@@ -301,13 +301,13 @@ void convertToVoltageAndGetStats(anita_event_body *bodyPtr, event_volts *voltsPt
 	    if(temp>0) temp=127;
 	    else temp=-127;
 	}
-	bodyPtr->channel[chan].header.ch_mean=temp;
+//	bodyPtr->channel[chan].header.ch_mean=temp;
 	temp=200*rms/(scale*(float)ADC_MAX);
 	if(temp>255) {
 	    /* Shouldn't happen */
 	    temp=255;
 	}
-	bodyPtr->channel[chan].header.ch_sdev=temp;		
+//	bodyPtr->channel[chan].header.ch_sdev=temp;		
     }
 }
 

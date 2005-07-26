@@ -195,3 +195,46 @@ int toggleCRTCTS(char devName[])
 }
 
 
+int isThereDataNow(int filedes)
+/*!
+  Poll (using select) if socket is available to receive (read) data.
+  Returns 1 if data is waiting (or the socket has been closed), 0 if it isn't.
+*/
+{
+    /* At the moment it just polls to see if there are any connections
+       waiting to be serviced. */
+    struct timeval waitTime;
+    waitTime.tv_sec=0;
+    waitTime.tv_usec=0;
+    return isThereData(filedes,&waitTime);
+}
+
+int isThereData(int filedes,struct timeval *waitTimePtr)
+/*!
+  Check (using select) if socket is available to receive (read) data.
+  It will wait waitTime amount of time for the select call.
+  Returns 1 if data is waiting (or the socket has been closed), 0 if it isn't.
+*/
+{
+    int numReady;
+    fd_set active_fd_set, read_fd_set;
+
+    /* Initialize the set of active sockets. */
+    FD_ZERO (&active_fd_set);
+    FD_SET (filedes, &active_fd_set);
+    read_fd_set = active_fd_set;
+    numReady=select (FD_SETSIZE, &read_fd_set, NULL, NULL, waitTimePtr);
+    if ( numReady< 0)
+    {
+	syslog (LOG_ERR,"select on %d: %s",filedes,strerror(errno));
+	return -1;
+    }
+    if(numReady) {
+/* 	printf("numReady: %d\t",numReady); */
+	if(FD_ISSET(filedes,&read_fd_set)) 
+	    return 1;
+    }
+    return 0;
+}
+
+

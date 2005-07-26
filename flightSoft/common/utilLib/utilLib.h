@@ -31,13 +31,13 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
 
 
 /* IO routines for inter-process communication */
-int fillHeader(anita_event_header *theEventHdPtr, char *filename);
-int fillBody(anita_event_body *theEventBodyPtr, char *filename);
-int fillGpsStruct(gpsSubTimeStruct *theGpsStruct, char *filename);
-int fillCalibStruct(calibStruct *theStruct, char *filename);
+int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename);
+int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename);
+int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
+int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 
-int writeHeader(anita_event_header *hdPtr, char *filename);
-int writeBody(anita_event_body *bodyPtr, char *filename);
+int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
+int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
 
 // Signal handling routines
 

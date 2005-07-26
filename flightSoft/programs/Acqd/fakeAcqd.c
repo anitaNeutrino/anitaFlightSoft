@@ -22,9 +22,9 @@
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
 
-void fakeEvent(anita_event_full *theEventPtr);
-int getEvent(anita_event_full *theEventPtr, const char *lastEventNumberFile);
-void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, anita_event_full *theEventPtr);
+void fakeEvent(AnitaEventFull_t *theEventPtr);
+int getEvent(AnitaEventFull_t *theEventPtr, const char *lastEventNumberFile);
+void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 
 int waitForFakeTrigger();
 
@@ -48,7 +48,7 @@ int main (int argc, char *argv[])
     char *progName=basename(argv[0]);
 
     /*Event object*/
-    anita_event_full theEvent;
+    AnitaEventFull_t theEvent;
 
     
     /* Setup log */
@@ -88,7 +88,7 @@ int main (int argc, char *argv[])
     }
 }
 
-int getEvent(anita_event_full *theEventPtr, const char *lastEventNumberFile) {
+int getEvent(AnitaEventFull_t *theEventPtr, const char *lastEventNumberFile) {
     /*Returns 1 if it gets an event, 0 otrherwise */
 
     int retVal;
@@ -161,31 +161,31 @@ int waitForFakeTrigger()
 }
 
 
-void fakeEvent(anita_event_full *theEventPtr)
+void fakeEvent(AnitaEventFull_t *theEventPtr)
 {
     int chan,samp,value;
     theEventPtr->header.unixTime=time(NULL);
-    theEventPtr->header.trigDelay=64;
-    theEventPtr->header.numChannels=NUM_DIGITZED_CHANNELS;
-    theEventPtr->header.numSamples=256;
-    theEventPtr->header.Dtype=1;
-    theEventPtr->header.trigCouple=0;
-    theEventPtr->header.trigSlope=0;
-    theEventPtr->header.trigSource=-1;
-    theEventPtr->header.trigLevel=10;
-    theEventPtr->header.sampInt=50; /* sample interval in units of 10 ps */
-    theEventPtr->header.holdOff=0; /* number of 100ms intervals to hold between triggers */
-    theEventPtr->header.clocktype=0; /* start/stop external=4, external=2, continuous ext.=1, internal=0 */
+/*     theEventPtr->header.trigDelay=64; */
+/*     theEventPtr->header.numChannels=NUM_DIGITZED_CHANNELS; */
+/*     theEventPtr->header.numSamples=256; */
+/*     theEventPtr->header.Dtype=1; */
+/*     theEventPtr->header.trigCouple=0; */
+/*     theEventPtr->header.trigSlope=0; */
+/*     theEventPtr->header.trigSource=-1; */
+/*     theEventPtr->header.trigLevel=10; */
+/*     theEventPtr->header.sampInt=50; /\* sample interval in units of 10 ps *\/ */
+/*     theEventPtr->header.holdOff=0; /\* number of 100ms intervals to hold between triggers *\/ */
+/*     theEventPtr->header.clocktype=0; /\* start/stop external=4, external=2, continuous ext.=1, internal=0 *\/ */
 
     /* Channel Stuff */
     for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
-	theEventPtr->body.channel[chan].header.ch_id=chan; 
-	theEventPtr->body.channel[chan].header.ch_fs=1000; /* -1V to +1V */
-	theEventPtr->body.channel[chan].header.ch_offs=2048; /*1/2 of 12bits */
-	theEventPtr->body.channel[chan].header.ch_couple=0;
-	theEventPtr->body.channel[chan].header.ch_bw=0;
-	theEventPtr->body.channel[chan].header.ch_mean=0;
-	theEventPtr->body.channel[chan].header.ch_sdev=0;
+/* 	theEventPtr->body.channel[chan].header.ch_id=chan;  */
+/* 	theEventPtr->body.channel[chan].header.ch_fs=1000; /\* -1V to +1V *\/ */
+/* 	theEventPtr->body.channel[chan].header.ch_offs=2048; /\*1/2 of 12bits *\/ */
+/* 	theEventPtr->body.channel[chan].header.ch_couple=0; */
+/* 	theEventPtr->body.channel[chan].header.ch_bw=0; */
+/* 	theEventPtr->body.channel[chan].header.ch_mean=0; */
+/* 	theEventPtr->body.channel[chan].header.ch_sdev=0; */
 
 	for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
 	    value=(short)4096.0*drand48();
@@ -195,12 +195,12 @@ void fakeEvent(anita_event_full *theEventPtr)
     
 }
 
-void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, anita_event_full *theEventPtr)
+void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr)
 {
     char theFilename[FILENAME_MAX];
     int retVal;
-    anita_event_header *theHeader=&(theEventPtr->header);
-    anita_event_body *theBody=&(theEventPtr->body);
+    AnitaEventHeader_t *theHeader=&(theEventPtr->header);
+    AnitaEventBody_t *theBody=&(theEventPtr->body);
 
 
     sprintf(theFilename,"%s/ev_%d.dat",theEventDir,

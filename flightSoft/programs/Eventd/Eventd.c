@@ -25,7 +25,7 @@
 
 
 int writeHeaderAndMakeLink(const char *outputDir, const char *linkDir, 
-		const char *sourceDir, anita_event_header *theHeaderPtr);
+		const char *sourceDir, AnitaEventHeader_t *theHeaderPtr);
 int getCalibStatus(const char *calibLinkDir, int unixTime);
 
 
@@ -56,10 +56,10 @@ int main (int argc, char *argv[])
     char *progName=basename(argv[0]);
 
    /*Event object*/
-    anita_event_header theAcqdEventHeader;
+    AnitaEventHeader_t theAcqdEventHeader;
 
     /*GPS subTime stuff*/
-    gpsSubTimeStruct gpsArray[MAX_GPS_TIMES]; /*Will think about handling this better*/
+    GpsSubTime_t gpsArray[MAX_GPS_TIMES]; /*Will think about handling this better*/
     int numGpsStored=0;
     	    
     /* Setup log */
@@ -140,7 +140,7 @@ int main (int argc, char *argv[])
 		    numGpsStored-=(i+1);
 		    if(numGpsStored>0) {
 			memmove(gpsArray,&gpsArray[i+1],
-				numGpsStored*sizeof(gpsSubTimeStruct));
+				numGpsStored*sizeof(GpsSubTime_t));
 		    }
 		    filledSubTime=1;
 		    break;
@@ -188,7 +188,7 @@ int main (int argc, char *argv[])
 
 
 int writeHeaderAndMakeLink(const char *outputDir, const char *linkDir, 
-		const char *sourceDir, anita_event_header *theHeaderPtr)
+		const char *sourceDir, AnitaEventHeader_t *theHeaderPtr)
 {
     char theFilename[FILENAME_MAX];
     int retVal;
@@ -219,7 +219,7 @@ int getCalibStatus(const char *calibLinkDir, int unixTime)
 /* Checks calibLinkDir and gets current calibration status 
    Currently implemented options are on or off */
 {
-    static calibStruct calibArray[MAX_CALIB_TIMES];
+    static CalibStruct_t calibArray[MAX_CALIB_TIMES];
     static int numStored=0;
     
     struct dirent **calibList;
@@ -255,7 +255,7 @@ int getCalibStatus(const char *calibLinkDir, int unixTime)
 	    numStored-=(count);
 	    if(numStored>0) {
 		memmove(calibArray,&calibArray[count],
-			numStored*sizeof(calibStruct));
+			numStored*sizeof(CalibStruct_t));
 	    }
 	    gotStatus=1;
 	}
