@@ -31,14 +31,16 @@ int openDevices();
 int setupG12();
 int setupADU5();
 int checkG12();
-int checkADU5A();
+int checkADU5B();
 void processG12Output(char *tempBuffer, int length);
 void processADU5Output(char *tempBuffer, int length);
 int updateClockFromG12(time_t gpsRawTime);
 int breakdownG12TimeString(char *subString,int *hour,int *minute,int *second);
 int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output);
 int checkChecksum(char *gpsString,int gpsLength);
-
+void processGPPATString(char *gpsString, int length);
+void processTTTString(char *gpsString, int gpsLength);
+void processSATString(char *gpsString, int gpsLength);
 
 // Definitions
 #define LEAP_SECONDS 13
@@ -63,7 +65,7 @@ int g12ZDAPort=1;
 int g12ZDAPeriod=5;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
-char g12LogDir[FILENAME_MAX];
+
 
 // Config stuff for ADU5
 int adu5SatPeriod=3600;
@@ -72,6 +74,12 @@ float adu5RelV12[3]={0};
 float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
 
+//Output stuff
+char g12LogDir[FILENAME_MAX];
+char gpsdSipdDir[FILENAME_MAX];
+char gpsdSipdLinkDir[FILENAME_MAX];
+char gpsSubTimeDir[FILENAME_MAX];
+char gpsSubTimeLinkDir[FILENAME_MAX];
 
 int main (int argc, char *argv[])
 {
@@ -110,8 +118,16 @@ int main (int argc, char *argv[])
 	strncpy(adu5ADevName,kvpGetString("adu5PortADevName"),FILENAME_MAX-1);
 	strncpy(adu5BDevName,kvpGetString("adu5PortBDevName"),FILENAME_MAX-1);
 	strncpy(g12LogDir,kvpGetString("gpsdG12LogDir"),FILENAME_MAX-1);
-    }
+	strncpy(gpsdSipdDir,kvpGetString("gpsdSipdDir"),FILENAME_MAX-1);
+	strncpy(gpsdSipdLinkDir,kvpGetString("gpsdSipdLinkDir"),FILENAME_MAX-1);
+	strncpy(gpsSubTimeDir,kvpGetString ("gpsdSubTimeDir"),FILENAME_MAX-1);
+	strncpy(gpsSubTimeLinkDir,kvpGetString ("gpsdSubTimeLinkDir"),FILENAME_MAX-1);
 
+    }
+    makeDirectories(gpsdSipdDir);
+    makeDirectories(gpsdSipdLinkDir);
+    makeDirectories(gpsSubTimeDir);
+    makeDirectories(gpsSubTimeLinkDir);
     
     retVal=readConfigFile();
     if(retVal<0) {
@@ -137,7 +153,7 @@ int main (int argc, char *argv[])
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 //	    checkG12();
-	    checkADU5A();
+	    checkADU5B();
 	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);
@@ -236,6 +252,8 @@ int openDevices()
 	exit(1);
     }
     else fdAdu5B=retVal;
+
+//    printf("%s %s %s\n",g12DevName,adu5ADevName,adu5BDevName);
     return 0;
 }
 
@@ -288,10 +306,31 @@ int checkG12()
 // Data stuff for G12
     static char g12Output[G12_DATA_SIZE]="";
     static int g12OutputLength=0;
+    static int lastStar=-10;
     retVal=isThereDataNow(fdG12);
 //    printf("Check G12 got retVal %d\n",retVal);
     if(retVal!=1) return 0;
     retVal=read(fdG12, tempData, G12_DATA_SIZE);
+
+    if(retVal>0) {
+	for(i=0; i < retVal; i++) {
+	    if(tempData[i]=='*') {
+		lastStar=g12OutputLength;
+	    }
+//	    printf("%c %d %d\n",tempData[i],g12OutputLength,lastStar);
+	    g12Output[g12OutputLength++]=tempData[i];
+
+	    if(g12OutputLength==lastStar+3) {
+		if(g12OutputLength) {
+		    processG12Output(g12Output,g12OutputLength);
+		}
+		g12OutputLength=0;
+		lastStar=-10;
+	    }
+	    tempData[i]=0;
+	}
+	
+    }
     if(retVal>0) {
 	for(i=0; i < retVal; i++) {
 /* 	 printf("%c", data[i]); */
@@ -321,7 +360,7 @@ int checkG12()
 }
 
 
-int checkADU5A()
+int checkADU5B()
 /*! Try to read ADU5 */
 {
     // Working variables
@@ -330,6 +369,7 @@ int checkADU5A()
 // Data stuff for ADU5
     static char adu5Output[ADU5_DATA_SIZE]="";
     static int adu5OutputLength=0;
+    static int lastStar=-10;
     retVal=isThereDataNow(fdAdu5B);
     usleep(5);
 //    printf("Check ADU5 got retVal %d\n",retVal);
@@ -337,22 +377,19 @@ int checkADU5A()
     retVal=read(fdAdu5B, tempData, ADU5_DATA_SIZE);
     if(retVal>0) {
 	for(i=0; i < retVal; i++) {
-/* 	 printf("%c", data[i]); */
-	    if(tempData[i]=='*' && (retVal-i)>2) {
-		adu5Output[adu5OutputLength++]=tempData[i++];
-		adu5Output[adu5OutputLength++]=tempData[i++];
-		adu5Output[adu5OutputLength++]=tempData[i++];
+	    if(tempData[i]=='*') {
+		lastStar=adu5OutputLength;
+	    }
+//	    printf("%c %d %d\n",tempData[i],adu5OutputLength,lastStar);
+	    adu5Output[adu5OutputLength++]=tempData[i];
 
-/* 	 printf("%d\n",currentIndex); */
+	    if(adu5OutputLength==lastStar+3) {
 		if(adu5OutputLength) {
 		    processADU5Output(adu5Output,adu5OutputLength);
-/* 		 printf("%d\t%s\n",time(NULL),tempBuffer); */
-/* 		 for(i=0; i < DATA_SIZE; i++) tempBuffer[i]=0; */
 		}
 		adu5OutputLength=0;
+		lastStar=-10;
 	    }
-	    adu5Output[adu5OutputLength++]=tempData[i];
-/* 	 printf("%d\n",currentIndex); */
 	    tempData[i]=0;
 	}
 	
@@ -479,7 +516,7 @@ void processADU5Output(char *tempBuffer, int length)
     int gpsLength=0;
     int count=0;
 //    char theCheckSum=0;
-/*     char *subString; */
+    char *subString; 
 /*     int hour,minute,second,subSecond; */
 /*     int day=-1,month=-1,year=-1; */
 /*     int tzHour,tzMin; */
@@ -506,9 +543,251 @@ void processADU5Output(char *tempBuffer, int length)
 //    printf("%s\n",tempBuffer);
 //    printf("GPS Length %d\n",gpsLength);
 
-    strncpy(gpsCopy,gpsString,ADU5_DATA_SIZE);
+    strncpy(gpsCopy,gpsString,gpsLength);
     if(printToScreen) printf("%s\t%d\n",gpsString,gpsLength);
+    count=0;
+    subString = strtok (gpsCopy,",");
+    if(!strcmp(subString,"$GPPAT")) {
+//	printf("Got $GPPAT\n");
+	processGPPATString(gpsString,gpsLength);
+    }
+    else if(!strcmp(subString,"$PASHR")) {
+	//Maybe have TTT
+	subString = strtok (NULL, " ,.*");
+	if(!strcmp(subString,"TTT")) {
+//	    printf("Got %s\t",subString);
+//	    printf("Got TTT\n");
+	    processTTTString(gpsString,gpsLength);
+	}
+	if(!strcmp(subString,"SAT")) {
+//	    printf("And got SAT\n");
+	    processSATString(gpsString,gpsLength);
+	}
+	
+    }
+
+
 }
+
+void processTTTString(char *gpsString, int gpsLength) {
+    char gpsCopy[ADU5_DATA_SIZE];//="$PASHR,TTT,4,03:32:45.0111305*0E";   
+    char *subString;
+    char filename[FILENAME_MAX];
+//    int count=0;
+    strncpy(gpsCopy,gpsString,gpsLength);
+    GpsSubTime_t theTTT;
+    int day,hour,min,sec,subSecond,retVal;
+    time_t rawtime;
+    struct tm * timeinfo;
+    time ( &rawtime );
+    
+    subString = strtok (gpsCopy,"*");
+    sscanf(subString,"$PASHR,TTT,%d,%02d:%02d:%02d.%d",&day,&hour,&min,
+	   &sec,&subSecond);
+//    printf("%s\n%d\t%d\t%d\t%d\t%d\n",subString,day,hour,min,sec,subSecond);
+//    .0111305;
+    timeinfo = localtime ( &rawtime );
+//    printf("Days: %d %d\n",timeinfo->tm_wday,day);
+    if(timeinfo->tm_wday+1!=day) {
+	addDay(timeinfo);
+    }
+    timeinfo->tm_hour=hour;
+    timeinfo->tm_min=min;
+    timeinfo->tm_sec=sec;
+    rawtime=mktime(timeinfo);
+	
+    theTTT.unixTime=rawtime;
+    //Must insert check here that unixTime and gpsTime coincide
+    theTTT.subTime=subSecond;
+    sprintf(filename,"%s/gps_%d.dat",gpsSubTimeDir,theTTT.unixTime);
+    writeGPSTTT(&theTTT,filename);
+//    %d %d
+//    printf("%s %s\n",filename,gpsSubTimeLinkDir);
+    retVal=makeLink(filename,gpsSubTimeLinkDir);  
+
+//    exit(0);
+}
+
+
+
+void processSATString(char *gpsString, int gpsLength) {
+    char gpsCopy[ADU5_DATA_SIZE];
+    char *subString;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+    int count=0;
+    int doingSat=0;
+    strncpy(gpsCopy,&gpsString[11],gpsLength-11);
+//    printf("%s\n",gpsCopy);
+    GpsSatStruct_t theSat;
+    time_t rawtime;
+    time ( &rawtime );
+    theSat.unixTime=rawtime;
+
+
+    subString = strtok (gpsCopy,",");    
+    while (subString != NULL) {
+//	printf("%d\t%s\n",count,subString);
+	
+	switch(count) {
+	    case 0:		
+		theSat.numSats=atoi(subString);
+		break;
+	    case 1:
+		theSat.sat[doingSat].prn=atoi(subString);
+		break;
+	    case 2:
+		theSat.sat[doingSat].azimuth=atoi(subString);
+		break;
+	    case 3:
+		theSat.sat[doingSat].elevation=atoi(subString);
+		break;
+	    case 4:
+		theSat.sat[doingSat].snr=atoi(subString);
+		break;
+	    case 5:
+		if(subString[0]=='U') theSat.sat[doingSat].flag=1;
+		if(subString[0]=='-') theSat.sat[doingSat].flag=0;
+		doingSat++;
+		count=0;
+		break;
+	    default:
+		break;
+	}
+	if(subString[1]=='*') break;
+	count++;
+	subString = strtok (NULL, ",");	
+    }
+
+/*     for(count=0;count<theSat.numSats;count++) { */
+/* 	printf("Number:\t%d\nPRN:\t%d\nAzimuth:\t%d\nElevation:\t%d\nSNR:\t%d\nFlag:\t%d\n\n",count+1,theSat.sat[count].prn,theSat.sat[count].azimuth,theSat.sat[count].elevation,theSat.sat[count].snr,theSat.sat[count].flag); */
+/*     } */
+
+    sprintf(theFilename,"%s/sat_%ld.dat",gpsdSipdDir,theSat.unixTime);
+    retVal=writeGPSSat(&theSat,theFilename);  
+    /* Make links, not sure what to do with return value here */
+//    printf("%s %s\n",theFilename,gpsdSipdLinkDir);    
+    retVal=makeLink(theFilename,gpsdSipdLinkDir);  
+}
+
+
+
+void processGPPATString(char *gpsString, int gpsLength) {
+    char gpsCopy[ADU5_DATA_SIZE];//="$GPPAT,021140.00,3338.51561,N,11750.82575,W,-00288.42,666.0000,000.00,000.00,666.0000,666.0000,1*4F";    
+    char *subString;
+    int count=0;
+    strncpy(gpsCopy,gpsString,gpsLength);
+    GpsPatStruct_t thePat;
+    thePat.gHdr.code=PACKET_GPSD_PAT;
+    time_t rawtime;
+    int hour,min,sec,msec,deg,subMin;
+    int noLock=0;
+    time ( &rawtime );
+    count=0;
+//    printf("Here: %s\n",gpsCopy);
+    subString = strtok (gpsCopy,",");    
+    thePat.unixTime=rawtime;
+    while (subString != NULL)
+    {	
+//	printf("Test %d %s\n",count,subString);
+	switch(count) {
+	    case 1:
+		sscanf(subString,"%02d%02d%02d.%d",&hour,&min,&sec,&msec);
+		thePat.timeOfDay=(float)msec;
+		thePat.timeOfDay+=(float)(1000*sec);
+		thePat.timeOfDay+=(float)(1000*60*min);
+		thePat.timeOfDay+=(float)(1000*60*60*hour);
+		break;
+	    case 2:
+		if(strlen(subString)==2) {
+		    noLock=1;
+		    break;
+		}
+		sscanf(subString,"%02d%02d.%d",&deg,&min,&subMin);
+		thePat.latitude=(float)deg;
+		thePat.latitude+=((float)min)/60.0;
+		thePat.latitude+=((float)subMin)/(60.0*10000.0);
+//		printf("%s\t%f\n",subString,thePat.latitude);
+//		printf("Length %d\n",strlen(subString));
+		break;
+	    case 3: 
+		if(subString[0]=='S') thePat.latitude*=-1;
+		break;
+	    case 4:
+		sscanf(subString,"%03d%02d.%d",&deg,&min,&subMin);
+		thePat.longitude=(float)deg;
+		thePat.longitude+=((float)min)/60.0;
+		thePat.longitude+=((float)subMin)/(60.0*10000.0);
+		break;
+	    case 5:
+		if(subString[0]=='W') thePat.longitude*=-1;
+		break;
+	    case 6:
+		sscanf(subString,"%lf",&thePat.altitude);
+		break;
+	    case 7:
+		sscanf(subString,"%lf",&thePat.heading);
+		break;
+	    case 8:
+		sscanf(subString,"%lf",&thePat.pitch);
+		break;
+	    case 9:
+		sscanf(subString,"%lf",&thePat.roll);
+		break;
+	    case 10:
+		sscanf(subString,"%lf",&thePat.mrms);
+		break;
+	    case 11:
+		sscanf(subString,"%lf",&thePat.brms);
+		break;
+	    case 12:
+		if(subString[0]=='0') thePat.attFlag=0;
+		if(subString[0]=='1') thePat.attFlag=1;
+		
+		break;		
+	    default:
+		break;
+
+	}
+	if(noLock) {
+//	    printf("No lock\n");
+	    thePat.heading=0;
+	    thePat.pitch=0;
+	    thePat.roll=0;
+	    thePat.brms=0;
+	    thePat.mrms=0;
+	    thePat.attFlag=0;
+	    thePat.latitude=0;
+	    thePat.longitude=0;
+	    thePat.altitude=0;
+	    break;
+	}			    
+	count++;	
+	subString = strtok (NULL, " ,*");
+    }
+/*     printf("unixTime: %ld\ntimeOfDay: %ld\nheading: %lf\npitch: %lf\nroll: %lf\nmrms: %lf\nbrms: %lf\nattFlag: %d\nlatitude: %lf\nlongitude: %lf\naltitute: %lf\n", */
+/* 	   thePat.unixTime, */
+/* 	   thePat.timeOfDay, */
+/* 	   thePat.heading, */
+/* 	   thePat.pitch, */
+/* 	   thePat.roll, */
+/* 	   thePat.mrms, */
+/* 	   thePat.brms, */
+/* 	   thePat.attFlag, */
+/* 	   thePat.latitude, */
+/* 	   thePat.longitude, */
+/* 	   thePat.altitude); */
+//    exit(0);
+    
+    char theFilename[FILENAME_MAX];
+    int retVal;
+    sprintf(theFilename,"%s/pat_%ld.dat",gpsdSipdDir,thePat.unixTime);
+    retVal=writeGPSPat(&thePat,theFilename);  
+    /* Make links, not sure what to do with return value here */
+//    printf("%s %s\n",theFilename,gpsdSipdLinkDir);    
+    retVal=makeLink(theFilename,gpsdSipdLinkDir);  
+}
+
 
 
 int updateClockFromG12(time_t gpsRawTime)
@@ -591,7 +870,7 @@ int setupADU5()
     char tempCommand[128]="";
     int retVal;
 
-    strcat(adu5Command,"$PASHS,ELM,0\n"); 
+    strcat(adu5Command,"$PASHS,ELM,0\r\n"); 
     
     sprintf(tempCommand,"$PASHS,3DF,V12,%2.3f,%2.3f,%2.3f\r\n",
 	    adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
@@ -604,14 +883,16 @@ int setupADU5()
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHS,NME,ALL,A,OFF\r\n");
     strcat(adu5Command,"$PASHS,NME,ALL,B,OFF\r\n");
-    strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
-    sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%d\r\n",adu5PatPeriod);
+    sprintf(tempCommand,"$PASHS,NME,PAT,B,ON,%d",adu5PatPeriod);
+    strcat(tempCommand,"\r\n");
     strcat(adu5Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,SAT,A,ON,%d\r\n",adu5SatPeriod);
+    sprintf(tempCommand,"$PASHS,NME,SAT,B,ON,%d\r\n",adu5SatPeriod);
     strcat(adu5Command,tempCommand);
+    strcat(adu5Command,"$PASHQ,PRT\r\n");
+    strcat(adu5Command,"$PASHS,NME,TTT,B,ON\r\n");
 
     if(printToScreen) printf("%s\n",adu5Command);
-    retVal=write(fdAdu5A, adu5Command, strlen(adu5Command));
+    retVal=write(fdAdu5B, adu5Command, strlen(adu5Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to ADU5 Serial port\n, write: %s",
 	       strerror(errno));
@@ -632,7 +913,7 @@ int checkChecksum(char *gpsString,int gpsLength)
     char theCheckSum=0;
     char temp;
     int count;
-/*     char checksum[3]; */
+    int result=0;
     for(count=1;count<gpsLength-3;count++) {
 	memcpy(&temp,&gpsString[count],sizeof(char));
 //	printf("%c ",gpsString[count]);
@@ -646,11 +927,17 @@ int checkChecksum(char *gpsString,int gpsLength)
 	if(gpsString[gpsLength-2]==hexChars[count]) otherSum+=count*16;
     }
 
-/*     checksum[0]=gpsString[gpsLength-2]; */
-/*     checksum[1]=gpsString[gpsLength-1]; */
-/*     checksum[2]='\0'; */
+
 /*     printf("%s %x %x\n",checksum,theCheckSum,otherSum); */
 //    printf("\n\n\n%d %x\n",theCheckSum,theCheckSum);
     
-    return (theCheckSum==otherSum);
+    result=(theCheckSum==otherSum);
+/*     if(!result) { */
+/* 	char checksum[3]; */
+/* 	checksum[0]=gpsString[gpsLength-2]; */
+/* 	checksum[1]=gpsString[gpsLength-1]; */
+/* 	checksum[2]='\0'; */
+/* 	printf("\n\nBugger:\t%s %x %x\n\n%s",checksum,theCheckSum,otherSum,gpsString); */
+/*     } */
+    return result;
 }

@@ -238,6 +238,49 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
     return 0;
 }
 
+int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
+/* Writes the pat pointed to by patPtr to filename */
+{
+    int numObjs;
+    FILE *pFILE = fopen (filename, "wb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }
+    numObjs=fwrite(patPtr,sizeof(GpsPatStruct_t),1,pFILE);
+    fclose(pFILE);
+    return 0;
+}
+
+int writeGPSSat(GpsSatStruct_t *satPtr, char *filename)
+/* Writes the sat pointed to by satPtr to filename */
+{
+    int numObjs;
+    FILE *pFILE = fopen (filename, "wb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }
+    numObjs=fwrite(satPtr,sizeof(GpsSatStruct_t),1,pFILE);
+    fclose(pFILE);
+    return 0;
+}
+
+
+int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename)
+/* Writes the ttt pointed to by tttPtr to filename */
+{
+    int numObjs;
+    FILE *pFILE = fopen (filename, "wb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }
+    numObjs=fwrite(tttPtr,sizeof(GpsSubTime_t),1,pFILE);
+    fclose(pFILE);
+    return 0;
+}
+
  
 void sigIntHandler(int sig)
 {
@@ -267,4 +310,20 @@ void writePidFile(char *fileName)
     fclose(fpPid) ;
 }
 
-
+int addDay(struct tm *timeinfo) {
+    //Must do leap year check
+    int year=timeinfo->tm_year;
+    int isLeap=((year) % 4 == 0 && ((year) % 100 != 0 || (year) % 400 == 0));
+    int daysInMonth[12]={31,28,31,30,31,30,31,31,30,31,30,31};
+    if(isLeap) daysInMonth[1]=29; //Leap year
+    
+    timeinfo->tm_mday++;
+    if(timeinfo->tm_mday>daysInMonth[timeinfo->tm_mon]) {
+	timeinfo->tm_mday=1;
+	timeinfo->tm_mon++;
+	if(timeinfo->tm_mon>=12) {
+	    timeinfo->tm_mon=0;
+	    timeinfo->tm_year++;
+	}
+    }
+}

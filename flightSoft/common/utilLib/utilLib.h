@@ -19,6 +19,7 @@ typedef enum {
 /* Includes */
 #include <dirent.h>
 #include "anitaStructures.h"
+#include <time.h>
 
 void makeDirectories(char *theTmpDir);
 int is_dir(const char *path);
@@ -29,6 +30,9 @@ int filterHeaders(const struct dirent *dir);
 int filterOnDats(const struct dirent *dir);
 int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
 
+/* Time stuff */
+int addDay(struct tm *timeinfo);
+
 
 /* IO routines for inter-process communication */
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename);
@@ -38,6 +42,9 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
+int writeGPSPat(GpsPatStruct_t *patPtr, char *filename);
+int writeGPSSat(GpsSatStruct_t *satPtr, char *filename);
+int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename);
 
 // Signal handling routines
 

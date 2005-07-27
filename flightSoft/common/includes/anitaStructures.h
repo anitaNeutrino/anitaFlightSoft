@@ -1,29 +1,42 @@
 /*! \file anitaStructures.h
-    \brief Contains the definitions of all the structures used to store 
-    and move ANITA data and stuff.
+  \brief Contains the definitions of all the structures used to store 
+  and move ANITA data and stuff.
     
-    Some simple definitions of the structures that we'll use to store 
-    ANITA data. In here there will be the structures used for transient data,
-    housekeeping stuff, GPS stuff and anything else that is going to be used
-    by more than one of the processes. This will all change to use bit fields,
-    at some point in the future. For now this is just a place holder we can
-    test data flow with.
+  Some simple definitions of the structures that we'll use to store 
+  ANITA data. In here there will be the structures used for transient data,
+  housekeeping stuff, GPS stuff and anything else that is going to be used
+  by more than one of the processes. This will all change to use bit fields,
+  at some point in the future. For now this is just a place holder we can
+  test data flow with.
 
-    August 2004  rjn@mps.ohio-state.edu
+  August 2004  rjn@mps.ohio-state.edu
 */
 #ifndef ANITA_STRUCTURES_H
 #define ANITA_STRUCTURES_H
 #include "includes/anitaFlight.h"
 
+#define MAX_SATS 30
 
+typedef enum {
+    PACKET_HD = 0x100,
+    PACKET_WV = 0x101,
+    PACKET_GPSD_PAT = 0x200,
+    PACKET_GPSD_SAT = 0x201,
+    PACKET_HKD = 0x300
+} PacketCode_t;
+
+typedef struct {
+    PacketCode_t code;
+} GenericHeader_t;
+      
 // TURFIO data structure, TV test
 typedef struct {
-  unsigned short rawtrig; // raw trigger number
-  unsigned short L3Atrig; // same as raw trig
-  unsigned long pps1;     // 1PPS
-  unsigned long time;     // trig time
-  unsigned long interval; // interval since last trig
-  unsigned int rate[2][4]; // Antenna trigger output rates (Hz)
+    unsigned short rawtrig; // raw trigger number
+    unsigned short L3Atrig; // same as raw trig
+    unsigned long pps1;     // 1PPS
+    unsigned long time;     // trig time
+    unsigned long interval; // interval since last trig
+    unsigned int rate[2][4]; // Antenna trigger output rates (Hz)
 } TurfioStruct_t;
   
 
@@ -71,6 +84,37 @@ typedef struct {
     int unixTime;
     int subTime;
 } GpsSubTime_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    long timeOfDay;
+    double heading;
+    double pitch;
+    double roll;
+    double mrms;
+    double brms;
+    char attFlag;
+    double latitude;
+    double longitude;
+    double altitude;
+} GpsPatStruct_t;
+
+typedef struct {
+    int prn;
+    int azimuth;
+    int elevation;
+    int snr;
+    int flag; //1 is usable, 0 is not
+} GpsSatInfo_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    int numSats;
+    GpsSatInfo_t sat[MAX_SATS];
+} GpsSatStruct_t;
+
 
 typedef struct {
     int unixTime;
