@@ -137,6 +137,8 @@ int main (int argc, char *argv[])
     }
     retVal=openDevices();
     
+
+    //Main event loop
     do {
 	if(printToScreen) printf("Initalizing GPSd\n");
 	retVal=readConfigFile();
@@ -620,6 +622,8 @@ void processSATString(char *gpsString, int gpsLength) {
     strncpy(gpsCopy,&gpsString[11],gpsLength-11);
 //    printf("%s\n",gpsCopy);
     GpsSatStruct_t theSat;
+    theSat.gHdr.code=PACKET_GPSD_SAT;
+    
     time_t rawtime;
     time ( &rawtime );
     theSat.unixTime=rawtime;

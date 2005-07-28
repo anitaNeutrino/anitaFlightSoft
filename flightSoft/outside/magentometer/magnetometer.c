@@ -79,12 +79,13 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 
 
 
-/* printf("buff -- %s\n",buff); */
+printf("buff -- %s\n",buff);
 /* printf("wrote buff -- %s\n",buff); */
 
 /* read & print output */
      while(1) {
-	 write(fd, buff, strlen(buff));
+	 retVal=write(fd, buff, strlen(buff));
+	 printf("wrote buff -- %s\t%d\n",buff,retVal);
 	 usleep(500);	 
 	 retVal=read(fd, data, DATA_SIZE);
 /*     printf("DATA SIZE %d\n",DATA_SIZE); */

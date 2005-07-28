@@ -22,6 +22,10 @@
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
 
+
+#define CHANS_PER_IP320 40
+#define NUM_IP320_BOARDS 3
+
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
 

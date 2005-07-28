@@ -281,6 +281,20 @@ int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename)
     return 0;
 }
 
+int writeHk(HkDataStruct_t *hkPtr, char *filename)
+/* Writes the hk pointed to by hkPtr to filename */
+{
+    int numObjs;
+    FILE *pFILE = fopen (filename, "wb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }
+    numObjs=fwrite(hkPtr,sizeof(HkDataStruct_t),1,pFILE);
+    fclose(pFILE);
+    return 0;
+}
+
  
 void sigIntHandler(int sig)
 {

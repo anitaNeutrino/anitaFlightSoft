@@ -1,10 +1,10 @@
 /*! \file Hkd.c
-    \brief The Hkd program that creates Hk objects 
+  \brief The Hkd program that creates Hk objects 
     
-    Reads in all the various different housekeeping quantities (temperatures, 
-    voltages, etc.)
+  Reads in all the various different housekeeping quantities (temperatures, 
+  voltages, etc.)
 
-    Novemember 2004  rjn@mps.ohio-state.edu
+  Novemember 2004  rjn@mps.ohio-state.edu
 */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -13,11 +13,16 @@
 #include <sys/dir.h>
 #include <unistd.h>
 #include <time.h>
+#include <signal.h>
+#include <errno.h>
+
 
 /* Flight soft includes */
 #include "anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
+#include "utilLib/utilLib.h"
+#include "serialLib/serialLib.h"
 #include "anitaStructures.h"
 
 /* Vendor includes */
@@ -25,54 +30,81 @@
 #include "carrier/apc8620.h"
 #include "ip320/ip320.h"
 
-#define NUM_ACRO_CHANS 40
+
+
+/*Config stuff*/
+int readConfigFile();
+
 
 /* SBS Temperature Reading Functions */
 void printSBSTemps (void);
-int readSBSTemps (int *localTemp, int *remoteTemp);
+int readSBSTemps ();
 
 /* Acromag Functions */
 void acromagSetup();
-int ip320_1Setup();
-int ip320_2Setup();
-int ip320_1Read();
-int ip320_2Read();
-int ip320_1GetCal();
-int ip320_2GetCal();
-void dumpArrayValues_1();
-void dumpArrayValues_2();
+int ip320Setup();
+int ip320Calibrate();
+int ip320Read(int fillCor);
+void dumpValues();
+
+/* Magnetometer Functions */
+int openMagnetometer();
+int setupMagnetometer();
+int checkMagnetometer();
+int closeMagnetometer();
+
+/* Output Function */
+int outputData(AnalogueCode_t code);
+
+
+// Device names;
+char magDevName[FILENAME_MAX];
+int fdMag; //Magnetometer
 
 
 /* global variables for acromag control */
 int carrierHandle;
-struct conf_blk_320 cblk_320_1;
-struct conf_blk_320 cblk_320_2;
+struct conf_blk_320 config320[NUM_IP320_BOARDS];
+
 /* tables for ip320 data and calibration constants */
 /* note sa_size is sort of arbitrary; 
    single channel reads only use first one */
-struct scan_array ip320_1_s_array[NUM_ACRO_CHANS]; 
-word ip320_1_az_data[NUM_ACRO_CHANS];        
-word ip320_1_cal_data[NUM_ACRO_CHANS];       
-word ip320_1_raw_data[NUM_ACRO_CHANS];       
-long ip320_1_cor_data[NUM_ACRO_CHANS];   
-struct scan_array ip320_2_s_array[NUM_ACRO_CHANS]; 
-word ip320_2_az_data[NUM_ACRO_CHANS];        
-word ip320_2_cal_data[NUM_ACRO_CHANS];       
-word ip320_2_raw_data[NUM_ACRO_CHANS];       
-long ip320_2_cor_data[NUM_ACRO_CHANS];   
+struct scan_array scanArray[NUM_IP320_BOARDS][CHANS_PER_IP320]; 
+
+FullAnalogueStruct_t autoZeroStruct;
+FullAnalogueStruct_t rawDataStruct;
+FullAnalogueStruct_t calDataStruct;
+AnalogueCorrectedDataStruct_t corDataStruct[NUM_IP320_BOARDS];
+MagnetometerDataStruct_t magData;
+SBSTemperatureDataStruct_t sbsData;
+
 
 /* Acromag constants */
 #define INTERRUPT_LEVEL 10
 
 
+/* Configurable thingummies */
+//char carrierDevName[FILENAME_MAX];
+char hkdSipdDir[FILENAME_MAX];
+char hkdSipdLinkDir[FILENAME_MAX];
+int ip320Ranges[NUM_IP320_BOARDS];
+int printToScreen;
+int readoutPeriod;
+int calibrationPeriod;
 
 int main (int argc, char *argv[])
 {
     int retVal;
+
+// Hkd config stuff
+    char hkdPidFile[FILENAME_MAX];
+
 /*     int localSBSTemp,remoteSBSTemp; */
     /* Config file thingies */
     int status=0;
     char* eString ;
+    char *tempString;
+    int secs=0;
 
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -80,44 +112,148 @@ int main (int argc, char *argv[])
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
-
    
+    /* Set signal handlers */
+    signal(SIGINT, sigIntHandler);
+    signal(SIGTERM,sigTermHandler);
+
     /* Load Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
+    status &= configLoad (GLOBAL_CONF_FILE,"whiteheat") ;
     eString = configErrorString (status) ;
 
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
+	tempString=kvpGetString("hkdPidFile");
+	if(tempString) {
+	    strncpy(hkdPidFile,tempString,FILENAME_MAX-1);
+	    writePidFile(hkdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting hkdPidFile");
+	    fprintf(stderr,"Error getting hkdPidFile\n");
+	}
+	tempString=kvpGetString("magentometerDevName");
+	if(tempString) {
+	    strncpy(magDevName,tempString,FILENAME_MAX-1);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting magentometerDevName");
+	    fprintf(stderr,"Error getting magentometerDevName\n");
+	}	    
+	tempString=kvpGetString("hkdSipdDir");
+	if(tempString) {
+	    strncpy(hkdSipdDir,tempString,FILENAME_MAX-1);	    
+	    makeDirectories(hkdSipdDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting hkdSipdDir");
+	    fprintf(stderr,"Error getting hkdSipdDir\n");
+	}
+	tempString=kvpGetString("hkdSipdLinkDir");
+	if(tempString) {
+	    strncpy(hkdSipdLinkDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(hkdSipdLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting hkdSipdLinkDir");
+	    fprintf(stderr,"Error getting hkdSipdLinkDir\n");
+	}
+	    
     }
+    autoZeroStruct.code=IP320_AVZ;
+    rawDataStruct.code=IP320_RAW;
+    calDataStruct.code=IP320_CAL;
     
     retVal=0;
-    printSBSTemps();
+//    printSBSTemps();
     acromagSetup();
-    
-   /*  readSBSTemps(&localSBSTemp,&remoteSBSTemp); */
-/*     printf("Local: %d (C)\tRemote: %d (C)\n",localSBSTemp,remoteSBSTemp); */
-    printSBSTemps();
-    ip320_1Setup();
-    ip320_1GetCal();
-    ip320_2Setup();
-    ip320_2GetCal();
-    ip320_1Read();
-    ip320_2Read();
-    dumpArrayValues_1();
-    dumpArrayValues_2();
+    openMagnetometer();
+    setupMagnetometer();
+    do {
+	if(printToScreen) printf("Initalizing Hkd\n");
+	retVal=readConfigFile();
+	ip320Setup();
+	currentState=PROG_STATE_RUN;
+	secs=0;
+        while(currentState==PROG_STATE_RUN) {
+
+	    if((secs % calibrationPeriod)==0) {
+		sendMagnetometerRequest();
+		ip320Calibrate();
+		readSBSTemps();
+		checkMagnetometer();		
+		outputData(IP320_CAL);
+		outputData(IP320_AVZ);
+		
+		//Send down calibration info
+	    }
+	    if((secs % readoutPeriod)==0) {
+		sendMagnetometerRequest();
+		ip320Read(0);
+		readSBSTemps();
+		checkMagnetometer(); 				
+		outputData(IP320_RAW);
+//		dumpValues();
+		//Send down data
+	    }
+	    sleep(1);
+	    secs++;
+	}
+    } while(currentState==PROG_STATE_INIT);
     return 0;
 }
 
-int readSBSTemps (int *localTemp, int *remoteTemp)
+int readConfigFile() 
+/* Load Hkd config stuff */
+{
+    /* Config file thingies */
+    int status=0;
+    int tempNum=3,count=0;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+    kvpReset();
+    status = configLoad ("Hkd.config","output") ;
+    status &= configLoad ("Hkd.config","hkd") ;
+
+    if(status == CONFIG_E_OK) {       
+//	strncpy(carrierDevName,kvpGetString("ip320carrier"),FILENAME_MAX-1);
+	printToScreen=kvpGetInt("printToScreen",-1);
+	readoutPeriod=kvpGetInt("readoutPeriod",60);
+	calibrationPeriod=kvpGetInt("calibrationPeriod",1200);
+       	kvpStatus = kvpGetIntArray("ip320Ranges",ip320Ranges,&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(ip320Ranges): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen) 
+		fprintf(stderr,"kvpGetIntArray(ip320Ranges): %s",
+			kvpErrorString(kvpStatus));
+	}
+	for(count=0;count<tempNum;count++) {
+	    if(ip320Ranges[count]==5)  ip320Ranges[count]=RANGE_5TO5;
+	    else if(ip320Ranges[count]==10) ip320Ranges[count]=RANGE_10TO10;
+	}
+    }
+
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Hkd.config: %s\n",eString);
+    }
+    return status;
+   
+}
+
+
+int readSBSTemps ()
 {
     API_RESULT main_Api_Result;
     int gotError=0;
 
-    *localTemp = 0;
-    *remoteTemp = 0;
+    int localTemp = 0;
+    int remoteTemp = 0;
     main_Api_Result = 
-	fn_ApiCr7ReadLocalTemperature(localTemp);
+	fn_ApiCr7ReadLocalTemperature(&localTemp);
     
     if (main_Api_Result != API_SUCCESS)
     {
@@ -127,7 +263,7 @@ int readSBSTemps (int *localTemp, int *remoteTemp)
     }
 
     main_Api_Result = 
-	fn_ApiCr7ReadRemoteTemperature(remoteTemp);
+	fn_ApiCr7ReadRemoteTemperature(&remoteTemp);
     
     if (main_Api_Result != API_SUCCESS)
     {
@@ -135,18 +271,19 @@ int readSBSTemps (int *localTemp, int *remoteTemp)
 	syslog(LOG_WARNING,"Couldn't read SBS Remote Temp: %d\t%s",
 	       main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
     }
-
+    sbsData.temp[0]=(localTemp);
+    sbsData.temp[1]=(remoteTemp);
     return gotError;
 }
 
 
 void printSBSTemps (void)
 {
-    int localTemp,remoteTemp,retVal,unixTime;
-    retVal=readSBSTemps(&localTemp,&remoteTemp);
+    int retVal,unixTime;
+    retVal=readSBSTemps();
     unixTime=time(NULL);
     if(!retVal) 
-	printf("%d %d %d\n",unixTime,localTemp,remoteTemp);
+	printf("%d %d %d\n",unixTime,sbsData.temp[0],sbsData.temp[1]);
     /* Don't know what to do if it doesn't work */
 }
 
@@ -154,286 +291,314 @@ void printSBSTemps (void)
 void acromagSetup()
 /* Seemingly does exactly what it says on the tin */
 {
-
-  long addr=0;
+    int count=0;
+    long addr=0;
   
-  /* Check for Carrier Library */
-  if(InitCarrierLib() != S_OK) {
-    printf("\nCarrier library failure");
-    exit(1);
-  }
+    /* Check for Carrier Library */
+    if(InitCarrierLib() != S_OK) {
+	printf("\nCarrier library failure");
+	exit(1);
+    }
   
-  /* Connect to Carrier */ 
-  if(CarrierOpen(0, &carrierHandle) != S_OK) {
-    printf("\nUnable to Open instance of carrier.\n");
-    exit(2);
-  }
-  cblk_320_1.nHandle = carrierHandle;
-  cblk_320_2.nHandle = carrierHandle;
-  
-  cblk_320_1.slotLetter='B';
-  cblk_320_2.slotLetter='C';
+    /* Connect to Carrier */ 
+    if(CarrierOpen(0, &carrierHandle) != S_OK) {
+	printf("\nUnable to Open instance of carrier.\n");
+	exit(2);
+    }
+    char letter[3]={'A','B','C'};
+    for(count=0;count<NUM_IP320_BOARDS;count++) {
+	config320[count].nHandle=carrierHandle;
+	config320[count].slotLetter=letter[count];
+    }
 
 
-  if(CarrierInitialize(carrierHandle) == S_OK) 
+    if(CarrierInitialize(carrierHandle) == S_OK) 
     { /* Initialize Carrier */
-      SetInterruptLevel(carrierHandle, INTERRUPT_LEVEL);
-      /* Set carrier interrupt level */
+	SetInterruptLevel(carrierHandle, INTERRUPT_LEVEL);
+	/* Set carrier interrupt level */
     } 
-  else 
+    else 
     {
-      printf("\nUnable initialize the carrier: %lX", addr);
-      exit(3);
+	syslog(LOG_ERR,"Unable initialize the carrier: %lX", addr);
+	if(printToScreen) printf("\nUnable initialize the carrier: %lX", addr);
+	exit(3);
     }
 
-
-  cblk_320_1.bCarrier=TRUE;
-  cblk_320_2.bCarrier=TRUE;
-
-  /* GetCarrierAddress(carrierHandle, &addr);
-     SetCarrierAddress(carrierHandle, addr); */
-
-  if(GetIpackAddress(carrierHandle,cblk_320_1.slotLetter,
-		     (long *) &cblk_320_1.brd_ptr) != S_OK)
-    {
-      printf("\nIpack address failure for IP320\n.");
-      exit(5);
+    for(count=0;count<NUM_IP320_BOARDS;count++) {
+	config320[count].bCarrier=TRUE;
     }
-  if(GetIpackAddress(carrierHandle,cblk_320_2.slotLetter,
-		     (long *) &cblk_320_2.brd_ptr) != S_OK)
-    {
-      printf("\nIpack address failure for IP320 (2)\n.");
-      exit(6);
+  
+
+    /* GetCarrierAddress(carrierHandle, &addr);
+       SetCarrierAddress(carrierHandle, addr); */
+
+    for(count=0;count<NUM_IP320_BOARDS;count++) {
+	if(GetIpackAddress(carrierHandle,config320[count].slotLetter,
+			   (long *) &config320[count].brd_ptr) != S_OK) 
+	{
+	    syslog(LOG_ERR,"Ipack address failure for IP320\n.");	  
+	    if(printToScreen) printf("\nIpack address failure for IP320\n.");
+	    exit(5);
+	}
+	config320[count].bInitialized=TRUE;
     }
-  cblk_320_1.bInitialized = TRUE;
-  cblk_320_2.bInitialized = TRUE;
 }
 
-
-int ip320_1Setup()
+int ip320Setup()
 {
-  int i;
-  rsts320(&cblk_320_1);
-  if((byte)cblk_320_1.id_prom[5]!=0x32) {
-      printf("Board ID Wrong\n\n");
-      printf("Board ID Information\n");
-      printf("\nIdentification:              ");
-      for(i = 0; i < 4; i++)          /* identification */
-	  printf("%c",cblk_320_1.id_prom[i]);
-      printf("\nManufacturer's ID:           %X",(byte)cblk_320_1.id_prom[4]);
-      printf("\nIP Model Number:             %X",(byte)cblk_320_1.id_prom[5]);
-      printf("\nRevision:                    %X",(byte)cblk_320_1.id_prom[6]);
-      printf("\nReserved:                    %X",(byte)cblk_320_1.id_prom[7]);
-      printf("\nDriver I.D. (low):           %X",(byte)cblk_320_1.id_prom[8]);
-      printf("\nDriver I.D. (high):          %X",(byte)cblk_320_1.id_prom[9]);
-      printf("\nTotal I.D. Bytes:            %X",(byte)cblk_320_1.id_prom[10]);
-      printf("\nCRC:                         %X\n",(byte)cblk_320_1.id_prom[11]);
-      exit(0);
-  }
-  else {
-      printf("Board ID correct %X\n",(byte)cblk_320_1.id_prom[5]);
-  }
-  for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-      ip320_1_s_array[i].gain = GAIN_X1;            /*  gain=2 */
-      ip320_1_s_array[i].chn = i;             /*  channel */
-      ip320_1_az_data[i] = 0;                 /* clear auto zero buffer */
-      ip320_1_cal_data[i] = 0;                /* clear calibration buffer */
-      ip320_1_raw_data[i] = 0;                /* clear raw input buffer */
-      ip320_1_cor_data[i] = 0;                /* clear corrected data buffer */
+    int i,count;
+    for(count=0;count<NUM_IP320_BOARDS;count++) {
+//	printf("Doing ip320 setup %d\n",count);
+	rsts320(&config320[count]);
+	if((byte)config320[count].id_prom[5]!=0x32) {
+	    if(printToScreen) {
+		printf("Board ID Wrong\n\n");
+		printf("Board ID Information\n");
+		printf("\nIdentification:              ");
+		for(i = 0; i < 4; i++)          /* identification */
+		    printf("%c",config320[count].id_prom[i]);
+		printf("\nManufacturer's ID: %X",(byte)config320[count].id_prom[4]);
+		printf("\nIP Model Number: %X",(byte)config320[count].id_prom[5]);
+		printf("\nRevision: %X",(byte)config320[count].id_prom[6]);
+		printf("\nReserved: %X",(byte)config320[count].id_prom[7]);
+		printf("\nDriver I.D. (low): %X",(byte)config320[count].id_prom[8]);
+		printf("\nDriver I.D. (high): %X",(byte)config320[count].id_prom[9]);
+		printf("\nTotal I.D. Bytes: %X",(byte)config320[count].id_prom[10]);
+		printf("\nCRC: %X\n",(byte)config320[count].id_prom[11]);
+		exit(0);
+	    }
+	}  
+	else if(printToScreen)
+	    printf("Board ID correct %X\n",(byte)config320[count].id_prom[5]);
+      
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    scanArray[count][i].gain = GAIN_X1;      /*  gain=2 */
+	    scanArray[count][i].chn = i;             /*  channel */
+	    autoZeroStruct.board[count].data[i] = 0;                 /* clear auto zero buffer */
+	    calDataStruct.board[count].data[i] = 0;                /* clear calibration buffer */
+	    rawDataStruct.board[count].data[i] = 0;                /* clear raw input buffer */
+	    corDataStruct[count].data[i] = 0;                /* clear corrected data buffer */
+	}
+	config320[count].range = ip320Ranges[count];
+	config320[count].trigger = STRIG; /* 0 = software triggering */
+	config320[count].mode = SEI;      /* differential input */
+	config320[count].gain = GAIN_X1;  /* gain for analog input */
+	config320[count].average = 1;     /* number of samples to average */
+	config320[count].channel = 0;     /* default channel */
+	config320[count].data_mask = BIT12; /* A/D converter data mask */
+	config320[count].bit_constant = CON12; /* constant for data correction */
+  
+	config320[count].s_raw_buf = &rawDataStruct.board[count].data[0];   /* raw buffer start */
+	config320[count].s_az_buf = &autoZeroStruct.board[count].data[0]; /* auto zero buffer start */
+	config320[count].s_cal_buf = &calDataStruct.board[count].data[0]; /* calibration buffer start */
+	config320[count].s_cor_buf = &corDataStruct[count].data[0]; /* corrected buffer start */
+	config320[count].sa_start = &scanArray[count][0]; /* address of start of scan array */
+	config320[count].sa_end = &scanArray[count][CHANS_PER_IP320-1];  /* address of end of scan array*/
+
     }
-  cblk_320_1.range = RANGE_5TO5;       /* full range */
-  cblk_320_1.trigger = STRIG;            /* 0 = software triggering */
-  cblk_320_1.mode = SEI;                 /* differential input */
-  cblk_320_1.gain = GAIN_X1;             /* gain for analog input */
-  cblk_320_1.average = 1;                /* number of samples to average */
-  cblk_320_1.channel = 0;                /* default channel */
-  cblk_320_1.data_mask = BIT12;          /* A/D converter data mask */
-  cblk_320_1.bit_constant = CON12;       /* constant for data correction */
-  cblk_320_1.s_raw_buf = &ip320_1_raw_data[0];   /* raw buffer start */
-  cblk_320_1.s_az_buf = &ip320_1_az_data[0];     /* auto zero buffer start */
-  cblk_320_1.s_cal_buf = &ip320_1_cal_data[0];   /* calibration buffer start */
-  cblk_320_1.s_cor_buf = &ip320_1_cor_data[0];   /* corrected buffer start */
-  cblk_320_1.sa_start = &ip320_1_s_array[0];     /* address of start of scan array */
-  cblk_320_1.sa_end = &ip320_1_s_array[NUM_ACRO_CHANS-1];  /* address of end of scan array*/
-  return 0;
+    return 0;
 }
 
-
-int ip320_2Setup()
+int ip320Read(int fillCor)
 {
-  int i;  
-  rsts320(&cblk_320_2);
-  if((byte)cblk_320_2.id_prom[5]!=0x32) {
-      printf("Board ID Wrong\n\n");
-      printf("Board ID Information\n");
-      printf("\nIdentification:              ");
-      for(i = 0; i < 4; i++)          /* identification */
-	  printf("%c",cblk_320_2.id_prom[i]);
-      printf("\nManufacturer's ID:           %X",(byte)cblk_320_2.id_prom[4]);
-      printf("\nIP Model Number:             %X",(byte)cblk_320_2.id_prom[5]);
-      printf("\nRevision:                    %X",(byte)cblk_320_2.id_prom[6]);
-      printf("\nReserved:                    %X",(byte)cblk_320_2.id_prom[7]);
-      printf("\nDriver I.D. (low):           %X",(byte)cblk_320_2.id_prom[8]);
-      printf("\nDriver I.D. (high):          %X",(byte)cblk_320_2.id_prom[9]);
-      printf("\nTotal I.D. Bytes:            %X",(byte)cblk_320_2.id_prom[10]);
-      printf("\nCRC:                         %X\n",(byte)cblk_320_2.id_prom[11]);
-      exit(0);
-  }
-  else {
-      printf("Board ID correct %X\n",(byte)cblk_320_2.id_prom[5]);
-  }
-  for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-      ip320_2_s_array[i].gain = GAIN_X1;            /*  gain=2 */
-      ip320_2_s_array[i].chn = i;             /*  channel */
-      ip320_2_az_data[i] = 0;                 /* clear auto zero buffer */
-      ip320_2_cal_data[i] = 0;                /* clear calibration buffer */
-      ip320_2_raw_data[i] = 0;                /* clear raw input buffer */
-      ip320_2_cor_data[i] = 0;                /* clear corrected data buffer */
+    int count;
+    for(count=0;count<NUM_IP320_BOARDS;count++) {    
+	ainmc320(&config320[count]);
+	if(fillCor) mccd320(&config320[count]);
     }
-  cblk_320_2.range = RANGE_5TO5;       /* full range */
-  cblk_320_2.trigger = STRIG;            /* 0 = software triggering */
-  cblk_320_2.mode = SEI;                 /* differential input */
-  cblk_320_2.gain = GAIN_X1;             /* gain for analog input */
-  cblk_320_2.average = 1;                /* number of samples to average */
-  cblk_320_2.channel = 0;                /* default channel */
-  cblk_320_2.data_mask = BIT12;          /* A/D converter data mask */
-  cblk_320_2.bit_constant = CON12;       /* constant for data correction */
-  cblk_320_2.s_raw_buf = &ip320_2_raw_data[0];   /* raw buffer start */
-  cblk_320_2.s_az_buf = &ip320_2_az_data[0];     /* auto zero buffer start */
-  cblk_320_2.s_cal_buf = &ip320_2_cal_data[0];   /* calibration buffer start */
-  cblk_320_2.s_cor_buf = &ip320_2_cor_data[0];   /* corrected buffer start */
-  cblk_320_2.sa_start = &ip320_2_s_array[0];     /* address of start of scan array */
-  cblk_320_2.sa_end = &ip320_2_s_array[NUM_ACRO_CHANS-1];  /* address of end of scan array*/
-  return 0;
+    return 0;
 }
 
 
-int ip320_1Read()
+int ip320Calibrate()
 {
-  ainmc320(&cblk_320_1);
-  mccd320(&cblk_320_1);
-  return 0;
+    int count=0;
+    byte temp_mode;
+    for(count=0;count<NUM_IP320_BOARDS;count++) {
+//	printf("Here\n");
+	temp_mode=config320[count].mode;
+	config320[count].mode= AZV; /* auto zero */	
+	ainmc320(&config320[count]);
+//	printf("Done auto zero\n");
+	config320[count].mode= CAL; /* calibration */
+	ainmc320(&config320[count]);
+//	printf("Done calibration\n");
+	config320[count].mode=temp_mode;
+    }
+    /* really should only do this every so often, */
+    /* and send down the cal constants */
+    return 0;
 }
 
-int ip320_2Read()
+int outputData(AnalogueCode_t code) 
 {
-  ainmc320(&cblk_320_2);
-  mccd320(&cblk_320_2);
-  return 0;
+    int retVal;
+    char theFilename[FILENAME_MAX];
+    HkDataStruct_t theHkData;
+    theHkData.gHdr.code=PACKET_HKD;
+    time_t rawtime;
+    time ( &rawtime );
+    theHkData.unixTime=rawtime;
+    switch(code) {
+	case (IP320_RAW):
+	    sprintf(theFilename,"%s/hk_%ld.raw.dat",hkdSipdDir,theHkData.unixTime);
+	    theHkData.ip320=rawDataStruct;
+	    break;
+	case(IP320_CAL):
+	    sprintf(theFilename,"%s/hk_%ld.cal.dat",hkdSipdDir,theHkData.unixTime);
+	    theHkData.ip320=calDataStruct;
+	    break;
+	case(IP320_AVZ):
+	    sprintf(theFilename,"%s/hk_%ld.avz.dat",hkdSipdDir,theHkData.unixTime);
+	    theHkData.ip320=autoZeroStruct;
+	    break;
+	default:
+	    syslog(LOG_WARNING,"Unknown HK data code: %d",code);
+	    if(printToScreen) 
+		fprintf(stderr,"Unknown HK data code: %d\n",code);
+	    break;
+    }
+	    
+    theHkData.mag=magData;
+    theHkData.sbs=sbsData;
+    if(printToScreen) printf("%s\n",theFilename);
+    retVal=writeHk(&theHkData,theFilename);     
+    retVal+=makeLink(theFilename,hkdSipdLinkDir);      
+    return retVal;
 }
 
-int ip320_1GetCal()
+
+void dumpValues() {
+    int i,count;
+    for(count=0;count<NUM_IP320_BOARDS;count++) {
+	printf("Data from %c\n\n",config320[count].slotLetter);	
+	printf("Channel: ");
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    printf("%d ",scanArray[count][i].chn);
+	}
+	printf("\n\n");
+	printf("Gain:    ");
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    printf("%d ",scanArray[count][i].gain);
+	}
+	printf("\n\n");
+	printf("AVZ:     ");
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    printf("%X ",autoZeroStruct.board[count].data[i]);
+	}
+	printf("\n\n");
+	printf("CAL:     ");
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    printf("%X ",calDataStruct.board[count].data[i]);
+	}
+	printf("\n\n");
+	printf("RAW:     ");
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    printf("%X ",rawDataStruct.board[count].data[i]);
+	}
+	printf("\n\n");
+	printf("COR:     ");
+	for( i = 0; i < CHANS_PER_IP320; i++ ) 
+	{
+	    printf("%lX ",corDataStruct[count].data[i]);
+	}
+	printf("\n\n");
+    }
+}
+
+
+int openMagnetometer()
 {
-  byte temp_mode;
-  temp_mode=cblk_320_1.mode;
-  cblk_320_1.mode= AZV; /* auto zero */
-  ainmc320(&cblk_320_1);
-  cblk_320_1.mode= CAL; /* calibration */
-  ainmc320(&cblk_320_1);
-  cblk_320_1.mode=temp_mode;
-  /* really should only do this every so often, */
-  /* and send down the cal constants */
-  return 0;
+    int retVal;
+// Initialize the various devices    
+    retVal=openMagnetometerDevice(magDevName);
+    if(retVal<=0) {
+	syslog(LOG_ERR,"Couldn't open: %s\n",magDevName);
+	if(printToScreen) printf("Couldn't open: %s\n",magDevName);
+	exit(1);
+    }
+    else fdMag=retVal;
+    return 0;
 }
 
-
-int ip320_2GetCal()
+int setupMagnetometer() 
 {
-  byte temp_mode;
-  temp_mode=cblk_320_2.mode;
-  cblk_320_2.mode= AZV; /* auto zero */
-  ainmc320(&cblk_320_2);
-  cblk_320_2.mode= CAL; /* calibration */
-  ainmc320(&cblk_320_2);
-  cblk_320_2.mode=temp_mode;
-  /* really should only do this every so often, */
-  /* and send down the cal constants */
-  return 0;
-}
-
-void dumpArrayValues_1() {
-    int i;
-    printf("Data from %c\n\n",cblk_320_1.slotLetter);
-
-    printf("Channel: ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%d ",ip320_1_s_array[i].chn);
+    int retVal=0;
+    char *setupCommand = "M=C\r\nM=E\r\nB=38400\r\n";
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
     }
-    printf("\n\n");
-    printf("Gain:    ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%d ",ip320_1_s_array[i].gain);
+    else {
+	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+	if(printToScreen)
+	    printf("Sent %d bytes to Magnetometer serial port\n",retVal);
     }
-    printf("\n\n");
-    printf("AVZ:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%X ",ip320_1_az_data[i]);
-    }
-    printf("\n\n");
-    printf("CAL:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%X ",ip320_1_cal_data[i]);
-    }
-    printf("\n\n");
-    printf("RAW:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%X ",ip320_1_raw_data[i]);
-    }
-    printf("\n\n");
-    printf("COR:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%lX ",ip320_1_cor_data[i]);
-    }
-    printf("\n\n");
+    return 0;
 }
 
 
-void dumpArrayValues_2() {
-    int i;
-    printf("Data from %c\n\n",cblk_320_2.slotLetter);
+int sendMagnetometerRequest()
+{
+    int retVal=0;
+    char *sendCommand = "D\r\n";
+    retVal=write(fdMag, sendCommand, strlen(sendCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+	if(printToScreen)
+	    printf("Sent %d bytes to Magnetometer serial port\n",retVal);
+    }
+    return 0;
+}
 
-    printf("Channel: ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%d ",ip320_2_s_array[i].chn);
+
+int checkMagnetometer()
+{
+    char tempData[1024];
+    int retVal=1,i;
+    float x,y,z;
+    int checksum,otherChecksum;
+//    retVal=isThereDataNow(fdMag);
+//    if(retVal!=1) return 0;
+//    retVal=read(fdMag,tempData,1024);
+
+    if(retVal>0) {
+	strcpy(tempData,"0.23456 0.78900 0.23997 4C");
+	sscanf(tempData,"%f %f %f %x",&x,&y,&z,&checksum);
+	printf("%f %f %f %x\n",x,y,z,checksum);
+	otherChecksum=0;
+	for(i=0;i<strlen(tempData);i++) {
+	    if(tempData[i]=='1') otherChecksum+=1;
+	    if(tempData[i]=='2') otherChecksum+=2;
+	    if(tempData[i]=='3') otherChecksum+=3;
+	    if(tempData[i]=='4') otherChecksum+=4;
+	    if(tempData[i]=='5') otherChecksum+=5;
+	    if(tempData[i]=='6') otherChecksum+=6;
+	    if(tempData[i]=='7') otherChecksum+=7;
+	    if(tempData[i]=='8') otherChecksum+=8;	    
+	    if(tempData[i]=='9') otherChecksum+=9;
+	}
+	printf("%x %x\n",checksum,otherChecksum);
     }
-    printf("\n\n");
-    printf("Gain:    ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%d ",ip320_2_s_array[i].gain);
-    }
-    printf("\n\n");
-    printf("AVZ:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%X ",ip320_2_az_data[i]);
-    }
-    printf("\n\n");
-    printf("CAL:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%X ",ip320_2_cal_data[i]);
-    }
-    printf("\n\n");
-    printf("RAW:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%X ",ip320_2_raw_data[i]);
-    }
-    printf("\n\n");
-    printf("COR:     ");
-    for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
-    {
-	printf("%lX ",ip320_2_cor_data[i]);
-    }
-    printf("\n\n");
+    return retVal;
+}
+
+int closeMagnetometer()
+{
+    return close(fdMag);   
 }

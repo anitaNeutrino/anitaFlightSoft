@@ -116,10 +116,47 @@ typedef struct {
 } GpsSatStruct_t;
 
 
+typedef enum {
+    IP320_RAW=0x100,
+    IP320_AVZ=0x200,
+    IP320_CAL=0x300
+} AnalogueCode_t;
+
 typedef struct {
     int unixTime;
     char status;
 } CalibStruct_t;
+
+typedef struct {
+    unsigned short data[CHANS_PER_IP320];
+} AnalogueDataStruct_t;
+
+typedef struct {
+    long data[CHANS_PER_IP320];
+} AnalogueCorrectedDataStruct_t;
+
+typedef struct {
+    AnalogueCode_t code;
+    AnalogueDataStruct_t board[NUM_IP320_BOARDS];
+} FullAnalogueStruct_t;
+
+typedef struct {
+    int temp[2];
+} SBSTemperatureDataStruct_t;
+
+typedef struct {
+    double x;
+    double y;
+    double z;
+} MagnetometerDataStruct_t;
+
+typedef struct {    
+    GenericHeader_t gHdr;
+    long unixTime;
+    FullAnalogueStruct_t ip320;
+    MagnetometerDataStruct_t mag;
+    SBSTemperatureDataStruct_t sbs;
+} HkDataStruct_t;
 
 
 typedef enum {
