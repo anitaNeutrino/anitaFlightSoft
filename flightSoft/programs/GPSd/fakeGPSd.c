@@ -54,7 +54,7 @@ int main (int argc, char *argv[])
     /* Read config file*/
     if (status == CONFIG_E_OK) {
 	strncpy(gpsSubTimeDir,kvpGetString ("gpsdSubTimeDir"),FILENAME_MAX-1);
-	strncpy(gpsSubTimeLinkDir,kvpGetString ("gpsdSubTimeLinkDir"),FILENAME_MAX-1);
+	strncpy(gpsSubTimeLinkDir,kvpGetString ("gpsdSubTimeArchiveLinkDir"),FILENAME_MAX-1);
     }
 
 
@@ -111,7 +111,7 @@ int readAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir, const char *theGps
 		    triggerList[count]->d_name);
 	    removeFile(filename);    
 	}
-	sprintf(filename,"%s/gps_%d.dat",theGpsSubTimeDir,gpsArray[0].unixTime);
+	sprintf(filename,"%s/gps_%d_%d.dat",theGpsSubTimeDir,gpsArray[0].unixTime,gpsArray[0].subTime);
 	pFile = fopen (filename, "w");
 	if(pFile == NULL) {
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);

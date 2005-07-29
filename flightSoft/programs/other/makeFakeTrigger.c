@@ -67,7 +67,7 @@ int main (int argc, char *argv[])
 void randomWaitForNextEvent() {
     /* Minimum gap between events will be 10 ms, maximum 10s */
     double randomNumber=drand48();
-    int numChunks=(int)((randomNumber*1000.0)+0.5); /* Should be *1000.0 */
+    int numChunks=(int)((randomNumber*100.0)+0.5); /* Should be *1000.0 */
     int numMicrosecs,numSecs;
     if(!numChunks) numChunks++;
     numMicrosecs=10000*numChunks;
