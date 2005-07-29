@@ -154,7 +154,7 @@ int main (int argc, char *argv[])
 
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
-//	    checkG12();
+	    checkG12();
 	    checkADU5B();
 	    usleep(1);
 	}
@@ -286,7 +286,8 @@ int setupG12()
 	    g12PPSOffset,ppsEdge);   
     strcat(g12Command,tempCommand); 
     
-
+    if(printToScreen) 
+	fprintf(stderr,"G12:\n%s\n",g12Command);
     retVal=write(fdG12, g12Command, strlen(g12Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
@@ -310,6 +311,7 @@ int checkG12()
     static int g12OutputLength=0;
     static int lastStar=-10;
     retVal=isThereDataNow(fdG12);
+//    usleep(1);
 //    printf("Check G12 got retVal %d\n",retVal);
     if(retVal!=1) return 0;
     retVal=read(fdG12, tempData, G12_DATA_SIZE);
@@ -329,28 +331,6 @@ int checkG12()
 		g12OutputLength=0;
 		lastStar=-10;
 	    }
-	    tempData[i]=0;
-	}
-	
-    }
-    if(retVal>0) {
-	for(i=0; i < retVal; i++) {
-/* 	 printf("%c", data[i]); */
-	    if(tempData[i]=='*' && (retVal-i)>=2) {
-		g12Output[g12OutputLength++]=tempData[i++];
-		g12Output[g12OutputLength++]=tempData[i++];
-		g12Output[g12OutputLength++]=tempData[i++];
-
-/* 	 printf("%d\n",currentIndex); */
-		if(g12OutputLength) {
-		    processG12Output(g12Output,g12OutputLength);
-/* 		 printf("%d\t%s\n",time(NULL),tempBuffer); */
-/* 		 for(i=0; i < DATA_SIZE; i++) tempBuffer[i]=0; */
-		}
-		g12OutputLength=0;
-	    }
-	    g12Output[g12OutputLength++]=tempData[i];
-/* 	 printf("%d\n",currentIndex); */
 	    tempData[i]=0;
 	}
 	
@@ -417,9 +397,11 @@ void processG12Output(char *tempBuffer, int length)
     int tzHour,tzMin;
     time_t rawtime,gpsRawTime;
     struct tm timeinfo;    
+    char unixString[128],otherString[128];
 //    char checksum[3];   
 //    strncpy(gpsString,tempBuffer,length);
-
+    
+//    printf("%s\n",tempBuffer);
     for(count=0;count<length;count++) {
 	if(gpsLength) gpsString[gpsLength++]=tempBuffer[count];
 	else if(tempBuffer[count]=='$') 
@@ -497,13 +479,13 @@ void processG12Output(char *tempBuffer, int length)
 	gpsRawTime=mktime(&timeinfo);
 	time ( &rawtime );
 // 	printf("%d\t%d\n",rawtime,gpsRawTime); 
-//	strncpy(otherString,ctime(&gpsRawTime),179);	    
-//	strncpy(unixString,ctime(&rawtime),179);
+	strncpy(otherString,ctime(&gpsRawTime),179);	    
+	strncpy(unixString,ctime(&rawtime),179);
 //	printf("%s%s\n",unixString,otherString);
 	if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock) {
 	    updateClockFromG12(gpsRawTime);
 	}
-	writeG12TimeFile(rawtime,gpsRawTime,gpsCopy);
+//	writeG12TimeFile(rawtime,gpsRawTime,gpsCopy);
 	    
     }
 
@@ -579,7 +561,8 @@ void processTTTString(char *gpsString, int gpsLength) {
     strncpy(gpsCopy,gpsString,gpsLength);
     GpsSubTime_t theTTT;
     int day,hour,min,sec,subSecond,retVal;
-    time_t rawtime;
+    time_t rawtime,gpstime;  
+//    char unixString[128],otherString[128];
     struct tm * timeinfo;
     time ( &rawtime );
     
@@ -591,17 +574,22 @@ void processTTTString(char *gpsString, int gpsLength) {
     timeinfo = localtime ( &rawtime );
 //    printf("Days: %d %d\n",timeinfo->tm_wday,day);
     if(timeinfo->tm_wday+1!=day) {
-	addDay(timeinfo);
+//	addDay(timeinfo);
     }
     timeinfo->tm_hour=hour;
-    timeinfo->tm_min=min;
+    timeinfo->tm_min=min;	    
     timeinfo->tm_sec=sec;
-    rawtime=mktime(timeinfo);
-	
-    theTTT.unixTime=rawtime;
+    gpstime=mktime(timeinfo);
+    gpstime-=LEAP_SECONDS;
+//    strncpy(unixString,ctime(&rawtime),127);
+//    strncpy(otherString,ctime(&gpstime),127);
+//    printf("%ld %ld\n",rawtime,gpstime);
+//    printf("Seconds: %d %d\n",oldSec,sec);
+//    printf("***************************\n%s%s**********************\n",unixString,otherString);
+    theTTT.unixTime=gpstime;
     //Must insert check here that unixTime and gpsTime coincide
     theTTT.subTime=subSecond;
-    sprintf(filename,"%s/gps_%d.dat",gpsSubTimeDir,theTTT.unixTime);
+    sprintf(filename,"%s/gps_%d_%d.dat",gpsSubTimeDir,theTTT.unixTime,theTTT.subTime);
     writeGPSTTT(&theTTT,filename);
 //    %d %d
 //    printf("%s %s\n",filename,gpsSubTimeLinkDir);
@@ -862,6 +850,7 @@ int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output)
     }
 //    printf("%ld %ld %s\n",compTime,gpsTime,g12Output);
     retVal=fprintf(fpG12,"%ld %ld %s\n",compTime,gpsTime,g12Output); 
+//    printf(
     fclose(fpG12); 
     return retVal;
 }

@@ -28,7 +28,7 @@ typedef enum {
 typedef struct {
     PacketCode_t code;
 } GenericHeader_t;
-      
+
 // TURFIO data structure, TV test
 typedef struct {
     unsigned short rawtrig; // raw trigger number
@@ -60,7 +60,7 @@ typedef struct {
 typedef struct {
     int eventNumber;    /* Global event number */
     int unixTime;       /* unix UTC sec*/
-    int unixTimeMs;     /* unix UTC msec */
+    int unixTimeUs;     /* unix UTC microsec */
     int gpsSubTime;     /* the GPS fraction of second (in ns) (for the one event per second that gets tagged with it */
     short numChannels;  /* In case we turn part of array off, or whatever. */
     short numSamples;   /* total number of samples per waveform == 256*/

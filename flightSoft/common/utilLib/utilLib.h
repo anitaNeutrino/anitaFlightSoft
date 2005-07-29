@@ -31,7 +31,7 @@ int filterOnDats(const struct dirent *dir);
 int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
 
 /* Time stuff */
-int addDay(struct tm *timeinfo);
+void addDay(struct tm *timeinfo);
 
 
 /* IO routines for inter-process communication */

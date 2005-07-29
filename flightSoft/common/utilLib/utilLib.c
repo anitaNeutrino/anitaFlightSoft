@@ -187,26 +187,21 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 }
 
 
-int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename)
+int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
 {
     /* Takes a pointer to the next struct in the array */
     /* Returns number of lines read*/
-    int numLines=0;
-    FILE * pFile;
-    int unixTime,subTime;
     
-    pFile = fopen (filename, "r");
-    if(pFile == NULL) {
-	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
-	return 0;
+    int numObjs;
+    FILE *pFILE = fopen (filename, "rb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
     }
-    while(fscanf(pFile,"%d %d",&unixTime,&subTime)!=EOF) {
-	theGpsStruct[numLines].unixTime=unixTime;
-	theGpsStruct[numLines].subTime=subTime;	
-	numLines++;
-    }
-    fclose (pFile); 
-    return numLines;
+    numObjs=fread(tttPtr,sizeof(GpsSubTime_t),1,pFILE);
+    fclose(pFILE);
+    if(numObjs==1) return 0;
+    return 1;
 }
 
 
@@ -324,7 +319,7 @@ void writePidFile(char *fileName)
     fclose(fpPid) ;
 }
 
-int addDay(struct tm *timeinfo) {
+void addDay(struct tm *timeinfo) {
     //Must do leap year check
     int year=timeinfo->tm_year;
     int isLeap=((year) % 4 == 0 && ((year) % 100 != 0 || (year) % 400 == 0));

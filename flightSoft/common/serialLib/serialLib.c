@@ -118,8 +118,8 @@ int setMagnetometerTerminalOptions(int fd)
 	return -1;
     }
 
-    cfsetispeed(&options, GPS_BAUDRATE);    /* set input speed */
-    cfsetospeed(&options, GPS_BAUDRATE);    /* set output speed */
+    cfsetispeed(&options, MAGNETOMETER_BAUDRATE);    /* set input speed */
+    cfsetospeed(&options, MAGNETOMETER_BAUDRATE);    /* set output speed */
 
     options.c_cflag &= ~PARENB;         /* clear the parity bit  */
     options.c_cflag &= ~CSTOPB;         /* clear the stop bit  */
