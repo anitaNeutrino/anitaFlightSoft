@@ -47,7 +47,7 @@ typedef enum __SURF_control_act {
 } SurfControlAction ;
 
 typedef enum __TURF_control_act { 
-    RstTurf,
+    RprgTurf,
     ClrTrg
 } TurfControlAction ;
 

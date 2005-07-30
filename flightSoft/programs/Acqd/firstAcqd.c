@@ -65,7 +65,9 @@ int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
 int doDacCycle = TRUE; /* Do a cycle of the DAC values */
 int printStatistics = FALSE;
-int rstturf = FALSE ;
+int dontWaitForEvtF = FALSE;
+int dontWaitForLabF = FALSE;
+int rprgturf = TRUE ;
 
 
 int main(int argc, char **argv) {
@@ -120,16 +122,20 @@ int main(int argc, char **argv) {
 	return -1 ;
     }
 
-
+//    clearDevices(surfHandles,turfioHandle);
+//    setTurfControl(turfioHandle,RprgTurf);
+//    setTurfControl(turfioHandle,ClrTrg);
+//    exit(0);
 /* special initialization of TURF.  may not be necessary.  12-Jul-05 SM. */
-    if (rstturf) {
-	setTurfControl(turfioHandle,RstTurf) ;
+    if (rprgturf) {
+	setTurfControl(turfioHandle,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
     
     // Clear devices 
     clearDevices(surfHandles,turfioHandle);
 //    exit(0);
+
     
     do {
 	retVal=readConfigFile();
@@ -158,18 +164,26 @@ int main(int argc, char **argv) {
 	    }
 	    /* Wait for ready to read (Evt_F) */
 	    tmo=0;
-	    if(verbosity && printToScreen) printf("Waiting for Evt_F on SURF 1-1\n");
-	    while (!((tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc)) & EVT_F) && (selftrig?(++tmo<N_TMO):1)){
-		if(verbosity>3 && printToScreen) 
-		    printf("SURF 1 GPIO: 0x%x %d\n",tmpGPIO,tmpGPIO);
-		usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
-	    }
 	    
-	    if (tmo == N_TMO){
-		syslog(LOG_WARNING,"Timed out waiting for Evt_F flag");
-	    if(printToScreen)
-		printf(" Timed out (%d ms) while waiting for Evt_F flag in self trigger mode.\n", N_TMO) ;
-	    continue;
+	    if(!dontWaitForEvtF) {
+
+		if(verbosity && printToScreen) printf("Waiting for Evt_F on SURF 1-1\n");
+		while (!((tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc)) & EVT_F) && (selftrig?(++tmo<N_TMO):1)){
+		    if(verbosity>3 && printToScreen) 
+			printf("SURF 1 GPIO: 0x%x %d\n",tmpGPIO,tmpGPIO);
+		    usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
+		}
+		
+		if (tmo == N_TMO){
+		    syslog(LOG_WARNING,"Timed out waiting for Evt_F flag");
+		    if(printToScreen)
+			printf(" Timed out (%d ms) while waiting for Evt_F flag in self trigger mode.\n", N_TMO) ;
+		    continue;
+		}
+	    }
+	    else {
+		printf("Didn't wait for Evt_F\n");
+		sleep(1);
 	    }
 	    
 	    gettimeofday(&timeStruct,NULL);
@@ -253,8 +267,8 @@ char *surfControlActionAsString(SurfControlAction action) {
 char *turfControlActionAsString(SurfControlAction action) {
     char* string ;
     switch(action) {
-	case RstTurf :
-	    string = "RstTurf" ;
+	case RprgTurf :
+	    string = "RprgTurf" ;
 	    break ;
 	case ClrTrg :
 	    string = "ClrTrg" ;
@@ -320,20 +334,23 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction action)
 
 PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction action) {
 
+    //These numbers are octal
     U32 base_clr = 000000022 ;
-    U32 rst_turf = 000000004 ;
+    U32 rprg_turf = 000000004 ;
     U32 clr_trg  = 000000040 ; 
 
     U32           gpio_v ;
     PlxReturnCode_t   rc ;
     int i ;
 
+//    printf("Dec: %d %d %d\nHex: %x %x %x\nOct: %o %o %o\n",base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg);
+//    exit(0);
     // Read current GPIO state
     //base_v=PlxRegisterRead(PlxHandle, PCI9030_GP_IO_CTRL, &rc) ; 
     //base_v=base_clr; // Gary's said this should be default PM 03-31-05
 
     switch (action) {
-	case RstTurf : gpio_v = base_clr | rst_turf ; break ;
+	case RprgTurf : gpio_v = base_clr | rprg_turf ; break ;
 	case ClrTrg : gpio_v = base_clr | clr_trg ; break ; 
 	default :
 	    syslog(LOG_WARNING,"setTurfControl: undefined action %d",action);
@@ -343,8 +360,8 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction actio
     }
 
     if (verbosity && printToScreen) 
-	printf("setTurfControl: action %s, gpio_v = %x\n", 
-	       turfControlActionAsString(action), gpio_v) ; 
+	printf("setTurfControl: action %s, gpio_v = %x (dec: %d, oct: %o)\n", 
+	       turfControlActionAsString(action), gpio_v,gpio_v,gpio_v) ; 
 
     if ((rc = PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, gpio_v ))
 	!= ApiSuccess) {
@@ -354,7 +371,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction actio
 	return rc ;
     }
 
-    if (action == RstTurf)  /* wait a while in case of RstTurf. */
+    if (action == RprgTurf)  /* wait a while in case of RprgTurf. */
 	for(i=0 ; i++<10 ; usleep(1)) ;
 
     return PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, base_clr ) ;
@@ -509,8 +526,9 @@ int readConfigFile()
 
     kvpReset();
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status &= configLoad ("Acqd.config","output") ;
-    status &= configLoad ("Acqd.config","locations") ;
+    status += configLoad ("Acqd.config","output") ;
+    status += configLoad ("Acqd.config","locations") ;
+    status += configLoad ("Acqd.config","debug") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
 	tempString=kvpGetString ("acqdEventDir");
@@ -531,6 +549,9 @@ int readConfigFile()
 	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
 //	printf("Debug rc2\n");
 	printToScreen=kvpGetInt("printToScreen",0);
+	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
+	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
+//	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
 	writeData=kvpGetInt("writeData",1);
 	verbosity=kvpGetInt("verbosity",0);
@@ -735,7 +756,7 @@ int init_param(int argn, char **argv, char *directory, int *n, int *dacVal) {
 		case 'w': writeData = TRUE; break;
 		case 'c': doDacCycle = TRUE; break;
 		case 'a': *dacVal=atoi(*(++argv)) ; --argn ; break ;
-		case 'r': rstturf = TRUE ; break ;
+		case 'r': rprgturf = TRUE ; break ;
 		case 'd': strncpy(directory,*(++argv),FILENAME_MAX);
 		    --argn ; break ;
 		case 'n': sscanf(*(++argv), "%d", n) ;
@@ -1085,20 +1106,23 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	}
 
 	// Wait for Lab_F
-	ftmo=0;
-	int testVal=0;
-	if(verbosity && printToScreen) printf("SURF %d, waiting for Lab_F\n",surf);
-	testVal=PlxRegisterRead(surfHandles[surf],PCI9030_GP_IO_CTRL, &rc);
-	while(!(testVal & LAB_F) && (++ftmo<N_FTMO)){
-	    usleep(1); // RJN/GV changed from usleep(1000)
-	    testVal=PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc);
-	}       
-	if (ftmo == N_FTMO){
-	    syslog(LOG_WARNING,"No Lab_F flag, bailing");
-	    if(printToScreen)
-		printf("No Lab_F flag for %d ms, bailing on the event\n",N_FTMO);
-	    continue;
+	if(!dontWaitForLabF) {
+	    ftmo=0;
+	    int testVal=0;
+	    if(verbosity && printToScreen) printf("SURF %d, waiting for Lab_F\n",surf);
+	    testVal=PlxRegisterRead(surfHandles[surf],PCI9030_GP_IO_CTRL, &rc);
+	    while(!(testVal & LAB_F) && (++ftmo<N_FTMO)){
+		usleep(1); // RJN/GV changed from usleep(1000)
+		testVal=PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc);
+	    }       
+	    if (ftmo == N_FTMO){
+		syslog(LOG_WARNING,"No Lab_F flag, bailing");
+		if(printToScreen)
+		    printf("No Lab_F flag for %d ms, bailing on the event\n",N_FTMO);
+		continue;
+	    }
 	}
+	else printf("Didn't wait for Lab_F\n");
       
 	//      Read LABRADOR data
 	//      int firstTime=1;
