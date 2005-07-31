@@ -25,6 +25,7 @@ void makeDirectories(char *theTmpDir);
 int is_dir(const char *path);
 int makeLink(const char *theFile, const char *theLinkDir);
 int moveFile(const char *theFile, const char *theDir);
+int copyFile(const char *theFile, const char *theDir);
 int removeFile(const char *theFile);
 int filterHeaders(const struct dirent *dir);
 int filterOnDats(const struct dirent *dir);

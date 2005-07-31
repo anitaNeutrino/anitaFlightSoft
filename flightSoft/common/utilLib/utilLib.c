@@ -78,6 +78,19 @@ int moveFile(const char *theFile, const char *theDir)
 }
 
 
+int copyFile(const char *theFile, const char *theDir)
+{
+    char theCommand[2*FILENAME_MAX];
+    int retVal;
+    sprintf(theCommand,"cp %s %s",theFile,theDir);
+    retVal=system(theCommand);
+    if(retVal!=0) {
+	syslog(LOG_ERR,"%s returned %d",theCommand,retVal);
+    }
+    return retVal;    
+}
+
+
 int removeFile(const char *theFile)
 {
     char theCommand[FILENAME_MAX];

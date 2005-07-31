@@ -30,14 +30,35 @@ typedef struct {
 } GenericHeader_t;
 
 // TURFIO data structure, TV test
+/* typedef struct { */
+/*     unsigned short rawtrig; // raw trigger number */
+/*     unsigned short L3Atrig; // same as raw trig */
+/*     unsigned long pps1;     // 1PPS */
+/*     unsigned long time;     // trig time */
+/*     unsigned long interval; // interval since last trig */
+/*     unsigned int rate[2][4]; // Antenna trigger output rates (Hz) */
+/* } TurfioStruct_t; */
+
 typedef struct {
-    unsigned short rawtrig; // raw trigger number
-    unsigned short L3Atrig; // same as raw trig
-    unsigned long pps1;     // 1PPS
-    unsigned long time;     // trig time
-    unsigned long interval; // interval since last trig
-    unsigned int rate[2][4]; // Antenna trigger output rates (Hz)
+    unsigned char otherBits;
+    unsigned char trigType;
+    unsigned char trigNumByte1;
+    unsigned char trigNumByte2;
+    unsigned char trigNumByte3;
+    unsigned char trigTimeByte1;
+    unsigned char trigTimeByte2;
+    unsigned char trigTimeByte3;
+    unsigned char trigTimeByte4;
+    unsigned char ppsNumByte1;
+    unsigned char ppsNumByte2;
+    unsigned char ppsNumByte3;
+    unsigned char ppsNumByte4;
+    unsigned char c3poByte1;
+    unsigned char c3poByte2;
+    unsigned char c3poByte3;
+    unsigned char c3poByte4;
 } TurfioStruct_t;
+    
   
 
 typedef struct {

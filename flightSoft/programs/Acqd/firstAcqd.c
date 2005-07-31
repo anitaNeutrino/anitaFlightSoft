@@ -67,8 +67,13 @@ int doDacCycle = TRUE; /* Do a cycle of the DAC values */
 int printStatistics = FALSE;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
-int rprgturf = TRUE ;
+int rprgturf = FALSE ;
 
+//Trigger Modes
+int rfTrigFlag = 0;
+int pps1TrigFlag = 0;
+int pps2TrigFlag = 0;
+int softTrigFlag = 0;
 
 int main(int argc, char **argv) {
     
@@ -80,6 +85,7 @@ int main(int argc, char **argv) {
     AcqdErrorCode_t status=ACQD_E_OK;
     int retVal=0;
     unsigned short  dataWord=0;
+    TriggerMode_t trigMode=TrigNone;
 // Read only one chip per trigger. PM
 
     int i=0,tmo=0; 
@@ -124,11 +130,11 @@ int main(int argc, char **argv) {
 
 //    clearDevices(surfHandles,turfioHandle);
 //    setTurfControl(turfioHandle,RprgTurf);
-//    setTurfControl(turfioHandle,ClrTrg);
+//    setTurfControl(turfioHandle,TurfClearEvent);
 //    exit(0);
 /* special initialization of TURF.  may not be necessary.  12-Jul-05 SM. */
     if (rprgturf) {
-	setTurfControl(turfioHandle,RprgTurf) ;
+	setTurfControl(turfioHandle,TrigNone,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
     
@@ -145,6 +151,38 @@ int main(int argc, char **argv) {
 	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	    return -1;
 	}
+
+	// Set trigger modes
+	trigMode=TrigNone;
+	if(rfTrigFlag) trigMode+=TrigRF;
+	if(pps1TrigFlag) trigMode+=TrigPPS1;
+	if(pps2TrigFlag) trigMode+=TrigPPS2;
+	if(softTrigFlag) trigMode+=TrigSoft;
+	setTurfControl(turfioHandle,trigMode,SetTrigMode);
+/* 	if(pps1TrigFlag) { */
+/* 	    if (setTurfControl(turfioHandle, EnablePPS1Trig) != ApiSuccess) { */
+/* 		syslog(LOG_ERR,"Failed to enable PPS1 Trigger on TURF"); */
+/* 		if(printToScreen) */
+/* 		    fprintf(stderr,"Failed to enable PPS1 Trigger on TURF"); */
+/* 	    } */
+/* 	} */
+/* 	if(pps2TrigFlag) { */
+/* 	    if (setTurfControl(turfioHandle, EnablePPS2Trig) != ApiSuccess) { */
+/* 		syslog(LOG_ERR,"Failed to enable PPS2 Trigger on TURF"); */
+/* 		if(printToScreen) */
+/* 		    fprintf(stderr,"Failed to enable PPS2 Trigger on TURF"); */
+/* 	    } */
+/* 	} */
+/* 	if(softTrigFlag) { */
+/* 	    if (setTurfControl(turfioHandle, EnableSoftTrig) != ApiSuccess) { */
+/* 		syslog(LOG_ERR,"Failed to enable Software Trigger on TURF"); */
+/* 		if(printToScreen) */
+/* 		    fprintf(stderr,"Failed to enable Software Trigger on TURF"); */
+/* 	    } */
+/* 	} */
+	
+
+
 //    printf("Before Event Loop %d %d\n",doingEvent,n_ev);
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
@@ -162,13 +200,15 @@ int main(int argc, char **argv) {
 			    printf("Failed to set LTrig flag on SURF %d.\n",surf);
 		    }
 	    }
+
+//	    setTurfControl(turfioHandle,trigMode,SendSoftTrg);
 	    /* Wait for ready to read (Evt_F) */
 	    tmo=0;
 	    
 	    if(!dontWaitForEvtF) {
 
 		if(verbosity && printToScreen) printf("Waiting for Evt_F on SURF 1-1\n");
-		while (!((tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc)) & EVT_F) && (selftrig?(++tmo<N_TMO):1)){
+		while (!((tmpGPIO=PlxRegisterRead(surfHandles[1], PCI9030_GP_IO_CTRL, &rc)) & EVT_F) && (selftrig?(++tmo<N_TMO):1)){
 		    if(verbosity>3 && printToScreen) 
 			printf("SURF 1 GPIO: 0x%x %d\n",tmpGPIO,tmpGPIO);
 		    usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
@@ -200,8 +240,9 @@ int main(int argc, char **argv) {
 		    theEvent.header.unixTime=timeStruct.tv_sec;
 		    theEvent.header.unixTimeUs=timeStruct.tv_usec;
 		    theEvent.header.eventNumber=getEventNumber();
+		    long tempTime=(theEvent.header.turfio.trigTimeByte1+(theEvent.header.turfio.trigTimeByte2>>8)+(theEvent.header.turfio.trigTimeByte3>>16)+(theEvent.header.turfio.trigTimeByte3>>24));
 		    if(printToScreen) 
-			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%ld\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.time);
+			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%ld\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,tempTime);
 		// Save data
 		if(writeData){
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
@@ -212,11 +253,11 @@ int main(int argc, char **argv) {
 	    
 	    // Clear boards
 	    for(surf=0;surf<numSurfs;++surf)
-		if (setSurfControl(surfHandles[surf], ClrEvt) != ApiSuccess)
+		if (setSurfControl(surfHandles[surf], SurfClearEvent) != ApiSuccess)
 		    printf("  failed to send clear event pulse on SURF %d.\n",surf) ;
 	    
 	    if(!surfonly)
-		if (setTurfControl(turfioHandle, ClrTrg) != ApiSuccess)
+		if (setTurfControl(turfioHandle, trigMode,TurfClearEvent) != ApiSuccess)
 		    printf("  failed to send clear event pulse on TURFIO.\n") ;
 	    
 	    
@@ -233,14 +274,14 @@ int main(int argc, char **argv) {
 
 
 //Control Fucntions
-char *surfControlActionAsString(SurfControlAction action) {
+char *surfControlActionAsString(SurfControlAction_t action) {
     char* string ;
     switch(action) {
-	case ClrAll :
-	    string = "ClrAll" ;
+	case SurfClearAll :
+	    string = "SurfClearAll" ;
 	    break ;
-	case ClrEvt :
-	    string = "ClrEvt" ;
+	case SurfClearEvent :
+	    string = "SurfClearEvent" ;
 	    break ;
 	case LTrig :
 	    string = "LTrig" ;
@@ -264,15 +305,36 @@ char *surfControlActionAsString(SurfControlAction action) {
     return string;
 }
 
-char *turfControlActionAsString(SurfControlAction action) {
+char *turfControlActionAsString(SurfControlAction_t action) {
     char* string ;
     switch(action) {
+	case SetTrigMode :
+	    string = "SetTrigMode" ;
+	    break ;
 	case RprgTurf :
 	    string = "RprgTurf" ;
 	    break ;
-	case ClrTrg :
-	    string = "ClrTrg" ;
+	case TurfClearEvent :
+	    string = "TurfClearEvent" ;
 	    break ;
+	case SendSoftTrg : 
+	    string = "SendSoftTrg" ;
+	    break;	    
+	case EnableRfTrg : 
+	    string = "EnableRfTrg" ;
+	    break;
+	case EnablePPS1Trig : 
+	    string = "EnablePPS1Trig";
+	    break;
+	case EnablePPS2Trig : 
+	    string = "EnablePPS2Trig";
+	    break;
+	case EnableSoftTrig : 
+	    string = "EnableSoftTrig";
+	    break;
+	case TurfClearAll : 
+	    string = "TurfClearAll";
+	    break;
 	default :
 	    string = "Unknown" ;
 	    break ;
@@ -280,8 +342,9 @@ char *turfControlActionAsString(SurfControlAction action) {
     return string;
 }
 
-PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction action)
+PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t action)
 {
+    //These numbers are octal
     U32 base_clr= 0222200222 ;
     U32 clr_evt = 0000000040 ;
     U32 clr_all = 0000000400 ;  
@@ -299,8 +362,8 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction action)
     //  base_v=base_clr; // Gary's said this should be default PM 03-31-05
 
     switch (action) {
-	case ClrAll : gpio_v = base_clr | clr_all  ; break ; /* RJN changed base_v */
-	case ClrEvt : gpio_v = base_clr | clr_evt  ; break ; /* to base_clr */
+	case SurfClearAll : gpio_v = base_clr | clr_all  ; break ; /* RJN changed base_v */
+	case SurfClearEvent : gpio_v = base_clr | clr_evt  ; break ; /* to base_clr */
 	case LTrig  : gpio_v = base_clr | loc_trg  ; break ;
 	case EvNoD  : gpio_v = base_clr | evn_done ; break ; 
 	case LabD   : gpio_v = base_clr | lab_done ; break ;
@@ -332,14 +395,20 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction action)
 }
 
 
-PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction action) {
+PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TriggerMode_t trigMode, TurfControlAction_t action) {
 
     //These numbers are octal
-    U32 base_clr = 000000022 ;
-    U32 rprg_turf = 000000004 ;
-    U32 clr_trg  = 000000040 ; 
+    U32 base_clr         = 0022222222 ;
+    U32 rprg_turf        = 0000000004 ;
+    U32 clear_event      = 0000000040 ; 
+    U32 send_soft_trig   = 0000000400 ;
+    U32 enable_rf_trig   = 0000004000 ;
+    U32 enable_pps1_trig = 0000040000 ; //Real PPS from ADU5
+    U32 enable_pps2_trig = 0000400000 ; //Burst PPS up to 20Hz from G123
+    U32 enable_soft_trig = 0004000000 ;
+    U32 clear_all        = 0040000000 ;
 
-    U32           gpio_v ;
+    U32           gpio_v,base_v ;
     PlxReturnCode_t   rc ;
     int i ;
 
@@ -348,10 +417,24 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction actio
     // Read current GPIO state
     //base_v=PlxRegisterRead(PlxHandle, PCI9030_GP_IO_CTRL, &rc) ; 
     //base_v=base_clr; // Gary's said this should be default PM 03-31-05
+    
+    base_v=base_clr;
+    if(trigMode&TrigRF) base_v |= enable_rf_trig;
+    if(trigMode&TrigPPS1) base_v |= enable_pps1_trig;
+    if(trigMode&TrigPPS2) base_v |= enable_pps2_trig;
+    if(trigMode&TrigSoft) base_v |= enable_soft_trig;
 
     switch (action) {
-	case RprgTurf : gpio_v = base_clr | rprg_turf ; break ;
-	case ClrTrg : gpio_v = base_clr | clr_trg ; break ; 
+	case SetTrigMode : gpio_v =base_v; break;
+	case RprgTurf : gpio_v = base_v | rprg_turf ; break ;
+	case TurfClearEvent : gpio_v = base_v | clear_event ; break ; 
+	case SendSoftTrg : gpio_v = base_v | send_soft_trig ; break ;
+	case EnableRfTrg : gpio_v = base_v | enable_rf_trig ; break ;
+	case EnablePPS1Trig : gpio_v = base_v | enable_pps1_trig ; break ;
+	case EnablePPS2Trig : gpio_v = base_v | enable_pps2_trig ; break ;
+	case EnableSoftTrig : gpio_v = base_v | enable_soft_trig ; break ;
+	case TurfClearAll : gpio_v = base_v | clear_all ; break ;
+	    
 	default :
 	    syslog(LOG_WARNING,"setTurfControl: undefined action %d",action);
 	    if(printToScreen)
@@ -374,7 +457,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction actio
     if (action == RprgTurf)  /* wait a while in case of RprgTurf. */
 	for(i=0 ; i++<10 ; usleep(1)) ;
 
-    return PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, base_clr ) ;
+    return PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, base_v ) ;
 
 }
 
@@ -529,6 +612,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","output") ;
     status += configLoad ("Acqd.config","locations") ;
     status += configLoad ("Acqd.config","debug") ;
+    status += configLoad ("Acqd.config","trigger") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
 	tempString=kvpGetString ("acqdEventDir");
@@ -556,6 +640,10 @@ int readConfigFile()
 	writeData=kvpGetInt("writeData",1);
 	verbosity=kvpGetInt("verbosity",0);
 	printStatistics=kvpGetInt("printStatistics",0);
+	rfTrigFlag=kvpGetInt("enableRFTrigger",1);
+	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
+	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
+	softTrigFlag=kvpGetInt("enableSoftTrigger",1);
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
@@ -648,7 +736,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	if(printToScreen)
 	    printf(" GPIO register contents SURF %d = %x\n",i,
 		   PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc)) ; 
-	if (setSurfControl(surfHandles[i], ClrAll) != ApiSuccess) {
+	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",i) ;
 	    if(printToScreen)
 		printf("Failed to send clear all event pulse on SURF %d.\n",i);
@@ -678,8 +766,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 			     PlxRegisterRead(turfioHandle, 
 					     PCI9030_GP_IO_CTRL, &rc)) ; 
 
-    //printf(" Try to write 9030 GPIO.\n") ;
-    if (setTurfControl(turfioHandle, ClrTrg) != ApiSuccess) {
+    if (setTurfControl(turfioHandle,TrigNone, TurfClearAll) != ApiSuccess) {
 	syslog(LOG_ERR,"Failed to send clear pulse on TURF %d.\n",i) ;
 	if(printToScreen)
 	    printf("  failed to send clear pulse on TURF %d.\n",i) ;
@@ -791,9 +878,9 @@ void setDACThresholds(PlxHandle_t *surfHandles,  int threshold) {
     // Copy what Jing does at start of her program
     // Will probably remove this at some point
     /*     for(i=0;i<numDevices-1;++i) { */
-    /* 	if (setSurfControl(surfHandles[i], ClrEvt) != ApiSuccess) */
+    /* 	if (setSurfControl(surfHandles[i], SurfClearEvent) != ApiSuccess) */
     /* 	    printf("  failed to send clear event pulse on SURF %d.\n",i); */
-    /* 	if (setSurfControl(surfHandles[i], ClrAll) != ApiSuccess) */
+    /* 	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) */
     /* 	    printf("  failed to send clear all pulse on SURF %d.\n",i); */
     /*     } */
 
@@ -896,7 +983,7 @@ PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned short *dataWord)
 
 void calculateStatistics() {
 
-    static float mean_dt=0;
+//    static float mean_dt=0;
     static float mean_rms[MAX_SURFS][N_CHIP][N_CHAN];
     static double chanMean[MAX_SURFS][N_CHIP][N_CHAN];
     static double chanMeanSqd[MAX_SURFS][N_CHIP][N_CHAN];
@@ -918,16 +1005,6 @@ void calculateStatistics() {
 	firstTime=0;
     }
   
-
-	// Some Trigger performance indicators
-	if(!surfonly){
-	    mean_dt=mean_dt*(doingEvent-1)/doingEvent+(float)theEvent.header.turfio.interval/doingEvent;
-	    //      printf("\n\n Trig no: %hu, trig time: %lu, 1PPS: %lu, dt: %lu\n",theEvent.header.turfio.rawtrig,
-	    //	     theEvent.header.turfio.time,theEvent.header.turfio.pps1,theEvent.header.turfio.interval);
-	    //      printf("mean dt: %f\n",mean_dt);
-	}else{
-	    //      printf("Event no: %d\n",evNo);
-	}
 
 
 	// Calculate mean,rms,std dev
@@ -1064,10 +1141,12 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     PlxReturnCode_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned short  dataWord=0;
+    unsigned char turfDataWord=0;
+    unsigned char turfOtherWord=0;
     unsigned short  evNo=0;
 // Read only one chip per trigger. PM
 
-    int i=0, j, ftmo=0;
+    int i=0, ftmo=0;
     int surf,chan,samp,rf;
 
 
@@ -1227,45 +1306,101 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    if(printToScreen)
 		printf("Failed to read TURF IO port. Burn read.\n");
 	}
-	theEvent.header.turfio.interval=0;
-	theEvent.header.turfio.time=10;
-	theEvent.header.turfio.rawtrig=10;
-	for (j=0 ; j<16 ; j++) { // Loop 16 times over return structure
-	    for (i=0; i<16 ; i++) {
-		if (readPlxDataWord(turfioHandle,&dataWord)
+
+	for(i=0;i<256;i++) {
+	    if (readPlxDataWord(turfioHandle,&dataWord)
 		    != ApiSuccess) {
 		    //Once more need a method of failure tracking
 		    status=ACQD_E_PLXBUSREAD;		
-		    syslog(LOG_ERR,"Failed to read TURFIO loop %d, word %d",j,i);
+		    syslog(LOG_ERR,"Failed to read TURFIO word %d",i);
 		    if(printToScreen)			    
-			printf("Failed to read TURF IO port. loop %d, word %d.\n",j,i) ;
-		}
-		// Need to byteswap TURFIO words. This might get changed in hardware, so beware. PM 04/01/05
-		dataWord=byteSwapUnsignedShort(dataWord);
-		if(((verbosity>2 && j==0) || verbosity>3) && printToScreen)
-		    printf("TURFIO %d (%d): %hu\n",i,j,dataWord);
-		if(j==0){ //Interpret on the first pass only
-		    switch(i){
-			case 0: theEvent.header.turfio.rawtrig=dataWord; break;
-			case 1: theEvent.header.turfio.L3Atrig=dataWord; break;
-			case 2: theEvent.header.turfio.pps1=dataWord; break;
-			case 3: theEvent.header.turfio.pps1+=dataWord*65536; break;
-			case 4: theEvent.header.turfio.time=dataWord; break;
-			case 5: theEvent.header.turfio.time+=dataWord*65536; break;
-			case 6: theEvent.header.turfio.interval=dataWord; break;
-			case 7: theEvent.header.turfio.interval+=dataWord*65536; break;
-			default: theEvent.header.turfio.rate[i/4-2][i%4]=dataWord; break;
-		    }
-		}
+			printf("Failed to read TURF IO port. word %d.\n",i) ;
 	    }
+	    turfDataWord=dataWord>>8;
+	    turfOtherWord=dataWord&0xff;
+	    if(i==10) printf("Event %d\n",evNo);
+	    if(i>=10 && i<=18) printf("%d\t%#x\t%#x\t%#x\n",i,dataWord,turfDataWord,turfOtherWord); 
+	    if(verbosity) 
+//	    if(verbosity) printf("%#x\t%#x\t%#x\n",turfDataWord,turfOtherWord); 
+	    switch(i){
+		case 0: 
+		    theEvent.header.turfio.trigType=turfDataWord; 
+		    break;
+		case 1:
+		    theEvent.header.turfio.trigNumByte1=turfDataWord; 
+		    break;
+		case 2: 
+		    theEvent.header.turfio.trigNumByte2=turfDataWord; 
+		    break;
+		case 3: 
+		    theEvent.header.turfio.trigNumByte3=turfDataWord; 
+		    break;
+		case 4: 
+		    theEvent.header.turfio.trigTimeByte1=turfDataWord; 
+		    break;
+		case 5: 
+		    theEvent.header.turfio.trigTimeByte2=turfDataWord; 
+		    break;
+		case 6: 
+		    theEvent.header.turfio.trigTimeByte3=turfDataWord; 
+		    break;
+		case 7: 
+		    theEvent.header.turfio.trigTimeByte4=turfDataWord; 
+		    break;
+		case 8: 
+		    theEvent.header.turfio.ppsNumByte1=turfDataWord; 
+		    break;
+		case 9: 
+		    theEvent.header.turfio.ppsNumByte2=turfDataWord; 
+		    break;
+		case 10: 
+		    theEvent.header.turfio.ppsNumByte3=turfDataWord; 
+		    break;
+		case 11: 
+		    theEvent.header.turfio.ppsNumByte4=turfDataWord; 
+		    break;
+		case 12: 
+		    theEvent.header.turfio.c3poByte1=turfDataWord; 
+		    break;
+		case 13: 
+		    theEvent.header.turfio.c3poByte2=turfDataWord; 
+		    break;
+		case 14: 
+		    theEvent.header.turfio.c3poByte3=turfDataWord; 
+		    break;
+		case 15: 
+		    theEvent.header.turfio.c3poByte4=turfDataWord; 
+		    break;
+		default: 
+		    break;
+	    }
+	    
 	}
-	if(verbosity && printToScreen){
-	    printf("raw: %hu\nL3A: %hu\n1PPS: %lu\ntime: %lu\nint: %lu\n",
-		   theEvent.header.turfio.rawtrig,theEvent.header.turfio.L3Atrig,theEvent.header.turfio.pps1,theEvent.header.turfio.time,
-		   theEvent.header.turfio.interval);
-	    for(i=8;i<16;++i)
-		printf("Rate[%d][%d]=%d\n",i/4-2,i%4,theEvent.header.turfio.rate[i/4-2][i%4]);
-	}
+	    
+	if(verbosity) {
+	    unsigned long fullTrigNum=
+		(theEvent.header.turfio.trigNumByte1)+(theEvent.header.turfio.trigNumByte2<<8)+(theEvent.header.turfio.trigNumByte3<<16);
+	    unsigned long fullTrigTime=
+		(theEvent.header.turfio.trigTimeByte1)+(theEvent.header.turfio.trigTimeByte2<<8)+(theEvent.header.turfio.trigTimeByte3<<16)+(theEvent.header.turfio.trigTimeByte4<<24);
+	    unsigned long fullPPSNum=
+		(theEvent.header.turfio.ppsNumByte1)+(theEvent.header.turfio.ppsNumByte2<<8)+(theEvent.header.turfio.ppsNumByte3<<16)+(theEvent.header.turfio.ppsNumByte4<<24);
+	    
+	    unsigned long fullC3P0Num=theEvent.header.turfio.c3poByte1;
+	    fullC3P0Num+=(theEvent.header.turfio.c3poByte2<<8);
+	    fullC3P0Num+=(theEvent.header.turfio.c3poByte3<<16);
+	    fullC3P0Num+=(theEvent.header.turfio.c3poByte4<<24);
+//		(theEvent.header.turfio.c3poByte1)+(theEvent.header.turfio.c3poByte2<<8)+(theEvent.header.turfio.c3poByte3<<16)+(theEvent.header.turfio.c3poByte4<<24);
+	    double frequency=fullC3P0Num;
+	    printf("trigType:\t%d\ntrigNum:\t%ld\ntrigTime:\t%ld\nppsNum:\t%ld\nc3poNum:\t%12lu\t%f\n",theEvent.header.turfio.trigType,fullTrigNum,fullTrigTime,fullPPSNum,fullC3P0Num,frequency);
+
+	}	    
+/* 	if(verbosity && printToScreen){ */
+/* 	    printf("raw: %hu\nL3A: %hu\n1PPS: %lu\ntime: %lu\nint: %lu\n", */
+/* 		   theEvent.header.turfio.rawtrig,theEvent.header.turfio.L3Atrig,theEvent.header.turfio.pps1,theEvent.header.turfio.time, */
+/* 		   theEvent.header.turfio.interval); */
+/* 	    for(i=8;i<16;++i) */
+/* 		printf("Rate[%d][%d]=%d\n",i/4-2,i%4,theEvent.header.turfio.rate[i/4-2][i%4]); */
+/* 	} */
     }
     return status;
 } 

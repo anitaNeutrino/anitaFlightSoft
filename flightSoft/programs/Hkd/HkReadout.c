@@ -16,6 +16,8 @@
 #define INTERRUPT_LEVEL 10
 #define NUM_ACRO_CHANS 40
 
+//#define USE_RANGE RANGE_5TO5
+
 const char carrierDefault[]="/dev/apc8620";
 
 void dumpArrayValues();
@@ -33,6 +35,8 @@ word ip320_az_data[NUM_ACRO_CHANS];
 word ip320_cal_data[NUM_ACRO_CHANS];       
 word ip320_raw_data[NUM_ACRO_CHANS];       
 long ip320_cor_data[NUM_ACRO_CHANS];
+int useRange=5;
+
 
 /* Prettyprinting stuff */
 typedef struct {
@@ -75,6 +79,7 @@ int main (int argc, char **argv)
   kvpReset();
   sprintf(hkreadout,"hkreadout%d",readout);
   status = configLoad("Hkd.config",hkreadout);
+  status += configLoad ("Hkd.config","hkd") ;
   eString = configErrorString(status);
   if (status == CONFIG_E_OK) {
     char *temp;
@@ -82,6 +87,10 @@ int main (int argc, char **argv)
     if (temp != NULL) ip320carrier = temp;
     ip320BoardLocation = kvpGetInt("ip320BoardLocation",-1);
     prettyFormat = kvpGetInt("prettyformat",0);
+    int ip320Ranges[3];
+    int tempNum=3;
+    kvpGetIntArray("ip320Ranges",ip320Ranges,&tempNum);
+    useRange=ip320Ranges[readout-1];
     numRows= kvpGetInt("numrows",0);
     if (numRows > MAX_ROW) numRows=MAX_ROW;
     if (numRows)
@@ -218,7 +227,12 @@ int ip320_Setup()
       ip320_raw_data[i] = 0;                /* clear raw input buffer */
       ip320_cor_data[i] = 0;                /* clear corrected data buffer */
     }
-  cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
+//  cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
+  if(useRange==5)
+      cblk_320.range = RANGE_5TO5;   /*RJN hack for Kurt test*/
+  else
+      cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
+//  cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
   /* full range */
   cblk_320.trigger = STRIG;            /* 0 = software triggering */
   cblk_320.mode = SEI;                 /* differential input */
@@ -296,7 +310,10 @@ void prettyprint()
           if (rowaddr[i][j]) {
              int chan = rowaddr[i][j]-1;  
 	    /* RJN HACK */
-             printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+	     if(useRange==10)
+		 printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+	     else 
+		 printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
 //             printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
           } else printf("               ");
       }

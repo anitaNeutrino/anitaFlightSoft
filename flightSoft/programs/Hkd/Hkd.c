@@ -89,6 +89,8 @@ SBSTemperatureDataStruct_t sbsData;
 //char carrierDevName[FILENAME_MAX];
 char hkdSipdDir[FILENAME_MAX];
 char hkdSipdLinkDir[FILENAME_MAX];
+char hkdArchiveDir[FILENAME_MAX];
+char hkdArchiveLinkDir[FILENAME_MAX];
 int ip320Ranges[NUM_IP320_BOARDS];
 int printToScreen;
 int readoutPeriod;
@@ -161,6 +163,24 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Error getting hkdSipdLinkDir");
 	    fprintf(stderr,"Error getting hkdSipdLinkDir\n");
+	}	    
+	tempString=kvpGetString("hkdArchiveDir");
+	if(tempString) {
+	    strncpy(hkdArchiveDir,tempString,FILENAME_MAX-1);	    
+	    makeDirectories(hkdArchiveDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting hkdArchiveDir");
+	    fprintf(stderr,"Error getting hkdArchiveDir\n");
+	}	    
+	tempString=kvpGetString("hkdArchiveLinkDir");
+	if(tempString) {
+	    strncpy(hkdArchiveLinkDir,tempString,FILENAME_MAX-1);	    
+	    makeDirectories(hkdArchiveLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting hkdArchiveLinkDir");
+	    fprintf(stderr,"Error getting hkdArchiveLinkDir\n");
 	}
 	    
     }
@@ -439,6 +459,7 @@ int outputData(AnalogueCode_t code)
 {
     int retVal;
     char theFilename[FILENAME_MAX];
+    char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
     theHkData.gHdr.code=PACKET_HKD;
     time_t rawtime;
@@ -446,15 +467,15 @@ int outputData(AnalogueCode_t code)
     theHkData.unixTime=rawtime;
     switch(code) {
 	case (IP320_RAW):
-	    sprintf(theFilename,"%s/hk_%ld.raw.dat",hkdSipdDir,theHkData.unixTime);
+	    sprintf(theFilename,"hk_%ld.raw.dat",theHkData.unixTime);
 	    theHkData.ip320=rawDataStruct;
 	    break;
 	case(IP320_CAL):
-	    sprintf(theFilename,"%s/hk_%ld.cal.dat",hkdSipdDir,theHkData.unixTime);
+	    sprintf(theFilename,"hk_%ld.cal.dat",theHkData.unixTime);
 	    theHkData.ip320=calDataStruct;
 	    break;
 	case(IP320_AVZ):
-	    sprintf(theFilename,"%s/hk_%ld.avz.dat",hkdSipdDir,theHkData.unixTime);
+	    sprintf(theFilename,"hk_%ld.avz.dat",theHkData.unixTime);
 	    theHkData.ip320=autoZeroStruct;
 	    break;
 	default:
@@ -467,8 +488,17 @@ int outputData(AnalogueCode_t code)
     theHkData.mag=magData;
     theHkData.sbs=sbsData;
     if(printToScreen) printf("%s\n",theFilename);
-    retVal=writeHk(&theHkData,theFilename);     
-    retVal+=makeLink(theFilename,hkdSipdLinkDir);      
+    
+    //Write file and make link for SIPd
+    sprintf(fullFilename,"%s/%s",hkdSipdDir,theFilename);
+    retVal=writeHk(&theHkData,fullFilename);     
+    retVal+=makeLink(fullFilename,hkdSipdLinkDir);      
+
+//Write file and make link for Archived
+    sprintf(fullFilename,"%s/%s",hkdArchiveDir,theFilename);
+    retVal=writeHk(&theHkData,fullFilename);     
+    retVal+=makeLink(fullFilename,hkdArchiveLinkDir);      
+
     return retVal;
 }
 
@@ -636,7 +666,7 @@ int checkMagnetometer()
 //    sleep(1);
     retVal=read(fdMag,tempData,256);
 
-    if(retVal>0) {
+    if(retVal>10) {
 //	printf("Retval %d\n",retVal);
 //	strcpy(tempData,"0.23456 0.78900 0.23997 4C");
 	sscanf(tempData,"D\n%f %f %f %x",&x,&y,&z,&checksum);

@@ -37,19 +37,34 @@ typedef DEVICE_LOCATION PlxDevLocation_t;
 typedef RETURN_CODE PlxReturnCode_t;
 
 typedef enum __SURF_control_act {  
-    ClrAll,
-    ClrEvt,
+    SurfClearAll,
+    SurfClearEvent,
     LTrig,
     EvNoD,
     LabD,
     SclD,
     RFpwD
-} SurfControlAction ;
+} SurfControlAction_t ;
 
 typedef enum __TURF_control_act { 
+    SetTrigMode,
     RprgTurf,
-    ClrTrg
-} TurfControlAction ;
+    TurfClearEvent,
+    SendSoftTrg,
+    EnableRfTrg,
+    EnablePPS1Trig,
+    EnablePPS2Trig,
+    EnableSoftTrig,
+    TurfClearAll
+} TurfControlAction_t ;
+
+typedef enum __TURF_trigger_mode {
+    TrigNone = 0,
+    TrigRF = 0x1,
+    TrigPPS1 = 0x2,
+    TrigPPS2 = 0x4,
+    TrigSoft = 0x8
+} TriggerMode_t;
 
 typedef enum {
     ACQD_E_OK = 0,
@@ -76,10 +91,10 @@ typedef struct {
 int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc);
 void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
 void setDACThresholds(PlxHandle_t *surfHandles, int threshold); //Only does one threshold at the moment
-PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction action);
-PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction action);
-char *surfControlActionAsString(SurfControlAction action);
-char *turfControlActionAsString(TurfControlAction action);
+PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t action);
+PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TriggerMode_t trigMode, TurfControlAction_t action);
+char *surfControlActionAsString(SurfControlAction_t action);
+char *turfControlActionAsString(TurfControlAction_t action);
 int readConfigFile();
 int init_param(int argn, char **argv, char *directory, int *n, int *dacVal);
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned long evNum);
@@ -89,5 +104,7 @@ void calculateStatistics();
 int getEventNumber();
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
+//PlxReturnCode_t setTurfTriggerMode(PlxHandle_t turfioHandle, TriggerMode_t trigMode);
+
 
 #endif //ACQD_H
