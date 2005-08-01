@@ -2,10 +2,10 @@
 
 #cd ${ANITA_FLIGHT_SOFT_DIR}/programs
 #getLogWindow.sh &
-xterm -T fakeCalibd -e "fakeCalibd ; read" &
+#xterm -T fakeCalibd -e "fakeCalibd ; read" &
 xterm -T firstAcqd -e "firstAcqd ; read" &
 xterm -T GPSd -e "GPSd ; read" &
 xterm -T Eventd -e "Eventd ; read" &
-#xterm -T Prioritizerd -e "./Prioritizerd ; read" &
+#xterm -T Prioritizerd -e "Prioritizerd ; read" &
 #xterm -T makeFakeTrigger -e "./makeFakeTrigger ; read" &
 

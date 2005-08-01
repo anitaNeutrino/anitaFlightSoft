@@ -23,13 +23,13 @@
 #define MAX_GPS_TIMES 1000
 #define MAX_CALIB_TIMES 100
 
-#define TIME_MATCH 1000000 //In 100ns counts
+#define TIME_MATCH 10000000 //In 100ns counts
 
 int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr);
 int getCalibStatus(int unixTime);
 int deleteGPSFiles(GpsSubTime_t *theGpsPtr);
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr);
-
+int readConfigFile();
 
 /* Directories and gubbins */
 char acqdEventLinkDir[FILENAME_MAX];
@@ -39,6 +39,10 @@ char eventdEventLinkDir[FILENAME_MAX];
 char calibdLinkDir[FILENAME_MAX];
 char gpsdSubTimeLinkDir[FILENAME_MAX];
 char gpsdSubTimeDir[FILENAME_MAX];
+
+int printToScreen=0;
+int verbosity=0;
+
 
 int main (int argc, char *argv[])
 {
@@ -131,6 +135,10 @@ int main (int argc, char *argv[])
 	}
     }
     
+    retVal=readConfigFile();
+    if(retVal!=CONFIG_E_OK) {
+	///Arrgh
+    }
     retVal=0;
     /* Main event getting loop. */
     while(1) {
@@ -162,7 +170,9 @@ int main (int argc, char *argv[])
 	    }
 	}
 
-	printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
+	if(printToScreen && verbosity) printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
+	
+	whichGps=0;
 	/* What to do with our events? */	
 	for(count=0;count<numEventLinks;count++) {
 	    filledSubTime=0;
@@ -172,30 +182,34 @@ int main (int argc, char *argv[])
 	    retVal=fillHeader(&theAcqdEventHeader,currentFilename);
 /* 	    printf("Event %d, time %d\n",theAcqdEventHeader.eventNumber, */
 /* 		   theAcqdEventHeader.unixTime); */
-	    for(i=0;i<numGpsStored;i++) {
-/* 		printf("Event %d, time %d\tGPS\t%d\n", */
-/* 		       theAcqdEventHeader.eventNumber, */
-/* 		       theAcqdEventHeader.unixTime, */
-/* 		       gpsArray[i].unixTime); */
+	    for(i=whichGps;i<numGpsStored;i++) {
+		if(printToScreen && verbosity) 
+		    printf("Event %d, time %d\tGPS\t%d\n",
+			   theAcqdEventHeader.eventNumber,
+			   theAcqdEventHeader.unixTime,
+			   gpsArray[i].unixTime);
 		if(compareTimes(&theAcqdEventHeader,&gpsArray[i])) {
 //		if(theAcqdEventHeader.unixTime==gpsArray[i].unixTime) {
 		    
-		    printf("Match: Event %d\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,gpsArray[i].unixTime,gpsArray[i].subTime);
+		    if(printToScreen) 
+			printf("Match: Event %d\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,gpsArray[i].unixTime,gpsArray[i].subTime);
 		    theAcqdEventHeader.unixTime=gpsArray[i].unixTime;
 		    theAcqdEventHeader.gpsSubTime=gpsArray[i].subTime;
 		    /* As events come time sorted can delete all previous
 		       elements of the gpsArray. */
-//		    printf("Diff: %d\t%d\t%d\n",
-//			   theAcqdEventHeader.unixTimeUs*10,
-//			   theAcqdEventHeader.gpsSubTime,
-//			   (theAcqdEventHeader.unixTimeUs*10)-theAcqdEventHeader.gpsSubTime);
-
+		    if(printToScreen)
+			printf("\tDiff: %d\t%d\t%d\n",
+			       theAcqdEventHeader.unixTimeUs*10,
+			       theAcqdEventHeader.gpsSubTime,
+			       (theAcqdEventHeader.unixTimeUs*10)-theAcqdEventHeader.gpsSubTime);
+		    
+		    whichGps=i;
 		    filledSubTime=1;
+		    
 		    break;
 		}
 //		if(theAcqdEventHeader.unixTime<gpsArray[i].unixTime) break;
 	    }
-	    
 
 	    /* Maybe we didn't get the GPS time, if currentTime is later than
 	       three seconds after then we'll write theHeader anyhow. */
@@ -204,36 +218,41 @@ int main (int argc, char *argv[])
 		    theAcqdEventHeader.gpsSubTime=-1;
 		    syslog (LOG_WARNING,"No GPS sub time for event %d",
 			    theAcqdEventHeader.eventNumber);
-		    printf("No GPS sub time for event %d\t%d\t%d\n",
-			   theAcqdEventHeader.eventNumber,
-			   theAcqdEventHeader.unixTime,
-			   theAcqdEventHeader.unixTimeUs);
+		    if(printToScreen)
+			printf("No GPS sub time for event %d\t%d\t%d\n",
+			       theAcqdEventHeader.eventNumber,
+			       theAcqdEventHeader.unixTime,
+			       theAcqdEventHeader.unixTimeUs);
 		}
 		theAcqdEventHeader.calibStatus
 		    =getCalibStatus(theAcqdEventHeader.unixTime);
 		writeHeaderAndMakeLink(&theAcqdEventHeader);
-
-		whichGps=0;
+		
 		for(i=0;i<numGpsStored;i++) {
-		    printf("GPS:\t%d\tEvent:\t%d\n",gpsArray[i].unixTime,
-			   theAcqdEventHeader.unixTime);
+		    if(printToScreen && verbosity) 
+			printf("GPS:\t%d\tEvent:\t%d\n",gpsArray[i].unixTime,
+			       theAcqdEventHeader.unixTime);
 		    if(gpsArray[i].unixTime<(theAcqdEventHeader.unixTime-1)) {
-
-			//Delete GPS files
-			deleteGPSFiles(&gpsArray[count]);
-			whichGps=i;
+			
+			if(i>whichGps) whichGps=i;
 		    }
 		    else break;
-		    
 		}
-		if(whichGps) {
-		    numGpsStored-=(whichGps+1);	    
-		    if(numGpsStored>0) {
-			memmove(gpsArray,&gpsArray[whichGps+1],
-				numGpsStored*sizeof(GpsSubTime_t));
-		    }
 		    
+		
+		if(filledSubTime || whichGps) {
+
+		    for(i=0;i<=whichGps;i++) 
+			deleteGPSFiles(&gpsArray[i]);
 		}
+		numGpsStored-=(whichGps+1);	    
+		if(numGpsStored>0) {
+		    memmove(gpsArray,&gpsArray[whichGps+1],
+			    numGpsStored*sizeof(GpsSubTime_t));
+		}
+		whichGps=0;
+		    
+	    
 		
 		
 	    }
@@ -251,9 +270,9 @@ int main (int argc, char *argv[])
             free(gpsSubTimeLinkList[count]);
         free(gpsSubTimeLinkList);
 
-//	usleep(10000);
+	usleep(10000);
 /* 	break; */
-	sleep(2);
+//	sleep(2);
 
     }	
 }
@@ -266,17 +285,22 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 {
     char theFilename[FILENAME_MAX];
     int retVal;
-   
+    FILE *testfp;
+    
     /* Move ev_ file first */
     sprintf(theFilename,"%s/ev_%d.dat",acqdEventDir,
 	    theHeaderPtr->eventNumber);
-    printf("Moving %s\n",theFilename);
-    retVal=moveFile(theFilename,eventdEventDir);
+    testfp=fopen(theFilename,"rb");
+    if(testfp) {
+	if(printToScreen && verbosity) printf("Moving %s\n",theFilename);
+	retVal=moveFile(theFilename,eventdEventDir);
+	fclose(testfp);
+    }
     /* Should probably do something with retVal */
        
     sprintf(theFilename,"%s/hd_%d.dat",eventdEventDir,
 	    theHeaderPtr->eventNumber);
-    printf("Writing %s\n",theFilename);
+    if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
     retVal=writeHeader(theHeaderPtr,theFilename);
 
     /* Make links, not sure what to do with return value here */
@@ -285,13 +309,13 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
    /* Delete previous hd_ file */
     sprintf(theFilename,"%s/hd_%d.dat",acqdEventDir,
 	    theHeaderPtr->eventNumber);
-    printf("Deleting %s\n",theFilename);
+    if(printToScreen && verbosity) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
    
     /* And the link */
     sprintf(theFilename,"%s/hd_%d.dat",acqdEventLinkDir,
 	    theHeaderPtr->eventNumber);
-    printf("Deleting %s\n",theFilename);
+    if(printToScreen && verbosity) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
     
     return retVal;
@@ -355,14 +379,15 @@ int getCalibStatus(int unixTime)
 
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr) 
 {
-    long secDiff=theHeaderPtr->unixTime-theGpsPtr->unixTime;
-    long tickDiff=(theHeaderPtr->unixTimeUs*10)-theGpsPtr->subTime;
-
-    if(abs(secDiff)>1) return 0;
-    long theDiff=tickDiff+10000000*secDiff;
-//    printf("%ld %ld %ld\n",secDiff,tickDiff,theDiff);
-
-    return (abs(theDiff)<TIME_MATCH);
+    double computerTime=(double)theHeaderPtr->unixTime;
+    computerTime+=1e-6*(double)theHeaderPtr->;
+    double gpsTime=(double)(theGpsPtr->unixTime);
+    gpsTime+=1e-7*(double)(theGpsPtr->subTime);
+//    printf("Here:\t%lf\t%d\n",computerTime-gpsTime,theGpsPtr->subTime);
+    double diff=gpsTime-computerTime;
+    if(diff<0) diff*=-1;
+    return (diff<0.5);
+    return 0;
 }
 
 int deleteGPSFiles(GpsSubTime_t *theGpsPtr) 
@@ -372,11 +397,39 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
 
     sprintf(theFilename,"%s/gps_%d_%d.dat",gpsdSubTimeLinkDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
-    printf("Deleting: %s\n",theFilename);
+    if(printToScreen && verbosity) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
     sprintf(theFilename,"%s/gps_%d_%d.dat",gpsdSubTimeDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
-    printf("Deleting: %s\n",theFilename);
+    if(printToScreen && verbosity) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
     return retVal;
+}
+
+int readConfigFile() 
+/* Load Eventd config stuff */
+{
+    /* Config file thingies */
+    int status=0;
+    char* eString ;
+
+    kvpReset();
+    status = configLoad ("Eventd.config","output") ;
+    if(status == CONFIG_E_OK) {
+
+	printToScreen=kvpGetInt("printToScreen",0);
+	verbosity=kvpGetInt("verbosity",0);
+
+	   
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Eventd.config: %s\n",eString);
+	if(printToScreen)
+	    fprintf(stderr,"Error reading Eventd.config: %s\n",eString);
+	    
+    }
+    
+//    printf("Debug rc3\n");
+    return status;
 }
