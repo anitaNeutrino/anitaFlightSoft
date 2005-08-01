@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/time.h>
+//#include <iostream>
 
 
 // Anita includes
@@ -63,10 +64,13 @@ int verbosity = 0 ; /* control debug print out. */
 int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
+int justWriteHeader = FALSE;
 int doDacCycle = TRUE; /* Do a cycle of the DAC values */
 int printStatistics = FALSE;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
+int sendSoftTrigger = FALSE;
+int writeOutC3p0Nums = FALSE;
 int rprgturf = FALSE ;
 
 //Trigger Modes
@@ -74,6 +78,8 @@ int rfTrigFlag = 0;
 int pps1TrigFlag = 0;
 int pps2TrigFlag = 0;
 int softTrigFlag = 0;
+
+void writeC3P0Nums();
 
 int main(int argc, char **argv) {
     
@@ -159,6 +165,8 @@ int main(int argc, char **argv) {
 	if(pps2TrigFlag) trigMode+=TrigPPS2;
 	if(softTrigFlag) trigMode+=TrigSoft;
 	setTurfControl(turfioHandle,trigMode,SetTrigMode);
+
+
 /* 	if(pps1TrigFlag) { */
 /* 	    if (setTurfControl(turfioHandle, EnablePPS1Trig) != ApiSuccess) { */
 /* 		syslog(LOG_ERR,"Failed to enable PPS1 Trigger on TURF"); */
@@ -190,6 +198,11 @@ int main(int argc, char **argv) {
 	   should be just inside the outmost loop.*/
 	    bzero(&theEvent, sizeof(theEvent)) ;
 	    
+
+	    if(sendSoftTrigger) {
+		sleep(4);
+		setTurfControl(turfioHandle,trigMode,SendSoftTrg);
+	    }
 	    if (selftrig){  /* --- send a trigger ---- */ 
 		if(printToScreen) printf(" try to trigger it locally.\n") ;
 		for(surf=0;i<numSurfs;++surf) 
@@ -240,9 +253,8 @@ int main(int argc, char **argv) {
 		    theEvent.header.unixTime=timeStruct.tv_sec;
 		    theEvent.header.unixTimeUs=timeStruct.tv_usec;
 		    theEvent.header.eventNumber=getEventNumber();
-		    long tempTime=(theEvent.header.turfio.trigTimeByte1+(theEvent.header.turfio.trigTimeByte2>>8)+(theEvent.header.turfio.trigTimeByte3>>16)+(theEvent.header.turfio.trigTimeByte3>>24));
 		    if(printToScreen) 
-			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%ld\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,tempTime);
+			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
 		// Save data
 		if(writeData){
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
@@ -635,9 +647,12 @@ int readConfigFile()
 	printToScreen=kvpGetInt("printToScreen",0);
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
+	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
+	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
 	writeData=kvpGetInt("writeData",1);
+	justWriteHeader=kvpGetInt("justWriteHeader",0);
 	verbosity=kvpGetInt("verbosity",0);
 	printStatistics=kvpGetInt("printStatistics",0);
 	rfTrigFlag=kvpGetInt("enableRFTrigger",1);
@@ -1120,9 +1135,11 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     AnitaEventBody_t *theBody=&(theEventPtr->body);
 
 
-    sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
-	    theEventPtr->header.eventNumber);
-    retVal=writeBody(theBody,theFilename);  
+    if(justWriteHeader==0) {
+	sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
+		theEventPtr->header.eventNumber);
+	retVal=writeBody(theBody,theFilename);  
+    }
       
     sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
 	    theEventPtr->header.eventNumber);
@@ -1190,7 +1207,7 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    int testVal=0;
 	    if(verbosity && printToScreen) printf("SURF %d, waiting for Lab_F\n",surf);
 	    testVal=PlxRegisterRead(surfHandles[surf],PCI9030_GP_IO_CTRL, &rc);
-	    while(!(testVal & LAB_F) && (++ftmo<N_FTMO)){
+	    while(!(testVal & LAB_F) && (++ftmo<N_FTMO)){ //RJN HACK
 		usleep(1); // RJN/GV changed from usleep(1000)
 		testVal=PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc);
 	    }       
@@ -1318,81 +1335,92 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    }
 	    turfDataWord=dataWord>>8;
 	    turfOtherWord=dataWord&0xff;
-	    if(i==10) printf("Event %d\n",evNo);
-	    if(i>=10 && i<=18) printf("%d\t%#x\t%#x\t%#x\n",i,dataWord,turfDataWord,turfOtherWord); 
-	    if(verbosity) 
+	    if(i==10 && verbosity>1 && printToScreen) printf("Event %d\n",evNo);
+	    if(i>=10 && i<=18 && verbosity>1 && printToScreen) printf("%d\t%#x\t%#x\t%#x\n",i,dataWord,turfDataWord,turfOtherWord); 
+//	    if(verbosity) 
 //	    if(verbosity) printf("%#x\t%#x\t%#x\n",turfDataWord,turfOtherWord); 
 	    switch(i){
 		case 0: 
 		    theEvent.header.turfio.trigType=turfDataWord; 
 		    break;
 		case 1:
-		    theEvent.header.turfio.trigNumByte1=turfDataWord; 
+		    theEvent.header.turfio.trigNum=turfDataWord; 
 		    break;
 		case 2: 
-		    theEvent.header.turfio.trigNumByte2=turfDataWord; 
+		    theEvent.header.turfio.trigNum+=(turfDataWord<<8); 
 		    break;
 		case 3: 
-		    theEvent.header.turfio.trigNumByte3=turfDataWord; 
+		    theEvent.header.turfio.trigNum+=(turfDataWord<<16); 
 		    break;
 		case 4: 
-		    theEvent.header.turfio.trigTimeByte1=turfDataWord; 
+		    theEvent.header.turfio.trigTime=turfDataWord; 
 		    break;
 		case 5: 
-		    theEvent.header.turfio.trigTimeByte2=turfDataWord; 
+		    theEvent.header.turfio.trigTime+=(turfDataWord<<8); 
 		    break;
 		case 6: 
-		    theEvent.header.turfio.trigTimeByte3=turfDataWord; 
+		    theEvent.header.turfio.trigTime+=(turfDataWord<<16); 
 		    break;
 		case 7: 
-		    theEvent.header.turfio.trigTimeByte4=turfDataWord; 
+		    theEvent.header.turfio.trigTime+=(turfDataWord<<24); 
 		    break;
 		case 8: 
-		    theEvent.header.turfio.ppsNumByte1=turfDataWord; 
+		    theEvent.header.turfio.ppsNum=(turfDataWord); 
 		    break;
 		case 9: 
-		    theEvent.header.turfio.ppsNumByte2=turfDataWord; 
+		    theEvent.header.turfio.ppsNum+=(turfDataWord<<8); 
 		    break;
 		case 10: 
-		    theEvent.header.turfio.ppsNumByte3=turfDataWord; 
+		    theEvent.header.turfio.ppsNum+=(turfDataWord<<16); 
 		    break;
 		case 11: 
-		    theEvent.header.turfio.ppsNumByte4=turfDataWord; 
+		    theEvent.header.turfio.ppsNum+=(turfDataWord<<24); 
 		    break;
 		case 12: 
-		    theEvent.header.turfio.c3poByte1=turfDataWord; 
+		    theEvent.header.turfio.c3poNum=(turfDataWord); 
 		    break;
 		case 13: 
-		    theEvent.header.turfio.c3poByte2=turfDataWord; 
+		    theEvent.header.turfio.c3poNum+=(turfDataWord<<8); 
 		    break;
 		case 14: 
-		    theEvent.header.turfio.c3poByte3=turfDataWord; 
+		    theEvent.header.turfio.c3poNum+=(turfDataWord<<16); 
 		    break;
 		case 15: 
-		    theEvent.header.turfio.c3poByte4=turfDataWord; 
+		    theEvent.header.turfio.c3poNum+=(turfDataWord<<24); 
 		    break;
 		default: 
 		    break;
 	    }
 	    
 	}
-	    
-	if(verbosity) {
-	    unsigned long fullTrigNum=
-		(theEvent.header.turfio.trigNumByte1)+(theEvent.header.turfio.trigNumByte2<<8)+(theEvent.header.turfio.trigNumByte3<<16);
-	    unsigned long fullTrigTime=
-		(theEvent.header.turfio.trigTimeByte1)+(theEvent.header.turfio.trigTimeByte2<<8)+(theEvent.header.turfio.trigTimeByte3<<16)+(theEvent.header.turfio.trigTimeByte4<<24);
-	    unsigned long fullPPSNum=
-		(theEvent.header.turfio.ppsNumByte1)+(theEvent.header.turfio.ppsNumByte2<<8)+(theEvent.header.turfio.ppsNumByte3<<16)+(theEvent.header.turfio.ppsNumByte4<<24);
-	    
-	    unsigned long fullC3P0Num=theEvent.header.turfio.c3poByte1;
-	    fullC3P0Num+=(theEvent.header.turfio.c3poByte2<<8);
-	    fullC3P0Num+=(theEvent.header.turfio.c3poByte3<<16);
-	    fullC3P0Num+=(theEvent.header.turfio.c3poByte4<<24);
-//		(theEvent.header.turfio.c3poByte1)+(theEvent.header.turfio.c3poByte2<<8)+(theEvent.header.turfio.c3poByte3<<16)+(theEvent.header.turfio.c3poByte4<<24);
-	    double frequency=fullC3P0Num;
-	    printf("trigType:\t%d\ntrigNum:\t%ld\ntrigTime:\t%ld\nppsNum:\t%ld\nc3poNum:\t%12lu\t%f\n",theEvent.header.turfio.trigType,fullTrigNum,fullTrigTime,fullPPSNum,fullC3P0Num,frequency);
 
+	if(writeOutC3p0Nums && (evNo%4==0)) writeC3P0Nums();
+	
+	if(verbosity && printToScreen) {
+/* 	    unsigned long fullTrigNum= */
+/* 		(theEvent.header.turfio.trigNumByte1)+(theEvent.header.turfio.trigNumByte2<<8)+(theEvent.header.turfio.trigNumByte3<<16); */
+/* 	    unsigned long fullTrigTime= */
+/* 		(theEvent.header.turfio.trigTimeByte1)+(theEvent.header.turfio.trigTimeByte2<<8)+(theEvent.header.turfio.trigTimeByte3<<16)+(theEvent.header.turfio.trigTimeByte4<<24); */
+/* 	    unsigned long fullPPSNum= */
+/* 		(theEvent.header.turfio.ppsNumByte1)+(theEvent.header.turfio.ppsNumByte2<<8)+(theEvent.header.turfio.ppsNumByte3<<16)+(theEvent.header.turfio.ppsNumByte4<<24); */
+	    
+/* 	    unsigned long fullC3P0Num=theEvent.header.turfio.c3poByte1; */
+/* 	    fullC3P0Num+=(theEvent.header.turfio.c3poByte2<<8); */
+/* 	    fullC3P0Num+=(theEvent.header.turfio.c3poByte3<<16); */
+/* 	    fullC3P0Num+=(theEvent.header.turfio.c3poByte4<<24); */
+//		(theEvent.header.turfio.c3poByte1)+(theEvent.header.turfio.c3poByte2<<8)+(theEvent.header.turfio.c3poByte3<<16)+(theEvent.header.turfio.c3poByte4<<24);
+	    double frequency=(double)theEvent.header.turfio.c3poNum;
+	    frequency/=1e6;
+	    double period=1e3/frequency;
+	    
+	    printf("trigType:\t%d\ntrigNum:\t%lu\ntrigTime:\t%lu\nppsNum:\t%lu\nc3poNum:\t%lu  (%3.1f Mhz or %3.1f ns)\n",
+		   theEvent.header.turfio.trigType,
+		   theEvent.header.turfio.trigNum,
+		   theEvent.header.turfio.trigTime,
+		   theEvent.header.turfio.ppsNum,
+		   theEvent.header.turfio.c3poNum,
+		   frequency,period);
+		   
 	}	    
 /* 	if(verbosity && printToScreen){ */
 /* 	    printf("raw: %hu\nL3A: %hu\n1PPS: %lu\ntime: %lu\nint: %lu\n", */
@@ -1404,3 +1432,21 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     }
     return status;
 } 
+
+void writeC3P0Nums() {
+
+/*     FILE *fp=0; */
+/*     static int firstTime=1; */
+/*     if(firstTime) { */
+/* 	fp = fopen ("c3p0File.txt", "wt"); */
+/* 	firstTime=0; */
+/*     } */
+//    std::ofstream Output("testFile.txt", ios_base::app);
+    
+    unsigned long fullC3P0Num=theEvent.header.turfio.c3poNum;
+//    fprintf(stderr,"%lu\t%lx\n",fullC3P0Num,fullC3P0Num);
+//    Output << fullC3P0Num << endl;    
+    fprintf(stderr,"%lu\n",fullC3P0Num);
+//    Output.close();
+
+}

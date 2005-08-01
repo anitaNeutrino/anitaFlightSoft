@@ -39,27 +39,36 @@ typedef struct {
 /*     unsigned int rate[2][4]; // Antenna trigger output rates (Hz) */
 /* } TurfioStruct_t; */
 
+/* typedef struct { */
+/*     unsigned char otherBits; */
+/*     unsigned char trigType; */
+/*     unsigned char trigNumByte1; */
+/*     unsigned char trigNumByte2; */
+/*     unsigned char trigNumByte3; */
+/*     unsigned char trigTimeByte1; */
+/*     unsigned char trigTimeByte2; */
+/*     unsigned char trigTimeByte3; */
+/*     unsigned char trigTimeByte4; */
+/*     unsigned char ppsNumByte1; */
+/*     unsigned char ppsNumByte2; */
+/*     unsigned char ppsNumByte3; */
+/*     unsigned char ppsNumByte4; */
+/*     unsigned char c3poByte1; */
+/*     unsigned char c3poByte2; */
+/*     unsigned char c3poByte3; */
+/*     unsigned char c3poByte4; */
+/* } TurfioStruct_t; */
+    
+  
 typedef struct {
     unsigned char otherBits;
     unsigned char trigType;
-    unsigned char trigNumByte1;
-    unsigned char trigNumByte2;
-    unsigned char trigNumByte3;
-    unsigned char trigTimeByte1;
-    unsigned char trigTimeByte2;
-    unsigned char trigTimeByte3;
-    unsigned char trigTimeByte4;
-    unsigned char ppsNumByte1;
-    unsigned char ppsNumByte2;
-    unsigned char ppsNumByte3;
-    unsigned char ppsNumByte4;
-    unsigned char c3poByte1;
-    unsigned char c3poByte2;
-    unsigned char c3poByte3;
-    unsigned char c3poByte4;
+    unsigned long trigNum;
+    unsigned long trigTime;
+    unsigned long ppsNum;
+    unsigned long c3poNum;
 } TurfioStruct_t;
     
-  
 
 typedef struct {
     short ch_id;      /* does exactly what it says on the tin */
