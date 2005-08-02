@@ -31,6 +31,8 @@
 #define N_CHAN 8
 #define N_CHIP 4
 #define N_RFTRIG 32  // 32 RF trigger channels per SURF board
+#define PHYS_DAC 8
+
 
 typedef HANDLE PlxHandle_t;
 typedef DEVICE_LOCATION PlxDevLocation_t;
@@ -105,6 +107,6 @@ int getEventNumber();
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
 //PlxReturnCode_t setTurfTriggerMode(PlxHandle_t turfioHandle, TriggerMode_t trigMode);
-
+void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, int values[8]);
 
 #endif //ACQD_H

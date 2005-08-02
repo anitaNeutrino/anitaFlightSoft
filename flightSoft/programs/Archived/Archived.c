@@ -29,6 +29,8 @@ void checkAdu5TTT();
 void checkAdu5PAT();
 void checkAdu5SAT();
 void checkHk();
+void checkEvent();
+
 
 /*Global Variables*/
 int gpsTTTNumber=100;
@@ -639,6 +641,87 @@ void checkHk()
 		    linkList[count]->d_name);
 	    removeFile(currentLinkname);
 	    removeFile(currentFilename);
+	}
+    }
+	
+    /* Free up the space used by dir queries */
+    for(count=0;count<numLinks;count++)
+	free(linkList[count]);
+    free(linkList);
+	    
+}
+
+
+void checkEvent() 
+{
+    int count;
+    /* Directory reading things */
+    struct dirent **linkList;
+    int numLinks;
+    FILE *testfp;
+
+    long eventNumber;
+    char currentHeaderName[FILENAME_MAX];
+    char currentBodyName[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+    char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
+    char gzipCommand[FILENAME_MAX];
+    char gzipFile[FILENAME_MAX];
+    char tempDir[FILENAME_MAX];
+//    char *testString
+
+    numLinks=getListofLinks(prioritizerdArchiveLinkDir,&linkList);
+    if(printToScreen) printf("Found %d links\n",numLinks);
+    if(numLinks>eventHeaderNumber) {
+	//Do something
+	sscanf(linkList[0]->d_name,
+	       "hd_%ld.dat",&eventNumber);
+	
+	//First zip up event file
+	sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir,
+		eventNumber);
+	
+    
+	testfp=fopen(currentBodyName,"rb");
+	if(testfp) {
+	    //Do something
+	    
+	    fclose(testfp);
+	}
+		
+	sprintf(tarCommand,"cd %s ; tar -cf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber);
+	
+	for(count=0;count<numLinks;count++) {
+	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
+//		    printf("%s\n",tarCommand);
+		executeCommand(tarCommand);
+		sprintf(tarCommand,"cd %s ; tar -rf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber);
+	    }	
+	    strcat(tarCommand,linkList[count]->d_name);
+	    strcat(tarCommand," ");
+		
+	}
+	executeCommand(tarCommand);	   
+	if(gzipGps) {
+	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber);
+	    executeCommand(gzipCommand);
+	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		
+	}
+	else sprintf(gzipFile,"/tmp/header%ld.tar",eventNumber);
+	if(useSecondDisk) {
+	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir);
+	    copyFile(gzipFile,tempDir);
+	}
+	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir);
+	moveFile(gzipFile,tempDir); 
+//	    exit(0);
+	for(count=0;count<numLinks;count++) {
+	    sprintf(currentHeaderName,"%s/%s",prioritizerdArchiveDir,
+		    linkList[count]->d_name);
+	    sprintf(currentLinkname,"%s/%s",prioritizerdArchiveLinkDir,
+		    linkList[count]->d_name);
+	    removeFile(currentLinkname);
+	    removeFile(currentHeaderName);
 	}
     }
 	

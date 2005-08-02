@@ -20,15 +20,16 @@
 #include "anitaFlight.h"
 
 
-#define MAX_GPS_TIMES 1000
+#define MAX_GPS_TIMES 10000
 #define MAX_CALIB_TIMES 100
 
-#define TIME_MATCH 10000000 //In 100ns counts
+#define TIME_MATCH 0.05 //seconds
+#define DEFAULT_C3PO 200453324
 
 int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr);
 int getCalibStatus(int unixTime);
 int deleteGPSFiles(GpsSubTime_t *theGpsPtr);
-int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr);
+int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset);
 int readConfigFile();
 
 /* Directories and gubbins */
@@ -141,6 +142,7 @@ int main (int argc, char *argv[])
     }
     retVal=0;
     /* Main event getting loop. */
+    int numEvents=0;
     while(1) {
 /* 	printf("Starting Loop\n"); */
 	numEventLinks=getListofLinks(acqdEventLinkDir,&eventLinkList);
@@ -151,8 +153,8 @@ int main (int argc, char *argv[])
 	}
 	numGpsTimeLinks=getListofLinks(gpsdSubTimeLinkDir,&gpsSubTimeLinkList);
 	
-//	printf("There are %d event links.\n",numEventLinks);
-//	printf("There are %d gps links.\n",numGpsTimeLinks);
+	printf("There are %d event links.\n",numEventLinks);
+	printf("There are %d gps links.\n",numGpsTimeLinks);
 
 
 	/* need to do something if we ever have more 
@@ -162,16 +164,16 @@ int main (int argc, char *argv[])
 
 	for(count=0;count<numGpsTimeLinks;count++) {
 	    sprintf(currentFilename,"%s/%s",gpsdSubTimeLinkDir,
-		    gpsSubTimeLinkList[count]->d_name);
+		    gpsSubTimeLinkList[count]->d_name);     
 	    retVal=fillGpsStruct(&gpsArray[numGpsStored],currentFilename);
 	    if(retVal==0) {
 		/* Got One */
 		numGpsStored++;
 	    }
 	}
-
-	if(printToScreen && verbosity) printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
-	
+	printf("%s\n",gpsdSubTimeLinkDir);
+	if(printToScreen) printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
+//	exit(0);
 	whichGps=0;
 	/* What to do with our events? */	
 	for(count=0;count<numEventLinks;count++) {
@@ -183,12 +185,15 @@ int main (int argc, char *argv[])
 /* 	    printf("Event %d, time %d\n",theAcqdEventHeader.eventNumber, */
 /* 		   theAcqdEventHeader.unixTime); */
 	    for(i=whichGps;i<numGpsStored;i++) {
+//		printf("i is %d\n",i);
 		if(printToScreen && verbosity) 
 		    printf("Event %d, time %d\tGPS\t%d\n",
 			   theAcqdEventHeader.eventNumber,
 			   theAcqdEventHeader.unixTime,
 			   gpsArray[i].unixTime);
-		if(compareTimes(&theAcqdEventHeader,&gpsArray[i])) {
+		int match=compareTimes(&theAcqdEventHeader,&gpsArray[i],0);
+		if(numEvents==100) compareTimes(&theAcqdEventHeader,&gpsArray[i],1);
+		if(match) {
 //		if(theAcqdEventHeader.unixTime==gpsArray[i].unixTime) {
 		    
 		    if(printToScreen) 
@@ -197,23 +202,22 @@ int main (int argc, char *argv[])
 		    theAcqdEventHeader.gpsSubTime=gpsArray[i].subTime;
 		    /* As events come time sorted can delete all previous
 		       elements of the gpsArray. */
-		    if(printToScreen)
-			printf("\tDiff: %d\t%d\t%d\n",
-			       theAcqdEventHeader.unixTimeUs*10,
-			       theAcqdEventHeader.gpsSubTime,
-			       (theAcqdEventHeader.unixTimeUs*10)-theAcqdEventHeader.gpsSubTime);
+/* 		    if(printToScreen) */
+/* 			printf("\tDiff: %d\t%d\t%d\n", */
+/* 			       theAcqdEventHeader.unixTimeUs*10, */
+/* 			       theAcqdEventHeader.gpsSubTime, */
+/* 			       (theAcqdEventHeader.unixTimeUs*10)-theAcqdEventHeader.gpsSubTime); */
 		    
 		    whichGps=i;
-		    filledSubTime=1;
-		    
+		    filledSubTime=1;		    
 		    break;
 		}
-//		if(theAcqdEventHeader.unixTime<gpsArray[i].unixTime) break;
+		if(theAcqdEventHeader.unixTime<gpsArray[i].unixTime) break;
 	    }
-
+		    
 	    /* Maybe we didn't get the GPS time, if currentTime is later than
 	       three seconds after then we'll write theHeader anyhow. */
-	    if((time(NULL)-theAcqdEventHeader.unixTime)>3 || filledSubTime) {
+	    if((time(NULL)-theAcqdEventHeader.unixTime)>2 || filledSubTime) {
 		if(!filledSubTime) {
 		    theAcqdEventHeader.gpsSubTime=-1;
 		    syslog (LOG_WARNING,"No GPS sub time for event %d",
@@ -227,12 +231,12 @@ int main (int argc, char *argv[])
 		theAcqdEventHeader.calibStatus
 		    =getCalibStatus(theAcqdEventHeader.unixTime);
 		writeHeaderAndMakeLink(&theAcqdEventHeader);
-		
+		numEvents++;
 		for(i=0;i<numGpsStored;i++) {
 		    if(printToScreen && verbosity) 
 			printf("GPS:\t%d\tEvent:\t%d\n",gpsArray[i].unixTime,
 			       theAcqdEventHeader.unixTime);
-		    if(gpsArray[i].unixTime<(theAcqdEventHeader.unixTime-1)) {
+		    if(gpsArray[i].unixTime<(theAcqdEventHeader.unixTime-2)) {
 			
 			if(i>whichGps) whichGps=i;
 		    }
@@ -244,15 +248,18 @@ int main (int argc, char *argv[])
 
 		    for(i=0;i<=whichGps;i++) 
 			deleteGPSFiles(&gpsArray[i]);
+		
+		    numGpsStored-=(whichGps+1);	    
+		    if(numGpsStored>0) {
+			memmove(gpsArray,&gpsArray[whichGps+1],
+				numGpsStored*sizeof(GpsSubTime_t));
+		    }
+		    whichGps=0;
 		}
-		numGpsStored-=(whichGps+1);	    
-		if(numGpsStored>0) {
-		    memmove(gpsArray,&gpsArray[whichGps+1],
-			    numGpsStored*sizeof(GpsSubTime_t));
-		}
-		whichGps=0;
 		    
-	    
+		
+//		if(count>10)
+//		    exit(0);
 		
 		
 	    }
@@ -377,17 +384,46 @@ int getCalibStatus(int unixTime)
     
 }
 
-int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr) 
+int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset) 
 {
-    double computerTime=(double)theHeaderPtr->unixTime;
-    computerTime+=1e-6*(double)theHeaderPtr->;
+//    static int count=0;
+    static int gotTime=0;
+    static double firstUnixTime=0;
+    static double firstPPSNum=0;
+    if(!gotTime || forceReset) {
+	firstUnixTime = (double)theHeaderPtr->unixTime;
+	firstPPSNum = (double)theHeaderPtr->turfio.ppsNum;
+	gotTime=1;
+    }
+
+    if(theHeaderPtr->turfio.ppsNum<firstPPSNum) {
+	firstUnixTime = (double)theHeaderPtr->unixTime;
+	firstPPSNum = (double)theHeaderPtr->turfio.ppsNum;
+    }
+	
+    double computerTime=firstUnixTime+(theHeaderPtr->turfio.ppsNum-firstPPSNum);
+    double fracTime=(double)theHeaderPtr->turfio.trigTime;    
+    if(theHeaderPtr->turfio.c3poNum) 
+	fracTime/=(double)theHeaderPtr->turfio.c3poNum;
+    else fracTime/=DEFAULT_C3PO;
+
+    computerTime+=fracTime;
+
     double gpsTime=(double)(theGpsPtr->unixTime);
-    gpsTime+=1e-7*(double)(theGpsPtr->subTime);
-//    printf("Here:\t%lf\t%d\n",computerTime-gpsTime,theGpsPtr->subTime);
-    double diff=gpsTime-computerTime;
+    double gpsFracTime=1e-7*(double)(theGpsPtr->subTime);
+    gpsTime+=gpsFracTime;
+    double diff=computerTime-gpsTime;
+//    printf("Here:\t%9.2lf\t%9.2lf\t%9.9lf\n",computerTime,gpsTime,diff);
+        
+    if(abs(theHeaderPtr->unixTime-theGpsPtr->unixTime)>1) return 0; 	
+
+//    count++;
+//    if(count>100)
+//	exit(0);
     if(diff<0) diff*=-1;
-    return (diff<0.5);
+    if(diff < TIME_MATCH) return 1;
     return 0;
+    
 }
 
 int deleteGPSFiles(GpsSubTime_t *theGpsPtr) 
@@ -397,7 +433,8 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
 
     sprintf(theFilename,"%s/gps_%d_%d.dat",gpsdSubTimeLinkDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
-    if(printToScreen && verbosity) printf("Deleting: %s\n",theFilename);
+    if(printToScreen && verbosity) 
+	printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
     sprintf(theFilename,"%s/gps_%d_%d.dat",gpsdSubTimeDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
