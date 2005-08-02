@@ -19,11 +19,11 @@
 #include "anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
+#include "utilLib/utilLib.h"
 #include "anitaStructures.h"
 
 
 
-char *Progname;
 pthread_t Hr_thread;
 
 #define SLBUF_SIZE 240
@@ -38,11 +38,15 @@ void handle_slowrate_comm1();
 void handle_slowrate_comm2();
 void write_highrate(int *ignore);
 
+char sipdPacketDir[FILENAME_MAX];
+char sipdPidFile[FILENAME_MAX];
+int numPacketDirs=0;
+
 int main(int argc, char *argv[])
 {
-    int ret,numCmds=256,count;
-
-    Progname = argv[0];
+    int ret,numCmds=256,count,pk;
+    char *tempString;
+    char tempDir[FILENAME_MAX];
 
     /* Config file thingies */
     int status=0;
@@ -58,13 +62,37 @@ int main(int argc, char *argv[])
    /* Load Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status &= configLoad ("Cmdd.config","lengths") ;
+    status += configLoad ("Cmdd.config","lengths") ;
+    status += configLoad ("Sipd.config","sipd") ;
     eString = configErrorString (status) ;
 
 
     if (status == CONFIG_E_OK) {
 /* 	printf("Here\n"); */
+	numPacketDirs=kvpGetInt("numPacketDirs",9);
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
+	tempString=kvpGetString("sipdPidFile");
+	if(tempString) {
+	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
+	    writePidFile(sipdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
+	    fprintf(stderr,"Couldn't get sipdPidFile\n");
+	}
+	tempString=kvpGetString("sipdPacketDir");
+	if(tempString) {
+	    strncpy(sipdPacketDir,tempString,FILENAME_MAX);
+	    for(pk=0;pk<numPacketDirs;pk++) {
+		sprintf(tempDir,"%s/pk%d/link",sipdPacketDir,pk);
+		makeDirectories(tempDir);
+	    }
+		
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get sipdPacketDir");
+	    fprintf(stderr,"Couldn't get sipdPacketDir\n");
+	}
 	//printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
     }
     else {
@@ -111,66 +139,90 @@ int main(int argc, char *argv[])
 }
 
 
-/* void write_highrate(int *ignore) */
-/* { */
-/*     long amtb; */
-/* #define BSIZE 2048 */
-/*     unsigned char buf[BSIZE]; */
-/*     long bufno = 1; */
-/*     int lim; */
-/*     int bytes_avail; */
-/*     int retval; */
+void write_highrate(int *ignore)
+{
+    long amtb;
+#define BSIZE 20000 //Silly hack until I packet up Events
+    unsigned char buf[BSIZE];
+    long bufno = 1;
+    int pk;
+    int bytes_avail;
+    int retVal,count;
+    int numLinks=0;
+    char linkDir[FILENAME_MAX];
+    char currentFilename[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+    int numBytes=0;
+    FILE *fp;
+    struct dirent **linkList;
 
-/*     //memset(buf, 'a', BSIZE); */
-/*     { */
-/* 	int i; */
-/* 	for (i=0; i<2048; i++) { */
-/* 	    buf[i] = i % 256; */
-/* 	} */
-/*     } */
-/*     rand_no_seed(getpid()); */
-    
-/*     lim = 2000; */
+    //memset(buf, 'a', BSIZE);
 
-/*     { */
-/* 	// We make this thread cancellable by any thread, at any time. This */
-/* 	// should be okay since we don't have any state to undo or locks to */
-/* 	// release. */
-/* 	int oldtype; */
-/* 	int oldstate; */
-/* 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype); */
-/* 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate); */
-/*     } */
+//lim = 2000;    
+    {
+	// We make this thread cancellable by any thread, at any time. This
+	// should be okay since we don't have any state to undo or locks to
+	// release.
+	int oldtype;
+	int oldstate;
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+    }
 
-/*     while (1) { */
+    while (1) {
 
-/* #ifdef NOTDEF */
-/* 	// This bit demonstrates changing the high rate throttle mitten */
-/* 	// drin. Every 10 updates, it switches from 688 to 300 bytes/sec */
-/* 	// and vice-versa. */
-/* 	static int cnt = 0; */
-/* 	if (cnt % 10 == 0) { */
-/* 	    static unsigned long rate = 300; */
-/* 	    fprintf(stderr, "=== high rate ===> rate = %lu\n", rate); */
-/* 	    sipcom_highrate_set_throttle(rate); */
-/* 	    if (rate == 300) { */
-/* 		rate = 688; */
-/* 	    } else { */
-/* 		rate = 300; */
-/* 	    } */
-/* 	} */
-/* 	++cnt; */
-/* #endif */
+#ifdef NOTDEF
+	// This bit demonstrates changing the high rate throttle mitten
+	// drin. Every 10 updates, it switches from 688 to 300 bytes/sec
+	// and vice-versa.
+	static int cnt = 0;
+	if (cnt % 10 == 0) {
+	    static unsigned long rate = 300;
+	    fprintf(stderr, "=== high rate ===> rate = %lu\n", rate);
+	    sipcom_highrate_set_throttle(rate);
+	    if (rate == 300) {
+		rate = 688;
+	    } else {
+		rate = 300;
+	    }
+	}
+	++cnt;
+#endif
 
-/* 	amtb = rand_no(lim); */
-/* 	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb); */
-/* 	retval = sipcom_highrate_write(buf, amtb); */
-/* 	if (retval != 0) { */
-/* 	    fprintf(stderr, "Bad write\n"); */
-/* 	} */
-/*     } */
+//	amtb = rand_no(lim);
 
-/* } */
+	for(pk=0;pk<numPacketDirs;pk++) {
+	    sprintf(linkDir,"%s/pk%d/link",sipdPacketDir,pk);
+	    numLinks=getListOfLinks(linkDir,&linkList);
+	    if(numLinks) break;
+	}
+	//Need to put something here so that it doesn't dick around 
+	//forever in pk4, when there is data waiting in pk1, etc.
+	
+	for(count=0;count<numLinks;count++) {
+	    sprintf(currentFilename,"%s/pk%d/%s",
+		    sipdPacketDir,pk,linkList[count]->d_name);
+	    sprintf(currentLinkname,"%s/pk%d/link/%s",
+		    sipdPacketDir,pk,linkList[count]->d_name);
+	    fp = fopen(currentFilename,"rb");
+	    numBytes = read(fp,
+	    
+	}
+
+
+	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
+	retVal = sipcom_highrate_write(buf, amtb);
+	if (retVal != 0) {
+	    fprintf(stderr, "Bad write\n");
+	}
+
+
+        for(count=0;count<numLinks;count++)
+            free(linkList[count]);
+        free(linkList);
+    }
+
+}
 
 void
 handle_command(unsigned char *cmd)
