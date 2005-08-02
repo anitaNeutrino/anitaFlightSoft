@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
     int retVal,count,i,filledSubTime;
     char currentFilename[FILENAME_MAX];
     char *tempString;
-
+    int match;
     /* Config file thingies */
     int status=0;
     char* eString ;
@@ -155,8 +155,8 @@ int main (int argc, char *argv[])
 	
 	printf("There are %d event links.\n",numEventLinks);
 	printf("There are %d gps links.\n",numGpsTimeLinks);
-
-
+//	exit(0);
+	
 	/* need to do something if we ever have more 
 	   than MAX_GPS_TIMES subTimes.*/
 	numGpsStored=0;
@@ -171,7 +171,7 @@ int main (int argc, char *argv[])
 		numGpsStored++;
 	    }
 	}
-	printf("%s\n",gpsdSubTimeLinkDir);
+//	printf("%s\n",gpsdSubTimeLinkDir);
 	if(printToScreen) printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
 //	exit(0);
 	whichGps=0;
@@ -182,38 +182,31 @@ int main (int argc, char *argv[])
 	    sprintf(currentFilename,"%s/%s",acqdEventLinkDir,
 		    eventLinkList[count]->d_name);
 	    retVal=fillHeader(&theAcqdEventHeader,currentFilename);
-/* 	    printf("Event %d, time %d\n",theAcqdEventHeader.eventNumber, */
-/* 		   theAcqdEventHeader.unixTime); */
 	    for(i=whichGps;i<numGpsStored;i++) {
-//		printf("i is %d\n",i);
 		if(printToScreen && verbosity) 
-		    printf("Event %d, time %d\tGPS\t%d\n",
+		    printf("Event %d, time %d\t%lu\tGPS\t%d\t%d\n",
 			   theAcqdEventHeader.eventNumber,
 			   theAcqdEventHeader.unixTime,
-			   gpsArray[i].unixTime);
-		int match=compareTimes(&theAcqdEventHeader,&gpsArray[i],0);
-		if(numEvents==100) compareTimes(&theAcqdEventHeader,&gpsArray[i],1);
+			   theAcqdEventHeader.turfio.trigTime,
+			   gpsArray[i].unixTime,
+			   gpsArray[i].subTime);
+		match=compareTimes(&theAcqdEventHeader,&gpsArray[i],0);
+//		sleep(1);
 		if(match) {
-//		if(theAcqdEventHeader.unixTime==gpsArray[i].unixTime) {
-		    
 		    if(printToScreen) 
 			printf("Match: Event %d\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,gpsArray[i].unixTime,gpsArray[i].subTime);
 		    theAcqdEventHeader.unixTime=gpsArray[i].unixTime;
 		    theAcqdEventHeader.gpsSubTime=gpsArray[i].subTime;
 		    /* As events come time sorted can delete all previous
 		       elements of the gpsArray. */
-/* 		    if(printToScreen) */
-/* 			printf("\tDiff: %d\t%d\t%d\n", */
-/* 			       theAcqdEventHeader.unixTimeUs*10, */
-/* 			       theAcqdEventHeader.gpsSubTime, */
-/* 			       (theAcqdEventHeader.unixTimeUs*10)-theAcqdEventHeader.gpsSubTime); */
 		    
 		    whichGps=i;
 		    filledSubTime=1;		    
 		    break;
 		}
-		if(theAcqdEventHeader.unixTime<gpsArray[i].unixTime) break;
+		if(theAcqdEventHeader.unixTime<gpsArray[i].unixTime-1) break;
 	    }
+//	    exit(0);
 		    
 	    /* Maybe we didn't get the GPS time, if currentTime is later than
 	       three seconds after then we'll write theHeader anyhow. */
@@ -386,40 +379,76 @@ int getCalibStatus(int unixTime)
 
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset) 
 {
-//    static int count=0;
-    static int gotTime=0;
-    static double firstUnixTime=0;
-    static double firstPPSNum=0;
-    if(!gotTime || forceReset) {
-	firstUnixTime = (double)theHeaderPtr->unixTime;
-	firstPPSNum = (double)theHeaderPtr->turfio.ppsNum;
-	gotTime=1;
-    }
 
-    if(theHeaderPtr->turfio.ppsNum<firstPPSNum) {
-	firstUnixTime = (double)theHeaderPtr->unixTime;
-	firstPPSNum = (double)theHeaderPtr->turfio.ppsNum;
-    }
-	
-    double computerTime=firstUnixTime+(theHeaderPtr->turfio.ppsNum-firstPPSNum);
-    double fracTime=(double)theHeaderPtr->turfio.trigTime;    
-    if(theHeaderPtr->turfio.c3poNum) 
-	fracTime/=(double)theHeaderPtr->turfio.c3poNum;
-    else fracTime/=DEFAULT_C3PO;
-
+    static unsigned long lastUnixTime=0;
+    static unsigned long lastPPSNum=0;
+    static unsigned long lastTrigTime=0;
+    static int addedOneLastTime=0;
+    static int subtractedOneLastTime=0;
+    double computerTime=(double)theHeaderPtr->unixTime;
+    double fracTime=(double)theHeaderPtr->turfio.trigTime;
+    fracTime/=DEFAULT_C3PO;
     computerTime+=fracTime;
 
     double gpsTime=(double)(theGpsPtr->unixTime);
     double gpsFracTime=1e-7*(double)(theGpsPtr->subTime);
     gpsTime+=gpsFracTime;
-    double diff=computerTime-gpsTime;
-//    printf("Here:\t%9.2lf\t%9.2lf\t%9.9lf\n",computerTime,gpsTime,diff);
-        
-    if(abs(theHeaderPtr->unixTime-theGpsPtr->unixTime)>1) return 0; 	
 
-//    count++;
-//    if(count>100)
-//	exit(0);
+
+    
+//    if(abs(theHeaderPtr->unixTime-theGpsPtr->unixTime)>2) return 0; 	
+
+
+    if((theHeaderPtr->turfio.trigTime>(lastTrigTime+20e6)) &&
+       (theHeaderPtr->unixTime>lastUnixTime) && lastUnixTime && 
+       !addedOneLastTime)
+    {
+	if(theHeaderPtr->turfio.ppsNum==lastPPSNum) {
+	    computerTime-=1;
+	    subtractedOneLastTime=1;
+	    addedOneLastTime=0;
+	}
+    }
+    else if((theHeaderPtr->turfio.trigTime<lastTrigTime) &&
+	    (theHeaderPtr->unixTime==lastUnixTime) && lastUnixTime)
+    {
+	if(theHeaderPtr->turfio.ppsNum==lastPPSNum+1) {	    
+	    computerTime+=1;
+	    addedOneLastTime=1;
+	    subtractedOneLastTime=0;
+	}
+    }
+    else if(addedOneLastTime && theHeaderPtr->unixTime==lastUnixTime
+	    && theHeaderPtr->turfio.ppsNum>=lastPPSNum) {
+	computerTime+=1;
+	addedOneLastTime=1;
+	subtractedOneLastTime=0;
+    }
+    else if(addedOneLastTime && (theHeaderPtr->unixTime==lastUnixTime+1)
+	    && (theHeaderPtr->turfio.ppsNum==lastPPSNum+1) &&
+	    (theHeaderPtr->turfio.trigTime<lastTrigTime)) {
+	computerTime+=1;
+	addedOneLastTime=1;
+	subtractedOneLastTime=0;
+
+    }
+    else {
+	subtractedOneLastTime=0;
+	addedOneLastTime=0;
+    }
+	
+    double diff=computerTime-gpsTime;
+    if(verbosity>1 && printToScreen) { 
+	printf("Old:\t%lu\t%lu\t%lu\n",lastUnixTime,lastTrigTime,lastPPSNum);
+	printf("New:\t%d\t%lu\t%lu\n",theHeaderPtr->unixTime,
+	       theHeaderPtr->turfio.trigTime,theHeaderPtr->turfio.ppsNum);
+	
+	printf("Raw:\t%d\t%d\n",theHeaderPtr->unixTime,theGpsPtr->unixTime);
+	printf("Here:\t%9.2lf\t%9.2lf\t%9.9lf\n",computerTime,gpsTime,diff);
+    }
+    lastUnixTime=theHeaderPtr->unixTime;
+    lastTrigTime=theHeaderPtr->turfio.trigTime;
+    lastPPSNum=theHeaderPtr->turfio.ppsNum;
     if(diff<0) diff*=-1;
     if(diff < TIME_MATCH) return 1;
     return 0;
