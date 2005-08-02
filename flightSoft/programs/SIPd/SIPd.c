@@ -141,18 +141,19 @@ int main(int argc, char *argv[])
 
 void write_highrate(int *ignore)
 {
-    long amtb;
+//    long amtb;
 #define BSIZE 20000 //Silly hack until I packet up Events
     unsigned char buf[BSIZE];
-    long bufno = 1;
+//    long bufno = 1;
     int pk;
-    int bytes_avail;
+//    int bytes_avail;
     int retVal,count;
     int numLinks=0;
+    long fileSize=0;
     char linkDir[FILENAME_MAX];
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-    int numBytes=0;
+    int numItems=0;
     FILE *fp;
     struct dirent **linkList;
 
@@ -193,7 +194,7 @@ void write_highrate(int *ignore)
 
 	for(pk=0;pk<numPacketDirs;pk++) {
 	    sprintf(linkDir,"%s/pk%d/link",sipdPacketDir,pk);
-	    numLinks=getListOfLinks(linkDir,&linkList);
+	    numLinks=getListofLinks(linkDir,&linkList);
 	    if(numLinks) break;
 	}
 	//Need to put something here so that it doesn't dick around 
@@ -205,21 +206,44 @@ void write_highrate(int *ignore)
 	    sprintf(currentLinkname,"%s/pk%d/link/%s",
 		    sipdPacketDir,pk,linkList[count]->d_name);
 	    fp = fopen(currentFilename,"rb");
-	    numBytes = read(fp,
+	    if(fp == NULL) {
+		syslog(LOG_ERR,"Error opening file: %s",currentFilename);
+		fprintf(stderr,"Error opening file: %s\n",currentFilename);
+		//Mayhaps we should delete
+		continue;
+	    }
+	    // Obtain file size
+	    fseek(fp,0,SEEK_END);
+	    fileSize=ftell(fp);
+	    rewind(fp);
+	    
+
+	    numItems = fread(buf,1,fileSize,fp);
+	    if(numItems!=1) {
+		syslog(LOG_ERR,"Error reading file: %s",currentFilename);
+		fprintf(stderr,"Error reading file: %s\n",currentFilename);
+	    }	    
+	    /*** the whole file is loaded in the buffer. ***/	    
+	    fclose (fp);
+	    break;
 	    
 	}
-
-
-	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
-	retVal = sipcom_highrate_write(buf, amtb);
-	if (retVal != 0) {
-	    fprintf(stderr, "Bad write\n");
-	}
-
-
+	
         for(count=0;count<numLinks;count++)
             free(linkList[count]);
         free(linkList);
+
+	fprintf(stderr, "=== high rate ===> amtb = %ld\n", fileSize);
+	retVal = sipcom_highrate_write(buf, fileSize);
+	if (retVal != 0) {
+	    syslog(LOG_ERR,"Couldn't write file: %s",currentFilename);
+	    fprintf(stderr, "Bad write\n");
+	}
+	else {
+	    removeFile(currentFilename);
+	    removeFile(currentLinkname);
+	}
+
     }
 
 }
