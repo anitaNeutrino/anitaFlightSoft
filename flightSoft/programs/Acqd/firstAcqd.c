@@ -44,8 +44,10 @@ unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP];
 //AnitaEventBody_t eventBody;
 AnitaEventFull_t theEvent;
 
+SimpleScalerStruct_t theScalers;
+
 //Temporary Global Variables
-unsigned short scalarData[MAX_SURFS][N_RFTRIG];
+unsigned short scalerData[MAX_SURFS][N_RFTRIG];
 unsigned short rfpwData[MAX_SURFS][N_RFTRIG];
 
 
@@ -54,7 +56,7 @@ unsigned short rfpwData[MAX_SURFS][N_RFTRIG];
 char acqdEventDir[FILENAME_MAX];
 char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
-char scalarOutputDir[FILENAME_MAX];
+char scalerOutputDir[FILENAME_MAX];
 
 #define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
 #define N_FTMO 200    /* number of msec wait for Lab_f before timed out. */
@@ -66,21 +68,27 @@ int verbosity = 0 ; /* control debug print out. */
 int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
-int writeScalars = FALSE;
+int writeScalers = FALSE;
 int justWriteHeader = FALSE;
-int doDacCycle = FALSE; /* Do a cycle of the DAC values */
+int doSlowDacCycle = FALSE; /* Do a cycle of the DAC values */
+int doGlobalDacCycle = FALSE;
 int printStatistics = FALSE;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
 int writeOutC3p0Nums = FALSE;
-int rprgturf = FALSE ;
+int reprogramTurf = FALSE;
 
 //Trigger Modes
 int rfTrigFlag = 0;
 int pps1TrigFlag = 0;
 int pps2TrigFlag = 0;
 int softTrigFlag = 0;
+
+//Threshold Stuff
+int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
+int setGlobalThreshold=0;
+int globalThreshold=2200;
 
 void writeC3P0Nums();
 
@@ -100,13 +108,14 @@ int main(int argc, char **argv) {
     int i=0,tmo=0; 
     int numDevices, n_ev=0 ;
     int tmpGPIO;
-    int dacVal=255;
-    int dacValues[8];
+    unsigned short dacVal=2200;
+    unsigned short dacValues[8];
     int surf,physDac;
     
     int dacChan=0;
     int doingSurfDac=0;
     int doingChanDac=0;
+    unsigned short doingDacVal=100;//2100;
     struct timeval timeStruct;
 
    
@@ -122,8 +131,6 @@ int main(int argc, char **argv) {
     }
 //    printf("Debug3\n");
     if(printToScreen) printf(" Start test program %d %#x!!\n",LAB_F,LAB_F) ;
-    makeDirectories(acqdEventDir);
-    makeDirectories(acqdEventLinkDir);
 
 //    printf("Debug4\n");
     if(standAloneMode) {
@@ -147,7 +154,8 @@ int main(int argc, char **argv) {
 //    setTurfControl(turfioHandle,TurfClearEvent);
 //    exit(0);
 /* special initialization of TURF.  may not be necessary.  12-Jul-05 SM. */
-    if (rprgturf) {
+    if (reprogramTurf) {
+	printf("Reprogramming Turf\n");
 	setTurfControl(turfioHandle,TrigNone,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
@@ -160,7 +168,7 @@ int main(int argc, char **argv) {
     do {
 	retVal=readConfigFile();
 	/* set DAC value to a default value. */
-//	setDACThresholds(surfHandles,dacVal);
+
 	if(retVal!=CONFIG_E_OK) {
 	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	    return -1;
@@ -173,8 +181,9 @@ int main(int argc, char **argv) {
 	if(pps2TrigFlag) trigMode+=TrigPPS2;
 	if(softTrigFlag) trigMode+=TrigSoft;
 	
-	//If doDacCycle only enable TrigPPS1;
-	if(doDacCycle) trigMode=TrigPPS1;
+/* 	//If doing a DacCycle only enable TrigPPS1; */
+/* 	if(doGlobalDacCycle) doSlowDacCycle=0; */
+/* 	if(doSlowDacCycle || doGlobalDacCycle) trigMode=TrigPPS1; */
 
 	setTurfControl(turfioHandle,trigMode,SetTrigMode);
 
@@ -182,30 +191,83 @@ int main(int argc, char **argv) {
 
 //    printf("Before Event Loop %d %d\n",doingEvent,n_ev);
 	currentState=PROG_STATE_RUN;
+//	exit(0);
+	if(setGlobalThreshold) {
+	    setDACThresholds(surfHandles,globalThreshold);
+	    printf("Setting Global Threshold %d\n",globalThreshold);
+	}
+	else {
+
+	    for(surf=0;surf<numSurfs;surf++) {
+		for(dacChan=0;dacChan<NUM_DAC_CHANS;dacChan++) {
+		    if(printToScreen)printf("surf %d dac %d:\t",surf,dacChan);
+		    for(physDac=0;physDac<PHYS_DAC;physDac++) {
+			if(printToScreen)printf("%d ",thresholdArray[surf][dacChan][physDac]);
+			dacValues[physDac]=thresholdArray[surf][dacChan][physDac];
+		    }
+		    if(printToScreen)printf("\n");
+		    setDACThresholdsOnChan(surfHandles[surf],dacChan,dacValues);
+		}
+	    }
+	}
+//setDACThresholdsIndividuually(surfHandles);
 	while (currentState==PROG_STATE_RUN) {
 	/* initialize data_array with 0, 
 	   should be just inside the outmost loop.*/
 	    bzero(&theEvent, sizeof(theEvent)) ;
-	    if(doDacCycle) {
-		for(surf=doingSurfDac;i<numSurfs;++surf) {
+	    if(doGlobalDacCycle) {
+		
+//		if(dacVal<=500) dacVal=4095;
+//		else if(dacVal>=4000) dacVal=0;
+		dacVal=doingDacVal;
+
+		theScalers.threshold=dacVal;
+		if(printToScreen) 
+		    printf("Setting Local Threshold %d\n",dacVal);
+		setDACThresholds(surfHandles,dacVal);
+//		for(physDac=0;physDac<PHYS_DAC;physDac++) {
+//		    if(physDac==3)
+//			dacValues[physDac]=dacVal;
+//		    else 
+//			dacValues[physDac]=0;
+//		}
+//		setDACThresholdsOnChan(surfHandles[0],0,dacValues);
+		doingDacVal+=1;
+		if(doingDacVal>4095) exit(0);//doingDacVal=0;
+	    }
+	    if(doSlowDacCycle) {
+		for(surf=doingSurfDac;surf<numSurfs;++surf) {
 		    if(dacSurfs[surf]) {
 			for (dacChan=doingChanDac; dacChan<DAC_CHAN; dacChan++) {
 			    if(dacChans[dacChan]) {
-				for(dacVal=0;dacVal<4096;dacVal++) {
-				    for(physDac=0;physDac<PHYS_DAC;physDac++) 
+		for(dacVal=doingDacVal;dacVal<4096;dacVal++) {
+				    for(physDac=0;physDac<PHYS_DAC;physDac++)
 					dacValues[physDac]=dacVal;
-				    
+				    printf("DAC:\t%d\t%d\t%d\n",surf,dacChan,dacVal);
 				    setDACThresholdsOnChan(surfHandles[surf],
 							   dacChan,dacValues);
-				    doingSurfDac=surf;
-				    doingChanDac=dacChan; 
+				    doingDacVal=dacVal+1;
 				    break;
 				}
 			    }
+			    if(doingDacVal<4096)
+				doingChanDac=dacChan;
+			    else {
+				doingChanDac++;
+				doingDacVal=0;
+			    }
+			    break;
 			}
+			if(doingChanDac<DAC_CHAN)
+			    doingSurfDac=surf;
+			else {
+			    doingSurfDac++;
+			    doingChanDac=0;
+			}
+			break;
 		    }
 		}
-		exit(0);		
+//		exit(0);
 	    }
 
 	    if(sendSoftTrigger) {
@@ -214,7 +276,7 @@ int main(int argc, char **argv) {
 	    }
 	    if (selftrig){  /* --- send a trigger ---- */ 
 		if(printToScreen) printf(" try to trigger it locally.\n") ;
-		for(surf=0;i<numSurfs;++surf) 
+		for(surf=0;surf<numSurfs;++surf) 
 		    if (setSurfControl(surfHandles[surf], LTrig) != ApiSuccess) {
 			status=ACQD_E_LTRIG;
 			syslog(LOG_ERR,"Failed to set LTrig on SURF %d",surf);
@@ -262,7 +324,7 @@ int main(int argc, char **argv) {
 		    theEvent.header.unixTime=timeStruct.tv_sec;
 		    theEvent.header.unixTimeUs=timeStruct.tv_usec;
 		    theEvent.header.eventNumber=getEventNumber();
-		    if(printToScreen) 
+		    if(printToScreen && verbosity) 
 			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
 		// Save data
 		if(writeData){
@@ -379,8 +441,8 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
     PlxReturnCode_t   rc ;
 
     // Read current GPIO state
-    //  base_v=PlxRegisterRead(PlxHandle, PCI9030_GP_IO_CTRL, &rc) ; 
-    //  base_v=base_clr; // Gary's said this should be default PM 03-31-05
+    U32 base_v=PlxRegisterRead(surfHandle, PCI9030_GP_IO_CTRL, &rc) ; 
+    base_v=base_clr; // Gary's said this should be default PM 03-31-05
 
     switch (action) {
 	case SurfClearAll : gpio_v = base_clr | clr_all  ; break ; /* RJN changed base_v */
@@ -436,7 +498,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TriggerMode_t trigMode,
 //    printf("Dec: %d %d %d\nHex: %x %x %x\nOct: %o %o %o\n",base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg);
 //    exit(0);
     // Read current GPIO state
-    //base_v=PlxRegisterRead(PlxHandle, PCI9030_GP_IO_CTRL, &rc) ; 
+    base_v=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc) ; 
     //base_v=base_clr; // Gary's said this should be default PM 03-31-05
     
     base_v=base_clr;
@@ -618,7 +680,8 @@ int readConfigFile()
 /* Load Acqd config stuff */
 {
     /* Config file thingies */
-    int status=0,count;
+    int status=0,count,surf,dac;
+    char keyName[180];
     int tempNum=12;
     int surfSlots[MAX_SURFS];
     int surfBuses[MAX_SURFS];
@@ -635,17 +698,22 @@ int readConfigFile()
     status += configLoad ("Acqd.config","debug") ;
     status += configLoad ("Acqd.config","trigger") ;
     status += configLoad ("Acqd.config","thresholds") ;
+    status += configLoad ("Acqd.config","acqd") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
 	tempString=kvpGetString ("acqdEventDir");
-	if(tempString)
-	   strncpy(acqdEventDir,tempString,FILENAME_MAX-1);
+	if(tempString) {
+	   strncpy(acqdEventDir,tempString,FILENAME_MAX-1);	   
+	   makeDirectories(acqdEventDir);
+	}
 	else
 	    fprintf(stderr,"Couldn't fetch acqdEventDir\n");
 //	printf("%s\n",acqdEventDir);
 	tempString=kvpGetString ("acqdEventLinkDir");
-	if(tempString)
+	if(tempString) {
 	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(acqdEventLinkDir);
+	}
 	else
 	    fprintf(stderr,"Coudn't fetch acqdEventLinkDir\n");
 	tempString=kvpGetString ("lastEventNumberFile");
@@ -653,21 +721,24 @@ int readConfigFile()
 	    strncpy(lastEventNumberFile,tempString,FILENAME_MAX-1);
 	else
 	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
-	tempString=kvpGetString ("scalarOutputDir");
-	if(tempString)
-	    strncpy(scalarOutputDir,tempString,FILENAME_MAX-1);
+	tempString=kvpGetString ("scalerOutputDir");
+	if(tempString) {
+	    strncpy(scalerOutputDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(scalerOutputDir);
+	}
 	else
-	    fprintf(stderr,"Coudn't fetch scalarOutputDir\n");
+	    fprintf(stderr,"Coudn't fetch scalerOutputDir\n");
 //	printf("Debug rc2\n");
 	printToScreen=kvpGetInt("printToScreen",0);
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
 	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
 	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
+	reprogramTurf=kvpGetInt("reprogramTurf",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
 	writeData=kvpGetInt("writeData",1);
-	writeScalars=kvpGetInt("writeScalars",1);
+	writeScalers=kvpGetInt("writeScalers",1);
 	justWriteHeader=kvpGetInt("justWriteHeader",0);
 	verbosity=kvpGetInt("verbosity",0);
 	printStatistics=kvpGetInt("printStatistics",0);
@@ -675,7 +746,10 @@ int readConfigFile()
 	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
 	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
 	softTrigFlag=kvpGetInt("enableSoftTrigger",1);
-	doDacCycle=kvpGetInt("doDacCycle",0);
+	doSlowDacCycle=kvpGetInt("doSlowDacCycle",0);
+	doGlobalDacCycle=kvpGetInt("doGlobalDacCycle",0);
+	setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
+	globalThreshold=kvpGetInt("globalThreshold",0);
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
@@ -741,7 +815,7 @@ int readConfigFile()
 			kvpErrorString(kvpStatus));
 	}
 	tempNum=4;
-	kvpStatus = kvpGetIntArray("dacChans",dacChans,&tempNum);
+	kvpStatus = kvpGetIntArray("dacChans",dacChans,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
 	    syslog(LOG_WARNING,"kvpGetIntArray(dacChans): %s",
 		   kvpErrorString(kvpStatus));
@@ -749,7 +823,22 @@ int readConfigFile()
 		fprintf(stderr,"kvpGetIntArray(dacChans): %s\n",
 			kvpErrorString(kvpStatus));
 	}
-			
+
+	for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	    for(dac=0;dac<NUM_DAC_CHANS;dac++) {
+		sprintf(keyName,"surf%dBank%d",surf,dac);
+		tempNum=8;	       
+		kvpStatus = kvpGetIntArray(keyName,&thresholdArray[surf][dac][0],&tempNum);
+		if(kvpStatus!=KVP_E_OK) {
+		    syslog(LOG_WARNING,"kvpGetIntArray(%s): %s",keyName,
+			   kvpErrorString(kvpStatus));
+		    if(printToScreen)
+			fprintf(stderr,"kvpGetIntArray(%s): %s\n",keyName,
+				kvpErrorString(kvpStatus));
+		}
+	    }
+	}
+    	
 
 	
     }
@@ -768,6 +857,7 @@ int readConfigFile()
 void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) 
 // Clears boards for start of data taking 
 {
+    int testVal=0;
     int i;
     PlxReturnCode_t  rc ;
 
@@ -786,9 +876,10 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     }
     
     for(i=0;i<numSurfs;++i){
+	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
 	if(printToScreen)
-	    printf(" GPIO register contents SURF %d = %x\n",i,
-		   PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc)) ; 
+	    printf(" GPIO register contents SURF %d = %x\n",i,testVal);
+		   
 	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",i) ;
 	    if(printToScreen)
@@ -796,11 +887,14 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	}
     }
 
-    if(verbosity && printToScreen){
+    if(printToScreen){
 	printf(" Try to test interrupt control register.\n") ;
-	for(i=0;i<numSurfs;++i)
-	    printf(" Int reg contents SURF %d = %x\n",i,
-		   PlxRegisterRead(surfHandles[i], PCI9030_INT_CTRL_STAT, &rc)) ; 
+	for(i=0;i<numSurfs;++i) {
+	    testVal=
+		PlxRegisterRead(surfHandles[i],PCI9030_INT_CTRL_STAT, &rc); 
+	    printf(" Int reg contents SURF %d = %x\n",i,testVal);
+	}
+		   
     }
 
     // Prepare TURFIO board
@@ -815,9 +909,9 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     /*    printf(" TURFIO Chip type:  %04x,  Revision :    %02X\n", */
     /*          ChipTypeSelected, ChipRevision );  */
 
-    if(printToScreen) printf(" GPIO register contents TURFIO = %x\n",
-			     PlxRegisterRead(turfioHandle, 
-					     PCI9030_GP_IO_CTRL, &rc)) ; 
+    testVal=PlxRegisterRead(turfioHandle,PCI9030_GP_IO_CTRL,&rc) ; 
+    if(printToScreen) printf(" GPIO register contents TURFIO = %x\n",testVal);
+
 
     if (setTurfControl(turfioHandle,TrigNone, TurfClearAll) != ApiSuccess) {
 	syslog(LOG_ERR,"Failed to send clear pulse on TURF %d.\n",i) ;
@@ -825,14 +919,18 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    printf("  failed to send clear pulse on TURF %d.\n",i) ;
     }
 
-    /*    printf(" Try to read 9030 GPIO.  %x\n", */
-    /*  	 PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc)) ; */
-    /*    if (rc != ApiSuccess) printf("  failed to read TURFIO GPIO .\n") ; */
 
-    if(verbosity && printToScreen){
+    testVal=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc); 
+    if(printToScreen) {	
+        printf(" Try to read 9030 GPIO.  %x\n", testVal);
+    }
+    if (rc != ApiSuccess) printf("  failed to read TURFIO GPIO .\n") ; 
+
+    testVal=PlxRegisterRead(turfioHandle, PCI9030_INT_CTRL_STAT, &rc); 
+    if(printToScreen){
 	printf(" Try to test interrupt control register.\n") ;
-	printf(" int reg contents TURFIO = %x\n",
-	       PlxRegisterRead(turfioHandle, PCI9030_INT_CTRL_STAT, &rc)) ; 
+	printf(" int reg contents TURFIO = %x\n",testVal);
+	       
     }
     
     return;
@@ -885,7 +983,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
 
 /* purse command arguments to initialize parameter(s). */
-int init_param(int argn, char **argv, char *directory, int *n, int *dacVal) {
+int init_param(int argn, char **argv, char *directory, int *n, unsigned short *dacVal) {
 
     while (--argn) {
 	if (**(++argv) == '-') {
@@ -894,9 +992,9 @@ int init_param(int argn, char **argv, char *directory, int *n, int *dacVal) {
 		case 't': selftrig = TRUE; break;
 		case 's': surfonly = TRUE; break;
 		case 'w': writeData = TRUE; break;
-		case 'c': doDacCycle = TRUE; break;
-		case 'a': *dacVal=atoi(*(++argv)) ; --argn ; break ;
-		case 'r': rprgturf = TRUE ; break ;
+		case 'c': doSlowDacCycle = TRUE; break;
+		case 'a': *dacVal=(unsigned short)atoi(*(++argv)) ; --argn ; break ;
+		case 'r': reprogramTurf = TRUE ; break ;
 		case 'd': strncpy(directory,*(++argv),FILENAME_MAX);
 		    --argn ; break ;
 		case 'n': sscanf(*(++argv), "%d", n) ;
@@ -911,7 +1009,7 @@ int init_param(int argn, char **argv, char *directory, int *n, int *dacVal) {
     return 0;
 }
 
-void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, int values[8]) 
+void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, unsigned short values[8]) 
 {
     
 #define DAC_CNT 10000000
@@ -919,7 +1017,8 @@ void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, int values[8])
 #define BIT_EFF 12
 
     int bit_RS,bit;
-    int phys_DAC;
+    int phys_DAC,tmpGPIO;
+    PlxReturnCode_t rc;
     unsigned short dataByte;
     unsigned short DACVal[DAC_CHAN][PHYS_DAC],DAC_C_0[DAC_CHAN][BIT_NO]; 
     //  unsigned short DACVal_1[DAC_CHAN][PHYS_DAC];
@@ -982,7 +1081,7 @@ void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, int values[8])
 	DAC_C[chan][bit]=(DAC_C_0[chan][bit]) & 0x00FF;
     }
     
-    if(verbosity>1 && printToScreen)
+    if(printToScreen)
 	printf("  setDAC: Writing: ");
     for (bit=BIT_NO-1; bit>=0; bit--) {
 	dataByte=DAC_C[chan][bit];
@@ -991,16 +1090,16 @@ void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, int values[8])
 	    if(printToScreen)
 		fprintf(stderr,"Failed to write DAC value\n");
 	}
-	if(verbosity>1 && printToScreen)printf("%x ",dataByte);
+	if(printToScreen)printf("%x ",dataByte);
 	//else printf("Wrote %d to SURF %d; value: %d\n",dataByte,boardIndex,value);		    
     }
-    if(verbosity>1 && printToScreen) printf("\n");
-// tmpGPIO=PlxRegisterRead(surfHandles[boardIndex], PCI9030_GP_IO_CTRL, &rc);
-// tmpGPIO=PlxRegisterRead(surfHandles[boardIndex], PCI9030_GP_IO_CTRL, &rc);
+    if(printToScreen) printf("\n");
+    tmpGPIO=PlxRegisterRead(surfHandle, PCI9030_GP_IO_CTRL, &rc);
+    tmpGPIO=PlxRegisterRead(surfHandle, PCI9030_GP_IO_CTRL, &rc);
 }
 
 
-void setDACThresholds(PlxHandle_t *surfHandles,  int threshold) {
+void setDACThresholds(PlxHandle_t *surfHandles,  unsigned short threshold) {
     //Only does one threshold at the moment
     
 #define DAC_CNT 10000000
@@ -1097,7 +1196,8 @@ void setDACThresholds(PlxHandle_t *surfHandles,  int threshold) {
 
     for(boardIndex=0;boardIndex<numSurfs;boardIndex++) {	    
 	for (chan=0; chan<DAC_CHAN; chan++) {
-	    if(verbosity>1 && printToScreen)      printf("  setDAC: Writing: ");
+	    if(verbosity && printToScreen)      
+		printf("  setDAC: Writing: ");
 	    for (bit=BIT_NO-1; bit>=0; bit--) {
 		dataByte=DAC_C[chan][bit];
 		if (PlxBusIopWrite(surfHandles[boardIndex], IopSpace0, 0x0, TRUE, &dataByte, 2, BitSize16) != ApiSuccess) {
@@ -1105,15 +1205,134 @@ void setDACThresholds(PlxHandle_t *surfHandles,  int threshold) {
 		    if(printToScreen)
 			fprintf(stderr,"Failed to write DAC value\n");
 		}
-		if(verbosity>1 && printToScreen)printf("%x ",dataByte);
+		if(verbosity && printToScreen)printf("%x ",dataByte);
 		//else printf("Wrote %d to SURF %d; value: %d\n",dataByte,boardIndex,value);		    
 	    }
-	    if(verbosity>1 && printToScreen) printf("\n");
+	    if(verbosity && printToScreen) printf("\n");
 	    tmpGPIO=PlxRegisterRead(surfHandles[boardIndex], PCI9030_GP_IO_CTRL, &rc);
 	    tmpGPIO=PlxRegisterRead(surfHandles[boardIndex], PCI9030_GP_IO_CTRL, &rc);
 	}
     }
 	
+}
+
+
+
+void setDACThresholdsIndividuually(PlxHandle_t *surfHandles) {
+    //Only does one threshold at the moment
+    
+#define DAC_CNT 10000000
+#define BIT_NO 16
+#define BIT_EFF 12
+
+    int bit_RS,bit;
+    int chan,phys_DAC,surf;
+    unsigned short dataByte;
+    unsigned short DACVal[MAX_SURFS][DAC_CHAN][PHYS_DAC],DAC_C_0[MAX_SURFS][DAC_CHAN][BIT_NO]; 
+    //  unsigned short DACVal_1[DAC_CHAN][PHYS_DAC];
+    unsigned short DAC_C[MAX_SURFS][DAC_CHAN][BIT_NO];
+    int tmpGPIO;
+    PlxReturnCode_t      rc ;
+
+    // Copy what Jing does at start of her program
+    // Will probably remove this at some point
+    /*     for(i=0;i<numDevices-1;++i) { */
+    /* 	if (setSurfControl(surfHandles[i], SurfClearEvent) != ApiSuccess) */
+    /* 	    printf("  failed to send clear event pulse on SURF %d.\n",i); */
+    /* 	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) */
+    /* 	    printf("  failed to send clear all pulse on SURF %d.\n",i); */
+    /*     } */
+
+    for(surf=0;surf<numSurfs;surf++) {
+	//DAC1A..8A;
+	DAC_C[surf][0][15]=0; 	DAC_C_0[surf][0][15]=0;
+	DAC_C[surf][0][14]=0; 	DAC_C_0[surf][0][14]=0;
+	DAC_C[surf][0][13]=0xff;	DAC_C_0[surf][0][13]=0xff;
+	DAC_C[surf][0][12]=0; 	DAC_C_0[surf][0][12]=0;
+	//DAC1A..8A;
+	
+	//DAC1B..8B;
+	DAC_C[surf][1][15]=0; 	DAC_C_0[surf][1][15]=0;
+	DAC_C[surf][1][14]=0xff;	DAC_C_0[surf][1][14]=0xff;
+	DAC_C[surf][1][13]=0xff;	DAC_C_0[surf][1][13]=0xff;
+	DAC_C[surf][1][12]=0; 	DAC_C_0[surf][1][12]=0;
+	//DAC1B..8B;
+	
+	//DAC1C..8C;
+	DAC_C[surf][2][15]=0xff;	DAC_C_0[surf][2][15]=0xff;
+	DAC_C[surf][2][14]=0; 	DAC_C_0[surf][2][14]=0;
+	DAC_C[surf][2][13]=0xff;	DAC_C_0[surf][2][13]=0xff;
+	DAC_C[surf][2][12]=0; 	DAC_C_0[surf][2][12]=0;
+	//DAC1C..8C;
+	
+	//DAC1D..8D;
+	DAC_C[surf][3][15]=0xff;	DAC_C_0[surf][3][15]=0xff;
+	DAC_C[surf][3][14]=0xff;	DAC_C_0[surf][3][14]=0xff;
+	DAC_C[surf][3][13]=0xff;	DAC_C_0[surf][3][13]=0xff;
+	DAC_C[surf][3][12]=0; 	DAC_C_0[surf][3][12]=0;
+	//DAC1D..8D;
+
+
+	///////////////////////////
+	//Write in DAC thresholds--Start
+	for (chan=0; chan<DAC_CHAN; chan++) 
+	{
+	    for (phys_DAC=0; phys_DAC<PHYS_DAC; phys_DAC++)
+	    {
+		DACVal[surf][chan][phys_DAC]=thresholdArray[surf][chan][phys_DAC]&0xffff;
+		//  printf("DACVal[surf][%d][%d]=%x    \n", chan, phys_DAC, DACVal[surf][chan][phys_DAC]);
+	    }
+	    //	    printf("\n");
+	}
+	
+	for (chan=0; chan<DAC_CHAN; chan++)
+	{
+	    for (bit=0; bit<BIT_EFF; bit++)
+	    {
+		DAC_C[surf][chan][bit] =0;
+		DAC_C_0[surf][chan][bit] =0;
+	    }
+	}
+	
+	
+	for (chan=0; chan<DAC_CHAN; chan++) {
+	    for (bit=0; bit<BIT_EFF; bit++) {
+		bit_RS=bit;
+		phys_DAC=0;
+		while ((bit_RS>0) && (phys_DAC<PHYS_DAC)) {
+		    DAC_C_0[surf][chan][bit] |=(DACVal[surf][chan][phys_DAC] & ((0x0001)<<bit)) >> bit_RS;
+		    bit_RS--;
+		    phys_DAC++;
+		}
+		while (phys_DAC<PHYS_DAC) {
+		    DAC_C_0[surf][chan][bit] |=(DACVal[surf][chan][phys_DAC] & ((0x0001)<<bit)) << bit_RS;
+		    bit_RS++;
+		    phys_DAC++;
+		}
+		DAC_C[surf][chan][bit]=(DAC_C_0[surf][chan][bit]) & 0x00FF;
+	    }
+	}
+    }
+    for(surf=0;surf<numSurfs;surf++) {	    
+	for (chan=0; chan<DAC_CHAN; chan++) {
+	    if(printToScreen)      
+		printf("  setDAC: Writing: ");
+	    for (bit=BIT_NO-1; bit>=0; bit--) {
+		dataByte=DAC_C[surf][chan][bit];
+		if (PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, &dataByte, 2, BitSize16) != ApiSuccess) {
+		    syslog(LOG_ERR,"Failed to write DAC value\n");
+		    if(printToScreen)
+			fprintf(stderr,"Failed to write DAC value\n");
+		}
+		if(printToScreen)printf("%x ",dataByte);
+		//else printf("Wrote %d to SURF %d; value: %d\n",dataByte,surf,value);		    
+	    }
+	    if(printToScreen) printf("\n");
+	    tmpGPIO=PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc);
+	    tmpGPIO=PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc);
+	}
+    }
+//    exit(0);
 }
 
 PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned short *dataWord)
@@ -1276,19 +1495,19 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     if(!standAloneMode) 
 	retVal=makeLink(theFilename,theLinkDir);
 
-    if(writeScalars) {
-	sprintf(theFilename,"%s/scale_%d.dat",scalarOutputDir,
+    if(writeScalers) {
+	sprintf(theFilename,"%s/scale_%d.dat",scalerOutputDir,
 		theEventPtr->header.eventNumber);
-	FILE *scalarFile;
+	FILE *scalerFile;
 	int n;
-	if ((scalarFile=fopen(theFilename, "wb")) == NULL) { 
-	    printf("Failed to open scalar file, %s\n", theFilename) ;
+	if ((scalerFile=fopen(theFilename, "wb")) == NULL) { 
+	    printf("Failed to open scaler file, %s\n", theFilename) ;
 	    return ;
 	}
 	
-	if ((n=fwrite(scalarData, sizeof(unsigned short),numSurfs*N_RFTRIG, scalarFile)) != N_RFTRIG*numSurfs)
-	printf("Failed to write all scalar data. wrote only %d.\n", n) ;
-	fclose(scalarFile);
+	if ((n=fwrite(&theScalers, sizeof(SimpleScalerStruct_t),1,scalerFile))!=1)
+	    printf("Failed to write all scaler data. wrote only %d.\n", n) ;
+	    fclose(scalerFile);
     }
 
 }
@@ -1306,6 +1525,7 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     unsigned short  evNo=0;
 // Read only one chip per trigger. PM
 
+    int testVal=0;
     int i=0, ftmo=0;
     int surf,chan,samp,rf;
 
@@ -1316,12 +1536,13 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	
     //Loop over SURFs and read out data
     for(surf=0;surf<numSurfs;surf++){
+	testVal=PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc);
 	if(verbosity && printToScreen)
-	    printf(" GPIO register contents SURF %d = %x\n",surf,
-		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ; 
+	    printf(" GPIO register contents SURF %d = %x\n",surf,testVal);
+	testVal=PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc);
 	if(verbosity && printToScreen)
-	    printf(" int reg contents SURF %d = %x\n",surf,
-		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ; 
+	    printf(" int reg contents SURF %d = %x\n",surf,testVal);
+		   
 
 	// Readout event number
 	if (readPlxDataWord(surfHandles[surf],&dataWord)!= ApiSuccess) {
@@ -1365,6 +1586,14 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
       
 	//      Read LABRADOR data
 	//      int firstTime=1;
+	//RJN hack burn one read
+/* 	if (readPlxDataWord(surfHandles[surf],&dataWord) */
+/* 	    != ApiSuccess) {			 */
+/* 	    syslog(LOG_ERR,"Failed to read data: SURF %d -- burn",surf); */
+/* 	    if(printToScreen)  */
+/* 		printf("Failed to read surf=%d -- burn\n", surf) ; */
+/* 	} */
+
 	for (samp=0 ; samp<N_SAMP ; samp++) {
 	    for (chan=0 ; chan<N_CHAN ; chan++) {
 		if (readPlxDataWord(surfHandles[surf],&dataWord)
@@ -1374,6 +1603,9 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 		    if(printToScreen) 
 			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
 		}
+//		if(samp==0) {
+//		    printf("Surf %d, Chan %d, Data %d\n",surf,chan,dataWord&DATA_MASK);
+//		}		
 
 		// Record which chip is being read out
 //		    if( (((dataWord&DATA_MASK)-2750)>400) && !(dataWord & 0x1000) ) 
@@ -1398,27 +1630,29 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    if(printToScreen)
 		printf("Failed to set LabD on SURF %d\n",surf);
 	}
-	// Read trigger scalars
+	// Read trigger scalers
 	for(i=0;i<N_RFTRIG;++i){
 	    if (readPlxDataWord(surfHandles[surf],&dataWord)
 		!= ApiSuccess) {
 		//Once more need a method of failure tracking
 		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read surf %d, scalar %d",surf,i);
+		syslog(LOG_ERR,"Failed to read surf %d, scaler %d",surf,i);
 		if(printToScreen)
 		    printf("Failed to read IO. surf=%d, rf scl=%d\n", surf, i) ;
 	    }
-	    scalarData[surf][i]=dataWord;
-	    if(verbosity>1 && printToScreen) {
+	    theScalers.scaler[surf][i]=dataWord;
+	    if((doSlowDacCycle || doGlobalDacCycle || verbosity) && printToScreen) {
 		if(( (i % 8) ) == 0) {
-		    printf("\n");
-		    printf("SURF %d, SCL %d: %d",surf,i,dataWord);
+		    printf("\nSURF %d, SCL %d: %d",surf,i,dataWord);
 		} 
 		else printf(" %d",dataWord);
 	    }
+	    if(dataWord!=0) {
+//		printf("\n**************************\nGOT SURF %d SCL %d: %d\n",surf,i,dataWord);
+	    }
 		
 	}
-	if(verbosity>1 && printToScreen) printf("\n");
+	if((doSlowDacCycle || doGlobalDacCycle || verbosity) && printToScreen) printf("\n");
       
 	if(setSurfControl(surfHandles[surf],SclD)!=ApiSuccess) {
 	    status=ACQD_E_SCLD;
@@ -1451,13 +1685,13 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     }  //Close the numSurfs loop
 	
     if(!surfonly){
-	    
+	testVal=PlxRegisterRead(turfioHandle,PCI9030_GP_IO_CTRL, &rc); 
 	if(verbosity && printToScreen) 
-	    printf(" GPIO register contents TURFIO = %x\n",
-		   PlxRegisterRead(turfioHandle,PCI9030_GP_IO_CTRL, &rc)); 
+	    printf(" GPIO register contents TURFIO = %x\n",testVal);
+		   
+	testVal=PlxRegisterRead(turfioHandle,PCI9030_INT_CTRL_STAT,&rc) ; 
 	if(verbosity && printToScreen) 
-	    printf(" int reg contents TURFIO = %x\n", 
-		   PlxRegisterRead(turfioHandle,PCI9030_INT_CTRL_STAT,&rc)) ; 
+	    printf(" int reg contents TURFIO = %x\n",testVal);
 	    
 	// Burn one TURFIO read
 	if (readPlxDataWord(turfioHandle,&dataWord)!= ApiSuccess) {
@@ -1478,8 +1712,8 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    }
 	    turfDataWord=dataWord>>8;
 	    turfOtherWord=dataWord&0xff;
-	    if(i==10 && verbosity>1 && printToScreen) printf("Event %d\n",evNo);
-	    if(i>=10 && i<=18 && verbosity>1 && printToScreen) printf("%d\t%#x\t%#x\t%#x\n",i,dataWord,turfDataWord,turfOtherWord); 
+	    if(i==10 && verbosity>2 && printToScreen) printf("Event %d\n",evNo);
+	    if(i>=10 && i<=18 && verbosity>2 && printToScreen) printf("%d\t%#x\t%#x\t%#x\n",i,dataWord,turfDataWord,turfOtherWord); 
 //	    if(verbosity) 
 //	    if(verbosity) printf("%#x\t%#x\t%#x\n",turfDataWord,turfOtherWord); 
 	    switch(i){

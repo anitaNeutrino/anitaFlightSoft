@@ -152,9 +152,11 @@ int main (int argc, char *argv[])
 	    continue;
 	}
 	numGpsTimeLinks=getListofLinks(gpsdSubTimeLinkDir,&gpsSubTimeLinkList);
-	
-	printf("There are %d event links.\n",numEventLinks);
-	printf("There are %d gps links.\n",numGpsTimeLinks);
+
+	if(verbosity>1) {
+	    printf("There are %d event links.\n",numEventLinks);
+	    printf("There are %d gps links.\n",numGpsTimeLinks);
+	}
 //	exit(0);
 	
 	/* need to do something if we ever have more 
@@ -172,7 +174,7 @@ int main (int argc, char *argv[])
 	    }
 	}
 //	printf("%s\n",gpsdSubTimeLinkDir);
-	if(printToScreen) printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
+	if(printToScreen && verbosity) printf("There are %d events and %d times.\n",numEventLinks,numGpsStored);
 //	exit(0);
 	whichGps=0;
 	/* What to do with our events? */	

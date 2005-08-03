@@ -92,13 +92,13 @@ typedef struct {
 //Forward Declarations
 int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc);
 void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
-void setDACThresholds(PlxHandle_t *surfHandles, int threshold); //Only does one threshold at the moment
+void setDACThresholds(PlxHandle_t *surfHandles, unsigned short threshold); //Only does one threshold at the moment
 PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t action);
 PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TriggerMode_t trigMode, TurfControlAction_t action);
 char *surfControlActionAsString(SurfControlAction_t action);
 char *turfControlActionAsString(TurfControlAction_t action);
 int readConfigFile();
-int init_param(int argn, char **argv, char *directory, int *n, int *dacVal);
+int init_param(int argn, char **argv, char *directory, int *n, unsigned short *dacVal);
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned long evNum);
 void writeTurf(char *directory, TurfioStruct_t *data_turf,unsigned long evNum);
 PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned short *dataWord);
@@ -107,6 +107,7 @@ int getEventNumber();
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
 //PlxReturnCode_t setTurfTriggerMode(PlxHandle_t turfioHandle, TriggerMode_t trigMode);
-void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, int values[8]);
+void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, unsigned short values[8]);
+void setDACThresholdsIndividuually(PlxHandle_t *surfHandles);
 
 #endif //ACQD_H

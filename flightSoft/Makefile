@@ -51,8 +51,7 @@ scripts:
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/triggerCalPulser bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setSSGain bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAddr bin
-
-
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/runAcqdStandalone.sh bin
 
 
 

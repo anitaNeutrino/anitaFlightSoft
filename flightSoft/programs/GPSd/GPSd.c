@@ -1010,6 +1010,7 @@ int setupADU5()
     int retVal;
 
     strcat(adu5Command,"$PASHS,ELM,0\r\n"); 
+    strcat(adu5Command,"$PASHS,KFP,ON\r\n");
     
     sprintf(tempCommand,"$PASHS,3DF,V12,%2.3f,%2.3f,%2.3f\r\n",
 	    adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);

@@ -188,6 +188,11 @@ typedef struct {
     SBSTemperatureDataStruct_t sbs;
 } HkDataStruct_t;
 
+typedef struct {    
+    unsigned short threshold;
+    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+} SimpleScalerStruct_t;
+
 
 typedef enum {
     PRI_FORCED = 0,
