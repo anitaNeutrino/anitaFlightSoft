@@ -32,7 +32,7 @@ int setupG12();
 int setupADU5();
 int checkG12();
 int checkADU5B();
-void processG12Output(char *tempBuffer, int length);
+void processG12Output(char *tempBuffer, int length,int setClock);
 void processADU5Output(char *tempBuffer, int length);
 int updateClockFromG12(time_t gpsRawTime);
 int breakdownG12TimeString(char *subString,int *hour,int *minute,int *second);
@@ -456,7 +456,11 @@ int checkG12()
 
 	    if(g12OutputLength==lastStar+3) {
 		if(g12OutputLength) {
-		    processG12Output(g12Output,g12OutputLength);
+		    if((retVal-i)<50)
+			processG12Output(g12Output,g12OutputLength,1);
+		    else
+			processG12Output(g12Output,g12OutputLength,0);
+		       
 		}
 		g12OutputLength=0;
 		lastStar=-10;
@@ -513,7 +517,7 @@ int checkADU5B()
 }
 
 
-void processG12Output(char *tempBuffer, int length)
+void processG12Output(char *tempBuffer, int length,int setClock)
 /* Processes each G12 output string, writes it to file and, if so inclined, sets the clock. */
 {
     char gpsString[G12_DATA_SIZE];
@@ -612,7 +616,7 @@ void processG12Output(char *tempBuffer, int length)
 	strncpy(otherString,ctime(&gpsRawTime),179);	    
 	strncpy(unixString,ctime(&rawtime),179);
 //	printf("%s%s\n",unixString,otherString);
-	if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock) {
+	if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock &&setClock) {
 	    updateClockFromG12(gpsRawTime);
 	}
 //	writeG12TimeFile(rawtime,gpsRawTime,gpsCopy);

@@ -175,7 +175,7 @@ int main (int argc, char *argv[])
 		    eventLinkList[count]->d_name);
 	    sprintf(hdFilename,"%s/hd_%d.dat",eventdEventDir,
 		    doingEvent);
-	    sprintf(bodyFilename,"%s/wv_%d.dat",eventdEventDir,
+	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
 		    doingEvent);
 	    
 	    /* Write output for SIPd*/

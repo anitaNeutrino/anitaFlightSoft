@@ -331,6 +331,7 @@ int main (int argc, char *argv[])
 	    checkAdu5PAT();
 	    checkAdu5SAT();
 	    checkHk();
+	    checkEvent();
 	    sleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);    
@@ -661,6 +662,7 @@ void checkEvent()
     FILE *testfp;
 
     long eventNumber;
+    long bodyEventNumber;
     char currentHeaderName[FILENAME_MAX];
     char currentBodyName[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
@@ -675,23 +677,34 @@ void checkEvent()
     if(numLinks>eventHeaderNumber) {
 	//Do something
 	sscanf(linkList[0]->d_name,
-	       "hd_%ld.dat",&eventNumber);
-	
-	//First zip up event file
-	sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir,
-		eventNumber);
-	
-    
-	testfp=fopen(currentBodyName,"rb");
-	if(testfp) {
-	    //Do something
-	    
-	    fclose(testfp);
-	}
+	       "hd_%ld.dat",&eventNumber);	
 		
 	sprintf(tarCommand,"cd %s ; tar -cf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber);
 	
 	for(count=0;count<numLinks;count++) {
+	    
+	    sscanf(linkList[count]->d_name,
+	       "hd_%ld.dat",&bodyEventNumber);
+	    //First zip up event file
+	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir,
+		    bodyEventNumber);	    
+	    testfp=fopen(currentBodyName,"rb");
+	    if(testfp) {
+		fclose(testfp);
+		//Do something
+		if(gzipEventBody) {
+		    sprintf(gzipCommand,"gzip %s",currentBodyName);
+		    executeCommand(gzipCommand);
+		    strcat(currentBodyName,".gz");
+		}
+		if(useSecondDisk) {
+		    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir);
+		    copyFile(currentBodyName,tempDir);
+		}
+		sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir);
+		moveFile(currentBodyName,tempDir);
+	    }
+
 	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
 //		    printf("%s\n",tarCommand);
 		executeCommand(tarCommand);
@@ -702,7 +715,7 @@ void checkEvent()
 		
 	}
 	executeCommand(tarCommand);	   
-	if(gzipGps) {
+	if(gzipEventHeader) {
 	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber);
 	    executeCommand(gzipCommand);
 	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		
