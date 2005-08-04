@@ -24,6 +24,7 @@ ANITA_LIBS    =  -lkvp -lConfig -lUtil -lcr7 -lm #-lSocket
 ANITA_HKD_LIBS = -lAcromag
 ANITA_GPS_LIBS = -lSerial
 ANITA_SIP_LIBS = -lSipcom
+ANITA_LOS_LIBS = -lLos
 
 
 all: $(Target)

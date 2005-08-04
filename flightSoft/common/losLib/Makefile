@@ -6,7 +6,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
 VERSION = $(shell cat VERSION)
-PREFIX = /pkgs/liblos-$(VERSION)
+#PREFIX = /pkgs/liblos-$(VERSION)
 #PREFIX = /usr/local
 
 #PLX_SDK_DIR = /home/marty/src/anita/plx/PlxLinux
@@ -30,8 +30,8 @@ CC = gcc
 PLX_CFLAGS = $(DEFS) $(INCLUDE) $(OPTS)
 CCFLAGS:= ${CCFLAGS} ${PLX_CFLAGS}
 
-LIBS = $(PLX_SDK_DIR)/linux/api/Library/PlxApi.a \
-	$(PLX_SDK_DIR)/linux/PciDrvApi/Library/PciDrvApi.a
+PLX_LIBS = $(PLX_SDK_DIR)/linux/api/Library/PlxApi.a \
+	$(PLX_SDK_DIR)/linux/PciDrvApi/Library/PciDrvApi.a 
 
 OBJS = los.o crc_simple.o
 HDRS = los.h crc_simple.h
@@ -60,11 +60,11 @@ los.txt:	los.txt.in VERSION
 	echo >> los.txt
 	sed "s/@VERSION@/$(VERSION)/" los.txt.in >> los.txt
 
-demo:	demo.c liblos.a los.h
-	$(CC) $(CFLAGS) -o demo demo.c -L. -llos $(LIBS) -lncurses
+demo:	demo.c $(Target) los.h
+	$(CC) $(CFLAGS) -o demo demo.c $(LDFLAGS) $(ANITA_LOS_LIBS) $(PLX_LIBS) -lncurses
 
 clean:
-	@rm -f liblos.a $(OBJS) version.h demo los.txt
+	@rm -f $(Target) $(OBJS) version.h demo los.txt
 
 docs:	los.txt
 	$(ND) -i . -o html ./doc -p ./ndinfo -s mydefault
