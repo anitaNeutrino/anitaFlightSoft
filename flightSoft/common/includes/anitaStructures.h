@@ -88,15 +88,14 @@ typedef struct {
 
 
 typedef struct {
-    int eventNumber;    /* Global event number */
+    GenericHeader_t gHdr;
     int unixTime;       /* unix UTC sec*/
     int unixTimeUs;     /* unix UTC microsec */
     int gpsSubTime;     /* the GPS fraction of second (in ns) (for the one event per second that gets tagged with it */
+    int eventNumber;    /* Global event number */
     short numChannels;  /* In case we turn part of array off, or whatever. */
     short numSamples;   /* total number of samples per waveform == 256*/
-    signed char trigSource; /* flag for trigger source, -1=ext 1, -2=ext 2, N=chan N */
-    short trigLevel;    /* trigger level in 0.5 mV increments */
-    char calibStatus;   /* Were we calibrating? */
+    char calibStatus;   /* Were we flashing the pulser? */
     TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
     char priority;
 } AnitaEventHeader_t;
@@ -109,6 +108,13 @@ typedef struct {
     AnitaEventHeader_t header;
     AnitaEventBody_t body;
 } AnitaEventFull_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    int eventNumber;
+    char packetNumber; //0 to 23;
+    SurfChannelFull_t waveform;
+} WaveformPacket_t;
 
 typedef struct {
     int unixTime;
