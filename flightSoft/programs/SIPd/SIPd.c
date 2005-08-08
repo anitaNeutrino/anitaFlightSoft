@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status += configLoad ("Cmdd.config","lengths") ;
-    status += configLoad ("Sipd.config","sipd") ;
+    status += configLoad ("Sipd.config","global") ;
     eString = configErrorString (status) ;
 
 

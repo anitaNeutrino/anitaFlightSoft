@@ -327,7 +327,7 @@ int main(int argc, char **argv) {
 		    if(printToScreen && verbosity) 
 			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
 		// Save data
-		if(writeData){
+		if(writeData || writeScalers){
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 		}
 		//Insert stats call here
@@ -1481,18 +1481,20 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 
 
 
-    if(justWriteHeader==0) {
+    if(justWriteHeader==0 && writeData) {
 	sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
 		theEventPtr->header.eventNumber);
 	retVal=writeBody(theBody,theFilename);  
     }
       
-    sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
-	    theEventPtr->header.eventNumber);
-    retVal=writeHeader(theHeader,theFilename);
+    if(writeData) {
+	sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
+		theEventPtr->header.eventNumber);
+	retVal=writeHeader(theHeader,theFilename);
+    }
 
     /* Make links, not sure what to do with return value here */
-    if(!standAloneMode) 
+    if(!standAloneMode && writeData) 
 	retVal=makeLink(theFilename,theLinkDir);
 
     if(writeScalers) {

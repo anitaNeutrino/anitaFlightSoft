@@ -196,7 +196,7 @@ int main (int argc, char *argv[])
     openMagnetometer();
     setupMagnetometer();
     do {
-	if(printToScreen) printf("Initalizing Hkd\n");
+	if(printToScreen) printf("Initializing Hkd\n");
 	retVal=readConfigFile();
 	ip320Setup();
 	currentState=PROG_STATE_RUN;
