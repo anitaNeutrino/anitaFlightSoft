@@ -1,0 +1,65 @@
+Don't forget to update the VERSION file!
+
+1.10	11 Jul 05	MAO
+	sipcom.c
+	demo/driver.c
+	    Use pthreads instead of forking separate processes.
+	sipcom.h
+	    Documentation changes.
+
+1.9	06 Jul 05	MAO
+	sipcom.c
+	    Preparation for switching to pthreads instead of fork.
+	    Made cmd_accum() re-entrant.
+
+1.8	24 Jun 05	MAO
+	sipcom.c
+	    Use the stor library to write a local copy of all data if
+		USE_STOR is #define'd. This is for debugging.
+	highrate.h
+	    Changed the HR_ENDER  from 0xabcf to 0xfeedface.
+	    Changed the HR_HEADER from 0xabcd to 0xbeefcafe.
+	    Changed the checksum to unsigned char and added 3 filler bytes
+		to the highrate_ender struct.
+	demo/driver.c
+	    Commented out the throttle rate changing.
+
+1.7	17 Jun 05	MAO
+	sipcom.c
+	    Modified header bytes for slow data.
+	demo/driver.c
+	    Some changes.
+
+1.6	10 Jun 05	MAO
+	sipcom.c
+	    Added header bytes for the slow data.
+	demo/driver.c
+	    Removed driver's slow header bytes.
+
+1.5	10 Jun 05	MAO
+	sipcom.h
+	sipcom.c
+	demo/driver.c
+	    sipcom_init() now takes throttle_rate as parameter.
+	    New function sipcom_highrate_set_throttle.
+
+1.4	10 Jun 05	MAO
+    demo/driver.c
+    	Properly wait for the high-rate writer process.
+	Added header and ender to slow-rate comm1 data - this should
+	    eventually be done in sipcom, not the driver.
+	Made the high-rate data be a sequence.
+
+1.3	07 Jun 05	MAO
+    Put sipcom under svn version control.
+
+1.2	03 Jun 05
+    demo/driver.c - use the sipcom_end() call.
+
+1.1	03 Jun 05
+    sipcom.h
+    sipcom.c
+	Added sipcom_end() call.
+
+1.0	02 Jun 05
+    Documented the library with Natural Docs (www.naturaldocs.org)

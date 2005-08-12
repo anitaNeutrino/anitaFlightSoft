@@ -1,0 +1,176 @@
+
+Title: LOS telemetry library
+    Version @VERSION@ 
+
+General information.
+
+liblos is a library of C functions that takes care of transferring data via
+the LOS telemetry board designed by Paul Dowkontt of Washington U. The
+board is based on the PLX 9030. The kernel module supplied by PLX must be
+loaded into the kernel and the plx device file created.
+
+Section: Compiling and installation.
+    Building the library and applications.
+
+PLX libraries:
+    The PLX libraries and header files are expected to be installed under
+    /usr/local/PlxLinux. If this is not the case, edit the Makefile and
+    change the PLX_SDK_DIR variable.
+
+Compiling the library:
+    To compile the library, run "make". This should create liblos.a.
+
+Compiling the demo program:
+    To compile the demo program, run "make demo". This should create a
+    program called "demo".
+
+Installing the library:
+    Run "make install".
+
+    By default, liblos will be installed in /pkgs/liblos-VERSION. If you
+    don't like this, change the PREFIX variable. There is one for
+    /usr/local that you can uncomment. The los.h header file will installed
+    in $(PREFIX)/include and liblos.a in $(PREFIX)/lib when "make install"
+    is run.
+
+Compiling and linking an application:
+    Try something like this:
+
+>	gcc -DGCC  -DPCI_CODE -DPLX_LITTLE_ENDIAN -DPLX_LINUX 
+>	-I/usr/local/PlxLinux/include
+>	-I/usr/local/PlxLinux/linux/samples/common
+>	-Wall -pipe -g -o myapp myapp.c -llos
+>	/usr/local/PlxLinux/linux/api/Library/PlxApi.a
+>	/usr/local/PlxLinux/linux/PciDrvApi/Library/PciDrvApi.a
+
+    The relevant Makefile sections for the demo program would look like this.
+    I know it's ugly.
+
+>	PLX_SDK_DIR = /usr/local/PlxLinux
+>	COMMON_DIR = $(PLX_SDK_DIR)/linux/samples/common
+>	INCLUDE_DIR = $(PLX_SDK_DIR)/include
+>	INCLUDE = -I. -I$(INCLUDE_DIR) -I$(COMMON_DIR)
+>	
+>	DEFS = -DGCC  -DPCI_CODE -DPLX_LITTLE_ENDIAN -DPLX_LINUX
+>	OPTS = -Wall -pipe -g
+>	CC = gcc
+>	CFLAGS = $(DEFS) $(INCLUDE) $(OPTS)
+>	
+>	LIBS = $(PLX_SDK_DIR)/linux/api/Library/PlxApi.a \
+>		$(PLX_SDK_DIR)/linux/PciDrvApi/Library/PciDrvApi.a
+>	
+>	demo:	demo.c liblos.a los.h
+>		$(CC) $(CFLAGS) -o demo demo.c -llos $(LIBS) -lncurses
+
+Section: Example code
+    How do you do it?
+
+See the file demo.c in the source distribution. It provides a simple
+interactive interface to the LOS board and should demonstrate how to
+exercise all the library functions.
+
+Section: Data format
+    Format of data sent to and received from the boards.
+
+Data sent to <los_write()>:
+
+The only restriction that liblos imposes on the format of "science" data
+passed to it is that the number of bytes not exceed <LOS_MAX_BYTES>, equal
+to 8100 bytes (as of 3 Aug '05). Other than that, liblos treats the input
+science data as an arbitrary sequence of bytes. This sequence of bytes is
+transferred to an application on the ground embedded in a few headers as
+documented below.
+
+Data returned by <los_read()>:
+
+The data returned by <los_read()> has the following format.
+See also the <Macros> <START_HDR>, <AUX_HDR>, <SW_START_HDR>,
+<SW_END_HDR>, <END_HDR>, and <AUX_HDR>.
+
+
+> byte    word
+> offset  offset     value   description
+>
+>  0        0        0xF00D  START_HDR
+>  2        1        0xD0CC  AUX_HDR
+>  4        2        0xAE00  SW_START_HDR
+>  6        3                Buffer count
+>  8        4        N       Number of bytes of science data
+> 10        5        NB      Science data (NB = N + (N%2) bytes).
+> ...       ...                If N is an odd number, then a fill byte
+> ...       ...	               with value 0xDA is added to the end.
+> 10+NB     5+(NB/2)         Checksum
+> 12+NB     6+(NB/2) 0xAEFF  SW_END_HDR
+> 14+NB     7+(NB/2) 0xC0FE  END_HDR
+> 16+NB     8+(NB/2) 0xD0CC  AUX_HDR
+
+Regarding the number of science data bytes, if the number N is an odd
+number, then an additional byte <FILL_BYTE> is added to the end.
+
+Section: Basic lab setup
+    Hardware and software details.
+
+Hardware:
+
+Put the cPCI board in the flight computer. You will have to note which pci
+bus and slot it is in and pass these parameters to <los_init()>.
+
+Put the regular PCI board in the GSE computer. If this is the only PLX
+board in the computer, then you can give <los_init()> parameters of -1 for
+bus and slot, and the PLX driver will find the board. Otherwise, if there
+are other PLX boards, you will have to note the bus and slot as above.
+
+Connect the cable labeled "DATA" into the correspondingly labeled screw-in
+connector on the flight telemetry board. Do the same for the cable labeled
+"CLK".
+
+Connect the DB9 connector into the GSE telemetry board.
+
+Software:
+
+On the flight computer, run the demo program. It is an interactive program
+that allows you to the boards using the liblos routines.
+
+    - press "i" to initialize liblos. It will prompt you for bus, slot,
+      whether to use interrupts or polling, whether to write or read, and
+      the number of milliseconds to delay between polls.
+  
+For now, use polling rather than interrupts, and leave the delay at the
+default of 100 ms by entering -1. The flight end should be set for writing.
+
+    - press "a" to select the number of 16-bit words of data you want to
+      transfer.
+
+    - press "W" to write and transfer one buffer of data.
+
+    - press "w" to continually transfer buffers. Another keypress will stop
+      the transfers.
+
+Do the same on the GSE computer, except set it to read mode instead of
+write, and
+
+    - press "R" to read a single buffer.
+
+    - press "r" to read continually. Another keypress will stop reading.
+
+IMPORTANT: If things don't seem to be working, first try pressing the reset
+button on the board after power up. Eventually, we hope to have a
+software-activated reset.
+
+There is also a lower level interactive program called telem_test that I
+can send you if you think you need it. It does not use liblos, but does
+provide more direct access to the telemetry boards, and can be useful for
+debugging.
+
+
+Section: Author
+
+    Marty Olevitch
+
+    Physics Dept, Washington U in St Louis
+
+    Tel: 314-935-6285
+
+    marty@cosray.wustl.edu
+
+    http://cosray.wustl.edu/~marty
