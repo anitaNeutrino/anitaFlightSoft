@@ -1,8 +1,0 @@
-<global>
-gParam0#S=OK;
-gParam0#S=OK as well;
-</global>
-x#I=1;
-<junk>
-jparam#S=ignored;
-</junk>
