@@ -1,0 +1,172 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  Targets.def
+#      Abstract     :  The definitions for building various targets
+#      Last Revision:  05-31-03
+#      SDK Version  :  4.10
+#
+#-----------------------------------------------------------------------------
+
+
+#=============================================================================
+# Additional include directories
+# Note: Put '-I' before Include directories
+#=============================================================================
+INC_DIR := -I$(PLX_SDK_DIR)/include
+
+INC_DIR := $(INC_DIR) -I.
+
+ifdef COMMON_DIR
+    INC_DIR := $(INC_DIR) -I$(COMMON_DIR)
+endif
+
+ifeq ($(TGT_TYPE), Driver)
+    INC_DIR := $(INC_DIR) -I$(PLX_CHIP_DIR)
+endif	  
+
+ifeq ($(KERNEL_VER), 2.2)
+    INC_DIR := $(INC_DIR) -I/usr/src/linux/include
+endif
+
+ifeq ($(KERNEL_VER), 2.4)
+    INC_DIR := $(INC_DIR) -I/usr/src/linux-2.4/include
+endif
+
+
+
+#=============================================================================
+# Additional application Library files
+#=============================================================================
+LIBS := $(LIBS) \
+	-lcurses \
+	$(PLX_SDK_DIR)/linux/api/Library/PlxApi$(DBG).a \
+	$(PLX_SDK_DIR)/linux/PciDrvApi/Library/PciDrvApi$(DBG).a
+
+
+
+#=============================================================================
+# Additional tool flags
+#=============================================================================
+CFLAGS := $(CFLAGS) $(PLX_OPT) $(INC_DIR)
+
+
+
+#=============================================================================
+# Compile rules
+#=============================================================================
+%.o : %.c
+	@echo Compiling: $<
+	@$(CC) $< -o $@ $(CFLAGS)
+	@echo
+
+$(OBJ_DIR)/%.o : %.c
+	@echo Compiling: $<
+	@$(CC) $< -o $@ $(CFLAGS)
+	@echo
+
+$(OBJ_DIR)/%.o : $(COMMON_DIR)/%.c
+	@echo Compiling: $*.c
+	@$(CC) $< -o $@ $(CFLAGS)
+	@echo
+
+$(OBJ_DIR)/%.o : $(PLX_CHIP_DIR)/%.c
+	@echo Compiling: Pci$(PLX_CHIP)/$*.c
+	@$(CC) $< -o $@ $(CFLAGS)
+	@echo
+
+
+#=============================================================================
+# Target builds
+#=============================================================================
+BuildApp: $(OBJECTS)
+	@echo
+	@echo Linking application: $(ImageName)
+	@$(CC) -o $(OUT_DIR)/$(ImageName) \
+	       $(LFLAGS) $(OBJECTS) $(LIBS)
+	@echo
+	@echo
+	@echo Executable file \"$(OUT_DIR)/$(ImageName)\" built successfully
+	@echo
+	@echo
+
+
+BuildLibrary: $(OBJECTS)
+	@echo
+	@echo Creating archive: $(ImageName).a...
+	@echo
+	@ar -r $(OUT_DIR)/$(ImageName).a $(OBJECTS)
+	@echo
+	@echo
+	@echo Library file \"$(OUT_DIR)/$(ImageName).a\" built successfully.
+	@echo
+	@echo
+
+
+BuildDriver: $(OBJECTS)
+	@echo
+	@echo Linking driver: $(ImageName).o
+	@echo
+	@$(LD) -r $(OBJECTS) -o $(OUT_DIR)/$(ImageName).o
+	@echo
+        ifeq ($(PLX_CHIP), PlxPci)
+	    @echo Device driver \"PlxPci/$(OUT_DIR)/$(ImageName).o\" built sucessfully.
+        else
+	    @echo Device driver \"Pci$(PLX_CHIP)/$(OUT_DIR)/$(ImageName).o\" built sucessfully.
+        endif
+	@echo
+	@echo
+
+
+
+#=============================================================================
+# Startup and cleanup builds
+#=============================================================================
+
+DisplayParameters:
+	@clear
+	@echo
+	@echo Building: $(ImageName)
+	@echo
+	@if [ -r /etc/redhat-release ]; then \
+	    echo "- PLA: `cat /etc/redhat-release`"; \
+	 else \
+	    echo "- PLA: Linux, version ???"; \
+	 fi
+	@echo - KER: $(KERNEL_VER)
+	@echo - CPU: x86
+	@echo - PLX: $(PLX_CHIP)
+	@echo - TYP: $(TGT_TYPE)
+	@echo - CFG: $(BUILD_TYPE)
+	@echo - CMP: $(TOOLS_NAME)
+	@echo
+	@echo
+	@mkdir -p $(OUT_DIR)
+	@mkdir -p $(OBJ_DIR)
+
+
+clean:
+	@clear
+	@echo
+	@echo Deleting: Intermediate build files...
+	@if [ -d $(OBJ_DIR) ]; then \
+	    rm -v -r $(OBJ_DIR); \
+	 fi
+	@echo Deleting: ....finished!
+	@echo
+	@echo
+
+
+cleanall:
+	@clear
+	@echo
+	@echo Deleting: All build files...
+	@if [ -d $(OBJ_DIR) ]; then \
+	     rm -v -r $(OBJ_DIR); \
+	     echo; \
+	 fi
+	@if [ -d $(OUT_DIR) ]; then \
+	     rm -v -r $(OUT_DIR); \
+	 fi
+	@echo Deleting: ....finished!
+	@echo
+	@echo
