@@ -272,7 +272,7 @@ int main (int argc, char *argv[])
             free(gpsSubTimeLinkList[count]);
         free(gpsSubTimeLinkList);
 
-	usleep(10000);
+//	usleep(10000);
 /* 	break; */
 //	sleep(2);
 

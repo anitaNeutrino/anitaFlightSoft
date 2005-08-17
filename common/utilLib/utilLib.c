@@ -246,6 +246,20 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
     return 0;
 }
 
+int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
+/* Writes the waveform pointed to by wavePtr to filename */
+{
+    int numObjs;
+    FILE *pFILE = fopen (filename, "wb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }
+    numObjs=fwrite(wavePtr,sizeof(WaveformPacket_t),1,pFILE);
+    fclose(pFILE);
+    return 0;
+}
+
 int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
 /* Writes the pat pointed to by patPtr to filename */
 {
