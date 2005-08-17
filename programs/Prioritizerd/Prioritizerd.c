@@ -180,15 +180,15 @@ int main (int argc, char *argv[])
 	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
 		    doingEvent);
 	    
-	    /* Write output for SIPd*/
-	    
+
 	    retVal=fillBody(&theEventBody,bodyFilename);
 	    retVal=fillHeader(&theEventHeader,hdFilename);
+	    
+	    /* Write output for SIPd*/	    
 	    writePackets(&theEventBody,&theEventHeader);
 
-	    //May add some packeting here 
+	    //Copy and link header
 	    copyFile(hdFilename,prioritizerdSipdDir);
-	    copyFile(bodyFilename,prioritizerdSipdDir);
 	    makeLink(hdFilename,prioritizerdSipdLinkDir);
 
 	    /*Write output for Archived*/
@@ -213,14 +213,17 @@ int main (int argc, char *argv[])
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
 {
-    int retVal=0,chan;
+    int chan;
     char packetName[FILENAME_MAX];
     WaveformPacket_t wavePacket;
+    wavePacket.gHdr.code=PACKET_WV;
     for(chan=0;chan<hdPtr->numChannels;chan++) {
-	sprintf(packetName,"%s/wv_%d
+	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdDir,hdPtr->eventNumber,chan);
+	wavePacket.eventNumber=hdPtr->eventNumber;
+	wavePacket.packetNumber=chan;
+	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t));
     }
-
-
+    writeWaveformPacket(&wavePacket,packetName);
 }
 
 
