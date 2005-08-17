@@ -65,6 +65,8 @@ int main (int argc, char *argv[])
     char linkFilename[FILENAME_MAX];
     char hdFilename[FILENAME_MAX];
     char bodyFilename[FILENAME_MAX];
+    char sipdHdFilename[FILENAME_MAX];
+    char archivedHdFilename[FILENAME_MAX];
 
     char *tempString;
 //    int priority;
@@ -179,6 +181,10 @@ int main (int argc, char *argv[])
 		    doingEvent);
 	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
 		    doingEvent);
+	    sprintf(sipdHdFilename,"%s/hd_%d.dat",prioritizerdSipdDir,
+		    doingEvent);
+	    sprintf(archivedHdFilename,"%s/hd_%d.dat",prioritizerdArchiveDir,
+		    doingEvent);
 	    
 
 	    retVal=fillBody(&theEventBody,bodyFilename);
@@ -189,12 +195,12 @@ int main (int argc, char *argv[])
 
 	    //Copy and link header
 	    copyFile(hdFilename,prioritizerdSipdDir);
-	    makeLink(hdFilename,prioritizerdSipdLinkDir);
+	    makeLink(sipdHdFilename,prioritizerdSipdLinkDir);
 
 	    /*Write output for Archived*/
 	    copyFile(hdFilename,prioritizerdArchiveDir);
 	    copyFile(bodyFilename,prioritizerdArchiveDir);
-	    makeLink(hdFilename,prioritizerdArchiveLinkDir);
+	    makeLink(archivedHdFilename,prioritizerdArchiveLinkDir);
 
 
 	    /* Delete input */
