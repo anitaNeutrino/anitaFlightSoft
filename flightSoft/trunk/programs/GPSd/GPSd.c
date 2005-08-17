@@ -31,7 +31,7 @@ int openDevices();
 int setupG12();
 int setupADU5();
 int checkG12();
-int checkADU5B();
+int checkADU5A();
 void processG12Output(char *tempBuffer, int length,int setClock);
 void processADU5Output(char *tempBuffer, int length);
 int updateClockFromG12(time_t gpsRawTime);
@@ -49,12 +49,13 @@ void processSATString(char *gpsString, int gpsLength);
 
 
 // Device names;
-char g12DevName[FILENAME_MAX];
+char g12ADevName[FILENAME_MAX];
+//char g12BDevName[FILENAME_MAX];
 char adu5ADevName[FILENAME_MAX];
-char adu5BDevName[FILENAME_MAX];
+//char adu5aDevName[FILENAME_MAX];
 
 // File desciptors for GPS serial ports
-int fdG12,fdAdu5A,fdAdu5B;//,fdMag
+int fdG12,fdAdu5A,fdAdu5a;//,fdMag
 int printToScreen=0;
 
 // Config stuff for G12
@@ -62,6 +63,7 @@ float g12PPSPeriod=1;
 float g12PPSOffset=0.05;
 int g12PPSRisingOrFalling=1; //1 is R, 2 is F
 int g12ZDAPort=1;
+int g12NTPPort=1;
 int g12ZDAPeriod=5;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
@@ -128,14 +130,22 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
 	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
 	}
-	tempString=kvpGetString("g12DevName");
+	tempString=kvpGetString("g12ADevName");
 	if(tempString) {
-	    strncpy(g12DevName,tempString,FILENAME_MAX);
+	    strncpy(g12ADevName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get g12DevName");
-	    fprintf(stderr,"Couldn't get g12DevName\n");
+	    syslog(LOG_ERR,"Couldn't get g12ADevName");
+	    fprintf(stderr,"Couldn't get g12ADevName\n");
 	}
+//	tempString=kvpGetString("g12BDevName");
+//	if(tempString) {
+//	    strncpy(g12BDevName,tempString,FILENAME_MAX);
+//	}
+//	else {
+//	    syslog(LOG_ERR,"Couldn't get g12BDevName");
+//	    fprintf(stderr,"Couldn't get g12BDevName\n");
+//	}
 	tempString=kvpGetString("adu5ADevName");
 	if(tempString) {
 	    strncpy(adu5ADevName,tempString,FILENAME_MAX);
@@ -144,14 +154,14 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get adu5ADevName");
 	    fprintf(stderr,"Couldn't get adu5ADevName\n");
 	}
-	tempString=kvpGetString("adu5BDevName");
-	if(tempString) {
-	    strncpy(adu5BDevName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get adu5BDevName");
-	    fprintf(stderr,"Couldn't get adu5BDevName\n");
-	}
+/* 	tempString=kvpGetString("adu5BDevName"); */
+/* 	if(tempString) { */
+/* 	    strncpy(adu5BDevName,tempString,FILENAME_MAX); */
+/* 	} */
+/* 	else { */
+/* 	    syslog(LOG_ERR,"Couldn't get adu5BDevName"); */
+/* 	    fprintf(stderr,"Couldn't get adu5BDevName\n"); */
+/* 	} */
 	tempString=kvpGetString("gpsdSipdDir");
 	if(tempString) {
 	    strncpy(gpsdG12LogDir,tempString,FILENAME_MAX);
@@ -278,14 +288,14 @@ int main (int argc, char *argv[])
 	    exit(1);
 	}
 	if(printToScreen) 
-	    printf("Device fd's: %d %d %d\n",fdG12,fdAdu5A,fdAdu5B);
+	    printf("Device fd's: %d %d %d\n",fdG12,fdAdu5A,fdAdu5a);
 	retVal=setupG12();
 	retVal=setupADU5();
 
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
-	    checkADU5B();
+	    checkADU5A();
 	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);
@@ -322,6 +332,7 @@ int readConfigFile()
 	g12PPSOffset=kvpGetFloat("ppsOffset",0.05); //in seconds 
 	g12PPSRisingOrFalling=kvpGetInt("ppsRorF",1); //1 is 'R', 2 is 'F'
 	g12ZDAPort=kvpGetInt("zdaPort",1); //1 is 'A', 2 is 'B'
+	g12NTPPort=kvpGetInt("ntpPort",2); //1 is 'A', 2 is 'B'
 	g12ZDAPeriod=kvpGetInt("zdaPeriod",5); // in seconds
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
@@ -350,7 +361,7 @@ int readConfigFile()
 //    printf("%f %f %f\n",adu5RelV13[0],adu5RelV13[1],adu5RelV13[2]);
 //    printf("%f %f %f\n",adu5RelV14[0],adu5RelV14[1],adu5RelV14[2]);
 
-//    printf("%d %s %s %s\n",printToScreen,g12DevName,adu5ADevName,adu5BDevName);
+//    printf("%d %s %s %s\n",printToScreen,g12ADevName,adu5ADevName,adu5ADevName);
    return status;
 }
 
@@ -361,31 +372,24 @@ int openDevices()
 {
     int retVal;
 // Initialize the various devices    
-    retVal=openGPSDevice(g12DevName);
+    retVal=openGPSDevice(g12ADevName);
     if(retVal<=0) {
-	syslog(LOG_ERR,"Couldn't open: %s\n",g12DevName);
-	if(printToScreen) printf("Couldn't open: %s\n",g12DevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",g12ADevName);
+	if(printToScreen) printf("Couldn't open: %s\n",g12ADevName);
 	exit(1);
     }
     else fdG12=retVal;
-      
+ 
+
     retVal=openGPSDevice(adu5ADevName);	
     if(retVal<=0) {
 	syslog(LOG_ERR,"Couldn't open: %s\n",adu5ADevName);
 	if(printToScreen) printf("Couldn't open: %s\n",adu5ADevName);
 	exit(1);
     }
-    else fdAdu5A=retVal;
+    else fdAdu5a=retVal;
 
-    retVal=openGPSDevice(adu5BDevName);	
-    if(retVal<=0) {
-	syslog(LOG_ERR,"Couldn't open: %s\n",adu5BDevName);
-	if(printToScreen) printf("Couldn't open: %s\n",adu5BDevName);
-	exit(1);
-    }
-    else fdAdu5B=retVal;
-
-//    printf("%s %s %s\n",g12DevName,adu5ADevName,adu5BDevName);
+//    printf("%s %s %s\n",g12ADevName,adu5ADevName,adu5ADevName);
     return 0;
 }
 
@@ -397,10 +401,12 @@ int setupG12()
     char edgeNames[2]={'R','F'};
     char g12Command[256]="";
     char tempCommand[128]="";
-    char zdaPort='B';
+    char zdaPort='A';
+    char ntpPort='B';
     char ppsEdge='R';
     int retVal;
 
+    if(g12NTPPort==1 || g12NTPPort==2) ntpPort=portNames[g12NTPPort-1];
     if(g12ZDAPort==1 || g12ZDAPort==2) zdaPort=portNames[g12ZDAPort-1];
     if(g12PPSRisingOrFalling==1 || g12PPSRisingOrFalling==2)
 	ppsEdge=edgeNames[g12PPSRisingOrFalling-1];
@@ -408,10 +414,16 @@ int setupG12()
     strcat(g12Command,"$PASHS,ELM,0\n");
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",zdaPort);
     strcat(g12Command,tempCommand);
+    sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",ntpPort);
+    strcat(g12Command,tempCommand);
     strcat(g12Command, "$PASHS,LTZ,0,0\n");
     strcat(g12Command, "$PASHS,UTS,ON\n");
-    sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",zdaPort,g12ZDAPeriod);
+    sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",zdaPort,g12ZDAPeriod);    
     strcat(g12Command,tempCommand); 
+    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);    
+    strcat(g12Command,tempCommand);   
+    sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);    
+    strcat(g12Command,tempCommand);     
     sprintf(tempCommand, "$PASHS,PPS,%f,%f,%c\n",g12PPSPeriod,
 	    g12PPSOffset,ppsEdge);   
     strcat(g12Command,tempCommand); 
@@ -476,7 +488,7 @@ int checkG12()
 }
 
 
-int checkADU5B()
+int checkADU5A()
 /*! Try to read ADU5 */
 {
     // Working variables
@@ -486,11 +498,11 @@ int checkADU5B()
     static char adu5Output[ADU5_DATA_SIZE]="";
     static int adu5OutputLength=0;
     static int lastStar=-10;
-    retVal=isThereDataNow(fdAdu5B);
+    retVal=isThereDataNow(fdAdu5a);
     usleep(5);
 //    printf("Check ADU5 got retVal %d\n",retVal);
     if(retVal!=1) return 0;
-    retVal=read(fdAdu5B, tempData, ADU5_DATA_SIZE);
+    retVal=read(fdAdu5a, tempData, ADU5_DATA_SIZE);
     if(retVal>0) {
 	for(i=0; i < retVal; i++) {
 	    if(tempData[i]=='*') {
@@ -555,7 +567,7 @@ void processG12Output(char *tempBuffer, int length,int setClock)
 //    printf("GPS Length %d\n",gpsLength);
 
     strncpy(gpsCopy,gpsString,G12_DATA_SIZE);
-    if(printToScreen) printf("%s\t%d\n",gpsString,gpsLength);
+    if(printToScreen) printf("G12:\t%s\t%d\n",gpsString,gpsLength);
 
     /* Should do checksum */
     count=0;
@@ -662,7 +674,7 @@ void processADU5Output(char *tempBuffer, int length)
 //    printf("GPS Length %d\n",gpsLength);
 
     strncpy(gpsCopy,gpsString,gpsLength);
-    if(printToScreen) printf("%s\t%d\n",gpsString,gpsLength);
+    if(printToScreen) printf("ADU5:\t%s\t%d\n",gpsString,gpsLength);
     count=0;
     subString = strtok (gpsCopy,",");
     if(!strcmp(subString,"$GPPAT")) {
@@ -1027,16 +1039,16 @@ int setupADU5()
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHS,NME,ALL,A,OFF\r\n");
     strcat(adu5Command,"$PASHS,NME,ALL,B,OFF\r\n");
-    sprintf(tempCommand,"$PASHS,NME,PAT,B,ON,%d",adu5PatPeriod);
+    sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%d",adu5PatPeriod);
     strcat(tempCommand,"\r\n");
     strcat(adu5Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,SAT,B,ON,%d\r\n",adu5SatPeriod);
+    sprintf(tempCommand,"$PASHS,NME,SAT,A,ON,%d\r\n",adu5SatPeriod);
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHQ,PRT\r\n");
-    strcat(adu5Command,"$PASHS,NME,TTT,B,ON\r\n");
+    strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
 
     if(printToScreen) printf("%s\n",adu5Command);
-    retVal=write(fdAdu5B, adu5Command, strlen(adu5Command));
+    retVal=write(fdAdu5a, adu5Command, strlen(adu5Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to ADU5 Serial port\n, write: %s",
 	       strerror(errno));

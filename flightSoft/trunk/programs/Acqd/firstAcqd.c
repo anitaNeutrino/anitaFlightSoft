@@ -78,6 +78,8 @@ int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
 int writeOutC3p0Nums = FALSE;
 int reprogramTurf = FALSE;
+int tryToUseBarMap = FALSE;
+
 
 //Trigger Modes
 int rfTrigFlag = 0;
@@ -87,10 +89,15 @@ int softTrigFlag = 0;
 
 //Threshold Stuff
 int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
-int setGlobalThreshold=0;
+int setGlobalThreshold=0; 
 int globalThreshold=2200;
 
 void writeC3P0Nums();
+
+//Test of BarMap
+U32 barMapDataWord[ACTIVE_SURFS];
+
+
 
 int main(int argc, char **argv) {
     
@@ -147,6 +154,13 @@ int main(int argc, char **argv) {
 	if(printToScreen) printf("Problem initializing devices\n");
 	syslog(LOG_ERR,"Error initializing devices");
 	return -1 ;
+    }
+
+    if(tryToUseBarMap) {	
+	rc = setBarMap(surfHandles);
+	if(rc!=ApiSuccess) {
+	    printf("Error setting bar map\n");
+	}
     }
 
 //    clearDevices(surfHandles,turfioHandle);
@@ -271,7 +285,7 @@ int main(int argc, char **argv) {
 	    }
 
 	    if(sendSoftTrigger) {
-		sleep(4);
+//		sleep(4);
 		setTurfControl(turfioHandle,trigMode,SendSoftTrg);
 	    }
 	    if (selftrig){  /* --- send a trigger ---- */ 
@@ -324,6 +338,8 @@ int main(int argc, char **argv) {
 		    theEvent.header.unixTime=timeStruct.tv_sec;
 		    theEvent.header.unixTimeUs=timeStruct.tv_usec;
 		    theEvent.header.eventNumber=getEventNumber();
+		    theEvent.header.numChannels=CHANNELS_PER_SURF*numSurfs;
+		    theEvent.header.numSamples=N_SAMP;
 		    if(printToScreen && verbosity) 
 			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
 		// Save data
@@ -347,7 +363,9 @@ int main(int argc, char **argv) {
 //	if(selftrig) sleep (2) ;
 	}  /* closing master while loop. */
     } while(currentState==PROG_STATE_INIT);
-    
+
+
+    if(tryToUseBarMap) unsetBarMap(surfHandles);
     // Clean up
     for(surf=0;surf<numSurfs;surf++)
 	PlxPciDeviceClose(surfHandles[surf] );
@@ -556,7 +574,6 @@ void copyPlxLocation(PlxDevLocation_t *dest, PlxDevLocation_t source)
 
 }
 
-
 int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc)
 /*! 
   Initializes the SURFs and TURFIO, returns the number of devices initialized.
@@ -735,6 +752,7 @@ int readConfigFile()
 	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
 	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
 	reprogramTurf=kvpGetInt("reprogramTurf",0);
+	tryToUseBarMap=kvpGetInt("tryToUseBarMap",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
 	writeData=kvpGetInt("writeData",1);
@@ -853,6 +871,8 @@ int readConfigFile()
 //    printf("Debug rc3\n");
     return status;
 }
+
+
 
 void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) 
 // Clears boards for start of data taking 
@@ -1340,6 +1360,10 @@ PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned short *dataWord)
     return PlxBusIopRead(handle,IopSpace0,0x0,TRUE, dataWord, 2, BitSize16);
 }
 
+PlxReturnCode_t blockReadPlxData(PlxHandle_t handle, unsigned short *dataArray, int numBytes) 
+{
+    return PlxBusIopRead(handle,IopSpace0,0x0,TRUE,dataArray,numBytes,BitSize16);
+}
 
 void calculateStatistics() {
 
@@ -1529,7 +1553,7 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
     int testVal=0;
     int i=0, ftmo=0;
-    int surf,chan,samp,rf;
+    int surf,chan=0,samp,rf;
 
 
     if(verbosity && printToScreen) 
@@ -1596,19 +1620,26 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 /* 		printf("Failed to read surf=%d -- burn\n", surf) ; */
 /* 	} */
 
+
 	for (samp=0 ; samp<N_SAMP ; samp++) {
 	    for (chan=0 ; chan<N_CHAN ; chan++) {
-		if (readPlxDataWord(surfHandles[surf],&dataWord)
-		    != ApiSuccess) {
-		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surf,chan,samp);
-		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
+		if(!tryToUseBarMap) {
+		    
+		    if (readPlxDataWord(surfHandles[surf],&dataWord)
+			!= ApiSuccess) {
+			status=ACQD_E_PLXBUSREAD;			
+			syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surf,chan,samp);
+			if(printToScreen) 
+			    printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
+		    }
+		}
+		else {
+		    dataWord=barMapDataWord[surf];
 		}
 //		if(samp==0) {
 //		    printf("Surf %d, Chan %d, Data %d\n",surf,chan,dataWord&DATA_MASK);
 //		}		
-
+		    
 		// Record which chip is being read out
 //		    if( (((dataWord&DATA_MASK)-2750)>400) && !(dataWord & 0x1000) ) 
 //			printf("SURF %d, chip#= %d Chan#= %d SCA#= %d: %d\n",surf,(dataWord>>14),chan,samp,((dataWord&DATA_MASK)-2750));
@@ -1625,7 +1656,8 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 //		    data_array[surf][chan][samp] = dataWord ;//& DATA_MASK ; 
 	    }
 	}
-	    
+	
+		    
 	if(setSurfControl(surfHandles[surf],LabD)!=ApiSuccess) {
 	    status=ACQD_E_LABD;
 	    syslog(LOG_ERR,"Failed to set LabD: surf %d",surf);
@@ -1828,4 +1860,26 @@ void writeC3P0Nums() {
     fprintf(stderr,"%lu\n",fullC3P0Num);
 //    Output.close();
 
+}
+
+
+PlxReturnCode_t setBarMap(PlxHandle_t *surfHandles) {
+    PlxReturnCode_t rc=0;
+    int surf;
+    for(surf=0;surf<numSurfs;surf++) {
+	rc=PlxPciBarMap(surfHandles[surf],0,&barMapDataWord[surf]);
+    }
+    return rc;
+}
+
+
+PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles) {
+  
+    PlxReturnCode_t rc=0;
+    int surf;
+    for(surf=0;surf<numSurfs;surf++) {
+	rc=PlxPciBarUnmap(surfHandles[surf],&barMapDataWord[surf]);
+    }
+    return rc;  
+    
 }

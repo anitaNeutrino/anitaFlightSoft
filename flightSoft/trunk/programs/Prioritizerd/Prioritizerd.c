@@ -39,6 +39,8 @@ typedef struct {
 
 /* Function Definitions */
 
+void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr); 
+
 /* int setPriority(AnitaEventHeader_t *headerPtr, AnitaEventBody_t *bodyPtr); */
 /* void convertToVoltageAndGetStats(AnitaEventBody_t *bodyPtr, event_volts *voltsPtr, double means[], double rmss[], int peakBins[], int trigPeakBins[], int trigBin, int trigHalfWindow); */
 /* void nrFFTForward(complex data[], int nn); */
@@ -81,8 +83,8 @@ int main (int argc, char *argv[])
     char *progName=basename(argv[0]);
 
    /*Event object*/
-//    AnitaEventHeader_t theEventHeader;
-//    AnitaEventBody_t theEventBody;
+    AnitaEventHeader_t theEventHeader;
+    AnitaEventBody_t theEventBody;
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -179,6 +181,11 @@ int main (int argc, char *argv[])
 		    doingEvent);
 	    
 	    /* Write output for SIPd*/
+	    
+	    retVal=fillBody(&theEventBody,bodyFilename);
+	    retVal=fillHeader(&theEventHeader,hdFilename);
+	    writePackets(&theEventBody,&theEventHeader);
+
 	    //May add some packeting here 
 	    copyFile(hdFilename,prioritizerdSipdDir);
 	    copyFile(bodyFilename,prioritizerdSipdDir);
@@ -203,6 +210,19 @@ int main (int argc, char *argv[])
 	usleep(10000);
     }	
 }
+
+void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
+{
+    int retVal=0,chan;
+    char packetName[FILENAME_MAX];
+    WaveformPacket_t wavePacket;
+    for(chan=0;chan<hdPtr->numChannels;chan++) {
+	sprintf(packetName,"%s/wv_%d
+    }
+
+
+}
+
 
 /* int writeOutputFiles(AnitaEventHeader_t *hdPtr, AnitaEventBody_t *bodyPtr, char eventDir[], char backupDir[], char linkBaseDir[], float probWriteOut9) */
 /* /\* Writes out upto two versions of the header and body files, and makes links for the telemetry programs. *\/ */

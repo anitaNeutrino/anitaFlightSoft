@@ -109,5 +109,8 @@ AcqdErrorCode_t readEvent(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
 //PlxReturnCode_t setTurfTriggerMode(PlxHandle_t turfioHandle, TriggerMode_t trigMode);
 void setDACThresholdsOnChan(PlxHandle_t surfHandle, int chan, unsigned short values[8]);
 void setDACThresholdsIndividuually(PlxHandle_t *surfHandles);
+PlxReturnCode_t setBarMap(PlxHandle_t *surfHandles);
+PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles);
+//PlxReturnCode_t blockReadPlxData(PlxHandle_t handle, unsigned short *dataArray, int numBytes);
 
 #endif //ACQD_H
