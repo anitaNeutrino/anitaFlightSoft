@@ -55,7 +55,7 @@ char adu5ADevName[FILENAME_MAX];
 //char adu5aDevName[FILENAME_MAX];
 
 // File desciptors for GPS serial ports
-int fdG12,fdAdu5A,fdAdu5a;//,fdMag
+int fdG12,fdAdu5A;//,fdMag
 int printToScreen=0;
 
 // Config stuff for G12
@@ -287,8 +287,8 @@ int main (int argc, char *argv[])
 	    printf("Problem reading GPSd.config\n");
 	    exit(1);
 	}
-	if(printToScreen) 
-	    printf("Device fd's: %d %d %d\n",fdG12,fdAdu5A,fdAdu5a);
+	if(printToScreen)  
+	    printf("Device fd's: %d %d\nDevices:\t%s\t%s\n",fdG12,fdAdu5A,g12ADevName,adu5ADevName);
 	retVal=setupG12();
 	retVal=setupADU5();
 
@@ -387,7 +387,7 @@ int openDevices()
 	if(printToScreen) printf("Couldn't open: %s\n",adu5ADevName);
 	exit(1);
     }
-    else fdAdu5a=retVal;
+    else fdAdu5A=retVal;
 
 //    printf("%s %s %s\n",g12ADevName,adu5ADevName,adu5ADevName);
     return 0;
@@ -498,11 +498,11 @@ int checkADU5A()
     static char adu5Output[ADU5_DATA_SIZE]="";
     static int adu5OutputLength=0;
     static int lastStar=-10;
-    retVal=isThereDataNow(fdAdu5a);
+    retVal=isThereDataNow(fdAdu5A);
     usleep(5);
 //    printf("Check ADU5 got retVal %d\n",retVal);
     if(retVal!=1) return 0;
-    retVal=read(fdAdu5a, tempData, ADU5_DATA_SIZE);
+    retVal=read(fdAdu5A, tempData, ADU5_DATA_SIZE);
     if(retVal>0) {
 	for(i=0; i < retVal; i++) {
 	    if(tempData[i]=='*') {
@@ -1048,7 +1048,7 @@ int setupADU5()
     strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
 
     if(printToScreen) printf("%s\n",adu5Command);
-    retVal=write(fdAdu5a, adu5Command, strlen(adu5Command));
+    retVal=write(fdAdu5A, adu5Command, strlen(adu5Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to ADU5 Serial port\n, write: %s",
 	       strerror(errno));
