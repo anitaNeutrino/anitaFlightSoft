@@ -148,7 +148,7 @@ int main (int argc, char *argv[])
 	numEventLinks=getListofLinks(acqdEventLinkDir,&eventLinkList);
 /* 	printf("Got %d event links\n",numEventLinks); */
 	if(numEventLinks<1) {
-	    usleep(10000);
+	    usleep(1);
 	    continue;
 	}
 	numGpsTimeLinks=getListofLinks(gpsdSubTimeLinkDir,&gpsSubTimeLinkList);
