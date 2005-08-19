@@ -77,6 +77,8 @@ los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
         return -1;
     }
 
+    los_reset();
+
     if (intr) {
 	Wait_for_interrupt = 1;
 	if (prep_interrupt()) {
@@ -367,6 +369,12 @@ finito:
     write_addr_0(DATA_READY);
 
     return(ret);
+}
+
+void
+los_reset()
+{
+    PlxPciBoardReset(Dev_handle);
 }
 
 static RETURN_CODE

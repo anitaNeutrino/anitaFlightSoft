@@ -20,7 +20,7 @@
 #include "anitaFlight.h"
 
 
-#define MAX_GPS_TIMES 10000
+#define MAX_GPS_TIMES 100
 #define MAX_CALIB_TIMES 100
 
 #define TIME_MATCH 0.05 //seconds
@@ -215,8 +215,8 @@ int main (int argc, char *argv[])
 	    if((time(NULL)-theAcqdEventHeader.unixTime)>2 || filledSubTime) {
 		if(!filledSubTime) {
 		    theAcqdEventHeader.gpsSubTime=-1;
-		    syslog (LOG_WARNING,"No GPS sub time for event %d",
-			    theAcqdEventHeader.eventNumber);
+//		    syslog (LOG_WARNING,"No GPS sub time for event %d",
+//			    theAcqdEventHeader.eventNumber);
 		    if(printToScreen)
 			printf("No GPS sub time for event %d\t%d\t%d\n",
 			       theAcqdEventHeader.eventNumber,

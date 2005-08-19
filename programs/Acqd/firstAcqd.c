@@ -335,13 +335,14 @@ int main(int argc, char **argv) {
 		status=ACQD_E_OK;
 	    }
 	    else {
-		    theEvent.header.unixTime=timeStruct.tv_sec;
-		    theEvent.header.unixTimeUs=timeStruct.tv_usec;
-		    theEvent.header.eventNumber=getEventNumber();
-		    theEvent.header.numChannels=CHANNELS_PER_SURF*numSurfs;
-		    theEvent.header.numSamples=N_SAMP;
-		    if(printToScreen && verbosity) 
-			printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
+		theEvent.header.gHdr.code=PACKET_HD;
+		theEvent.header.unixTime=timeStruct.tv_sec;
+		theEvent.header.unixTimeUs=timeStruct.tv_usec;
+		theEvent.header.eventNumber=getEventNumber();
+		theEvent.header.numChannels=CHANNELS_PER_SURF*numSurfs;
+		theEvent.header.numSamples=N_SAMP;
+		if(printToScreen && verbosity) 
+		    printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
 		// Save data
 		if(writeData || writeScalers){
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);

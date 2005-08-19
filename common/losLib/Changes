@@ -1,5 +1,11 @@
 # Don't forget to update the VERSION file.
 
+1.2	12 Aug 05	MAO
+	Added los_reset() function. Call it in los_init(). Updated docs.
+
+1.1	5 Aug 05	MAO
+	Link in the documentation to my web page to download the source.
+
 1.0	3 Aug 05	MAO
 	Updated documentation.
 
