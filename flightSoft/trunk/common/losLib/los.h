@@ -66,6 +66,7 @@
  * Description:
  *
  * 	- Attempts to "open" the Washington U LOS telemetry board.
+ * 	- Does an <los_reset()>.
  * 	- Checks that board memory address 0 has the correct value. If the
  * 	value is incorrect, this is not a WU telemetry board.
  *
@@ -168,4 +169,14 @@ int los_write(unsigned char *buf, short nbytes);
  */
 int los_read(unsigned char *buf, short *nbytes);
 
+/* Function: los_reset
+ *
+ * Description:
+ * 	Issue a software reset to the LOS board.
+ * 	This is done as part of <los_init>.
+ *
+ * See also:
+ * 	<los_init>
+ */
+void los_reset(void);
 #endif // _LOS_H

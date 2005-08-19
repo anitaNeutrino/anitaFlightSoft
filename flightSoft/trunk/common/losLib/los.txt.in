@@ -153,14 +153,15 @@ write, and
 
     - press "r" to read continually. Another keypress will stop reading.
 
-IMPORTANT: If things don't seem to be working, first try pressing the reset
-button on the board after power up. Eventually, we hope to have a
-software-activated reset.
-
 There is also a lower level interactive program called telem_test that I
 can send you if you think you need it. It does not use liblos, but does
 provide more direct access to the telemetry boards, and can be useful for
 debugging.
+
+Section: Download
+
+Get it here: http://cosray.wustl.edu/~marty/anita/liblos.tar.bz2.
+Hopefully, it is the current version.
 
 
 Section: Author
