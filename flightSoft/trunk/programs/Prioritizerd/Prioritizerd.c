@@ -53,8 +53,10 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
 /* Directories and gubbins */
 char eventdEventDir[FILENAME_MAX];
 char eventdEventLinkDir[FILENAME_MAX];
-char prioritizerdSipdDir[FILENAME_MAX];
-char prioritizerdSipdLinkDir[FILENAME_MAX];
+char prioritizerdSipdHdDir[FILENAME_MAX];
+char prioritizerdSipdHdLinkDir[FILENAME_MAX];
+char prioritizerdSipdWvDir[FILENAME_MAX];
+char prioritizerdSipdWvLinkDir[FILENAME_MAX];
 char prioritizerdArchiveDir[FILENAME_MAX];
 char prioritizerdArchiveLinkDir[FILENAME_MAX];
 char prioritizerdPidFile[FILENAME_MAX];
@@ -125,23 +127,42 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting eventdEventLinkDir");
 	    fprintf(stderr,"Error getting eventdEventLinkDir\n");
 	}
-	tempString=kvpGetString("prioritizerdSipdDir");
+	tempString=kvpGetString("prioritizerdSipdHdDir");
 	if(tempString) {
-	    strncpy(prioritizerdSipdDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdDir);
+	    strncpy(prioritizerdSipdHdDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(prioritizerdSipdHdDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdDir\n");
+	    syslog(LOG_ERR,"Error getting prioritizerdSipdHdDir");
+	    fprintf(stderr,"Error getting prioritizerdSipdHdDir\n");
 	}
-	tempString=kvpGetString("prioritizerdSipdLinkDir");
+	tempString=kvpGetString("prioritizerdSipdHdLinkDir");
 	if(tempString) {
-	    strncpy(prioritizerdSipdLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdLinkDir);
+	    strncpy(prioritizerdSipdHdLinkDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(prioritizerdSipdHdLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdLinkDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdLinkDir\n");
+	    syslog(LOG_ERR,"Error getting prioritizerdSipdHdLinkDir");
+	    fprintf(stderr,"Error getting prioritizerdSipdHdLinkDir\n");
+	}
+
+	tempString=kvpGetString("prioritizerdSipdWvDir");
+	if(tempString) {
+	    strncpy(prioritizerdSipdWvDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(prioritizerdSipdWvDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvDir");
+	    fprintf(stderr,"Error getting prioritizerdSipdWvDir\n");
+	}
+	tempString=kvpGetString("prioritizerdSipdWvLinkDir");
+	if(tempString) {
+	    strncpy(prioritizerdSipdWvLinkDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(prioritizerdSipdWvLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvLinkDir");
+	    fprintf(stderr,"Error getting prioritizerdSipdWvLinkDir\n");
 	}
 	tempString=kvpGetString("prioritizerdArchiveDir");
 	if(tempString) {
@@ -169,8 +190,9 @@ int main (int argc, char *argv[])
     retVal=0;
     /* Main event getting loop. */
     while(1) {
+	usleep(1);
 	numEventLinks=getListofLinks(eventdEventLinkDir,&eventLinkList);
-
+	printf("Got %d events\n",numEventLinks);
 	/* What to do with our events? */	
 	for(count=0;count<numEventLinks;count++) {
 /* 	    printf("%s\n",eventLinkList[count]->d_name); */
@@ -181,7 +203,7 @@ int main (int argc, char *argv[])
 		    doingEvent);
 	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
 		    doingEvent);
-	    sprintf(sipdHdFilename,"%s/hd_%d.dat",prioritizerdSipdDir,
+	    sprintf(sipdHdFilename,"%s/hd_%d.dat",prioritizerdSipdHdDir,
 		    doingEvent);
 	    sprintf(archivedHdFilename,"%s/hd_%d.dat",prioritizerdArchiveDir,
 		    doingEvent);
@@ -193,27 +215,27 @@ int main (int argc, char *argv[])
 	    /* Write output for SIPd*/	    
 	    writePackets(&theEventBody,&theEventHeader);
 
-	    //Copy and link header
-	    copyFile(hdFilename,prioritizerdSipdDir);
-	    makeLink(sipdHdFilename,prioritizerdSipdLinkDir);
+	    //Move and link header
+	    copyFile(hdFilename,prioritizerdSipdHdDir);
+	    makeLink(sipdHdFilename,prioritizerdSipdHdLinkDir);
 
 	    /*Write output for Archived*/
-	    copyFile(hdFilename,prioritizerdArchiveDir);
-	    copyFile(bodyFilename,prioritizerdArchiveDir);
+	    moveFile(hdFilename,prioritizerdArchiveDir);
+	    moveFile(bodyFilename,prioritizerdArchiveDir);
 	    makeLink(archivedHdFilename,prioritizerdArchiveLinkDir);
 
 
 	    /* Delete input */
 	    removeFile(linkFilename);
-	    removeFile(bodyFilename);
-	    removeFile(hdFilename);
+//	    removeFile(bodyFilename);
+//	    removeFile(hdFilename);
 	}
 	
 	/* Free up the space used by dir queries */
         for(count=0;count<numEventLinks;count++)
             free(eventLinkList[count]);
         free(eventLinkList);
-	usleep(10000);
+//	usleep(10000);
     }	
 }
 
@@ -224,12 +246,14 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
     WaveformPacket_t wavePacket;
     wavePacket.gHdr.code=PACKET_WV;
     for(chan=0;chan<hdPtr->numChannels;chan++) {
-	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdDir,hdPtr->eventNumber,chan);
+	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan);
+//	printf("Packet: %s\n",packetName);
 	wavePacket.eventNumber=hdPtr->eventNumber;
 	wavePacket.packetNumber=chan;
 	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t));
+	writeWaveformPacket(&wavePacket,packetName);
+	makeLink(packetName,prioritizerdSipdWvLinkDir);
     }
-    writeWaveformPacket(&wavePacket,packetName);
 }
 
 

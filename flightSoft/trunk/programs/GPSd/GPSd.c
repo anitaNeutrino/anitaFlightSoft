@@ -424,8 +424,8 @@ int setupG12()
     strcat(g12Command,tempCommand);   
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);    
     strcat(g12Command,tempCommand);     
-    sprintf(tempCommand, "$PASHS,PPS,%f,%f,%c\n",g12PPSPeriod,
-	    g12PPSOffset,ppsEdge);   
+    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%d,%c\n",g12PPSPeriod,
+	    (int)g12PPSOffset,ppsEdge);   
     strcat(g12Command,tempCommand); 
     
     if(printToScreen) 

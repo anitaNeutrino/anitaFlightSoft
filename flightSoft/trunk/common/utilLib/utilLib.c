@@ -54,14 +54,20 @@ void makeDirectories(char *theTmpDir)
 
 int makeLink(const char *theFile, const char *theLinkDir)
 {
-    char theCommand[2*FILENAME_MAX];
-    int retVal;
-    sprintf(theCommand,"ln -s %s %s",theFile,theLinkDir);
-    retVal=system(theCommand);
-    if(retVal!=0) {
-	syslog(LOG_ERR,"%s returned %d",theCommand,retVal);
-    }
-    return retVal;    
+/*     char theCommand[2*FILENAME_MAX]; */
+/*     int retVal; */
+/*     sprintf(theCommand,"ln -s %s %s",theFile,theLinkDir); */
+/*     retVal=system(theCommand); */
+/*     if(retVal!=0) { */
+/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
+/*     } */
+/*     return retVal;     */
+    char *justFile=basename((char *)theFile);
+    char newFile[FILENAME_MAX];
+    sprintf(newFile,"%s/%s",theLinkDir,justFile);
+//    printf("Linking %s to %s\n",theFile,newFile);
+    return symlink(theFile,newFile);
+
 }
 
 
