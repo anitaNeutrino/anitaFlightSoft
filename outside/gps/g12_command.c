@@ -90,13 +90,14 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 /* strcat(buff, "$PASHQ,STA\n"); */
 /* strcat(buff, "$PASHQ,POS\n"); */
 /* strcat(buff, "$PASHQ,PPS\n"); */
- strcat(buff, "$PASHS,SPD,B,4\n");
- strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
- strcat(buff, "$PASHS,NME,RMC,B,ON\n");
+// strcat(buff, "$PASHS,SPD,B,4\n");
+// strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
+// strcat(buff, "$PASHS,NME,RMC,B,ON\n");
  strcat(buff, "$PASHS,LTZ,0,0\n");
  strcat(buff, "$PASHS,UTS,ON\n");
 // strcat(buff, "$PASHS,PPS,1,3,R\n");
  strcat(buff, "$PASHQ,SAT\n");
+ strcat(buff, "$PASHQ,POS\n");
  strcat(buff, "$PASHQ,CLK\n");
 
 
