@@ -17,6 +17,7 @@ static char Version_string[] = LIBLOS_VERSION;
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
+#include <unistd.h>
 
 U16 Data_buf[LOS_MAX_WORDS];
 
@@ -545,6 +546,7 @@ poll_addr_0(U16 want)
 {
     U16 val;
     int ret = read_addr_0(&val);
+    int msNum=0;
 
     if (ret) {
 	set_error_string("poll_addr_0: bad read of addr 0");
@@ -552,22 +554,49 @@ poll_addr_0(U16 want)
     }
 
     if (want != val) {
-	// try one more time
-
-	pause_ms(Poll_pause);
-
-	// try again
-	ret = read_addr_0(&val);
-	if (ret) {
-	    set_error_string("poll_addr_0: bad read of addr 0");
-	    return -5;
+	//RJN test hack
+	for(msNum=0;msNum<Poll_pause;msNum++) {
+	    usleep(1000);
+	    ret = read_addr_0(&val);
+	    if (ret) {
+		set_error_string("poll_addr_0: bad read of addr 0");
+		return -5;
+	    }
+	    if (want != val) continue;
+	    else break;
 	}
-
 	if (want != val) {
-	    set_error_string(
+	    set_error_string(   
 		"poll_addr_0: timed out polling for (%04X)", want);
 	    return -6;
 	}
+	// try one more time
+
+/* 	pause_ms(Poll_pause); */
+
+/* 	// try again */
+/* 	ret = read_addr_0(&val); */
+/* 	if (ret) { */
+/* 	    set_error_string("poll_addr_0: bad read of addr 0"); */
+/* 	    return -5; */
+/* 	} */
+
+/* 	if (want != val) { */
+/* 	    //And once more */
+/* 	    	pause_ms(Poll_pause); */
+
+/* 		// try again */
+/* 		ret = read_addr_0(&val); */
+/* 		if (ret) { */
+/* 		    set_error_string("poll_addr_0: bad read of addr 0"); */
+/* 		    return -5; */
+/* 		} */
+/* 	} */
+/* 	if (want != val) { */
+/* 	    set_error_string( */
+/* 		"poll_addr_0: timed out polling for (%04X)", want); */
+/* 	    return -6; */
+/* 	} */
     }
 
     return 0;

@@ -162,7 +162,7 @@ int main (int argc, char *argv[])
 /* 	    syslog(LOG_ERR,"Couldn't get adu5BDevName"); */
 /* 	    fprintf(stderr,"Couldn't get adu5BDevName\n"); */
 /* 	} */
-	tempString=kvpGetString("gpsdSipdDir");
+	tempString=kvpGetString("gpsdG12LogDir");
 	if(tempString) {
 	    strncpy(gpsdG12LogDir,tempString,FILENAME_MAX);
 	    makeDirectories(gpsdG12LogDir);

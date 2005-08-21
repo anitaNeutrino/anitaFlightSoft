@@ -63,12 +63,12 @@ int main(int argc, char *argv[])
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status += configLoad ("Cmdd.config","lengths") ;
-    status += configLoad ("Sipd.config","global") ;
+    status += configLoad ("SIPd.config","global") ;
     eString = configErrorString (status) ;
 
 
     if (status == CONFIG_E_OK) {
-/* 	printf("Here\n"); */
+//	printf("Here\n");
 	numPacketDirs=kvpGetInt("numPacketDirs",9);
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
 	tempString=kvpGetString("sipdPidFile");
@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
+	fprintf(stderr,"Error reading config file: %s\n",eString);
     }
             
     ret = sipcom_set_slowrate_callback(COMM1, handle_slowrate_comm1);
@@ -114,9 +115,14 @@ int main(int argc, char *argv[])
     }
 
     sipcom_set_cmd_callback(handle_command);
+    if (ret) {
+	char *s = sipcom_strerror();
+	fprintf(stderr, "%s\n", s);
+	exit(1);
+    }
     for(count=0;count<numCmds;count++) {
 	if(cmdLengths[count]) {
-/* 	    printf("%d\t%d\n",count,cmdLengths[count]); */
+	    printf("%d\t%d\n",count,cmdLengths[count]);
 	    sipcom_set_cmd_length(count,cmdLengths[count]);
 	}
     }
@@ -128,12 +134,12 @@ int main(int argc, char *argv[])
     }
     
 /*     // Start the high rate writer process. */
-/*     pthread_create(&Hr_thread, NULL, (void *)write_highrate, NULL); */
-/*     pthread_detach(Hr_thread); */
+    pthread_create(&Hr_thread, NULL, (void *)write_highrate, NULL);
+    pthread_detach(Hr_thread);
 
 
     sipcom_wait();
-/*     pthread_cancel(Hr_thread); */
+    pthread_cancel(Hr_thread);
     fprintf(stderr, "Bye bye\n");
     return 0;
 }
@@ -225,6 +231,16 @@ void write_highrate(int *ignore)
 	    }	    
 	    /*** the whole file is loaded in the buffer. ***/	    
 	    fclose (fp);
+	    fprintf(stderr, "=== high rate ===> amtb = %ld\n", fileSize);
+	    retVal = sipcom_highrate_write(buf, fileSize);
+	    if (retVal != 0) {
+		syslog(LOG_ERR,"Couldn't write file: %s",currentFilename);
+		fprintf(stderr, "Bad write\n");
+	    }
+	    else {
+		removeFile(currentFilename);
+		removeFile(currentLinkname);
+	    }
 	    break;
 	    
 	}
@@ -233,16 +249,7 @@ void write_highrate(int *ignore)
             free(linkList[count]);
         free(linkList);
 
-	fprintf(stderr, "=== high rate ===> amtb = %ld\n", fileSize);
-	retVal = sipcom_highrate_write(buf, fileSize);
-	if (retVal != 0) {
-	    syslog(LOG_ERR,"Couldn't write file: %s",currentFilename);
-	    fprintf(stderr, "Bad write\n");
-	}
-	else {
-	    removeFile(currentFilename);
-	    removeFile(currentLinkname);
-	}
+
 
     }
 
@@ -251,25 +258,46 @@ void write_highrate(int *ignore)
 void
 handle_command(unsigned char *cmd)
 {
-    //fprintf(stderr, "handle_command: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
-
-    if (cmd[0] == 129) {
-	fprintf(stderr, "DISABLE_DATA_COLL\n");
-    } else if (cmd[0] == 131) {
-	// Use this command to quit.
-	fprintf(stderr, "QUIT CMD\n");
-	sipcom_end();
-    } else if (cmd[0] == 138) {
-	fprintf(stderr, "HV_PWR_ON\n");
-    } else if (cmd[0] == 221) {
-	// Use the MARK command to change the throttle rate. Oops, need to
-	// tell the highrate writer process to change the rate.
-	unsigned short mark = (cmd[2] << 8) | cmd[1];
-	fprintf(stderr, "MARK %u\n", mark);
-	sipcom_highrate_set_throttle(mark);
-    } else {
-	fprintf(stderr, "Unknown command = 0x%02x (%d)\n", cmd[0], cmd[0]);
+//    fprintf(stderr, "handle_command: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
+    char executeCommand[FILENAME_MAX];
+    int byteNum=0;
+    int retVal=0;
+    if(cmdLengths[cmd[0]]) {
+	printf("Got cmd: %d (length supposedly) %d\n",cmd[0],cmdLengths[cmd[0]]);
+	sprintf(executeCommand,"Cmdd %d",cmd[0]);
+	if(cmdLengths[cmd[0]]>1) {
+	    for(byteNum=1;byteNum<cmdLengths[cmd[0]];byteNum++) 
+		sprintf(executeCommand,"%s %d",executeCommand,cmd[byteNum]);
+	}		
+	syslog(LOG_INFO,"%s\n",executeCommand);
+	retVal=system(executeCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error executing %s\n",executeCommand);
+	    fprintf(stderr,"Error executing %s\n",executeCommand);
+	}
     }
+    else {
+	printf("Weren't expecting cmd: %d\n",cmd[0]);
+    }
+	       
+
+/*     if (cmd[0] == 129) { */
+/* 	fprintf(stderr, "DISABLE_DATA_COLL\n"); */
+/*     } else if (cmd[0] == 131) { */
+/* 	// Use this command to quit. */
+/* 	fprintf(stderr, "QUIT CMD\n"); */
+/* 	sipcom_end(); */
+/*     } else if (cmd[0] == 138) { */
+/* 	fprintf(stderr, "HV_PWR_ON\n"); */
+/*     } else if (cmd[0] == 221) { */
+/* 	// Use the MARK command to change the throttle rate. Oops, need to */
+/* 	// tell the highrate writer process to change the rate. */
+/* 	unsigned short mark = (cmd[2] << 8) | cmd[1]; */
+/* 	fprintf(stderr, "MARK %u\n", mark); */
+/* 	sipcom_highrate_set_throttle(mark); */
+/*     } else { */
+/* 	fprintf(stderr, "Unknown command = 0x%02x (%d)\n", cmd[0], cmd[0]); */
+/*     } */
 }
 
 void
