@@ -44,6 +44,7 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
 int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename);
+int writeSurfPacket(SurfPacket_t *surfPtr, char *filename);
 int writeGPSPat(GpsPatStruct_t *patPtr, char *filename);
 int writeGPSSat(GpsSatStruct_t *satPtr, char *filename);
 int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename);

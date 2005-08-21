@@ -20,6 +20,7 @@
 typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101,
+    PACKET_SURF = 0x102,
     PACKET_GPSD_PAT = 0x200,
     PACKET_GPSD_SAT = 0x201,
     PACKET_HKD = 0x300
@@ -115,6 +116,14 @@ typedef struct {
     char packetNumber; //0 to 23;
     SurfChannelFull_t waveform;
 } WaveformPacket_t;
+
+
+typedef struct {
+    GenericHeader_t gHdr;
+    int eventNumber;
+    char packetNumber; //0 to 1;
+    SurfChannelFull_t waveform[CHANNELS_PER_SURF];
+} SurfPacket_t;
 
 typedef struct {
     int unixTime;

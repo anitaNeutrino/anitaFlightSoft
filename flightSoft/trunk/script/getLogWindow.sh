@@ -1,2 +1,2 @@
 #!/bin/bash
-xterm -T logtail -e "tail -f /var/log/anitaFlight" &
+xterm -T logtail -e "tail -f /var/log/anita.log" &
