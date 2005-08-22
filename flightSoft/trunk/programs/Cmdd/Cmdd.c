@@ -94,11 +94,94 @@ int main (int argc, char *argv[])
 
 int executeCommand() 
 {
-    printf("%d %d %d %d\n",ACQD_ID_MASK,CALIBD_ID_MASK,CMDD_ID_MASK,
-	   ALL_ID_MASK);
+    int retVal=0;
+    char theCommand[FILENAME_MAX];
+//    printf("%x %x %x %x\n",ACQD_ID_MASK,ARCHIVED_ID_MASK,CMDD_ID_MASK,
+//	   ALL_ID_MASK);
 
 //    configModifyInt("GPSd.config","output","printToScreen",0);
-    return 0;
+    switch(cmdBytes[0]) {
+	case CMD_SHUTDOWN_HALT:
+	    //Halt
+	    return retVal;
+	case CMD_REBOOT:
+	    //Reboot
+	    return retVal;
+	case CMD_KILL_PROGS:
+	    //Kill all progs
+	    return retVal;
+	case CMD_RESPAWN_PROGS:
+	    //Respawn progs
+	    return retVal;
+	case CMD_TURN_GPS_ON:
+	    //turnGPSOn
+	    return retVal;
+	case CMD_TURN_GPS_OFF:
+	    //turnGPSOff
+	    return retVal;
+	case CMD_TURN_RFCM_ON:
+	    //turnRFCMOn
+	    return retVal;
+	case CMD_TURN_RFCM_OFF:
+	    //turnRFCMOff
+	    return retVal;	    
+	case CMD_TURN_CALPULSER_ON:
+	    //turnCalPulserOn
+	    return retVal;
+	case CMD_TURN_CALPULSER_OFF:
+	    //turnCalPulserOff
+	    return retVal;
+	case CMD_TURN_ND_ON:
+	    //turnNDOn
+	    return retVal;
+	case CMD_TURN_ND_OFF:
+	    //turnNDOff
+	    return retVal;
+	case CMD_TURN_ALL_ON:
+	    //turnAllOn
+	    return retVal;
+	case CMD_TURN_ALL_OFF:
+	    //turnAllOff
+	    return retVal;	    
+	case SET_CALPULSER_SWITCH:
+	    //setCalPulserSwitch
+	    return retVal;	    
+	case SET_SUNSENSOR_GAIN:
+	    //setSunSensorGain
+	    return retVal;
+	case SET_ADU5_PAT_PERIOD:
+	    return retVal;
+	case SET_ADU5_SAT_PERIOD:
+	    return retVal;	    
+	case SET_G12_PPS_PERIOD:
+	    return retVal;	    
+	case SET_G12_PPS_OFFSET: 
+	    return retVal;
+	case SET_HK_PERIOD: 
+	    return retVal;
+	case SET_HK_CAL_PERIOD: 
+	    return retVal;
+	case CLEAN_DIRS: 
+	    return retVal;
+	case SEND_CONFIG: 
+	    return retVal;	    
+	case DEFAULT_CONFIG:
+	    return retVal;
+	case SURF_ADU5_TRIG_FLAG: 
+	    return retVal;
+	case SURF_G12_TRIG_FLAG: 
+	    return retVal;
+	case SURF_RF_TRIG_FLAG: 
+	    return retVal;	    
+	case SURF_SELF_TRIG_FLAG: 
+	    return retVal;
+	case SURF_SELF_TRIG_PERIOD:
+	    return retVal;
+	default:
+	    syslog(LOG_WARNING,"Unrecognised command %d\n",cmdBytes[0]);
+	    return retVal;
+    }
+    return -1;
 }
 
 
