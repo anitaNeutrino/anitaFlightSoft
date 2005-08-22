@@ -103,6 +103,8 @@ int executeCommand()
     switch(cmdBytes[0]) {
 	case CMD_SHUTDOWN_HALT:
 	    //Halt
+	    sprintf(theCommand,"sudo halt");
+	    retVal=system(theCommand);
 	    return retVal;
 	case CMD_REBOOT:
 	    //Reboot
