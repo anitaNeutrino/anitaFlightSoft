@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
     char *progName=basename(argv[0]);
    
     /* Set signal handlers */
-    signal(SIGINT, sigIntHandler);
-    signal(SIGTERM,sigTermHandler);
+    signal(SIGUSR1, sigUsr1Handler);
+    signal(SIGUSR2, sigUsr2Handler);
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));

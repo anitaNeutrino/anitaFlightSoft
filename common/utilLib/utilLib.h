@@ -56,8 +56,8 @@ int writeHk(HkDataStruct_t *hkPtr, char *filename);
 // Signal handling stuff
 // this variable is used when catching signals 
 ProgramStateCode currentState; 
-void sigIntHandler(int sig); 
-void sigTermHandler(int sig);
+void sigUsr1Handler(int sig); 
+void sigUsr2Handler(int sig);
 void writePidFile(char *fileName);
 
 #endif /* UTILLIB_H */

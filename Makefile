@@ -46,6 +46,8 @@ scripts:
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnNDOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOff bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOn bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOff bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/triggerCalPulser bin

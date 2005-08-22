@@ -1295,11 +1295,19 @@ int kvpFormat (
       default:
          type = "S" ;
       }
-
-      nchars = snprintf (&buffer[offset], bufferSize-offset,
-                         "%s#%s%d=%s;",
-                         keyPtrs[entry], type, nelements[entry],
-                         valPtrs[entry]) ;
+      if(entry<nkeys-1) {
+	  nchars = snprintf (&buffer[offset], bufferSize-offset,
+			     "%s#%s%d=%s;\n",
+			     keyPtrs[entry], type, nelements[entry],
+			     valPtrs[entry]) ;
+      }
+      else {
+	  nchars = snprintf (&buffer[offset], bufferSize-offset,
+			     "%s#%s%d=%s;",
+			     keyPtrs[entry], type, nelements[entry],
+			     valPtrs[entry]) ;
+      }
+	  
 
       if ((nchars > bufferSize-offset) || (nchars == -1)) {
          return (-1) ;

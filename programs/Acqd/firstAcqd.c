@@ -54,6 +54,7 @@ unsigned short rfpwData[MAX_SURFS][N_RFTRIG];
 //Configurable watchamacallits
 /* Ports and directories */
 char acqdEventDir[FILENAME_MAX];
+char acqdPidFile[FILENAME_MAX];
 char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 char scalerOutputDir[FILENAME_MAX];
@@ -127,8 +128,8 @@ int main(int argc, char **argv) {
 
    
     /* Set signal handlers */
-    signal(SIGINT, sigIntHandler);
-    signal(SIGTERM,sigTermHandler);
+    signal(SIGUSR1, sigUsr1Handler);
+    signal(SIGUSR2, sigUsr2Handler);
 
     retVal=readConfigFile();
 
@@ -719,6 +720,15 @@ int readConfigFile()
     status += configLoad ("Acqd.config","acqd") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	tempString=kvpGetString("acqdPidFile");
+	if(tempString) {
+	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
+	    writePidFile(acqdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
+	    fprintf(stderr,"Couldn't get acqdPidFile\n");
+	}
 	tempString=kvpGetString ("acqdEventDir");
 	if(tempString) {
 	   strncpy(acqdEventDir,tempString,FILENAME_MAX-1);	   

@@ -344,12 +344,12 @@ int writeHk(HkDataStruct_t *hkPtr, char *filename)
 }
 
  
-void sigIntHandler(int sig)
+void sigUsr1Handler(int sig)
 {
     currentState=PROG_STATE_INIT;
 } 
 
-void sigTermHandler(int sig)
+void sigUsr2Handler(int sig)
 {
     currentState=PROG_STATE_TERMINATE;
 } 
