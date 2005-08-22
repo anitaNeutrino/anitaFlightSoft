@@ -110,8 +110,8 @@ int main (int argc, char *argv[])
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
 
     /* Set signal handlers */
-    signal(SIGINT, sigIntHandler);
-    signal(SIGTERM,sigTermHandler);
+    signal(SIGUSR1, sigUsr1Handler);
+    signal(SIGUSR2, sigUsr2Handler);
    
     /* Load Global Config */
     kvpReset () ;

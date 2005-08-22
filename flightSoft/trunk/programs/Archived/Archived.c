@@ -47,6 +47,7 @@ int printToScreen=1;
 int useSecondDisk=0;
 
 /* Directories and gubbins */
+char archivedPidFile[FILENAME_MAX];
 char archivedMainDisk[FILENAME_MAX];
 char archivedSecondDisk[FILENAME_MAX];
 char archivedGpsAdu5TTTDir[FILENAME_MAX];
@@ -84,8 +85,8 @@ int main (int argc, char *argv[])
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
 
     /* Set signal handlers */
-    signal(SIGINT, sigIntHandler);
-    signal(SIGTERM,sigTermHandler);
+    signal(SIGUSR1, sigUsr1Handler);
+    signal(SIGUSR2, sigUsr2Handler);
    
     /* Load Config */
     readConfigFile();
@@ -93,6 +94,15 @@ int main (int argc, char *argv[])
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
+	tempString=kvpGetString("archivedPidFile");
+	if(tempString) {
+	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
+	    writePidFile(archivedPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
+	    fprintf(stderr,"Couldn't get archivedPidFile\n");
+	}
 	tempString=kvpGetString("archivedMainDisk");
 	if(tempString) {
 	    strncpy(archivedMainDisk,tempString,FILENAME_MAX-1);	    

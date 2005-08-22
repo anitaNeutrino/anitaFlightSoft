@@ -135,7 +135,7 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName)
        syslog(LOG_ERR,"Problem replacing config: %s %s ",archiveFileSpec,strerror(errno));
        return CONFIG_E_SYSTEM;
    }
-   syslog(LOG_INFO,"configReplace arvhived: %s", archiveFileSpec);   
+   syslog(LOG_INFO,"configReplace arcvhived: %s", archiveFileSpec);   
    return CONFIG_E_OK;
 }
 

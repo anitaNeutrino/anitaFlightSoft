@@ -1,0 +1,6 @@
+#!/bin/bash
+
+turnCalPulserOff
+turnGPSOff
+turnNDOff
+turnRFCMOff

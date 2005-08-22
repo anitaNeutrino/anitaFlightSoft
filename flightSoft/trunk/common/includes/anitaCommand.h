@@ -24,6 +24,18 @@
 #define SIPD_ID_MASK 0x80
 #define ALL_ID_MASK 0xff
 
+typedef enum {
+    ID_ACQD = 100,
+    ID_ARCHIVED,
+    ID_CALIBD,
+    ID_CMDD,
+    ID_EVENTD,
+    ID_GPSD,
+    ID_HKD,
+    ID_LOSD,
+    ID_PRIORITIZERD,
+    ID_SIPD
+} ProgramId_t;
 
 typedef enum {
     CMD_SHUTDOWN_HALT = 129,
