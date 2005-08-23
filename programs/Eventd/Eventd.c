@@ -155,6 +155,8 @@ int main (int argc, char *argv[])
 
     do {
 	retVal=readConfigFile();
+	if(printToScreen) 
+	    printf("Initializing Eventd\n");
 	if(retVal!=CONFIG_E_OK) {
 	    ///Arrgh
 	}
@@ -205,7 +207,7 @@ int main (int argc, char *argv[])
 		retVal=fillHeader(&theAcqdEventHeader,currentFilename);
 		for(i=whichGps;i<numGpsStored;i++) {
 		    if(printToScreen && verbosity) 
-			printf("Event %d, time %d\t%lu\tGPS\t%d\t%d\n",
+			printf("Event %d, time %ld\t%lu\tGPS\t%ld\t%d\n",
 			       theAcqdEventHeader.eventNumber,
 			       theAcqdEventHeader.unixTime,
 			       theAcqdEventHeader.turfio.trigTime,
@@ -215,7 +217,7 @@ int main (int argc, char *argv[])
 //		sleep(1);
 		    if(match) {
 			if(printToScreen) 
-			    printf("Match: Event %d\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,gpsArray[i].unixTime,gpsArray[i].subTime);
+			    printf("Match: Event %d\t Time:\t%ld\t%d\n",theAcqdEventHeader.eventNumber,gpsArray[i].unixTime,gpsArray[i].subTime);
 			theAcqdEventHeader.unixTime=gpsArray[i].unixTime;
 			theAcqdEventHeader.gpsSubTime=gpsArray[i].subTime;
 			/* As events come time sorted can delete all previous
@@ -237,7 +239,7 @@ int main (int argc, char *argv[])
 //		    syslog (LOG_WARNING,"No GPS sub time for event %d",
 //			    theAcqdEventHeader.eventNumber);
 			if(printToScreen)
-			    printf("No GPS sub time for event %d\t%d\t%d\n",
+			    printf("No GPS sub time for event %d\t%ld\t%d\n",
 				   theAcqdEventHeader.eventNumber,
 				   theAcqdEventHeader.unixTime,
 				   theAcqdEventHeader.unixTimeUs);
@@ -248,7 +250,7 @@ int main (int argc, char *argv[])
 		    numEvents++;
 		    for(i=0;i<numGpsStored;i++) {
 			if(printToScreen && verbosity) 
-			    printf("GPS:\t%d\tEvent:\t%d\n",gpsArray[i].unixTime,
+			    printf("GPS:\t%ld\tEvent:\t%ld\n",gpsArray[i].unixTime,
 				   theAcqdEventHeader.unixTime);
 			if(gpsArray[i].unixTime<(theAcqdEventHeader.unixTime-2)) {
 			    
@@ -463,10 +465,10 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
     double diff=computerTime-gpsTime;
     if(verbosity>1 && printToScreen) { 
 	printf("Old:\t%lu\t%lu\t%lu\n",lastUnixTime,lastTrigTime,lastPPSNum);
-	printf("New:\t%d\t%lu\t%lu\n",theHeaderPtr->unixTime,
+	printf("New:\t%ld\t%lu\t%lu\n",theHeaderPtr->unixTime,
 	       theHeaderPtr->turfio.trigTime,theHeaderPtr->turfio.ppsNum);
 	
-	printf("Raw:\t%d\t%d\n",theHeaderPtr->unixTime,theGpsPtr->unixTime);
+	printf("Raw:\t%ld\t%ld\n",theHeaderPtr->unixTime,theGpsPtr->unixTime);
 	printf("Here:\t%9.2lf\t%9.2lf\t%9.9lf\n",computerTime,gpsTime,diff);
     }
     lastUnixTime=theHeaderPtr->unixTime;
@@ -483,12 +485,12 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
     char theFilename[FILENAME_MAX];
     int retVal;
 
-    sprintf(theFilename,"%s/gps_%d_%d.dat",gpsdSubTimeLinkDir,
+    sprintf(theFilename,"%s/gps_%ld_%d.dat",gpsdSubTimeLinkDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity) 
 	printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
-    sprintf(theFilename,"%s/gps_%d_%d.dat",gpsdSubTimeDir,
+    sprintf(theFilename,"%s/gps_%ld_%d.dat",gpsdSubTimeDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
@@ -505,7 +507,6 @@ int readConfigFile()
     kvpReset();
     status = configLoad ("Eventd.config","output") ;
     if(status == CONFIG_E_OK) {
-
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 
@@ -514,7 +515,7 @@ int readConfigFile()
     else {
 	eString=configErrorString (status) ;
 	syslog(LOG_ERR,"Error reading Eventd.config: %s\n",eString);
-	if(printToScreen)
+//	if(printToScreen)
 	    fprintf(stderr,"Error reading Eventd.config: %s\n",eString);
 	    
     }

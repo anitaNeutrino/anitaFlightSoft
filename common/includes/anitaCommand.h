@@ -13,16 +13,17 @@
 #ifndef ANITA_COMMAND_H
 #define ANITA_COMMAND_H
 
-#define ACQD_ID_MASK 0x01
-#define ARCHIVED_ID_MASK 0x02
-//#define CALIBD_ID_MASK 0x04
-#define CMDD_ID_MASK 0x04
-#define EVENTD_ID_MASK 0x08
-#define GPSD_ID_MASK 0x10
-#define HKD_ID_MASK 0x20
-#define PRIORITIZERD_ID_MASK 0x40
-#define SIPD_ID_MASK 0x80
-#define ALL_ID_MASK 0xff
+#define ACQD_ID_MASK 0x001
+#define ARCHIVED_ID_MASK 0x002
+#define CALIBD_ID_MASK 0x004
+#define CMDD_ID_MASK 0x008
+#define EVENTD_ID_MASK 0x010
+#define GPSD_ID_MASK 0x020
+#define HKD_ID_MASK 0x040
+#define LOSD_ID_MASK 0x080
+#define PRIORITIZERD_ID_MASK 0x100
+#define SIPD_ID_MASK 0x200
+#define ALL_ID_MASK 0xfff
 
 typedef enum {
     ID_ACQD = 100,
@@ -42,6 +43,8 @@ typedef enum {
     CMD_REBOOT = 130,
     CMD_KILL_PROGS = 131,
     CMD_RESPAWN_PROGS =132,
+    CMD_START_PROGS = 133,
+    CMD_MOUNT = 134,
     CMD_TURN_GPS_ON = 150,
     CMD_TURN_GPS_OFF = 151,
     CMD_TURN_RFCM_ON = 152,
@@ -66,8 +69,8 @@ typedef enum {
     SURF_ADU5_TRIG_FLAG = 230,
     SURF_G12_TRIG_FLAG = 231,
     SURF_RF_TRIG_FLAG = 232,
-    SURF_SELF_TRIG_FLAG = 233,
-    SURF_SELF_TRIG_PERIOD = 234          
+    SURF_SOFT_TRIG_FLAG = 233,
+    SURF_SOFT_TRIG_PERIOD = 234          
 } CommandCode_t;
 
 #endif /* ANITA_COMMAND_H */

@@ -63,7 +63,7 @@ char scalerOutputDir[FILENAME_MAX];
 #define N_FTMO 200    /* number of msec wait for Lab_f before timed out. */
 //#define N_FTMO 2000    /* number of msec wait for Lab_f before timed out. */
 #define DAC_CHAN 4 /* might replace with N_CHIP at a later date */
-
+#define EVTF_TIMEOUT 10000000 /* in microseconds */
 
 int verbosity = 0 ; /* control debug print out. */
 int selftrig = FALSE ;/* self-trigger mode */
@@ -77,6 +77,7 @@ int printStatistics = FALSE;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
+int softTrigSleepPeriod = 0;
 int writeOutC3p0Nums = FALSE;
 int reprogramTurf = FALSE;
 int tryToUseBarMap = FALSE;
@@ -286,7 +287,7 @@ int main(int argc, char **argv) {
 	    }
 
 	    if(sendSoftTrigger) {
-//		sleep(4);
+		sleep(softTrigSleepPeriod);
 		setTurfControl(turfioHandle,trigMode,SendSoftTrg);
 	    }
 	    if (selftrig){  /* --- send a trigger ---- */ 
@@ -307,13 +308,23 @@ int main(int argc, char **argv) {
 	    if(!dontWaitForEvtF) {
 
 		if(verbosity && printToScreen) printf("Waiting for Evt_F on SURF 1-1\n");
-		while (!((tmpGPIO=PlxRegisterRead(surfHandles[1], PCI9030_GP_IO_CTRL, &rc)) & EVT_F) && (selftrig?(++tmo<N_TMO):1)){
+		while (!((tmpGPIO=PlxRegisterRead(surfHandles[1], PCI9030_GP_IO_CTRL, &rc)) & EVT_F) && (selftrig?(tmo<N_TMO):1)){
 		    if(verbosity>3 && printToScreen) 
 			printf("SURF 1 GPIO: 0x%x %d\n",tmpGPIO,tmpGPIO);
 		    usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
+		    tmo++;
+		    if((tmo%1000)==0) {
+			if(currentState!=PROG_STATE_RUN) 
+			    break;
+			if(tmo==EVTF_TIMEOUT) break;
+		    }
+		    
+			
 		}
+		if(currentState!=PROG_STATE_RUN) 
+		    continue;
 		
-		if (tmo == N_TMO){
+		if (tmo == N_TMO || tmo==EVTF_TIMEOUT){
 		    syslog(LOG_WARNING,"Timed out waiting for Evt_F flag");
 		    if(printToScreen)
 			printf(" Timed out (%d ms) while waiting for Evt_F flag in self trigger mode.\n", N_TMO) ;
@@ -343,7 +354,7 @@ int main(int argc, char **argv) {
 		theEvent.header.numChannels=CHANNELS_PER_SURF*numSurfs;
 		theEvent.header.numSamples=N_SAMP;
 		if(printToScreen && verbosity) 
-		    printf("Event:\t%d\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
+		    printf("Event:\t%d\nSec:\t%ld\nMicrosec:\t%d\nTrigTime:\t%lu\n",theEvent.header.eventNumber,theEvent.header.unixTime,theEvent.header.unixTimeUs,theEvent.header.turfio.trigTime);
 		// Save data
 		if(writeData || writeScalers){
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
@@ -762,6 +773,7 @@ int readConfigFile()
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
 	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
 	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
+	softTrigSleepPeriod=kvpGetInt("softTrigSleepPeriod",0);
 	reprogramTurf=kvpGetInt("reprogramTurf",0);
 	tryToUseBarMap=kvpGetInt("tryToUseBarMap",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);

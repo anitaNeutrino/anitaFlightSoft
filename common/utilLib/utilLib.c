@@ -167,7 +167,7 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 0;
     }
-    fscanf(pFile,"%d %c",&(theStruct->unixTime),&(theStruct->status));
+    fscanf(pFile,"%ld %c",&(theStruct->unixTime),&(theStruct->status));
     fclose (pFile); 
     return 0;
 }
@@ -339,6 +339,21 @@ int writeHk(HkDataStruct_t *hkPtr, char *filename)
 	return -1;
     }
     numObjs=fwrite(hkPtr,sizeof(HkDataStruct_t),1,pFILE);
+    fclose(pFILE);
+    return 0;
+}
+
+
+int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
+/* Writes the echo pointed to by echoPtr to filename */
+{
+    int numObjs;
+    FILE *pFILE = fopen (filename, "wb");
+    if(pFILE == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }
+    numObjs=fwrite(echoPtr,sizeof(CommandEcho_t),1,pFILE);
     fclose(pFILE);
     return 0;
 }

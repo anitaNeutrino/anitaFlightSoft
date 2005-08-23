@@ -26,7 +26,12 @@
 int executeCommand();
 int sendSignal(ProgramId_t progId, int theSignal); 
 int readConfig();
-
+int cleanDirs();
+int sendConfig();
+int defaultConfig();
+int killPrograms(int progMask);
+int startPrograms(int progMask);
+int respawnPrograms(int progMask);
 
 /* Global variables */
 int cmdLengths[256];
@@ -38,6 +43,8 @@ int numCmds=256;
 /* PID Files */
 char acqdPidFile[FILENAME_MAX];
 char archivedPidFile[FILENAME_MAX];
+char calibdPidFile[FILENAME_MAX];
+char cmddPidFile[FILENAME_MAX];
 char eventdPidFile[FILENAME_MAX];
 char gpsdPidFile[FILENAME_MAX];
 char hkdPidFile[FILENAME_MAX];
@@ -45,14 +52,21 @@ char losdPidFile[FILENAME_MAX];
 char prioritizerdPidFile[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
 
+/*Echo Dirs*/
+char cmdEchoDir[FILENAME_MAX];
+char cmdEchoLinkDir[FILENAME_MAX];
+
+
 
 int main (int argc, char *argv[])
 {
     int retVal;
     int count;
+    char cmdString[180];
+    CommandEcho_t theEcho;
+    time_t rawtime;
+    char filename[180];
 
-
-    
     /* Log stuff */
     char *progName=basename(argv[0]);
 
@@ -90,7 +104,41 @@ int main (int argc, char *argv[])
 	fprintf(stderr,"Wrong number of command bytes for %d: expected %d, got %d\n",cmdBytes[0],cmdLengths[cmdBytes[0]],numCmdBytes);
 	exit(0);
     }
-    return executeCommand();
+    retVal=executeCommand();
+    time(&rawtime);
+    theEcho.gHdr.code=PACKET_CMD_ECHO;
+    theEcho.unixTime=rawtime;
+    theEcho.goodFlag=1;
+    sprintf(cmdString,"%d",cmdBytes[0]);
+    theEcho.numCmdBytes=numCmdBytes;
+    theEcho.cmd[0]=cmdBytes[0];
+    if(numCmdBytes>1) {
+	for(count=1;count<numCmdBytes;count++) {
+	    sprintf(cmdString,"%s %d",cmdString,cmdBytes[count]);
+	    theEcho.cmd[count]=cmdBytes[count];
+	}
+    }
+
+    if(retVal!=0) {
+	theEcho.goodFlag=0;
+	syslog(LOG_ERR,"Error executing cmd: %s",cmdString);
+	fprintf(stderr,"Error executing cmd: %s\n",cmdString);
+    }
+    sprintf(filename,"%s/cmd_%ld.dat",cmdEchoDir,theEcho.unixTime);
+    {
+	FILE *pFile;
+	int fileTag=1;
+	pFile = fopen(filename,"rb");
+	while(pFile!=NULL) {
+	    fclose(pFile);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",cmdEchoDir,theEcho.unixTime,fileTag);
+	    pFile=fopen(filename,"rb");
+	}
+    }
+    writeCmdEcho(&theEcho,filename);
+    makeLink(filename,cmdEchoLinkDir);
+    
+    return retVal;
 }
 
 int readConfig() {
@@ -171,6 +219,24 @@ int readConfig() {
 	else {
 	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
 	    fprintf(stderr,"Couldn't get sipdPidFile\n");
+	}	
+	tempString=kvpGetString("cmdEchoDir");
+	if(tempString) {
+	    strncpy(cmdEchoDir,tempString,FILENAME_MAX);
+//	    makeDirectories(cmdEchoLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmdEchoDir");
+	    fprintf(stderr,"Couldn't get cmdEchoDir\n");
+	}
+	tempString=kvpGetString("cmdEchoLinkDir");
+	if(tempString) {
+	    strncpy(cmdEchoLinkDir,tempString,FILENAME_MAX);
+	    makeDirectories(cmdEchoLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmdEchoLinkDir");
+	    fprintf(stderr,"Couldn't get cmdEchoLinkDir\n");
 	}
     }
     else {
@@ -183,7 +249,7 @@ int readConfig() {
 int executeCommand() 
 {
     int retVal=0;
-    int period;
+    int ivalue;
     char theCommand[FILENAME_MAX];
 //    printf("%x %x %x %x\n",ACQD_ID_MASK,ARCHIVED_ID_MASK,CMDD_ID_MASK,
 //	   ALL_ID_MASK);
@@ -201,10 +267,23 @@ int executeCommand()
 	    retVal=system(theCommand);
 	    return retVal;
 	case CMD_KILL_PROGS:
-	    //Kill all progs
+	    //Kill progs
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    retVal=killPrograms(ivalue);
 	    return retVal;
 	case CMD_RESPAWN_PROGS:
 	    //Respawn progs
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    retVal=respawnPrograms(ivalue);	    
+	    return retVal;
+	case CMD_START_PROGS:
+	    //Start progs
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    retVal=startPrograms(ivalue);	    
+	    return retVal;
+	case CMD_MOUNT:
+	    //Mount -a
+	    retVal=system("sudo mount -a");
 	    return retVal;
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
@@ -267,36 +346,70 @@ int executeCommand()
 	    retVal=system(theCommand);
 	    return retVal;
 	case SET_ADU5_PAT_PERIOD:
-	    period=cmdBytes[1]+(cmdBytes[2]<<8);
-//	    printf("period: %d %x\t %x %x\n",period,period,cmdBytes[1],cmdBytes[2]);
-	    configModifyInt("GPSd.config","adu5","satPeriod",period);
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+//	    printf("ivalue: %d %x\t %x %x\n",ivalue,ivalue,cmdBytes[1],cmdBytes[2]);
+	    configModifyInt("GPSd.config","adu5","patPeriod",ivalue);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    return retVal;
 	case SET_ADU5_SAT_PERIOD:
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyInt("GPSd.config","adu5","satPeriod",ivalue);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    return retVal;	    
 	case SET_G12_PPS_PERIOD:
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyFloat("GPSd.config","g12","ppsPeriod",((float)ivalue)/1000.);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    return retVal;	    
 	case SET_G12_PPS_OFFSET: 
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyInt("GPSd.config","g12","ppsOffset",ivalue);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    return retVal;
 	case SET_HK_PERIOD: 
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyInt("Hkd.config","hkd","readoutPeriod",ivalue);
+	    retVal=sendSignal(ID_HKD,SIGUSR1);
 	    return retVal;
 	case SET_HK_CAL_PERIOD: 
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyInt("Hkd.config","hkd","calPeriod",ivalue);
+	    retVal=sendSignal(ID_HKD,SIGUSR1);
 	    return retVal;
-	case CLEAN_DIRS: 
-	    return retVal;
+	case CLEAN_DIRS: 	    
+	    return cleanDirs();
 	case SEND_CONFIG: 
-	    return retVal;	    
+	    return sendConfig();	    
 	case DEFAULT_CONFIG:
-	    return retVal;
-	case SURF_ADU5_TRIG_FLAG: 
+	    return defaultConfig();
+	case SURF_ADU5_TRIG_FLAG:
+	    ivalue=cmdBytes[1];
+	    configModifyInt("Acqd.config","trigger","enablePPS1Trigger",ivalue);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    return retVal;
 	case SURF_G12_TRIG_FLAG: 
+	    ivalue=cmdBytes[1];
+	    configModifyInt("Acqd.config","trigger","enablePPS2Trigger",ivalue);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    return retVal;
 	case SURF_RF_TRIG_FLAG: 
+	    ivalue=cmdBytes[1];
+	    configModifyInt("Acqd.config","trigger","enableRFTrigger",ivalue);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    return retVal;	    
-	case SURF_SELF_TRIG_FLAG: 
+	case SURF_SOFT_TRIG_FLAG: 	    
+	    ivalue=cmdBytes[1];
+	    configModifyInt("Acqd.config","trigger","enableSoftTrigger",ivalue);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    return retVal;
-	case SURF_SELF_TRIG_PERIOD:
+	case SURF_SOFT_TRIG_PERIOD:
+	    ivalue=cmdBytes[1];
+	    configModifyInt("Acqd.config","trigger","softTrigSleepPeriod",ivalue);
+	    if(ivalue>0) 
+		configModifyInt("Acqd.config","trigger","sendSoftTrig",1);
+	    else
+		configModifyInt("Acqd.config","trigger","sendSoftTrig",0);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    return retVal;
 	default:
 	    syslog(LOG_WARNING,"Unrecognised command %d\n",cmdBytes[0]);
@@ -307,6 +420,7 @@ int executeCommand()
 
 int sendSignal(ProgramId_t progId, int theSignal) 
 {
+    int retVal=0;
     FILE *fpPid ;
     char fileName[FILENAME_MAX];
     pid_t thePid;
@@ -347,5 +461,320 @@ int sendSignal(ProgramId_t progId, int theSignal)
     fscanf(fpPid,"%d", &thePid) ;
     fclose(fpPid) ;
     
-    return kill(thePid,theSignal);
+    retVal=kill(thePid,theSignal);
+    if(retVal!=0) {
+	syslog(LOG_ERR,"Error sending %d to pid %d:\t%s",theSignal,thePid,strerror(errno));
+	fprintf(stderr,"Error sending %d to pid %d:\t%s\n",theSignal,thePid,strerror(errno));
+    }
+    return retVal;
 } 
+
+int cleanDirs()
+{
+    return 0;
+}
+
+int sendConfig() 
+{
+    return 0;
+}
+
+int defaultConfig()
+{
+    return 0;
+}
+
+int killPrograms(int progMask) 
+{
+    char daemonCommand[FILENAME_MAX];
+    int retVal=0;
+    if(progMask&ACQD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Acqd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Acqd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&ARCHIVED_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Archived");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Archived");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&CALIBD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Calibd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Calibd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&CMDD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Cmdd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Cmdd");
+	    //Maybe do something clever
+	}
+    }    
+    if(progMask&EVENTD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Eventd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Eventd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&GPSD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Gpsd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Gpsd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&HKD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Hkd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Hkd");
+	    //Maybe do something clever
+	}
+    }    
+    if(progMask&LOSD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Losd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Losd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&PRIORITIZERD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Prioritizerd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Prioritizerd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&SIPD_ID_MASK) {
+	sprintf(daemonCommand,"daemon --stop -n Sipd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error killing Sipd");
+	    //Maybe do something clever
+	}
+    }
+    return 0;
+}
+
+
+int startPrograms(int progMask) 
+{
+    char daemonCommand[FILENAME_MAX];
+    int retVal=0;
+    if(progMask&ACQD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Acqd -n Acqd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Acqd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&ARCHIVED_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Archived -n Archived");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Archived");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&CALIBD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Calibd -n Calibd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Calibd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&CMDD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Cmdd -n Cmdd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Cmdd");
+	    //Maybe do something clever
+	}
+    }    
+    if(progMask&EVENTD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Eventd -n Eventd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Eventd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&GPSD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Gpsd -n Gpsd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Gpsd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&HKD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Hkd -n Hkd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Hkd");
+	    //Maybe do something clever
+	}
+    }    
+    if(progMask&LOSD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Losd -n Losd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Losd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&PRIORITIZERD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Prioritizerd -n Prioritizerd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Prioritizerd");
+	    //Maybe do something clever
+	}
+    }
+    if(progMask&SIPD_ID_MASK) {
+	sprintf(daemonCommand,"daemon -r Sipd -n Sipd");
+	retVal=system(daemonCommand);
+	if(retVal!=0) {
+	    syslog(LOG_ERR,"Error starting Sipd");
+	    //Maybe do something clever
+	}
+    }
+    return 0;
+}
+
+int respawnPrograms(int progMask)
+{
+    FILE *fpPid ;
+    char fileName[FILENAME_MAX];
+    pid_t thePid;
+    int retVal=0;
+    if(progMask&ACQD_ID_MASK) {
+	sprintf(fileName,"%s",acqdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    } 
+    if(progMask&ARCHIVED_ID_MASK) {
+	sprintf(fileName,"%s",archivedPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&CALIBD_ID_MASK) {
+	sprintf(fileName,"%s",calibdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&CMDD_ID_MASK) {
+	sprintf(fileName,"%s",cmddPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&EVENTD_ID_MASK) {
+	sprintf(fileName,"%s",eventdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&GPSD_ID_MASK) {
+	sprintf(fileName,"%s",gpsdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&HKD_ID_MASK) {
+	sprintf(fileName,"%s",hkdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&LOSD_ID_MASK) {
+	sprintf(fileName,"%s",losdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&PRIORITIZERD_ID_MASK) {
+	sprintf(fileName,"%s",prioritizerdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+    if(progMask&SIPD_ID_MASK) {
+	sprintf(fileName,"%s",sipdPidFile);
+	if (!(fpPid=fopen(fileName, "r"))) {
+	    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
+	    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+	    //return -1;
+	}
+	fscanf(fpPid,"%d", &thePid) ;
+	fclose(fpPid) ;
+	retVal=kill(thePid,SIGUSR2);
+    }
+
+    return 0;
+}

@@ -103,7 +103,7 @@ int readAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir, const char *theGps
 		syslog (LOG_ERR,"fopen: %s\t %s",strerror(errno),filename);
 		return -1;
 	    }
-	    fscanf(pFile,"%d %d",
+	    fscanf(pFile,"%ld %d",
 		   &(gpsArray[count].unixTime),&(gpsArray[count].subTime));
 	    fclose(pFile);
 	    removeFile(filename);  
@@ -111,14 +111,14 @@ int readAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir, const char *theGps
 		    triggerList[count]->d_name);
 	    removeFile(filename);    
 	}
-	sprintf(filename,"%s/gps_%d_%d.dat",theGpsSubTimeDir,gpsArray[0].unixTime,gpsArray[0].subTime);
+	sprintf(filename,"%s/gps_%ld_%d.dat",theGpsSubTimeDir,gpsArray[0].unixTime,gpsArray[0].subTime);
 	pFile = fopen (filename, "w");
 	if(pFile == NULL) {
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	    exit(0);
 	}	
 	for(count=0;count<numTriggers;count++) {
-	    retVal=fprintf(pFile,"%d %d\n",gpsArray[count].unixTime,
+	    retVal=fprintf(pFile,"%ld %d\n",gpsArray[count].unixTime,
 			   gpsArray[count].subTime);
 	    if(retVal<0) {
 		syslog (LOG_ERR,"fprintf: %s ---  %s\n",
