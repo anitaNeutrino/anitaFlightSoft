@@ -23,7 +23,8 @@ typedef enum {
     PACKET_SURF = 0x102,
     PACKET_GPSD_PAT = 0x200,
     PACKET_GPSD_SAT = 0x201,
-    PACKET_HKD = 0x300
+    PACKET_HKD = 0x300,
+    PACKET_CMD_ECHO = 0x400
 } PacketCode_t;
 
 typedef struct {
@@ -90,7 +91,7 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    int unixTime;       /* unix UTC sec*/
+    long unixTime;       /* unix UTC sec*/
     int unixTimeUs;     /* unix UTC microsec */
     int gpsSubTime;     /* the GPS fraction of second (in ns) (for the one event per second that gets tagged with it */
     int eventNumber;    /* Global event number */
@@ -126,7 +127,7 @@ typedef struct {
 } SurfPacket_t;
 
 typedef struct {
-    int unixTime;
+    long unixTime;
     int subTime;
 } GpsSubTime_t;
 
@@ -168,7 +169,7 @@ typedef enum {
 } AnalogueCode_t;
 
 typedef struct {
-    int unixTime;
+    long unixTime;
     char status;
 } CalibStruct_t;
 
@@ -208,6 +209,13 @@ typedef struct {
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
 } SimpleScalerStruct_t;
 
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    char goodFlag; // 0 is bad, 1 is good
+    char numCmdBytes; // number of cmd bytes (upto 10)
+    char cmd[10]; // the cmd bytes
+} CommandEcho_t;
 
 typedef enum {
     PRI_FORCED = 0,

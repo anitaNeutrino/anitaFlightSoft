@@ -140,8 +140,8 @@ void tryToSendData()
     char linkDir[FILENAME_MAX];
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-    int numItems=0;
-    FILE *fp;
+//    int numItems=0;
+//    FILE *fp;
     int fd;
     struct dirent **linkList;
 

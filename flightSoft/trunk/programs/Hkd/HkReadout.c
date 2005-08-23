@@ -61,7 +61,8 @@ int main (int argc, char **argv)
 
   int status;
   char *eString;
-  char *ip320carrier = carrierDefault;
+  char ip320carrier[FILENAME_MAX];
+  sprintf(ip320carrier,"%s",carrierDefault);
   int ip320BoardLocation;
   int readout=0;
   char hkreadout[9];
@@ -84,7 +85,7 @@ int main (int argc, char **argv)
   if (status == CONFIG_E_OK) {
     char *temp;
     temp = kvpGetString("ip320carrier");
-    if (temp != NULL) ip320carrier = temp;
+    if (temp != NULL) sprintf(ip320carrier,"%s",temp);
     ip320BoardLocation = kvpGetInt("ip320BoardLocation",-1);
     prettyFormat = kvpGetInt("prettyformat",0);
     int ip320Ranges[3];

@@ -736,12 +736,12 @@ void processTTTString(char *gpsString, int gpsLength) {
     theTTT.subTime=subSecond;
     
     //Write file for eventd
-    sprintf(filename,"%s/gps_%d_%d.dat",gpsdSubTimeDir,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%ld_%d.dat",gpsdSubTimeDir,theTTT.unixTime,theTTT.subTime);
     writeGPSTTT(&theTTT,filename);
     retVal=makeLink(filename,gpsdSubTimeLinkDir);  
 
     //Write file for archived
-    sprintf(filename,"%s/gps_%d_%d.dat",gpsdAdu5TTTArchiveDir,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%ld_%d.dat",gpsdAdu5TTTArchiveDir,theTTT.unixTime,theTTT.subTime);
     writeGPSTTT(&theTTT,filename);
     retVal=makeLink(filename,gpsdAdu5TTTArchiveLinkDir);  
     

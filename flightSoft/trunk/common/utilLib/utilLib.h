@@ -49,7 +49,7 @@ int writeGPSPat(GpsPatStruct_t *patPtr, char *filename);
 int writeGPSSat(GpsSatStruct_t *satPtr, char *filename);
 int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename);
 int writeHk(HkDataStruct_t *hkPtr, char *filename);
-
+int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
 
 // Signal handling routines
 

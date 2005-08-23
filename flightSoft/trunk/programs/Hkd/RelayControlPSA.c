@@ -66,7 +66,8 @@ const char carrierDefault[] = "/dev/apc8620";
 
 int main (int argc, char *argv[])
 {
-    char *ip470carrier = carrierDefault;
+    char ip470carrier[FILENAME_MAX];
+    sprintf(ip470carrier,"%s",carrierDefault);
     int retVal,port,channel,value,ip470BoardLocation=0;
     int gpsOnPort,gpsOffPort,ndOnPort,ndOffPort,rfcmOnPort,rfcmOffPort;
 
@@ -118,7 +119,7 @@ int main (int argc, char *argv[])
     if (status == CONFIG_E_OK) {
         char *temp;
 	temp = kvpGetString("ip470carrier");
-	if (temp != NULL) ip470carrier = temp;
+	if (temp != NULL) sprintf(ip470carrier,"%s",temp);
 	ip470BoardLocation=kvpGetInt("ip470BoardLocation",-1);
 	gpsOnPort=kvpGetInt("gpsOnLogic",-1);
 	gpsOffPort=kvpGetInt("gpsOffLogic",-1);

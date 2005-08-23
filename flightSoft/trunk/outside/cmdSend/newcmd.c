@@ -67,7 +67,7 @@ char *menuformat[] = {
 #define LINK_TDRSS	1
 #define LINK_HF		2
 #define LINK_LOS	0
-#define PORT		"/dev/ttyS1"
+#define PORT		"/dev/ttyUSB0"
 //#define PORT		"/dev/ttyS2"
 #define PROMPT		": "
 #define ROUTE_COMM1	0x09
@@ -709,11 +709,11 @@ wait_for_ack(void)
 	log_out("NSBF response; no response after %ld seconds", Timeout);
 	return;
     }
-
+    sleep(1);
     n = read(Fd, ibuf, IBUFSIZE);
     if (n > 0) {
 	if (ibuf[0] != 0xFA || ibuf[1] != 0xF3) {
-	    screen_printf("malformed response!\n");
+	    screen_printf("malformed response!\n%x\t\n",ibuf[0],ibuf[1]);
 	    log_out("NSBF response; malformed response!");
 	    return;
 	}
