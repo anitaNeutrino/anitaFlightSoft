@@ -366,6 +366,34 @@ int executeCommand()
 	    configModifyInt("GPSd.config","g12","ppsOffset",ivalue);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    return retVal;
+	case SET_ADU5_CALIBRATION_12:
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV12_1",((float)ivalue)/1000.);
+	    ivalue=cmdBytes[3]+(cmdBytes[4]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV12_2",((float)ivalue)/1000.);
+	    ivalue=cmdBytes[5]+(cmdBytes[6]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV12_3",((float)ivalue)/1000.);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
+	    return retVal;
+	case SET_ADU5_CALIBRATION_13:
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV13_1",((float)ivalue)/1000.);
+	    ivalue=cmdBytes[3]+(cmdBytes[4]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV13_2",((float)ivalue)/1000.);
+	    ivalue=cmdBytes[5]+(cmdBytes[6]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV13_3",((float)ivalue)/1000.);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
+	    return retVal;
+	case SET_ADU5_CALIBRATION_14:
+	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV14_1",((float)ivalue)/1000.);
+	    ivalue=cmdBytes[3]+(cmdBytes[4]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV14_2",((float)ivalue)/1000.);
+	    ivalue=cmdBytes[5]+(cmdBytes[6]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV14_3",((float)ivalue)/1000.);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
+	    return retVal;
+	    
 	case SET_HK_PERIOD: 
 	    ivalue=cmdBytes[1]+(cmdBytes[2]<<8);
 	    configModifyInt("Hkd.config","hkd","readoutPeriod",ivalue);
