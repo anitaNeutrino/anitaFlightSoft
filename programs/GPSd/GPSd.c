@@ -313,8 +313,8 @@ int readConfigFile()
 {
     /* Config file thingies */
     int status=0;
-    int tempNum=3;;
-    KvpErrorCode kvpStatus=0;
+//    int tempNum=3;;
+//    KvpErrorCode kvpStatus=0;
     char* eString ;
     kvpReset();
     status = configLoad ("GPSd.config","output") ;
@@ -338,19 +338,18 @@ int readConfigFile()
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
 	adu5SatPeriod=kvpGetInt("satPeriod",0);
 	adu5PatPeriod=kvpGetInt("patPeriod",0);
-	tempNum=3;
-	kvpStatus = kvpGetFloatArray("calibV12",adu5RelV12,&tempNum);
-	if(kvpStatus!=KVP_E_OK) 
-	    syslog(LOG_WARNING,"kvpGetFloatArray(calibV12): %s",
-		   kvpErrorString(kvpStatus));
-	kvpStatus = kvpGetFloatArray("calibV13",adu5RelV13,&tempNum);
-	if(kvpStatus!=KVP_E_OK) 
-	    syslog(LOG_WARNING,"kvpGetFloatArray(calibV13): %s",
-		   kvpErrorString(kvpStatus));
-	kvpStatus = kvpGetFloatArray("calibV14",adu5RelV14,&tempNum);
-	if(kvpStatus!=KVP_E_OK) 
-	    syslog(LOG_WARNING,"kvpGetFloatArray(calibV14): %s",
-		   kvpErrorString(kvpStatus));
+	adu5RelV12[0]=kvpGetFloat("calibV12_1",0);
+	adu5RelV12[1]=kvpGetFloat("calibV12_2",0);
+	adu5RelV12[2]=kvpGetFloat("calibV12_3",0);
+	adu5RelV13[0]=kvpGetFloat("calibV13_1",0);
+	adu5RelV13[1]=kvpGetFloat("calibV13_2",0);
+	adu5RelV13[2]=kvpGetFloat("calibV13_3",0);
+	adu5RelV14[0]=kvpGetFloat("calibV14_1",0);
+	adu5RelV14[1]=kvpGetFloat("calibV14_2",0);
+	adu5RelV14[2]=kvpGetFloat("calibV14_3",0);
+//	printf("v12 %f %f %f\n",adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
+//	printf("v13 %f %f %f\n",adu5RelV13[0],adu5RelV13[1],adu5RelV13[2]);
+//	printf("v14 %f %f %f\n",adu5RelV14[0],adu5RelV14[1],adu5RelV14[2]);
     }
    else {
        eString=configErrorString (status) ;
