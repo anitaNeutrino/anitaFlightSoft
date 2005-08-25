@@ -43,8 +43,8 @@ char* configFileSpec (
    //   char *tempPath=0;
    configPath = getenv ("ANITA_CONFIG_DIR") ;
    if(configPath == NULL) {
-       configPath = "." ;
-/*       configPath = "/home/rjn/flightSoft" ;*/
+//       configPath = "." ;
+       configPath = "/home/anita/flightSoft/config" ;
    }
    strcpy (fileSpec, configPath) ;
    strcat (fileSpec, "/") ;
