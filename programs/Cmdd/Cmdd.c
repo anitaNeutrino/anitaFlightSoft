@@ -605,7 +605,7 @@ int startPrograms(int progMask)
     char daemonCommand[FILENAME_MAX];
     int retVal=0;
     if(progMask&ACQD_ID_MASK) {
-	sprintf(daemonCommand,"daemon -r Acqd -n Acqd");
+	sprintf(daemonCommand,"daemon -r firstAcqd -n Acqd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
 	    syslog(LOG_ERR,"Error starting Acqd");
