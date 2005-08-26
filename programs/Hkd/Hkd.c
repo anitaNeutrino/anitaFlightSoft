@@ -108,8 +108,12 @@ int main (int argc, char *argv[])
     int status=0;
     char* eString ;
     char *tempString;
-    int secs=0;
-
+    int millisecs=0;
+    struct timespec milliWait;
+    milliWait.tv_sec=0;
+    milliWait.tv_nsec=1000000;
+    long lastCal=0;
+    time_t rawTime;
     /* Log stuff */
     char *progName=basename(argv[0]);
 
@@ -184,6 +188,7 @@ int main (int argc, char *argv[])
 	}
 	    
     }
+//    printf("%s",hkdSipdLinkDir
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;
     calDataStruct.code=IP320_CAL;
@@ -200,30 +205,42 @@ int main (int argc, char *argv[])
 	retVal=readConfigFile();
 	ip320Setup();
 	currentState=PROG_STATE_RUN;
-	secs=0;
+	millisecs=0;
         while(currentState==PROG_STATE_RUN) {
 
-	    if((secs % calibrationPeriod)==0) {
-		sendMagnetometerRequest();
-		ip320Calibrate();
-		readSBSTemps();
-		checkMagnetometer();		
-		outputData(IP320_CAL);
-		outputData(IP320_AVZ);
+/* 	    if((millisecs % calibrationPeriod)==0) { */
+/* 		sendMagnetometerRequest(); */
+/* 		ip320Calibrate(); */
+/* 		readSBSTemps(); */
+/* 		checkMagnetometer();		 */
+/* 		outputData(IP320_CAL); */
+/* 		outputData(IP320_AVZ); */
 		
-		//Send down calibration info
-	    }
-	    if((secs % readoutPeriod)==0) {
+/* 		//Send down calibration info */
+/* 	    } */
+	    if((millisecs % readoutPeriod)==0) {
+		
+		time(&rawTime);		
 		sendMagnetometerRequest();
-		ip320Read(0);
 		readSBSTemps();
-		checkMagnetometer(); 				
+		checkMagnetometer(); 
+		if((rawTime-lastCal)>calibrationPeriod) {
+		    ip320Calibrate();		
+		    outputData(IP320_CAL);
+		    outputData(IP320_AVZ);
+		    lastCal=rawTime;
+		}		    
+		ip320Read(0);				
 		outputData(IP320_RAW);
 //		dumpValues();
 		//Send down data
+		millisecs=1;
 	    }
+//	    nanosleep(&milliWait,NULL);
 	    sleep(1);
-	    secs++;
+//	    usleep(1000);
+	    millisecs++;
+//	    printf("%d\n",millisecs);
 	}
     } while(currentState==PROG_STATE_INIT);
     return 0;
@@ -462,20 +479,27 @@ int outputData(AnalogueCode_t code)
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
     theHkData.gHdr.code=PACKET_HKD;
-    time_t rawtime;
-    time ( &rawtime );
-    theHkData.unixTime=rawtime;
+//    time_t rawtime;
+    struct timeval timeStruct;
+    gettimeofday(&timeStruct,NULL);
+	    
+//    time ( &rawtime );
+    theHkData.unixTime=timeStruct.tv_sec;;
+    theHkData.unixTimeUs=timeStruct.tv_usec;;
     switch(code) {
 	case (IP320_RAW):
-	    sprintf(theFilename,"hk_%ld.raw.dat",theHkData.unixTime);
+	    sprintf(theFilename,"hk_%ld_%ld.raw.dat",theHkData.unixTime,
+		theHkData.unixTimeUs);
 	    theHkData.ip320=rawDataStruct;
 	    break;
 	case(IP320_CAL):
-	    sprintf(theFilename,"hk_%ld.cal.dat",theHkData.unixTime);
+	    sprintf(theFilename,"hk_%ld_%ld.cal.dat",theHkData.unixTime,
+		    theHkData.unixTimeUs);
 	    theHkData.ip320=calDataStruct;
 	    break;
 	case(IP320_AVZ):
-	    sprintf(theFilename,"hk_%ld.avz.dat",theHkData.unixTime);
+	    sprintf(theFilename,"hk_%ld_%ld.avz.dat",theHkData.unixTime,
+		    theHkData.unixTimeUs);
 	    theHkData.ip320=autoZeroStruct;
 	    break;
 	default:

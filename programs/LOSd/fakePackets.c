@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
 
 
     if (status == CONFIG_E_OK) {
-/* 	printf("Here\n"); */
+//	printf("Here\n");
 	numPacketDirs=kvpGetInt("numPacketDirs",9);
 	tempString=kvpGetString("losdPacketDir");
 	if(tempString) {
@@ -124,6 +125,7 @@ int main(int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvLinkDir");
 	    fprintf(stderr,"Error getting prioritizerdSipdWvLinkDir\n");
 	}
+//	printf("%s %s\n",prioritizerdSipdWvDir,prioritizerdSipdWvLinkDir);
 
 
 	tempString=kvpGetString("gpsdSipdDir");
@@ -167,6 +169,7 @@ int main(int argc, char *argv[])
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
+	fprintf(stderr,"Error reading config file: %s\n",eString);
     }
     
     int evCounter=0;
@@ -254,9 +257,9 @@ void fakeEvent(int trigType)
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
 {
-//    int chan;
-//    char packetName[FILENAME_MAX];
-//    WaveformPacket_t wavePacket;
+/*    int chan; */
+/*    char packetName[FILENAME_MAX]; */
+/*    WaveformPacket_t wavePacket; */
 /*     wavePacket.gHdr.code=PACKET_WV; */
 /*     for(chan=0;chan<hdPtr->numChannels;chan++) { */
 /* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan); */
@@ -268,15 +271,16 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 /* 	makeLink(packetName,prioritizerdSipdWvLinkDir); */
 /*     } */
     int surf;
-    char packetName[FILENAME_MAX];    
+    char packetName[FILENAME_MAX];
     SurfPacket_t surfPacket;
     surfPacket.gHdr.code=PACKET_SURF;
     for(surf=0;surf<(hdPtr->numChannels)/CHANNELS_PER_SURF;surf++) {
-	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf); 
+	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
 	surfPacket.packetNumber=surf;
 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
 	writeSurfPacket(&surfPacket,packetName);
+//	printf("Wrote %s\n",packetName);
 	makeLink(packetName,prioritizerdSipdWvLinkDir);
     }
 }
