@@ -241,17 +241,30 @@ int main (int argc, char *argv[])
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
 {
-    int chan;
+/*     int chan; */
+/*     char packetName[FILENAME_MAX]; */
+/*     WaveformPacket_t wavePacket; */
+/*     wavePacket.gHdr.code=PACKET_WV; */
+/*     for(chan=0;chan<hdPtr->numChannels;chan++) { */
+/* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan); */
+/* //	printf("Packet: %s\n",packetName); */
+/* 	wavePacket.eventNumber=hdPtr->eventNumber; */
+/* 	wavePacket.packetNumber=chan; */
+/* 	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t)); */
+/* 	writeWaveformPacket(&wavePacket,packetName); */
+/* 	makeLink(packetName,prioritizerdSipdWvLinkDir); */
+/*     } */
+    int surf;
     char packetName[FILENAME_MAX];
-    WaveformPacket_t wavePacket;
-    wavePacket.gHdr.code=PACKET_WV;
-    for(chan=0;chan<hdPtr->numChannels;chan++) {
-	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan);
-//	printf("Packet: %s\n",packetName);
-	wavePacket.eventNumber=hdPtr->eventNumber;
-	wavePacket.packetNumber=chan;
-	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t));
-	writeWaveformPacket(&wavePacket,packetName);
+    SurfPacket_t surfPacket;
+    surfPacket.gHdr.code=PACKET_SURF;
+    for(surf=0;surf<(hdPtr->numChannels)/CHANNELS_PER_SURF;surf++) {
+	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf);
+	surfPacket.eventNumber=hdPtr->eventNumber;
+	surfPacket.packetNumber=surf;
+	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
+	writeSurfPacket(&surfPacket,packetName);
+//	printf("Wrote %s\n",packetName);
 	makeLink(packetName,prioritizerdSipdWvLinkDir);
     }
 }

@@ -91,7 +91,7 @@ int main (int argc, char **argv)
     int ip320Ranges[3];
     int tempNum=3;
     kvpGetIntArray("ip320Ranges",ip320Ranges,&tempNum);
-    useRange=ip320Ranges[readout-1];
+//    useRange=ip320Ranges[readout-1];
     numRows= kvpGetInt("numrows",0);
     if (numRows > MAX_ROW) numRows=MAX_ROW;
     if (numRows)
@@ -136,7 +136,7 @@ int main (int argc, char **argv)
   ip320_GetCal();
   ip320_Read();
 
-  /*  dumpArrayValues(); */
+  dumpArrayValues(); 
   prettyprint();
   return 0;
 }
@@ -229,10 +229,10 @@ int ip320_Setup()
       ip320_cor_data[i] = 0;                /* clear corrected data buffer */
     }
 //  cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
-  if(useRange==5)
-      cblk_320.range = RANGE_5TO5;   /*RJN hack for Kurt test*/
-  else
-      cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
+//  if(useRange==5)
+  cblk_320.range = RANGE_5TO5;   /*RJN hack for Kurt test*/
+//  else
+//      cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
 //  cblk_320.range = RANGE_10TO10;   /*RJN hack for Kurt test*/
   /* full range */
   cblk_320.trigger = STRIG;            /* 0 = software triggering */
@@ -289,7 +289,7 @@ void prettyprint()
       if (desc[i].active)
 	{
 	    /* RJN HACK */
-	    printf("%5.5s: %+7.3f ", desc[i].description, (ip320_cor_data[i]*20.0/4095.-10.0));//*desc[i].conversion+desc[i].offset);
+	    printf("%5.5s: %+7.3f ", desc[i].description, (ip320_cor_data[i]*10.0/4095.-5.0*desc[i].conversion+desc[i].offset));
 //	  printf("%5.5s: %+7.2f ", desc[i].description, (ip320_cor_data[i]*20.0/4095.-10.0));
 //	  printf("%5.5s: %+7.2f ", desc[i].description,ip320_cor_data[i]);
 	  linecount++;
@@ -361,7 +361,7 @@ void dumpArrayValues() {
     printf("COR:     ");
     for( i = 0; i < NUM_ACRO_CHANS; i++ ) 
     {
-	printf("%lX ",ip320_cor_data[i]);
+	printf("%d\t%+7.3f\n",i,ip320_cor_data[i]*10.0/4095.-5.0);
     }
     printf("\n\n");
 }

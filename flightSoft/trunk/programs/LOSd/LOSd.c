@@ -198,7 +198,7 @@ void tryToSendData()
 /* 	    return; */
 /* 	} */
 	numBytes=read(fd,theBuffer,BSIZE);
-//	printf("Read %d bytes\n",numBytes);
+	printf("Read %d bytes\n",numBytes);
 
 	/*** the whole file is loaded in the buffer. ***/	    
 	close (fd);

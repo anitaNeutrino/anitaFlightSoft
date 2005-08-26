@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <signal.h>
+#include <fcntl.h>
 
 /* Flight soft includes */
 #include "sipcom.h"
@@ -41,7 +42,7 @@ void write_highrate(int *ignore);
 char sipdPacketDir[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
 int numPacketDirs=0;
-
+int maxPacketsPerDir=20;
 int main(int argc, char *argv[])
 {
     int ret,numCmds=256,count,pk;
@@ -149,27 +150,45 @@ int main(int argc, char *argv[])
 }
 
 
-void write_highrate(int *ignore)
+
+int
+rand_no(int lim)
 {
-//    long amtb;
-#define BSIZE 20000 //Silly hack until I packet up Events
+    float a;
+    a = (float)rand() / RAND_MAX;
+    a *= lim;
+    return ((int) a);
+}
+
+void
+rand_no_seed(unsigned int seed)
+{
+    srand(seed);
+}
+
+
+void
+write_highrate(int *ignore)
+{
+    long amtb;
+#define BSIZE 2048
     unsigned char buf[BSIZE];
-//    long bufno = 1;
-    int pk;
-//    int bytes_avail;
-    int retVal,count;
-    int numLinks=0;
-    long fileSize=0;
-    char linkDir[FILENAME_MAX];
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    int numItems=0;
-    FILE *fp;
-    struct dirent **linkList;
+    long bufno = 1;
+    int lim;
+    int bytes_avail;
+    int retval;
 
     //memset(buf, 'a', BSIZE);
+    {
+	int i;
+	for (i=0; i<2048; i++) {
+	    buf[i] = i % 256;
+	}
+    }
+    rand_no_seed(getpid());
+    
+    lim = 2000;
 
-//lim = 2000;    
     {
 	// We make this thread cancellable by any thread, at any time. This
 	// should be okay since we don't have any state to undo or locks to
@@ -200,64 +219,117 @@ void write_highrate(int *ignore)
 	++cnt;
 #endif
 
-//	amtb = rand_no(lim);
-
-	for(pk=0;pk<numPacketDirs;pk++) {
-	    sprintf(linkDir,"%s/pk%d/link",sipdPacketDir,pk);
-	    numLinks=getListofLinks(linkDir,&linkList);
-	    if(numLinks) break;
+	amtb = rand_no(lim);
+	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
+	retval = sipcom_highrate_write(buf, amtb);
+	if (retval != 0) {
+	    fprintf(stderr, "Bad write\n");
 	}
-	//Need to put something here so that it doesn't dick around 
-	//forever in pk4, when there is data waiting in pk1, etc.
-	
-	for(count=0;count<numLinks;count++) {
-	    sprintf(currentFilename,"%s/pk%d/%s",
-		    sipdPacketDir,pk,linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/pk%d/link/%s",
-		    sipdPacketDir,pk,linkList[count]->d_name);
-	    fp = fopen(currentFilename,"rb");
-	    if(fp == NULL) {
-		syslog(LOG_ERR,"Error opening file: %s",currentFilename);
-		fprintf(stderr,"Error opening file: %s\n",currentFilename);
-		//Mayhaps we should delete
-		continue;
-	    }
-	    // Obtain file size
-	    fseek(fp,0,SEEK_END);
-	    fileSize=ftell(fp);
-	    rewind(fp);
-	    
-
-	    numItems = fread(buf,1,fileSize,fp);
-	    if(numItems!=1) {
-		syslog(LOG_ERR,"Error reading file: %s",currentFilename);
-		fprintf(stderr,"Error reading file: %s\n",currentFilename);
-	    }	    
-	    /*** the whole file is loaded in the buffer. ***/	    
-	    fclose (fp);
-	    fprintf(stderr, "=== high rate ===> amtb = %ld\n", fileSize);
-	    retVal = sipcom_highrate_write(buf, fileSize);
-	    if (retVal != 0) {
-		syslog(LOG_ERR,"Couldn't write file: %s",currentFilename);
-		fprintf(stderr, "Bad write\n");
-	    }
-	    else {
-		removeFile(currentFilename);
-		removeFile(currentLinkname);
-	    }
-	    break;
-	    
-	}
-	
-        for(count=0;count<numLinks;count++)
-            free(linkList[count]);
-        free(linkList);
-
-
-
     }
 
 }
+
+
+/* void write_highrate(int *ignore) */
+/* { */
+/* //    long amtb; */
+/* #define BSIZE 20000 //Silly hack until I packet up Events */
+/*     unsigned char buf[BSIZE]; */
+/* //    long bufno = 1; */
+/*     int pk; */
+/* //    int bytes_avail; */
+/*     int retVal,count; */
+/*     int numLinks=0; */
+/* //    long fileSize=0; */
+/*     char linkDir[FILENAME_MAX]; */
+/*     char currentFilename[FILENAME_MAX]; */
+/*     char currentLinkname[FILENAME_MAX]; */
+/*     int fd; */
+/*     int numBytes=3000; */
+/* /\*     int numItems=0; *\/ */
+/* /\*     FILE *fp; *\/ */
+/* //    struct dirent **linkList; */
+
+/*     //memset(buf, 'a', BSIZE); */
+
+/* //lim = 2000;     */
+/*     { */
+/* 	// We make this thread cancellable by any thread, at any time. This */
+/* 	// should be okay since we don't have any state to undo or locks to */
+/* 	// release. */
+/* 	int oldtype; */
+/* 	int oldstate; */
+/* 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype); */
+/* 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate); */
+/*     } */
+
+/*     while (1) { */
+/* //	usleep(10); */
+/* //	for(pk=0;pk<numPacketDirs;pk++) { */
+/* //	    sprintf(linkDir,"%s/pk%d/link",sipdPacketDir,pk); */
+/* //	    numLinks=getListofLinks(linkDir,&linkList); */
+/* //	    if(numLinks) break; */
+/* //	} */
+/* 	//Need to put something here so that it doesn't dick around  */
+/* 	//forever in pk4, when there is data waiting in pk1, etc. */
+/* //	for(count=numLinks-1;count>=0;count--) {	 */
+/* //	for(count=0;count<numLinks;count++) { */
+/* //	    sprintf(currentFilename,"%s/pk%d/%s", */
+/* //		    sipdPacketDir,pk,linkList[count]->d_name); */
+/* //	    sprintf(currentLinkname,"%s/pk%d/link/%s", */
+/* //		    sipdPacketDir,pk,linkList[count]->d_name); */
+/* //	    fp = fopen(currentFilename,"rb"); */
+/* //	    if(fp == NULL) { */
+/* //	    fd = open(currentFilename,O_RDONLY);	     */
+/* //	    if(fd == 0) { */
+/* //		syslog(LOG_ERR,"Error opening file: %s",currentFilename); */
+/* //		fprintf(stderr,"Error opening file: %s\n",currentFilename); */
+/* //		removeFile(currentFilename); */
+/* //		removeFile(currentLinkname); */
+/* 		//Mayhaps we should delete */
+/* //		continue; */
+/* //	    } */
+/* 	    // Obtain file size */
+/* /\* 	    fseek(fp,0,SEEK_END); *\/ */
+/* /\* 	    fileSize=ftell(fp); *\/ */
+/* /\* 	    rewind(fp); *\/ */
+	    
+
+/* //	    numItems = fread(buf,1,fileSize,fp); */
+/* //	    numBytes=read(fd,buf,BSIZE); */
+/* /\* 	    if(numItems!=1) { *\/ */
+/* /\* 		syslog(LOG_ERR,"Error reading file: %s",currentFilename); *\/ */
+/* /\* 		fprintf(stderr,"Error reading file: %s\n",currentFilename); *\/ */
+/* /\* 	    }	    *\/  */
+/* 	    /\*** the whole file is loaded in the buffer. ***\/	     */
+/* //	    fclose (fp); */
+/* //	    close(fd); */
+/* //	    removeFile(currentLinkname); */
+/* //	    unlink(currentFilename); */
+/* //	    fprintf(stderr, "=== high rate ===> amtb = %ld\n", fileSize); */
+/* 	    retVal = sipcom_highrate_write(buf, numBytes); */
+/* 	    if (retVal != 0) { */
+/* 		syslog(LOG_ERR,"Couldn't write file: %s",currentFilename); */
+/* 		fprintf(stderr, "Bad write\n"); */
+/* 	    } */
+/* 	    else { */
+/* //		removeFile(currentFilename); */
+	    
+/* 	    } */
+/* 	    if((numLinks-count)>maxPacketsPerDir) break; */
+/* //	    break; */
+	    
+/* 	} */
+	
+/*         for(count=0;count<numLinks;count++) */
+/*             free(linkList[count]); */
+/*         free(linkList); */
+
+
+
+/*     } */
+
+/* } */
 
 void
 handle_command(unsigned char *cmd)
@@ -272,7 +344,8 @@ handle_command(unsigned char *cmd)
 	if(cmdLengths[cmd[0]]>1) {
 	    for(byteNum=1;byteNum<cmdLengths[cmd[0]];byteNum++) 
 		sprintf(executeCommand,"%s %d",executeCommand,cmd[byteNum]);
-	}		
+	}	
+	printf("%s\n",executeCommand);
 	syslog(LOG_INFO,"%s\n",executeCommand);
 	retVal=system(executeCommand);
 	if(retVal!=0) {

@@ -140,7 +140,7 @@ typedef struct {
     double roll;
     double mrms;
     double brms;
-    char attFlag;
+    int attFlag;
     double latitude;
     double longitude;
     double altitude;
