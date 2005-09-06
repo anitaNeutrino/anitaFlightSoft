@@ -199,6 +199,7 @@ typedef struct {
 typedef struct {    
     GenericHeader_t gHdr;
     long unixTime;
+    long unixTimeUs;
     FullAnalogueStruct_t ip320;
     MagnetometerDataStruct_t mag;
     SBSTemperatureDataStruct_t sbs;

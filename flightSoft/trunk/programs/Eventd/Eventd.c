@@ -21,7 +21,7 @@
 #include "anitaFlight.h"
 
 
-#define MAX_GPS_TIMES 100
+#define MAX_GPS_TIMES 100000
 #define MAX_CALIB_TIMES 100
 
 #define TIME_MATCH 0.05 //seconds
@@ -244,8 +244,8 @@ int main (int argc, char *argv[])
 				   theAcqdEventHeader.unixTime,
 				   theAcqdEventHeader.unixTimeUs);
 		    }
-		    theAcqdEventHeader.calibStatus
-			=getCalibStatus(theAcqdEventHeader.unixTime);
+//		    theAcqdEventHeader.calibStatus
+//			=getCalibStatus(theAcqdEventHeader.unixTime);
 		    writeHeaderAndMakeLink(&theAcqdEventHeader);
 		    numEvents++;
 		    for(i=0;i<numGpsStored;i++) {

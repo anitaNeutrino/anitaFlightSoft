@@ -20,7 +20,7 @@
 #include "anitaStructures.h"
 #include "anitaFlight.h"
 
-#define MAX_FILES_PER_COMMAND 10
+#define MAX_FILES_PER_COMMAND 50
 
 
 int readConfigFile();
@@ -342,7 +342,7 @@ int main (int argc, char *argv[])
 	    checkAdu5SAT();
 	    checkHk();
 	    checkEvent();
-	    sleep(1);
+	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);    
     return 0;
@@ -598,10 +598,11 @@ void checkHk()
     int numLinks;
 
     long unixTime;
+    long unixTimeUs;
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
-    char gzipCommand[FILENAME_MAX];
+//    char gzipCommand[FILENAME_MAX];
     char gzipFile[FILENAME_MAX];
     char tempDir[FILENAME_MAX];
 //    char *testString
@@ -610,34 +611,21 @@ void checkHk()
     if(printToScreen) printf("Found %d links\n",numLinks);
     if(numLinks>hkNumber) {
 	//Do something
+	
 	if(strstr(linkList[0]->d_name,"raw"))
 	   sscanf(linkList[0]->d_name,
-		  "hk_%ld.raw.dat",&unixTime);
+		  "hk_%ld_%ld.raw.dat",&unixTime,&unixTimeUs);
 	if(strstr(linkList[0]->d_name,"cal"))
 	   sscanf(linkList[0]->d_name,
-		  "hk_%ld.raw.dat",&unixTime);
+		  "hk_%ld_%ld.raw.dat",&unixTime,&unixTimeUs);
 	if(strstr(linkList[0]->d_name,"avz"))
 	   sscanf(linkList[0]->d_name,
-		  "hk_%ld.raw.dat",&unixTime);
-	sprintf(tarCommand,"cd %s ; tar -cf /tmp/hk%ld.tar ",hkdArchiveDir,unixTime);
+		  "hk_%ld_%ld.raw.dat",&unixTime,&unixTimeUs);
 	
-	for(count=0;count<numLinks;count++) {
-	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
-//		    printf("%s\n",tarCommand);
-		executeCommand(tarCommand);
-		sprintf(tarCommand,"cd %s ; tar -rf /tmp/hk%ld.tar ",hkdArchiveDir,unixTime);
-	    }	
-	    strcat(tarCommand,linkList[count]->d_name);
-	    strcat(tarCommand," ");
-		
-	}
-	executeCommand(tarCommand);	   
-	if(gzipGps) {
-	    sprintf(gzipCommand,"gzip /tmp/hk%ld.tar",unixTime);
-	    executeCommand(gzipCommand);
-	    sprintf(gzipFile,"/tmp/hk%ld.tar.gz",unixTime);		
-	}
-	else sprintf(gzipFile,"/tmp/hk%ld.tar",unixTime);
+	sprintf(tarCommand,"cd %s ; tar -czf /tmp/hk%ld_%ld.tar.gz hk*",hkdArchiveDir,unixTime,unixTimeUs);
+ 	executeCommand(tarCommand);
+
+	sprintf(gzipFile,"/tmp/hk%ld_%ld.tar.gz",unixTime,unixTimeUs);
 	if(useSecondDisk) {
 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedHkDir);
 	    copyFile(gzipFile,tempDir);
@@ -669,7 +657,7 @@ void checkEvent()
     /* Directory reading things */
     struct dirent **linkList;
     int numLinks;
-    FILE *testfp;
+//    FILE *testfp;
 
     long eventNumber;
     long bodyEventNumber;
@@ -689,62 +677,83 @@ void checkEvent()
 	sscanf(linkList[0]->d_name,
 	       "hd_%ld.dat",&eventNumber);	
 		
-	sprintf(tarCommand,"cd %s ; tar -cf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber);
+	sprintf(tarCommand,"cd %s ; tar -czf /tmp/header%ld.tar.gz hd*",prioritizerdArchiveDir,eventNumber);
+ 	executeCommand(tarCommand);
+	sprintf(tarCommand,"cd %s ; tar -czf /tmp/body%ld.tar.gz ev*",prioritizerdArchiveDir,eventNumber);
+ 	executeCommand(tarCommand);
 	
-	for(count=0;count<numLinks;count++) {
-	    
-	    sscanf(linkList[count]->d_name,
-	       "hd_%ld.dat",&bodyEventNumber);
-	    //First zip up event file
-	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir,
-		    bodyEventNumber);	    
-	    testfp=fopen(currentBodyName,"rb");
-	    if(testfp) {
-		fclose(testfp);
-		//Do something
-		if(gzipEventBody) {
-		    sprintf(gzipCommand,"gzip %s",currentBodyName);
-		    executeCommand(gzipCommand);
-		    strcat(currentBodyName,".gz");
-		}
-		if(useSecondDisk) {
-		    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir);
-		    copyFile(currentBodyName,tempDir);
-		}
-		sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir);
-		moveFile(currentBodyName,tempDir);
-	    }
 
-	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
-//		    printf("%s\n",tarCommand);
-		executeCommand(tarCommand);
-		sprintf(tarCommand,"cd %s ; tar -rf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber);
-	    }	
-	    strcat(tarCommand,linkList[count]->d_name);
-	    strcat(tarCommand," ");
+/* 	for(count=0;count<numLinks;count++) { */
+	    
+/* 	    sscanf(linkList[count]->d_name, */
+/* 	       "hd_%ld.dat",&bodyEventNumber); */
+/* 	    //First zip up event file */
+/* 	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir, */
+/* 		    bodyEventNumber);	     */
+/* 	    testfp=fopen(currentBodyName,"rb"); */
+/* 	    if(testfp) { */
+/* 		fclose(testfp); */
+/* 		//Do something */
+/* 		if(gzipEventBody) { */
+/* 		    sprintf(gzipCommand,"gzip %s",currentBodyName); */
+/* 		    executeCommand(gzipCommand); */
+/* 		    strcat(currentBodyName,".gz"); */
+/* 		} */
+/* 		if(useSecondDisk) { */
+/* 		    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); */
+/* 		    copyFile(currentBodyName,tempDir); */
+/* 		} */
+/* 		sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); */
+/* 		moveFile(currentBodyName,tempDir); */
+/* 	    } */
+
+/* 	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) { */
+/* //		    printf("%s\n",tarCommand); */
+/* 		executeCommand(tarCommand); */
+/* 		sprintf(tarCommand,"cd %s ; tar -rf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber); */
+/* 	    }	 */
+/* 	    strcat(tarCommand,linkList[count]->d_name); */
+/* 	    strcat(tarCommand," "); */
 		
-	}
-	executeCommand(tarCommand);	   
-	if(gzipEventHeader) {
-	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber);
-	    executeCommand(gzipCommand);
-	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		
-	}
-	else sprintf(gzipFile,"/tmp/header%ld.tar",eventNumber);
-	if(useSecondDisk) {
-	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir);
-	    copyFile(gzipFile,tempDir);
-	}
-	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir);
-	moveFile(gzipFile,tempDir); 
-//	    exit(0);
+/* 	} */
+/* 	executeCommand(tarCommand);	    */
+/* 	if(gzipEventHeader) { */
+/* 	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber); */
+/* 	    executeCommand(gzipCommand); */
+/* 	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		 */
+/* 	} */
+/* 	else */
+	sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber); 
+ 	if(useSecondDisk) { 
+ 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); 
+ 	    copyFile(gzipFile,tempDir); 
+ 	} 
+ 	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); 
+ 	moveFile(gzipFile,tempDir); 
+	sprintf(gzipFile,"/tmp/body%ld.tar.gz",eventNumber); 
+ 	if(useSecondDisk) { 
+ 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); 
+ 	    copyFile(gzipFile,tempDir); 
+ 	} 
+ 	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); 
+ 	moveFile(gzipFile,tempDir);  
+	
+
+/* //	    exit(0); */
+
+
 	for(count=0;count<numLinks;count++) {
 	    sprintf(currentHeaderName,"%s/%s",prioritizerdArchiveDir,
 		    linkList[count]->d_name);
 	    sprintf(currentLinkname,"%s/%s",prioritizerdArchiveLinkDir,
 		    linkList[count]->d_name);
-	    removeFile(currentLinkname);
-	    removeFile(currentHeaderName);
+	    sscanf(linkList[count]->d_name, 
+		   "hd_%ld.dat",&bodyEventNumber); 
+ 	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir, 
+ 		    bodyEventNumber);	   
+	    unlink(currentLinkname);
+	    unlink(currentHeaderName);
+	    unlink(currentBodyName);
 	}
     }
 	
@@ -754,3 +763,96 @@ void checkEvent()
     free(linkList);
 	    
 }
+
+
+/* void checkEvent()  */
+/* { */
+/*     int count; */
+/*     /\* Directory reading things *\/ */
+/*     struct dirent **linkList; */
+/*     int numLinks; */
+/*     FILE *testfp; */
+
+/*     long eventNumber; */
+/*     long bodyEventNumber; */
+/*     char currentHeaderName[FILENAME_MAX]; */
+/*     char currentBodyName[FILENAME_MAX]; */
+/*     char currentLinkname[FILENAME_MAX]; */
+/*     char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND]; */
+/*     char gzipCommand[FILENAME_MAX]; */
+/*     char gzipFile[FILENAME_MAX]; */
+/*     char tempDir[FILENAME_MAX]; */
+/* //    char *testString */
+
+/*     numLinks=getListofLinks(prioritizerdArchiveLinkDir,&linkList); */
+/*     if(printToScreen) printf("Found %d links\n",numLinks); */
+/*     if(numLinks>eventHeaderNumber) { */
+/* 	//Do something */
+/* 	sscanf(linkList[0]->d_name, */
+/* 	       "hd_%ld.dat",&eventNumber);	 */
+		
+/* 	sprintf(tarCommand,"cd %s ; tar -cf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber); */
+	
+/* 	for(count=0;count<numLinks;count++) { */
+	    
+/* 	    sscanf(linkList[count]->d_name, */
+/* 	       "hd_%ld.dat",&bodyEventNumber); */
+/* 	    //First zip up event file */
+/* 	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir, */
+/* 		    bodyEventNumber);	     */
+/* 	    testfp=fopen(currentBodyName,"rb"); */
+/* 	    if(testfp) { */
+/* 		fclose(testfp); */
+/* 		//Do something */
+/* 		if(gzipEventBody) { */
+/* 		    sprintf(gzipCommand,"gzip %s",currentBodyName); */
+/* 		    executeCommand(gzipCommand); */
+/* 		    strcat(currentBodyName,".gz"); */
+/* 		} */
+/* 		if(useSecondDisk) { */
+/* 		    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); */
+/* 		    copyFile(currentBodyName,tempDir); */
+/* 		} */
+/* 		sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); */
+/* 		moveFile(currentBodyName,tempDir); */
+/* 	    } */
+
+/* 	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) { */
+/* //		    printf("%s\n",tarCommand); */
+/* 		executeCommand(tarCommand); */
+/* 		sprintf(tarCommand,"cd %s ; tar -rf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber); */
+/* 	    }	 */
+/* 	    strcat(tarCommand,linkList[count]->d_name); */
+/* 	    strcat(tarCommand," "); */
+		
+/* 	} */
+/* 	executeCommand(tarCommand);	    */
+/* 	if(gzipEventHeader) { */
+/* 	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber); */
+/* 	    executeCommand(gzipCommand); */
+/* 	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		 */
+/* 	} */
+/* 	else sprintf(gzipFile,"/tmp/header%ld.tar",eventNumber); */
+/* 	if(useSecondDisk) { */
+/* 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); */
+/* 	    copyFile(gzipFile,tempDir); */
+/* 	} */
+/* 	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); */
+/* 	moveFile(gzipFile,tempDir);  */
+/* //	    exit(0); */
+/* 	for(count=0;count<numLinks;count++) { */
+/* 	    sprintf(currentHeaderName,"%s/%s",prioritizerdArchiveDir, */
+/* 		    linkList[count]->d_name); */
+/* 	    sprintf(currentLinkname,"%s/%s",prioritizerdArchiveLinkDir, */
+/* 		    linkList[count]->d_name); */
+/* 	    removeFile(currentLinkname); */
+/* 	    removeFile(currentHeaderName); */
+/* 	} */
+/*     } */
+	
+/*     /\* Free up the space used by dir queries *\/ */
+/*     for(count=0;count<numLinks;count++) */
+/* 	free(linkList[count]); */
+/*     free(linkList); */
+	    
+/* } */

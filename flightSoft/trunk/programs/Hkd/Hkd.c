@@ -111,7 +111,7 @@ int main (int argc, char *argv[])
     int millisecs=0;
     struct timespec milliWait;
     milliWait.tv_sec=0;
-    milliWait.tv_nsec=1000000;
+    milliWait.tv_nsec=100000000;
     long lastCal=0;
     time_t rawTime;
     /* Log stuff */
@@ -199,7 +199,7 @@ int main (int argc, char *argv[])
 //    printSBSTemps();
     acromagSetup();
     openMagnetometer();
-    setupMagnetometer();
+    if(fdMag) setupMagnetometer();
     do {
 	if(printToScreen) printf("Initializing Hkd\n");
 	retVal=readConfigFile();
@@ -221,9 +221,9 @@ int main (int argc, char *argv[])
 	    if((millisecs % readoutPeriod)==0) {
 		
 		time(&rawTime);		
-		sendMagnetometerRequest();
+		if(fdMag) sendMagnetometerRequest();
 		readSBSTemps();
-		checkMagnetometer(); 
+		if(fdMag) checkMagnetometer(); 
 		if((rawTime-lastCal)>calibrationPeriod) {
 		    ip320Calibrate();		
 		    outputData(IP320_CAL);
@@ -236,8 +236,8 @@ int main (int argc, char *argv[])
 		//Send down data
 		millisecs=1;
 	    }
-//	    nanosleep(&milliWait,NULL);
-	    sleep(1);
+	    nanosleep(&milliWait,NULL);
+//	    sleep(1);
 //	    usleep(1000);
 	    millisecs++;
 //	    printf("%d\n",millisecs);
@@ -577,10 +577,11 @@ int openMagnetometer()
     int retVal;
 // Initialize the various devices
     retVal=openMagnetometerDevice(magDevName);
+    fdMag=0;
     if(retVal<=0) {
 	syslog(LOG_ERR,"Couldn't open: %s\n",magDevName);
 	if(printToScreen) printf("Couldn't open: %s\n",magDevName);
-	exit(1);
+//	exit(1);
     }
     else fdMag=retVal;
 
@@ -603,7 +604,7 @@ int setupMagnetometer()
 	return -1;
     }
     else {
-	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
 	if(printToScreen)
 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
     }
@@ -622,7 +623,7 @@ int setupMagnetometer()
 	return -1;
     }
     else {
-	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
 	if(printToScreen)
 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
     }
@@ -670,7 +671,7 @@ int sendMagnetometerRequest()
 	return -1;
     }
     else {
-	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
 	if(printToScreen)
 	    printf("Sent %d bytes to Magnetometer serial port\n",retVal);
     }
@@ -695,6 +696,10 @@ int checkMagnetometer()
 //	strcpy(tempData,"0.23456 0.78900 0.23997 4C");
 	sscanf(tempData,"D\n%f %f %f %x",&x,&y,&z,&checksum);
 	if(printToScreen) printf("Mag:\t%f %f %f\n",x,y,z);
+	magData.x=x;
+	magData.y=y;
+	magData.z=z;
+	
 /* 	otherChecksum=0; */
 /* 	for(i=0;i<strlen(tempData);i++) { */
 /* //	    otherChecksum+=tempData[i]; */

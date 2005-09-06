@@ -64,7 +64,11 @@ float g12PPSOffset=0.05;
 int g12PPSRisingOrFalling=1; //1 is R, 2 is F
 int g12ZDAPort=1;
 int g12NTPPort=1;
+int g12POSPort=1;
+int g12SATPort=1;
 int g12ZDAPeriod=5;
+int g12POSPeriod=10;
+int g12SATPeriod=60;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
 
@@ -401,12 +405,16 @@ int setupG12()
     char g12Command[256]="";
     char tempCommand[128]="";
     char zdaPort='A';
+    char posPort='A';
+    char satPort='A';
     char ntpPort='B';
     char ppsEdge='R';
     int retVal;
 
     if(g12NTPPort==1 || g12NTPPort==2) ntpPort=portNames[g12NTPPort-1];
     if(g12ZDAPort==1 || g12ZDAPort==2) zdaPort=portNames[g12ZDAPort-1];
+    if(g12POSPort==1 || g12POSPort==2) posPort=portNames[g12POSPort-1];
+    if(g12SATPort==1 || g12SATPort==2) satPort=portNames[g12SATPort-1];
     if(g12PPSRisingOrFalling==1 || g12PPSRisingOrFalling==2)
 	ppsEdge=edgeNames[g12PPSRisingOrFalling-1];
 
@@ -419,6 +427,10 @@ int setupG12()
     strcat(g12Command, "$PASHS,UTS,ON\n");
     sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",zdaPort,g12ZDAPeriod);    
     strcat(g12Command,tempCommand); 
+//    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%d\n",posPort,g12POSPeriod);    
+//    strcat(g12Command,tempCommand); 
+//    sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",satPort,g12SATPeriod);    
+//    strcat(g12Command,tempCommand); 
     sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);    
     strcat(g12Command,tempCommand);   
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);    
@@ -822,11 +834,17 @@ void processGPPATString(char *gpsString, int gpsLength) {
     char gpsCopy[ADU5_DATA_SIZE];//="$GPPAT,021140.00,3338.51561,N,11750.82575,W,-00288.42,666.0000,000.00,000.00,666.0000,666.0000,1*4F";    
     char *subString;
     int count=0;
+//    char gpsTest[ADU5_DATA_SIZE];
+//    sprintf(gpsTest,"$GPPAT,021140.00,3338.51561,N,11750.82575,W,-00288.42,666.0000,000.00,000.00,666.0000,666.0000,1*4F");
+
+//    sprintf(gpsCopy,"%s",gpsTest);
     strncpy(gpsCopy,gpsString,gpsLength);
+
     GpsPatStruct_t thePat;
     thePat.gHdr.code=PACKET_GPSD_PAT;
     time_t rawtime;
-    int hour,min,sec,msec,deg,subMin;
+    int hour,min,sec,msec,deg;//,subMin;
+    float fmin;
     int noLock=0;
     time ( &rawtime );
     count=0;
@@ -849,21 +867,28 @@ void processGPPATString(char *gpsString, int gpsLength) {
 		    noLock=1;
 		    break;
 		}
-		sscanf(subString,"%02d%02d.%d",&deg,&min,&subMin);
-		thePat.latitude=(float)deg;
-		thePat.latitude+=((float)min)/60.0;
-		thePat.latitude+=((float)subMin)/(60.0*10000.0);
+//		sscanf(subString,"%02d%02d.%d",&deg,&min,&subMin);
+//		fmin=((float)min)+((float)subMin/100000.);
+//		printf("%d %d %d\t%f\n",deg,min,subMin,fmin);
+//		thePat.latitude+=((float)min)/60.0;
+//		thePat.latitude+=((float)subMin)/(60.0*10000.0);
 //		printf("%s\t%f\n",subString,thePat.latitude);
 //		printf("Length %d\n",strlen(subString));
+
+		sscanf(subString,"%02d%f",&deg,&fmin);
+		thePat.latitude=(float)deg;		
+		thePat.latitude+=(fmin/60.);
 		break;
 	    case 3: 
 		if(subString[0]=='S') thePat.latitude*=-1;
 		break;
 	    case 4:
-		sscanf(subString,"%03d%02d.%d",&deg,&min,&subMin);
+//		sscanf(subString,"%03d%02d.%d",&deg,&min,&subMin);
+		sscanf(subString,"%03d%f",&deg,&fmin);
 		thePat.longitude=(float)deg;
-		thePat.longitude+=((float)min)/60.0;
-		thePat.longitude+=((float)subMin)/(60.0*10000.0);
+//		thePat.longitude+=((float)min)/60.0;
+//		thePat.longitude+=((float)subMin)/(60.0*10000.0);
+		thePat.longitude+=(fmin/60.);
 		break;
 	    case 5:
 		if(subString[0]=='W') thePat.longitude*=-1;
@@ -911,6 +936,7 @@ void processGPPATString(char *gpsString, int gpsLength) {
 	count++;	
 	subString = strtok (NULL, " ,*");
     }
+/*     printf("%s\n",gpsTest); */
 /*     printf("unixTime: %ld\ntimeOfDay: %ld\nheading: %lf\npitch: %lf\nroll: %lf\nmrms: %lf\nbrms: %lf\nattFlag: %d\nlatitude: %lf\nlongitude: %lf\naltitute: %lf\n", */
 /* 	   thePat.unixTime, */
 /* 	   thePat.timeOfDay, */
@@ -923,7 +949,7 @@ void processGPPATString(char *gpsString, int gpsLength) {
 /* 	   thePat.latitude, */
 /* 	   thePat.longitude, */
 /* 	   thePat.altitude); */
-//    exit(0);
+/*     exit(0); */
     
     char theFilename[FILENAME_MAX];
     int retVal;
@@ -1031,13 +1057,15 @@ int setupADU5()
 	    adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
     strcat(adu5Command,tempCommand);
     sprintf(tempCommand,"$PASHS,3DF,V13,%2.3f,%2.3f,%2.3f\r\n",
-	    adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
+	    adu5RelV13[0],adu5RelV13[1],adu5RelV13[2]);
     strcat(adu5Command,tempCommand);
     sprintf(tempCommand,"$PASHS,3DF,V14,%2.3f,%2.3f,%2.3f\r\n",
-	    adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
+	    adu5RelV14[0],adu5RelV14[1],adu5RelV14[2]);
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHS,NME,ALL,A,OFF\r\n");
     strcat(adu5Command,"$PASHS,NME,ALL,B,OFF\r\n");
+    strcat(adu5Command,"$PASHS,3DF,ANG,10\r\n");
+    strcat(adu5Command,"$PASHS,3DF,FLT,Y\r\n");
     sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%d",adu5PatPeriod);
     strcat(tempCommand,"\r\n");
     strcat(adu5Command,tempCommand);

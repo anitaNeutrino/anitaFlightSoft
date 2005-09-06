@@ -66,7 +66,7 @@ int makeLink(const char *theFile, const char *theLinkDir)
     char newFile[FILENAME_MAX];
     sprintf(newFile,"%s/%s",theLinkDir,justFile);
 //    printf("Linking %s to %s\n",theFile,newFile);
-    return link(theFile,newFile);
+    return symlink(theFile,newFile);
 
 }
 
@@ -99,19 +99,19 @@ int copyFile(const char *theFile, const char *theDir)
 
 int removeFile(const char *theFile)
 {
-    int retVal;
-    char theCommand[FILENAME_MAX];
-    sprintf(theCommand,"rm %s",theFile);
-    retVal=system(theCommand);
-    if(retVal!=0) {
-	syslog(LOG_ERR,"%s returned %d",theCommand,retVal);
-    }
-    return retVal;
-/*     int retVal=unlink(theFile); */
+/*     int retVal; */
+/*     char theCommand[FILENAME_MAX]; */
+/*     sprintf(theCommand,"rm %s",theFile); */
+/*     retVal=system(theCommand); */
 /*     if(retVal!=0) { */
-/* 	syslog(LOG_ERR,"Error removing %s:\t%s",theFile,strerror(errno)); */
+/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
 /*     } */
 /*     return retVal; */
+    int retVal=unlink(theFile);
+    if(retVal!=0) {
+	syslog(LOG_ERR,"Error removing %s:\t%s",theFile,strerror(errno));
+    }
+    return retVal;
 }
 
 int is_dir(const char *path)
