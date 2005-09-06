@@ -1,0 +1,18 @@
+1.35
+C/C++
+/home/marty/src/sipcom/demo/.svn/README.txt	1118167456	0	/home/marty/src/sipcom/demo/.svn/README.txt
+/home/marty/src/sipcom/sipcom.txt	1118167456	1	SIP COMmuncation library
+/home/marty/src/sipcom/sipthrottle.h	1118167456	0	/home/marty/src/sipcom/sipthrottle.h
+/home/marty/src/sipcom/serial.h	1118167456	0	/home/marty/src/sipcom/serial.h
+/home/marty/src/sipcom/sipcom.c	1118421439	0	/home/marty/src/sipcom/sipcom.c
+/home/marty/src/sipcom/crc_simple.h	1118167456	0	/home/marty/src/sipcom/crc_simple.h
+/home/marty/src/sipcom/sipcom.h	1118421687	1	/home/marty/src/sipcom/sipcom.h
+/home/marty/src/sipcom/demo/driver.c	1118424193	0	/home/marty/src/sipcom/demo/driver.c
+/home/marty/src/sipcom/demo/rand_no.h	1118167456	0	/home/marty/src/sipcom/demo/rand_no.h
+/home/marty/src/sipcom/demo/rand_no.c	1118167456	0	/home/marty/src/sipcom/demo/rand_no.c
+/home/marty/src/sipcom/serial.c	1118167456	0	/home/marty/src/sipcom/serial.c
+/home/marty/src/sipcom/sipthrottle.c	1118167456	0	/home/marty/src/sipcom/sipthrottle.c
+/home/marty/src/sipcom/.svn/README.txt	1118167456	0	/home/marty/src/sipcom/.svn/README.txt
+/home/marty/src/sipcom/highrate.h	1118167456	0	/home/marty/src/sipcom/highrate.h
+/home/marty/src/sipcom/crc_simple.c	1118167456	0	/home/marty/src/sipcom/crc_simple.c
+/home/marty/src/sipcom/sipcom_impl.h	1118167456	0	/home/marty/src/sipcom/sipcom_impl.h
