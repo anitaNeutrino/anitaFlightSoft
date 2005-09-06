@@ -33,23 +33,33 @@ int main (void)
 /*     } */
 /*     printf("\nThe port is: %d\n\n",thePort); */
 
-/*     printf("Size of channel_data: %d\n",sizeof(channel_data)); */
-/*     printf("Size of event_header: %d\n",sizeof(event_header)); */
+     printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t)); 
+     printf("Size of TurfioStruct_t: %d\n",sizeof(TurfioStruct_t)); 
+     printf("Size of SurfChannelFull_t: %d\n",sizeof(SurfChannelFull_t));
+     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
+     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
+     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
+     printf("Size of SurfPacket_t: %d\n",sizeof(SurfPacket_t));
+     printf("Size of GpsPatStruct_t: %d\n",sizeof(GpsPatStruct_t));
+     printf("Size of GpsSatStruct_t: %d\n",sizeof(GpsSatStruct_t));
+     printf("Size of AnalogueDataStruct_t: %d\n",sizeof(AnalogueDataStruct_t));
+     printf("Size of FullAnalogueStruct_t: %d\n",sizeof(FullAnalogueStruct_t));
+     printf("Size of SBSTemperatureDataStruct_t: %d\n",sizeof(SBSTemperatureDataStruct_t));
+     printf("Size of MagnetometerDataStruct_t: %d\n",sizeof(MagnetometerDataStruct_t));
+     printf("Size of HkDataStruct_t: %d\n",sizeof(HkDataStruct_t));
+     printf("Size of CommandEcho_t: %d\n",sizeof(CommandEcho_t));
+     
+     
 
-
-/*     printf("%d %x %d %x %d %x %d %x %d %x\n",KVP_E_OK,KVP_E_OK,KVP_E_DUPLICATE,KVP_E_DUPLICATE,KVP_E_NOTFOUND,KVP_E_NOTFOUND,KVP_E_SYSTEM,KVP_E_SYSTEM,KVP_E_BADKEY,KVP_E_BADKEY); */
-  
-
-    waitUntilNextSecond();
 }
 
 
-void waitUntilNextSecond()
-{
-    time_t start;
-    start=time(NULL);
-    printf("Start time %d\n",start);
+/* void waitUntilNextSecond() */
+/* { */
+/*     time_t start; */
+/*     start=time(NULL); */
+/*     printf("Start time %d\n",start); */
 
-    while(start==time(NULL)) usleep(100);
+/*     while(start==time(NULL)) usleep(100); */
     
-}
+/* } */

@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets = clientSocket serverSocket sillyTest
+Targets =  sillyTest
 
 all: $(Targets)
 
