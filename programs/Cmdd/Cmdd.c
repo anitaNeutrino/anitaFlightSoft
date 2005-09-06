@@ -283,7 +283,17 @@ int executeCommand()
 	    return retVal;
 	case CMD_MOUNT:
 	    //Mount -a
+	    killPrograms(ID_HKD);
+	    killPrograms(ID_GPSD);
+	    killPrograms(ID_ARCHIVED);
+	    retVal=system("sudo /sbin/rmmod usb-uhci");
+	    retVal=system("sudo /sbin/insmod usb-uhci");
+	    sleep(10);
 	    retVal=system("sudo mount -a");
+	    startPrograms(ID_HKD);
+	    startPrograms(ID_GPSD);
+	    startPrograms(ID_ARCHIVED);
+	    
 	    return retVal;
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
@@ -557,10 +567,10 @@ int killPrograms(int progMask)
 	}
     }
     if(progMask&GPSD_ID_MASK) {
-	sprintf(daemonCommand,"daemon --stop -n Gpsd");
+	sprintf(daemonCommand,"daemon --stop -n GPSd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error killing Gpsd");
+	    syslog(LOG_ERR,"Error killing GPSd");
 	    //Maybe do something clever
 	}
     }
@@ -573,10 +583,10 @@ int killPrograms(int progMask)
 	}
     }    
     if(progMask&LOSD_ID_MASK) {
-	sprintf(daemonCommand,"daemon --stop -n Losd");
+	sprintf(daemonCommand,"daemon --stop -n LOSd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error killing Losd");
+	    syslog(LOG_ERR,"Error killing LOSd");
 	    //Maybe do something clever
 	}
     }
@@ -589,10 +599,10 @@ int killPrograms(int progMask)
 	}
     }
     if(progMask&SIPD_ID_MASK) {
-	sprintf(daemonCommand,"daemon --stop -n Sipd");
+	sprintf(daemonCommand,"daemon --stop -n SIPd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error killing Sipd");
+	    syslog(LOG_ERR,"Error killing SIPd");
 	    //Maybe do something clever
 	}
     }
@@ -645,10 +655,10 @@ int startPrograms(int progMask)
 	}
     }
     if(progMask&GPSD_ID_MASK) {
-	sprintf(daemonCommand,"daemon -r Gpsd -n Gpsd");
+	sprintf(daemonCommand,"daemon -r GPSd -n GPSd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error starting Gpsd");
+	    syslog(LOG_ERR,"Error starting GPSd");
 	    //Maybe do something clever
 	}
     }
@@ -661,10 +671,10 @@ int startPrograms(int progMask)
 	}
     }    
     if(progMask&LOSD_ID_MASK) {
-	sprintf(daemonCommand,"daemon -r Losd -n Losd");
+	sprintf(daemonCommand,"daemon -r LOSd -n LOSd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error starting Losd");
+	    syslog(LOG_ERR,"Error starting LOSd");
 	    //Maybe do something clever
 	}
     }
@@ -677,10 +687,10 @@ int startPrograms(int progMask)
 	}
     }
     if(progMask&SIPD_ID_MASK) {
-	sprintf(daemonCommand,"daemon -r Sipd -n Sipd");
+	sprintf(daemonCommand,"daemon -r SIPd -n SIPd");
 	retVal=system(daemonCommand);
 	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error starting Sipd");
+	    syslog(LOG_ERR,"Error starting SIPd");
 	    //Maybe do something clever
 	}
     }

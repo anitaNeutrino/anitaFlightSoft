@@ -218,8 +218,15 @@ write_highrate(int *ignore)
 	}
 	++cnt;
 #endif
-
+//	usleep(10000);
 	amtb = rand_no(lim);
+	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
+	retval = sipcom_highrate_write(buf, amtb);
+	if (retval != 0) {
+	    fprintf(stderr, "Bad write\n");
+	}
+    }
+	amtb=1500;
 	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
 	retval = sipcom_highrate_write(buf, amtb);
 	if (retval != 0) {

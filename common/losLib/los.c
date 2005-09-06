@@ -44,7 +44,7 @@ static RETURN_CODE dev_close(HANDLE h);
 #define ERROR_STRING_LEN 2048
 static char Error_string[ERROR_STRING_LEN];
 
-//static void pause_ms(int ms);
+static void pause_ms(int ms);
 static int poll_addr_0(U16 want);
 static int poll_data_avail();
 static int poll_data_ready();
@@ -531,14 +531,14 @@ wait_for_interrupt(int ms)
     return ret;
 }
 
-/* static void */
-/* pause_ms(int ms) */
-/* { */
-/*     static struct timespec t; */
-/*     t.tv_sec = 0; */
-/*     t.tv_nsec = ms * 1000000L; */
-/*     nanosleep(&t, NULL); */
-/* } */
+static void
+pause_ms(int ms)
+{
+    static struct timespec t;
+    t.tv_sec = 0;
+    t.tv_nsec = ms * 1000000L;
+    nanosleep(&t, NULL);
+}
 
 // poll_addr_0 - Poll addr 0 for a value.
 static int
@@ -566,7 +566,7 @@ poll_addr_0(U16 want)
 	    else break;
 	}
 	if (want != val) {
-	    set_error_string(   
+	    set_error_string(
 		"poll_addr_0: timed out polling for (%04X)", want);
 	    return -6;
 	}

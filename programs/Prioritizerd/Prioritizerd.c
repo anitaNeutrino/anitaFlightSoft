@@ -640,4 +640,4 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 /*     } */
 /* } */
 
-#undef SWAP
+//#undef SWAP
