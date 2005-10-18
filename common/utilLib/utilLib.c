@@ -18,6 +18,7 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <zlib.h>
 
 
 extern  int versionsort(const void *a, const void *b);
@@ -160,15 +161,15 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 {
     /* Takes a pointer to the next struct in the array */
     
-    FILE * pFile;
+    FILE * infile;
 
-    pFile = fopen (filename, "r");
-    if(pFile == NULL) {
+    infile = fopen (filename, "r");
+    if(infile == NULL) {
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 0;
     }
-    fscanf(pFile,"%ld %c",&(theStruct->unixTime),&(theStruct->status));
-    fclose (pFile); 
+    fscanf(infile,"%ld %c",&(theStruct->unixTime),&(theStruct->status));
+    fclose (infile); 
     return 0;
 }
 
@@ -177,16 +178,16 @@ int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
     /* Returns 0 if successful */
     int numObjs;
-    FILE * pFile;
+    FILE * infile;
         
-    pFile = fopen (filename, "rb");
-    if(pFile == NULL) {
+    infile = fopen (filename, "rb");
+    if(infile == NULL) {
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 1;
     }
-    numObjs=fread(theEventHdPtr,sizeof(AnitaEventHeader_t),1,pFile);
+    numObjs=fread(theEventHdPtr,sizeof(AnitaEventHeader_t),1,infile);
 /*     printf("Read %d objects from %s\n",numObjs,filename); */
-    fclose (pFile); 
+    fclose (infile); 
     if(numObjs==1) return 0; /*Success*/
     return 1;
 }
@@ -196,16 +197,16 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 {
     /* Returns 0 if successful */
     int numObjs;
-    FILE * pFile;
+    FILE * infile;
         
-    pFile = fopen (filename, "rb");
-    if(pFile == NULL) {
+    infile = fopen (filename, "rb");
+    if(infile == NULL) {
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 1;
     }
-    numObjs=fread(theEventBodyPtr,sizeof(AnitaEventBody_t),1,pFile);
+    numObjs=fread(theEventBodyPtr,sizeof(AnitaEventBody_t),1,infile);
 /*     printf("Read %d objects from %s\n",numObjs,filename); */
-    fclose (pFile); 
+    fclose (infile); 
     if(numObjs==1) return 0; /*Success*/
     return 1;
 }
@@ -217,13 +218,13 @@ int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
     /* Returns number of lines read*/
     
     int numObjs;
-    FILE *pFILE = fopen (filename, "rb");
-    if(pFILE == NULL) {
+    FILE *infile = fopen (filename, "rb");
+    if(infile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fread(tttPtr,sizeof(GpsSubTime_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fread(tttPtr,sizeof(GpsSubTime_t),1,infile);
+    fclose(infile);
     if(numObjs==1) return 0;
     return 1;
 }
@@ -232,14 +233,23 @@ int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 /* Writes the header pointed to by hdPtr to filename */
 {
-    int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    int numObjs;    
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
-    numObjs=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,pFILE);
-    fclose(pFILE);
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,hdPtr,sizeof(AnitaEventHeader_t));
+    gzclose(outfile);
+#endif
     return 0;
 }
 
@@ -247,13 +257,13 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(bodyPtr,sizeof(AnitaEventBody_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(bodyPtr,sizeof(AnitaEventBody_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -261,13 +271,13 @@ int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
 /* Writes the waveform pointed to by wavePtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(wavePtr,sizeof(WaveformPacket_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(wavePtr,sizeof(WaveformPacket_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -276,13 +286,13 @@ int writeSurfPacket(SurfPacket_t *surfPtr, char *filename)
 /* Writes the surf packet pointed to by surfPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(surfPtr,sizeof(SurfPacket_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(surfPtr,sizeof(SurfPacket_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -290,13 +300,13 @@ int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
 /* Writes the pat pointed to by patPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(patPtr,sizeof(GpsPatStruct_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(patPtr,sizeof(GpsPatStruct_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -304,13 +314,13 @@ int writeGPSSat(GpsSatStruct_t *satPtr, char *filename)
 /* Writes the sat pointed to by satPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(satPtr,sizeof(GpsSatStruct_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(satPtr,sizeof(GpsSatStruct_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -319,13 +329,13 @@ int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename)
 /* Writes the ttt pointed to by tttPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(tttPtr,sizeof(GpsSubTime_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(tttPtr,sizeof(GpsSubTime_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -333,13 +343,13 @@ int writeHk(HkDataStruct_t *hkPtr, char *filename)
 /* Writes the hk pointed to by hkPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(hkPtr,sizeof(HkDataStruct_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(hkPtr,sizeof(HkDataStruct_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 
@@ -348,13 +358,13 @@ int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 /* Writes the echo pointed to by echoPtr to filename */
 {
     int numObjs;
-    FILE *pFILE = fopen (filename, "wb");
-    if(pFILE == NULL) {
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }
-    numObjs=fwrite(echoPtr,sizeof(CommandEcho_t),1,pFILE);
-    fclose(pFILE);
+    numObjs=fwrite(echoPtr,sizeof(CommandEcho_t),1,outfile);
+    fclose(outfile);
     return 0;
 }
 

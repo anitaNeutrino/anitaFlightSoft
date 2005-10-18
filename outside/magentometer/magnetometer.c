@@ -20,7 +20,7 @@ void toggleCRTCTS(char devName[]);
 
 int main(int argc, char ** argv)
 {
-    char devName[]="/dev/ttyUSB2";
+    char devName[]="/dev/ttyS0";
     
     int fd, i, retVal ; 
     struct termios options;
