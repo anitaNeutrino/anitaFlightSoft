@@ -200,32 +200,7 @@ write_highrate(int *ignore)
     }
 
     while (1) {
-
-#ifdef NOTDEF
-	// This bit demonstrates changing the high rate throttle mitten
-	// drin. Every 10 updates, it switches from 688 to 300 bytes/sec
-	// and vice-versa.
-	static int cnt = 0;
-	if (cnt % 10 == 0) {
-	    static unsigned long rate = 300;
-	    fprintf(stderr, "=== high rate ===> rate = %lu\n", rate);
-	    sipcom_highrate_set_throttle(rate);
-	    if (rate == 300) {
-		rate = 688;
-	    } else {
-		rate = 300;
-	    }
-	}
-	++cnt;
-#endif
-//	usleep(10000);
-	amtb = rand_no(lim);
-	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
-	retval = sipcom_highrate_write(buf, amtb);
-	if (retval != 0) {
-	    fprintf(stderr, "Bad write\n");
-	}
-    }
+	
 	amtb=1500;
 	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
 	retval = sipcom_highrate_write(buf, amtb);

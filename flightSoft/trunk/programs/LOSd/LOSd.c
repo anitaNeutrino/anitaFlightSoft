@@ -202,7 +202,7 @@ int fillBufferWithPackets()
 	    
 	
 	    
-	    if(verbosity) { 
+	    if(verbosity>1) { 
 		printf("Opened file: %s\n",currentFilename);
 	    }
 	
@@ -214,8 +214,9 @@ int fillBufferWithPackets()
 		continue;
 	    }
 	    close (fd);
-	    retVal = los_write((unsigned char *)theBuffer, numBytes);
-//	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0);
+	    retVal=0;
+//	    retVal = los_write((unsigned char *)theBuffer, numBytes);
+	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0);
 	    if (retVal < 0) {
 		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename);
 		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror());
@@ -223,9 +224,9 @@ int fillBufferWithPackets()
 	    }
 	    else {
 		removeFile(currentLinkname);
-//	    removeFile(currentFilename);
+		removeFile(currentFilename);
 //	    unlink(currentLinkname);
-		unlink(currentFilename);
+//	    unlink(currentFilename);
 		if(retVal==0) {
 		    filledBuffer=1;
 		    break;
@@ -282,7 +283,7 @@ void tryToSendData()
 	numEventLinks=getListofLinks(eventLinkDir,&eventLinkList);
 	if(numEventLinks<=0) {
 	    fillBufferWithPackets();
-	    doWrite();
+	    if(numBytesInBuffer) doWrite();
 	    return;
 	}
 	for(eventCount=numEventLinks-1;eventCount>=0;eventCount--) {	    
@@ -299,8 +300,8 @@ void tryToSendData()
 		//Mayhaps we should delete
 		continue;
 	    }
-	    if(verbosity) { 
-		printf("Opened file: %s\n",currentFilename);
+	    if(verbosity>1) { 
+		printf("Opened Event File: %s\n",currentFilename);
 	    }
 	    
 	    numBytes=read(fd,theBuffer,BSIZE);
@@ -310,20 +311,22 @@ void tryToSendData()
 		continue;
 	    }
 	    close (fd);
-//	retVal = los_write((unsigned char *)theBuffer, numBytes);
+	    retVal=0;
+//	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0);
 	    retVal = los_write((unsigned char *)theBuffer, numBytes);
-	    if(verbosity) printf("retVal %d\n",retVal);
+//	    retVal = los_write((unsigned char *)theBuffer, numBytes);
+	    if(verbosity>1) printf("retVal %d\n",retVal);
 	    if (retVal < 0) {
 		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename);
 		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror());
 		break;
 	    }
 	    else {
-//		removeFile(currentLinkname);
-		unlink(currentFilename);
-		unlink(currentFilename);
-		fillBufferWithPackets();
-		if(numBytesInBuffer) doWrite();    
+		removeFile(currentLinkname);
+		removeFile(currentFilename);
+//		unlink(currentFilename);
+//		fillBufferWithPackets();
+//		if(numBytesInBuffer) doWrite();    
 	    }    	    	    
 	    if((numEventLinks-eventCount)>maxEventsInARow) break;
 	}
@@ -333,6 +336,8 @@ void tryToSendData()
 	free(eventLinkList);
     }
     
+    fillBufferWithPackets();
+    if(numBytesInBuffer) doWrite(); 
 }
 
 

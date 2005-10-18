@@ -555,8 +555,8 @@ poll_addr_0(U16 want)
 
     if (want != val) {
 	//RJN test hack
-	for(msNum=0;msNum<Poll_pause;msNum++) {
-	    usleep(1000);
+	for(msNum=0;msNum<Poll_pause*1000;msNum++) {
+	    usleep(1);
 	    ret = read_addr_0(&val);
 	    if (ret) {
 		set_error_string("poll_addr_0: bad read of addr 0");
