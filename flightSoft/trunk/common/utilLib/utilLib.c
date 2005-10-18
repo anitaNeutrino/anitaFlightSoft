@@ -74,27 +74,39 @@ int makeLink(const char *theFile, const char *theLinkDir)
 
 int moveFile(const char *theFile, const char *theDir)
 {
-    char theCommand[2*FILENAME_MAX];
+/*     char theCommand[2*FILENAME_MAX]; */
+/*     int retVal; */
+/*     sprintf(theCommand,"mv %s %s",theFile,theDir); */
+/*     retVal=system(theCommand); */
+/*     if(retVal!=0) { */
+/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
+/*     } */
+/*     return retVal;     */
     int retVal;
-    sprintf(theCommand,"mv %s %s",theFile,theDir);
-    retVal=system(theCommand);
-    if(retVal!=0) {
-	syslog(LOG_ERR,"%s returned %d",theCommand,retVal);
-    }
-    return retVal;    
+    char *justFile=basename((char *)theFile);
+    char newFile[FILENAME_MAX];
+    sprintf(newFile,"%s/%s",theDir,justFile);
+    retVal=link(theFile,newFile);
+    retVal+=unlink(theFile);
+    return retVal;
+    
 }
 
 
 int copyFile(const char *theFile, const char *theDir)
 {
-    char theCommand[2*FILENAME_MAX];
-    int retVal;
-    sprintf(theCommand,"cp %s %s",theFile,theDir);
-    retVal=system(theCommand);
-    if(retVal!=0) {
-	syslog(LOG_ERR,"%s returned %d",theCommand,retVal);
-    }
-    return retVal;    
+/*     char theCommand[2*FILENAME_MAX]; */
+/*     int retVal; */
+/*     sprintf(theCommand,"cp %s %s",theFile,theDir); */
+/*     retVal=system(theCommand); */
+/*     if(retVal!=0) { */
+/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
+/*     } */
+/*     return retVal;   */
+    char *justFile=basename((char *)theFile);
+    char newFile[FILENAME_MAX];
+    sprintf(newFile,"%s/%s",theDir,justFile);
+    return link(theFile,newFile);
 }
 
 
@@ -176,38 +188,50 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
-    /* Returns 0 if successful */
-    int numObjs;
-    FILE * infile;
-        
-    infile = fopen (filename, "rb");
+    int numObjs;    
+#ifdef NO_ZLIB
+    FILE *infile = fopen (filename, "rb");
+#else
+    gzFile infile = gzopen (filename, "rb");    
+#endif
     if(infile == NULL) {
-	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
-	return 1;
-    }
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
     numObjs=fread(theEventHdPtr,sizeof(AnitaEventHeader_t),1,infile);
-/*     printf("Read %d objects from %s\n",numObjs,filename); */
-    fclose (infile); 
+    fclose(infile);
     if(numObjs==1) return 0; /*Success*/
+#else
+    numObjs=gzread(infile,theEventHdPtr,sizeof(AnitaEventHeader_t));
+    gzclose(infile);
+    if(numObjs==sizeof(AnitaEventHeader_t)) return 0;
+#endif
     return 1;
 }
 
 
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
-{
-    /* Returns 0 if successful */
-    int numObjs;
-    FILE * infile;
-        
-    infile = fopen (filename, "rb");
+{    
+    int numObjs;    
+#ifdef NO_ZLIB
+    FILE *infile = fopen (filename, "rb");
+#else
+    gzFile infile = gzopen (filename, "rb");    
+#endif
     if(infile == NULL) {
-	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
-	return 1;
-    }
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
     numObjs=fread(theEventBodyPtr,sizeof(AnitaEventBody_t),1,infile);
-/*     printf("Read %d objects from %s\n",numObjs,filename); */
-    fclose (infile); 
+    fclose(infile);
     if(numObjs==1) return 0; /*Success*/
+#else
+    numObjs=gzread(infile,theEventBodyPtr,sizeof(AnitaEventBody_t));
+    gzclose(infile);
+    if(numObjs==sizeof(AnitaEventBody_t)) return 0;
+#endif
     return 1;
 }
 
@@ -216,16 +240,26 @@ int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
 {
     /* Takes a pointer to the next struct in the array */
     /* Returns number of lines read*/
-    
-    int numObjs;
+       
+    int numObjs;    
+#ifdef NO_ZLIB
     FILE *infile = fopen (filename, "rb");
+#else
+    gzFile infile = gzopen (filename, "rb");    
+#endif
     if(infile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fread(tttPtr,sizeof(GpsSubTime_t),1,infile);
     fclose(infile);
-    if(numObjs==1) return 0;
+    if(numObjs==1) return 0; /*Success*/
+#else
+    numObjs=gzread(infile,tttPtr,sizeof(GpsSubTime_t));
+    gzclose(infile);
+    if(numObjs==sizeof(GpsSubTime_t)) return 0;
+#endif
     return 1;
 }
 
@@ -256,28 +290,47 @@ int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
-    int numObjs;
+    int numObjs;    
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(bodyPtr,sizeof(AnitaEventBody_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,bodyPtr,sizeof(AnitaEventBody_t));
+    gzclose(outfile);
+#endif
     return 0;
 }
 
 int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
 /* Writes the waveform pointed to by wavePtr to filename */
 {
-    int numObjs;
+     int numObjs;    
+  
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(wavePtr,sizeof(WaveformPacket_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,wavePtr,sizeof(WaveformPacket_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
@@ -285,86 +338,142 @@ int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
 int writeSurfPacket(SurfPacket_t *surfPtr, char *filename)
 /* Writes the surf packet pointed to by surfPtr to filename */
 {
-    int numObjs;
+    int numObjs;    
+      
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(surfPtr,sizeof(SurfPacket_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,surfPtr,sizeof(SurfPacket_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
 int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
 /* Writes the pat pointed to by patPtr to filename */
 {
-    int numObjs;
+      int numObjs;    
+    
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(patPtr,sizeof(GpsPatStruct_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,patPtr,sizeof(GpsPatStruct_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
 int writeGPSSat(GpsSatStruct_t *satPtr, char *filename)
 /* Writes the sat pointed to by satPtr to filename */
-{
-    int numObjs;
+{   
+    int numObjs;        
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(satPtr,sizeof(GpsSatStruct_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,satPtr,sizeof(GpsSatStruct_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
 
 int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename)
 /* Writes the ttt pointed to by tttPtr to filename */
-{
-    int numObjs;
+{     
+    int numObjs;    
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(tttPtr,sizeof(GpsSubTime_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,tttPtr,sizeof(GpsSubTime_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
 int writeHk(HkDataStruct_t *hkPtr, char *filename)
 /* Writes the hk pointed to by hkPtr to filename */
-{
-    int numObjs;
+{     
+    int numObjs;    
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(hkPtr,sizeof(HkDataStruct_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,hkPtr,sizeof(HkDataStruct_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
 
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 /* Writes the echo pointed to by echoPtr to filename */
-{
-    int numObjs;
+{   
+    int numObjs;    
+#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb");    
+#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
-    }
+    }   
+#ifdef NO_ZLIB
     numObjs=fwrite(echoPtr,sizeof(CommandEcho_t),1,outfile);
     fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,echoPtr,sizeof(CommandEcho_t));
+    gzclose(outfile);  
+#endif
     return 0;
 }
 
