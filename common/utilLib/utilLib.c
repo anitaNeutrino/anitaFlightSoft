@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <zlib.h>
 
+//#define NO_ZLIB
 
 extern  int versionsort(const void *a, const void *b);
 

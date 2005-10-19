@@ -419,7 +419,7 @@ char *surfControlActionAsString(SurfControlAction_t action) {
     return string;
 }
 
-char *turfControlActionAsString(SurfControlAction_t action) {
+char *turfControlActionAsString(TurfControlAction_t action) {
     char* string ;
     switch(action) {
 	case SetTrigMode :
@@ -592,9 +592,9 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
   Initializes the SURFs and TURFIO, returns the number of devices initialized.
 */
 {
-
-    int i,j,countSurfs=0;
-    U32  numDevices ;
+    
+    int j,countSurfs=0;
+    U32  numDevices,i ;
     PlxDevLocation_t tempLoc[MAX_SURFS+1];
     PlxReturnCode_t rc;
     //  U32  n=0 ;  /* this is the numebr of board from furthest from CPU. */
@@ -981,51 +981,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
 
 
-/* void writeSurfData(char *directory, unsigned short *wv_data,unsigned long evNum) { */
-
-/*     char f_name[128] ; */
-/*     FILE *wv_file ; */
-/*     int  n ; */
-
-/*     sprintf(f_name, "%s/surf_data.%lu", directory, evNum) ; */
-/*     if(verbosity && printToScreen)  */
-/* 	printf(" writeData: save data to %s\n", f_name) ; */
-
-/*     if ((wv_file=fopen(f_name, "w")) == NULL) { */
-/* 	printf(" writeData: failed to open wv file, %s\n", f_name) ; */
-/* 	return ;  */
-/*     } */
-
-/*     if ((n=fwrite(wv_data, sizeof(unsigned short), N_SAMP*N_CHAN*numSurfs, wv_file)) */
-/* 	!= N_SAMP*N_CHAN*numSurfs) */
-/* 	printf(" writeData: failed to write all data. wrote only %d.\n", n) ; */
-
-/*     fclose (wv_file) ; */
-/* } */
-
-/* void writeTurf(char *directory, TurfioStruct_t *theEvent.header.turfio,unsigned long evNum) { */
-
-/*     char f_name[128] ; */
-/*     FILE *wv_file ; */
-/*     int  n ; */
-
-/*     sprintf(f_name, "%s/turf_data.%lu", directory, evNum) ; */
-/*     if(verbosity && printToScreen)  */
-/* 	printf(" writeTurf: save data to %s\n", f_name) ; */
-
-/*     if ((wv_file=fopen(f_name, "w")) == NULL) { */
-/* 	printf(" writeData: failed to open wv file, %s\n", f_name) ; */
-/* 	return ;  */
-/*     } */
-
-/*     if ((n=fwrite(theEvent.header.turfio, sizeof(TurfioStruct_t), 1, wv_file))!= 1) */
-/* 	printf(" writeData: failed to write turf data.\n") ; */
-
-/*     fclose (wv_file) ; */
-/* } */
-
-
-/* purse command arguments to initialize parameter(s). */
+/* parse command arguments to initialize parameter(s). */
 int init_param(int argn, char **argv, char *directory, int *n, unsigned short *dacVal) {
 
     while (--argn) {
