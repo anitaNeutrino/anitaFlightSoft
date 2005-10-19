@@ -3,7 +3,8 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <zlib.h>
+//#include <zlib.h>
+#include <math.h>
 
 /* Flight soft includes */
 #include "anitaFlight.h"
@@ -13,7 +14,6 @@
 #include "anitaStructures.h"
 
 
-
 void fakeEvent(int trigType);
 void fakePat(long unixTime);
 void fakeSat(long unixTime);
@@ -21,6 +21,10 @@ void fakeHkCal(long unixTime);
 void fakeHkRaw(long unixTime);
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
+int rand_no(int lim);
+void rand_no_seed(unsigned int seed);
+float gaussianRand(float mean, float stdev);
+
 
 /*Config Thingies*/
 char losdPacketDir[FILENAME_MAX];
@@ -55,6 +59,7 @@ int main(int argc, char *argv[])
 //    KvpErrorCode kvpStatus=0;
     char* eString ;
     
+    rand_no_seed(getpid());
 
     /* Load Config */
     kvpReset () ;
@@ -227,7 +232,10 @@ void fakeEvent(int trigType)
 	//Fake some data
 	for(chan=0;chan<16;chan++) {
 	    for(samp=0;samp<256;samp++) {
-		theBody.channel[chan].data[samp]=samp;
+		short value=(short)gaussianRand(2048,200);
+		value+=((evNum%4)<<14);
+		theBody.channel[chan].data[samp]=value;
+//		printf("%d\t%d\n",samp,theBody.channel[chan].data[samp]);
 	    }
 	}
     }
@@ -397,5 +405,50 @@ void fakeHkRaw(long unixTime)
     sprintf(fullFilename,"%s/%s",hkdSipdDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
     retVal+=makeLink(fullFilename,hkdSipdLinkDir);    
+}
+
+
+int rand_no(int lim)
+{
+    float a;
+    a = (float)rand() / RAND_MAX;
+    a *= lim;
+    return ((int) a);
+}
+
+void rand_no_seed(unsigned int seed)
+{
+    srand(seed);
+}
+
+float myRand() {
+    float a =  (float)rand() / (float)(RAND_MAX);
+    return a;
+}
+
+float gaussianRand(float mean, float stdev)
+{
+  static int cached = 0;
+  static float extra;  	// the extra number from a 0 mean unit stdev gaussian
+
+  if (cached) {
+    cached = 0;
+    return extra*stdev + mean;
+  }
+  else {
+    // pick a random point in the unit circle (excluding the origin)
+    float a,b,c;
+    do {
+      a = 2*myRand()-1.0;
+      b = 2*myRand()-1.0;
+      c = a*a + b*b;
+    }
+    while (c >= 1.0 || c == 0.0);
+    // transform it into two values drawn from a gaussian
+    float t = sqrt(-2*log(c)/c);
+    extra = t*a;
+    cached = 1;
+    return t*b*stdev + mean;
+  }
 }
 

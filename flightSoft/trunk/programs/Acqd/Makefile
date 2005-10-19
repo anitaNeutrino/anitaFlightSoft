@@ -26,8 +26,8 @@ ifeq ($(KERNEL_VER), 2.4)
     PLX_INCLUDES := $(PLX_INCLUDES) -I/usr/src/linux-2.4/include
 endif
 PLX_LIBS = $(PLX_SDK_DIR)/linux/api/Library/PlxApi$(DBG).a \
-	$(PLX_SDK_DIR)/linux/PciDrvApi/Library/PciDrvApi$(DBG).a \
-	-lcurses
+	$(PLX_SDK_DIR)/linux/PciDrvApi/Library/PciDrvApi$(DBG).a 
+#	-lcurses
 PLX_CFLAGS=$(PLX_OPT) $(PLX_INCLUDES)
 CCFLAGS:= ${CCFLAGS} ${PLX_CFLAGS}
 
