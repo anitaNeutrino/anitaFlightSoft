@@ -203,7 +203,7 @@ int main (int argc, char *argv[])
     do {
 	if(printToScreen) printf("Initializing Hkd\n");
 	retVal=readConfigFile();
-	ip320Setup();
+//	ip320Setup();
 	currentState=PROG_STATE_RUN;
 	millisecs=0;
         while(currentState==PROG_STATE_RUN) {
@@ -224,14 +224,14 @@ int main (int argc, char *argv[])
 		if(fdMag) sendMagnetometerRequest();
 		readSBSTemps();
 		if(fdMag) checkMagnetometer(); 
-		if((rawTime-lastCal)>calibrationPeriod) {
-		    ip320Calibrate();		
-		    outputData(IP320_CAL);
-		    outputData(IP320_AVZ);
-		    lastCal=rawTime;
-		}		    
-		ip320Read(0);				
-		outputData(IP320_RAW);
+/* 		if((rawTime-lastCal)>calibrationPeriod) { */
+/* 		    ip320Calibrate();		 */
+/* 		    outputData(IP320_CAL); */
+/* 		    outputData(IP320_AVZ); */
+/* 		    lastCal=rawTime; */
+/* 		}		     */
+/* 		ip320Read(0);				 */
+/* 		outputData(IP320_RAW); */
 //		dumpValues();
 		//Send down data
 		millisecs=1;
@@ -682,9 +682,10 @@ int sendMagnetometerRequest()
 int checkMagnetometer()
 {
     char tempData[256];
-    int retVal=1;//,i;
+    int retVal=1,i;
     float x,y,z;
-    int checksum;//,otherChecksum;
+    int checksum,otherChecksum;
+    int countSpaces=0;
     retVal=isThereDataNow(fdMag);
 //    printf("We think there is %d in the way of data\n",retVal);
     if(retVal!=1) return 0;
@@ -695,27 +696,34 @@ int checkMagnetometer()
 //	printf("Retval %d\n",retVal);
 //	strcpy(tempData,"0.23456 0.78900 0.23997 4C");
 	sscanf(tempData,"D\n%f %f %f %x",&x,&y,&z,&checksum);
-	if(printToScreen) printf("Mag:\t%f %f %f\n",x,y,z);
+	if(printToScreen) printf("Mag:\t%f %f %f\t%d\n",x,y,z,checksum);
 	magData.x=x;
 	magData.y=y;
 	magData.z=z;
 	
-/* 	otherChecksum=0; */
-/* 	for(i=0;i<strlen(tempData);i++) { */
-/* //	    otherChecksum+=tempData[i]; */
-/* 	    if(tempData[i]=='1') otherChecksum+=1; */
-/* 	    if(tempData[i]=='2') otherChecksum+=2; */
-/* 	    if(tempData[i]=='3') otherChecksum+=3; */
-/* 	    if(tempData[i]=='4') otherChecksum+=4; */
-/* 	    if(tempData[i]=='5') otherChecksum+=5; */
-/* 	    if(tempData[i]=='6') otherChecksum+=6; */
-/* 	    if(tempData[i]=='7') otherChecksum+=7; */
-/* 	    if(tempData[i]=='8') otherChecksum+=8; */
-/* 	    if(tempData[i]=='9') otherChecksum+=9; */
-/* 	} */
-/* 	printf("%d %d\n",checksum,otherChecksum); */
+	otherChecksum=0;
+	for(i=0;i<strlen(tempData);i++) {
+//	    otherChecksum+=tempData[i];
+	    if(tempData[i]=='1') otherChecksum+=1;
+	    if(tempData[i]=='2') otherChecksum+=2;
+	    if(tempData[i]=='3') otherChecksum+=3;
+	    if(tempData[i]=='4') otherChecksum+=4;
+	    if(tempData[i]=='5') otherChecksum+=5;
+	    if(tempData[i]=='6') otherChecksum+=6;
+	    if(tempData[i]=='7') otherChecksum+=7;
+	    if(tempData[i]=='8') otherChecksum+=8;
+	    if(tempData[i]=='9') otherChecksum+=9;
+	    if(otherChecksum && tempData[i]==' ') countSpaces++;
+	    if(countSpaces==3) break;
+//	    printf("%d %c %d\n",otherChecksum,tempData[i],countSpaces);
+	}
+	if(checksum!=otherChecksum) {
+	    syslog(LOG_WARNING,"Bad Magnetometer Checksum %s",tempData);
+	    return -1;
+	}
+	if(printToScreen) printf("Checksums:\t%d %d\n",checksum,otherChecksum);
     }
-    return retVal;
+    return 0;
 }
 
 int closeMagnetometer()
