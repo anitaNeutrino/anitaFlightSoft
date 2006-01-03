@@ -272,7 +272,7 @@ int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -295,7 +295,7 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -319,7 +319,7 @@ int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -344,7 +344,7 @@ int writeSurfPacket(SurfPacket_t *surfPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -368,7 +368,7 @@ int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -391,7 +391,7 @@ int writeGPSSat(GpsSatStruct_t *satPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -415,7 +415,7 @@ int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -438,7 +438,7 @@ int writeHk(HkDataStruct_t *hkPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
@@ -462,7 +462,7 @@ int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
 #else
-    gzFile outfile = gzopen (filename, "wb");    
+    gzFile outfile = gzopen (filename, "wb9");    
 #endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
