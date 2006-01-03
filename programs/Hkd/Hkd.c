@@ -203,7 +203,7 @@ int main (int argc, char *argv[])
     do {
 	if(printToScreen) printf("Initializing Hkd\n");
 	retVal=readConfigFile();
-//	ip320Setup();
+	ip320Setup();
 	currentState=PROG_STATE_RUN;
 	millisecs=0;
         while(currentState==PROG_STATE_RUN) {
@@ -224,14 +224,14 @@ int main (int argc, char *argv[])
 		if(fdMag) sendMagnetometerRequest();
 		readSBSTemps();
 		if(fdMag) checkMagnetometer(); 
-/* 		if((rawTime-lastCal)>calibrationPeriod) { */
-/* 		    ip320Calibrate();		 */
-/* 		    outputData(IP320_CAL); */
-/* 		    outputData(IP320_AVZ); */
-/* 		    lastCal=rawTime; */
-/* 		}		     */
-/* 		ip320Read(0);				 */
-/* 		outputData(IP320_RAW); */
+		if((rawTime-lastCal)>calibrationPeriod) {
+		    ip320Calibrate();
+		    outputData(IP320_CAL);
+		    outputData(IP320_AVZ);
+		    lastCal=rawTime;
+		}
+		ip320Read(0);
+		outputData(IP320_RAW);
 //		dumpValues();
 		//Send down data
 		millisecs=1;
