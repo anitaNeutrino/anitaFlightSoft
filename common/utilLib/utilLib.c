@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 #include <zlib.h>
 
@@ -149,6 +150,66 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
  /*    for(count=0;count<n;count++)  */
 /* 	printf("%s\n",(*namelist)[count]->d_name); */
     return n;	    
+}
+
+
+unsigned short getDiskSpace(char *dirName) {
+    struct statfs diskStat;
+    int retVal=statfs(dirName,&diskStat); 
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to get disk space %s: %s",dirName,strerror(errno));       
+//	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
+	return -1;
+    }    
+    unsigned long bytesAvailable=(diskStat.f_bfree*diskStat.f_bsize);
+    unsigned short megabytesAvailable=(unsigned short)(bytesAvailable/(1024*1024));
+    return megabytesAvailable;
+/*     printf("%lu %d\n",bytesAvailable,megabytesAvailable); */
+    /*    if(printToScreen) { */
+/* 	printf("Dir: %s\n",dirName); */
+/* 	printf("Ret Val: %d\n",retVal); */
+/* 	printf("Bytes Available: %ld\n",bytesAvailable); */
+/* 	printf("MegaBytes Available: %d\n",megabytesAvailable); */
+/* 	printf("Available Blocks: %ld\n",diskStat.f_bavail); */
+/* 	printf("Free Blocks: %ld\n",diskStat.f_bfree); */
+/* 	printf("Total Blocks: %ld\n",diskStat.f_blocks); */
+/* 	printf("Block Size: %d\n",diskStat.f_bsize); */
+/* //	printf("Free File Nodes: %ld\n",diskStat.f_ffree); */
+/* //	printf("Total File Nodes: %ld\n",diskStat.f_files); */
+/* //	printf("Type Of Info: %d\n",diskStat.f_type); */
+/* //    printf("File System Id: %d\n",diskStat.f_fsid); */
+/*     } */
+//    return megabytesAvailable;
+}
+
+unsigned short countFilesInDir(char *dirName) {
+    unsigned short fileCount=0;
+    struct dirent *subPtr;
+    DIR *TheDir = opendir(dirName);
+    while (TheDir) {
+	errno = 0;
+	if ((subPtr = readdir(TheDir)) != NULL) {
+	    if(subPtr->d_name[0]!='.') {
+		fileCount++;
+//		printf("File Number %d\t%s\n",fileCount,subPtr->d_name);
+	    }
+	} 
+	else {
+	    if (errno == 0) {
+		closedir(TheDir);
+		break;
+	    }
+	    else {
+		closedir(TheDir);
+		syslog(LOG_ERR,"Error reading directory %s:\t%s",
+		       dirName,strerror(errno));
+		return -1;
+	    }
+	}
+    }    
+//    if(printToScreen && verbosity>1) 
+//	printf("%s contains %d thingies\n",dirName,fileCount);
+    return fileCount;	
 }
 
 
@@ -477,6 +538,31 @@ int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 #endif
     return 0;
 }
+
+int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
+/* Writes the monitor object pointed to by monitorPtr to filename */
+{   
+    int numObjs;    
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb9");    
+#endif
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(monitorPtr,sizeof(MonitorStruct_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,monitorPtr,sizeof(MonitorStruct_t));
+    gzclose(outfile);  
+#endif
+    return 0;
+}
+
+
 
  
 void sigUsr1Handler(int sig)
