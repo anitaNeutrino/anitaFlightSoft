@@ -24,11 +24,13 @@ typedef enum {
     PACKET_GPSD_PAT = 0x200,
     PACKET_GPSD_SAT = 0x201,
     PACKET_HKD = 0x300,
-    PACKET_CMD_ECHO = 0x400
+    PACKET_CMD_ECHO = 0x400,
+    PACKET_MONITOR = 0x500
 } PacketCode_t;
 
 typedef struct {
-    PacketCode_t code;
+    PacketCode_t code;    
+    unsigned short numBytes;
 } GenericHeader_t;
 
 // TURFIO data structure, TV test
@@ -232,7 +234,24 @@ typedef enum {
     PRI_PAYLOAD
 } PriorityCode;
 
+typedef struct {
+    unsigned short mainDisk; //In MegaBytes
+    unsigned short usbDisk[NUM_USBDISKS]; //In MegaBytes
+} DiskSpaceStruct_t;
 
+typedef struct {
+    unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
+    unsigned short cmdLinks;
+    unsigned short gpsLinks;
+    unsigned short hkLinks;
+    unsigned short monitorLinks;
+} QueueStruct_t;
 
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    DiskSpaceStruct_t diskInfo;
+    QueueStruct_t queueInfo;
+} MonitorStruct_t;
 
 #endif /* ANITA_STRUCTURES_H */

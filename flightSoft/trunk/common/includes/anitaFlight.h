@@ -28,6 +28,10 @@
 #define CHANS_PER_IP320 40
 #define NUM_IP320_BOARDS 3
 
+
+#define NUM_PRIORITIES 10
+#define NUM_USBDISKS 10
+
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
 

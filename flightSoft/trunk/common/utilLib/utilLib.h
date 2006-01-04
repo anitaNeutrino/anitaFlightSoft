@@ -30,6 +30,8 @@ int removeFile(const char *theFile);
 int filterHeaders(const struct dirent *dir);
 int filterOnDats(const struct dirent *dir);
 int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
+unsigned short getDiskSpace(char *dirName);
+unsigned short countFilesInDir(char *dirName);
 
 /* Time stuff */
 void addDay(struct tm *timeinfo);
@@ -50,6 +52,8 @@ int writeGPSSat(GpsSatStruct_t *satPtr, char *filename);
 int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename);
 int writeHk(HkDataStruct_t *hkPtr, char *filename);
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
+int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);
+
 
 // Signal handling routines
 
