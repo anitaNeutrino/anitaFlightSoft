@@ -32,15 +32,16 @@ int setupG12();
 int setupADU5();
 int checkG12();
 int checkADU5A();
-void processG12Output(char *tempBuffer, int length,int setClock);
+void processG12Output(char *tempBuffer, int length,int latestData);
 void processADU5Output(char *tempBuffer, int length);
 int updateClockFromG12(time_t gpsRawTime);
-int breakdownG12TimeString(char *subString,int *hour,int *minute,int *second);
-int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output);
+//int breakdownG12TimeString(char *subString,int *hour,int *minute,int *second);
+//int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output);
 int checkChecksum(char *gpsString,int gpsLength);
 void processGPPATString(char *gpsString, int length);
 void processTTTString(char *gpsString, int gpsLength);
 void processSATString(char *gpsString, int gpsLength);
+void processGPZDAString(char *gpsString, int gpsLength, int latestData);
 
 // Definitions
 #define LEAP_SECONDS 13
@@ -56,7 +57,10 @@ char adu5ADevName[FILENAME_MAX];
 
 // File desciptors for GPS serial ports
 int fdG12,fdAdu5A;//,fdMag
+
+//Output config stuff
 int printToScreen=0;
+int verbosity=0;
 
 // Config stuff for G12
 float g12PPSPeriod=1;
@@ -337,6 +341,7 @@ int readConfigFile()
 
    if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",-1);
+	verbosity=kvpGetInt("verbosity",-1);
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
@@ -350,7 +355,7 @@ int readConfigFile()
 	g12ZDAPeriod=kvpGetInt("zdaPeriod",5); // in seconds
 	g12POSPeriod=kvpGetInt("posPeriod",5); // in seconds
 	g12VTGPeriod=kvpGetInt("vtgPeriod",5); // in seconds
-	g12SATPeriod=kvpGetInt("satPeriod",0); // in seconds
+	g12SATPeriod=kvpGetInt("g12SatPeriod",0); // in seconds
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
 	adu5SatPeriod=kvpGetInt("satPeriod",0);
@@ -428,35 +433,40 @@ int setupG12()
 	ppsEdge=edgeNames[g12PPSRisingOrFalling-1];
 
     strcat(g12Command,"$PASHS,ELM,0\n");
+    strcat(g12Command,"$PASHQ,PRT,A\n");
+    strcat(g12Command,"$PASHQ,PRT,B\n");
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",dataPort);
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",ntpPort);
     strcat(g12Command,tempCommand);
     strcat(g12Command, "$PASHS,LTZ,0,0\n");
     strcat(g12Command, "$PASHS,UTS,ON\n");
-    sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",dataPort,g12ZDAPeriod);    
-    strcat(g12Command,tempCommand); 
-    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%d\n",dataPort,g12POSPeriod);    
-    strcat(g12Command,tempCommand); 
-    sprintf(tempCommand,"$PASHS,NME,VTG,%c,ON,%d\n",dataPort,g12VTGPeriod);    
-    strcat(g12Command,tempCommand); 
-    sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",dataPort,g12SATPeriod);    
-    strcat(g12Command,tempCommand); 
+    sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",dataPort,g12ZDAPeriod);
+    strcat(g12Command,tempCommand);
+    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%d\n",dataPort,g12POSPeriod);
+    strcat(g12Command,tempCommand);
+    sprintf(tempCommand,"$PASHS,NME,VTG,%c,ON,%d\n",dataPort,g12VTGPeriod);
+    strcat(g12Command,tempCommand);
+    sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",dataPort,g12SATPeriod);
+    strcat(g12Command,tempCommand);
  
-    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);    
-    strcat(g12Command,tempCommand);   
-    sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);    
-    strcat(g12Command,tempCommand);     
+    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);
+    strcat(g12Command,tempCommand);
+    sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);
+    strcat(g12Command,tempCommand);
     sprintf(tempCommand, "$PASHS,PPS,%2.2f,%d,%c\n",g12PPSPeriod,
-	    (int)g12PPSOffset,ppsEdge);   
-    strcat(g12Command,tempCommand); 
+	    (int)g12PPSOffset,ppsEdge);
+    strcat(g12Command,tempCommand);
     
     if(printToScreen) 
-	fprintf(stderr,"G12:\n%s\n",g12Command);
+	fprintf(stderr,"G12:\n%s\n%s\n",g12ADevName,g12Command);
     retVal=write(fdG12, g12Command, strlen(g12Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
 	       strerror(errno));
+	fprintf(stderr,"Unable to write to G12 Serial port\n, write: %s",
+	       strerror(errno));
+	
     }
     else {
 	syslog(LOG_INFO,"Sent %d bytes to G12 serial port",retVal);
@@ -468,6 +478,7 @@ int setupG12()
 int checkG12()
 /*! Try to read G12 */
 {
+//    printf("Checking G12\n");
     // Working variables
     char tempData[G12_DATA_SIZE];
     int retVal,i;
@@ -476,17 +487,18 @@ int checkG12()
     static int g12OutputLength=0;
     static int lastStar=-10;
     retVal=isThereDataNow(fdG12);
+    usleep(5);
 //    usleep(1);
 //    printf("Check G12 got retVal %d\n",retVal);
     if(retVal!=1) return 0;
     retVal=read(fdG12, tempData, G12_DATA_SIZE);
-
+    
     if(retVal>0) {
 	for(i=0; i < retVal; i++) {
 	    if(tempData[i]=='*') {
 		lastStar=g12OutputLength;
 	    }
-//	    printf("%c %d %d\n",tempData[i],g12OutputLength,lastStar);
+	    //    printf("%c %d %d\n",tempData[i],g12OutputLength,lastStar);
 	    g12Output[g12OutputLength++]=tempData[i];
 
 	    if(g12OutputLength==lastStar+3) {
@@ -552,25 +564,14 @@ int checkADU5A()
 }
 
 
-void processG12Output(char *tempBuffer, int length,int setClock)
-/* Processes each G12 output string, writes it to file and, if so inclined, sets the clock. */
+void processG12Output(char *tempBuffer, int length,int latestData)
+/* Processes each G12 output string and acts accordingly */
 {
-    char gpsString[G12_DATA_SIZE];
-    char gpsCopy[G12_DATA_SIZE];
+    char gpsString[ADU5_DATA_SIZE];
+    char gpsCopy[ADU5_DATA_SIZE];
     int gpsLength=0;
     int count=0;
-//    char theCheckSum=0;
-    char *subString;
-    int hour,minute,second,subSecond;
-    int day=-1,month=-1,year=-1;
-    int tzHour,tzMin;
-    time_t rawtime,gpsRawTime;
-    struct tm timeinfo;    
-    char unixString[128],otherString[128];
-//    char checksum[3];   
-//    strncpy(gpsString,tempBuffer,length);
-    
-//    printf("%s\n",tempBuffer);
+    char *subString; 
     for(count=0;count<length;count++) {
 	if(gpsLength) gpsString[gpsLength++]=tempBuffer[count];
 	else if(tempBuffer[count]=='$') 
@@ -589,95 +590,87 @@ void processG12Output(char *tempBuffer, int length,int setClock)
 //    printf("%s\n",tempBuffer);
 //    printf("GPS Length %d\n",gpsLength);
 
-    strncpy(gpsCopy,gpsString,G12_DATA_SIZE);
+    strncpy(gpsCopy,gpsString,gpsLength);
     if(printToScreen) printf("G12:\t%s\t%d\n",gpsString,gpsLength);
-
-    /* Should do checksum */
     count=0;
-    subString = strtok (gpsString,",");
-    if(!strcmp(subString,"$GPZDA") && gpsLength==37) {
-//	if(printToScreen) printf("Got GPZDA\n");
-	while (subString != NULL)
-	{
-	    switch(count) {
-		case 1: 
-/* 		    printf("subString: %s\n",subString); */
-		    breakdownG12TimeString(subString,&hour,&minute,&second);
-//		    printf("Length %d\n",strlen(subString));
-		    break;
-		case 2:
-		    subSecond=atoi(subString);
-		    break;
-		case 3:
-		    day=atoi(subString);
-		    break;
-		case 4:
-		    month=atoi(subString);
-		    break;
-		case 5:
-		    year=atoi(subString);
-		    break;
-		case 6:
-		    tzHour=atoi(subString);
-		    break;
-		case 7:
-		    tzMin=atoi(subString);
-		    break;
-		case 8:
-/* 		    checksum[0]=subString[0]; */
-/* 		    checksum[1]=subString[1]; */
-/* 		    checksum[2]='\0';		   */  
-		    break;
-		default: 
-		    break;
-	    }
-// 	    printf ("%d\t%d\t%s\n",count,strlen(subString),subString); 
-	    count++;
-	    subString = strtok (NULL, " ,.*");
-	}
-
-
-	    
-/* 	printf("%02d:%02d:%02d.%02d %02d %02d %02d\n%s\n",hour,minute,second,subSecond,day,month,year,ctime(&rawtime)); */
-	timeinfo.tm_hour=hour;
-	timeinfo.tm_mday=day;
-	timeinfo.tm_min=minute;
-	timeinfo.tm_mon=month-1;
-	timeinfo.tm_sec=second;
-	timeinfo.tm_year=year-1900;
-	gpsRawTime=mktime(&timeinfo);
-	time ( &rawtime );
-// 	printf("%d\t%d\n",rawtime,gpsRawTime); 
-	strncpy(otherString,ctime(&gpsRawTime),179);	    
-	strncpy(unixString,ctime(&rawtime),179);
-//	printf("%s%s\n",unixString,otherString);
-	if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock &&setClock) {
-	    updateClockFromG12(gpsRawTime);
-	}
-//	writeG12TimeFile(rawtime,gpsRawTime,gpsCopy);
-	    
+    subString = strtok (gpsCopy,",");
+    if(!strcmp(subString,"$GPZDA")) {
+//	printf("Got $GPZDA\n");
+	processGPZDAString(gpsString,gpsLength,latestData);
     }
+    else if(!strcmp(subString,"$GPVTG")) {
+//	printf("Got $GPZDA\n");
+//	processGPVTGString(gpsString,gpsLength);
+    }
+    else if(!strcmp(subString,"$PASHR")) {
+	//Maybe have POS
+	subString = strtok (NULL, " ,.*");
+	if(!strcmp(subString,"POS")) {
+//	    printf("Got %s\t",subString);
+	    printf("Got POS\n");
+	    processGPZDAString(gpsString,gpsLength,latestData);
+
+//	    processPOSString(gpsString,gpsLength);
+	}
+	if(!strcmp(subString,"SAT")) {
+	    printf("And got SAT\n");
+//	    processG12SATString(gpsString,gpsLength);
+	}
+	
+    }
+
+
+}
+
+
+void processGPZDAString(char *gpsString, int gpsLength, int latestData) 
+/* Processes each GPZDA output string, writes it to disk and, if so inclined, sets the clock. */
+{    
+    char gpsCopy[G12_DATA_SIZE];
+    char *subString;
+    strncpy(gpsCopy,gpsString,gpsLength);
+    sprintf(gpsCopy,"$GPZDA,222835.10,21,07,1999,-07,00*4D");
+    int hour,minute,second,subSecond;
+    int day=-1,month=-1,year=-1;
+    int tzHour,tzMin;
+    time_t rawtime,gpsRawTime;
+    struct tm timeinfo;    
+    char unixString[128],otherString[128];
+
+
+    subString = strtok (gpsCopy,"*");
+    sscanf(subString,"$GPZDA,%02d%02d%02d.%02d,%02d,%02d,%04d,%02d,%02d",
+	   &hour,&minute,&second,&subSecond,&day,&month,&year,&tzHour,&tzMin);
+    printf("%02d:%02d:%02d.%02d %02d %02d %02d\n%s\n",hour,minute,second,subSecond,day,month,year,ctime(&rawtime)); 
+    timeinfo.tm_hour=hour;
+    timeinfo.tm_mday=day;
+    timeinfo.tm_min=minute;
+    timeinfo.tm_mon=month-1;
+    timeinfo.tm_sec=second;
+    timeinfo.tm_year=year-1900;
+    gpsRawTime=mktime(&timeinfo);
+    time ( &rawtime );
+// 	printf("%d\t%d\n",rawtime,gpsRawTime); 
+    strncpy(otherString,ctime(&gpsRawTime),179);	    
+    strncpy(unixString,ctime(&rawtime),179);
+//	printf("%s%s\n",unixString,otherString);
+    if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock &&latestData) {
+	updateClockFromG12(gpsRawTime);
+    }
+
+    //Need to output data to file somehow
 
 }
 
 
 void processADU5Output(char *tempBuffer, int length)
-/* Processes each ADU5 output string, writes it to file and, if so inclined, sets the clock. */
+/* Processes each ADU5 output string and acts accordingly */
 {
     char gpsString[ADU5_DATA_SIZE];
     char gpsCopy[ADU5_DATA_SIZE];
     int gpsLength=0;
     int count=0;
-//    char theCheckSum=0;
     char *subString; 
-/*     int hour,minute,second,subSecond; */
-/*     int day=-1,month=-1,year=-1; */
-/*     int tzHour,tzMin; */
-/*     time_t rawtime,gpsRawTime; */
-/*     struct tm timeinfo;     */
-//    char checksum[3];   
-//    strncpy(gpsString,tempBuffer,length);
-
     for(count=0;count<length;count++) {
 	if(gpsLength) gpsString[gpsLength++]=tempBuffer[count];
 	else if(tempBuffer[count]=='$') 
@@ -1020,27 +1013,27 @@ int updateClockFromG12(time_t gpsRawTime)
 }
 
 
-int breakdownG12TimeString(char *subString, int *hour, int *minute, int *second) 
-/*!Splits up the time string into hours, minutes and seconds*/
-{
+/* int breakdownG12TimeString(char *subString, int *hour, int *minute, int *second)  */
+/* /\*!Splits up the time string into hours, minutes and seconds*\/ */
+/* { */
 
-    char hourStr[3],minuteStr[3],secondStr[3];
+/*     char hourStr[3],minuteStr[3],secondStr[3]; */
     
-    hourStr[0]=subString[0];
-    hourStr[1]=subString[1];
-    hourStr[2]='\0';
-    minuteStr[0]=subString[2];
-    minuteStr[1]=subString[3];
-    minuteStr[2]='\0';
-    secondStr[0]=subString[4];
-    secondStr[1]=subString[5];
-    secondStr[2]='\0';
+/*     hourStr[0]=subString[0]; */
+/*     hourStr[1]=subString[1]; */
+/*     hourStr[2]='\0'; */
+/*     minuteStr[0]=subString[2]; */
+/*     minuteStr[1]=subString[3]; */
+/*     minuteStr[2]='\0'; */
+/*     secondStr[0]=subString[4]; */
+/*     secondStr[1]=subString[5]; */
+/*     secondStr[2]='\0'; */
     
-    *hour=atoi(hourStr);
-    *minute=atoi(minuteStr);
-    *second=atoi(secondStr);    
-    return 0;
-}
+/*     *hour=atoi(hourStr); */
+/*     *minute=atoi(minuteStr); */
+/*     *second=atoi(secondStr);     */
+/*     return 0; */
+/* } */
 
 
 
@@ -1076,7 +1069,7 @@ int setupADU5()
     strcat(adu5Command,"$PASHQ,PRT\r\n");
     strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
 
-    if(printToScreen) printf("%s\n",adu5Command);
+    if(printToScreen) printf("ADU5:\n%s\n%s\n",adu5ADevName,adu5Command);
     retVal=write(fdAdu5A, adu5Command, strlen(adu5Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to ADU5 Serial port\n, write: %s",
