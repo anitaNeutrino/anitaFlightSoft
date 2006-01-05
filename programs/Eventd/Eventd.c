@@ -40,6 +40,7 @@ char acqdEventDir[FILENAME_MAX];
 char eventdEventDir[FILENAME_MAX];
 char eventdEventLinkDir[FILENAME_MAX];
 char calibdLinkDir[FILENAME_MAX];
+char calibdStatusDir[FILENAME_MAX];
 char gpsdSubTimeLinkDir[FILENAME_MAX];
 char gpsdSubTimeDir[FILENAME_MAX];
 
@@ -102,53 +103,41 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("gpsdSubTimeDir");
 	if(tempString) {
 	    strncpy(gpsdSubTimeDir,tempString,FILENAME_MAX-1);
+	    strncpy(gpsdSubTimeLinkDir,tempString,FILENAME_MAX-1);
+	    strcat(gpsdSubTimeLinkDir,"/link");
+	    makeDirectories(gpsdSubTimeLinkDir);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get gpsdSubTimeDir");
 	}
-	tempString=kvpGetString("gpsdSubTimeLinkDir");
-	if(tempString) {
-	    strncpy(gpsdSubTimeLinkDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSubTimeLinkDir");
-	}
 	tempString=kvpGetString("acqdEventDir");
 	if(tempString) {
 	    strncpy(acqdEventDir,tempString,FILENAME_MAX-1);
+	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);
+	    strcat(acqdEventLinkDir,"/link");
+	    makeDirectories(acqdEventLinkDir);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get acqdEventDir");
 	}
-	tempString=kvpGetString("acqdEventLinkDir");
-	if(tempString) {
-	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get acqdEventLinkDir");
-	}
 	tempString=kvpGetString("eventdEventDir");
 	if(tempString) {
 	    strncpy(eventdEventDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(eventdEventDir);
+	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
+	    strcat(eventdEventLinkDir,"/link");
+	    makeDirectories(eventdEventLinkDir);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get eventdEventDir");
 	}
-	tempString=kvpGetString("eventdEventLinkDir");
+	tempString=kvpGetString("calibdStatusDir");
 	if(tempString) {
-	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(eventdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventdEventLinkDir");
-	}
-	tempString=kvpGetString("calibdLinkDir");
-	if(tempString) {
+	    strncpy(calibdStatusDir,tempString,FILENAME_MAX-1);
 	    strncpy(calibdLinkDir,tempString,FILENAME_MAX-1);
+	    strcat(calibdLinkDir,"/link");
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get calibdLinkDir");
+	    syslog(LOG_ERR,"Couldn't get calibdStatusDir");
 	}
     }
     
@@ -357,24 +346,31 @@ int getCalibStatus(int unixTime)
     int numCalibLinks=getListofLinks(calibdLinkDir,&calibList);
     int count;
     char currentFilename[FILENAME_MAX];
+    char otherFilename[FILENAME_MAX];
     int currentStatus=0, gotStatus=0;
 
     if(numCalibLinks>1 || (numCalibLinks>0 && numStored==0)) {
 	/* Read out calib status, and delete all but the most recent link */
 	for(count=0;count<numCalibLinks;count++) {
 	    sprintf(currentFilename,"%s/%s",calibdLinkDir,
-		    calibList[count]->d_name);	    
+		    calibList[count]->d_name);	
+	    sprintf(otherFilename,"%s/%s",calibdStatusDir,
+		    calibList[count]->d_name);	       
 	    if(count==0) {
 		if(numStored==0) {
 		    fillCalibStruct(&calibArray[numStored],currentFilename); 
 		    numStored++;
 		}
 		removeFile(currentFilename);
+		removeFile(otherFilename);
 	    }
 	    else {
 		fillCalibStruct(&calibArray[numStored],currentFilename); 
 		numStored++;
-		if(count!=(numCalibLinks-1)) removeFile(currentFilename);
+		if(count!=(numCalibLinks-1)) {
+		    removeFile(currentFilename);
+		    removeFile(otherFilename);
+		}
 	    }
 	}
     }

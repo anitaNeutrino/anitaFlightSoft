@@ -62,12 +62,11 @@ int printToScreen=0;
 float g12PPSPeriod=1;
 float g12PPSOffset=0.05;
 int g12PPSRisingOrFalling=1; //1 is R, 2 is F
-int g12ZDAPort=1;
-int g12NTPPort=1;
-int g12POSPort=1;
-int g12SATPort=1;
+int g12DataPort=1;
+int g12NTPPort=2;
 int g12ZDAPeriod=5;
 int g12POSPeriod=10;
+int g12VTGPeriod=10;
 int g12SATPeriod=60;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
@@ -81,17 +80,27 @@ float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
 
 //Output stuff
+int useUSBDisks=0;
+char mainDataDisk[FILENAME_MAX];
+char usbDataDiskLink[FILENAME_MAX];
+char baseHouseTelemDir[FILENAME_MAX];
+char baseHouseArchiveDir[FILENAME_MAX];
 char gpsdG12LogDir[FILENAME_MAX];
-char gpsdSipdDir[FILENAME_MAX];
-char gpsdSipdLinkDir[FILENAME_MAX];
-char gpsdSubTimeDir[FILENAME_MAX];
-char gpsdSubTimeLinkDir[FILENAME_MAX];
-char gpsdAdu5TTTArchiveDir[FILENAME_MAX];
-char gpsdAdu5TTTArchiveLinkDir[FILENAME_MAX];
-char gpsdAdu5PATArchiveDir[FILENAME_MAX];
-char gpsdAdu5PATArchiveLinkDir[FILENAME_MAX];
-char gpsdAdu5SATArchiveDir[FILENAME_MAX];
-char gpsdAdu5SATArchiveLinkDir[FILENAME_MAX];
+char gpsTelemDir[FILENAME_MAX];
+char gpsTelemLinkDir[FILENAME_MAX];
+char gpsSubTimeDir[FILENAME_MAX];
+char gpsSubTimeLinkDir[FILENAME_MAX];
+
+char gpsAdu5TTTArchiveDir[FILENAME_MAX];
+char gpsAdu5PATArchiveDir[FILENAME_MAX];
+char gpsAdu5SATArchiveDir[FILENAME_MAX];
+char gpsG12POSArchiveDir[FILENAME_MAX];
+char gpsG12VTGArchiveDir[FILENAME_MAX];
+char gpsAdu5TTTUSBArchiveDir[FILENAME_MAX];
+char gpsAdu5PATUSBArchiveDir[FILENAME_MAX];
+char gpsAdu5SATUSBArchiveDir[FILENAME_MAX];
+char gpsG12POSUSBArchiveDir[FILENAME_MAX];
+char gpsG12VTGUSBArchiveDir[FILENAME_MAX];
 
 
 int main (int argc, char *argv[])
@@ -100,6 +109,7 @@ int main (int argc, char *argv[])
 
 // GPSd config stuff
     char gpsdPidFile[FILENAME_MAX];
+
     char *tempString;
     /* Config file thingies */
     int status=0;
@@ -125,6 +135,7 @@ int main (int argc, char *argv[])
 
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
+	useUSBDisks=kvpGetInt("useUSBDisks",0);
 	tempString=kvpGetString("gpsdPidFile");
 	if(tempString) {
 	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
@@ -166,112 +177,111 @@ int main (int argc, char *argv[])
 /* 	    syslog(LOG_ERR,"Couldn't get adu5BDevName"); */
 /* 	    fprintf(stderr,"Couldn't get adu5BDevName\n"); */
 /* 	} */
-	tempString=kvpGetString("gpsdG12LogDir");
-	if(tempString) {
-	    strncpy(gpsdG12LogDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdG12LogDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdG12LogDir");
-	    fprintf(stderr,"Couldn't get gpsdG12LogDir\n");
-	}
 ///////////////////////////////////////
-	tempString=kvpGetString("gpsdSipdDir");
+	
+	//Disk locations
+	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
-	    strncpy(gpsdSipdDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdSipdDir);
+	    strncpy(mainDataDisk,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSipdDir");
-	    fprintf(stderr,"Couldn't get gpsdSipdDir\n");
-	}
-	tempString=kvpGetString("gpsdSipdLinkDir");
+	    syslog(LOG_ERR,"Couldn't get mainDataDisk");
+	    fprintf(stderr,"Couldn't get mainDataDisk\n");
+	}	
+	tempString=kvpGetString("usbDataDiskLink");
 	if(tempString) {
-	    strncpy(gpsdSipdLinkDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdSipdLinkDir);
+	    strncpy(usbDataDiskLink,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSipdLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdSipdLinkDir\n");
-	}
-	tempString=kvpGetString("gpsdSubTimeDir");
+	    syslog(LOG_ERR,"Couldn't get usbDataDiskLink");
+	    fprintf(stderr,"Couldn't get usbDataDiskLink\n");
+	}	
+
+	//Data locations
+	tempString=kvpGetString("baseHouseTelemDir");
 	if(tempString) {
-	    strncpy(gpsdSubTimeDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdSubTimeDir);
+	    strncpy(baseHouseTelemDir,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSubTimeDir");
-	    fprintf(stderr,"Couldn't get gpsdSubTimeDir\n");
-	}
-	tempString=kvpGetString("gpsdSubTimeLinkDir");
+	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
+	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
+	}	
+	tempString=kvpGetString("baseHouseArchiveDir");
 	if(tempString) {
-	    strncpy(gpsdSubTimeLinkDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdSubTimeLinkDir);
+	    strncpy(baseHouseArchiveDir,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSubTimeLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdSubTimeLinkDir\n");
+	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");
+	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
 	}
-	tempString=kvpGetString("gpsdAdu5TTTArchiveDir");
+
+	tempString=kvpGetString("gpsTelemSubDir");
 	if(tempString) {
-	    strncpy(gpsdAdu5TTTArchiveDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdAdu5TTTArchiveDir);
+	    sprintf(gpsTelemDir,"%s/%s",baseHouseTelemDir,tempString);
+	    sprintf(gpsTelemLinkDir,"%s/%s/link",baseHouseTelemDir,tempString);
+	    makeDirectories(gpsTelemLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5TTTArchiveDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5TTTArchiveDir\n");
+	    syslog(LOG_ERR,"Couldn't get gpsTelemDir");
+	    fprintf(stderr,"Couldn't get gpsTelemDir\n");
 	}
-	tempString=kvpGetString("gpsdAdu5TTTArchiveLinkDir");
+	tempString=kvpGetString("gpsSubTimeDir");
 	if(tempString) {
-	    strncpy(gpsdAdu5TTTArchiveLinkDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdAdu5TTTArchiveLinkDir);
+	    strncpy(gpsSubTimeDir,tempString,FILENAME_MAX);
+	    strncpy(gpsSubTimeLinkDir,tempString,FILENAME_MAX);
+	    strcat(gpsSubTimeLinkDir,"/link");
+	    makeDirectories(gpsSubTimeLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5TTTArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5TTTArchiveLinkDir\n");
+	    syslog(LOG_ERR,"Couldn't get gpsSubTimeDir");
+	    fprintf(stderr,"Couldn't get gpsSubTimeDir\n");
 	}
-	tempString=kvpGetString("gpsdAdu5PATArchiveDir");
+	tempString=kvpGetString("gpsArchiveSubDir");
 	if(tempString) {
-	    strncpy(gpsdAdu5PATArchiveDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdAdu5PATArchiveDir);
+	    sprintf(gpsAdu5PATArchiveDir,"%s/%s/%s/adu5/pat",
+		    mainDataDisk,baseHouseArchiveDir,tempString);
+	    sprintf(gpsAdu5SATArchiveDir,"%s/%s/%s/adu5/sat",
+		    mainDataDisk,baseHouseArchiveDir,tempString);
+	    sprintf(gpsAdu5TTTArchiveDir,"%s/%s/%s/adu5/ttt",
+		    mainDataDisk,baseHouseArchiveDir,tempString);
+	    sprintf(gpsG12POSArchiveDir,"%s/%s/%s/g12/pos",
+		    mainDataDisk,baseHouseArchiveDir,tempString);
+	    sprintf(gpsG12VTGArchiveDir,"%s/%s/%s/g12/vtg",
+		    mainDataDisk,baseHouseArchiveDir,tempString);
+
+	    makeDirectories(gpsAdu5PATArchiveDir);
+	    makeDirectories(gpsAdu5SATArchiveDir);
+	    makeDirectories(gpsAdu5TTTArchiveDir);
+	    makeDirectories(gpsG12POSArchiveDir);
+	    makeDirectories(gpsG12VTGArchiveDir);
+
+	    if(useUSBDisks) {
+		sprintf(gpsAdu5PATUSBArchiveDir,"%s/%s/%s/adu5/pat/link",
+			usbDataDiskLink,baseHouseArchiveDir,tempString);
+		sprintf(gpsAdu5SATUSBArchiveDir,"%s/%s/%s/adu5/sat/link",
+		    usbDataDiskLink,baseHouseArchiveDir,tempString);
+		sprintf(gpsAdu5TTTUSBArchiveDir,"%s/%s/%s/adu5/ttt/link",
+			usbDataDiskLink,baseHouseArchiveDir,tempString);
+		sprintf(gpsG12POSUSBArchiveDir,"%s/%s/%s/g12/pos/link",
+			usbDataDiskLink,baseHouseArchiveDir,tempString);
+		sprintf(gpsG12VTGUSBArchiveDir,"%s/%s/%s/g12/vtg/link",
+			usbDataDiskLink,baseHouseArchiveDir,tempString);
+		
+		
+		makeDirectories(gpsAdu5PATUSBArchiveDir);
+		makeDirectories(gpsAdu5SATUSBArchiveDir);
+		makeDirectories(gpsAdu5TTTUSBArchiveDir);
+		makeDirectories(gpsG12POSUSBArchiveDir);
+		makeDirectories(gpsG12VTGUSBArchiveDir);
+	    }
+
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5PATArchiveDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5PATArchiveDir\n");
-	}
-	tempString=kvpGetString("gpsdAdu5PATArchiveLinkDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5PATArchiveLinkDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdAdu5PATArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5PATArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5PATArchiveLinkDir\n");
-	}
-	tempString=kvpGetString("gpsdAdu5SATArchiveDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5SATArchiveDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdAdu5SATArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5SATArchiveDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5SATArchiveDir\n");
-	}
-	tempString=kvpGetString("gpsdAdu5SATArchiveLinkDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5SATArchiveLinkDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdAdu5SATArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5SATArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5SATArchiveLinkDir\n");
+	    syslog(LOG_ERR,"Couldn't get gpsArchiveSubDir");
+	    fprintf(stderr,"Couldn't get gpsArchiveSubDir\n");
 	}
 
     }
-    makeDirectories(gpsdSipdDir);
-    makeDirectories(gpsdSipdLinkDir);
-    makeDirectories(gpsdSubTimeDir);
-    makeDirectories(gpsdSubTimeLinkDir);
     
     retVal=readConfigFile();
     if(retVal<0) {
@@ -335,9 +345,12 @@ int readConfigFile()
 	g12PPSPeriod=kvpGetFloat("ppsPeriod",1); //in seconds
 	g12PPSOffset=kvpGetFloat("ppsOffset",0.05); //in seconds 
 	g12PPSRisingOrFalling=kvpGetInt("ppsRorF",1); //1 is 'R', 2 is 'F'
-	g12ZDAPort=kvpGetInt("zdaPort",1); //1 is 'A', 2 is 'B'
+	g12DataPort=kvpGetInt("dataPort",1); //1 is 'A', 2 is 'B'
 	g12NTPPort=kvpGetInt("ntpPort",2); //1 is 'A', 2 is 'B'
 	g12ZDAPeriod=kvpGetInt("zdaPeriod",5); // in seconds
+	g12POSPeriod=kvpGetInt("posPeriod",5); // in seconds
+	g12VTGPeriod=kvpGetInt("vtgPeriod",5); // in seconds
+	g12SATPeriod=kvpGetInt("satPeriod",0); // in seconds
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
 	adu5SatPeriod=kvpGetInt("satPeriod",0);
@@ -404,33 +417,32 @@ int setupG12()
     char edgeNames[2]={'R','F'};
     char g12Command[256]="";
     char tempCommand[128]="";
-    char zdaPort='A';
-    char posPort='A';
-    char satPort='A';
+    char dataPort='A';
     char ntpPort='B';
     char ppsEdge='R';
     int retVal;
 
     if(g12NTPPort==1 || g12NTPPort==2) ntpPort=portNames[g12NTPPort-1];
-    if(g12ZDAPort==1 || g12ZDAPort==2) zdaPort=portNames[g12ZDAPort-1];
-    if(g12POSPort==1 || g12POSPort==2) posPort=portNames[g12POSPort-1];
-    if(g12SATPort==1 || g12SATPort==2) satPort=portNames[g12SATPort-1];
+    if(g12DataPort==1 || g12DataPort==2) dataPort=portNames[g12DataPort-1];
     if(g12PPSRisingOrFalling==1 || g12PPSRisingOrFalling==2)
 	ppsEdge=edgeNames[g12PPSRisingOrFalling-1];
 
     strcat(g12Command,"$PASHS,ELM,0\n");
-    sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",zdaPort);
+    sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",dataPort);
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",ntpPort);
     strcat(g12Command,tempCommand);
     strcat(g12Command, "$PASHS,LTZ,0,0\n");
     strcat(g12Command, "$PASHS,UTS,ON\n");
-    sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",zdaPort,g12ZDAPeriod);    
+    sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",dataPort,g12ZDAPeriod);    
     strcat(g12Command,tempCommand); 
-//    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%d\n",posPort,g12POSPeriod);    
-//    strcat(g12Command,tempCommand); 
-//    sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",satPort,g12SATPeriod);    
-//    strcat(g12Command,tempCommand); 
+    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%d\n",dataPort,g12POSPeriod);    
+    strcat(g12Command,tempCommand); 
+    sprintf(tempCommand,"$PASHS,NME,VTG,%c,ON,%d\n",dataPort,g12VTGPeriod);    
+    strcat(g12Command,tempCommand); 
+    sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",dataPort,g12SATPeriod);    
+    strcat(g12Command,tempCommand); 
+ 
     sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);    
     strcat(g12Command,tempCommand);   
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);    
@@ -747,14 +759,20 @@ void processTTTString(char *gpsString, int gpsLength) {
     theTTT.subTime=subSecond;
     
     //Write file for eventd
-    sprintf(filename,"%s/gps_%ld_%d.dat",gpsdSubTimeDir,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%ld_%d.dat",gpsSubTimeDir,theTTT.unixTime,theTTT.subTime);
     writeGPSTTT(&theTTT,filename);
-    retVal=makeLink(filename,gpsdSubTimeLinkDir);  
+    retVal=makeLink(filename,gpsSubTimeLinkDir);  
 
-    //Write file for archived
-    sprintf(filename,"%s/gps_%ld_%d.dat",gpsdAdu5TTTArchiveDir,theTTT.unixTime,theTTT.subTime);
+    //Write file to main disk
+    sprintf(filename,"%s/gps_%ld_%d.dat",gpsAdu5TTTArchiveDir,theTTT.unixTime,theTTT.subTime);
     writeGPSTTT(&theTTT,filename);
-    retVal=makeLink(filename,gpsdAdu5TTTArchiveLinkDir);  
+    
+    if(useUSBDisks) {
+	//Write file to usb disk
+	sprintf(filename,"%s/gps_%ld_%d.dat",gpsAdu5TTTUSBArchiveDir,theTTT.unixTime,theTTT.subTime);
+	writeGPSTTT(&theTTT,filename);
+    }
+    
     
 
 }
@@ -818,14 +836,23 @@ void processSATString(char *gpsString, int gpsLength) {
 
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/sat_%ld.dat",gpsdSipdDir,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%ld.dat",gpsTelemDir,theSat.unixTime);
     retVal=writeGPSSat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,gpsdSipdLinkDir);  
+    retVal=makeLink(theFilename,gpsTelemLinkDir);  
 
-    //Write file and link for archived
-    sprintf(theFilename,"%s/sat_%ld.dat",gpsdAdu5SATArchiveDir,theSat.unixTime);
+    //Write file to main disk
+    sprintf(theFilename,"%s/sat_%ld.dat",gpsAdu5SATArchiveDir,theSat.unixTime);
     retVal=writeGPSSat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,gpsdAdu5SATArchiveLinkDir);  
+    
+    if(useUSBDisks) {
+	//Write file to usb disk
+	sprintf(theFilename,"%s/sat_%ld.dat",
+		gpsAdu5SATUSBArchiveDir,theSat.unixTime);
+	retVal=writeGPSSat(&theSat,theFilename); 
+
+    }
+
+
 }
 
 
@@ -955,14 +982,20 @@ void processGPPATString(char *gpsString, int gpsLength) {
     int retVal;
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld.dat",gpsdSipdDir,thePat.unixTime);
+    sprintf(theFilename,"%s/pat_%ld.dat",gpsTelemDir,thePat.unixTime);
     retVal=writeGPSPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,gpsdSipdLinkDir);  
+    retVal=makeLink(theFilename,gpsTelemLinkDir);  
 
-    //Write file and link for archived
-    sprintf(theFilename,"%s/pat_%ld.dat",gpsdAdu5PATArchiveDir,thePat.unixTime);
+    //Write file to main disk
+    sprintf(theFilename,"%s/pat_%ld.dat",gpsAdu5PATArchiveDir,thePat.unixTime);
     retVal=writeGPSPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,gpsdAdu5PATArchiveLinkDir);  
+
+    if(useUSBDisks) {
+	sprintf(theFilename,"%s/pat_%ld.dat",
+		gpsAdu5PATUSBArchiveDir,thePat.unixTime);
+	retVal=writeGPSPat(&thePat,theFilename);  
+    }
+
 
     
 }
@@ -1009,38 +1042,7 @@ int breakdownG12TimeString(char *subString, int *hour, int *minute, int *second)
     return 0;
 }
 
-int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output)
-/*!
-  Keeps a permanent on-board record of the time from the GPS unit
-*/
-{
-    int retVal;
-    static int firstTime=1;
-    static char logFileName[FILENAME_MAX];
-    FILE *fpG12;
-    
-//    printf("%ld\n",compTime);
-//    printf("%ld\n",gpsTime);
-//    printf("%s\n",g12Output);
 
-    if(firstTime) {
-	sprintf(logFileName,"%s/g12Times.%ld",gpsdG12LogDir,compTime);
-	if(printToScreen) printf("G12 Log File%s\n",logFileName);
-	firstTime=0;
-    }
-
-    fpG12 = fopen(logFileName,"wat");
-    if(fpG12<0) {
-	syslog(LOG_ERR,"Error writing to g12 log file: %s",strerror(errno));
-	if(printToScreen) 
-	    fprintf(stderr,"Error writing to g12 log file");
-    }
-//    printf("%ld %ld %s\n",compTime,gpsTime,g12Output);
-    retVal=fprintf(fpG12,"%ld %ld %s\n",compTime,gpsTime,g12Output); 
-//    printf(
-    fclose(fpG12); 
-    return retVal;
-}
 
 
 int setupADU5()

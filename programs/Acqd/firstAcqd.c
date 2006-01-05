@@ -743,18 +743,13 @@ int readConfigFile()
 	tempString=kvpGetString ("acqdEventDir");
 	if(tempString) {
 	   strncpy(acqdEventDir,tempString,FILENAME_MAX-1);	   
-	   makeDirectories(acqdEventDir);
+	   strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);	   
+	   strcat(acqdEventLinkDir,"/link");
+	   makeDirectories(acqdEventLinkDir);
 	}
 	else
 	    fprintf(stderr,"Couldn't fetch acqdEventDir\n");
 //	printf("%s\n",acqdEventDir);
-	tempString=kvpGetString ("acqdEventLinkDir");
-	if(tempString) {
-	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(acqdEventLinkDir);
-	}
-	else
-	    fprintf(stderr,"Coudn't fetch acqdEventLinkDir\n");
 	tempString=kvpGetString ("lastEventNumberFile");
 	if(tempString)
 	    strncpy(lastEventNumberFile,tempString,FILENAME_MAX-1);
