@@ -87,10 +87,12 @@ SBSTemperatureDataStruct_t sbsData;
 
 /* Configurable thingummies */
 //char carrierDevName[FILENAME_MAX];
-char hkdSipdDir[FILENAME_MAX];
-char hkdSipdLinkDir[FILENAME_MAX];
+int useUSBDisks=0;
+
+char hkTelemDir[FILENAME_MAX];
+char hkTelemLinkDir[FILENAME_MAX];
 char hkdArchiveDir[FILENAME_MAX];
-char hkdArchiveLinkDir[FILENAME_MAX];
+char hkdUSBArchiveDir[FILENAME_MAX];
 int ip320Ranges[NUM_IP320_BOARDS];
 int printToScreen;
 int readoutPeriod;
@@ -133,6 +135,7 @@ int main (int argc, char *argv[])
 
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
+	useUSBDisks=kvpGetInt("useUSBDisks",0);
 	tempString=kvpGetString("hkdPidFile");
 	if(tempString) {
 	    strncpy(hkdPidFile,tempString,FILENAME_MAX-1);
@@ -149,46 +152,69 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Error getting magentometerDevName");
 	    fprintf(stderr,"Error getting magentometerDevName\n");
-	}	    
-	tempString=kvpGetString("hkdSipdDir");
+	}	  
+
+	
+	tempString=kvpGetString("baseHouseTelemDir");
 	if(tempString) {
-	    strncpy(hkdSipdDir,tempString,FILENAME_MAX-1);	    
-	    makeDirectories(hkdSipdDir);
+	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting hkdSipdDir");
-	    fprintf(stderr,"Error getting hkdSipdDir\n");
+	    syslog(LOG_ERR,"Error baseHouseTelemDir");
+	    fprintf(stderr,"Error baseHouseTelemDir\n");
 	}
-	tempString=kvpGetString("hkdSipdLinkDir");
+	tempString=kvpGetString("hkTelemSubDir");
 	if(tempString) {
-	    strncpy(hkdSipdLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(hkdSipdLinkDir);
+	    sprintf(hkTelemDir,"%s/%s",hkTelemDir,tempString);
+	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
+	    makeDirectories(hkTelemLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting hkdSipdLinkDir");
-	    fprintf(stderr,"Error getting hkdSipdLinkDir\n");
-	}	    
-	tempString=kvpGetString("hkdArchiveDir");
+	    syslog(LOG_ERR,"Error getting hkTelemSubDir");
+	    fprintf(stderr,"Error getting hkTelemSubDir\n");
+	}
+
+	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
-	    strncpy(hkdArchiveDir,tempString,FILENAME_MAX-1);	    
+	    strncpy(hkdArchiveDir,tempString,FILENAME_MAX-1);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting mainDataDisk");
+	    fprintf(stderr,"Error getting mainDataDisk\n");
+	}
+	tempString=kvpGetString("usbDataDiskLink");
+	if(tempString) {
+	    strncpy(hkdUSBArchiveDir,tempString,FILENAME_MAX-1);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting usbDataDiskLink");
+	    fprintf(stderr,"Error getting usbDataDiskLink\n");
+	}
+	    
+	    
+	tempString=kvpGetString("baseHouseArchiveDir");
+	if(tempString) {
+	    sprintf(hkdArchiveDir,"%s/%s/",hkdArchiveDir,tempString);
+	    sprintf(hkdUSBArchiveDir,"%s/%s/",hkdUSBArchiveDir,tempString);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
+	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
+	}	    
+	tempString=kvpGetString("hkArchiveSubDir");
+	if(tempString) {
+	    strcat(hkdArchiveDir,tempString);
+	    strcat(hkdUSBArchiveDir,tempString);
 	    makeDirectories(hkdArchiveDir);
+	    if(useUSBDisks) makeDirectories(hkdUSBArchiveDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting hkdArchiveDir");
-	    fprintf(stderr,"Error getting hkdArchiveDir\n");
-	}	    
-	tempString=kvpGetString("hkdArchiveLinkDir");
-	if(tempString) {
-	    strncpy(hkdArchiveLinkDir,tempString,FILENAME_MAX-1);	    
-	    makeDirectories(hkdArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting hkdArchiveLinkDir");
-	    fprintf(stderr,"Error getting hkdArchiveLinkDir\n");
+	    syslog(LOG_ERR,"Error getting hkArchiveSubDir");
+	    fprintf(stderr,"Error getting hkArchiveSubDir\n");
 	}
 	    
     }
-//    printf("%s",hkdSipdLinkDir
+//    printf("%s",hkTelemLinkDir
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;
     calDataStruct.code=IP320_CAL;
@@ -514,15 +540,19 @@ int outputData(AnalogueCode_t code)
     if(printToScreen) printf("%s\n",theFilename);
     
     //Write file and make link for SIPd
-    sprintf(fullFilename,"%s/%s",hkdSipdDir,theFilename);
+    sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,hkdSipdLinkDir);      
+    retVal+=makeLink(fullFilename,hkTelemLinkDir);      
 
-//Write file and make link for Archived
+//Write file to mainDataDisk
     sprintf(fullFilename,"%s/%s",hkdArchiveDir,theFilename);
-    retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,hkdArchiveLinkDir);      
+    retVal+=writeHk(&theHkData,fullFilename);     
 
+    if(useUSBDisks) {	
+	// Write file to usb disk
+	sprintf(fullFilename,"%s/%s",hkdUSBArchiveDir,theFilename);
+	retVal+=writeHk(&theHkData,fullFilename); 
+    }
     return retVal;
 }
 

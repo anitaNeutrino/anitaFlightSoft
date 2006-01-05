@@ -100,8 +100,8 @@ typedef struct {
     short numChannels;  /* In case we turn part of array off, or whatever. */
     short numSamples;   /* total number of samples per waveform == 256*/
     char calibStatus;   /* Were we flashing the pulser? */
-    TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
     char priority;
+    TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
 } AnitaEventHeader_t;
 
 typedef struct {

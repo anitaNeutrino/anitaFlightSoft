@@ -39,7 +39,7 @@ typedef struct {
 
 /* Function Definitions */
 
-void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr); 
+void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr); 
 
 /* int setPriority(AnitaEventHeader_t *headerPtr, AnitaEventBody_t *bodyPtr); */
 /* void convertToVoltageAndGetStats(AnitaEventBody_t *bodyPtr, event_volts *voltsPtr, double means[], double rmss[], int peakBins[], int trigPeakBins[], int trigBin, int trigHalfWindow); */
@@ -51,14 +51,17 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
 
 
 /* Directories and gubbins */
+int useUSBDisks=0;
+int maxEventsPerDir=1000;
 char eventdEventDir[FILENAME_MAX];
 char eventdEventLinkDir[FILENAME_MAX];
-char prioritizerdSipdHdDir[FILENAME_MAX];
-char prioritizerdSipdHdLinkDir[FILENAME_MAX];
-char prioritizerdSipdWvDir[FILENAME_MAX];
-char prioritizerdSipdWvLinkDir[FILENAME_MAX];
-char prioritizerdArchiveDir[FILENAME_MAX];
-char prioritizerdArchiveLinkDir[FILENAME_MAX];
+char headerTelemDir[FILENAME_MAX];
+char headerTelemLinkDir[FILENAME_MAX];
+char eventTelemDir[NUM_PRIORITIES][FILENAME_MAX]; 
+char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX]; 
+
+char eventArchiveDir[FILENAME_MAX];
+char eventUSBArchiveDir[FILENAME_MAX];
 char prioritizerdPidFile[FILENAME_MAX];
 
 int main (int argc, char *argv[])
@@ -67,11 +70,12 @@ int main (int argc, char *argv[])
     char linkFilename[FILENAME_MAX];
     char hdFilename[FILENAME_MAX];
     char bodyFilename[FILENAME_MAX];
-    char sipdHdFilename[FILENAME_MAX];
-    char archivedHdFilename[FILENAME_MAX];
+    char telemHdFilename[FILENAME_MAX];
+    char archiveHdFilename[FILENAME_MAX];
+    char archiveBodyFilename[FILENAME_MAX];
 
     char *tempString;
-//    int priority;
+    int priority;
 //    float probWriteOut9=0.03; /* Will become a config file thingy */
 
     /* Config file thingies */
@@ -100,6 +104,8 @@ int main (int argc, char *argv[])
 /*     eString = configErrorString (status) ; */
 
     if (status == CONFIG_E_OK) {
+	useUSBDisks=kvpGetInt("useUSBDisks",0);
+	maxEventsPerDir=kvpGetInt("maxEventsPerDir",1000);
 	tempString=kvpGetString("prioritizerdPidFile");
 	if(tempString) {
 	    strncpy(prioritizerdPidFile,tempString,FILENAME_MAX-1);
@@ -112,75 +118,67 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("eventdEventDir");
 	if(tempString) {
 	    strncpy(eventdEventDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(eventdEventDir);
+	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
+	    strcat(eventdEventLinkDir,"/link");
+	    makeDirectories(eventdEventLinkDir);
 	}
 	else {
 	    syslog(LOG_ERR,"Error getting eventdEventDir");
 	    fprintf(stderr,"Error getting eventdEventDir\n");
 	}
-	tempString=kvpGetString("eventdEventLinkDir");
+	tempString=kvpGetString("baseEventTelemDir");
 	if(tempString) {
-	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(eventdEventLinkDir);
+	    for(priority=0;priority<NUM_PRIORITIES;priority++) {
+		sprintf(eventTelemDir[priority],
+			"%s/pri%d",tempString,priority);
+		sprintf(eventTelemLinkDir[priority],
+			"%s/pri%d/link",tempString,priority);
+		makeDirectories(eventTelemLinkDir[priority]);
+	    }
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting eventdEventLinkDir");
-	    fprintf(stderr,"Error getting eventdEventLinkDir\n");
+	    syslog(LOG_ERR,"Error getting baseEventTelemDir");
+	    fprintf(stderr,"Error getting baseEventTelemDir\n");
 	}
-	tempString=kvpGetString("prioritizerdSipdHdDir");
+	tempString=kvpGetString("headerTelemDir");
 	if(tempString) {
-	    strncpy(prioritizerdSipdHdDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdHdDir);
+	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(headerTelemLinkDir,tempString,FILENAME_MAX-1);
+	    strcat(headerTelemLinkDir,"/link");
+	    makeDirectories(headerTelemLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdHdDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdHdDir\n");
+	    syslog(LOG_ERR,"Error getting headerTelemDir");
+	    fprintf(stderr,"Error getting headerTelemDir\n");
 	}
-	tempString=kvpGetString("prioritizerdSipdHdLinkDir");
-	if(tempString) {
-	    strncpy(prioritizerdSipdHdLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdHdLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdHdLinkDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdHdLinkDir\n");
-	}
+	
 
-	tempString=kvpGetString("prioritizerdSipdWvDir");
+	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
-	    strncpy(prioritizerdSipdWvDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdWvDir);
+	    strncpy(eventArchiveDir,tempString,FILENAME_MAX-1);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdWvDir\n");
+	    syslog(LOG_ERR,"Error getting mainDataDisk");
+	    fprintf(stderr,"Error getting mainDataDisk\n");
 	}
-	tempString=kvpGetString("prioritizerdSipdWvLinkDir");
+	tempString=kvpGetString("usbDataDiskLink");
 	if(tempString) {
-	    strncpy(prioritizerdSipdWvLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdWvLinkDir);
+	    strncpy(eventUSBArchiveDir,tempString,FILENAME_MAX-1);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvLinkDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdWvLinkDir\n");
+	    syslog(LOG_ERR,"Error getting usbDataDiskLink");
+	    fprintf(stderr,"Error getting usbDataDiskLink\n");
 	}
-	tempString=kvpGetString("prioritizerdArchiveDir");
+	    
+	    
+	tempString=kvpGetString("baseEventArchiveDir");
 	if(tempString) {
-	    strncpy(prioritizerdArchiveDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdArchiveDir);
+	    sprintf(eventArchiveDir,"%s/%s/",eventArchiveDir,tempString);
+	    sprintf(eventUSBArchiveDir,"%s/%s/",eventUSBArchiveDir,tempString);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdArchiveDir");
-	    fprintf(stderr,"Error getting prioritizerdArchiveDir\n");
-	}
-	tempString=kvpGetString("prioritizerdArchiveLinkDir");
-	if(tempString) {
-	    strncpy(prioritizerdArchiveLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdArchiveLinkDir");
-	    fprintf(stderr,"Error getting prioritizerdArchiveLinkDir\n");
+	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
+	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
 	}
     }
     
@@ -203,32 +201,45 @@ int main (int argc, char *argv[])
 		    doingEvent);
 	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
 		    doingEvent);
-	    sprintf(sipdHdFilename,"%s/hd_%d.dat",prioritizerdSipdHdDir,
-		    doingEvent);
-	    sprintf(archivedHdFilename,"%s/hd_%d.dat",prioritizerdArchiveDir,
-		    doingEvent);
 	    
 
 	    retVal=fillBody(&theEventBody,bodyFilename);
 	    retVal=fillHeader(&theEventHeader,hdFilename);
 	    
-	    /* Write output for SIPd*/	    
-	    writePackets(&theEventBody,&theEventHeader);
+	    //Must determine priority here
+	    priority=1;
+	    theEventHeader.priority=1;
 
-	    //Move and link header
-	    copyFile(hdFilename,prioritizerdSipdHdDir);
-	    makeLink(sipdHdFilename,prioritizerdSipdHdLinkDir);
+	    sprintf(telemHdFilename,"%s/hd_%d.dat",headerTelemDir,
+		    doingEvent);
+	    //Write Header and make Link (in Header directory)
+	    retVal=writeHeader(&theEventHeader,telemHdFilename);
+	    makeLink(telemHdFilename,headerTelemLinkDir);
 
-	    /*Write output for Archived*/
-	    moveFile(hdFilename,prioritizerdArchiveDir);
-	    moveFile(bodyFilename,prioritizerdArchiveDir);
-	    makeLink(archivedHdFilename,prioritizerdArchiveLinkDir);
-
+	    //Write data to Main Disk 
+//	    if(firstTime || (doingEvent%1000)==0) checkOutputDirs(doingEvent);
+	    sprintf(archiveHdFilename,"%s/hd_%d.dat",eventArchiveDir,
+		    doingEvent);
+	    sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventArchiveDir,
+		    doingEvent);	    
+	    retVal=writeHeader(&theEventHeader,archiveHdFilename);
+	    retVal=writeBody(&theEventBody,archiveBodyFilename);
+	    if(useUSBDisks) {
+		sprintf(archiveHdFilename,"%s/hd_%d.dat",eventUSBArchiveDir,
+			doingEvent);
+		sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventUSBArchiveDir,
+			doingEvent);	    
+		retVal=writeHeader(&theEventHeader,archiveHdFilename);
+		retVal=writeBody(&theEventBody,archiveBodyFilename);
+	    }
+	    
+	    // Write output for Telem	    
+	    writePacketsAndHeader(&theEventBody,&theEventHeader);
 
 	    /* Delete input */
 	    removeFile(linkFilename);
-//	    removeFile(bodyFilename);
-//	    removeFile(hdFilename);
+	    removeFile(bodyFilename);
+	    removeFile(hdFilename);
 	}
 	
 	/* Free up the space used by dir queries */
@@ -239,34 +250,38 @@ int main (int argc, char *argv[])
     }	
 }
 
-void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
+void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
 {
 /*     int chan; */
 /*     char packetName[FILENAME_MAX]; */
 /*     WaveformPacket_t wavePacket; */
 /*     wavePacket.gHdr.code=PACKET_WV; */
 /*     for(chan=0;chan<hdPtr->numChannels;chan++) { */
-/* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan); */
+/* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdTelemWvDir,hdPtr->eventNumber,chan); */
 /* //	printf("Packet: %s\n",packetName); */
 /* 	wavePacket.eventNumber=hdPtr->eventNumber; */
 /* 	wavePacket.packetNumber=chan; */
 /* 	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t)); */
 /* 	writeWaveformPacket(&wavePacket,packetName); */
-/* 	makeLink(packetName,prioritizerdSipdWvLinkDir); */
+/* 	makeLink(packetName,prioritizerdTelemWvLinkDir); */
 /*     } */
-    int surf;
+    int surf,retVal=0;
     char packetName[FILENAME_MAX];
+    char headerName[FILENAME_MAX];
     SurfPacket_t surfPacket;
     surfPacket.gHdr.code=PACKET_SURF;
     for(surf=0;surf<(hdPtr->numChannels)/CHANNELS_PER_SURF;surf++) {
-	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf);
+	sprintf(packetName,"%s/surfpk_%d_%d.dat",eventTelemDir[(int)hdPtr->priority],hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
 	surfPacket.packetNumber=surf;
 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
 	writeSurfPacket(&surfPacket,packetName);
 //	printf("Wrote %s\n",packetName);
-	makeLink(packetName,prioritizerdSipdWvLinkDir);
+//	makeLink(packetName,prioritizerdTelemWvLinkDir);
     }
+    sprintf(headerName,"%s/hd_%d.dat",eventTelemDir[(int)hdPtr->priority],hdPtr->eventNumber);
+    retVal=writeHeader(hdPtr,headerName);
+    retVal=makeLink(headerName,eventTelemLinkDir[(int)hdPtr->priority]);
 }
 
 

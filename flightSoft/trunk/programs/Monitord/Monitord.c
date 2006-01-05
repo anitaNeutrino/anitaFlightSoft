@@ -253,7 +253,7 @@ int readConfigFile()
 	if(tempString) {
 	    sprintf(monitordArchiveDir,"%s/%s/",mainDataDisk,tempString);
 	    sprintf(monitordUSBArchiveDir,"%s/%s/",
-		    usbDataDiskPrefix,tempString);
+		    usbDataDiskLink,tempString);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");

@@ -55,11 +55,10 @@ int main (int argc, char *argv[])
     if (status == CONFIG_E_OK) {
 	strncpy(calibdStatusDir,
 		kvpGetString("calibdStatusDir"),FILENAME_MAX-1);
-	strncpy(calibdLinkDir,
-		kvpGetString("calibdLinkDir"),FILENAME_MAX-1);
+	strncpy(calibdLinkDir,calibdStatusDir,FILENAME_MAX-1);
+	strcat(calibdLinkDir,"/link");
     }
 
-    makeDirectories(calibdStatusDir);
     makeDirectories(calibdLinkDir);
 
     while(1) {
