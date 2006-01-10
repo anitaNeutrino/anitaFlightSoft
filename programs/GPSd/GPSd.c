@@ -69,8 +69,8 @@ int g12PPSRisingOrFalling=1; //1 is R, 2 is F
 int g12DataPort=1;
 int g12NTPPort=2;
 int g12ZDAPeriod=5;
-int g12POSPeriod=10;
-int g12VTGPeriod=10;
+float g12POSPeriod=10;
+float g12VTGPeriod=10;
 int g12SATPeriod=60;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
@@ -78,7 +78,7 @@ int g12ClockSkew=0;
 
 // Config stuff for ADU5
 int adu5SatPeriod=3600;
-int adu5PatPeriod=10;
+float adu5PatPeriod=10;
 float adu5RelV12[3]={0};
 float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
@@ -309,7 +309,8 @@ int main (int argc, char *argv[])
 	    printf("Device fd's: %d %d\nDevices:\t%s\t%s\n",fdG12,fdAdu5A,g12ADevName,adu5ADevName);
 	retVal=setupG12();
 	retVal=setupADU5();
-
+	
+//	printf("Here\n");
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
@@ -353,13 +354,13 @@ int readConfigFile()
 	g12DataPort=kvpGetInt("dataPort",1); //1 is 'A', 2 is 'B'
 	g12NTPPort=kvpGetInt("ntpPort",2); //1 is 'A', 2 is 'B'
 	g12ZDAPeriod=kvpGetInt("zdaPeriod",5); // in seconds
-	g12POSPeriod=kvpGetInt("posPeriod",5); // in seconds
-	g12VTGPeriod=kvpGetInt("vtgPeriod",5); // in seconds
+	g12POSPeriod=kvpGetFloat("posPeriod",5); // in seconds
+	g12VTGPeriod=kvpGetFloat("vtgPeriod",5); // in seconds
 	g12SATPeriod=kvpGetInt("g12SatPeriod",0); // in seconds
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
 	adu5SatPeriod=kvpGetInt("satPeriod",0);
-	adu5PatPeriod=kvpGetInt("patPeriod",0);
+	adu5PatPeriod=kvpGetFloat("patPeriod",0);
 	adu5RelV12[0]=kvpGetFloat("calibV12_1",0);
 	adu5RelV12[1]=kvpGetFloat("calibV12_2",0);
 	adu5RelV12[2]=kvpGetFloat("calibV12_3",0);
@@ -420,7 +421,7 @@ int setupG12()
 {
     char portNames[2]={'A','B'};
     char edgeNames[2]={'R','F'};
-    char g12Command[256]="";
+    char g12Command[1024]="";
     char tempCommand[128]="";
     char dataPort='A';
     char ntpPort='B';
@@ -443,9 +444,9 @@ int setupG12()
     strcat(g12Command, "$PASHS,UTS,ON\n");
     sprintf(tempCommand,"$PASHS,NME,ZDA,%c,ON,%d\n",dataPort,g12ZDAPeriod);
     strcat(g12Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%d\n",dataPort,g12POSPeriod);
+    sprintf(tempCommand,"$PASHS,NME,POS,%c,ON,%2.2f\n",dataPort,g12POSPeriod);
     strcat(g12Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,VTG,%c,ON,%d\n",dataPort,g12VTGPeriod);
+    sprintf(tempCommand,"$PASHS,NME,VTG,%c,ON,%2.2f\n",dataPort,g12VTGPeriod);
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",dataPort,g12SATPeriod);
     strcat(g12Command,tempCommand);
@@ -459,7 +460,7 @@ int setupG12()
     strcat(g12Command,tempCommand);
     
     if(printToScreen) 
-	fprintf(stderr,"G12:\n%s\n%s\n",g12ADevName,g12Command);
+	fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",g12ADevName,g12Command,strlen(g12Command));
     retVal=write(fdG12, g12Command, strlen(g12Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
@@ -470,6 +471,8 @@ int setupG12()
     }
     else {
 	syslog(LOG_INFO,"Sent %d bytes to G12 serial port",retVal);
+	printf("Sent %d bytes to G12 serial port\n",retVal);
+	
     }
     return retVal;
 }
@@ -526,6 +529,7 @@ int checkG12()
 int checkADU5A()
 /*! Try to read ADU5 */
 {
+//    printf("Here\n");
     // Working variables
     char tempData[ADU5_DATA_SIZE];
     int retVal,i;
@@ -608,7 +612,7 @@ void processG12Output(char *tempBuffer, int length,int latestData)
 	if(!strcmp(subString,"POS")) {
 //	    printf("Got %s\t",subString);
 	    printf("Got POS\n");
-	    processGPZDAString(gpsString,gpsLength,latestData);
+//	    processGPZDAString(gpsString,gpsLength,latestData);
 
 //	    processPOSString(gpsString,gpsLength);
 	}
@@ -1061,7 +1065,7 @@ int setupADU5()
     strcat(adu5Command,"$PASHS,NME,ALL,B,OFF\r\n");
     strcat(adu5Command,"$PASHS,3DF,ANG,10\r\n");
     strcat(adu5Command,"$PASHS,3DF,FLT,Y\r\n");
-    sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%d",adu5PatPeriod);
+    sprintf(tempCommand,"$PASHS,NME,PAT,A,ON,%2.2f",adu5PatPeriod);
     strcat(tempCommand,"\r\n");
     strcat(adu5Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,SAT,A,ON,%d\r\n",adu5SatPeriod);
