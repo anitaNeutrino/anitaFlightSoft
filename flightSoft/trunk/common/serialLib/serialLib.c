@@ -89,7 +89,7 @@ int setGPSTerminalOptions(int fd)
     options.c_cflag &= ~CSIZE;          /* clear the character size  */
     options.c_cflag |= CHARACTER_SIZE;  /* set charater size to 8 bits  */
     options.c_cflag &= ~CRTSCTS;        /* clear the flow control bits  */
-    options.c_lflag &= (ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
+    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
     options.c_cflag |= (CLOCAL | CREAD); 
 
     options.c_oflag &= ~(OPOST | ONLCR );

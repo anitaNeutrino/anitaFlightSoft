@@ -65,6 +65,7 @@ else
  options.c_ispeed=13;
  options.c_ospeed=13;
 
+ cfmakeraw(&options);
  cfsetispeed(&options, BAUDRATE);    /* set input speed  */
  cfsetospeed(&options, BAUDRATE);    /* set output speed */
 
@@ -73,8 +74,11 @@ options.c_cflag &= ~CSTOPB;         /* clear the stop bit  */
 options.c_cflag &= ~CSIZE;          /* clear the character size  */
 options.c_cflag |= CHARACTER_SIZE;  /* set charater size to 8 bits  */
 options.c_cflag &= ~CRTSCTS;        /* clear the flow control bits  */
+//options.c_cflag |= CRTSCTS;        /* set the flow control bits  */
 options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
-options.c_cflag |= (CLOCAL | CREAD);
+//options.c_cflag |= (CLOCAL | CREAD); //was like this
+// options.c_cflag &= ~CLOCAL;
+options.c_cflag |= (CREAD);
 /*  printf("%d %d %d %d %s %d %d\n",options.c_iflag,options.c_oflag,options.c_cflag,options.c_lflag,options.c_cc,options.c_ispeed,options.c_ospeed); */
 
  
@@ -91,7 +95,8 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 /* strcat(buff, "$PASHQ,POS\n"); */
 /* strcat(buff, "$PASHQ,PPS\n"); */
 // strcat(buff, "$PASHS,SPD,B,4\n");
-// strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
+ strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
+ strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
 // strcat(buff, "$PASHS,NME,RMC,B,ON\n");
  strcat(buff, "$PASHS,LTZ,0,0\n");
  strcat(buff, "$PASHS,UTS,ON\n");
@@ -112,7 +117,7 @@ printf("wrote buff -- %s\n",buff);
 /* for(i=0; i < COMMAND_SIZE; i++) printf("%c", buff[i]); */
 	
 printf("\n");
-sleep(2);
+//sleep(2);
  currentIndex=0;
  while(1) { 
 /* read & print output */
@@ -136,7 +141,7 @@ sleep(2);
      }
 /*      printf("\n"); */
 /*      printf("\nRet: %d\n",retVal); */
-     usleep(3000);
+     usleep(1);
  }
 
 close(fd);
