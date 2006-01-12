@@ -89,6 +89,8 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 /* send the commands to G12 */
  strcat(buff, "$PASHQ,PRT\n"); 
  strcat(buff, "$PASHQ,RIO\n"); 
+ strcat(buff, "$PASHS,RCI,000.05\n"); 
+ strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
 //strcat(buff, "$PASHS,PPS,0.2,3,R\n");
 /* strcat(buff, "$PASHQ,STA\n"); */
@@ -124,7 +126,7 @@ printf("\n");
      retVal=read(fd, data, DATA_SIZE);
 /*     printf("DATA SIZE %d\t%d\n",DATA_SIZE,retVal); */
      for(i=0; i < retVal; i++) {
-/* 	 printf("%c", data[i]); */
+ 	 printf("%c", data[i]); 
 	 if(data[i]=='$') {
 /* 	 printf("%d\n",currentIndex); */
 	     if(currentIndex) {

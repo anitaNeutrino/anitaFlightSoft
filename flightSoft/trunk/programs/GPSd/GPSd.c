@@ -74,13 +74,15 @@ int g12DataPort=1;
 int g12NtpPort=2;
 int g12ZdaPeriod=5;
 float g12PosPeriod=10;
-int g12SatPeriod=60;
+int g12SatPeriod=600;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
-
+int g12EnableTtt=0;
+int g12TttEpochRate=20;
 
 // Config stuff for ADU5
-int adu5SatPeriod=3600;
+int adu5EnableTtt=0;
+int adu5SatPeriod=600;
 float adu5PatPeriod=10;
 float adu5VtgPeriod=10;
 float adu5RelV12[3]={0};
@@ -163,14 +165,6 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get g12ADevName");
 	    fprintf(stderr,"Couldn't get g12ADevName\n");
 	}
-//	tempString=kvpGetString("g12BDevName");
-//	if(tempString) {
-//	    strncpy(g12BDevName,tempString,FILENAME_MAX);
-//	}
-//	else {
-//	    syslog(LOG_ERR,"Couldn't get g12BDevName");
-//	    fprintf(stderr,"Couldn't get g12BDevName\n");
-//	}
 	tempString=kvpGetString("adu5ADevName");
 	if(tempString) {
 	    strncpy(adu5ADevName,tempString,FILENAME_MAX);
@@ -179,15 +173,6 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get adu5ADevName");
 	    fprintf(stderr,"Couldn't get adu5ADevName\n");
 	}
-/* 	tempString=kvpGetString("adu5BDevName"); */
-/* 	if(tempString) { */
-/* 	    strncpy(adu5BDevName,tempString,FILENAME_MAX); */
-/* 	} */
-/* 	else { */
-/* 	    syslog(LOG_ERR,"Couldn't get adu5BDevName"); */
-/* 	    fprintf(stderr,"Couldn't get adu5BDevName\n"); */
-/* 	} */
-///////////////////////////////////////
 	
 	//Disk locations
 	tempString=kvpGetString("mainDataDisk");
@@ -344,35 +329,55 @@ int readConfigFile()
 {
     /* Config file thingies */
     int status=0;
-//    int tempNum=3;;
-//    KvpErrorCode kvpStatus=0;
     char* eString ;
     kvpReset();
     status = configLoad ("GPSd.config","output") ;
-    status &= configLoad ("GPSd.config","g12") ;
-    status &= configLoad ("GPSd.config","adu5") ;
-
-   if(status == CONFIG_E_OK) {
+    if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",-1);
 	verbosity=kvpGetInt("verbosity",-1);
 	if(printToScreen<0) {
-	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
+	    syslog(LOG_WARNING,
+		   "Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
 	}
-
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
+    }
+    kvpReset();
+    status = configLoad ("GPSd.config","g12");
+    if(status == CONFIG_E_OK) {
+	g12EnableTtt=kvpGetInt("enableTtt",1);
+	g12TttEpochRate=kvpGetInt("tttEpochRate",20);
+	if(g12TttEpochRate!=20 && g12TttEpochRate!=10 &&
+	   g12TttEpochRate!=5 && g12TttEpochRate!=2 && g12TttEpochRate!=1) {
+	    syslog(LOG_WARNING,"Incorrect TTT Epoch Rate %d, reverting to 20Hz",
+		   g12TttEpochRate);
+	    g12TttEpochRate=20;
+	}
 	g12PpsPeriod=kvpGetFloat("ppsPeriod",1); //in seconds
 	g12PpsOffset=kvpGetFloat("ppsOffset",0.05); //in seconds 
 	g12PpsRisingOrFalling=kvpGetInt("ppsRorF",1); //1 is 'R', 2 is 'F'
 	g12DataPort=kvpGetInt("dataPort",1); //1 is 'A', 2 is 'B'
 	g12NtpPort=kvpGetInt("ntpPort",2); //1 is 'A', 2 is 'B'
-	g12ZdaPeriod=kvpGetInt("zdaPeriod",5); // in seconds
-	g12PosPeriod=kvpGetFloat("posPeriod",5); // in seconds
-	adu5VtgPeriod=kvpGetFloat("vtgPeriod",5); // in seconds
-	g12SatPeriod=kvpGetInt("g12SatPeriod",0); // in seconds
+	g12ZdaPeriod=kvpGetInt("zdaPeriod",10); // in seconds
+	g12PosPeriod=kvpGetFloat("posPeriod",10); // in seconds
+	g12SatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
-	adu5SatPeriod=kvpGetInt("satPeriod",0);
-	adu5PatPeriod=kvpGetFloat("patPeriod",0);
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
+    }
+    kvpReset();
+    status = configLoad ("GPSd.config","adu5") ;    
+    if(status == CONFIG_E_OK) {
+	adu5EnableTtt=kvpGetInt("enableTtt",1);
+	adu5SatPeriod=kvpGetInt("satPeriod",600); // in seconds
+	adu5PatPeriod=kvpGetFloat("patPeriod",10); // in seconds
+	adu5VtgPeriod=kvpGetFloat("vtgPeriod",10); // in seconds
 	adu5RelV12[0]=kvpGetFloat("calibV12_1",0);
 	adu5RelV12[1]=kvpGetFloat("calibV12_2",0);
 	adu5RelV12[2]=kvpGetFloat("calibV12_3",0);
@@ -386,17 +391,11 @@ int readConfigFile()
 //	printf("v13 %f %f %f\n",adu5RelV13[0],adu5RelV13[1],adu5RelV13[2]);
 //	printf("v14 %f %f %f\n",adu5RelV14[0],adu5RelV14[1],adu5RelV14[2]);
     }
-   else {
-       eString=configErrorString (status) ;
-       syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
-   }
-
-//    printf("%f %f %f\n",adu5RelV12[0],adu5RelV12[1],adu5RelV12[2]);
-//    printf("%f %f %f\n",adu5RelV13[0],adu5RelV13[1],adu5RelV13[2]);
-//    printf("%f %f %f\n",adu5RelV14[0],adu5RelV14[1],adu5RelV14[2]);
-
-//    printf("%d %s %s %s\n",printToScreen,g12ADevName,adu5ADevName,adu5ADevName);
-   return status;
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
+    }
+    return status;
 }
 
 int openDevices()
@@ -445,9 +444,19 @@ int setupG12()
     if(g12PpsRisingOrFalling==1 || g12PpsRisingOrFalling==2)
 	ppsEdge=edgeNames[g12PpsRisingOrFalling-1];
 
+//    strcat(g12Command,"$PASHQ,RID\n");
+    if(g12EnableTtt) {
+	sprintf(g12Command,"$PASHS,POP,%d\n",g12TttEpochRate);
+	sprintf(tempCommand,"$PASHS,RCI,%1.2f\n",1.0/((float)g12TttEpochRate));
+	strcat(g12Command,tempCommand);
+    }
+    else {
+	sprintf(g12Command,"$PASHS,POP,10\n");
+    }
+//    strcat(g12Command,"$PASHQ,PRT,A\n");
+//    strcat(g12Command,"$PASHQ,PRT,B\n");
     strcat(g12Command,"$PASHS,ELM,0\n");
-    strcat(g12Command,"$PASHQ,PRT,A\n");
-    strcat(g12Command,"$PASHQ,PRT,B\n");
+
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",dataPort);
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",ntpPort);
@@ -467,8 +476,13 @@ int setupG12()
     strcat(g12Command,tempCommand);
     sprintf(tempCommand, "$PASHS,PPS,%2.2f,%d,%c\n",g12PpsPeriod,
 	    (int)g12PpsOffset,ppsEdge);
-    strcat(g12Command,tempCommand);
-    
+    strcat(g12Command,tempCommand);    
+    if(g12EnableTtt) {
+	sprintf(tempCommand,"$PASHS,NME,TTT,%c,ON,%1.2f\n",dataPort,1.0/((float)g12TttEpochRate));
+	strcat(g12Command,tempCommand);        
+    }
+
+
     if(printToScreen) 
 	fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",g12ADevName,g12Command,strlen(g12Command));
     retVal=write(fdG12, g12Command, strlen(g12Command));
@@ -613,10 +627,13 @@ void processG12Output(char *tempBuffer, int length,int latestData)
 	processGpzdaString(gpsString,gpsLength,latestData);
     }
     else if(!strcmp(subString,"$PASHR")) {
-	//Maybe have POS
+	//Maybe have POS,TTT or SAT
 	subString = strtok (NULL, " ,.*");
+	if(!strcmp(subString,"TTT")) {
+//	    printf("Got TTT\n");
+	    processTttString(gpsString,gpsLength);
+	}
 	if(!strcmp(subString,"POS")) {
-//	    printf("Got %s\t",subString);
 //	    printf("Got POS\n");
 	    processPosString(gpsString,gpsLength);
 	}
@@ -637,7 +654,7 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData)
     char gpsCopy[G12_DATA_SIZE];
     char *subString;
     strncpy(gpsCopy,gpsString,gpsLength);
-    sprintf(gpsCopy,"$GPZDA,222835.10,21,07,1999,-07,00*4D");
+//    sprintf(gpsCopy,"$GPZDA,222835.10,21,07,1999,-07,00*4D");
     int hour,minute,second,subSecond;
     int day=-1,month=-1,year=-1;
     int tzHour,tzMin;
@@ -649,7 +666,7 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData)
     subString = strtok (gpsCopy,"*");
     sscanf(subString,"$GPZDA,%02d%02d%02d.%02d,%02d,%02d,%04d,%02d,%02d",
 	   &hour,&minute,&second,&subSecond,&day,&month,&year,&tzHour,&tzMin);
-    printf("%02d:%02d:%02d.%02d %02d %02d %02d\n%s\n",hour,minute,second,subSecond,day,month,year,ctime(&rawtime)); 
+//    printf("%02d:%02d:%02d.%02d %02d %02d %02d\n%s\n",hour,minute,second,subSecond,day,month,year,ctime(&rawtime)); 
     timeinfo.tm_hour=hour;
     timeinfo.tm_mday=day;
     timeinfo.tm_min=minute;
@@ -680,7 +697,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     time_t rawtime;
 
     strncpy(gpsCopy,gpsString,gpsLength);
-    sprintf(gpsCopy,"$GPVTG,179.0,T,193.00,M,000.11,N,000.20,K*3E");
+//    sprintf(gpsCopy,"$GPVTG,179.0,T,193.00,M,000.11,N,000.20,K*3E");
 
     //Get unix Timestamp
     time ( &rawtime );
@@ -1247,7 +1264,7 @@ int setupAdu5()
     sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\n",adu5VtgPeriod);
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHQ,PRT\r\n");
-    strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
+    if(adu5EnableTtt) strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
 
     if(printToScreen) printf("ADU5:\n%s\n%s\n",adu5ADevName,adu5Command);
     retVal=write(fdAdu5A, adu5Command, strlen(adu5Command));
