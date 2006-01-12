@@ -296,10 +296,10 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 
 void fakePat(long unixTime) {
 
-    GpsPatStruct_t thePat;
+    GpsAdu5PatStruct_t thePat;
     char theFilename[FILENAME_MAX];
     int retVal;
-    thePat.gHdr.code=PACKET_GPSD_PAT;
+    thePat.gHdr.code=PACKET_GPS_ADU5_PAT;
     thePat.unixTime=unixTime;
     thePat.heading=0;
     thePat.pitch=0;
@@ -313,28 +313,32 @@ void fakePat(long unixTime) {
 
     //Write file and link for sipd
     sprintf(theFilename,"%s/pat_%ld.dat",gpsdSipdDir,thePat.unixTime);
-    retVal=writeGPSPat(&thePat,theFilename);  
+    retVal=writeGpsPat(&thePat,theFilename);  
     retVal=makeLink(theFilename,gpsdSipdLinkDir); 
 }
 
 void fakeSat(long unixTime) {
-    GpsSatStruct_t theSat;
+    GpsAdu5SatStruct_t theSat;
     char theFilename[FILENAME_MAX];
-    int retVal,satNum;
+    int retVal,antNum;
+    int satNum;
 
-    theSat.gHdr.code=PACKET_GPSD_SAT;
+
+    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
     theSat.unixTime=unixTime;
-    theSat.numSats=3;
-    for(satNum=0;satNum<theSat.numSats;satNum++) {
-	theSat.sat[satNum].prn=satNum+10;
-	theSat.sat[satNum].azimuth=15;
-	theSat.sat[satNum].elevation=15;
-	theSat.sat[satNum].snr=99;
-	theSat.sat[satNum].flag=0;
+    for(antNum=0;antNum<4;antNum++) {
+	theSat.numSats[antNum]=3;
+	for(satNum=0;satNum<(char)theSat.numSats[antNum];satNum++) {
+	    theSat.sat[antNum][satNum].prn=satNum+10;
+	    theSat.sat[antNum][satNum].azimuth=15;
+	    theSat.sat[antNum][satNum].elevation=15;
+	    theSat.sat[antNum][satNum].snr=99;
+//	theSat.sat[satNum].flag=0;
+	}
     }
 
     sprintf(theFilename,"%s/pat_%ld.dat",gpsdSipdDir,theSat.unixTime);
-    retVal=writeGPSSat(&theSat,theFilename);  
+    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
     retVal=makeLink(theFilename,gpsdSipdLinkDir);
 }
 

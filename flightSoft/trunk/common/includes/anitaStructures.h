@@ -15,14 +15,17 @@
 #define ANITA_STRUCTURES_H
 #include "includes/anitaFlight.h"
 
-#define MAX_SATS 30
+#define MAX_SATS 12
 
 typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101,
     PACKET_SURF = 0x102,
-    PACKET_GPSD_PAT = 0x200,
-    PACKET_GPSD_SAT = 0x201,
+    PACKET_GPS_ADU5_PAT = 0x200,
+    PACKET_GPS_ADU5_SAT = 0x201,
+    PACKET_GPS_ADU5_VTG = 0x202,
+    PACKET_GPS_G12_POS = 0x203,
+    PACKET_GPS_G12_SAT = 0x204,
     PACKET_HKD = 0x300,
     PACKET_CMD_ECHO = 0x400,
     PACKET_MONITOR = 0x500
@@ -136,24 +139,25 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
+    long unixTimeUs;
     long timeOfDay;
-    double heading;
-    double pitch;
-    double roll;
-    double mrms;
-    double brms;
+    float heading;
+    float pitch;
+    float roll;
+    float mrms;
+    float brms;
     int attFlag;
-    double latitude;
-    double longitude;
-    double altitude;
-} GpsPatStruct_t;
+    float latitude;
+    float longitude;
+    float altitude;
+} GpsAdu5PatStruct_t;
 
 typedef struct {
-    int prn;
-    int azimuth;
-    int elevation;
-    int snr;
-    int flag; //1 is usable, 0 is not
+    char prn;
+    char elevation;
+    short azimuth;
+    char snr;
+    char flag; 
 } GpsSatInfo_t;
 
 typedef struct {
@@ -161,8 +165,41 @@ typedef struct {
     long unixTime;
     int numSats;
     GpsSatInfo_t sat[MAX_SATS];
-} GpsSatStruct_t;
+} GpsG12SatStruct_t;
 
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    int numSats[4];
+    GpsSatInfo_t sat[4][MAX_SATS];
+} GpsAdu5SatStruct_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    float trueCourse;
+    float magneticCourse;
+    float speedInKnots;
+    float speedInKPH;
+} GpsAdu5VtgStruct_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    long unixTime;
+    long unixTimeUs;
+    long timeOfDay;
+    int numSats;
+    float latitude;
+    float longitude;
+    float altitude;
+    float trueCourse;
+    float verticalVelocity;
+    float speedInKnots;
+    float pdop;
+    float hdop;
+    float vdop;
+    float tdop;
+} GpsG12PosStruct_t;
 
 typedef enum {
     IP320_RAW=0x100,
