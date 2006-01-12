@@ -20,7 +20,7 @@
 #define GPS_BAUDRATE B9600
 #define MAGNETOMETER_BAUDRATE B38400
 
-int openGPSDevice(char devName[])
+int openGpsDevice(char devName[])
 /*! Does exactly what it says on the tin
  */
 {
@@ -32,7 +32,7 @@ int openGPSDevice(char devName[])
 	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
 	return -1;
     }
-    retVal=setGPSTerminalOptions(fd);
+    retVal=setGpsTerminalOptions(fd);
     if(retVal<0) {
 	close(fd);
 	return retVal;
@@ -60,7 +60,7 @@ int openMagnetometerDevice(char devName[])
     return fd;
 }
 
-int setGPSTerminalOptions(int fd)
+int setGpsTerminalOptions(int fd)
 /*! Sets the various termios options needed. 
 */
 {

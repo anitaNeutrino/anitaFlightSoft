@@ -421,7 +421,7 @@ int writeSurfPacket(SurfPacket_t *surfPtr, char *filename)
     return 0;
 }
 
-int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
+int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename)
 /* Writes the pat pointed to by patPtr to filename */
 {
       int numObjs;    
@@ -436,16 +436,65 @@ int writeGPSPat(GpsPatStruct_t *patPtr, char *filename)
 	return -1;
     }   
 #ifdef NO_ZLIB
-    numObjs=fwrite(patPtr,sizeof(GpsPatStruct_t),1,outfile);
+    numObjs=fwrite(patPtr,sizeof(GpsAdu5PatStruct_t),1,outfile);
     fclose(outfile);
 #else
-    numObjs=gzwrite(outfile,patPtr,sizeof(GpsPatStruct_t));
+    numObjs=gzwrite(outfile,patPtr,sizeof(GpsAdu5PatStruct_t));
     gzclose(outfile);  
 #endif
     return 0;
 }
 
-int writeGPSSat(GpsSatStruct_t *satPtr, char *filename)
+
+int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename)
+/* Writes the vtg pointed to by vtgPtr to filename */
+{
+      int numObjs;    
+    
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb9");    
+#endif
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(vtgPtr,sizeof(GpsAdu5VtgStruct_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,vtgPtr,sizeof(GpsAdu5VtgStruct_t));
+    gzclose(outfile);  
+#endif
+    return 0;
+}
+
+int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename)
+/* Writes the pos pointed to by posPtr to filename */
+{
+      int numObjs;    
+    
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb9");    
+#endif
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(posPtr,sizeof(GpsG12PosStruct_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,posPtr,sizeof(GpsG12PosStruct_t));
+    gzclose(outfile);  
+#endif
+    return 0;
+}
+
+int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename)
 /* Writes the sat pointed to by satPtr to filename */
 {   
     int numObjs;        
@@ -459,17 +508,41 @@ int writeGPSSat(GpsSatStruct_t *satPtr, char *filename)
 	return -1;
     }   
 #ifdef NO_ZLIB
-    numObjs=fwrite(satPtr,sizeof(GpsSatStruct_t),1,outfile);
+    numObjs=fwrite(satPtr,sizeof(GpsAdu5SatStruct_t),1,outfile);
     fclose(outfile);
 #else
-    numObjs=gzwrite(outfile,satPtr,sizeof(GpsSatStruct_t));
+    numObjs=gzwrite(outfile,satPtr,sizeof(GpsAdu5SatStruct_t));
     gzclose(outfile);  
 #endif
     return 0;
 }
 
 
-int writeGPSTTT(GpsSubTime_t *tttPtr, char *filename)
+int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename)
+/* Writes the sat pointed to by satPtr to filename */
+{   
+    int numObjs;        
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb9");    
+#endif
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(satPtr,sizeof(GpsG12SatStruct_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,satPtr,sizeof(GpsG12SatStruct_t));
+    gzclose(outfile);  
+#endif
+    return 0;
+}
+
+
+int writeGpsTTT(GpsSubTime_t *tttPtr, char *filename)
 /* Writes the ttt pointed to by tttPtr to filename */
 {     
     int numObjs;    
