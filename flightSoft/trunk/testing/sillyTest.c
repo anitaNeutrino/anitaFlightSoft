@@ -44,8 +44,12 @@ int main (void)
     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
     printf("Size of SurfPacket_t: %d\n",sizeof(SurfPacket_t));
-    printf("Size of GpsPatStruct_t: %d\n",sizeof(GpsPatStruct_t));
-    printf("Size of GpsSatStruct_t: %d\n",sizeof(GpsSatStruct_t));
+    printf("Size of GpsSatInfo_t: %d\n",sizeof(GpsSatInfo_t));    
+    printf("Size of GpsG12PosStruct_t: %d\n",sizeof(GpsG12PosStruct_t));
+    printf("Size of GpsAdu5PatStruct_t: %d\n",sizeof(GpsAdu5PatStruct_t));
+    printf("Size of GpsAdu5VtgStruct_t: %d\n",sizeof(GpsAdu5VtgStruct_t));
+    printf("Size of GpsG12SatStruct_t: %d\n",sizeof(GpsG12SatStruct_t));
+    printf("Size of GpsAdu5SatStruct_t: %d\n",sizeof(GpsAdu5SatStruct_t));   
     printf("Size of AnalogueDataStruct_t: %d\n",sizeof(AnalogueDataStruct_t));
     printf("Size of FullAnalogueStruct_t: %d\n",sizeof(FullAnalogueStruct_t));
     printf("Size of SBSTemperatureDataStruct_t: %d\n",sizeof(SBSTemperatureDataStruct_t));

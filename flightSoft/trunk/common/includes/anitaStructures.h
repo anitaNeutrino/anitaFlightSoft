@@ -177,6 +177,7 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
+    long unixTimeUs;
     float trueCourse;
     float magneticCourse;
     float speedInKnots;
