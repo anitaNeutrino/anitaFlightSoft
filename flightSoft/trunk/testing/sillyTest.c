@@ -56,26 +56,26 @@ int main (void)
     printf("Size of MagnetometerDataStruct_t: %d\n",sizeof(MagnetometerDataStruct_t));
     printf("Size of HkDataStruct_t: %d\n",sizeof(HkDataStruct_t));
     printf("Size of CommandEcho_t: %d\n",sizeof(CommandEcho_t));
-   
-    printf("\n\n");  
-    printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n",
-	   (int)&turfio,
-	   (int)&(turfio.otherBits)-(int)&turfio,
-	   (int)&(turfio.trigType)-(int)&turfio,
-	   (int)&(turfio.trigNum)-(int)&turfio,
-	   (int)&(turfio.trigTime)-(int)&turfio,
-	   (int)&(turfio.ppsNum)-(int)&turfio,
-	   (int)&(turfio.c3poNum)-(int)&turfio);
-    printf("\n\n");
-    printf("\n&header:\t\t%u\n&header.gHdr:\t%u\n&header.unixTime:\t%u\n&header.numChannels:\t%u\n&header.numSamples:\t%u\n&header.calibStatus:\t%u\n&header.turfio:\t%u\n&header.priority:\t%u\n",
-	   (int)&header,
-	   (int)&(header.gHdr)-(int)&header,
-	   (int)&(header.unixTime)-(int)&header,
-	   (int)&(header.numChannels)-(int)&header,
-	   (int)&(header.numSamples)-(int)&header,
-	   (int)&(header.calibStatus)-(int)&header,
-	   (int)&(header.turfio)-(int)&header,
-	   (int)&(header.priority)-(int)&header);
+    printf("Size of MonitorStruct_t: %d\n",sizeof(MonitorStruct_t));
+/*     printf("\n\n");   */
+/*     printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n", */
+/* 	   (int)&turfio, */
+/* 	   (int)&(turfio.otherBits)-(int)&turfio, */
+/* 	   (int)&(turfio.trigType)-(int)&turfio, */
+/* 	   (int)&(turfio.trigNum)-(int)&turfio, */
+/* 	   (int)&(turfio.trigTime)-(int)&turfio, */
+/* 	   (int)&(turfio.ppsNum)-(int)&turfio, */
+/* 	   (int)&(turfio.c3poNum)-(int)&turfio); */
+/*     printf("\n\n"); */
+/*     printf("\n&header:\t\t%u\n&header.gHdr:\t%u\n&header.unixTime:\t%u\n&header.numChannels:\t%u\n&header.numSamples:\t%u\n&header.calibStatus:\t%u\n&header.turfio:\t%u\n&header.priority:\t%u\n", */
+/* 	   (int)&header, */
+/* 	   (int)&(header.gHdr)-(int)&header, */
+/* 	   (int)&(header.unixTime)-(int)&header, */
+/* 	   (int)&(header.numChannels)-(int)&header, */
+/* 	   (int)&(header.numSamples)-(int)&header, */
+/* 	   (int)&(header.calibStatus)-(int)&header, */
+/* 	   (int)&(header.turfio)-(int)&header, */
+/* 	   (int)&(header.priority)-(int)&header); */
 
 }
 

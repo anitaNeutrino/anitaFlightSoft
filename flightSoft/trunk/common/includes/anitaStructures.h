@@ -97,8 +97,8 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;       /* unix UTC sec*/
-    int unixTimeUs;     /* unix UTC microsec */
-    int gpsSubTime;     /* the GPS fraction of second (in ns) (for the one event per second that gets tagged with it */
+    long unixTimeUs;     /* unix UTC microsec */
+    int gpsSubTime;     /* the GPS fraction of second (in ns) (for the X events per second that gets tagged with it */
     int eventNumber;    /* Global event number */
     short numChannels;  /* In case we turn part of array off, or whatever. */
     short numSamples;   /* total number of samples per waveform == 256*/

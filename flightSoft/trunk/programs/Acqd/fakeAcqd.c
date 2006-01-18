@@ -13,6 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "anitaFlight.h"
@@ -21,6 +22,8 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
+
+#define DEFAULT_C3PO 200453324
 
 void fakeEvent(AnitaEventFull_t *theEventPtr);
 int getEvent(AnitaEventFull_t *theEventPtr, const char *lastEventNumberFile);
@@ -63,8 +66,7 @@ int main (int argc, char *argv[])
     /* Read config file*/
     if (status == CONFIG_E_OK) {
 	strncpy(acqdEventDir,kvpGetString ("acqdEventDir"),FILENAME_MAX-1);
-	strncpy(acqdEventLinkDir,kvpGetString ("acqdEventLinkDir"),
-		FILENAME_MAX-1);
+	sprintf(acqdEventLinkDir,"%s/link",acqdEventDir);
 	strncpy(lastEventNumberFile,kvpGetString ("lastEventNumberFile"),
 		FILENAME_MAX-1);
     }
@@ -79,7 +81,7 @@ int main (int argc, char *argv[])
 /* Main event getting loop */
     while(1) {
 	if(getEvent(&theEvent,lastEventNumberFile)) {
-	    syslog(LOG_INFO,"Got new event: %d, time %d",
+	    syslog(LOG_INFO,"Got new event: %d, time %ld",
 		   theEvent.header.eventNumber,theEvent.header.unixTime);
 	    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 	}
@@ -117,6 +119,8 @@ int getEvent(AnitaEventFull_t *theEventPtr, const char *lastEventNumberFile) {
     /* At the moment have to get fake (random) waveforms  */
     if(waitForFakeTrigger()) {
 	fakeEvent(theEventPtr);
+	printf("Event %d, Time %ld %ld\n",theEventPtr->header.eventNumber,
+	       theEventPtr->header.unixTime,theEventPtr->header.unixTimeUs);
 	/* Need to increment eventNumber and write out the last eventNumber to 
 	   a file. */
 	eventNumber++;
@@ -146,17 +150,18 @@ int waitForFakeTrigger()
     int numTriggers,count;
     char filename[FILENAME_MAX];
     while(1) {
-	numTriggers=getListofLinks("/tmp/anita/trigAcqd",&triggerList);
+	numTriggers=getListofLinks("/tmp/anita/trigAcqd/link",&triggerList);
 	if(numTriggers>0) {
 	    sprintf(filename,"/tmp/anita/trigAcqd/%s",triggerList[0]->d_name);
-/* 	    printf("Triggers: %d\n",numTriggers); */
+	    removeFile(filename);
+	    sprintf(filename,"/tmp/anita/trigAcqd/link/%s",triggerList[0]->d_name);
 	    removeFile(filename);
 	    for(count=0;count<numTriggers;count++)
 		free(triggerList[count]);
 	    free(triggerList);	    
 	    return numTriggers;
 	}
-	usleep(10000);
+	usleep(10);
     }
 }
 
@@ -164,7 +169,14 @@ int waitForFakeTrigger()
 void fakeEvent(AnitaEventFull_t *theEventPtr)
 {
     int chan,samp,value;
-    theEventPtr->header.unixTime=time(NULL);
+    struct timeval timeStruct;
+    gettimeofday(&timeStruct,NULL);
+    theEventPtr->header.unixTime=timeStruct.tv_sec;
+    theEventPtr->header.unixTimeUs=timeStruct.tv_usec;
+    double fracTime=((double)timeStruct.tv_usec)/1e6;
+    theEventPtr->header.turfio.trigTime=(int)(fracTime*200453324.0);
+
+//    theEventPtr->header.unixTime=time(NULL);
 /*     theEventPtr->header.trigDelay=64; */
 /*     theEventPtr->header.numChannels=NUM_DIGITZED_CHANNELS; */
 /*     theEventPtr->header.numSamples=256; */
@@ -172,7 +184,8 @@ void fakeEvent(AnitaEventFull_t *theEventPtr)
 /*     theEventPtr->header.trigCouple=0; */
 /*     theEventPtr->header.trigSlope=0; */
 /*     theEventPtr->header.trigSource=-1; */
-/*     theEventPtr->header.trigLevel=10; */
+/*     theEventPtr->header.trigLevel=10; 	    sprintf(filename,"/tmp/anita/trigAcqd/%s",triggerList[0]->d_name);
+*/
 /*     theEventPtr->header.sampInt=50; /\* sample interval in units of 10 ps *\/ */
 /*     theEventPtr->header.holdOff=0; /\* number of 100ms intervals to hold between triggers *\/ */
 /*     theEventPtr->header.clocktype=0; /\* start/stop external=4, external=2, continuous ext.=1, internal=0 *\/ */
