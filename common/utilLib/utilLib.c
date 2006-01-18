@@ -542,7 +542,7 @@ int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename)
 }
 
 
-int writeGpsTTT(GpsSubTime_t *tttPtr, char *filename)
+int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename)
 /* Writes the ttt pointed to by tttPtr to filename */
 {     
     int numObjs;    

@@ -905,17 +905,17 @@ void processTttString(char *gpsString, int gpsLength) {
     
     //Write file for eventd
     sprintf(filename,"%s/gps_%ld_%d.dat",gpsSubTimeDir,theTTT.unixTime,theTTT.subTime);
-    writeGpsTTT(&theTTT,filename);
+    writeGpsTtt(&theTTT,filename);
     retVal=makeLink(filename,gpsSubTimeLinkDir);  
 
     //Write file to main disk
     sprintf(filename,"%s/gps_%ld_%d.dat",gpsAdu5TttArchiveDir,theTTT.unixTime,theTTT.subTime);
-    writeGpsTTT(&theTTT,filename);
+    writeGpsTtt(&theTTT,filename);
     
     if(useUsbDisks) {
 	//Write file to usb disk
 	sprintf(filename,"%s/gps_%ld_%d.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
-	writeGpsTTT(&theTTT,filename);
+	writeGpsTtt(&theTTT,filename);
     }
     
     

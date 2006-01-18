@@ -52,7 +52,7 @@ int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename);
 int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename);
 int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename);
 int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename);
-int writeGpsTTT(GpsSubTime_t *tttPtr, char *filename);
+int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename);
 int writeHk(HkDataStruct_t *hkPtr, char *filename);
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);

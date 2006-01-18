@@ -22,8 +22,8 @@
 #include "anitaStructures.h"
 
 /* int getAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir); */
-int readAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir, const char *theGpsSubTimeLinkDir);
-void waitUntilNextSecond();
+int checkForFakeTriggerAndWriteSubTime(const char *theGpsSubTimeDir, const char *theGpsSubTimeLinkDir);
+//void waitUntilNextSecond();
 
 /* Useful global thing-a-me-bobs */
 
@@ -53,84 +53,61 @@ int main (int argc, char *argv[])
 
     /* Read config file*/
     if (status == CONFIG_E_OK) {
-	strncpy(gpsSubTimeDir,kvpGetString ("gpsdSubTimeDir"),FILENAME_MAX-1);
-	strncpy(gpsSubTimeLinkDir,kvpGetString ("gpsdSubTimeArchiveLinkDir"),FILENAME_MAX-1);
+	strncpy(gpsSubTimeDir,kvpGetString ("gpsSubTimeDir"),FILENAME_MAX-1);
+	sprintf(gpsSubTimeLinkDir,"%s/link",gpsSubTimeDir);
     }
 
-
-    makeDirectories(gpsSubTimeDir);
     makeDirectories(gpsSubTimeLinkDir);
     printf("\nThe GPS Sub Time Dir is: %s\n\n",gpsSubTimeDir);
 
-
-    /* Will open the GPS communications here.*/
   
 /* Main gps getting loop */
     while(1) {
-	waitUntilNextSecond();
-	retVal=readAndWriteSubTimesFromGPS(gpsSubTimeDir,gpsSubTimeLinkDir);	
+//	waitUntilNextSecond();
+	retVal=checkForFakeTriggerAndWriteSubTime(gpsSubTimeDir,gpsSubTimeLinkDir);	
 	if(retVal<0) {
 	  printf("Bugger\n");
 	  break;
 	}
-	sleep(1);
+	usleep(10);
     }
     return 0;
 }
 
 
-int readAndWriteSubTimesFromGPS(const char *theGpsSubTimeDir, const char *theGpsSubTimeLinkDir)
+int checkForFakeTriggerAndWriteSubTime(const char *theGpsSubTimeDir, const char *theGpsSubTimeLinkDir)
 {
     struct dirent **triggerList;
     int numTriggers,count;
     char filename[FILENAME_MAX];
     FILE *pFile;
-    GpsSubTime_t *gpsArray;
+    GpsSubTime_t tempGPS;
     int retVal;
     numTriggers=getListofLinks("/tmp/anita/trigGPSd/link",&triggerList);
-    if(numTriggers>0) {
-	
-
-
-	gpsArray=(GpsSubTime_t*) 
-	    malloc(numTriggers*sizeof(GpsSubTime_t));
+    if(numTriggers>0) {	
 	for(count=0;count<numTriggers;count++) {
+	    //Read file
 	    sprintf(filename,"/tmp/anita/trigGPSd/%s",
 		    triggerList[count]->d_name);
-/* 	    printf("%d %s\n",numTriggers,filename); */
 	    pFile = fopen (filename, "r");
 	    if(pFile == NULL) {
 		syslog (LOG_ERR,"fopen: %s\t %s",strerror(errno),filename);
 		return -1;
 	    }
 	    fscanf(pFile,"%ld %d",
-		   &(gpsArray[count].unixTime),&(gpsArray[count].subTime));
+		   &(tempGPS.unixTime),&(tempGPS.subTime));
 	    fclose(pFile);
 	    removeFile(filename);  
 	    sprintf(filename,"/tmp/anita/trigGPSd/link/%s",
 		    triggerList[count]->d_name);
-	    removeFile(filename);    
-	}
-	sprintf(filename,"%s/gps_%ld_%d.dat",theGpsSubTimeDir,gpsArray[0].unixTime,gpsArray[0].subTime);
-	pFile = fopen (filename, "w");
-	if(pFile == NULL) {
-	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	    exit(0);
-	}	
-	for(count=0;count<numTriggers;count++) {
-	    retVal=fprintf(pFile,"%ld %d\n",gpsArray[count].unixTime,
-			   gpsArray[count].subTime);
-	    if(retVal<0) {
-		syslog (LOG_ERR,"fprintf: %s ---  %s\n",
-			strerror(errno),filename);
-		exit(0);
-	    }
-	}
-	fclose (pFile);
+	    removeFile(filename); 
 
-	/*Make link, ignore retVal for now.*/
-	makeLink(filename,theGpsSubTimeLinkDir);
-	free(gpsArray);
+	    //Write file for eventd
+	    sprintf(filename,"%s/gps_%ld_%d.dat",theGpsSubTimeDir,tempGPS.unixTime,tempGPS.subTime);
+	    writeGpsTtt(&tempGPS,filename);
+	    retVal=makeLink(filename,theGpsSubTimeLinkDir); 
+   
+	}
 	for(count=0;count<numTriggers;count++)
 	    free(triggerList[count]);
 	free(triggerList);	 

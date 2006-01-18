@@ -14,13 +14,13 @@
 #define ANITA_LOG_FACILITY LOG_LOCAL4
 
 /* Hardware stuff -- might move to a config file */
-#define ACTIVE_SURFS 2
+#define ACTIVE_SURFS 10
 #define MAX_SURFS 12
 #define CHANNELS_PER_SURF 8
 #define NUM_DAC_CHANS 4
 #define SCALERS_PER_SURF 32
 #define NUM_DIGITZED_CHANNELS ACTIVE_SURFS*CHANNELS_PER_SURF
-#define MAX_NUMBER_SAMPLES 256
+#define MAX_NUMBER_SAMPLES 512
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
 
