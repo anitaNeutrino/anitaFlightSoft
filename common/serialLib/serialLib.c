@@ -18,6 +18,7 @@
 #include "serialLib/serialLib.h"
 
 #define GPS_BAUDRATE B9600
+#define GPS_NTP_BAUDRATE B9600
 #define MAGNETOMETER_BAUDRATE B38400
 
 int openGpsDevice(char devName[])
@@ -32,7 +33,27 @@ int openGpsDevice(char devName[])
 	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
 	return -1;
     }
-    retVal=setGpsTerminalOptions(fd);
+    retVal=setGpsTerminalOptions(fd,0);
+    if(retVal<0) {
+	close(fd);
+	return retVal;
+    }
+    return fd;
+}
+
+int openGpsNtpDevice(char devName[])
+/*! Does exactly what it says on the tin
+ */
+{
+    int retVal,fd;
+    retVal=toggleCRTCTS(devName);
+    if(retVal<0) return retVal;
+    fd = open(devName, O_RDWR | O_NOCTTY);
+    if(fd<0) { 	
+	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
+	return -1;
+    }
+    retVal=setGpsTerminalOptions(fd,1);
     if(retVal<0) {
 	close(fd);
 	return retVal;
@@ -60,7 +81,7 @@ int openMagnetometerDevice(char devName[])
     return fd;
 }
 
-int setGpsTerminalOptions(int fd)
+int setGpsTerminalOptions(int fd,int isNtp)
 /*! Sets the various termios options needed. 
 */
 {
@@ -81,8 +102,14 @@ int setGpsTerminalOptions(int fd)
     options.c_ispeed=13;
     options.c_ospeed=13;
 
-    cfsetispeed(&options, GPS_BAUDRATE);    /* set input speed */
-    cfsetospeed(&options, GPS_BAUDRATE);    /* set output speed */
+    if(isNtp) {
+	cfsetispeed(&options, GPS_NTP_BAUDRATE);    /* set input speed */
+	cfsetospeed(&options, GPS_NTP_BAUDRATE);    /* set output speed */
+    }
+    else {
+	cfsetispeed(&options, GPS_BAUDRATE);    /* set input speed */
+	cfsetospeed(&options, GPS_BAUDRATE);    /* set output speed */
+    }
 
     options.c_cflag &= ~PARENB;         /* clear the parity bit  */
     options.c_cflag &= ~CSTOPB;         /* clear the stop bit  */

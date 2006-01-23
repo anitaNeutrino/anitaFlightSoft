@@ -45,7 +45,7 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData);
 void processGpvtgString(char *gpsString, int gpsLength);
 void processPosString(char *gpsString, int gpsLength);
 void processAdu5Sa4String(char *gpsString, int gpsLength);
-
+int tryToStartNtpd();
 
 // Definitions
 #define LEAP_SECONDS 13 //Need to check
@@ -55,7 +55,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength);
 
 // Device names;
 char g12ADevName[FILENAME_MAX];
-//char g12BDevName[FILENAME_MAX];
+char g12BDevName[FILENAME_MAX];
 char adu5ADevName[FILENAME_MAX];
 //char adu5aDevName[FILENAME_MAX];
 
@@ -75,6 +75,7 @@ int g12NtpPort=2;
 int g12ZdaPeriod=5;
 float g12PosPeriod=10;
 int g12SatPeriod=600;
+int g12StartNtp=0;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
 int g12EnableTtt=0;
@@ -117,7 +118,7 @@ char gpsG12SatUsbArchiveDir[FILENAME_MAX];
 
 int main (int argc, char *argv[])
 {
-    int retVal;
+    int retVal,startedNtpd=0;
 
 // GPSd config stuff
     char gpsdPidFile[FILENAME_MAX];
@@ -164,6 +165,14 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Couldn't get g12ADevName");
 	    fprintf(stderr,"Couldn't get g12ADevName\n");
+	}
+	tempString=kvpGetString("g12BDevName");
+	if(tempString) {
+	    strncpy(g12BDevName,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get g12BDevName");
+	    fprintf(stderr,"Couldn't get g12BDevName\n");
 	}
 	tempString=kvpGetString("adu5ADevName");
 	if(tempString) {
@@ -312,6 +321,7 @@ int main (int argc, char *argv[])
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
 	    checkAdu5A();
+	    if(!startedNtpd && g12StartNtp) startedNtpd=tryToStartNtpd();
 	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);
@@ -365,6 +375,7 @@ int readConfigFile()
 	g12PosPeriod=kvpGetFloat("posPeriod",10); // in seconds
 	g12SatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
+	g12StartNtp=kvpGetInt("startNtp",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
     }
     else {
@@ -1315,4 +1326,34 @@ int checkChecksum(char *gpsString,int gpsLength)
 /* 	printf("\n\nBugger:\t%s %x %x\n\n%s",checksum,theCheckSum,otherSum,gpsString); */
 /*     } */
     return result;
+}
+
+int tryToStartNtpd()
+{
+    static int donePort=0;
+    int retVal=0;
+    time_t theTime=time(NULL);
+    char ntpdCommand[]="sudo /etc/init.d/ntpd restart";
+    if(!donePort) {
+	retVal=openGpsDevice(g12BDevName);
+	//May put something here to read message
+	close(retVal);
+	if(printToScreen) printf("Opened and closed: %s\n",g12BDevName);
+	donePort=1;
+    }
+    if(theTime>1e9) {
+//	printf("Need to start ntpd here %ld\n",theTime);
+	retVal=system(ntpdCommand);
+	if(retVal<0) {
+	    syslog(LOG_ERR,"Problem starting ntpd");
+	    fprintf(stderr,"Problem starting ntpd\n");
+	    return 0;
+	}
+	else {
+	    syslog(LOG_INFO,"Restarted ntpd");
+	    fprintf(stderr,"Restarted ntpd\n");
+	    return 1;
+	}
+    }
+    return 0;
 }
