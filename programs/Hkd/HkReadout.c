@@ -79,8 +79,8 @@ int main (int argc, char **argv)
   memset(desc, 0, sizeof(ip320_desc)*NUM_ACRO_CHANS); 
   kvpReset();
   sprintf(hkreadout,"hkreadout%d",readout);
-  status = configLoad("Hkd.config",hkreadout);
-  status += configLoad ("Hkd.config","hkd") ;
+  status = configLoad("HkReadout.config",hkreadout);
+  status += configLoad ("HkReadout.config","hkd") ;
   eString = configErrorString(status);
   if (status == CONFIG_E_OK) {
     char *temp;
