@@ -51,7 +51,7 @@ void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 
 
 /* Directories and gubbins */
-int useUSBDisks=0;
+int useUsbDisks=0;
 int maxEventsPerDir=1000;
 char eventdEventDir[FILENAME_MAX];
 char eventdEventLinkDir[FILENAME_MAX];
@@ -104,7 +104,7 @@ int main (int argc, char *argv[])
 /*     eString = configErrorString (status) ; */
 
     if (status == CONFIG_E_OK) {
-	useUSBDisks=kvpGetInt("useUSBDisks",0);
+	useUsbDisks=kvpGetInt("useUsbDisks",0);
 	maxEventsPerDir=kvpGetInt("maxEventsPerDir",1000);
 	tempString=kvpGetString("prioritizerdPidFile");
 	if(tempString) {
@@ -224,7 +224,7 @@ int main (int argc, char *argv[])
 		    doingEvent);	    
 	    retVal=writeHeader(&theEventHeader,archiveHdFilename);
 	    retVal=writeBody(&theEventBody,archiveBodyFilename);
-	    if(useUSBDisks) {
+	    if(useUsbDisks) {
 		sprintf(archiveHdFilename,"%s/hd_%d.dat",eventUSBArchiveDir,
 			doingEvent);
 		sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventUSBArchiveDir,

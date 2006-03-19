@@ -16,7 +16,7 @@
 /* Hardware stuff -- might move to a config file */
 #define ACTIVE_SURFS 10
 #define MAX_SURFS 12
-#define CHANNELS_PER_SURF 8
+#define CHANNELS_PER_SURF 9
 #define NUM_DAC_CHANS 4
 #define SCALERS_PER_SURF 32
 #define NUM_DIGITZED_CHANNELS ACTIVE_SURFS*CHANNELS_PER_SURF
