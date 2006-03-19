@@ -94,6 +94,7 @@ char hkTelemLinkDir[FILENAME_MAX];
 char hkdArchiveDir[FILENAME_MAX];
 char hkdUSBArchiveDir[FILENAME_MAX];
 int ip320Ranges[NUM_IP320_BOARDS];
+int numIP320s;
 int printToScreen;
 int readoutPeriod;
 int calibrationPeriod;
@@ -113,7 +114,8 @@ int main (int argc, char *argv[])
     int millisecs=0;
     struct timespec milliWait;
     milliWait.tv_sec=0;
-    milliWait.tv_nsec=100000000;
+
+
     long lastCal=0;
     time_t rawTime;
     /* Log stuff */
@@ -229,6 +231,10 @@ int main (int argc, char *argv[])
     do {
 	if(printToScreen) printf("Initializing Hkd\n");
 	retVal=readConfigFile();
+	
+	//    milliWait.tv_nsec=100000000;
+	milliWait.tv_nsec=40000000;
+	readoutPeriod*=2;
 	ip320Setup();
 	currentState=PROG_STATE_RUN;
 	millisecs=0;
@@ -249,7 +255,8 @@ int main (int argc, char *argv[])
 		time(&rawTime);		
 		if(fdMag) sendMagnetometerRequest();
 		readSBSTemps();
-		if(fdMag) checkMagnetometer(); 
+		if(fdMag) retVal=checkMagnetometer(); 
+//		printf("Mag Ret: %d\n",retVal);
 		if((rawTime-lastCal)>calibrationPeriod) {
 		    ip320Calibrate();
 		    outputData(IP320_CAL);
@@ -264,7 +271,8 @@ int main (int argc, char *argv[])
 	    }
 	    nanosleep(&milliWait,NULL);
 //	    sleep(1);
-//	    usleep(1000);
+//	    usleep(50000);
+//	    usleep(1);
 	    millisecs++;
 //	    printf("%d\n",millisecs);
 	}
@@ -286,6 +294,7 @@ int readConfigFile()
 
     if(status == CONFIG_E_OK) {       
 //	strncpy(carrierDevName,kvpGetString("ip320carrier"),FILENAME_MAX-1);
+	numIP320s=kvpGetInt("numIP320s",3);
 	printToScreen=kvpGetInt("printToScreen",-1);
 	readoutPeriod=kvpGetInt("readoutPeriod",60);
 	calibrationPeriod=kvpGetInt("calibrationPeriod",1200);
@@ -373,7 +382,7 @@ void acromagSetup()
 	exit(2);
     }
     char letter[3]={'A','B','C'};
-    for(count=0;count<NUM_IP320_BOARDS;count++) {
+    for(count=0;count<numIP320s;count++) {
 	config320[count].nHandle=carrierHandle;
 	config320[count].slotLetter=letter[count];
     }
@@ -391,7 +400,7 @@ void acromagSetup()
 	exit(3);
     }
 
-    for(count=0;count<NUM_IP320_BOARDS;count++) {
+    for(count=0;count<numIP320s;count++) {
 	config320[count].bCarrier=TRUE;
     }
   
@@ -399,7 +408,7 @@ void acromagSetup()
     /* GetCarrierAddress(carrierHandle, &addr);
        SetCarrierAddress(carrierHandle, addr); */
 
-    for(count=0;count<NUM_IP320_BOARDS;count++) {
+    for(count=0;count<numIP320s;count++) {
 	if(GetIpackAddress(carrierHandle,config320[count].slotLetter,
 			   (long *) &config320[count].brd_ptr) != S_OK) 
 	{
@@ -414,7 +423,7 @@ void acromagSetup()
 int ip320Setup()
 {
     int i,count;
-    for(count=0;count<NUM_IP320_BOARDS;count++) {
+    for(count=0;count<numIP320s;count++) {
 //	printf("Doing ip320 setup %d\n",count);
 	rsts320(&config320[count]);
 	if((byte)config320[count].id_prom[5]!=0x32) {
@@ -470,7 +479,7 @@ int ip320Setup()
 int ip320Read(int fillCor)
 {
     int count;
-    for(count=0;count<NUM_IP320_BOARDS;count++) {    
+    for(count=0;count<numIP320s;count++) {    
 	ainmc320(&config320[count]);
 	if(fillCor) mccd320(&config320[count]);
     }
@@ -482,7 +491,7 @@ int ip320Calibrate()
 {
     int count=0;
     byte temp_mode;
-    for(count=0;count<NUM_IP320_BOARDS;count++) {
+    for(count=0;count<numIP320s;count++) {
 //	printf("Here\n");
 	temp_mode=config320[count].mode;
 	config320[count].mode= AZV; /* auto zero */	
@@ -559,7 +568,7 @@ int outputData(AnalogueCode_t code)
 
 void dumpValues() {
     int i,count;
-    for(count=0;count<NUM_IP320_BOARDS;count++) {
+    for(count=0;count<numIP320s;count++) {
 	printf("Data from %c\n\n",config320[count].slotLetter);	
 	printf("Channel: ");
 	for( i = 0; i < CHANS_PER_IP320; i++ ) 
@@ -716,6 +725,9 @@ int checkMagnetometer()
     float x,y,z;
     int checksum,otherChecksum;
     int countSpaces=0;
+    magData.x=0;
+    magData.y=0;
+    magData.z=0;
     retVal=isThereDataNow(fdMag);
 //    printf("We think there is %d in the way of data\n",retVal);
     if(retVal!=1) return 0;
@@ -753,7 +765,7 @@ int checkMagnetometer()
 	}
 	if(printToScreen) printf("Checksums:\t%d %d\n",checksum,otherChecksum);
     }
-    return 0;
+    return retVal;
 }
 
 int closeMagnetometer()
