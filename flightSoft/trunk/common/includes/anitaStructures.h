@@ -67,29 +67,39 @@ typedef struct {
 /* } TurfioStruct_t; */
     
   
+//typedef struct {
+//  unsigned char otherBits;
+//    unsigned char trigType;
+//    unsigned long trigNum;
+//    unsigned long trigTime;
+//    unsigned long ppsNum;
+//    unsigned long c3poNum;
+//} TurfioStruct_t;
+  
 typedef struct {
-    unsigned char otherBits;
-    unsigned char trigType;
-    unsigned long trigNum;
-    unsigned long trigTime;
-    unsigned long ppsNum;
-    unsigned long c3poNum;
+    unsigned short rawTrig; // raw trigger number
+    unsigned short l3ATrig; // same as raw trig
+    unsigned long ppsNum;     // 1PPS
+    unsigned long trigTime;     // trig time
+    unsigned long trigInterval; // interval since last trig
+    unsigned int l1Rate[40][4]; // Antenna trigger output rates (Hz)
+    unsigned int l2Rate[2][16]; // level 2 trigger rate
+    unsigned int l3Rate[4][16];
+    unsigned int vetoMon[16];
 } TurfioStruct_t;
     
+  
 
 typedef struct {
-    short ch_id;      /* does exactly what it says on the tin */
-    short ch_fs;      /* full scale (maybe mV)*/
-    short ch_offs;    /* offset in ADCs */
-    char  ch_couple;  /* flag for type of coupling */
-    char  ch_bw;      /* flag for type of bw limit */
-    signed char ch_mean;      /*  mean, percent of full scale */
-    unsigned char ch_sdev;    /*  std deviation, percent of full scale */
-} SurfChannelHeader_t;
+    unsigned char chanId;   // chan+9*surf
+    unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
+    unsigned char firstHitbus;
+    unsigned char lastHitbus;
+} RawSurfChannelHeader_t;
 
 
 typedef struct {
-//    SurfChannelHeader_t header;
+    RawSurfChannelHeader_t header;
     unsigned short data[MAX_NUMBER_SAMPLES];
 } SurfChannelFull_t;
 
