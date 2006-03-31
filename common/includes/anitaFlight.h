@@ -20,7 +20,7 @@
 #define NUM_DAC_CHANS 4
 #define SCALERS_PER_SURF 32
 #define NUM_DIGITZED_CHANNELS ACTIVE_SURFS*CHANNELS_PER_SURF
-#define MAX_NUMBER_SAMPLES 512
+#define MAX_NUMBER_SAMPLES 260
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
 
