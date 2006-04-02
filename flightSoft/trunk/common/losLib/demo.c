@@ -37,18 +37,21 @@ int screen_keypress(int ms);
 #define M9_read_cont	'r'	/* read_cont */
 #define M10_set_wr_amt	'a'	/* set_write_amt */
 #define M11_check_data	'c'	/* check_data */
+#define M12_mix_mode    'x'	/* mix_mode */
+#define M13_delay_fac   'd'	/* set_delay_factor */
 
-static void quit(void);
 static void init(void);
 static void end(void);
 static void error_mesg(void);
 static void version(void);
 static void write_once(void);
 static void write_cont(void);
-static void read_once(void);
+static int read_once(struct buffer_info *b);
 static void read_cont(void);
 static void set_write_amt(void);
 static void check_data(void);
+static void mix_mode(void);
+static void set_delay_factor(void);
 
 static void initdisp(void);
 static void menu(char **m, int nlines);
@@ -58,7 +61,7 @@ static void generic_exit_routine(void);
 char *menuformat[] = {
 "%c=quit        %c=init        %c=end        %c=error_mesg  %c=version",
 "%c=write_once  %c=write_cont  %c=read_once  %c=read_cont   %c=set_write_amt",
-"%c=check_data"
+"%c=check_data  %c=mix_mode    %c=delay_fact"
 };
 
 #define NM ((sizeof(menuformat)/sizeof(menuformat[0])) + 1)
@@ -71,8 +74,10 @@ char *progmenu[NMENULINES-1];
 #define RESPLEN 32
 
 static unsigned short Buf[LOS_MAX_WORDS];
-static short Write_amt = 100;	// bytes to write
-static int Check_data = 1;
+static short Bytes_to_write = 100;	// bytes to write
+static int Check_data = 0;
+static int Mix_mode = 0;
+static unsigned int Delay_factor = 32;
 
 int
 main(void)
@@ -89,7 +94,7 @@ main(void)
 	wrefresh(Wuser);
 	switch(key) {
 	case M1_quit:
-	    quit();
+	    quit_confirm();
 	    break;
 	case M2_init:
 	    init();
@@ -110,7 +115,15 @@ main(void)
 	    write_cont();
 	    break;
 	case M8_read_once:
-	    read_once();
+	    {
+		struct buffer_info bf;
+		memset(&bf, '\0', sizeof(struct buffer_info));
+		read_once(&bf);
+		screen_printf("Bufcnt: %lu\n", bf.buffer_count);
+		screen_printf("Status: 0x%04x\n", bf.status);
+		screen_printf("Science bytes: %u\n", bf.science_nbytes);
+		screen_printf("Checksum: 0x%04x\n", bf.checksum);
+	    }
 	    break;
 	case M9_read_cont:
 	    read_cont();
@@ -120,6 +133,12 @@ main(void)
 	    break;
 	case M11_check_data:
 	    check_data();
+	    break;
+	case M12_mix_mode:
+	    mix_mode();
+	    break;
+	case M13_delay_fac:
+	    set_delay_factor();
 	    break;
 	case CTL('L'):
 	    clear_screen();
@@ -174,7 +193,7 @@ initdisp()
     	M6_write_once, M7_write_cont, M8_read_once, M9_read_cont,
 	M10_set_wr_amt);
     sprintf(progmenu[2], menuformat[2],
-    	M11_check_data);
+    	M11_check_data, M12_mix_mode, M13_delay_fac);
 
     menu(progmenu, NMENULINES);
 }
@@ -194,17 +213,6 @@ menu(char **m, int nlines)
     wnoutrefresh(Wmenu);
     wnoutrefresh(Wuser);
     doupdate();
-}
-
-static void
-quit()
-{
-    int ret;
-    ret = los_end();
-    if (ret) {
-	screen_printf("Error: %s\n", los_strerror());
-    }
-    generic_exit_routine();
 }
 
 static void
@@ -279,33 +287,80 @@ version()
 static void
 write_once()
 {
-    short i;
-    static unsigned char start = 0;
-    unsigned char *cp;
+    static int wrcnt = 0;
+    static unsigned long attempts = 1L;
+    static int n = 0;
     int ret;
 
-    cp = (unsigned char *)Buf;
-    for (i=0; i<Write_amt; i++) {
-	*cp++ = start + i;
+    if (Mix_mode) {
+	if (n < 4) {
+	    Bytes_to_write = 5000;
+	} else if (n < 6) {
+	    Bytes_to_write = 70;
+	} else if (n < 7) {
+	    Bytes_to_write = 98;
+	} else {
+	    Bytes_to_write = 306;
+	}
+
     }
 
-    ret = los_write((unsigned char *)Buf, Write_amt);
+    ret = los_write((unsigned char *)Buf, Bytes_to_write);
 
     if (ret) {
-	screen_printf("%s\n", los_strerror());
+	attempts++;
+	//screen_printf("%s\n", los_strerror());
+	//screen_beep();
     } else {
-	screen_printf("Wrote %d bytes\n", Write_amt);
+	screen_printf("(%d) Wrote %d bytes in %lu attempts.\n",
+	    wrcnt++, Bytes_to_write, attempts);
+	attempts = 0;
+	n++;
+	if (n >= 8) {
+	    n = 0;
+	}
     }
 }
 
 static void
 write_cont()
 {
-    int wrcnt = 0;
-    int MS = 30;  // ms to sleep between polls
+    unsigned char *cp;
+    short i;
+    int MS = 0;  // ms to sleep between polls
+    //static unsigned char start = 0;
+    //int want;
 
+    cp = (unsigned char *)Buf;
+    for (i=0; i<6000; i++) {
+	*cp++ = (i & 0xff);
+    }
+
+#ifdef NOTDEF
+    cp = (unsigned char *)Buf;
+    for (want=0, i=0; i<6000; want++, i++) {
+	if (256 == want) {
+	    want = 0;
+	}
+	if (*cp != want) {
+	    unsigned char *cp2;
+	    int j;
+	    screen_printf(
+		"Error at data byte %d: expected %02x, got %02x\n",
+		i, want, *cp);
+	    cp2 = cp - 8;
+	    for (j=0; j<16; j++) {
+		screen_printf("%02x ", *cp2++);
+	    }
+	    screen_printf("\n");
+	    break;
+	}
+	cp++;
+    }
+#endif
+
+    screen_printf("     PRESS ANY KEY TO STOP WRITING.\n");
     while (1) {
-	screen_printf("  (%d)      PRESS ANY KEY TO STOP WRITING.\n", wrcnt++);
 
 	// This screen_keypress waits up to MS milliseconds.
 	if (screen_keypress(MS) != ERR) {
@@ -322,11 +377,28 @@ set_write_amt()
 {
     char resp[RESPLEN];
 
-    screen_dialog(resp, RESPLEN, "Number of bytes to write? [%d] ", Write_amt);
+    screen_dialog(resp, RESPLEN, "Number of bytes to write? [%d] ",
+    	Bytes_to_write);
     if ('\0' != resp[0]) {
-	Write_amt = atoi(resp);
+	Bytes_to_write = atoi(resp);
     }
-    screen_printf("Write_amt is %d\n", Write_amt);
+    screen_printf("Bytes_to_write is %d\n", Bytes_to_write);
+}
+
+static void
+set_delay_factor()
+{
+    unsigned int olddf;
+    char resp[RESPLEN];
+
+    screen_dialog(resp, RESPLEN, "Delay factor? [%u] ",
+    	Delay_factor);
+    if ('\0' != resp[0]) {
+	Delay_factor = atoi(resp);
+    }
+    olddf = los_set_delay_factor(Delay_factor);
+    screen_printf("New delay factor = %u (old one was %u)\n",
+    	Delay_factor, olddf);
 }
 
 static void
@@ -342,54 +414,61 @@ check_data()
 }
 
 static void
-read_once()
+mix_mode()
+{
+    if (Mix_mode) {
+	Mix_mode = 0;
+	screen_printf("NOT doing mixed mode\n");
+    } else {
+	Mix_mode = 1;
+	screen_printf("Mixed mode\n");
+    }
+}
+
+static int
+read_once(struct buffer_info *bufinfo)
 {
     short nbytes;
-    int ret;
-    unsigned short val;
 
-    ret = los_read((unsigned char *)Buf, &nbytes);
+    int ret = los_read(bufinfo, (unsigned char *)Buf, &nbytes);
     if (ret) {
 	// Don't print the "timed out" errors.
 	if (ret != -5) {
 	    screen_printf("Error (%d): %s\n", ret, los_strerror());
+	    ret = -5;
 	}
     } else {
-	memcpy(&val, Buf+3, sizeof(unsigned short));
-	screen_printf("Read %u bytes (buf no. %u)\n", nbytes, val);
+	//memcpy(&bufcnt, Buf+3, sizeof(unsigned long));
+	screen_printf("Read %u bytes (buf no. %lu)\n",
+	    nbytes, bufinfo->buffer_count);
 
-#ifdef NOTDEF
-	{
-	    int i;
-	    for (i=0; i<10; i++) {
-		memcpy(&val, Buf+i, sizeof(unsigned short));
-		screen_printf("\t%d. %04x %u\n", i, val, val);
-	    }
-	}
-#endif
-	
 	if (Check_data) {
 	    unsigned char *cp;
 	    int i;
-	    int offset = 10;
-	    int ndata_bytes = Buf[4];
 	    int want;
 
-	    cp = (unsigned char *)Buf + offset;
+	    cp = (unsigned char *)Buf + bufinfo->byte_offset_to_science_data;
 
-	    for (want=0, i=0; i<ndata_bytes; want++, i++) {
+	    for (want=0, i=0; i<bufinfo->science_nbytes; want++, i++) {
 		if (256 == want) {
 		    want = 0;
 		}
 		if (*cp != want) {
+		    unsigned char *cp2 = cp - 8;
+		    int j;
 		    screen_printf(
 		    	"Error at data byte %d: expected %02x, got %02x\n",
 			i, want, *cp);
+		    for (j=0; j<16; j++) {
+			screen_printf("%02x ", *cp2++);
+		    }
+		    screen_printf("\n");
+		    break;
 		}
 		cp++;
 	    }
 
-	    if (ndata_bytes % 2) {
+	    if (bufinfo->science_nbytes % 2) {
 		// odd ndata_bytes - check for FILL_BYTE
 		if (FILL_BYTE != *cp) {
 		    screen_printf("Didn't get FILL_BYTE (%02x)\n", FILL_BYTE);
@@ -399,14 +478,12 @@ read_once()
 
 	    // Do checksum.
 	    {
-		int i_wd = i / sizeof(short);
 		unsigned short actual_chksum;
-		unsigned short expected_chksum;
+		unsigned short expected_chksum = bufinfo->checksum;
 
-		int nwds = 5 + i_wd;
+		int nwds = bufinfo->science_nbytes / sizeof(short);
 
-		actual_chksum = crc_short(Buf, nwds);
-		memcpy(&expected_chksum, Buf + nwds, sizeof(short));
+		actual_chksum = crc_short(Buf+6, nwds);
 		if (expected_chksum == actual_chksum) {
 		    screen_printf("Checksum okay\n");
 		} else {
@@ -416,24 +493,63 @@ read_once()
 	    }
 	}
     }
+
+    return ret;
 }
 
 static void
 read_cont()
 {
-    int MS = 30;  // ms to sleep between polls
+    struct buffer_info bufinfo;
+    unsigned long first_bufcnt = 0L;
+    unsigned long last_bufcnt = 0L;
+    unsigned long missed_buffers = 0L;
+    int ms = 0;  			// ms to sleep between polls
+    unsigned long prev_bufcnt = 0L;
 
     screen_printf("        PRESS ANY KEY TO STOP READING.\n");
 
     while (1) {
-	// This screen_keypress waits up to MS milliseconds.
-	if (screen_keypress(MS) != ERR) {
+	// This screen_keypress waits up to ms milliseconds.
+	if (screen_keypress(ms) != ERR) {
 	    screen_printf("Finished read_cont\n");
-	    return;
+	    break;
 	}
 
-	read_once();
+	if (read_once(&bufinfo)) {
+	    continue;
+	}
+
+	if (prev_bufcnt == 0) {
+	    last_bufcnt = first_bufcnt = prev_bufcnt = bufinfo.buffer_count;
+
+	} else {
+	    unsigned long diff = (bufinfo.buffer_count - prev_bufcnt) - 1;
+	    missed_buffers += diff;
+	    prev_bufcnt = last_bufcnt = bufinfo.buffer_count;
+	}
+
+	screen_printf("Buffer #%u missed: %lu\n",
+	    bufinfo.buffer_count, missed_buffers);
+	
+#ifdef NOTDEF
+	{
+	    unsigned long got = last_bufcnt - first_bufcnt;
+	    if (got >= 3000 && got < 3010) {
+		break;
+	    }
+	}
+#endif
+
     }
+
+    screen_printf("buffers: missed %lu   got %lu first %lu   last %lu\n",
+    	missed_buffers, last_bufcnt - first_bufcnt, first_bufcnt, last_bufcnt);
+
+    /***
+    screen_printf("intr timeouts with good evt = %lu\n",
+    	timeout_and_evt_count);
+    ***/
 }
 
 
@@ -450,6 +566,9 @@ quit_confirm(void)
     if (screen_confirm("Really quit")) {
 	screen_printf("Bye bye...");
 	endwin();
+        if (los_end()) {
+            printf("Error: %s\n", los_strerror());
+        }
 	generic_exit_routine();
     } else {
 	screen_printf("\nNot quitting\n");

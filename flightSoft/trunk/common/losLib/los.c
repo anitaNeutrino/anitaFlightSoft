@@ -1,7 +1,5 @@
 /* los.c - library routines for the Washington U. LOS telemetry board.
  *
- * To do: work out how to identify our board.
- *
  * Marty Olevitch
  * Jul '05
  */
@@ -17,7 +15,6 @@ static char Version_string[] = LIBLOS_VERSION;
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
-#include <unistd.h>
 
 U16 Data_buf[LOS_MAX_WORDS];
 
@@ -27,14 +24,20 @@ static HANDLE Intr_handle;
 static PLX_INTR Plx_intr;
 static IOP_SPACE IopSpace = IopSpace0;	// for 9030 chip
 
-static U16 Bufcnt = 0;	// No. of buffers transmitted.
+static unsigned long Bufcnt = 0;	// No. of buffers transmitted.
 
 // Wait_for_interrupt - nonzero if we should use interrupts. If 0, we poll
 // address 0 to see if we can read/write the board.
 static int Wait_for_interrupt = 0;
 
 // Poll_pause - minimum ms to pause between polls.
-static int Poll_pause = 100;
+static int Poll_pause = 0;
+
+// Delay_factor - divide the number of bytes in a buffer by this value to
+// get the number of ms to delay after writing a buffer to the board. I.e.
+// 	ms = nbytes / Delay_factor
+// This value can be changed by the los_set_delay_factor() function.
+static unsigned int Delay_factor = 32;
 
 static int Write = -1;	// read mode = 0, write mode = 1
 
@@ -46,7 +49,9 @@ static char Error_string[ERROR_STRING_LEN];
 
 static void pause_ms(int ms);
 static int poll_addr_0(U16 want);
+#ifdef NOTDEF
 static int poll_data_avail();
+#endif
 static int poll_data_ready();
 static int prep_interrupt(void);
 static int read_addr_0(U16 *val);
@@ -61,6 +66,8 @@ static int write_minimal_buffer();
 #define LOST_SYNC	0xd0d0
 #define NO_END_FOUND	0xbeef
 #define SYNC_HDR	0xeb90
+
+static const int CHKSUM_WORD_OFFSET = 6;
 
 int
 los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
@@ -99,7 +106,7 @@ los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
 
 	if (val != DATA_READY) {
 	    set_error_string(
-		"los_init: bad addr 0 value. Want %04X got %04x. Not LOS board?",
+		"los_init: addr 0 value. Want %04X got %04x. Not LOS board?",
 		DATA_READY, val);
 	    return -3;
 	}
@@ -160,8 +167,14 @@ los_version()
 int
 los_write(unsigned char *buf, short nbytes)
 {
+    long ms;
+    int odd_number_of_science_bytes = 0;
+    U32 offset;
+    RETURN_CODE rc;
+    int ret;
     U16 *sp;
     U16 *startp;
+    U16 total_bytes;
 
     if (Write != 1) {
 	set_error_string("los_write: not initialized for writing.");
@@ -174,79 +187,104 @@ los_write(unsigned char *buf, short nbytes)
 	return -1;
     }
 
+    if (poll_data_ready()) {
+	// Not ready to accept data yet.
+
+	if (Wait_for_interrupt) {
+	    ret = wait_for_interrupt(0);
+	    if (ret == -1) {
+		// timeout
+		;
+	    } else if (ret == -2) {
+		// error
+		prep_interrupt();
+	    }
+
+	    if (ret) {
+		return ret;
+	    }
+
+	} else {
+	    return -5;
+	}
+    }
+
     // Set up our buffer.
     sp = Data_buf;
     *sp++ = START_HDR;	// Hardware bug. Need to have this here.
     *sp++ = AUX_HDR;
-    *sp++ = SW_START_HDR;
-    *sp++ = Bufcnt;
-    *sp++ = nbytes;
+
+    *sp = ID_HDR;
+    if (nbytes % 2) {
+	// odd number of science bytes
+	odd_number_of_science_bytes = 1;
+	*sp |= 0x02;
+    }
+    sp++;
+
+    {
+	unsigned short *sp2;
+	sp2 = (unsigned short *)&Bufcnt;
+	*sp++ = *sp2++;
+	*sp++ = *sp2;
+    }
+
+    if (odd_number_of_science_bytes) {
+	*sp++ = nbytes + 1;
+    } else {
+	*sp++ = nbytes;
+    }
 
     {
 	// Add the science data.
 	U8 *cp = (U8 *)sp;
 	memcpy(cp, buf, nbytes);
 	cp += nbytes;
-	if (nbytes % 2) {
-	    // odd number of bytes; add a fill byte.
+	if (odd_number_of_science_bytes) {
+	    // Add a fill byte.
 	    *cp++ = FILL_BYTE;
 	}
 	sp = (U16 *)cp;
     }
 
     // Add the checksum and enders.
-    startp = Data_buf;
+    startp = Data_buf + CHKSUM_WORD_OFFSET;
     *sp = crc_short(startp, sp - startp);
     sp++;
     *sp++ = SW_END_HDR;
     *sp++ = END_HDR;
     *sp++ = AUX_HDR;
 
-    if (Wait_for_interrupt) {
-	int ret = 0;
-
-	if (wait_for_interrupt(100)) {
-	    ret = -2;
-	}
-
-	prep_interrupt();	// for next time
-
-	if (ret) {
-	    return ret;
-	}
-
-    } else {
-	if (poll_data_ready()) {
-	    return -5;
-	}
-    }
-
     // Write buffer.
-    {
-	U32 offset;
-	RETURN_CODE rc;
-	U16 total_bytes;
+    offset = sizeof(U16);	// offset of 1 word
+    total_bytes = (sp - Data_buf) * sizeof(U16);
 
-	offset = sizeof(U16);	// offset of 1 word
-	total_bytes = (sp - startp) * sizeof(U16);
+    rc = PlxBusIopWrite(Dev_handle, IopSpace, offset, FALSE,
+	Data_buf, total_bytes, BitSize16);
 
-	rc = PlxBusIopWrite(Dev_handle, IopSpace, offset, FALSE,
-	    Data_buf, total_bytes, BitSize16);
-
-	if (rc != ApiSuccess) {
-	    set_error_string("los_write: bad write to board");
-	    return -3;
-	}
+    if (rc != ApiSuccess) {
+	set_error_string("los_write: bad write to board");
+	return -3;
     }
 
     write_addr_0(DATA_AVAIL);
     Bufcnt++;
 
+    ms = total_bytes / Delay_factor;
+
+    if (total_bytes < 150) {
+	ms *= 8;
+    } else if (total_bytes < 500) {
+	ms *= 4;
+    }
+
+    pause_ms(ms);
+
     return 0;
 }
 
 int
-los_read(unsigned char *buf, short *nbytes)
+los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
 {
     int ret = 0;
 
@@ -256,45 +294,36 @@ los_read(unsigned char *buf, short *nbytes)
     }
 
     if (Wait_for_interrupt) {
-	if (wait_for_interrupt(100)) {
-	    ret = -2;
-	}
-
-	prep_interrupt();	// for next time
-
-	if (ret) {
-	    return ret;
+	ret = wait_for_interrupt(0);
+	if (ret == -2) {
+	    // error
+	    prep_interrupt();
+	    return -2;
 	}
 
     } else {
-	poll_data_avail();
-    }
+	while (1) {
+	    U16 val;
+	    int retval = read_addr_0(&val);
+	    if (retval) {
+		break;
+	    }
 
-    {
-	U16 val;
-	ret = read_addr_0(&val);
-	if (ret) {
-	    set_error_string("los_read: can't read addr 0\n");
-	    ret = -1;
-	    goto finito;
-	}
+	    if (DATA_AVAIL == val) {
+		break;
+	    }
 
-	if (LOST_SYNC == val) {
-	    set_error_string("los_read: lost sync\n");
-	    ret = -1;
-	    goto finito;
-	}
+	    if (LOST_SYNC == val) {
+		set_error_string("los_read: lost sync\n");
+		ret = -1;
+		goto finito;
+	    }
 
-	if (NO_END_FOUND == val) {
-	    set_error_string("los_read: buffer not ended correctly\n");
-	    ret = -1;
-	    goto finito;
-	}
-
-	if (DATA_AVAIL != val) {
-	    set_error_string("los_read: timed out waiting for DATA_AVAIL\n");
-	    ret = -5;
-	    goto finito;
+	    if (NO_END_FOUND == val) {
+		set_error_string("los_read: buffer not ended correctly\n");
+		ret = -1;
+		goto finito;
+	    }
 	}
     }
 
@@ -303,17 +332,19 @@ los_read(unsigned char *buf, short *nbytes)
 	// offset 2 instead of word offset 1. This is taken care of by the
 	// variable bug_byte_offset in the PlxBusIopRead() call.
 
-	// Read the data. We read 5 words to start. The number of data
-	// bytes is at offset 4.
+	// Read the data. We read 6 words to start. The number of data
+	// bytes is at word offset 5.
+
+	int INITIAL_READ = 6;
 
 	int bug_byte_offset = 2 * sizeof(U16);
 	RETURN_CODE rc;
 	U16 *sp;
 	U32 total_bytes_read = 0;
 
-	// Read first 5 words.
+	// Read first INITIAL_READ words.
 	rc = PlxBusIopRead(Dev_handle, IopSpace, bug_byte_offset + 0, FALSE,
-	    Data_buf, 5 * sizeof(U16), BitSize16);
+	    buf, INITIAL_READ * sizeof(U16), BitSize16);
 
 	if (rc != ApiSuccess) {
 	    set_error_string("los_read: bad initial read");
@@ -321,26 +352,35 @@ los_read(unsigned char *buf, short *nbytes)
 	    goto finito;
 	}
 
-	total_bytes_read = 5 * sizeof(U16);
+	total_bytes_read = INITIAL_READ * sizeof(U16);
 
-	sp = Data_buf;
+	sp = (unsigned short *)buf;
 
 	if (DATA_AVAIL == *sp) {
 	    // Should be properly formatted data there.
-	    if (SW_START_HDR == sp[2]) {
+	    // Need to hide bit 1 because don't care whether there was an
+	    // even or odd number of data bytes. The application can deal
+	    // with that if it wants.
+	    if ((ID_HDR & 0xfffd) == sp[2]) {
 		U16 nb;
-		U16 bufcnt;
+		unsigned long bufcnt;
 		U32 bytes_to_read = 0;
 
-		bufcnt = sp[3];
-		nb = sp[4];
-
-		bytes_to_read = nb;
-
-		if (nb % 2) {
-		    // odd number of data bytes
-		    bytes_to_read++;
+		{
+		    // Fill in the bufcnt.
+		    U16 *sp2;
+		    sp2 = (unsigned short *)&bufcnt;
+		    *sp2++ = sp[3];
+		    *sp2 = sp[4];
 		}
+
+		bufinfo->buffer_count = bufcnt;
+		bufinfo->status = sp[2];
+
+		nb = sp[5];
+		bufinfo->science_nbytes = nb;
+		bufinfo->byte_offset_to_science_data = 12;
+		bytes_to_read = nb;
 
 		// 4 * sizeof(U16) for the 4 words at the end: chksum,
 		// SW_END_HDR (aeff), END_HDR, and AUX_HEADER.
@@ -349,7 +389,7 @@ los_read(unsigned char *buf, short *nbytes)
 		// Read the rest of the data.
 		rc = PlxBusIopRead(Dev_handle, IopSpace,
 		    bug_byte_offset + total_bytes_read, FALSE,
-		    Data_buf + 5, bytes_to_read, BitSize16);
+		    buf + (INITIAL_READ*2), bytes_to_read, BitSize16);
 
 		if (rc != ApiSuccess) {
 		    set_error_string("los_read: bad big read");
@@ -357,9 +397,10 @@ los_read(unsigned char *buf, short *nbytes)
 		    goto finito;
 		}
 
+		bufinfo->checksum = *((unsigned short *)buf + 6 +
+		    (nb/sizeof(short)));
 		total_bytes_read += bytes_to_read;
 		*nbytes = total_bytes_read;
-		memcpy(buf, Data_buf, total_bytes_read);
 	    }
 	}
     }
@@ -376,6 +417,14 @@ void
 los_reset()
 {
     PlxPciBoardReset(Dev_handle);
+}
+
+unsigned int
+los_set_delay_factor(unsigned int df)
+{
+    unsigned int old_df = Delay_factor;
+    Delay_factor = df;
+    return old_df;
 }
 
 static RETURN_CODE
@@ -509,6 +558,11 @@ wait_for_interrupt(int ms)
     switch (rc) {
 	case ApiSuccess : 
 	    ret = 0;
+	    if (PlxIntrAttach(Dev_handle, Plx_intr, &Intr_handle) !=
+		    ApiSuccess) {
+		set_error_string("wait_for_interrupt: bad attatch interrupt.");
+		return -2;
+	    }
 	    break ;
 	case ApiWaitTimeout :
 	    set_error_string("wait_for_interrupt: timed out.");
@@ -546,57 +600,37 @@ poll_addr_0(U16 want)
 {
     U16 val;
     int ret = read_addr_0(&val);
-    int msNum=0;
 
     if (ret) {
 	set_error_string("poll_addr_0: bad read of addr 0");
 	return -5;
     }
 
+#ifdef NOTDEF
     if (want != val) {
-	//RJN test hack
-	for(msNum=0;msNum<Poll_pause*10;msNum++) {
-	    usleep(100);
-	    ret = read_addr_0(&val);
-	    if (ret) {
-		set_error_string("poll_addr_0: bad read of addr 0");
-		return -5;
-	    }
-	    if (want != val) continue;
-	    else break;
+	set_error_string(
+	    "poll_addr_0: timed out polling for (%04X)", want);
+	return -6;
+    }
+#endif
+
+    if (want != val) {
+	// try one more time
+
+	pause_ms(Poll_pause);
+
+	// try again
+	ret = read_addr_0(&val);
+	if (ret) {
+	    set_error_string("poll_addr_0: bad read of addr 0");
+	    return -5;
 	}
+
 	if (want != val) {
 	    set_error_string(
 		"poll_addr_0: timed out polling for (%04X)", want);
 	    return -6;
 	}
-	// try one more time
-
-/* 	pause_ms(Poll_pause); */
-
-/* 	// try again */
-/* 	ret = read_addr_0(&val); */
-/* 	if (ret) { */
-/* 	    set_error_string("poll_addr_0: bad read of addr 0"); */
-/* 	    return -5; */
-/* 	} */
-
-/* 	if (want != val) { */
-/* 	    //And once more */
-/* 	    	pause_ms(Poll_pause); */
-
-/* 		// try again */
-/* 		ret = read_addr_0(&val); */
-/* 		if (ret) { */
-/* 		    set_error_string("poll_addr_0: bad read of addr 0"); */
-/* 		    return -5; */
-/* 		} */
-/* 	} */
-/* 	if (want != val) { */
-/* 	    set_error_string( */
-/* 		"poll_addr_0: timed out polling for (%04X)", want); */
-/* 	    return -6; */
-/* 	} */
     }
 
     return 0;
@@ -609,9 +643,11 @@ poll_data_ready()
     return poll_addr_0(DATA_READY);
 }
 
+#ifdef NOTDEF
 // poll_data_avail - Poll addr 0 for DATA_AVAIL.
 static int
 poll_data_avail()
 {
     return poll_addr_0(DATA_AVAIL);
 }
+#endif
