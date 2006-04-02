@@ -9,6 +9,34 @@ the LOS telemetry board designed by Paul Dowkontt of Washington U. The
 board is based on the PLX 9030. The kernel module supplied by PLX must be
 loaded into the kernel and the plx device file created.
 
+Section: Known issues.
+    Various bugs and problems.
+
+Can't keep up with maximum data rate:
+
+As of 1 March '06, we can send data at a maximum rate of about 35-37
+kbytes/second. However, we aren't able to read data at this rate without
+occasionally missing buffers. Tests show that if we throttle the rate down
+to about 24.5 kbytes/sec (by inserting a delay at the write end after each
+buffer) then we only lose about 1 in 1,000 buffers. At 27 kbytes/sec, we
+miss about 5.5 per 1,000. Note that this is much better than the 30% of
+buffers that we missed on the engineering flight. We are not sure why we
+can't keep up, but we are working on it. Meanwhile, a decision must be made
+as to the tradeoff between data rate and losing buffers.
+
+Data stream corruption:
+
+As of 1 March '06, there is a bug in the transmission of data. We have
+found that if the following sequence of bytes is transferred
+*... 0xfe 0xff 0x00 ...*
+it occasionally causes an extra word to be inserted between the 0xff
+and the 0x00. For example:
+*... 0xfe 0xff 0xeb 0xab 0x00 ...*
+The larger the buffer, the greater the chance of this
+occurring. With a buffer size of 5000 bytes, roughly 1/3 of the buffers
+will have this problem. We think this is a hardware problem and Paul
+Dowkontt is looking into it.
+
 Section: Compiling and installation.
     Building the library and applications.
 
@@ -81,31 +109,101 @@ science data as an arbitrary sequence of bytes. This sequence of bytes is
 transferred to an application on the ground embedded in a few headers as
 documented below.
 
+<los_write()> adds a delay after writing each buffer to the telemetry
+board. See <Known issues> as well as function <los_set_delay_factor()> for
+details about this. To eliminate the delay, set the delay factor to a value
+greater than the largest possible buffer size. 8200 should do it. But don't
+do it because the read end can't keep up.
+
 Data returned by <los_read()>:
 
 The data returned by <los_read()> has the following format.
-See also the <Macros> <START_HDR>, <AUX_HDR>, <SW_START_HDR>,
+See also the <Macros> <START_HDR>, <AUX_HDR>, <ID_HDR>,
 <SW_END_HDR>, <END_HDR>, and <AUX_HDR>.
 
+(start code)
+Data format 2006a
 
-> byte    word
-> offset  offset     value   description
->
->  0        0        0xF00D  START_HDR
->  2        1        0xD0CC  AUX_HDR
->  4        2        0xAE00  SW_START_HDR
->  6        3                Buffer count
->  8        4        N       Number of bytes of science data
-> 10        5        NB      Science data (NB = N + (N%2) bytes).
-> ...       ...                If N is an odd number, then a fill byte
-> ...       ...	               with value 0xDA is added to the end.
-> 10+NB     5+(NB/2)         Checksum
-> 12+NB     6+(NB/2) 0xAEFF  SW_END_HDR
-> 14+NB     7+(NB/2) 0xC0FE  END_HDR
-> 16+NB     8+(NB/2) 0xD0CC  AUX_HDR
+LOS and SIP high-rate data format.
 
-Regarding the number of science data bytes, if the number N is an odd
-number, then an additional byte <FILL_BYTE> is added to the end.
+    byte    length
+    offset  (bytes)  value    description
+    ------  ------   -----    -----------
+       0       2     0xF00D   START_HDR
+       2       2     0xD0CC   AUX_HDR
+       4       2     0xAE0x   ID_HDR (See below)
+       6       4     -        Sequential buffer count (32 bits)
+      10       2     NB       Number of bytes of science data
+      12      NB     -        Science data
+      12+NB    2     -        Checksum (See below)
+      14+NB    2     0xAEFF   SW_END_HDR
+      16+NB    2     0xC0FE   END_HDR
+      18+NB    2     0xD0CC   AUX_HDR
+(end)
+
+ID_HDR:
+
+- bit 0 = 0 LOS data
+- bit 0 = 1 SIP high-rate data
+
+- bit 1 = 0 Even number of science bytes.
+- bit 1 = 1 Odd number of science bytes.
+    (NB must be decremented and <FILL_BYTE> pad byte at end of data removed
+    or ignored.)
+
+Checksum:
+
+The 16-bit checksum calculated over the science bytes only; that is bytes
+12 through (12+NB)-1. The following code is used to calculate the checksum:
+
+(start code)
+unsigned short
+crc_short(unsigned short *p, unsigned long n)
+{
+    unsigned short sum = 0;
+    unsigned long i;
+    for (i=0L; i<n; i++) {
+        sum += *p++;
+    }
+    return ((0xffff - sum) + 1);
+}
+(end)
+
+LDDL data description:
+
+(start code)
+endian offset 0 type S = 0xf00d
+sig los offset 0 type S = 0xf00d
+
+group header
+	S = 0xf00d
+	S = 0xd0cc
+	S = 0xae00 mask 0xfff0
+	L -> bufcnt     # buffer count
+	S -> nbytes     # no. science bytes
+group_end
+
+group ender
+	S               # checksum
+	S = 0xaeff
+	S = 0xc0fe
+	S = 0xd0cc
+group_end
+
+group anita_data
+    B nbytes		# science data
+group_end
+
+evt los
+    header
+    anita_data
+    ender
+(end)
+
+The LDDL manual can be found at
+<http://cosray.wustl.edu/~marty/lddl/doc-1.8a.html>
+The distribution is at
+<http://cosray.wustl.edu/~marty/binaries/lddl-1.8a.tar.bz2>.
 
 Section: Basic lab setup
     Hardware and software details.
@@ -135,11 +233,20 @@ that allows you to the boards using the liblos routines.
       whether to use interrupts or polling, whether to write or read, and
       the number of milliseconds to delay between polls.
   
-For now, use polling rather than interrupts, and leave the delay at the
-default of 100 ms by entering -1. The flight end should be set for writing.
+For now, *USE POLLING RATHER THAN INTERRUPTS*, and leave the write polling
+delay at the default of 0 ms by entering -1. The flight end should be set
+for writing.
+
+    - press "d" to set the delay factor. This determines how long
+      <los_write> will pause after writing a buffer to the telemetry board.
+      See <los_set_delay_factor> for details. By default, it is set to 32,
+      which seems to be about right for our Wash U lab setup. You should
+      calibrate it for your own setup.
 
     - press "a" to select the number of 16-bit words of data you want to
-      transfer.
+      transfer. Alternatively, you can press "x" to transfer a mix of
+      buffer sizes that sort of resembles in an oversimplified way the mix
+      of buffers that was sent during the August '05 engineering flight.
 
     - press "W" to write and transfer one buffer of data.
 
