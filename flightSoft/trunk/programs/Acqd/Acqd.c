@@ -601,7 +601,7 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	    PlxPciBoardReset(turfioHandle);
 	}
 	else {
-	    for(j=countSurfs;j<MAX_SURFS;j++) {
+	    for(j=0;j<MAX_SURFS;j++) {
 /* 		printf("tempLoc[%d] %d %d \t surfPos[%d] %d %d\n", */
 /* 		       i,tempLoc[i].BusNumber,tempLoc[i].SlotNumber,j, */
 /* 		       surfPos[j].bus,surfPos[j].slot); */
