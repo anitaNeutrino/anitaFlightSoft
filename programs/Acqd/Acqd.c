@@ -1239,9 +1239,9 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     }
 
     if(writeFullHk) {
-	memcpy(&(theHk.scaler),scalerData,sizeof(unsigned short)*numSurfs*N_RFTRIG);
-	memcpy(&(theHk.threshold),threshData,sizeof(unsigned short)*numSurfs*N_RFTRIG);
-	memcpy(&(theHk.rfPower),rfpwData,sizeof(unsigned short)*numSurfs*N_RFCHAN);
+	memcpy(&(theHk.scaler[0][0]),scalerData,sizeof(unsigned short)*ACTIVE_SURFS*N_RFTRIG);
+	memcpy(&(theHk.threshold[0][0]),threshData,sizeof(unsigned short)*ACTIVE_SURFS*N_RFTRIG);
+	memcpy(&(theHk.rfPower[0][0]),rfpwData,sizeof(unsigned short)*ACTIVE_SURFS*N_RFCHAN);
 
 
 	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
@@ -1442,6 +1442,8 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surf,rfChan,rc);
 	    }
 	    scalerData[surf][rfChan]=dataInt&0xffff;
+	    if(printToScreen && verbosity>1) 
+		printf("Surf %d, Scaler %d == %d\n",surf,rfChan,scalerData[surf][rfChan]);
 	}
 
 
@@ -1458,6 +1460,8 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surf,rfChan,rc);
 	    }
 	    threshData[surf][rfChan]=dataInt&0xffff;
+	    if(printToScreen && verbosity>1) 
+		printf("Surf %d, Threshold %d == %d\n",surf,rfChan,threshData[surf][rfChan]);
 	    //Should check if it is the same or not
 	}
 	
@@ -1473,6 +1477,8 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surf,rfChan,rc);
 	    }
 	    rfpwData[surf][rfChan]=dataInt&0xffff;
+	    if(printToScreen && verbosity>1) 
+		printf("Surf %d, RF Power %d == %d\n",surf,rfChan,rfpwData[surf][rfChan]);
 
 	}
     }
