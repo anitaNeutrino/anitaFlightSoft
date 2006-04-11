@@ -212,8 +212,9 @@ int main(int argc, char **argv) {
 		theScalers.threshold=dacVal;
 		if(printToScreen) 
 		    printf("Setting Local Threshold %d\n",dacVal);
-		setGloablDACThreshold(surfHandles,dacVal);
+		setGloablDACThreshold(surfHandles,dacVal);		
 		if(doingDacVal>4095) exit(0);//doingDacVal=0;
+		doingDacVal++;
 	    }
 
 	    //Send software trigger if we want to
