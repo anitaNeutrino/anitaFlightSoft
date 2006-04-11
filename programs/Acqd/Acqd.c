@@ -465,7 +465,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 	    fprintf(stderr,"setSurfControl: failed to set GPIO to %o.\n", gpioVal) ; 
 	return rc ;
     }
-
+    if (LTrig < action && action < DACLoad) return rc ; 
     //Reset GPIO to base val
     return PlxRegisterWrite(surfHandle, PCI9030_GP_IO_CTRL, baseVal ) ;
 
