@@ -38,6 +38,7 @@
 #define N_SAMP 260
 #define N_SAMP_EFF 256
 #define N_CHAN 9
+#define N_RFCHAN 8
 #define N_CHIP 4
 #define N_RFTRIG 32  // 32 RF trigger channels per SURF board
 #define PHYS_DAC 8
@@ -117,6 +118,7 @@ void calculateStatistics();
 int getEventNumber();
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles);
+AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles);
 AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle);
 //PlxReturnCode_t setTurfTriggerMode(PlxHandle_t turfioHandle, TriggerMode_t trigMode);
 void setDACThresholds(PlxHandle_t *surfHandles);
