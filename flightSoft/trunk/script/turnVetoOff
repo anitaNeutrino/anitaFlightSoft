@@ -1,6 +1,6 @@
 #!/bin/bash
 
-logic=`getConfigValue Hkd.config relaycontrol turnRFCMOnLogic`
+logic=`getConfigValue Hkd.config relaycontrol turnVetoOffLogic`
 port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
 channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
 

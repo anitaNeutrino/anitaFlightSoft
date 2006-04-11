@@ -47,6 +47,7 @@ TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 SimpleScalerStruct_t theScalers;
 
 //Temporary Global Variables
+unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
 unsigned short scalerData[MAX_SURFS][N_RFTRIG];
 unsigned short rfpwData[MAX_SURFS][N_RFTRIG];
 
@@ -65,6 +66,8 @@ char scalerOutputDir[FILENAME_MAX];
 #define EVTF_TIMEOUT 10000000 /* in microseconds */
 
 int verbosity = 0 ; /* control debug print out. */
+int addedVerbosity = 0 ; /* control debug print out. */
+int oldStyleFiles = FALSE;
 int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
@@ -111,7 +114,7 @@ int main(int argc, char **argv) {
     PlxReturnCode_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     int retVal=0;
-    unsigned short  dataWord=0;
+//    unsigned short  dataWord=0;
 // Read only one chip per trigger. PM
 
     int i=0,tmo=0; 
@@ -137,17 +140,11 @@ int main(int argc, char **argv) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	return -1;
     }
-//    printf("Debug3\n");
-    if(printToScreen) printf(" Start test program %d %#x!!\n",LAB_F,LAB_F) ;
 
-//    printf("Debug4\n");
     if(standAloneMode) {
 	init_param(argc, argv, acqdEventDir, &n_ev, &dacVal) ;
 //	if (dir_n == NULL) dir_n = "./data" ; /* this is default directory name. */
     }
-
-    if (verbosity && printToScreen) 
-	printf("  size of buffer is %d bytes.\n", sizeof(dataWord)) ;
 
     // Initialize devices
     if ((numDevices = initializeDevices(surfHandles,&turfioHandle,
@@ -187,7 +184,8 @@ int main(int argc, char **argv) {
 	trigMode=TrigNone;
 	if(pps1TrigFlag) trigMode+=TrigPPS1;
 	if(pps2TrigFlag) trigMode+=TrigPPS2;
-	setTurfControl(turfioHandle,SetTrigMode);
+	// RJN debugging
+//	setTurfControl(turfioHandle,SetTrigMode);
 
 	//Write RFCM Mask
 	writeRFCMMask(turfioHandle);
@@ -234,11 +232,11 @@ int main(int argc, char **argv) {
 		    }
 	    }
 
-	    // Wait for ready to read (Evt_F) 
+	    // Wait for ready to read (EVT_RDY) 
 	    tmo=0;	    
 	    if(!dontWaitForEvtF) {
 		if(verbosity && printToScreen) 
-		    printf("Waiting for Evt_F on SURF 1-1\n");
+		    printf("Waiting for EVT_RDY on SURF 1-1\n");
 
 		do {
 		    tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc);
@@ -254,19 +252,19 @@ int main(int argc, char **argv) {
 		    }
 		    
 		    
-		} while(!(tmpGPIO & EVT_F) && (selftrig?(tmo<N_TMO):1) );
+		} while(!(tmpGPIO & EVT_RDY) && (selftrig?(tmo<N_TMO):1) );
 
 		if(currentState!=PROG_STATE_RUN) continue;
 		
 		if (tmo == N_TMO || tmo==EVTF_TIMEOUT){
-		    syslog(LOG_WARNING,"Timed out waiting for Evt_F flag");
+		    syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
 		    if(printToScreen)
-			printf(" Timed out (%d ms) while waiting for Evt_F flag in self trigger mode.\n", N_TMO) ;
+			printf(" Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", N_TMO) ;
 		    continue;
 		}
 	    }
 	    else {
-		printf("Didn't wait for Evt_F\n");
+		printf("Didn't wait for EVT_RDY\n");
 		sleep(1);
 	    }
 	    
@@ -274,6 +272,8 @@ int main(int argc, char **argv) {
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
 	    status+=readSurfEventData(surfHandles);
+	    if(verbosity && printToScreen) printf("Read SURFs\n");
+	    
 	    status+=readTurfEventData(turfioHandle);
 
 	    if(verbosity && printToScreen) printf("Done reading\n");
@@ -403,7 +403,8 @@ char *turfControlActionAsString(TurfControlAction_t action) {
 PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t action)
 {
     //These numbers are octal
-    U32 baseVal    = 0222200222 ;
+    
+    U32 baseVal    = 0222222220 ;
     U32 clearEvent = 0000000040 ;
     U32 clearAll   = 0000000400 ;  
     U32 locTrig    = 0000400000 ;  /* local software trigger for a SURF */
@@ -428,7 +429,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 	case RDMode  : gpioVal = baseVal | rdWrFlag ; break ; //Default 
 	case WTMode   : gpioVal = baseVal & ~rdWrFlag ; break ;
 	case DTRead   : gpioVal = baseVal | dataHkFlag ; break ;
-	case DACLoad  : gpioVal = baseVal | dacLoad ; break ;
+	case DACLoad  : gpioVal = (baseVal&~rdWrFlag) | dacLoad ; break ;
 	default :
 	    syslog(LOG_WARNING,"setSurfControl: undefined action %d",action);
 	    if(printToScreen)
@@ -447,9 +448,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 	return rc ;
     }
 
-    /* Jing's logic requires trigger bit to be kept high.  9-Dec SM */
-    //if (action == LTrig) return rc ;  // Self trigger disabled, PM 31-3-05
-    /* return to the main, after reseting GPIO to base value. */
+    //Reset GPIO to base val
     return PlxRegisterWrite(surfHandle, PCI9030_GP_IO_CTRL, baseVal ) ;
 
 }
@@ -484,6 +483,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
 		printf(" setTurfControl : failed to set GPIO to %o\t (%d).\n", gpioVal,rc) ;
 	    return rc ;
 	}
+	printf("First read of TURF GPIO: %o\n", PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc));
 	first=0;
     }
     // Read current GPIO state
@@ -730,7 +730,10 @@ int readConfigFile()
 	writeData=kvpGetInt("writeData",1);
 	writeScalers=kvpGetInt("writeScalers",1);
 	justWriteHeader=kvpGetInt("justWriteHeader",0);
-	verbosity=kvpGetInt("verbosity",0);
+	if(!standAloneMode) 
+	    verbosity=kvpGetInt("verbosity",0);
+	else
+	    verbosity=kvpGetInt("verbosity",0)+addedVerbosity;
 	printStatistics=kvpGetInt("printStatistics",0);
 	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
 	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
@@ -863,9 +866,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	    if(printToScreen)
 		printf("Failed to set Sp0 descriptor on SURF %d.\n",i ) ;    
 	}
-    }
-    
-    for(i=0;i<numSurfs;++i){
+	
 	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
 	if(printToScreen)
 	    printf(" GPIO register contents SURF %d = %o\n",i,testVal);
@@ -912,7 +913,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
     testVal=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc); 
     if(printToScreen) {	
-        printf(" Try to read 9030 GPIO.  %o\n", testVal);
+        printf(" Try to read TURFIO GPIO.  %o\n", testVal);
     }
     if (rc != ApiSuccess) printf("  failed to read TURFIO GPIO .\n") ; 
 
@@ -934,9 +935,8 @@ int init_param(int argn, char **argv, char *directory, int *n, unsigned short *d
     while (--argn) {
 	if (**(++argv) == '-') {
 	    switch (*(*argv+1)) {
-		case 'v': verbosity++ ; break ;
-		case 't': selftrig = TRUE; break;
-		case 's': surfonly = TRUE; break;
+		case 'o': oldStyleFiles=TRUE ; break ;
+		case 'v': addedVerbosity++ ; break ;
 		case 'w': writeData = TRUE; break;
 		case 'c': doSlowDacCycle = TRUE; break;
 		case 'a': *dacVal=(unsigned short)atoi(*(++argv)) ; --argn ; break ;
@@ -1028,9 +1028,9 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 
 
 
-PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned int *dataWord)
+PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned int *dataInt)
 {
-    return PlxBusIopRead(handle,IopSpace0,0x0,TRUE, dataWord, 2, BitSize32);
+    return PlxBusIopRead(handle,IopSpace0,0x0,TRUE, dataInt, 4, BitSize32);
 }
 
 
@@ -1216,13 +1216,13 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 
 
 AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles) 
-/*! This is the code that is executed after we read the Evt_F flag */
+/*! This is the code that is executed after we read the EVT_RDY flag */
 /* It is the equivalent of read_LABdata in Shige's crate_test program */
 {
 
     PlxReturnCode_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
-    unsigned int  dataWord=0;
+    unsigned int  dataInt=0;
 
     unsigned char tempVal;
     int chanId=0,surf,chan=0,samp,firstHitbus,lastHitbus,wrappedHitbus;
@@ -1234,6 +1234,14 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
   	
     //Loop over SURFs and read out data
     for(surf=0;surf<numSurfs;surf++){  
+//	sleep(1);
+	if(printToScreen &&verbosity) {
+	    printf("GPIO register contents SURF %d = %o\n",surf,
+		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
+	    printf("INT register contents SURF %d = %o\n",surf,
+		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
+	}
+
 	//Set to read mode
 	rc=setSurfControl(surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
@@ -1241,119 +1249,105 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 	    if(printToScreen)
 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
 	}
+	rc=setSurfControl(surfHandles[surf],DTRead);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surf,rc);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surf,rc);
+	}
 	
 	//First read to prime pipe
 	if(tryToUseBarMap) {
-	    dataWord=*(barMapAddr[surf]);
+	    dataInt=*(barMapAddr[surf]);
 	}
-	else if (readPlxDataWord(surfHandles[surf],&dataWord)!= ApiSuccess) {
+	else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
 	    status=ACQD_E_PLXBUSREAD;
-	    syslog(LOG_ERR,"Failed to prime pipe SURF %d",surf);
+	    syslog(LOG_ERR,"Failed to prime pipe SURF %d (rc = %d)",surf,rc);
 	    if(printToScreen) 
-		printf("Failed to prime pipe SURF %d\n", surf) ;
+		printf("Failed to prime pipe SURF %d (rc = %d)\n", surf,rc) ;
 	}
+
 	
-	for (chan=0 ; chan<N_CHAN ; chan++) {
-	    chanId=chan+surf*CHANNELS_PER_SURF;
-	    firstHitbus=-1;
-	    lastHitbus=-1;
-	    wrappedHitbus=0;
-	    for (samp=0 ; samp<N_SAMP_EFF ; samp++) {
-		
+	for(chan=0;chan<N_CHAN; chan++) {
+	    for (samp=0 ; samp<N_SAMP_EFF ; samp++) {		
 		if(tryToUseBarMap) 
-		    dataWord=*(barMapAddr[surf]);
-		else if(readPlxDataWord(surfHandles[surf],&dataWord)
+		    dataInt=*(barMapAddr[surf]);
+		else if(readPlxDataWord(surfHandles[surf],&dataInt)
 			!= ApiSuccess) {
 		    status=ACQD_E_PLXBUSREAD;			
 		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surf,chan,samp);
 		    if(printToScreen) 
 			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
 		}
-		
 		if(printToScreen && verbosity>2) {
-		    printf("SURF %d, CHP %d,CHN %d, SCA %d: %d (HITBUS=%d) %d\n",surf,dataWord>>14,chan,samp,dataWord,dataWord & 0x1000,dataWord&DATA_MASK);
+		    printf("SURF %d, CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
 		}
-		
-		if(samp==0) upperWord=GetUpper16(dataWord);
-		if(upperWord!=GetUpper16(dataWord)) {
-		    syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surf,chan,samp,upperWord,GetUpper16(dataWord));
-		}
-		
-		theEvent.body.channel[chanId].data[samp]=GetLower16(dataWord);
-		
-		//Now check for HITBUS
-		if(firstHitbus<0 && (GetLower16(dataWord)&HITBUS))
-		    firstHitbus=samp;
-		if(GetLower16(dataWord)&HITBUS) {
-		    if(!wrappedHitbus) {
-			if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) {
-			    //Wrapped hitbus
-			    wrappedHitbus=1;
-			    firstHitbus=lastHitbus;
-			}
-			lastHitbus=samp;
-		    }		    
-		}				
+		labData[surf][chan][samp]=dataInt;
 	    }
-	    //End of sample loop
-	    tempVal=(9*(upperWord&0xf))+chan; //chan + 9*SURF Num
-	    theEvent.body.channel[chanId].header.chanId=tempVal;
-	    theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
-	    theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
-	    tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
-	    theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
 	}
-	for (chan=0 ; chan<N_CHAN ; chan++) {
-	    chanId=chan+surf*CHANNELS_PER_SURF;
-	    firstHitbus=theEvent.body.channel[chanId].header.firstHitbus;
-	    lastHitbus=theEvent.body.channel[chanId].header.lastHitbus;
-	    wrappedHitbus=0;
-	    if(theEvent.body.channel[chanId].header.chipIdFlag&0x8)
-		wrappedHitbus=1;
-
-	    for (samp=N_SAMP_EFF ; samp<N_SAMP ; samp++) {
+	for(chan=0;chan<N_CHAN; chan++) {
+	    for (samp=N_SAMP_EFF ; samp<N_SAMP ; samp++) {		
 		if(tryToUseBarMap) 
-		    dataWord=*(barMapAddr[surf]);
-		else if(readPlxDataWord(surfHandles[surf],&dataWord)
+		    dataInt=*(barMapAddr[surf]);
+		else if(readPlxDataWord(surfHandles[surf],&dataInt)
 			!= ApiSuccess) {
 		    status=ACQD_E_PLXBUSREAD;			
 		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surf,chan,samp);
 		    if(printToScreen) 
 			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
-		}
-		
+		}    
 		if(printToScreen && verbosity>2) {
-		    printf("SURF %d, CHP %d,CHN %d, SCA %d: %d (HITBUS=%d) %d\n",surf,dataWord>>14,chan,samp,dataWord,dataWord & 0x1000,dataWord&DATA_MASK);
+		    printf("SURF %d, CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0xf000)>>14),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
 		}
-		theEvent.body.channel[chanId].data[samp]=GetLower16(dataWord);
-		
-
-		//Now check for HITBUS
-		if(firstHitbus<0 && (GetLower16(dataWord)&HITBUS))
-		    firstHitbus=samp;
-		if(GetLower16(dataWord)&HITBUS) {
-		    if(!wrappedHitbus) {
-			if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) {
-			    //Wrapped hitbus
-			    wrappedHitbus=1;
-			    firstHitbus=lastHitbus;
-			}
-			lastHitbus=samp;
-		    }		    
-		}	
+		labData[surf][chan][samp]=dataInt;
 	    }
-
-	    //End of sample loop
-	    tempVal=(9*(upperWord&0xf))+chan; //chan + 9*SURF Num
-	    theEvent.body.channel[chanId].header.chanId=tempVal;
-	    theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
-	    theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
-	    tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
-	    theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
 	}
-	    
-    }  //Close the numSurfs loop
-	
+    }
+    //Read out SURFs
+
+    if(!oldStyleFiles) {
+	for(surf=0;surf<numSurfs;surf++){  
+	    for (chan=0 ; chan<N_CHAN ; chan++) {
+		chanId=chan+surf*CHANNELS_PER_SURF;
+		firstHitbus=-1;
+		lastHitbus=-1;
+		wrappedHitbus=0;
+		for (samp=0 ; samp<N_SAMP ; samp++) {		
+		    dataInt=labData[surf][chan][samp];
+		    if(samp==0) upperWord=GetUpper16(dataInt);
+/* 		    if(upperWord!=GetUpper16(dataInt)) { */
+/* 			//Will add an error flag to the channel header */
+/* 			syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surf,chan,samp,upperWord,GetUpper16(dataInt)); */
+/* 			if(printToScreen) */
+/* 			    fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));			 */
+/* 		    } */
+		    
+		    theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt);
+		    
+		    //Now check for HITBUS
+		    if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS))
+			firstHitbus=samp;
+		    if(GetLower16(dataInt)&HITBUS) {
+			if(!wrappedHitbus) {
+			    if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) {
+				//Wrapped hitbus
+				wrappedHitbus=1;
+				firstHitbus=lastHitbus;
+			    }
+			    lastHitbus=samp;
+			}		    
+		    }				
+		}
+		//End of sample loop
+		tempVal=chan+N_CHAN*surf;
+		theEvent.body.channel[chanId].header.chanId=tempVal;
+		theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
+		theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
+		tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
+		theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
+	    }
+	}
+    }   
     return status;
 } 
 
@@ -1477,6 +1471,8 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) {
     //Now send bit pattern to TURF using RFCBit and RFCClk
     while(i<48) {
 	if (i==32) j=chanBit=1 ;
+	
+//	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\n",i,j,chanBit,rfcmMask[j]);
 	if(rfcmMask[j]&chanBit) rc=setTurfControl(turfioHandle,RFCBit);
 	else rc=setTurfControl(turfioHandle,RFCClk);
 	if (rc != ApiSuccess) {

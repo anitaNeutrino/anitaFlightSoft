@@ -2,5 +2,8 @@
 
 turnCalPulserOn
 turnGPSOn
-turnNDOn
-turnRFCMOn
+turnVetoOn
+turnRFCM1On
+turnRFCM2On
+turnRFCM3On
+turnRFCM4On
