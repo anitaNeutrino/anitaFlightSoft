@@ -38,11 +38,9 @@
 #define N_SAMP 260
 #define N_SAMP_EFF 256
 #define N_CHAN 9
-#define N_RFCHAN 8
+#define N_RFCHAN RFCHAN_PER_SURF
 #define N_CHIP 4
-#define N_RFTRIG 32  // 32 RF trigger channels per SURF board
-#define PHYS_DAC 8
-
+#define N_RFTRIG SCALERS_PER_SURF  // 32 RF trigger channels per SURF board
 
 typedef HANDLE PlxHandle_t;
 typedef DEVICE_LOCATION PlxDevLocation_t;

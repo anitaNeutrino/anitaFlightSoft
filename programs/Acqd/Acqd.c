@@ -45,6 +45,7 @@ TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 
 
 SimpleScalerStruct_t theScalers;
+FullSurfHkStruct_t theHk;
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
@@ -59,6 +60,7 @@ char acqdPidFile[FILENAME_MAX];
 char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 char scalerOutputDir[FILENAME_MAX];
+char hkOutputDir[FILENAME_MAX];
 
 #define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
 #define N_FTMO 200    /* number of msec wait for Lab_f before timed out. */
@@ -73,6 +75,7 @@ int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
 int writeScalers = FALSE;
+int writeFullHk = FALSE;
 int justWriteHeader = FALSE;
 int doSlowDacCycle = FALSE; /* Do a cycle of the DAC values */
 int doGlobalDacCycle = FALSE;
@@ -301,7 +304,7 @@ int main(int argc, char **argv) {
 		if(printToScreen && verbosity) 
 		    printf("Event:\t%d\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
 		// Save data
-		if(writeData || writeScalers){
+		if(writeData || writeScalers || writeFullHk){
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 		}
 		//Insert stats call here
@@ -723,6 +726,13 @@ int readConfigFile()
 	}
 	else
 	    fprintf(stderr,"Coudn't fetch scalerOutputDir\n");
+	tempString=kvpGetString ("hkOutputDir");
+	if(tempString) {
+	    strncpy(hkOutputDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(hkOutputDir);
+	}
+	else
+	    fprintf(stderr,"Coudn't fetch hkOutputDir\n");
 //	printf("Debug rc2\n");
 	printToScreen=kvpGetInt("printToScreen",0);
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
@@ -736,6 +746,7 @@ int readConfigFile()
 	standAloneMode=kvpGetInt("standAloneMode",0);
 	writeData=kvpGetInt("writeData",1);
 	writeScalers=kvpGetInt("writeScalers",1);
+	writeFullHk=kvpGetInt("writeFullHk",1);
 	justWriteHeader=kvpGetInt("justWriteHeader",0);
 	if(!standAloneMode) 
 	    verbosity=kvpGetInt("verbosity",0);
@@ -1218,6 +1229,23 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    printf("Failed to write all scaler data. wrote only %d.\n", n) ;
 	    fclose(scalerFile);
     }
+
+    if(writeFullHk) {
+	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
+	FILE *hkFile;
+	int n;
+	if ((hkFile=fopen(theFilename, "wb")) == NULL) { 
+	    printf("Failed to open hk file, %s\n", theFilename) ;
+	    return ;
+	}
+	
+	if ((n=fwrite(&theHk, sizeof(FullSurfHkStruct_t),1,hkFile))!=1)
+	    printf("Failed to write all hk data. wrote only %d.\n", n) ;
+	    fclose(hkFile);
+    }
+
+
+    
 
 }
 
