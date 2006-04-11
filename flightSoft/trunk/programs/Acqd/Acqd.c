@@ -49,12 +49,14 @@ FullSurfHkStruct_t theHk;
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
-//unsigned short scalerData[MAX_SURFS][N_RFTRIG];
-//unsigned short threshData[MAX_SURFS][N_RFTRIG];
-//unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
-unsigned short **scalerData=(unsigned short**)&(theHk.scaler[0][0]);
-unsigned short **threshData=(unsigned short**)&(theHk.threshold[0][0]);
-unsigned short **rfpwData=(unsigned short**)&(theHk.rfPower[0][0]);
+unsigned short scalerData[MAX_SURFS][N_RFTRIG];
+unsigned short threshData[MAX_SURFS][N_RFTRIG];
+unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
+
+
+//unsigned short **scalerData=(unsigned short**)&(theHk.scaler[0][0]);
+//unsigned short **threshData=(unsigned short**)&(theHk.threshold[0][0]);
+//unsigned short **rfpwData=(unsigned short**)&(theHk.rfPower[0][0]);
 
 
 //Configurable watchamacallits
@@ -1237,6 +1239,11 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     }
 
     if(writeFullHk) {
+	memcpy(&(theHk.scaler),scalerData,sizeof(unsigned short)*numSurfs*N_RFTRIG);
+	memcpy(&(theHk.threshold),threshData,sizeof(unsigned short)*numSurfs*N_RFTRIG);
+	memcpy(&(theHk.rfPower),rfpwData,sizeof(unsigned short)*numSurfs*N_RFCHAN);
+
+
 	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
 	FILE *hkFile;
 	int n;
