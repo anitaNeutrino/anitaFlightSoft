@@ -260,6 +260,14 @@ typedef struct {
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
 } SimpleScalerStruct_t;
 
+typedef struct {    
+    unsigned short globalThreshold; //set to zero if there isn't one
+    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+    unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
+    unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
+} FullSurfHkStruct_t;
+
+
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
