@@ -37,7 +37,7 @@ BoardLocStruct_t surfPos[MAX_SURFS];
 int dacSurfs[MAX_SURFS];
 int dacChans[NUM_DAC_CHANS];
 int printToScreen=0,standAloneMode=0;
-int numSurfs=0,doingEvent=0;
+int numSurfs=0,doingEvent=0,hkNumber=0;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -49,7 +49,8 @@ SimpleScalerStruct_t theScalers;
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
 unsigned short scalerData[MAX_SURFS][N_RFTRIG];
-unsigned short rfpwData[MAX_SURFS][N_RFTRIG];
+unsigned short threshData[MAX_SURFS][N_RFTRIG];
+unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
 
 //Configurable watchamacallits
 /* Ports and directories */
@@ -272,7 +273,12 @@ int main(int argc, char **argv) {
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
 	    status+=readSurfEventData(surfHandles);
-	    if(verbosity && printToScreen) printf("Read SURFs\n");
+	    if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
+
+	    //For now I'll just read the HK data with the events.
+	    //Later we will change this to do something more cleverer
+	    status+=readSurfHkData(surfHandles);
+	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
 	    
 	    status+=readTurfEventData(turfioHandle);
 
@@ -1350,6 +1356,87 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
     }   
     return status;
 } 
+
+
+AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles) 
+// Reads the scaler and RF power data from the SURF board
+{
+   
+    PlxReturnCode_t rc;
+    AcqdErrorCode_t status=ACQD_E_OK;
+    unsigned int  dataInt=0;
+    int surf,rfChan;
+
+
+    if(verbosity && printToScreen) 
+	printf("Reading Surf HK %d.\n",hkNumber++);
+        
+    for(surf=0;surf<numSurfs;surf++){  
+
+	//Set to read house keeping
+	//Send DTRead first to have a transition on DT/HK line
+	rc=setSurfControl(surfHandles[surf],DTRead);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surf,rc);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surf,rc);
+	}
+	rc=setSurfControl(surfHandles[surf],RDMode);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
+	}
+
+	//First read the scaler data
+	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
+	    if(tryToUseBarMap) {
+		dataInt=*(barMapAddr[surf]);
+	    }	    
+	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
+		status=ACQD_E_PLXBUSREAD;
+		syslog(LOG_ERR,"Failed to read SURF %d, Scaler %d (rc = %d)",surf,rfChan,rc);
+		if(printToScreen) 
+		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surf,rfChan,rc);
+	    }
+	    scalerData[surf][rfChan]=dataInt&0xffff;
+	}
+
+
+
+	//Next comes the threshold (DAC val) data
+	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
+	    if(tryToUseBarMap) {
+		dataInt=*(barMapAddr[surf]);
+	    }	    
+	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
+		status=ACQD_E_PLXBUSREAD;
+		syslog(LOG_ERR,"Failed to read SURF %d, Threshold %d (rc = %d)",surf,rfChan,rc);
+		if(printToScreen) 
+		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surf,rfChan,rc);
+	    }
+	    threshData[surf][rfChan]=dataInt&0xffff;
+	    //Should check if it is the same or not
+	}
+	
+	//Lastly read the RF Power Data
+	for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
+	    if(tryToUseBarMap) {
+		dataInt=*(barMapAddr[surf]);
+	    }	    
+	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
+		status=ACQD_E_PLXBUSREAD;
+		syslog(LOG_ERR,"Failed to read SURF %d, RF Power %d (rc = %d)",surf,rfChan,rc);
+		if(printToScreen) 
+		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surf,rfChan,rc);
+	    }
+	    rfpwData[surf][rfChan]=dataInt&0xffff;
+
+	}
+    }
+    return status;
+}
+
 
 
 AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
