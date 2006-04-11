@@ -49,9 +49,13 @@ FullSurfHkStruct_t theHk;
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
-unsigned short scalerData[MAX_SURFS][N_RFTRIG];
-unsigned short threshData[MAX_SURFS][N_RFTRIG];
-unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
+//unsigned short scalerData[MAX_SURFS][N_RFTRIG];
+//unsigned short threshData[MAX_SURFS][N_RFTRIG];
+//unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
+unsigned short **scalerData=(unsigned short**)&(theHk.scaler[0][0]);
+unsigned short **threshData=(unsigned short**)&(theHk.threshold[0][0]);
+unsigned short **rfpwData=(unsigned short**)&(theHk.rfPower[0][0]);
+
 
 //Configurable watchamacallits
 /* Ports and directories */
@@ -194,10 +198,11 @@ int main(int argc, char **argv) {
 	//Write RFCM Mask
 	writeRFCMMask(turfioHandle);
 	
-
+	theHk.globalThreshold=0;
 	//Set Thresholds
 	if(setGlobalThreshold) {
 	    setGloablDACThreshold(surfHandles,globalThreshold);
+	    theHk.globalThreshold=globalThreshold;
 	    printf("Setting Global Threshold %d\n",globalThreshold);
 	}
 	else {
@@ -215,7 +220,8 @@ int main(int argc, char **argv) {
 		theScalers.threshold=dacVal;
 		if(printToScreen) 
 		    printf("Setting Local Threshold %d\n",dacVal);
-		setGloablDACThreshold(surfHandles,dacVal);		
+		setGloablDACThreshold(surfHandles,dacVal);	
+		theHk.globalThreshold=dacVal;
 		if(doingDacVal>4095) exit(0);//doingDacVal=0;
 		doingDacVal++;
 	    }
