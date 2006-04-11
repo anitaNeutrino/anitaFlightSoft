@@ -2,5 +2,8 @@
 
 turnCalPulserOff
 turnGPSOff
-turnNDOff
-turnRFCMOff
+turnVetoOff
+turnRFCM1Off
+turnRFCM2Off
+turnRFCM3Off
+turnRFCM4Off

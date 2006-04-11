@@ -25,7 +25,7 @@
 
 
 /* Acromag Functions */
-void acromagSetup(int ip470BoardLocation);
+void acromagSetup(int ip470BoardLocation, char *ip470carrier);
 void ip470Setup();
 int ip470Write(int port, int chan,int val);
 int usage(char *progName);
@@ -44,10 +44,13 @@ struct conf_blk_470 cblk_470;
 /* Acromag constants */
 #define INTERRUPT_LEVEL 10
 
-
+/* Acromag carrier default */
+const char carrierDefault[] = "/dev/apc8620";
 
 int main (int argc, char *argv[])
 {
+    char ip470carrier[FILENAME_MAX];
+    sprintf(ip470carrier,"%s",carrierDefault);
     int retVal,port,channel,value,ip470BoardLocation=0;
     int gpsOnPort,gpsOffPort,ndOnPort,ndOffPort,rfcmOnPort,rfcmOffPort;
 
@@ -80,6 +83,9 @@ int main (int argc, char *argv[])
 
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
+        char *temp;
+	temp = kvpGetString("ip470carrier");
+	if (temp != NULL) sprintf(ip470carrier,"%s",temp);
 	ip470BoardLocation=kvpGetInt("ip470BoardLocation",-1);
 	gpsOnPort=kvpGetInt("gpsOnLogic",-1);
 	gpsOffPort=kvpGetInt("gpsOffLogic",-1);
@@ -92,9 +98,10 @@ int main (int argc, char *argv[])
 	printf("Error trying to read %s:\t%s\n","Hkd.config",eString);
     }
     
+    printf("ip470carrier: %s\n", ip470carrier);
     retVal=0;
 
-    acromagSetup(ip470BoardLocation);
+    acromagSetup(ip470BoardLocation, ip470carrier);
     ip470Setup();
 	
     retVal=ip470Write(port,channel,value);
@@ -107,7 +114,7 @@ int main (int argc, char *argv[])
 }
 
  
-void acromagSetup(int ip470BoardLocation)
+void acromagSetup(int ip470BoardLocation, char *ip470carrier)
 {
 
   long addr=0;
@@ -119,7 +126,7 @@ void acromagSetup(int ip470BoardLocation)
   }
   
   /* Connect to Carrier */
-  if(CarrierOpen(0, &carrierHandle) != S_OK) {
+  if(CarrierOpenDev(0, &carrierHandle, ip470carrier) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
     exit(2);
   }

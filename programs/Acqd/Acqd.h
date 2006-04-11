@@ -22,7 +22,7 @@
 #include "anitaStructures.h"
 
 //Definitions
-#define EVT_F 0x800
+#define EVT_RDY  0004
 #define LAB_F 0x4000
 #define START_B 0x4000
 #define STOP_B  0x8000
