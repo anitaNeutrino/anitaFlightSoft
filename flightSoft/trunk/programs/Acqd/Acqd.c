@@ -318,7 +318,8 @@ int main(int argc, char **argv) {
 		if(writeData || writeScalers || writeFullHk){
 		    if(useAltDir) 
 			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
-		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
+		    else 
+			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 		}
 		//Insert stats call here
 		if(printStatistics) calculateStatistics();
