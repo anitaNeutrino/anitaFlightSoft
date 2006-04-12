@@ -110,6 +110,7 @@ typedef struct {
     long unixTimeUs;     /* unix UTC microsec */
     int gpsSubTime;     /* the GPS fraction of second (in ns) (for the X events per second that gets tagged with it */
     int eventNumber;    /* Global event number */
+    short surfMask;
     short numChannels;  /* In case we turn part of array off, or whatever. */
     short numSamples;   /* total number of samples per waveform == 256*/
     char calibStatus;   /* Were we flashing the pulser? */
