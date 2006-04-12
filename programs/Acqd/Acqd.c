@@ -1163,7 +1163,7 @@ int getEventNumber() {
     static int eventNumber=0;
     /* This is just to get the lastEventNumber in case of program restart. */
     FILE *pFile;
-    if(firstTime) {
+    if(firstTime && !standAloneMode) {
 	pFile = fopen (lastEventNumberFile, "r");
 	if(pFile == NULL) {
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
@@ -1181,20 +1181,23 @@ int getEventNumber() {
 	firstTime=0;
     }
     eventNumber++;
-    pFile = fopen (lastEventNumberFile, "w");
-    if(pFile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		lastEventNumberFile);
-    }
-    else {
-	retVal=fprintf(pFile,"%d\n",eventNumber);
-	if(retVal<0) {
-	    syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+    if(!standAloneMode) {
+	pFile = fopen (lastEventNumberFile, "w");
+	if(pFile == NULL) {
+	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
 		    lastEventNumberFile);
 	}
-	fclose (pFile);
+	else {
+	    retVal=fprintf(pFile,"%d\n",eventNumber);
+	    if(retVal<0) {
+		syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+			lastEventNumberFile);
+	    }
+	    fclose (pFile);
+	}
     }
     return eventNumber;
+
 }
 
 
