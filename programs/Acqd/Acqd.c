@@ -131,6 +131,7 @@ int main(int argc, char **argv) {
     
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
+    char *altOutputdir=0;
 
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
@@ -148,7 +149,7 @@ int main(int argc, char **argv) {
     }
 
     if(standAloneMode) {
-	init_param(argc, argv, acqdEventDir, &n_ev, &dacVal) ;
+	init_param(argc, argv, altOutputdir, &n_ev, &dacVal) ;
 //	if (dir_n == NULL) dir_n = "./data" ; /* this is default directory name. */
     }
 
@@ -313,6 +314,8 @@ int main(int argc, char **argv) {
 		    printf("Event:\t%d\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
+		    if(altOutputdir) 
+			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 		}
 		//Insert stats call here
