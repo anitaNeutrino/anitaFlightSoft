@@ -35,6 +35,7 @@
 BoardLocStruct_t turfioPos;
 BoardLocStruct_t surfPos[MAX_SURFS];
 int dacSurfs[MAX_SURFS];
+int surfIndex[MAX_SURFS];
 int dacChans[NUM_DAC_CHANS];
 int printToScreen=0,standAloneMode=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
@@ -569,92 +570,96 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 */
 {
     
-    int j,countSurfs=0;
+    int surfNum,countSurfs=0;
     U32  numDevices,i ;
-    PlxDevLocation_t tempLoc[MAX_SURFS+1];
+    PlxDevLocation_t tempLoc;
     PlxReturnCode_t rc;
     //  U32  n=0 ;  /* this is the numebr of board from furthest from CPU. */
 
-    for(i=0;i<MAX_SURFS+1;++i){
-	tempLoc[i].BusNumber       = (U8)-1;
-	tempLoc[i].SlotNumber      = (U8)-1;
-	tempLoc[i].VendorId        = (U16)-1;
-	tempLoc[i].DeviceId        = (U16)-1;
-	tempLoc[i].SerialNumber[0] = '\0';
-    }
-    
-
+    tempLoc.BusNumber       = (U8)-1;
+    tempLoc.SlotNumber      = (U8)-1;
+    tempLoc.VendorId        = (U16)-1;
+    tempLoc.DeviceId        = (U16)-1;
+    tempLoc.SerialNumber[0] = '\0';
+   
     /* need to go through PlxPciDeviceFind twice.  1st for counting devices
        with "numDevices=FIND_AMOUNT_MATCHED" and 2nd to get device info. */
 
     numDevices = FIND_AMOUNT_MATCHED;
-    if (PlxPciDeviceFind(&tempLoc[0], &numDevices) != ApiSuccess ||
-	numDevices > 12) return -1 ;
+    if (PlxPciDeviceFind(&tempLoc, &numDevices) != ApiSuccess ||
+	numDevices > 13) return -1 ;
     if (verbosity && printToScreen) printf("initializeDevices: found %d PLX devices.\n", numDevices) ;
 
-    /* Initialize SURFs */
-    for(i=0;i<numDevices;++i){
-	if (PlxPciDeviceFind(&tempLoc[i], &i) != ApiSuccess) 
-	    return -1 ;
-
-	if (verbosity>1 && printToScreen) 
-	    printf("initializeDevices: device found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-		   tempLoc[i].DeviceId, tempLoc[i].VendorId, tempLoc[i].SerialNumber, 
-		   tempLoc[i].BusNumber, tempLoc[i].SlotNumber);
-    
-	
-
-	if(tempLoc[i].BusNumber==turfioPos.bus && tempLoc[i].SlotNumber==turfioPos.slot) {
-	    // Have got the TURFIO
-	    copyPlxLocation(turfioLoc,tempLoc[i]);
-
-	    
-	    if (verbosity && printToScreen)
-		printf("TURFIO found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-		       (*turfioLoc).DeviceId, (*turfioLoc).VendorId, 
-		       (*turfioLoc).SerialNumber,
-		       (*turfioLoc).BusNumber, (*turfioLoc).SlotNumber);
-	    if (PlxPciDeviceOpen(turfioLoc, turfioHandle) != ApiSuccess) {
-		syslog(LOG_ERR,"Error opening TURFIO device");
-		if(printToScreen)
-		    fprintf(stderr,"Error opening TURFIO device\n");
-		return -1 ;
-	    }
-	    PlxPciBoardReset(turfioHandle);
+    /* Initialize SURFs */    
+    for(surfNum=0;surfNum<MAX_SURFS;surfNum++) {
+	i=0;
+	tempLoc.BusNumber       = surfPos[surfNum].bus;
+	tempLoc.SlotNumber      = surfPos[surfNum].slot;
+	tempLoc.VendorId        = (U16)-1;
+	tempLoc.DeviceId        = (U16)-1;
+	tempLoc.SerialNumber[0] = '\0';
+	if (PlxPciDeviceFind(&tempLoc, &i) != ApiSuccess) {
+	    //syslog
+	    printf("Couldn't find SURF %d (Bus %d -- Slot %X)",
+		   surfNum+1,surfPos[surfNum].bus,surfPos[surfNum].slot);
 	}
-	else {
-	    for(j=0;j<MAX_SURFS;j++) {
+	else {	    
+	    // Got a SURF
 /* 		printf("tempLoc[%d] %d %d \t surfPos[%d] %d %d\n", */
-/* 		       i,tempLoc[i].BusNumber,tempLoc[i].SlotNumber,j, */
-/* 		       surfPos[j].bus,surfPos[j].slot); */
-		       
-		if(tempLoc[i].BusNumber==surfPos[j].bus && tempLoc[i].SlotNumber==surfPos[j].slot) {
-		    // Got a SURF
-
-		    copyPlxLocation(&surfLoc[j],tempLoc[i]);
-//		    surfLoc[countSurfs]=tempLoc[i];   
-		    if (verbosity && printToScreen)
-			printf("SURF found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-			       surfLoc[j].DeviceId, 
-			       surfLoc[j].VendorId, 
-			       surfLoc[j].SerialNumber,
-			       surfLoc[j].BusNumber, 
-			       surfLoc[j].SlotNumber);
-		    rc=PlxPciDeviceOpen(&surfLoc[j], 
-					&surfHandles[j]);
-		    if ( rc!= ApiSuccess) {
-			syslog(LOG_ERR,"Error opening SURF device %d",rc);
-			if(printToScreen)
-			    fprintf(stderr,"Error opening SURF device %d\n",rc);
-			return -1 ;
-		    }		
-		    PlxPciBoardReset(surfHandles[j]) ;
-		    countSurfs++;    
-		    break;
-		}
+/* 		       i,tempLoc[i].BusNumber,tempLoc[i].SlotNumber,surfNum, */
+/* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */		       	    	    
+	    copyPlxLocation(&surfLoc[countSurfs],tempLoc);
+	    if (verbosity && printToScreen)
+		printf("SURF found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+		       surfLoc[countSurfs].DeviceId, 
+		       surfLoc[countSurfs].VendorId, 
+		       surfLoc[countSurfs].SerialNumber,
+		       surfLoc[countSurfs].BusNumber, 
+		       surfLoc[countSurfs].SlotNumber);
+	    rc=PlxPciDeviceOpen(&surfLoc[countSurfs],&surfHandles[countSurfs]);
+	    if ( rc!= ApiSuccess) {
+		syslog(LOG_ERR,"Error opening SURF device %d",rc);
+		if(printToScreen)
+		    fprintf(stderr,"Error opening SURF device %d\n",rc);
+		return -1 ;
+	    }		
+	    PlxPciBoardReset(surfHandles[countSurfs]) ;
+	    surfIndex[countSurfs]=surfNum+1;
+	    if(hdPtr) {
+		hdPtr->surfMask|=(1<<surfNum);
 	    }
+	    countSurfs++;    
 	}
     }
+	
+    //Initialize TURFIO    
+    tempLoc.BusNumber       = turfioPos.bus;
+    tempLoc.SlotNumber      = turfioPos.slot;
+    tempLoc.VendorId        = (U16)-1;
+    tempLoc.DeviceId        = (U16)-1;
+    tempLoc.SerialNumber[0] = '\0';
+    if (PlxPciDeviceFind(&tempLoc, &i) != ApiSuccess) {
+	//syslog
+	printf("Couldn't find TURFIO (Bus %d -- Slot %X)",
+	       turfioPos.bus,turfioPos.slot);
+    }
+    else {
+	copyPlxLocation(turfioLoc,tempLoc);
+	
+	if (verbosity && printToScreen)
+	    printf("TURFIO found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+		   (*turfioLoc).DeviceId, (*turfioLoc).VendorId, 
+		   (*turfioLoc).SerialNumber,
+		   (*turfioLoc).BusNumber, (*turfioLoc).SlotNumber);
+	if (PlxPciDeviceOpen(turfioLoc, turfioHandle) != ApiSuccess) {
+	    syslog(LOG_ERR,"Error opening TURFIO device");
+	    if(printToScreen)
+		fprintf(stderr,"Error opening TURFIO device\n");
+	    return -1 ;
+	}
+	PlxPciBoardReset(turfioHandle);
+    }
+
     if(verbosity && printToScreen) {
 	printf("initializeDevices: Initialized %d SURF board(s)\n",countSurfs);
     }
