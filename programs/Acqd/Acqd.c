@@ -970,7 +970,9 @@ int init_param(int argn, char **argv, char *directory, int *n, unsigned short *d
 		case 'c': doSlowDacCycle = TRUE; break;
 		case 'a': *dacVal=(unsigned short)atoi(*(++argv)) ; --argn ; break ;
 		case 'r': reprogramTurf = TRUE ; break ;
-		case 'd': strncpy(directory,*(++argv),FILENAME_MAX);
+		case 'd': 
+		    directory=*(++argv);
+		    //strncpy(directory,*(++argv),FILENAME_MAX);
 		    --argn ; break ;
 		case 'n': sscanf(*(++argv), "%d", n) ;
 		    --argn ; break ;
