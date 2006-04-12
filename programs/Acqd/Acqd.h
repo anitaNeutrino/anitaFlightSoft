@@ -107,7 +107,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
 char *surfControlActionAsString(SurfControlAction_t action);
 char *turfControlActionAsString(TurfControlAction_t action);
 int readConfigFile();
-int init_param(int argn, char **argv, char *directory, int *n, unsigned short *dacVal);
+int init_param(int argn, char **argv,  int *n, unsigned short *dacVal);
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned long evNum);
 void writeTurf(char *directory, TurfioStruct_t *data_turf,unsigned long evNum);
 PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned int *dataWord);
