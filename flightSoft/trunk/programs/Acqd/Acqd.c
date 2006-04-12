@@ -627,24 +627,24 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 		if(tempLoc[i].BusNumber==surfPos[j].bus && tempLoc[i].SlotNumber==surfPos[j].slot) {
 		    // Got a SURF
 
-		    copyPlxLocation(&surfLoc[countSurfs],tempLoc[i]);
+		    copyPlxLocation(&surfLoc[j],tempLoc[i]);
 //		    surfLoc[countSurfs]=tempLoc[i];   
 		    if (verbosity && printToScreen)
 			printf("SURF found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-			       surfLoc[countSurfs].DeviceId, 
-			       surfLoc[countSurfs].VendorId, 
-			       surfLoc[countSurfs].SerialNumber,
-			       surfLoc[countSurfs].BusNumber, 
-			       surfLoc[countSurfs].SlotNumber);
-		    rc=PlxPciDeviceOpen(&surfLoc[countSurfs], 
-					&surfHandles[countSurfs]);
+			       surfLoc[j].DeviceId, 
+			       surfLoc[j].VendorId, 
+			       surfLoc[j].SerialNumber,
+			       surfLoc[j].BusNumber, 
+			       surfLoc[j].SlotNumber);
+		    rc=PlxPciDeviceOpen(&surfLoc[j], 
+					&surfHandles[j]);
 		    if ( rc!= ApiSuccess) {
 			syslog(LOG_ERR,"Error opening SURF device %d",rc);
 			if(printToScreen)
 			    fprintf(stderr,"Error opening SURF device %d\n",rc);
 			return -1 ;
 		    }		
-		    PlxPciBoardReset(surfHandles[countSurfs]) ;
+		    PlxPciBoardReset(surfHandles[j]) ;
 		    countSurfs++;    
 		    break;
 		}
@@ -1443,7 +1443,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    }
 	    scalerData[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, Scaler %d == %d\n",surf,rfChan,scalerData[surf][rfChan]);
+		printf("SURF %d, Scaler %d == %d\n",surf,rfChan,scalerData[surf][rfChan]);
 	}
 
 
