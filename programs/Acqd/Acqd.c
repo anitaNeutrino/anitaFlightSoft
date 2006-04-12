@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 	    //Fill theEvent with zeros 
 	    bzero(&theEvent, sizeof(theEvent)) ;
 	    memset(&theHk,0,sizeof(FullSurfHkStruct_t));
-	    if(setGloablDACThreshold) 
+	    if(setGlobalThreshold) 
 		theHk.globalThreshold=globalThreshold;
 
 	    if(doGlobalDacCycle) {		
@@ -1213,7 +1213,24 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     if(justWriteHeader==0 && writeData) {
 	sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
 		theEventPtr->header.eventNumber);
-	retVal=writeBody(theBody,theFilename);  
+	if(!oldStyleFiles) 
+	    retVal=writeBody(theBody,theFilename);  
+	else {
+	    FILE *eventFile;
+	    int n;
+	    if ((eventFile=fopen(theFilename, "wb")) == NULL) { 
+		printf("Failed to open event file, %s\n", theFilename) ;
+		return ;
+	    }
+	    if ((n=fwrite(labData, sizeof(int), 
+			  N_SAMP*N_CHAN*numSurfs,eventFile)) 
+		!= N_SAMP*N_CHAN*numSurfs)  
+		printf("Failed to write all event data. wrote only %d.\n", n) ;
+	    fclose(eventFile);
+	}
+
+	    
+	    
     }
       
     if(writeData) {
@@ -1227,7 +1244,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	retVal=makeLink(theFilename,theLinkDir);
 
     if(writeScalers) {
-	sprintf(theFilename,"%s/scale_%d.dat",scalerOutputDir,
+	sprintf(theFilename,"%s/scale_3%d.dat",scalerOutputDir,
 		theEventPtr->header.eventNumber);
 	FILE *scalerFile;
 	int n;
@@ -1235,7 +1252,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    printf("Failed to open scaler file, %s\n", theFilename) ;
 	    return ;
 	}
-	
+	    
 	if ((n=fwrite(&theScalers, sizeof(SimpleScalerStruct_t),1,scalerFile))!=1)
 	    printf("Failed to write all scaler data. wrote only %d.\n", n) ;
 	    fclose(scalerFile);
@@ -1327,7 +1344,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
 		}
 		if(printToScreen && verbosity>2) {
-		    printf("SURF %d, CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
+		    printf("SURF %d (%d), CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
 		}
 		labData[surf][chan][samp]=dataInt;
 	    }
@@ -1344,7 +1361,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
 		}    
 		if(printToScreen && verbosity>2) {
-		    printf("SURF %d, CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0xf000)>>14),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
+		    printf("SURF %d (%d), CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
 		}
 		labData[surf][chan][samp]=dataInt;
 	    }
