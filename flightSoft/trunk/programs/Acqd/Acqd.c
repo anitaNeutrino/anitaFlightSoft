@@ -592,6 +592,7 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 
     /* Initialize SURFs */    
     for(surfNum=0;surfNum<MAX_SURFS;surfNum++) {
+	if(surfPos[surfNum].bus<0 || surfPos[surfNum].slot<0) continue;
 	i=0;
 	tempLoc.BusNumber       = surfPos[surfNum].bus;
 	tempLoc.SlotNumber      = surfPos[surfNum].slot;
@@ -801,8 +802,8 @@ int readConfigFile()
 	}
 	else {
 	    for(count=0;count<tempNum;count++) {
+		surfPos[count].bus=surfBuses[count];
 		if(surfBuses[count]!=-1) {
-		    surfPos[count].bus=surfBuses[count];
 		    surfBusCount++;
 		}
 	    }
@@ -818,8 +819,8 @@ int readConfigFile()
 	}
 	else {
 	    for(count=0;count<tempNum;count++) {
+		surfPos[count].slot=surfSlots[count];
 		if(surfSlots[count]!=-1) {
-		    surfPos[count].slot=surfSlots[count];
 		    surfSlotCount++;
 		}
 	    }
