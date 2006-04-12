@@ -1216,6 +1216,8 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	if(!oldStyleFiles) 
 	    retVal=writeBody(theBody,theFilename);  
 	else {
+	    sprintf(theFilename,"%s/surf_data.%d",theEventDir,
+		theEventPtr->header.eventNumber);
 	    FILE *eventFile;
 	    int n;
 	    if ((eventFile=fopen(theFilename, "wb")) == NULL) { 
