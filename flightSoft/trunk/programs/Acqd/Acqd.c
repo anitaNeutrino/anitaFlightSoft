@@ -242,9 +242,9 @@ int main(int argc, char **argv) {
 		for(surf=0;surf<numSurfs;++surf) 
 		    if (setSurfControl(surfHandles[surf], LTrig) != ApiSuccess) {
 			status=ACQD_E_LTRIG;
-			syslog(LOG_ERR,"Failed to set LTrig on SURF %d",surf);
+			syslog(LOG_ERR,"Failed to set LTrig on SURF %d",surfIndex[surf]);
 			if(printToScreen)
-			    printf("Failed to set LTrig flag on SURF %d.\n",surf);
+			    printf("Failed to set LTrig flag on SURF %d.\n",surfIndex[surf]);
 		    }
 	    }
 
@@ -252,12 +252,12 @@ int main(int argc, char **argv) {
 	    tmo=0;	    
 	    if(!dontWaitForEvtF) {
 		if(verbosity && printToScreen) 
-		    printf("Waiting for EVT_RDY on SURF 1-1\n");
+		    printf("Waiting for EVT_RDY on SURF %d\n",surfIndex[0]);
 
 		do {
 		    tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc);
 		    if(verbosity>3 && printToScreen) 
-			printf("SURF 1 GPIO: 0x%o %d\n",tmpGPIO,tmpGPIO);
+			printf("SURF %d GPIO: 0x%o %d\n",surfIndex[0],tmpGPIO,tmpGPIO);
 		    usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
 		    tmo++;
 		    if((tmo%1000)==0) {
@@ -327,7 +327,7 @@ int main(int argc, char **argv) {
 	    // Clear boards
 	    for(surf=0;surf<numSurfs;++surf)
 		if (setSurfControl(surfHandles[surf], SurfClearEvent) != ApiSuccess)
-		    printf("  failed to send clear event pulse on SURF %d.\n",surf) ;
+		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 	    
 	    if(!surfonly)
 		if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
@@ -600,7 +600,7 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	tempLoc.SerialNumber[0] = '\0';
 	if (PlxPciDeviceFind(&tempLoc, &i) != ApiSuccess) {
 	    //syslog
-	    printf("Couldn't find SURF %d (Bus %d -- Slot %X)",
+	    printf("Couldn't find SURF %d (Bus %d -- Slot %X)\n",
 		   surfNum+1,surfPos[surfNum].bus,surfPos[surfNum].slot);
 	}
 	else {	    
@@ -610,7 +610,8 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 /* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */		       	    	    
 	    copyPlxLocation(&surfLoc[countSurfs],tempLoc);
 	    if (verbosity && printToScreen)
-		printf("SURF found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+		printf("SURF %d found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+		       surfNum+1,
 		       surfLoc[countSurfs].DeviceId, 
 		       surfLoc[countSurfs].VendorId, 
 		       surfLoc[countSurfs].SerialNumber,
@@ -894,22 +895,22 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 // Prepare SURF boards
     for(i=0;i<numSurfs;++i){
 	/* init. 9030 I/O descripter (to enable READY# input |= 0x02.) */
-	if(printToScreen) printf("Trying to set Sp0 on SURF %d\n",i);
+	if(printToScreen) printf("Trying to set Sp0 on SURF %d\n",surfIndex[i]);
 	if(PlxRegisterWrite(surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
 	   != ApiSuccess)  {
-	    syslog(LOG_ERR,"Failed to set SpO descriptor on SURF %d",i);
+	    syslog(LOG_ERR,"Failed to set SpO descriptor on SURF %d",surfIndex[i]);
 	    if(printToScreen)
-		printf("Failed to set Sp0 descriptor on SURF %d.\n",i ) ;    
+		printf("Failed to set Sp0 descriptor on SURF %d.\n",surfIndex[i] ) ;    
 	}
 	
 	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
 	if(printToScreen)
-	    printf(" GPIO register contents SURF %d = %o\n",i,testVal);
+	    printf(" GPIO register contents SURF %d = %o\n",surfIndex[i],testVal);
 		   
 	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
-	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",i) ;
+	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
 	    if(printToScreen)
-		printf("Failed to send clear all event pulse on SURF %d.\n",i);
+		printf("Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]);
 	}
     }
 
@@ -918,7 +919,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	for(i=0;i<numSurfs;++i) {
 	    testVal=
 		PlxRegisterRead(surfHandles[i],PCI9030_INT_CTRL_STAT, &rc); 
-	    printf(" Int reg contents SURF %d = %x\n",i,testVal);
+	    printf(" Int reg contents SURF %d = %x\n",surfIndex[i],testVal);
 	}
 		   
     }
@@ -1008,22 +1009,22 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
 			      &buf, 4, BitSize32);
 	    if(rc!=ApiSuccess) {
 		syslog(LOG_ERR,"Error writing DAC Val, SURF %d - DAC %d (%d)",
-		       surf,dac,rc);
+		       surfIndex[surf],dac,rc);
 		if(printToScreen)
 		    fprintf(stderr,
 			    "Error writing DAC Val, SURF %d - DAC %d (%d)\n",
-			    surf,dac,rc);
+			    surfIndex[surf],dac,rc);
 	    }
 	}
 	rc=setSurfControl(surfHandles[surf],DACLoad);
 	if(rc!=ApiSuccess) {
-	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surf,rc);
+	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surfIndex[surf],rc);
 	    if(printToScreen)
 		fprintf(stderr,"Error loading DAC Vals, SURF %d (%d)\n",
-			surf,rc);
+			surfIndex[surf],rc);
 	}
 	else if(printToScreen && verbosity)
-	    printf("DAC Vals set on SURF %d\n",surf);
+	    printf("DAC Vals set on SURF %d\n",surfIndex[surf]);
     }
 	
 }
@@ -1043,19 +1044,19 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 			      &buf, 4, BitSize32);
 	    if(rc!=ApiSuccess) {
 		syslog(LOG_ERR,"Error writing DAC Val, SURF %d - DAC %d (%d)",
-		       surf,dac,rc);
+		       surfIndex[surf],dac,rc);
 		if(printToScreen)
 		    fprintf(stderr,
 			    "Error writing DAC Val, SURF %d - DAC %d (%d)\n",
-			    surf,dac,rc);
+			    surfIndex[surf],dac,rc);
 	    }
 	}
 	rc=setSurfControl(surfHandles[surf],DACLoad);
 	if(rc!=ApiSuccess) {
-	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surf,rc);
+	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surfIndex[surf],rc);
 	    if(printToScreen)
 		fprintf(stderr,"Error loading DAC Vals, SURF %d (%d)\n",
-			surf,rc);
+			surfIndex[surf],rc);
 	}
 	else if(printToScreen && verbosity)
 	    printf("DAC Vals set on SURF %d\n",surf);
@@ -1148,7 +1149,7 @@ void calculateStatistics() {
 	// Display Mean
 	if (verbosity && printStatistics) {
 	    for(surf=0;surf<numSurfs;++surf){
-		printf("Board %d Mean, After Event %d (Software)\n",surf,doingEvent);
+		printf("Board %d Mean, After Event %d (Software)\n",surfIndex[surf],doingEvent);
 		for(chip=0;chip<N_CHIP;++chip){
 		    for(chan=0;chan<N_CHAN;++chan)
 			printf("%.2f ",chanMean[surf][chip][chan]);
@@ -1158,7 +1159,7 @@ void calculateStatistics() {
 
 	    // Display Std Dev
 	    for(surf=0;surf<numSurfs;++surf){
-		printf("Board %d Std Dev., After Event %d (Software)\n",surf,doingEvent);
+		printf("Board %d Std Dev., After Event %d (Software)\n",surfIndex[surf],doingEvent);
 		for(chip=0;chip<N_CHIP;++chip){
 		    for(chan=0;chan<N_CHAN;++chan)
 			printf("%.2f ",sqrt(chanMeanSqd[surf][chip][chan]-chanMean[surf][chip][chan]*chanMean[surf][chip][chan]));
@@ -1314,9 +1315,9 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
     for(surf=0;surf<numSurfs;surf++){  
 //	sleep(1);
 	if(printToScreen &&verbosity) {
-	    printf("GPIO register contents SURF %d = %o\n",surf,
+	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
 		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
-	    printf("INT register contents SURF %d = %o\n",surf,
+	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
 		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
 	}
 
@@ -1329,9 +1330,9 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 	}
 	rc=setSurfControl(surfHandles[surf],DTRead);
 	if(rc!=ApiSuccess) {
-	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surf,rc);
+	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
 	    if(printToScreen)
-		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surf,rc);
+		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
 	}
 	
 	//First read to prime pipe
@@ -1340,9 +1341,9 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 	}
 	else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
 	    status=ACQD_E_PLXBUSREAD;
-	    syslog(LOG_ERR,"Failed to prime pipe SURF %d (rc = %d)",surf,rc);
+	    syslog(LOG_ERR,"Failed to prime pipe SURF %d (rc = %d)",surfIndex[surf],rc);
 	    if(printToScreen) 
-		printf("Failed to prime pipe SURF %d (rc = %d)\n", surf,rc) ;
+		printf("Failed to prime pipe SURF %d (rc = %d)\n", surfIndex[surf],rc) ;
 	}
 
 	
@@ -1353,12 +1354,12 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 		else if(readPlxDataWord(surfHandles[surf],&dataInt)
 			!= ApiSuccess) {
 		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surf,chan,samp);
+		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surfIndex[surf],chan,samp);
 		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
+			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surfIndex[surf], chan, samp) ;
 		}
 		if(printToScreen && verbosity>2) {
-		    printf("SURF %d (%d), CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
+		    printf("SURF %d (%d), CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surfIndex[surf],((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
 		}
 		labData[surf][chan][samp]=dataInt;
 	    }
@@ -1370,12 +1371,12 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 		else if(readPlxDataWord(surfHandles[surf],&dataInt)
 			!= ApiSuccess) {
 		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surf,chan,samp);
+		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surfIndex[surf],chan,samp);
 		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surf, chan, samp) ;
+			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surfIndex[surf], chan, samp) ;
 		}    
 		if(printToScreen && verbosity>2) {
-		    printf("SURF %d (%d), CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surf,((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
+		    printf("SURF %d (%d), CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surfIndex[surf],((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
 		}
 		labData[surf][chan][samp]=dataInt;
 	    }
@@ -1395,7 +1396,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 		    if(samp==0) upperWord=GetUpper16(dataInt);
 /* 		    if(upperWord!=GetUpper16(dataInt)) { */
 /* 			//Will add an error flag to the channel header */
-/* 			syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surf,chan,samp,upperWord,GetUpper16(dataInt)); */
+/* 			syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt)); */
 /* 			if(printToScreen) */
 /* 			    fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));			 */
 /* 		    } */
@@ -1448,9 +1449,9 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	//Send DTRead first to have a transition on DT/HK line
 	rc=setSurfControl(surfHandles[surf],DTRead);
 	if(rc!=ApiSuccess) {
-	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surf,rc);
+	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
 	    if(printToScreen)
-		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surf,rc);
+		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
 	}
 	rc=setSurfControl(surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
@@ -1466,13 +1467,13 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    }	    
 	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
 		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read SURF %d, Scaler %d (rc = %d)",surf,rfChan,rc);
+		syslog(LOG_ERR,"Failed to read SURF %d, Scaler %d (rc = %d)",surfIndex[surf],rfChan,rc);
 		if(printToScreen) 
-		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surf,rfChan,rc);
+		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
 	    theHk.scaler[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("SURF %d, Scaler %d == %d\n",surf,rfChan,theHk.scaler[surf][rfChan]);
+		printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theHk.scaler[surf][rfChan]);
 	    
 	    if(rfChan==0) {
 		//Do something with upperWord
@@ -1494,13 +1495,13 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    }	    
 	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
 		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read SURF %d, Threshold %d (rc = %d)",surf,rfChan,rc);
+		syslog(LOG_ERR,"Failed to read SURF %d, Threshold %d (rc = %d)",surfIndex[surf],rfChan,rc);
 		if(printToScreen) 
-		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surf,rfChan,rc);
+		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
 	    theHk.threshold[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, Threshold %d == %d\n",surf,rfChan,theHk.threshold[surf][rfChan]);
+		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theHk.threshold[surf][rfChan]);
 	    //Should check if it is the same or not
 	    if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theHk.errorFlag|=(1>>surf);
@@ -1514,13 +1515,13 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    }	    
 	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
 		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read SURF %d, RF Power %d (rc = %d)",surf,rfChan,rc);
+		syslog(LOG_ERR,"Failed to read SURF %d, RF Power %d (rc = %d)",surfIndex[surf],rfChan,rc);
 		if(printToScreen) 
-		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surf,rfChan,rc);
+		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
 	    theHk.rfPower[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, RF Power %d == %d\n",surf,rfChan,theHk.rfPower[surf][rfChan]);
+		printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theHk.rfPower[surf][rfChan]);
 	    if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theHk.errorFlag|=(1>>surf);
 	    }
@@ -1602,11 +1603,11 @@ PlxReturnCode_t setBarMap(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) {
     for(surf=0;surf<numSurfs;surf++) {
 	rc=PlxPciBarMap(surfHandles[surf],2,&addrVal);
 	if(rc!=ApiSuccess) {
-	    syslog(LOG_ERR,"Unable to map PCI bar 2 on SURF %d (%d)",surf,rc);
+	    syslog(LOG_ERR,"Unable to map PCI bar 2 on SURF %d (%d)",surfIndex[surf],rc);
 	}
 	barMapAddr[surf]=(int*)addrVal;
 	if(verbosity && printToScreen) {
-	    printf("Bar Addr[%d] is %x\t%x\n",surf,(int)barMapAddr[surf],addrVal);
+	    printf("Bar Addr[%d] is %x\t%x\n",surfIndex[surf],(int)barMapAddr[surf],addrVal);
 	}
     }
     rc=PlxPciBarMap(turfioHandle,2,&addrVal);
