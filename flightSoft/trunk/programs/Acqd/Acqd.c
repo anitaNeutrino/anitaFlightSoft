@@ -58,6 +58,7 @@ unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
 //Configurable watchamacallits
 /* Ports and directories */
 char acqdEventDir[FILENAME_MAX];
+char altOutputdir[FILENAME_MAX];
 char acqdPidFile[FILENAME_MAX];
 char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
@@ -73,6 +74,7 @@ char hkOutputDir[FILENAME_MAX];
 int verbosity = 0 ; /* control debug print out. */
 int addedVerbosity = 0 ; /* control debug print out. */
 int oldStyleFiles = FALSE;
+int useAltDir = FALSE;
 int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
@@ -131,7 +133,6 @@ int main(int argc, char **argv) {
     
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
-    char *altOutputdir=0;
 
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
@@ -149,7 +150,7 @@ int main(int argc, char **argv) {
     }
 
     if(standAloneMode) {
-	init_param(argc, argv, altOutputdir, &n_ev, &dacVal) ;
+	init_param(argc, argv,  &n_ev, &dacVal) ;
 //	if (dir_n == NULL) dir_n = "./data" ; /* this is default directory name. */
     }
 
@@ -314,7 +315,7 @@ int main(int argc, char **argv) {
 		    printf("Event:\t%d\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
-		    if(altOutputdir) 
+		    if(useAltDir) 
 			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
 		    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 		}
@@ -958,8 +959,9 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
 
 
-/* parse command arguments to initialize parameter(s). */
-int init_param(int argn, char **argv, char *directory, int *n, unsigned short *dacVal) {
+/* parse command arg
+uments to initialize parameter(s). */
+int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
 
     while (--argn) {
 	if (**(++argv) == '-') {
@@ -971,8 +973,8 @@ int init_param(int argn, char **argv, char *directory, int *n, unsigned short *d
 		case 'a': *dacVal=(unsigned short)atoi(*(++argv)) ; --argn ; break ;
 		case 'r': reprogramTurf = TRUE ; break ;
 		case 'd': 
-		    directory=*(++argv);
-		    //strncpy(directory,*(++argv),FILENAME_MAX);
+		    strncpy(altOutputdir,*(++argv),FILENAME_MAX);
+		    useAltDir=1;
 		    --argn ; break ;
 		case 'n': sscanf(*(++argv), "%d", n) ;
 		    --argn ; break ;
