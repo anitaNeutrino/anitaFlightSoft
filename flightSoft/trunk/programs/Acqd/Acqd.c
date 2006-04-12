@@ -211,6 +211,10 @@ int main(int argc, char **argv) {
 	while (currentState==PROG_STATE_RUN) {
 	    //Fill theEvent with zeros 
 	    bzero(&theEvent, sizeof(theEvent)) ;
+	    memset(&theHk,0,sizeof(FullSurfHkStruct_t));
+	    if(setGloablDACThreshold) 
+		theHk.globalThreshold=globalThreshold;
+
 	    if(doGlobalDacCycle) {		
 //		if(dacVal<=500) dacVal=4095;
 //		else if(dacVal>=4000) dacVal=0;
@@ -1400,8 +1404,6 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned int  dataInt=0;
     int surf,rfChan;
-
-    memset(&theHk,0,sizeof(FullSurfHkStruct_t));
 
     if(verbosity && printToScreen) 
 	printf("Reading Surf HK %d.\n",hkNumber++);
