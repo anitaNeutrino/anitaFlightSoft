@@ -262,6 +262,8 @@ typedef struct {
 
 typedef struct {    
     unsigned short globalThreshold; //set to zero if there isn't one
+    unsigned short errorFlag; //Will define at some point    
+    unsigned short upperWords[ACTIVE_SURFS];
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];

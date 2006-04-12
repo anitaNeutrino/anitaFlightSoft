@@ -49,14 +49,10 @@ FullSurfHkStruct_t theHk;
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
-unsigned short scalerData[MAX_SURFS][N_RFTRIG];
-unsigned short threshData[MAX_SURFS][N_RFTRIG];
-unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
+//unsigned short scalerData[MAX_SURFS][N_RFTRIG];
+//unsigned short threshData[MAX_SURFS][N_RFTRIG];
+//unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
 
-
-//unsigned short **scalerData=(unsigned short**)&(theHk.scaler[0][0]);
-//unsigned short **threshData=(unsigned short**)&(theHk.threshold[0][0]);
-//unsigned short **rfpwData=(unsigned short**)&(theHk.rfPower[0][0]);
 
 
 //Configurable watchamacallits
@@ -133,7 +129,7 @@ int main(int argc, char **argv) {
     unsigned short dacVal=2200;
     int surf;
     
-    unsigned short doingDacVal=100;//2100;
+    unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
 
     //Initialize handy pointers
@@ -1239,10 +1235,6 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     }
 
     if(writeFullHk) {
-	memcpy(&(theHk.scaler[0][0]),scalerData,sizeof(unsigned short)*ACTIVE_SURFS*N_RFTRIG);
-	memcpy(&(theHk.threshold[0][0]),threshData,sizeof(unsigned short)*ACTIVE_SURFS*N_RFTRIG);
-	memcpy(&(theHk.rfPower[0][0]),rfpwData,sizeof(unsigned short)*ACTIVE_SURFS*N_RFCHAN);
-
 
 	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
 	FILE *hkFile;
@@ -1409,6 +1401,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
     unsigned int  dataInt=0;
     int surf,rfChan;
 
+    memset(&theHk,0,sizeof(FullSurfHkStruct_t));
 
     if(verbosity && printToScreen) 
 	printf("Reading Surf HK %d.\n",hkNumber++);
@@ -1429,7 +1422,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    if(printToScreen)
 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
 	}
-
+	
 	//First read the scaler data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
 	    if(tryToUseBarMap) {
@@ -1441,9 +1434,19 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surf,rfChan,rc);
 	    }
-	    scalerData[surf][rfChan]=dataInt&0xffff;
+	    theHk.scaler[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("SURF %d, Scaler %d == %d\n",surf,rfChan,scalerData[surf][rfChan]);
+		printf("SURF %d, Scaler %d == %d\n",surf,rfChan,theHk.scaler[surf][rfChan]);
+	    
+	    if(rfChan==0) {
+		//Do something with upperWord
+		theHk.upperWords[surf]=GetUpper16(dataInt);
+	    }
+	    else if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
+		theHk.errorFlag|=(1>>surf);
+	    }
+
+
 	}
 
 
@@ -1459,10 +1462,13 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surf,rfChan,rc);
 	    }
-	    threshData[surf][rfChan]=dataInt&0xffff;
+	    theHk.threshold[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, Threshold %d == %d\n",surf,rfChan,threshData[surf][rfChan]);
+		printf("Surf %d, Threshold %d == %d\n",surf,rfChan,theHk.threshold[surf][rfChan]);
 	    //Should check if it is the same or not
+	    if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
+		theHk.errorFlag|=(1>>surf);
+	    }
 	}
 	
 	//Lastly read the RF Power Data
@@ -1476,9 +1482,12 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surf,rfChan,rc);
 	    }
-	    rfpwData[surf][rfChan]=dataInt&0xffff;
+	    theHk.rfPower[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, RF Power %d == %d\n",surf,rfChan,rfpwData[surf][rfChan]);
+		printf("Surf %d, RF Power %d == %d\n",surf,rfChan,theHk.rfPower[surf][rfChan]);
+	    if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
+		theHk.errorFlag|=(1>>surf);
+	    }
 
 	}
     }
