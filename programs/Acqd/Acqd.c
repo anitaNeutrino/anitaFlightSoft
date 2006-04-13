@@ -93,7 +93,6 @@ int writeOutC3p0Nums = FALSE;
 int reprogramTurf = FALSE;
 int tryToUseBarMap = FALSE;
 
-
 //Trigger Modes
 TriggerMode_t trigMode=TrigNone;
 int pps1TrigFlag = 0;
@@ -104,6 +103,14 @@ int pps2TrigFlag = 0;
 int thresholdArray[ACTIVE_SURFS][N_RFTRIG];
 int setGlobalThreshold=0; 
 int globalThreshold=2200;
+DacPidStruct_t thePids[ACTIVE_SURFS][N_RFTRIG];
+float dacIGain;  // integral gain
+float dacPGain;  // proportional gain
+float dacDGain;  // derivative gain
+int dacIMax;  // maximum intergrator state
+int dacIMin; // minimum integrator state
+int enableChanServo = FALSE; //Turn on the individual chanel servo
+int pidGoal;
 
 //RFCM Mask
 unsigned int rfcmMask[2] = {0x10001000, 0x00008000} ;
@@ -294,7 +301,14 @@ int main(int argc, char **argv) {
 	    //Later we will change this to do something more cleverer
 	    status+=readSurfHkData(surfHandles);
 	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
-	    
+	    if(enableChanServo) {
+		if(verbosity && printToScreen) printf("Will servo on channel scalers\n");
+		updateThresholdsUsingPID();
+		setDACThresholds(surfHandles);
+		
+	    }
+
+
 	    status+=readTurfEventData(turfioHandle);
 
 	    if(verbosity && printToScreen) printf("Done reading\n");
@@ -779,6 +793,15 @@ int readConfigFile()
 	doGlobalDacCycle=kvpGetInt("doGlobalDacCycle",0);
 	setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
 	globalThreshold=kvpGetInt("globalThreshold",0);
+	dacPGain=kvpGetFloat("dacPGain",0);
+	dacIGain=kvpGetFloat("dacIGain",0);
+	dacDGain=kvpGetFloat("dacDGain",0);
+	dacIMin=kvpGetInt("dacIMin",0);
+	dacIMax=kvpGetInt("dacIMax",0);
+	enableChanServo=kvpGetInt("enableChanServo",1);
+	if(doGlobalDacCycle || doSlowDacCycle)
+	    enableChanServo=0;
+	pidGoal=kvpGetInt("pidGoal",1);
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
@@ -843,21 +866,15 @@ int readConfigFile()
 		fprintf(stderr,"kvpGetIntArray(dacSurfs): %s\n",
 			kvpErrorString(kvpStatus));
 	}
-	tempNum=4;
-	kvpStatus = kvpGetIntArray("dacChans",dacChans,&tempNum);	
-	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(dacChans): %s",
-		   kvpErrorString(kvpStatus));
-	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(dacChans): %s\n",
-			kvpErrorString(kvpStatus));
-	}
-
+	
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	    for(dac=0;dac<NUM_DAC_CHANS;dac++) {
-		sprintf(keyName,"surf%dBank%d",surf,dac);
-		tempNum=8;	       
-		kvpStatus = kvpGetIntArray(keyName,&thresholdArray[surf][dac*8],&tempNum);
+	    for(dac=0;dac<N_RFTRIG;dac++) {
+		thresholdArray[surf][dac]=0;
+	    }
+	    if(dacSurfs[surf]) {		
+		sprintf(keyName,"threshSurf%d",surf);
+		tempNum=32;	       
+		kvpStatus = kvpGetIntArray(keyName,&(thresholdArray[surf][0]),&tempNum);
 		if(kvpStatus!=KVP_E_OK) {
 		    syslog(LOG_WARNING,"kvpGetIntArray(%s): %s",keyName,
 			   kvpErrorString(kvpStatus));
@@ -1683,4 +1700,40 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) {
     }
     return ApiSuccess;
     
+}
+
+
+void updateThresholdsUsingPID() {
+    int surf,dac,error,value,change;
+    float pTerm, dTerm, iTerm;
+    for(surf=0;surf<numSurfs;surf++) {
+	for(dac=0;dac<N_RFTRIG;dac++) {
+	    value=theHk.scaler[surf][dac];
+	    error=pidGoal-value;
+	    
+	    // Proportional term
+	    pTerm = dacPGain * error;
+
+	    // Calculate integral with limiting factors
+	    thePids[surf][dac].iState+=error;
+	    if (thePids[surf][dac].iState > dacIMax) 
+		thePids[surf][dac].iState = dacIMax;
+	    else if (thePids[surf][dac].iState < dacIMin) 
+		thePids[surf][dac].iState = dacIMin;
+	       
+	    // Integral and Derivative Terms
+	    iTerm = dacIGain * thePids[surf][dac].iState;  
+	    dTerm = dacDGain * (value -thePids[surf][dac].dState);
+	    thePids[surf][dac].dState = value;
+
+	    //Put them together
+	    change = (int) (pTerm + iTerm - dTerm);
+	    thresholdArray[surf][dac]+=change;
+	    if(thresholdArray[surf][dac]>4095)
+		thresholdArray[surf][dac]=4095;
+	    if(thresholdArray[surf][dac]<1)
+		thresholdArray[surf][dac]=1;
+	}
+    }
+	    
 }
