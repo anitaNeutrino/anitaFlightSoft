@@ -872,7 +872,7 @@ int readConfigFile()
 		thresholdArray[surf][dac]=0;
 	    }
 	    if(dacSurfs[surf]) {		
-		sprintf(keyName,"threshSurf%d",surf);
+		sprintf(keyName,"threshSurf%d",surf+1);
 		tempNum=32;	       
 		kvpStatus = kvpGetIntArray(keyName,&(thresholdArray[surf][0]),&tempNum);
 		if(kvpStatus!=KVP_E_OK) {
@@ -1019,7 +1019,7 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
     PlxReturnCode_t rc;
     int dac,surf ;
     int buf ;
-    if(verbosity && printToScreen) printf("Writing thresholds to SURFs");
+    if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
 
     for(surf=0;surf<numSurfs;surf++) {
 	for (dac=0 ; dac<N_RFTRIG ; dac++) {
@@ -1054,11 +1054,11 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
     PlxReturnCode_t rc;
     int dac,surf ;
     int buf ;
-    if(verbosity && printToScreen) printf("Writing thresholds to SURFs");
+    if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
 
     for(surf=0;surf<numSurfs;surf++) {
 	for (dac=0 ; dac<N_RFTRIG ; dac++) {
-	    buf = (dac<<16) + thresholdArray[surf][dac] ;
+	    buf = (dac<<16) + thresholdArray[surfIndex[surf]-1][dac] ;
 	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
 			      &buf, 4, BitSize32);
 	    if(rc!=ApiSuccess) {
@@ -1078,7 +1078,7 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 			surfIndex[surf],rc);
 	}
 	else if(printToScreen && verbosity)
-	    printf("DAC Vals set on SURF %d\n",surf);
+	    printf("DAC Vals set on SURF %d\n",surfIndex[surf]);
     }
 		    
 	    
@@ -1728,11 +1728,11 @@ void updateThresholdsUsingPID() {
 
 	    //Put them together
 	    change = (int) (pTerm + iTerm - dTerm);
-	    thresholdArray[surf][dac]+=change;
-	    if(thresholdArray[surf][dac]>4095)
-		thresholdArray[surf][dac]=4095;
-	    if(thresholdArray[surf][dac]<1)
-		thresholdArray[surf][dac]=1;
+	    thresholdArray[surfIndex[surf]-1][dac]+=change;
+	    if(thresholdArray[surfIndex[surf]-1][dac]>4095)
+		thresholdArray[surfIndex[surf]-1][dac]=4095;
+	    if(thresholdArray[surfIndex[surf]-1][dac]<1)
+		thresholdArray[surfIndex[surf]-1][dac]=1;
 	}
     }
 	    
