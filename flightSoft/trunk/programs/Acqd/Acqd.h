@@ -97,7 +97,7 @@ typedef struct {
 
 typedef struct {
     int dState;  // Last position input
-    float iState;  // Integrator state
+    int iState;  // Integrator state
 } DacPidStruct_t;
 
       
