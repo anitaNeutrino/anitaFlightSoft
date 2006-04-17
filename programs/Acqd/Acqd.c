@@ -219,7 +219,7 @@ int main(int argc, char **argv) {
 	
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
-	    if(standAloneMode && numEvents>doingEvent) {
+	    if(standAloneMode && numEvents<doingEvent) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
 	    }
