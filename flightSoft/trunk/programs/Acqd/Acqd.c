@@ -26,9 +26,9 @@
 #include "Acqd.h"
 
 
-//inline unsigned short byteSwapUnsignedShort(unsigned short a){
-//    return (a>>8)+(a<<8);
-//}
+inline unsigned short byteSwapUnsignedShort(unsigned short a){
+    return (a>>8)+(a<<8);
+}
 
 
 //Global Variables
@@ -1604,8 +1604,8 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 	    continue;
 	}
 	if(wordNum<128) switch(wordNum) {
-	    case 0: turfioPtr->rawTrig=dataWord; break;
-	    case 1: turfioPtr->l3ATrig=dataWord; break;
+	    case 0: turfioPtr->rawTrig=byteSwapUnsignedShort(dataWord); break;
+	    case 1: turfioPtr->l3ATrig=byteSwapUnsignedShort(dataWord); break;
 	    case 2: turfioPtr->ppsNum=dataWord; break;
 	    case 3: turfioPtr->ppsNum+=(dataWord<<16); break;
 	    case 4: turfioPtr->trigTime=dataWord; break;
