@@ -777,6 +777,10 @@ int readConfigFile()
 	    fprintf(stderr,"Coudn't fetch hkOutputDir\n");
 //	printf("Debug rc2\n");
 	printToScreen=kvpGetInt("printToScreen",0);
+	if(addedVerbosity && printToScreen==0) {
+	    printToScreen=1;
+	    addedVerbosity--;
+	}
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
 	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
@@ -1746,6 +1750,7 @@ int updateThresholdsUsingPID() {
 		
 		//Put them together
 		change = (int) (pTerm + iTerm - dTerm);
+		printf("%d %f %f %f\n",change,pTerm,iterm,dTerm);
 		thresholdArray[surfIndex[surf]-1][dac]+=change;
 		if(thresholdArray[surfIndex[surf]-1][dac]>4095)
 		    thresholdArray[surfIndex[surf]-1][dac]=4095;
