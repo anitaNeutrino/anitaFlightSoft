@@ -1735,15 +1735,15 @@ int updateThresholdsUsingPID() {
 		value=avgScalerData[surf][dac]/avgCount;
 		avgScalerData[surf][dac]=0;
 		error=pidGoal-value;
-		printf("%d %d %d %d\n",thePids[surf][dac].iState,
-		       avgScalerData[surf][dac],value,error);
+//		printf("%d %d %d %d\n",thePids[surf][dac].iState,
+//		       avgScalerData[surf][dac],value,error);
 	    
 		// Proportional term
 		pTerm = dacPGain * error;
 		
 		// Calculate integral with limiting factors
 		thePids[surf][dac].iState+=error;
-		printf("Here %d %d\n",thePids[surf][dac].iState,dacIMax);
+//		printf("Here %d %d\n",thePids[surf][dac].iState,dacIMax);
 		if (thePids[surf][dac].iState > dacIMax) 
 		    thePids[surf][dac].iState = dacIMax;
 		else if (thePids[surf][dac].iState < dacIMin) 
@@ -1761,11 +1761,11 @@ int updateThresholdsUsingPID() {
 		    thresholdArray[surfIndex[surf]-1][dac]=4095;
 		if(thresholdArray[surfIndex[surf]-1][dac]<1)
 		    thresholdArray[surfIndex[surf]-1][dac]=1;
-		printf("%d %d\n",thePids[surf][dac].dState,
-		       thePids[surf][dac].iState);
-		printf("%d %d %f %f %f\n",change,
-		       thresholdArray[surfIndex[surf]-1][dac],
-		       pTerm,iTerm,dTerm);
+//		printf("%d %d\n",thePids[surf][dac].dState,
+//		       thePids[surf][dac].iState);
+//		printf("%d %d %f %f %f\n",change,
+//		       thresholdArray[surfIndex[surf]-1][dac],
+//		       pTerm,iTerm,dTerm);
 	    }
 	}
     }
