@@ -1750,12 +1750,14 @@ int updateThresholdsUsingPID() {
 		
 		//Put them together
 		change = (int) (pTerm + iTerm - dTerm);
-		printf("%d %f %f %f\n",change,pTerm,iTerm,dTerm);
 		thresholdArray[surfIndex[surf]-1][dac]+=change;
 		if(thresholdArray[surfIndex[surf]-1][dac]>4095)
 		    thresholdArray[surfIndex[surf]-1][dac]=4095;
 		if(thresholdArray[surfIndex[surf]-1][dac]<1)
 		    thresholdArray[surfIndex[surf]-1][dac]=1;
+		printf("%d %d %f %f %f\n",change,
+		       thresholdArray[surfIndex[surf]-1][dac],
+		       pTerm,iTerm,dTerm);
 	    }
 	}
     }
