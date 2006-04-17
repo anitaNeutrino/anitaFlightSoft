@@ -111,6 +111,7 @@ int dacIMax;  // maximum intergrator state
 int dacIMin; // minimum integrator state
 int enableChanServo = FALSE; //Turn on the individual chanel servo
 int pidGoal;
+int pidAverage;
 
 //RFCM Mask
 unsigned int rfcmMask[2] = {0x10001000, 0x00008000} ;
@@ -219,7 +220,7 @@ int main(int argc, char **argv) {
 	
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
-	    if(standAloneMode && numEvents<doingEvent) {
+	    if(standAloneMode && (numEvents && numEvents<doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
 	    }
@@ -805,7 +806,8 @@ int readConfigFile()
 	enableChanServo=kvpGetInt("enableChanServo",1);
 	if(doGlobalDacCycle || doSlowDacCycle)
 	    enableChanServo=0;
-	pidGoal=kvpGetInt("pidGoal",1);
+	pidGoal=kvpGetInt("pidGoal",2000);
+	pidAverage=kvpGetInt("pidAverage",1);
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
