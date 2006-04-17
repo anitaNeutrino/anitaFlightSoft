@@ -96,8 +96,8 @@ typedef struct {
 } BoardLocStruct_t;
 
 typedef struct {
-    unsigned short dState;  // Last position input
-    double iState;  // Integrator state
+    int dState;  // Last position input
+    float iState;  // Integrator state
 } DacPidStruct_t;
 
       

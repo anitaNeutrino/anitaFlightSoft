@@ -146,6 +146,9 @@ int main(int argc, char **argv) {
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
     turfioPtr=&(hdPtr->turfio);
+
+    //Initialize dacPid stuff
+    memset(&thePids,0,sizeof(DacPidStruct_t)*ACITVE_SURFS*N_RFTRIG);    
    
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
@@ -1755,6 +1758,8 @@ int updateThresholdsUsingPID() {
 		    thresholdArray[surfIndex[surf]-1][dac]=4095;
 		if(thresholdArray[surfIndex[surf]-1][dac]<1)
 		    thresholdArray[surfIndex[surf]-1][dac]=1;
+		printf("%d %d\n",thePids[surf][dac].dState,
+		       thePids[surf][dac].iState);
 		printf("%d %d %f %f %f\n",change,
 		       thresholdArray[surfIndex[surf]-1][dac],
 		       pTerm,iTerm,dTerm);
