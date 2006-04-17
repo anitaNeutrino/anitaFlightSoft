@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
     turfioPtr=&(hdPtr->turfio);
 
     //Initialize dacPid stuff
-    memset(&thePids,0,sizeof(DacPidStruct_t)*ACITVE_SURFS*N_RFTRIG);    
+    memset(&thePids,0,sizeof(DacPidStruct_t)*ACTIVE_SURFS*N_RFTRIG);    
    
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
