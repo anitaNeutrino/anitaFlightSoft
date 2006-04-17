@@ -50,7 +50,7 @@ FullSurfHkStruct_t theHk;
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
-//unsigned short scalerData[MAX_SURFS][N_RFTRIG];
+unsigned int avgScalerData[MAX_SURFS][N_RFTRIG];
 //unsigned short threshData[MAX_SURFS][N_RFTRIG];
 //unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
 
@@ -212,7 +212,8 @@ int main(int argc, char **argv) {
 	if(setGlobalThreshold) {
 	    setGloablDACThreshold(surfHandles,globalThreshold);
 	    theHk.globalThreshold=globalThreshold;
-	    printf("Setting Global Threshold %d\n",globalThreshold);
+	    if(printToScreen) 
+		printf("Setting Global Threshold %d\n",globalThreshold);
 	}
 	else {
 	    setDACThresholds(surfHandles);
@@ -307,9 +308,11 @@ int main(int argc, char **argv) {
 	    status+=readSurfHkData(surfHandles);
 	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
 	    if(enableChanServo) {
-		if(verbosity && printToScreen) printf("Will servo on channel scalers\n");
-		updateThresholdsUsingPID();
-		setDACThresholds(surfHandles);
+		if(verbosity && printToScreen) 
+		    printf("Will servo on channel scalers\n");
+		
+		if(updateThresholdsUsingPID())
+		    setDACThresholds(surfHandles);
 		
 	    }
 
@@ -526,7 +529,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
 		printf(" setTurfControl : failed to set GPIO to %o\t (%d).\n", gpioVal,rc) ;
 	    return rc ;
 	}
-	printf("First read of TURF GPIO: %o\n", PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc));
+	if(printToScreen) printf("First read of TURF GPIO: %o\n", PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc));
 	first=0;
     }
     // Read current GPIO state
@@ -808,6 +811,7 @@ int readConfigFile()
 	    enableChanServo=0;
 	pidGoal=kvpGetInt("pidGoal",2000);
 	pidAverage=kvpGetInt("pidAverage",1);
+	if(pidAverage<1) pidAverage=1;
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,"Couldn't fetch printToScreen, defaulting to zero");
 	    printToScreen=0;	    
@@ -1241,6 +1245,7 @@ int getEventNumber() {
 
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr)
 {
+    printf("writeEventAndMakeLink(%s,%s,%d",theEventDir,theLinkDir,(int)theEventPtr);
     char theFilename[FILENAME_MAX];
     int retVal;
     AnitaEventHeader_t *theHeader=&(theEventPtr->header);
@@ -1709,37 +1714,47 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) {
 }
 
 
-void updateThresholdsUsingPID() {
+int updateThresholdsUsingPID() {
+    static int avgCount=0;
     int surf,dac,error,value,change;
     float pTerm, dTerm, iTerm;
+    avgCount++;
     for(surf=0;surf<numSurfs;surf++) {
 	for(dac=0;dac<N_RFTRIG;dac++) {
-	    value=theHk.scaler[surf][dac];
-	    error=pidGoal-value;
+	    avgScalerData[surf][dac]+=theHk.scaler[surf][dac];
+	    if(avgCount==pidAverage) {
+		value=avgScalerData[surf][dac]/avgCount;
+		avgScalerData[surf][dac]=0;
+		error=pidGoal-value;
 	    
-	    // Proportional term
-	    pTerm = dacPGain * error;
-
-	    // Calculate integral with limiting factors
-	    thePids[surf][dac].iState+=error;
-	    if (thePids[surf][dac].iState > dacIMax) 
-		thePids[surf][dac].iState = dacIMax;
-	    else if (thePids[surf][dac].iState < dacIMin) 
-		thePids[surf][dac].iState = dacIMin;
-	       
-	    // Integral and Derivative Terms
-	    iTerm = dacIGain * thePids[surf][dac].iState;  
-	    dTerm = dacDGain * (value -thePids[surf][dac].dState);
-	    thePids[surf][dac].dState = value;
-
-	    //Put them together
-	    change = (int) (pTerm + iTerm - dTerm);
-	    thresholdArray[surfIndex[surf]-1][dac]+=change;
-	    if(thresholdArray[surfIndex[surf]-1][dac]>4095)
-		thresholdArray[surfIndex[surf]-1][dac]=4095;
-	    if(thresholdArray[surfIndex[surf]-1][dac]<1)
-		thresholdArray[surfIndex[surf]-1][dac]=1;
+		// Proportional term
+		pTerm = dacPGain * error;
+		
+		// Calculate integral with limiting factors
+		thePids[surf][dac].iState+=error;
+		if (thePids[surf][dac].iState > dacIMax) 
+		    thePids[surf][dac].iState = dacIMax;
+		else if (thePids[surf][dac].iState < dacIMin) 
+		    thePids[surf][dac].iState = dacIMin;
+		
+		// Integral and Derivative Terms
+		iTerm = dacIGain * thePids[surf][dac].iState;  
+		dTerm = dacDGain * (value -thePids[surf][dac].dState);
+		thePids[surf][dac].dState = value;
+		
+		//Put them together
+		change = (int) (pTerm + iTerm - dTerm);
+		thresholdArray[surfIndex[surf]-1][dac]+=change;
+		if(thresholdArray[surfIndex[surf]-1][dac]>4095)
+		    thresholdArray[surfIndex[surf]-1][dac]=4095;
+		if(thresholdArray[surfIndex[surf]-1][dac]<1)
+		    thresholdArray[surfIndex[surf]-1][dac]=1;
+	    }
 	}
     }
-	    
+    if(avgCount==10) {
+	avgCount=0;
+	return 1;
+    }
+    return 0;
 }

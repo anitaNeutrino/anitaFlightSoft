@@ -128,5 +128,5 @@ PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles,PlxHandle_t turfioHandle);
 PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle);
 void setGloablDACThreshold(PlxHandle_t *surfHandles, unsigned short threshold);
 //PlxReturnCode_t blockReadPlxData(PlxHandle_t handle, unsigned short *dataArray, int numBytes);
-void updateThresholdsUsingPID();
+int updateThresholdsUsingPID();
 #endif //ACQD_H
