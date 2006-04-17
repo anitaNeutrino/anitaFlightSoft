@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
 // Read only one chip per trigger. PM
 
     int i=0,tmo=0; 
-    int numDevices, n_ev=0 ;
+    int numDevices, numEvents=0 ;
     int tmpGPIO;
     unsigned short dacVal=2200;
     int surf;
@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
     }
 
     if(standAloneMode) {
-	init_param(argc, argv,  &n_ev, &dacVal) ;
+	init_param(argc, argv,  &numEvents, &dacVal) ;
 //	if (dir_n == NULL) dir_n = "./data" ; /* this is default directory name. */
     }
 
@@ -219,6 +219,10 @@ int main(int argc, char **argv) {
 	
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
+	    if(standAloneMode && numEvents>doingEvent) {
+		currentState=PROG_STATE_TERMINATE;
+		break;
+	    }
 	    //Fill theEvent with zeros 
 	    bzero(&theEvent, sizeof(theEvent)) ;
 	    memset(&theHk,0,sizeof(FullSurfHkStruct_t));
