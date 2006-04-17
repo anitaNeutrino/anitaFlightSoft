@@ -1733,6 +1733,7 @@ int updateThresholdsUsingPID() {
 	    avgScalerData[surf][dac]+=theHk.scaler[surf][dac];
 	    if(avgCount==pidAverage) {
 		value=avgScalerData[surf][dac]/avgCount;
+		printf("%d %d\n",avgScalerData[surf][dac],value);
 		avgScalerData[surf][dac]=0;
 		error=pidGoal-value;
 	    
