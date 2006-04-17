@@ -101,7 +101,6 @@ typedef struct {
 } DacPidStruct_t;
 
       
-
 //Forward Declarations
 int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc);
 void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);

@@ -1758,7 +1758,7 @@ int updateThresholdsUsingPID() {
 		    thresholdArray[surfIndex[surf]-1][dac]=4095;
 		if(thresholdArray[surfIndex[surf]-1][dac]<1)
 		    thresholdArray[surfIndex[surf]-1][dac]=1;
-		printf("%d %d\n",thePids[surf][dac].dState,
+		printf("%d %f\n",thePids[surf][dac].dState,
 		       thePids[surf][dac].iState);
 		printf("%d %d %f %f %f\n",change,
 		       thresholdArray[surfIndex[surf]-1][dac],
