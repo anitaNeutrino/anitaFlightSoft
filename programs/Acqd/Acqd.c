@@ -1735,7 +1735,7 @@ int updateThresholdsUsingPID() {
 		value=avgScalerData[surf][dac]/avgCount;
 		avgScalerData[surf][dac]=0;
 		error=pidGoal-value;
-		printf("%f %d %d %d\n",thePids[surf][dac].iState,
+		printf("%d %d %d %d\n",thePids[surf][dac].iState,
 		       avgScalerData[surf][dac],value,error);
 	    
 		// Proportional term
@@ -1749,8 +1749,8 @@ int updateThresholdsUsingPID() {
 		    thePids[surf][dac].iState = dacIMin;
 		
 		// Integral and Derivative Terms
-		iTerm = dacIGain * thePids[surf][dac].iState;  
-		dTerm = dacDGain * (value -thePids[surf][dac].dState);
+		iTerm = dacIGain * (float)(thePids[surf][dac].iState);  
+		dTerm = dacDGain * (float)(value -thePids[surf][dac].dState);
 		thePids[surf][dac].dState = value;
 		
 		//Put them together
@@ -1760,7 +1760,7 @@ int updateThresholdsUsingPID() {
 		    thresholdArray[surfIndex[surf]-1][dac]=4095;
 		if(thresholdArray[surfIndex[surf]-1][dac]<1)
 		    thresholdArray[surfIndex[surf]-1][dac]=1;
-		printf("%d %f\n",thePids[surf][dac].dState,
+		printf("%d %d\n",thePids[surf][dac].dState,
 		       thePids[surf][dac].iState);
 		printf("%d %d %f %f %f\n",change,
 		       thresholdArray[surfIndex[surf]-1][dac],
