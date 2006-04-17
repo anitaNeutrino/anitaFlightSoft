@@ -1743,6 +1743,7 @@ int updateThresholdsUsingPID() {
 		
 		// Calculate integral with limiting factors
 		thePids[surf][dac].iState+=error;
+		printf("Here %d %d\n",thePids[surf][dac].iState,dacIMax);
 		if (thePids[surf][dac].iState > dacIMax) 
 		    thePids[surf][dac].iState = dacIMax;
 		else if (thePids[surf][dac].iState < dacIMin) 
