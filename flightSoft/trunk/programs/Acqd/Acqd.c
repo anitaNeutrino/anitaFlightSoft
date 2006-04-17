@@ -1735,7 +1735,8 @@ int updateThresholdsUsingPID() {
 		value=avgScalerData[surf][dac]/avgCount;
 		avgScalerData[surf][dac]=0;
 		error=pidGoal-value;
-		printf("%d %d %d\n",avgScalerData[surf][dac],value,error);
+		printf("%f %d %d %d\n",thePids[surf][dac].iState,
+		       avgScalerData[surf][dac],value,error);
 	    
 		// Proportional term
 		pTerm = dacPGain * error;
