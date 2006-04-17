@@ -1336,9 +1336,10 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
     unsigned char tempVal;
     int chanId=0,surf,chan=0,samp,firstHitbus,lastHitbus,wrappedHitbus;
     unsigned short upperWord=0;
-
+    
+    doingEvent++;
     if(verbosity && printToScreen) 
-	printf("Triggered, event %d (by software counter).\n",doingEvent++);
+	printf("Triggered, event %d (by software counter).\n",doingEvent);
 
   	
     //Loop over SURFs and read out data
@@ -1470,8 +1471,9 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
     unsigned int  dataInt=0;
     int surf,rfChan;
 
+    hkNumber++;
     if(verbosity && printToScreen) 
-	printf("Reading Surf HK %d.\n",hkNumber++);
+	printf("Reading Surf HK %d.\n",hkNumber);
         
     for(surf=0;surf<numSurfs;surf++){  
 
