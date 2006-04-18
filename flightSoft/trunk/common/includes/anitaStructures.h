@@ -21,6 +21,7 @@ typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101,
     PACKET_SURF = 0x102,
+    PACKET_SURF_HK = 0x103,
     PACKET_GPS_ADU5_PAT = 0x200,
     PACKET_GPS_ADU5_SAT = 0x201,
     PACKET_GPS_ADU5_VTG = 0x202,
@@ -34,7 +35,13 @@ typedef enum {
 typedef struct {
     PacketCode_t code;    
     unsigned short numBytes;
+    unsigned short badCrc;    
 } GenericHeader_t;
+
+typedef struct {
+    long unixTime;
+    long unixTimeUs;
+} TimeHeader_t;
 
 // TURFIO data structure, TV test
 /* typedef struct { */
