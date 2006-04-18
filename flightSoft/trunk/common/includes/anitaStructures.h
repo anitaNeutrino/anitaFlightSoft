@@ -35,7 +35,7 @@ typedef enum {
 typedef struct {
     PacketCode_t code;    
     unsigned short numBytes;
-    unsigned short badCrc;    
+    unsigned short badCrc;  //Willmaybe abandon for unique value  
 } GenericHeader_t;
 
 typedef struct {
@@ -137,7 +137,6 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     int eventNumber;
-    char packetNumber; //0 to 23;
     SurfChannelFull_t waveform;
 } WaveformPacket_t;
 
@@ -145,7 +144,6 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     int eventNumber;
-    char packetNumber; //0 to 1;
     SurfChannelFull_t waveform[CHANNELS_PER_SURF];
 } SurfPacket_t;
 
