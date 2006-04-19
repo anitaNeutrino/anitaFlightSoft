@@ -8,7 +8,10 @@ SUBDIRS = common outside/acromag outside/sipcom programs #testing
 
 all: subdirs scripts
 
-docs:
+configDocs:
+	@script/makeHtmledConfigFiles.sh
+
+docs: configDocs
 	@doxygen doc/doxy.config
 
 subdirs:

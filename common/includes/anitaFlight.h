@@ -6,6 +6,22 @@
     around.
     August 2004  rjn@mps.ohio-state.edu
 */
+/*! \mainpage ANITA Flight Software Doxygen Powered Documentation
+ *
+ * \section intro_sec Introduction
+ *
+ * Okay so there really isn't that much to say here. What we have is a
+ * Doxygenated (yeah, I can make up words with the best of them) version
+ * of the flight software code.
+ *
+ * \section Reminder
+ *
+ * You may also want to look at the <a href="http://www.physics.ohio-state.edu/~rjn/flightSoft>Flight Software homepage.</a>
+ *  
+ *
+ */
+
+
 #ifndef ANITA_FLIGHT_H
 #define ANITA_FLIGHT_H
 
