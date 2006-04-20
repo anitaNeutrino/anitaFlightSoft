@@ -16,7 +16,7 @@
 #include <fcntl.h>
 
 /* Flight soft includes */
-#include "sipcom.h"
+#include "sipcomLib/sipcom.h"
 #include "anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"

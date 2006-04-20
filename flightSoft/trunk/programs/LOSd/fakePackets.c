@@ -241,7 +241,7 @@ void fakeEvent(int trigType)
     }
     gettimeofday(&timeStruct,NULL);
     theHeader.gHdr.code=PACKET_HD;
-    theHeader.turfio.trigType=trigType;
+//    theHeader.turfio.trigType=trigType;
     theHeader.unixTime=timeStruct.tv_sec;
     theHeader.unixTimeUs=timeStruct.tv_usec;
     theHeader.numChannels=16;
@@ -285,7 +285,7 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
     for(surf=0;surf<(hdPtr->numChannels)/CHANNELS_PER_SURF;surf++) {
 	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
-	surfPacket.packetNumber=surf;
+//	surfPacket.packetNumber=surf;
 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
 	writeSurfPacket(&surfPacket,packetName);
 //	printf("Wrote %s\n",packetName);
