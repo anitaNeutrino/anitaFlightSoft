@@ -6,6 +6,19 @@
 */
 #include "Prioritizerd.h"
 
+int useUsbDisks=0;
+int maxEventsPerDir=1000;
+char eventdEventDir[FILENAME_MAX];
+char eventdEventLinkDir[FILENAME_MAX];
+char headerTelemDir[FILENAME_MAX];
+char headerTelemLinkDir[FILENAME_MAX];
+char eventTelemDir[NUM_PRIORITIES][FILENAME_MAX]; 
+char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX]; 
+
+char eventArchiveDir[FILENAME_MAX];
+char eventUSBArchiveDir[FILENAME_MAX];
+char prioritizerdPidFile[FILENAME_MAX];
+
 int main (int argc, char *argv[])
 {
     int retVal,count;
