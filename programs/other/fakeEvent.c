@@ -137,7 +137,7 @@ void fakeEvent(int trigType)
     printf("Created Event: %d\n",evNum);
     gettimeofday(&timeStruct,NULL);
     theHeader.gHdr.code=PACKET_HD;
-    theHeader.turfio.trigType=trigType;
+//    theHeader.turfio.trigType=trigType;
     theHeader.unixTime=timeStruct.tv_sec;
     theHeader.unixTimeUs=timeStruct.tv_usec;
     theHeader.numChannels=16;

@@ -4,7 +4,7 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-SUBDIRS = common outside/acromag outside/sipcom programs #testing
+SUBDIRS = common outside/acromag programs #testing
 
 all: subdirs scripts
 
