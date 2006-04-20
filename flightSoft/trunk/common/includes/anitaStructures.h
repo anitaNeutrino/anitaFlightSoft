@@ -129,6 +129,29 @@ typedef struct {
     SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
 } AnitaEventBody_t;
 
+/* these are syntactic sugar to hel us keep track of 
+typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
+typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
+typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
+
+typedef struct {
+     Fixed3_t ch[NUM_DIGITZED_CHANNELS]; 
+     unsigned short valid_channels;
+} AnitaTransientBody3_t; /* final corrected transient type 
+			    used to calculate power */
+
+typedef struct {
+     Fixed6_t ch[NUM_DIGITZED_CHANNELS]; 
+     unsigned short valid_channels;
+} AnitaPowerBody6_t; /* power from squaring an AnitaTransientBody3 */
+
+typedef struct {
+     Fixed8_t ch[NUM_DIGITZED_CHANNELS]; 
+     unsigned short valid_channels;
+} AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
+			    averaging, and gain correction */
+
+
 typedef struct {
     AnitaEventHeader_t header;
     AnitaEventBody_t body;
@@ -139,7 +162,6 @@ typedef struct {
     int eventNumber;
     SurfChannelFull_t waveform;
 } WaveformPacket_t;
-
 
 typedef struct {
     GenericHeader_t gHdr;
@@ -317,5 +339,15 @@ typedef struct {
     DiskSpaceStruct_t diskInfo;
     QueueStruct_t queueInfo;
 } MonitorStruct_t;
+
+typedef struct {
+     long unixTime; /* when were these taken? */
+     int nsamples; /* how many samples in the average? */
+     float thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF]
+     [CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
+     float pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF]
+     [CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
+               /* RMS of the samples (not of mean */
+} PedestalStruct_t;
 
 #endif /* ANITA_STRUCTURES_H */

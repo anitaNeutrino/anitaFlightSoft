@@ -33,6 +33,7 @@
 #define ACTIVE_SURFS 10
 #define MAX_SURFS 12
 #define CHANNELS_PER_SURF 9
+#define LABRADORS_PER_SURF 4 /*jjb 2006-04-19 */
 #define NUM_DAC_CHANS 4
 #define SCALERS_PER_SURF 32
 #define RFCHAN_PER_SURF 8
