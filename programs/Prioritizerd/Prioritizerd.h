@@ -17,7 +17,6 @@
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
 
-
 /* Structure defininitions */
 
 typedef struct {
@@ -47,19 +46,16 @@ void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 /* int checkPayloadFrequencies( float *power[], float freq[], int numChannels, int numFreqs); */
 /* int writeOutputFiles(AnitaEventHeader_t *hdPtr, AnitaEventBody_t *bodyPtr, char eventDir[], char backupDir[], char linkBaseDir[], float probWriteOut9); */
 
-
 /* Directories and gubbins */
-int useUsbDisks=0;
-int maxEventsPerDir=1000;
-char eventdEventDir[FILENAME_MAX];
-char eventdEventLinkDir[FILENAME_MAX];
-char headerTelemDir[FILENAME_MAX];
-char headerTelemLinkDir[FILENAME_MAX];
-char eventTelemDir[NUM_PRIORITIES][FILENAME_MAX]; 
-char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX]; 
+extern int useUsbDisks, maxEventsPerDir;
+extern char eventdEventDir[FILENAME_MAX];
+extern char eventdEventLinkDir[FILENAME_MAX];
+extern char headerTelemDir[FILENAME_MAX];
+extern char headerTelemLinkDir[FILENAME_MAX];
+extern char eventTelemDir[NUM_PRIORITIES][FILENAME_MAX]; 
+extern char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX]; 
 
-char eventArchiveDir[FILENAME_MAX];
-char eventUSBArchiveDir[FILENAME_MAX];
-char prioritizerdPidFile[FILENAME_MAX];
-
+extern char eventArchiveDir[FILENAME_MAX];
+extern char eventUSBArchiveDir[FILENAME_MAX];
+extern char prioritizerdPidFile[FILENAME_MAX];
 #endif

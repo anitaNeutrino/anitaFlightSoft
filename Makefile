@@ -29,10 +29,16 @@ scripts:
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/getLogWindow.sh 
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/startProgsInXterms.sh 
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/killAllProgs.sh 
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCMOff
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCMOn
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnNDOff
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnNDOn
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1Off
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1On 
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2Off
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2On 
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3Off
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3On
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4Off
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4On
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOff
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOn
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOff
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOn
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff
@@ -43,10 +49,16 @@ scripts:
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/getLogWindow.sh bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/startProgsInXterms.sh bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/killAllProgs.sh bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCMOff bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCMOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnNDOff bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnNDOn bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1Off bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1On bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2Off bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2On bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3Off bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3On bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4Off bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4On bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOff bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOff bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOff bin

@@ -17,6 +17,21 @@
 
 #define MAX_SATS 12
 
+#define SetVerId(A) (0xfe | (((A)&0xff)<<8))
+
+#define VER_EVENT_HEADER 2
+#define VER_WAVE_PACKET 2
+#define VER_SURF_PACKET 2
+#define VER_SURF_HK 2
+#define VER_ADU5_PAT 2
+#define VER_ADU5_SAT 2
+#define VER_ADU5_VTG 2
+#define VER_G12_POS 2
+#define VER_G12_SAT 2
+#define VER_HK_FULL 2
+#define VER_CMD_ECHO 2
+#define VER_MONITOR 2
+
 typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101,
@@ -35,13 +50,8 @@ typedef enum {
 typedef struct {
     PacketCode_t code;    
     unsigned short numBytes;
-    unsigned short badCrc;  //Willmaybe abandon for unique value  
+    unsigned short verId;
 } GenericHeader_t;
-
-typedef struct {
-    long unixTime;
-    long unixTimeUs;
-} TimeHeader_t;
 
 // TURFIO data structure, TV test
 /* typedef struct { */
@@ -126,10 +136,12 @@ typedef struct {
 } AnitaEventHeader_t;
 
 typedef struct {
+    GenericHeader_t gHdr;
+    int eventNumber;    /* Global event number */
     SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
 } AnitaEventBody_t;
 
-/* these are syntactic sugar to hel us keep track of 
+/* these are syntactic sugar to help us keep track of bit shifts */
 typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
 typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
 typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
@@ -248,7 +260,7 @@ typedef enum {
 
 typedef struct {
     long unixTime;
-    char status;
+    long status;
 } CalibStruct_t;
 
 typedef struct {
@@ -284,11 +296,12 @@ typedef struct {
 } HkDataStruct_t;
 
 typedef struct {    
-    unsigned short threshold;
-    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+unsigned short threshold;
+unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
 } SimpleScalerStruct_t;
 
-typedef struct {    
+typedef struct { 
+    GenericHeader_t gHdr;
     unsigned short globalThreshold; //set to zero if there isn't one
     unsigned short errorFlag; //Will define at some point    
     unsigned short upperWords[ACTIVE_SURFS];

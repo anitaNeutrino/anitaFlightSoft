@@ -1,5 +1,18 @@
 #include "Prioritizerd.h"
 
+
+/* Directories and gubbins */
+extern char eventdEventDir[FILENAME_MAX];
+extern char eventdEventLinkDir[FILENAME_MAX];
+extern char headerTelemDir[FILENAME_MAX];
+extern char headerTelemLinkDir[FILENAME_MAX];
+extern char eventTelemDir[NUM_PRIORITIES][FILENAME_MAX]; 
+extern char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX]; 
+
+extern char eventArchiveDir[FILENAME_MAX];
+extern char eventUSBArchiveDir[FILENAME_MAX];
+extern char prioritizerdPidFile[FILENAME_MAX];
+
 void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
 {
 /*     int chan; */
@@ -23,7 +36,7 @@ void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
     for(surf=0;surf<(hdPtr->numChannels)/CHANNELS_PER_SURF;surf++) {
 	sprintf(packetName,"%s/surfpk_%d_%d.dat",eventTelemDir[(int)hdPtr->priority],hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
-	surfPacket.packetNumber=surf;
+//	surfPacket.packetNumber=surf;
 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
 	writeSurfPacket(&surfPacket,packetName);
 //	printf("Wrote %s\n",packetName);

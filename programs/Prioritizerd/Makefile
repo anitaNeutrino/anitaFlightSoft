@@ -11,7 +11,7 @@ Objs= writePacketsAndHeader.o
 
 all: $(Targets)
 
-$(Targets): % : %.o
+$(Targets): % : %.o ${Objs}
 	@echo "<**Linking**> $@ ..."
 	@$(LD) $@.o $(Objs) $(LDFLAGS) $(ANITA_LIBS)  -o $@
 	@chmod 555 $@
