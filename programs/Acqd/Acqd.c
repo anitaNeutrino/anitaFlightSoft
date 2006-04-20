@@ -143,6 +143,9 @@ int main(int argc, char **argv) {
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
 
+    /* Log stuff */
+    char *progName=basename(argv[0]);
+
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
     turfioPtr=&(hdPtr->turfio);
@@ -150,6 +153,10 @@ int main(int argc, char **argv) {
     //Initialize dacPid stuff
     memset(&thePids,0,sizeof(DacPidStruct_t)*ACTIVE_SURFS*N_RFTRIG);    
    
+    /* Setup log */
+    setlogmask(LOG_UPTO(LOG_INFO));
+    openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
+
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
