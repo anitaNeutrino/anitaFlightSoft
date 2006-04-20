@@ -1,0 +1,24 @@
+/* 1) Pedestal subtract, promoting to int; this depends on the
+physical cell and coupling in the Labrador and must be subtracted
+before unwrapping (up 8 bits)*/
+
+/* 2) Unwrap the channels */ 
+
+/* 3) Establish baselines and subtract.*/
+
+/* 4) Match gains within each antenna */ 
+
+/* 5) Do any filtering here (including FFT if needed) Down to 3
+bits. */ 
+
+/* 6) Form S0,S1,S2(I,Q,U)? and get the linearly polarized power for
+each antenna. */ 
+
+/*7) Form ring-level L2 similar to standard trigger with configurable
+sector width, coincidence level, threshold vs. RMS, and resolving time
+*/ 
+
+/* 8) Form L3 and derive best estimate for nadir angle */ 
+
+/* 9) Reconstruct the power from the reconstructed direction by coadding
+antennas */
