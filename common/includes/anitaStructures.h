@@ -154,6 +154,7 @@ typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
 
 typedef struct {
      Fixed3_t data[MAX_NUMBER_SAMPLES];
+     Fixed3_t baseline;
      short valid_samples;
 } TransientChannel3_t;
 
@@ -164,6 +165,7 @@ typedef struct {
 
 typedef struct {
      Fixed8_t data[MAX_NUMBER_SAMPLES];
+     Fixed8_t baseline;
      short valid_samples;
 } TransientChannel8_t;
 
