@@ -125,7 +125,9 @@ typedef struct {
     GenericHeader_t gHdr;
     long unixTime;       /* unix UTC sec*/
     long unixTimeUs;     /* unix UTC microsec */
-    int gpsSubTime;     /* the GPS fraction of second (in ns) (for the X events per second that gets tagged with it */
+    int gpsSubTime;     /* the GPS fraction of second (in ns) 
+			   (for the X events per second that get 
+			   tagged with it */
     int eventNumber;    /* Global event number */
     short surfMask;
     short numChannels;  /* In case we turn part of array off, or whatever. */
@@ -146,7 +148,8 @@ typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
 typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
 typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
 
-==-1 prior to unwinding 
+/*    FOR THREE STRUCTS THAT FOLLOW
+      valid samples==-1 prior to unwinding 
 */
 
 typedef struct {

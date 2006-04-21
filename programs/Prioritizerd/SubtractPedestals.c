@@ -47,23 +47,22 @@ int readPedestals(int pedOption)
 }
 
 int subtractPedestals(AnitaEventBody_t *rawSurfEvent,
-		      AnitaTransientBody8_t *SurfTransientPS)
+		      AnitaTransientBody8_t *surfTransientPS)
 {
      int digCh, surf,chan,chip,samp;
      unsigned char chanId,chipIdFlag;
      do (digCh=0;digCh<NUM_DIGITIZED_CHANNELS;digch++){
 	  chanId=((rawSurfEvent->channel[digCh]).header).chanId;
 	  chipIdFlag=((rawSurfEvent->channel[digCh]).header).chipIdFlag;
-	  /* don't think I need the hitbus stuff here */
 	  surf=chanId/9; chan=chanid%9;
 	  chip=(chipIdFlag & 0x3);
 	  /* Pedestals are scaled to Fixed_8 already */
 	  do (samp=0; samp<MAX_NUMBER_SAMPLES; samp++){
-	       (SurfTransientPS->ch[digCh]).data[samp]=
+	       (surfTransientPS->ch[digCh]).data[samp]=
 		    256*(rawSurfEvent->ch[digCh]).data[samp]
 		    - scaledPed[surf][chip][chan][samp];
 	  }
-	  (SurfTransientPS->ch[digCh]).valid_samples=-1;
+	  (surfTransientPS->ch[digCh]).valid_samples=-1;
 	  /* -1 indicates this has not been unwrapped yet */
      }
 }

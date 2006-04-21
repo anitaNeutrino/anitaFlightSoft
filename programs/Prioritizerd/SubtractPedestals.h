@@ -14,7 +14,7 @@ int readPedestals(int pedOption);
    pedOption 3=next most recent pedestals 
 */
 
-int subtractPedestals(AnitaEventBody_t *rawSurfEvent,AnitaTransientBody8_t *SurfTransientPS);
+int subtractPedestals(AnitaEventBody_t *rawSurfEvent,AnitaTransientBody8_t *surfTransientPS);
 /* 
    The RawSurfChannelHeader with each SurfChannelFull 
    has the chip information */
