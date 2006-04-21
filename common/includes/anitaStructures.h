@@ -146,23 +146,37 @@ typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
 typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
 typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
 
+==-1 prior to unwinding 
+*/
+
 typedef struct {
-     Fixed3_t ch[NUM_DIGITZED_CHANNELS]; 
-     unsigned short valid_channels;
+     Fixed3_t data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+} TransientChannel3_t;
+
+typedef struct {
+     Fixed6_t data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+} TransientChannel6_t;
+
+typedef struct {
+     Fixed8_t data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+} TransientChannel8_t;
+
+typedef struct {
+     TransientChannel3_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBody3_t; /* final corrected transient type 
 			    used to calculate power */
 
 typedef struct {
-     Fixed6_t ch[NUM_DIGITZED_CHANNELS]; 
-     unsigned short valid_channels;
+     TransientChannel6_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaPowerBody6_t; /* power from squaring an AnitaTransientBody3 */
 
 typedef struct {
-     Fixed8_t ch[NUM_DIGITZED_CHANNELS]; 
-     unsigned short valid_channels;
+     TransientChannel8_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
 			    averaging, and gain correction */
-
 
 typedef struct {
     AnitaEventHeader_t header;
