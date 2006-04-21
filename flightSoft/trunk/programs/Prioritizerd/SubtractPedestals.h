@@ -8,9 +8,10 @@
 PedestalStruct_t currentPedestals;
 
 int readPedestals(int pedOption);
-/* pedOption 0=standard pedestal set (written preflight and permanent)
-   pedOption 1=most recent pedestals taken
-   pedOption 2=next most recent pedestals 
+/* pedOption 0=all pedestals are zero
+   pedOption 1=standard pedestal set (written preflight and permanent)
+   pedOption 2=most recent pedestals taken
+   pedOption 3=next most recent pedestals 
 */
 
 int subtractPedestals(AnitaEventBody_t *rawSurfEvent,AnitaTransientBody8_t *SurfTransientPS);

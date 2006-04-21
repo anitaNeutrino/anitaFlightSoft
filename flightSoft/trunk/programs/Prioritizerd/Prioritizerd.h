@@ -58,4 +58,5 @@ extern char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX];
 extern char eventArchiveDir[FILENAME_MAX];
 extern char eventUSBArchiveDir[FILENAME_MAX];
 extern char prioritizerdPidFile[FILENAME_MAX];
-#endif
+#endif /* PRIORITIZERD_H */
+
