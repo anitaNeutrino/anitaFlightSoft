@@ -1,11 +1,25 @@
 /* Unwrap the Labrador records */
+#include "Unwrap.h"
 
 unsigned char wrapOffset[surf][chip][chan];
 
+int readWrapOffsets(int offsetOption){
+     int surf,chip,chan;
+     /* just set all to offsetOption for now; 
+	if needed negative options can be used to control
+	reading these from a file.*/
+     do (surf=0; surf<ACTIVE_SURFS; surf++){
+	  do (lab=0;lab<LABRADORS_PER_SURF;lab++){
+	       do (chan=0; chan<CHANNELS_PER_SURF;chan++){
+		    wrapOffset[surf][chip][chan]=offsetOption;
+		}
+	   }
+      }
+}
 
 int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
-		    AnitaTransientBody8_t SurfTransientPS, 
-		    AnitaTransientBody8_t * surfTransientUW)
+		    AnitaTransientBody8_t *surfTransientPS, 
+		    AnitaTransientBody8_t *surfTransientUW)
 {
      int digCh, surf,chan,chip,samp, splice;
      unsigned char chanId,chipIdFlag;
@@ -25,7 +39,7 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 			   */
 	       do (samp=lastHitbus+1;samp<MAX_NUMBER_SAMPLES; samp++){
 		    (surfTransientUW->ch[digCh]).data[samp-(lastHitbus+1)]=
-			 (surfTransientUW->ch[digCh]).data[samp];
+			 (surfTransientPS->ch[digCh]).data[samp];
 	       }
 	       /* this wrote MAX_NUMBER_SAMPLES-(lastHitbus+1) samples */
 	       splice=MAX_NUMBER_SAMPLES-(lastHitbus+1);
@@ -34,7 +48,7 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 		  are repeated at beginning */
 	       do (samp=offset;samp<firstHitbus;samp++){
 		    (surfTransientUW->ch[digCh]).data[samp+splice-offset]=
-			 (surfTransientUW->ch[digCh]).data[samp];
+			 (surfTransientPS->ch[digCh]).data[samp];
 	       }
 	       /* this wrote firstHitbus-offset samples*/
 	       (surfTransientUW->ch[digCh]).valid_samples=
@@ -45,7 +59,7 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 				*/
 	       do (samp=firstHitbus+1;samp<lastHitbus; samp++){
 		    (surfTransientUW->ch[digCh]).data[samp-(firstHitbus+1)]=
-			 (surfTransientUW->ch[digCh]).data[samp];
+			 (surfTransientPS->ch[digCh]).data[samp];
 	       }
 	       (surfTransientUW->ch[digCh]).valid_samples=
 		    lastHitbus-(firstHitbus+1);
