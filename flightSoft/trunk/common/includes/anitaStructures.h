@@ -16,6 +16,7 @@
 #include "includes/anitaFlight.h"
 
 #define MAX_SATS 12
+#define MAX_CMD_LENGTH 20
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 
@@ -147,6 +148,7 @@ typedef struct {
 typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
 typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
 typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
+
 
 /*    FOR THREE STRUCTS THAT FOLLOW
       valid samples==-1 prior to unwinding 
@@ -315,8 +317,8 @@ typedef struct {
 } HkDataStruct_t;
 
 typedef struct {    
-unsigned short threshold;
-unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+    unsigned short threshold;
+    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
 } SimpleScalerStruct_t;
 
 typedef struct { 
@@ -329,13 +331,17 @@ typedef struct {
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
 } FullSurfHkStruct_t;
 
+typedef struct {    
+    char numCmdBytes;
+    unsigned char cmd[MAX_CMD_LENGTH];
+} CommandStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
     char goodFlag; // 0 is bad, 1 is good
     char numCmdBytes; // number of cmd bytes (upto 10)
-    char cmd[10]; // the cmd bytes
+    unsigned char cmd[MAX_CMD_LENGTH]; // the cmd bytes
 } CommandEcho_t;
 
 typedef enum {

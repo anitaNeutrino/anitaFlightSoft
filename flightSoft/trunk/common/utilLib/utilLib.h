@@ -42,6 +42,7 @@ int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename);
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename);
 int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
+int fillCommand(CommandStruct_t *theStruct, char *filename);
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
@@ -55,6 +56,7 @@ int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename);
 int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename);
 int writeHk(HkDataStruct_t *hkPtr, char *filename);
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
+int writeCmd(CommandStruct_t *cmdPtr, char *filename);
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);
 
 

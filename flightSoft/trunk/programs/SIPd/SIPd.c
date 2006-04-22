@@ -40,7 +40,10 @@ void handle_slowrate_comm2();
 void write_highrate(int *ignore);
 
 char sipdPacketDir[FILENAME_MAX];
+char cmddCommandDir[FILENAME_MAX];
+char cmddCommandLinkDir[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
+
 int numPacketDirs=0;
 int maxPacketsPerDir=20;
 int main(int argc, char *argv[])
@@ -97,6 +100,16 @@ int main(int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Couldn't get sipdPacketDir");
 	    fprintf(stderr,"Couldn't get sipdPacketDir\n");
+	}
+	tempString=kvpGetString("cmddCommandDir");
+	if(tempString) {
+	    strncpy(cmddCommandDir,tempString,FILENAME_MAX);
+	    sprintf(cmddCommandLinkDir,"%s/link",cmddCommandDir);
+	    makeDirectories(cmddCommandLinkDir);       		
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmddCommandDir");
+	    fprintf(stderr,"Couldn't get cmddCommandDir\n");
 	}
 	//printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
     }

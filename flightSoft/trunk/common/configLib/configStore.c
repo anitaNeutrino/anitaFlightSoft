@@ -71,7 +71,7 @@ INCLUDE FILES: <place list of any relevant header files here>
 * RETURNS: 0 => success,  -1 => failure
 *
 */
-ConfigErrorCode configReplace(char *oldFileName, char *newFileName)
+ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawTimePtr)
 {
 /*     printf("configReplace %s %s\n",oldFileName,newFileName); */
     int retVal=0;
@@ -84,7 +84,6 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName)
    char archiveFileSpec[FILENAME_MAX] ;
    char newFileSpec[FILENAME_MAX] ;
    char mvCommand[2*FILENAME_MAX];
-   time_t rawTime;
 
    configPath = getenv ("ANITA_CONFIG_DIR") ;
    if (configPath == NULL) {
@@ -100,13 +99,13 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName)
          configPath = myPwent->pw_dir ;
       }
    }
-   time ( &rawTime );
+   time ( rawTimePtr );
 
    strcpy (oldFileSpec, configPath) ;
    strcat (oldFileSpec, "/") ;
    strcat (oldFileSpec, oldFileName) ;
 
-   sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,oldFileName,rawTime);
+   sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,oldFileName,*rawTimePtr);
 
    strcpy (newFileSpec, configPath) ;
    strcat (newFileSpec, "/") ;
@@ -260,7 +259,7 @@ ConfigErrorCode configAppend (
 
 
 
-ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value)
+ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value, time_t *rawTimePtr)
 /* Will tidy it up so that 
 Does exactly what it says on the tin */
 {
@@ -296,11 +295,11 @@ Does exactly what it says on the tin */
 	    }
 	}
     }
-    return configReplace(fileName,tempFile);
+    return configReplace(fileName,tempFile,rawTimePtr);
 }
 
 
-ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value)
+ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value, time_t *rawTimePtr)
 /* Will tidy it up so that 
 Does exactly what it says on the tin */
 {
@@ -336,10 +335,10 @@ Does exactly what it says on the tin */
 	    }
 	}
     }
-    return configReplace(fileName,tempFile);
+    return configReplace(fileName,tempFile,rawTimePtr);
 }
 
-ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value)
+ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value, time_t *rawTimePtr)
 /* Will tidy it up so that 
 Does exactly what it says on the tin */
 {
@@ -375,6 +374,6 @@ Does exactly what it says on the tin */
 	    }
 	}
     }
-    return configReplace(fileName,tempFile);
+    return configReplace(fileName,tempFile,rawTimePtr);
 
 }
