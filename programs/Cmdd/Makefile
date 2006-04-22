@@ -6,7 +6,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
 
-Targets = Cmdd
+Targets = Cmdd CmdTest
 
 
 all: $(Targets)

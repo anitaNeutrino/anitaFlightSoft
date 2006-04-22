@@ -242,9 +242,24 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 0;
     }
-    fscanf(infile,"%ld %c",&(theStruct->unixTime),&(theStruct->status));
+    fscanf(infile,"%ld %ld",&(theStruct->unixTime),&(theStruct->status));
     fclose (infile); 
     return 0;
+}
+
+
+int fillCommand(CommandStruct_t *cmdPtr, char *filename)
+{
+    int numObjs;    
+    FILE *infile = fopen (filename, "rb");
+    if(infile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+    numObjs=fread(cmdPtr,sizeof(CommandStruct_t),1,infile);
+    fclose(infile);
+    if(numObjs==1) return 0; /*Success*/
+    return 1;
 }
 
 
@@ -611,6 +626,22 @@ int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 #endif
     return 0;
 }
+
+
+int writeCmd(CommandStruct_t *cmdPtr, char *filename)
+/* Writes the cmd pointed to by cmdPtr to filename */
+{   
+    int numObjs;    
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+    numObjs=fwrite(cmdPtr,sizeof(CommandStruct_t),1,outfile);
+    fclose(outfile);
+    return 0;
+}
+
 
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
 /* Writes the monitor object pointed to by monitorPtr to filename */

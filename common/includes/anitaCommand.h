@@ -26,6 +26,7 @@
 #define ALL_ID_MASK 0xfff
 
 typedef enum {
+    ID_FIRST =100,
     ID_ACQD = 100,
     ID_ARCHIVED,
     ID_CALIBD,
@@ -35,7 +36,8 @@ typedef enum {
     ID_HKD,
     ID_LOSD,
     ID_PRIORITIZERD,
-    ID_SIPD
+    ID_SIPD,
+    ID_NOT_AN_ID
 } ProgramId_t;
 
 typedef enum {

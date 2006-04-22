@@ -4,17 +4,17 @@ Fixed8_t scaledPed[ACTIVE_SURFS][LABRADORS_PER_SURF]
 [CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
 /* precomputed integer fixed point pedestals */
 
-int readPedestals(int pedOption)
+int readPedestals(PedestalOption_t opt)
 {
      int surf,lab,chan,samp;
-     switch (pedoption){
-     case 0:
+     switch (opt){
+     case kZeroPed:
 	  break;
-     case 1:
+     case kDefaultPed:
 	  break;
-     case 2:
+     case kLastPed:
 	  break;
-     case 3:
+     case kPenultimatePed:
 	  break;
      default:
 	  do (surf=0; surf<ACTIVE_SURFS; surf++){

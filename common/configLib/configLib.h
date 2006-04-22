@@ -41,6 +41,7 @@ extern "C" {
 #endif /* __cplusplus */
  
 /* includes */
+#include "time.h"
 
 /* defines */
 #define CONFIG_VAR "DAQ_CONFIG_DIR"
@@ -71,12 +72,12 @@ extern "C" {
 /* RJN additions */
     ConfigErrorCode configAppend (char* fileName, char* blockName) ;
     ConfigErrorCode readBlocks(char *fileName,char blockList[MAX_BLOCKS][BLOCKNAME_MAX],int *numBlocks);
+    
+    ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value, time_t *rawTimePtr);
+    ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value, time_t *rawTimePtr);
+    ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value, time_t *rawTimePtr);
 
-    ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value);
-    ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value);
-    ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value);
-
-    ConfigErrorCode configReplace(char *oldFileName, char *newFileName);
+    ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawTimePtr);
 
 #ifdef __cplusplus 
 } 

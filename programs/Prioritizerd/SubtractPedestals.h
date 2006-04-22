@@ -7,7 +7,14 @@
 
 PedestalStruct_t currentPedestals;
 
-int readPedestals(int pedOption);
+typedef enum {
+    kZeroPed,
+    kDefaultPed,
+    kLastPed,
+    kPenultimatePed
+} PedestalOption_t;
+
+int readPedestals(PedestalOption_t opt);
 /* pedOption 0=all pedestals are zero
    pedOption 1=standard pedestal set (written preflight and permanent)
    pedOption 2=most recent pedestals taken
