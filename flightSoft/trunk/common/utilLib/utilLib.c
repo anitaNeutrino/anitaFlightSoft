@@ -233,18 +233,18 @@ int filterOnDats(const struct dirent *dir)
 
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 {
-    /* Takes a pointer to the next struct in the array */
-    
+    int numObjs;
     FILE * infile;
 
-    infile = fopen (filename, "r");
+    infile = fopen (filename, "rb");
     if(infile == NULL) {
 	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
 	return 0;
     }
-    fscanf(infile,"%ld %ld",&(theStruct->unixTime),&(theStruct->status));
+    numObjs=fread(theStruct,sizeof(CalibStruct_t),1,infile);
     fclose (infile); 
-    return 0;
+    if(numObjs==1) return 0; //Success
+    return 1;
 }
 
 
@@ -638,6 +638,20 @@ int writeCmd(CommandStruct_t *cmdPtr, char *filename)
 	return -1;
     }   
     numObjs=fwrite(cmdPtr,sizeof(CommandStruct_t),1,outfile);
+    fclose(outfile);
+    return 0;
+}
+
+int writeCalibStatus(CalibStruct_t *calibPtr, char *filename)
+/* Writes the cmd pointed to by cmdPtr to filename */
+{   
+    int numObjs;    
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+    numObjs=fwrite(calibPtr,sizeof(CalibStruct_t),1,outfile);
     fclose(outfile);
     return 0;
 }
