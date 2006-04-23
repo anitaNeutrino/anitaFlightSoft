@@ -33,6 +33,23 @@
 #define VER_CMD_ECHO 2
 #define VER_MONITOR 2
 
+
+//Relay Bit Masks
+#define RFCM1_MASK 0x1
+#define RFCM2_MASK 0x2
+#define RFCM3_MASK 0x4
+#define RFCM4_MASK 0x8
+#define VETO_MASK 0x10
+#define GPS_MASK 0x20
+#define CAL_PULSER_MASK 0x40
+
+#define RFSWITCH_MASK 0x200
+#define RFSWITCH_SHIFT 8
+
+#define SS1_MASK 0xf0000
+#define SS1_SHIFT 16
+
+
 typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101,
@@ -131,9 +148,7 @@ typedef struct {
 			   tagged with it */
     int eventNumber;    /* Global event number */
     short surfMask;
-    short numChannels;  /* In case we turn part of array off, or whatever. */
-    short numSamples;   /* total number of samples per waveform == 256*/
-    char calibStatus;   /* Were we flashing the pulser? */
+    short calibStatus;   /* Were we flashing the pulser? */
     char priority;
     TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
 } AnitaEventHeader_t;
