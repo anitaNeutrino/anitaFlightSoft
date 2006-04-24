@@ -140,7 +140,7 @@ void fakeEvent(int trigType)
 //    theHeader.turfio.trigType=trigType;
     theHeader.unixTime=timeStruct.tv_sec;
     theHeader.unixTimeUs=timeStruct.tv_usec;
-    theHeader.numChannels=16;
+//    theHeader.numChannels=16;
     theHeader.eventNumber=evNum;
     if(useMainDisk) {
 	sprintf(archiveHdFilename,"%s/hd_%d.dat",eventArchiveDir,

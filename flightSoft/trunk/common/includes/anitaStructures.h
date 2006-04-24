@@ -68,7 +68,9 @@ typedef enum {
 typedef struct {
     PacketCode_t code;    
     unsigned short numBytes;
-    unsigned short verId;
+    unsigned char feByte;
+    unsigned char verId;
+    unsigned long checksum;
 } GenericHeader_t;
 
 // TURFIO data structure, TV test
@@ -130,6 +132,8 @@ typedef struct {
     unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
     unsigned char firstHitbus;
     unsigned char lastHitbus;
+    float mean; //Filled by Prioritizerd
+    float rms; //Filled by Prioritizerd
 } RawSurfChannelHeader_t;
 
 
@@ -143,13 +147,13 @@ typedef struct {
     GenericHeader_t gHdr;
     long unixTime;       /* unix UTC sec*/
     long unixTimeUs;     /* unix UTC microsec */
-    int gpsSubTime;     /* the GPS fraction of second (in ns) 
+    long gpsSubTime;     /* the GPS fraction of second (in ns) 
 			   (for the X events per second that get 
 			   tagged with it */
-    int eventNumber;    /* Global event number */
+    unsigned long eventNumber;    /* Global event number */
     short surfMask;
     short calibStatus;   /* Were we flashing the pulser? */
-    char priority;
+    long priority;
     TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
 } AnitaEventHeader_t;
 
@@ -209,13 +213,13 @@ typedef struct {
     GenericHeader_t gHdr;
     int eventNumber;
     SurfChannelFull_t waveform;
-} WaveformPacket_t;
+} RawWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
     int eventNumber;
     SurfChannelFull_t waveform[CHANNELS_PER_SURF];
-} SurfPacket_t;
+} RawSurfPacket_t;
 
 typedef struct {
     long unixTime;
