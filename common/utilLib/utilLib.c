@@ -387,7 +387,7 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
     return 0;
 }
 
-int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
+int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename)
 /* Writes the waveform pointed to by wavePtr to filename */
 {
      int numObjs;    
@@ -402,17 +402,17 @@ int writeWaveformPacket(WaveformPacket_t *wavePtr, char *filename)
 	return -1;
     }   
 #ifdef NO_ZLIB
-    numObjs=fwrite(wavePtr,sizeof(WaveformPacket_t),1,outfile);
+    numObjs=fwrite(wavePtr,sizeof(RawWaveformPacket_t),1,outfile);
     fclose(outfile);
 #else
-    numObjs=gzwrite(outfile,wavePtr,sizeof(WaveformPacket_t));
+    numObjs=gzwrite(outfile,wavePtr,sizeof(RawWaveformPacket_t));
     gzclose(outfile);  
 #endif
     return 0;
 }
 
 
-int writeSurfPacket(SurfPacket_t *surfPtr, char *filename)
+int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename)
 /* Writes the surf packet pointed to by surfPtr to filename */
 {
     int numObjs;    
@@ -427,10 +427,10 @@ int writeSurfPacket(SurfPacket_t *surfPtr, char *filename)
 	return -1;
     }   
 #ifdef NO_ZLIB
-    numObjs=fwrite(surfPtr,sizeof(SurfPacket_t),1,outfile);
+    numObjs=fwrite(surfPtr,sizeof(RawSurfPacket_t),1,outfile);
     fclose(outfile);
 #else
-    numObjs=gzwrite(outfile,surfPtr,sizeof(SurfPacket_t));
+    numObjs=gzwrite(outfile,surfPtr,sizeof(RawSurfPacket_t));
     gzclose(outfile);  
 #endif
     return 0;

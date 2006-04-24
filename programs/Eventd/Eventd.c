@@ -182,13 +182,13 @@ int main (int argc, char *argv[])
 //		    syslog (LOG_WARNING,"No GPS sub time for event %d",
 //			    theAcqdEventHeader.eventNumber);
 			if(printToScreen)
-			    printf("No GPS sub time for event %d\t%ld\t%ld\n",
+			    printf("No GPS sub time for event %lu\t%ld\t%ld\n",
 				   theAcqdEventHeader.eventNumber,
 				   theAcqdEventHeader.unixTime,
 				   theAcqdEventHeader.unixTimeUs);
 		    }
 		    else if(printToScreen) 
-			 printf("Match: Event %d\t Time:\t%ld\t%d\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
+			 printf("Match: Event %lu\t Time:\t%ld\t%ld\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
 
 //		    theAcqdEventHeader.calibStatus
 //			=getCalibStatus(theAcqdEventHeader.unixTime);
@@ -265,7 +265,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 /* 	       theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.trigTime, */
 	/* 	       gpsArray[count].unixTime,gpsArray[count].subTime); */
 	if(printToScreen && (verbosity>1  ))
-	    printf("Event %d\t%f\t%f\t%f\n",theHeaderPtr->eventNumber,
+	    printf("Event %ld\t%f\t%f\t%f\n",theHeaderPtr->eventNumber,
 		   fracUnix,fracTurf,fracGps);
 	if(fabsf(fracUnix-fracGps)<TIME_MATCH) {
 	    //We have a match
@@ -298,7 +298,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
     FILE *testfp;
     
     /* Move ev_ file first */
-    sprintf(theFilename,"%s/ev_%d.dat",acqdEventDir,
+    sprintf(theFilename,"%s/ev_%ld.dat",acqdEventDir,
 	    theHeaderPtr->eventNumber);
     testfp=fopen(theFilename,"rb");
     if(testfp) {
@@ -308,7 +308,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
     }
     /* Should probably do something with retVal */
        
-    sprintf(theFilename,"%s/hd_%d.dat",eventdEventDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",eventdEventDir,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
     retVal=writeHeader(theHeaderPtr,theFilename);
@@ -317,13 +317,13 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
     retVal=makeLink(theFilename,eventdEventLinkDir);
     
     /* Delete previous hd_ file */
-    sprintf(theFilename,"%s/hd_%d.dat",acqdEventDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",acqdEventDir,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
    
     /* And the link */
-    sprintf(theFilename,"%s/hd_%d.dat",acqdEventLinkDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",acqdEventLinkDir,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);

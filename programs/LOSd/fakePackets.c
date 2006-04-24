@@ -244,7 +244,7 @@ void fakeEvent(int trigType)
 //    theHeader.turfio.trigType=trigType;
     theHeader.unixTime=timeStruct.tv_sec;
     theHeader.unixTimeUs=timeStruct.tv_usec;
-    theHeader.numChannels=16;
+//    theHeader.numChannels=16;
     theHeader.eventNumber=evNum;
     evNum++;      
     	    
@@ -267,7 +267,7 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 {
 /*    int chan; */
 /*    char packetName[FILENAME_MAX]; */
-/*    WaveformPacket_t wavePacket; */
+/*    RawWaveformPacket_t wavePacket; */
 /*     wavePacket.gHdr.code=PACKET_WV; */
 /*     for(chan=0;chan<hdPtr->numChannels;chan++) { */
 /* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan); */
@@ -280,9 +280,9 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 /*     } */
     int surf;
     char packetName[FILENAME_MAX];
-    SurfPacket_t surfPacket;
+    RawSurfPacket_t surfPacket;
     surfPacket.gHdr.code=PACKET_SURF;
-    for(surf=0;surf<(hdPtr->numChannels)/CHANNELS_PER_SURF;surf++) {
+    for(surf=0;surf<NUM_DIGITZED_CHANNELS;surf++) {
 	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
 //	surfPacket.packetNumber=surf;

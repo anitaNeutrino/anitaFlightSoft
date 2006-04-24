@@ -342,10 +342,10 @@ int main(int argc, char **argv) {
 		hdPtr->unixTime=timeStruct.tv_sec;
 		hdPtr->unixTimeUs=timeStruct.tv_usec;
 		hdPtr->eventNumber=getEventNumber();
-		hdPtr->numChannels=CHANNELS_PER_SURF*numSurfs;
-		hdPtr->numSamples=N_SAMP;
+//		hdPtr->numChannels=CHANNELS_PER_SURF*numSurfs;
+//		hdPtr->numSamples=N_SAMP;
 		if(printToScreen && verbosity) 
-		    printf("Event:\t%d\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+		    printf("Event:\t%lu\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
 		    if(useAltDir) 
@@ -1268,12 +1268,12 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 
 
     if(justWriteHeader==0 && writeData) {
-	sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
+	sprintf(theFilename,"%s/ev_%ld.dat",theEventDir,
 		theEventPtr->header.eventNumber);
 	if(!oldStyleFiles) 
 	    retVal=writeBody(theBody,theFilename);  
 	else {
-	    sprintf(theFilename,"%s/surf_data.%d",theEventDir,
+	    sprintf(theFilename,"%s/surf_data.%ld",theEventDir,
 		theEventPtr->header.eventNumber);
 	    FILE *eventFile;
 	    int n;
@@ -1293,7 +1293,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     }
       
     if(writeData) {
-	sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
+	sprintf(theFilename,"%s/hd_%ld.dat",theEventDir,
 		theEventPtr->header.eventNumber);
 	retVal=writeHeader(theHeader,theFilename);
     }
@@ -1303,7 +1303,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	retVal=makeLink(theFilename,theLinkDir);
 
     if(writeScalers) {
-	sprintf(theFilename,"%s/scale_3%d.dat",scalerOutputDir,
+	sprintf(theFilename,"%s/scale_3%ld.dat",scalerOutputDir,
 		theEventPtr->header.eventNumber);
 	FILE *scalerFile;
 	int n;
