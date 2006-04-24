@@ -20,18 +20,18 @@
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 
-#define VER_EVENT_HEADER 2
-#define VER_WAVE_PACKET 2
-#define VER_SURF_PACKET 2
-#define VER_SURF_HK 2
-#define VER_ADU5_PAT 2
-#define VER_ADU5_SAT 2
-#define VER_ADU5_VTG 2
-#define VER_G12_POS 2
-#define VER_G12_SAT 2
-#define VER_HK_FULL 2
-#define VER_CMD_ECHO 2
-#define VER_MONITOR 2
+#define VER_EVENT_HEADER 3
+#define VER_WAVE_PACKET 3
+#define VER_SURF_PACKET 3
+#define VER_SURF_HK 3
+#define VER_ADU5_PAT 3
+#define VER_ADU5_SAT 3
+#define VER_ADU5_VTG 3
+#define VER_G12_POS 3
+#define VER_G12_SAT 3
+#define VER_HK_FULL 3
+#define VER_CMD_ECHO 3
+#define VER_MONITOR 3
 
 
 //Relay Bit Masks
@@ -64,6 +64,11 @@ typedef enum {
     PACKET_CMD_ECHO = 0x400,
     PACKET_MONITOR = 0x500
 } PacketCode_t;
+
+typedef enum {
+    ENCODE_NONE=0x100,
+    ENCODE_SOMETHING
+} EncodingType_t;
 
 typedef struct {
     PacketCode_t code;    
@@ -125,8 +130,6 @@ typedef struct {
     unsigned int vetoMon[16];
 } TurfioStruct_t;
     
-  
-
 typedef struct {
     unsigned char chanId;   // chan+9*surf
     unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
@@ -136,12 +139,17 @@ typedef struct {
     float rms; //Filled by Prioritizerd
 } RawSurfChannelHeader_t;
 
+typedef struct {
+    RawSurfChannelHeader_t rawHdr;
+    EncodingType_t encType;
+    unsigned short numBytes;
+    unsigned short crc;
+} EncodedSurfChannelHeader_t;
 
 typedef struct {
     RawSurfChannelHeader_t header;
     unsigned short data[MAX_NUMBER_SAMPLES];
 } SurfChannelFull_t;
-
 
 typedef struct {
     GenericHeader_t gHdr;
@@ -222,6 +230,17 @@ typedef struct {
 } RawSurfPacket_t;
 
 typedef struct {
+    GenericHeader_t gHdr;
+    int eventNumber;
+    EncodedSurfChannelHeader_t chanHead;
+} EncodedWaveformPacket_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    int eventNumber;
+} EncodedSurfPacketHeader_t;
+
+typedef struct {
     long unixTime;
     int subTime;
 } GpsSubTime_t;
@@ -236,31 +255,31 @@ typedef struct {
     float roll;
     float mrms;
     float brms;
-    int attFlag;
     float latitude;
     float longitude;
     float altitude;
+    long attFlag;
 } GpsAdu5PatStruct_t;
 
 typedef struct {
-    char prn;
-    char elevation;
+    unsigned char prn;
+    unsigned char elevation;
+    unsigned char snr;
+    unsigned char flag; 
     short azimuth;
-    char snr;
-    char flag; 
 } GpsSatInfo_t;
 
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
-    int numSats;
+    long numSats;
     GpsSatInfo_t sat[MAX_SATS];
 } GpsG12SatStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
-    int numSats[4];
+    unsigned char numSats[4];
     GpsSatInfo_t sat[4][MAX_SATS];
 } GpsAdu5SatStruct_t;
 
@@ -317,13 +336,13 @@ typedef struct {
 } FullAnalogueStruct_t;
 
 typedef struct {
-    int temp[2];
+    unsigned short temp[2];
 } SBSTemperatureDataStruct_t;
 
 typedef struct {
-    double x;
-    double y;
-    double z;
+    float x;
+    float y;
+    float z;
 } MagnetometerDataStruct_t;
 
 typedef struct {    
@@ -342,6 +361,8 @@ typedef struct {
 
 typedef struct { 
     GenericHeader_t gHdr;
+    long unixTime;
+    long unixTimeUs;
     unsigned short globalThreshold; //set to zero if there isn't one
     unsigned short errorFlag; //Will define at some point    
     unsigned short upperWords[ACTIVE_SURFS];
@@ -358,8 +379,8 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     long unixTime;
-    char goodFlag; // 0 is bad, 1 is good
-    char numCmdBytes; // number of cmd bytes (upto 10)
+    unsigned short goodFlag; // 0 is bad, 1 is good
+    unsigned short numCmdBytes; // number of cmd bytes (upto 10)
     unsigned char cmd[MAX_CMD_LENGTH]; // the cmd bytes
 } CommandEcho_t;
 
@@ -379,6 +400,7 @@ typedef enum {
 
 typedef struct {
     unsigned short mainDisk; //In MegaBytes
+    unsigned short secondDisk; //In MegaBytes
     unsigned short usbDisk[NUM_USBDISKS]; //In MegaBytes
 } DiskSpaceStruct_t;
 
@@ -400,10 +422,8 @@ typedef struct {
 typedef struct {
      long unixTime; /* when were these taken? */
      int nsamples; /* how many samples in the average? */
-     float thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF]
-     [CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
-     float pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF]
-     [CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
+     float thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
+     float pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
                /* RMS of the samples (not of mean */
 } PedestalStruct_t;
 

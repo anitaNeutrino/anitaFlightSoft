@@ -48,7 +48,7 @@
 
 
 #define NUM_PRIORITIES 10
-#define NUM_USBDISKS 10
+#define NUM_USBDISKS 64
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 

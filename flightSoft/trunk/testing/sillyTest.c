@@ -40,10 +40,14 @@ int main (void)
     printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t)); 
     printf("Size of TurfioStruct_t: %d\n",sizeof(TurfioStruct_t)); 
     printf("Size of SurfChannelFull_t: %d\n",sizeof(SurfChannelFull_t));
+    printf("Size of RawSurfChannelHeader_t: %d\n",
+	   sizeof(RawSurfChannelHeader_t));
+    printf("Size of EncodedSurfChannelHeader_t: %d\n",
+	   sizeof(EncodedSurfChannelHeader_t));
     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
+    printf("Size of FullSurfHkStruct_t: %d\n",sizeof(FullSurfHkStruct_t));
     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
-    printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
-    printf("Size of SurfPacket_t: %d\n",sizeof(SurfPacket_t));
+    printf("Size of SurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
     printf("Size of GpsSatInfo_t: %d\n",sizeof(GpsSatInfo_t));    
     printf("Size of GpsG12PosStruct_t: %d\n",sizeof(GpsG12PosStruct_t));
     printf("Size of GpsAdu5PatStruct_t: %d\n",sizeof(GpsAdu5PatStruct_t));
@@ -56,6 +60,8 @@ int main (void)
     printf("Size of MagnetometerDataStruct_t: %d\n",sizeof(MagnetometerDataStruct_t));
     printf("Size of HkDataStruct_t: %d\n",sizeof(HkDataStruct_t));
     printf("Size of CommandEcho_t: %d\n",sizeof(CommandEcho_t));
+    printf("Size of DiskSpaceStruct_t: %d\n",sizeof(DiskSpaceStruct_t));
+    printf("Size of QueueStruct_t: %d\n",sizeof(QueueStruct_t));
     printf("Size of MonitorStruct_t: %d\n",sizeof(MonitorStruct_t));
 /*     printf("\n\n");   */
 /*     printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n", */
