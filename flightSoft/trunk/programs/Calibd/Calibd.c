@@ -56,6 +56,7 @@ int ss1Gain=5;
 // RF Switch
 int steadyState=0;
 int switchPeriod=60;
+int offPeriod=60;
 int switchState=1;
 
 //Debug
@@ -71,7 +72,7 @@ char calibArchiveLinkDir[FILENAME_MAX];
 int main (int argc, char *argv[])
 {
     int secs=0,retVal=0;
-      
+    int relaysChanged=0;
     // Config file thingies 
     int status=0;
     char* eString;
@@ -141,24 +142,41 @@ int main (int argc, char *argv[])
     do {
 	if(printToScreen) printf("Initializing Calibd\n");
 	retVal=readConfigFile();
-	
-	//Set Relays to correct state
-	retVal=setRelaysAndSSGain();
-
+	relaysChanged=1;
 	currentState=PROG_STATE_RUN;
 	secs=0;
-	while(currentState==PROG_STATE_RUN) {
-	    if(secs==0 || (steadyState==0 && secs==switchPeriod)) {
-		if(steadyState==0) {
-		    switchState++;
-		    if(switchState>4) switchState=1;
-		}
+	while(currentState==PROG_STATE_RUN) {	  
+	    if(printToScreen)
+		printf("Secs %d\tswitchState %d\tsteadyState %d\tstateCalPulse %d\trelaysChanged %d\n",secs,switchState,steadyState,stateCalPulser,relaysChanged);
+	    if(secs==0) {		
+		//Set Relays to correct state
+		if(relaysChanged) retVal=setRelaysAndSSGain();
 		setSwitchState();
 		writeStatus();
+		relaysChanged=0;
+	    }
+	    else if(stateCalPulser && secs==switchPeriod) {
+		if(steadyState==0) {
+		    switchState++;
+		    if(switchState>4) {
+			switchState=1;
+			stateCalPulser=0;
+			relaysChanged=1;
+		    }
+		}
+		else {
+		    stateCalPulser=0;
+		    relaysChanged=1;
+		}
+		secs=-1;
+	    }
+	    else if(!stateCalPulser && secs==offPeriod && offPeriod) {
+		stateCalPulser=1;
+		relaysChanged=1;
+		secs=-1;
 	    }
 	    sleep(1);
 	    secs++;		
-	    //Switch between ports on the RF switch (or not as the case may be)
 	}
     } while(currentState==PROG_STATE_INIT);
     return 0;
@@ -242,6 +260,7 @@ int readConfigFile()
 	//RF Switch
 	steadyState=kvpGetInt("steadyState",0);
 	switchPeriod=kvpGetInt("switchPeriod",60);
+	offPeriod=kvpGetInt("offPeriod",60);
     }
     else {
 	eString=configErrorString (status) ;
