@@ -14,7 +14,6 @@
 #include <signal.h>
 #include <fcntl.h>
 
-
 /* Flight soft includes */
 #include "anitaFlight.h"
 #include "configLib/configLib.h"
@@ -28,21 +27,25 @@ void tryToSendData();
 int bufferAndWrite(unsigned char *buf, short nbytes,int doWrite);
 int fillBufferWithPackets();
 int doWrite();
+int readConfig();
 
 /*Config Thingies*/
-char losdPacketDir[FILENAME_MAX];
-char losdPidFile[FILENAME_MAX];
+char baseEventTelemDir[FILENAME_MAX];
+char cmdTelemDir[FILENAME_MAX];
+char hkTelemDir[FILENAME_MAX];
+char gpsTelemDir[FILENAME_MAX];
+char monitordTelemDir[FILENAME_MAX];
 
-char eventLinkDir[FILENAME_MAX];
-char packetLinkDir[8][FILENAME_MAX];
-char eventDir[FILENAME_MAX];
-char packetDir[8][FILENAME_MAX];
-int numPacketDirs=0;
 int maxPacketsPerDir=50;
 int maxEventsInARow=100;
 int losBus;
 int losSlot;
 int verbosity;
+int printToScreen;
+
+// Bandwidth variables
+int eventBandwidth=80;
+int priorityBandwidths[NUM_PRIORITIES];
 
 
 /*Global Variables*/
@@ -76,18 +79,9 @@ int main(int argc, char *argv[])
     /* Load Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status += configLoad ("SIPd.config","global") ;
-    status += configLoad ("SIPd.config","losd") ;
     eString = configErrorString (status) ;
 
-
     if (status == CONFIG_E_OK) {
-/* 	printf("Here\n"); */
-	numPacketDirs=kvpGetInt("numPacketDirs",9);
-	losBus=kvpGetInt("losBus",1);
-	losSlot=kvpGetInt("losSlot",11);
-	verbosity=kvpGetInt("verbosity",0);
-	maxPacketsPerDir=kvpGetInt("maxPacketsPerDir",50);
 	tempString=kvpGetString("losdPidFile");
 	if(tempString) {
 	    strncpy(losdPidFile,tempString,FILENAME_MAX);
@@ -394,3 +388,69 @@ int doWrite() {
     return los_write(bufferToWrite,numBytesInBuffer);
     
 }
+
+int readConfig() {    
+/* Load LOSd config stuff */
+{
+    /* Config file thingies */
+    KvpErrorCode kvpStatus=0;
+    int status=0,tempNum,count;
+    char* eString ;
+    kvpReset();
+    status = configLoad ("LOSd.config","output") ;
+    if(status == CONFIG_E_OK) {
+	printToScreen=kvpGetInt("printToScreen",-1);
+	verbosity=kvpGetInt("verbosity",-1);
+	if(printToScreen<0) {
+	    syslog(LOG_WARNING,
+		   "Couldn't fetch printToScreen, defaulting to zero");
+	    printToScreen=0;	    
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
+	fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
+    }
+    kvpReset();
+    status = configLoad ("LOSd.config","losd");
+    if(status == CONFIG_E_OK) {
+	losBus=kvpGetInt("losBus",1);
+	losSlot=kvpGetInt("losSlot",1);
+	maxPacketsPerDir=kvpGetInt("maxPacketsPerDir",200);
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
+	fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
+    }
+    kvpReset();
+    status = configLoad ("LOSd.config","bandwidth") ;    
+    if(status == CONFIG_E_OK) {
+	eventBandwidth=kvpGetInt("eventBandwidth",80);
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityBandwidths): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityBandwidths): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+	else {
+	    for(count=0;count<tempNum;count++) {
+		
+	    }
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
+	fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
+    }
+    return status;
+}
+
+
+
+
