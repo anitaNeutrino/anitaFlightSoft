@@ -1472,12 +1472,12 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 		tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
 		theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
 		if(printToScreen && verbosity) {
-		    printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %d\n\tchipIdFlag %d\n",
+		    printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %x\n\tLabchip %d\n\tchipIdFlag %d\n",
 			   surfIndex[surf],chan,
 			   theEvent.body.channel[chanId].header.chanId,
 			   theEvent.body.channel[chanId].header.firstHitbus,
 			   theEvent.body.channel[chanId].header.lastHitbus,
-			   wrappedHitbus,upperWord,
+			   wrappedHitbus,upperWord,((upperWord&0xc0)>>6),
 			   theEvent.body.channel[chanId].header.chipIdFlag);
 		}
 			   
