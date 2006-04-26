@@ -39,6 +39,7 @@ int surfIndex[MAX_SURFS];
 int dacChans[NUM_DAC_CHANS];
 int printToScreen=0,standAloneMode=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
+int surfMask;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -342,6 +343,7 @@ int main(int argc, char **argv) {
 		hdPtr->unixTime=timeStruct.tv_sec;
 		hdPtr->unixTimeUs=timeStruct.tv_usec;
 		hdPtr->eventNumber=getEventNumber();
+		hdPtr->surfMask=surfMask;
 //		hdPtr->numChannels=CHANNELS_PER_SURF*numSurfs;
 //		hdPtr->numSamples=N_SAMP;
 		if(printToScreen && verbosity) 
@@ -661,7 +663,7 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 	    PlxPciBoardReset(surfHandles[countSurfs]) ;
 	    surfIndex[countSurfs]=surfNum+1;
 	    if(hdPtr) {
-		hdPtr->surfMask|=(1<<surfNum);
+		surfMask|=(1<<surfNum);
 	    }
 	    countSurfs++;    
 	}
