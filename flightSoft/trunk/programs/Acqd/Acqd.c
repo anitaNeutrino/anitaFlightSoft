@@ -1322,16 +1322,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     if(writeFullHk) {
 
 	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
-	FILE *hkFile;
-	int n;
-	if ((hkFile=fopen(theFilename, "wb")) == NULL) { 
-	    printf("Failed to open hk file, %s\n", theFilename) ;
-	    return ;
-	}
-	
-	if ((n=fwrite(&theHk, sizeof(FullSurfHkStruct_t),1,hkFile))!=1)
-	    printf("Failed to write all hk data. wrote only %d.\n", n) ;
-	    fclose(hkFile);
+	writeSurfHk(&theHk,theFilename);
     }
 
 
@@ -1471,7 +1462,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 		theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
 		tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
 		theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
-		if(printToScreen && verbosity) {
+		if(printToScreen && verbosity>1) {
 		    printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %x\n\tLabchip %d\n\tchipIdFlag %d\n",
 			   surfIndex[surf],chan,
 			   theEvent.body.channel[chanId].header.chanId,

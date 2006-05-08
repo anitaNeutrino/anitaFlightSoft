@@ -15,37 +15,58 @@
 
 
 void fakeEvent(int trigType);
-void fakePat(long unixTime);
-void fakeSat(long unixTime);
-void fakeHkCal(long unixTime);
-void fakeHkRaw(long unixTime);
+void fakeAdu5Pat(struct timeval *currentTime);
+void fakeAdu5Sat(struct timeval *currentTime);
+void fakeAdu5Vtg(struct timeval *currentTime);
+void fakeG12Sat(struct timeval *currentTime);
+void fakeG12Pos(struct timeval *currentTime);
+void fakeHkCal(struct timeval *currentTime);
+void fakeHkRaw(struct timeval *currentTime);
+void fakeMonitor(struct timeval *currentTime);
+void fakeSurfHk(struct timeval *currentTime);
+
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
 int rand_no(int lim);
 void rand_no_seed(unsigned int seed);
 float gaussianRand(float mean, float stdev);
+float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
+
+// Config Thingies
+char eventTelemDirBase[FILENAME_MAX];
+char cmdTelemDir[FILENAME_MAX];
+char hkTelemDir[FILENAME_MAX];
+char gpsTelemDir[FILENAME_MAX];
+char monitordTelemDir[FILENAME_MAX];
+char headerTelemDir[FILENAME_MAX];
+char cmdTelemLinkDir[FILENAME_MAX];
+char hkTelemLinkDir[FILENAME_MAX];
+char gpsTelemLinkDir[FILENAME_MAX];
+char monitordTelemLinkDir[FILENAME_MAX];
+char headerTelemLinkDir[FILENAME_MAX];
 
 
-/*Config Thingies*/
-char losdPacketDir[FILENAME_MAX];
-char prioritizerdSipdHdDir[FILENAME_MAX];
-char prioritizerdSipdHdLinkDir[FILENAME_MAX];
-char prioritizerdSipdWvDir[FILENAME_MAX];
-char prioritizerdSipdWvLinkDir[FILENAME_MAX];
-char gpsdSipdDir[FILENAME_MAX];
-char gpsdSipdLinkDir[FILENAME_MAX];
-char hkdSipdDir[FILENAME_MAX];
-char hkdSipdLinkDir[FILENAME_MAX];
-int numPacketDirs=0;
-
-float g12PPSPeriod=0.2;
-int adu5PatPeriod=10;
+// Data rates
+float g12PosPeriod=10;
+int g12SatPeriod=600;
 int adu5SatPeriod=600;
+float adu5PatPeriod=10;
+float adu5VtgPeriod=10;
 int hkReadoutPeriod=5;
 int hkCalPeriod=600;
+int monitorPeriod=60; //In seconds
+int surfHkPeriod=10;
 
+
+// Event structs
 AnitaEventHeader_t theHeader;
 AnitaEventBody_t theBody;
+RawWaveformPacket_t rawWave;
+RawSurfPacket_t rawSurf;
+EncodedWaveformPacket_t encWave;
+EncodedSurfPacketHeader_t encSurfHead;
+
+
 
 
 int main(int argc, char *argv[])
@@ -63,158 +84,216 @@ int main(int argc, char *argv[])
 
     /* Load Config */
     kvpReset () ;
+    
+
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status += configLoad ("SIPd.config","global") ;
+    status += configLoad ("Acqd.config","acqd") ;
     status += configLoad ("SIPd.config","losd") ;
-    status += configLoad ("GPSd.config","g12");
-    status += configLoad ("GPSd.config","adu5");
     status += configLoad ("Hkd.config","hkd");
+    status += configLoad ("Monitord.config","monitord") ;
     eString = configErrorString (status) ;
 
 
     if (status == CONFIG_E_OK) {
-//	printf("Here\n");
-	numPacketDirs=kvpGetInt("numPacketDirs",9);
-	tempString=kvpGetString("losdPacketDir");
-	if(tempString) {
-	    strncpy(losdPacketDir,tempString,FILENAME_MAX);
-	    for(pk=0;pk<numPacketDirs;pk++) {
-		sprintf(tempDir,"%s/pk%d/link",losdPacketDir,pk);
-		makeDirectories(tempDir);
-	    }		
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get losdPacketDir");
-	    fprintf(stderr,"Couldn't get losdPacketDir\n");
-	}	
-	g12PPSPeriod=kvpGetFloat("ppsPeriod",0.2);
-	adu5PatPeriod=kvpGetInt("patPeriod",10);
-	adu5SatPeriod=kvpGetInt("satPeriod",600);
 	hkReadoutPeriod=kvpGetInt("readoutPeriod",5);
 	hkCalPeriod=kvpGetInt("calibrationPeriod",600);
+	monitorPeriod=kvpGetInt("monitorPeriod",60);
+	surfHkPeriod=kvpGetInt("surfHkPeriod",10);
 
-	tempString=kvpGetString("prioritizerdSipdHdDir");
+	//Output and Link Directories
+	tempString=kvpGetString("baseHouseTelemDir");
 	if(tempString) {
-	    strncpy(prioritizerdSipdHdDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdHdDir);
+	    strncpy(monitordTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(cmdTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(gpsTelemDir,tempString,FILENAME_MAX-1);	    
+	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);	    
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdHdDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdHdDir\n");
-	}
-	tempString=kvpGetString("prioritizerdSipdHdLinkDir");
+	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
+	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
+	    exit(0);
+	}	
+	tempString=kvpGetString("monitorTelemSubDir");
 	if(tempString) {
-	    strncpy(prioritizerdSipdHdLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdHdLinkDir);
+	    strcat(monitordTelemDir,tempString);	    
+	    sprintf(monitordTelemLinkDir,"%s/link",monitordTelemDir);
+	    makeDirectories(monitordTelemLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdHdLinkDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdHdLinkDir\n");
+	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
+	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
+	    exit(0);
+	}
+	tempString=kvpGetString("cmdEchoTelemSubDir");
+	if(tempString) {
+	    strcat(cmdTelemDir,tempString);
+	    sprintf(cmdTelemLinkDir,"%s/link",cmdTelemDir);
+	    makeDirectories(cmdTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmdEchoTelemSubDir");
+	    fprintf(stderr,"Couldn't get cmdEchoTelemSubDir\n");
+	    exit(0);
+	}	
+	tempString=kvpGetString("hkTelemSubDir");
+	if(tempString) {
+	    strcat(hkTelemDir,tempString);
+	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
+	    makeDirectories(hkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get hkTelemSubDir");
+	    fprintf(stderr,"Couldn't get hkTelemSubDir\n");
+	    exit(0);
+	}	
+	tempString=kvpGetString("gpsTelemSubDir");
+	if(tempString) {
+	    strcat(gpsTelemDir,tempString);
+	    sprintf(gpsTelemLinkDir,"%s/link",gpsTelemDir);
+	    makeDirectories(gpsTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get gpsTelemSubDir");
+	    fprintf(stderr,"Couldn't get gpsTelemSubDir\n");
+	    exit(0);
+	}	
+	tempString=kvpGetString("headerTelemDir");
+	if(tempString) {
+	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
+	    sprintf(headerTelemLinkDir,"%s/link",headerTelemDir);
+	    makeDirectories(headerTelemLinkDir);
+	    printf("Header Dir:\t\t%s\n",headerTelemDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get headerTelemDir");
+	    fprintf(stderr,"Couldn't get headerTelemLinkDir\n");
+	    exit(0);
 	}
 
-	tempString=kvpGetString("prioritizerdSipdWvDir");
+	tempString=kvpGetString("baseEventTelemDir");
 	if(tempString) {
-	    strncpy(prioritizerdSipdWvDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdWvDir);
+	    strncpy(eventTelemDirBase,tempString,FILENAME_MAX-1);
+	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
+		sprintf(tempDir,"%s/pk%d/link",eventTelemDirBase,pk);
+		makeDirectories(tempDir);
+	    }
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdWvDir\n");
+	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
+	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
+	    exit(0);
 	}
-	tempString=kvpGetString("prioritizerdSipdWvLinkDir");
-	if(tempString) {
-	    strncpy(prioritizerdSipdWvLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdSipdWvLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting prioritizerdSipdWvLinkDir");
-	    fprintf(stderr,"Error getting prioritizerdSipdWvLinkDir\n");
-	}
-//	printf("%s %s\n",prioritizerdSipdWvDir,prioritizerdSipdWvLinkDir);
+	strcat(eventTelemDirBase,"/pk");
+	
 
 
-	tempString=kvpGetString("gpsdSipdDir");
-	if(tempString) {
-	    strncpy(gpsdSipdDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdSipdDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSipdDir");
-	    fprintf(stderr,"Couldn't get gpsdSipdDir\n");
-	}
-	tempString=kvpGetString("gpsdSipdLinkDir");
-	if(tempString) {
-	    strncpy(gpsdSipdLinkDir,tempString,FILENAME_MAX);
-	    makeDirectories(gpsdSipdLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSipdLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdSipdLinkDir\n");
-	}
-
-	tempString=kvpGetString("hkdSipdDir");
-	if(tempString) {
-	    strncpy(hkdSipdDir,tempString,FILENAME_MAX-1);	    
-	    makeDirectories(hkdSipdDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting hkdSipdDir");
-	    fprintf(stderr,"Error getting hkdSipdDir\n");
-	}
-	tempString=kvpGetString("hkdSipdLinkDir");
-	if(tempString) {
-	    strncpy(hkdSipdLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(hkdSipdLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting hkdSipdLinkDir");
-	    fprintf(stderr,"Error getting hkdSipdLinkDir\n");
-	}	    
-	//printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
 	fprintf(stderr,"Error reading config file: %s\n",eString);
     }
-    
+
+
+    kvpReset () ;
+    status = configLoad ("GPSd.config","adu5");
+    if (status == CONFIG_E_OK) {
+//	printf("Here\n");
+	adu5PatPeriod=kvpGetInt("patPeriod",10);
+	adu5SatPeriod=kvpGetInt("satPeriod",600);
+	adu5VtgPeriod=kvpGetInt("vtgPeriod",600);
+    }
+    else {
+	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
+	fprintf(stderr,"Error reading config file: %s\n",eString);
+    }
+
+    kvpReset () ;
+    status = configLoad ("GPSd.config","g12");   
+    if (status == CONFIG_E_OK) {
+//	printf("Here\n");
+	g12PosPeriod=kvpGetInt("posPeriod",10);
+	g12SatPeriod=kvpGetInt("satPeriod",600);
+
+    }
+    else {
+	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
+	fprintf(stderr,"Error reading config file: %s\n",eString);
+    }
+
+
+
     int evCounter=0;
-    long lastAdu5Pat=0;
-    long lastAdu5Sat=0;
-    long lastHkCal=0;
-    long lastHkData=0;
-    time_t rawTime=0;
     int trigType=34;
+    
+    struct timeval lastAdu5Pat;
+    struct timeval lastAdu5Sat;
+    struct timeval lastAdu5Vtg;
+    struct timeval lastG12Pos;
+    struct timeval lastG12Sat;
+    struct timeval lastHkCal;
+    struct timeval lastHkData;
+    struct timeval lastMonitor;
+    struct timeval lastSurfHk;
+    struct timeval currentTime;
+
     while(1) {
-	time(&rawTime);
+	gettimeofday(&currentTime,0);
+//	time(&rawTime);
 	
 	//Check last PAT
-	if((rawTime-lastAdu5Pat)>adu5PatPeriod) {
-	    fakePat(rawTime);
-	    lastAdu5Pat=rawTime;
+	if(getTimeDiff(lastAdu5Pat,currentTime)>adu5PatPeriod) {
+	    fakeAdu5Pat(&currentTime);
+	    lastAdu5Pat=currentTime;
 	}
-	//Check last SAT
-	if((rawTime-lastAdu5Sat)>adu5SatPeriod) {
-	    fakeSat(rawTime);
-	    lastAdu5Sat=rawTime;
+	//Check last Adu5 SAT
+	if(getTimeDiff(lastAdu5Sat,currentTime)>adu5SatPeriod) {
+	    fakeAdu5Sat(&currentTime);
+	    lastAdu5Sat=currentTime;
 	}
-	if((rawTime-lastHkCal)>hkCalPeriod) {
-	    fakeHkCal(rawTime);
-	    lastHkCal=rawTime;
+	//Check last Adu5 VTG
+	if(getTimeDiff(lastAdu5Vtg,currentTime)>adu5SatPeriod) {
+	    fakeAdu5Vtg(&currentTime);
+	    lastAdu5Vtg=currentTime;
 	}
-	if((rawTime-lastHkData)>hkReadoutPeriod) {
-	    fakeHkRaw(rawTime);
-	    lastHkData=rawTime;
+	//Check last G12 SAT
+	if(getTimeDiff(lastG12Sat,currentTime)>g12SatPeriod) {
+	    fakeG12Sat(&currentTime);
+	    lastG12Sat=currentTime;
+	}
+	//Check last G12 SAT
+	if(getTimeDiff(lastG12Pos,currentTime)>g12SatPeriod) {
+	    fakeG12Pos(&currentTime);
+	    lastG12Pos=currentTime;
+	}
+	//Check last CPU monitor
+	if(getTimeDiff(lastMonitor,currentTime)>monitorPeriod) {
+	    fakeMonitor(&currentTime);
+	    lastMonitor=currentTime;
+	}
+	//Check last Surf Hk
+	if(surfHkPeriod) {
+	    //If not one per event
+	    if(getTimeDiff(lastSurfHk,currentTime)>surfHkPeriod) {
+		fakeSurfHk(&currentTime);
+		lastSurfHk=currentTime;
+	    }
+	}
+	
+
+	if(getTimeDiff(lastHkCal,currentTime)>hkCalPeriod) {
+	    fakeHkCal(&currentTime);
+	    lastHkCal=currentTime;
+	}
+	if(getTimeDiff(lastHkData,currentTime)>hkReadoutPeriod) {
+	    fakeHkRaw(&currentTime);
+	    lastHkData=currentTime;
 	}
 	
 	fakeEvent(trigType);
-	if(evCounter==0) {
-	    usleep(50000);
-	    trigType=38;
-	}
-	else {
-	    usleep(180000);
-	    trigType=34;
-	}
+	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
+	usleep(200000);
 	evCounter++;
 	if(evCounter==6) evCounter=0;
     }
@@ -240,25 +319,35 @@ void fakeEvent(int trigType)
 	}
     }
     gettimeofday(&timeStruct,NULL);
+    theHeader.gHdr.feByte=0xfe;
+    theHeader.gHdr.verId=VER_EVENT_HEADER;
     theHeader.gHdr.code=PACKET_HD;
+    theHeader.gHdr.numBytes=sizeof(AnitaEventHeader_t);
 //    theHeader.turfio.trigType=trigType;
     theHeader.unixTime=timeStruct.tv_sec;
     theHeader.unixTimeUs=timeStruct.tv_usec;
 //    theHeader.numChannels=16;
     theHeader.eventNumber=evNum;
+    theHeader.priority=3;
     evNum++;      
     	    
     /* Write output for SIPd*/	    
     writePackets(&theBody,&theHeader);
     
     //Move and link header
-    sprintf(sipdHdFilename,"%s/hd_%d.dat",prioritizerdSipdHdDir,
+    sprintf(sipdHdFilename,"%s/hd_%lu.dat",headerTelemDir,
 	    theHeader.eventNumber);
     writeHeader(&theHeader,sipdHdFilename);
-    makeLink(sipdHdFilename,prioritizerdSipdHdLinkDir);
+    makeLink(sipdHdFilename,headerTelemLinkDir);
     if(evNum%100==0) 
 	printf("Event %d, sec %ld\n",evNum,theHeader.unixTime);
        
+}
+
+float getTimeDiff(struct timeval oldTime, struct timeval currentTime) {
+    float timeDiff=currentTime.tv_sec-oldTime.tv_sec;
+    timeDiff+=1e-6*(float)(currentTime.tv_usec-oldTime.tv_usec);
+    return timeDiff;
 }
 
 
@@ -278,29 +367,92 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 /* 	writeWaveformPacket(&wavePacket,packetName); */
 /* 	makeLink(packetName,prioritizerdSipdWvLinkDir); */
 /*     } */
+    char tempDir[FILENAME_MAX];
+    char tempLinkDir[FILENAME_MAX];
     int surf;
     char packetName[FILENAME_MAX];
     RawSurfPacket_t surfPacket;
+    sprintf(tempDir,"%s%d/",eventTelemDirBase,(int)(hdPtr->priority&0xf));
+    sprintf(tempLinkDir,"%s/link/",tempDir);
     surfPacket.gHdr.code=PACKET_SURF;
-    for(surf=0;surf<NUM_DIGITZED_CHANNELS;surf++) {
-	sprintf(packetName,"%s/surfpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,surf);
+    surfPacket.gHdr.numBytes=sizeof(RawSurfPacket_t);
+    surfPacket.gHdr.feByte=0xfe;
+    surfPacket.gHdr.verId=VER_SURF_PACKET;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	sprintf(packetName,"%s/surfpk_%lu_%d.dat",tempDir,hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
 //	surfPacket.packetNumber=surf;
 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
 	writeSurfPacket(&surfPacket,packetName);
 //	printf("Wrote %s\n",packetName);
-	makeLink(packetName,prioritizerdSipdWvLinkDir);
+//	makeLink(packetName,tempLinkDir);
     }
+    //Write and link header
+    sprintf(packetName,"%s/hd_%lu.dat",tempDir,theHeader.eventNumber);
+    writeHeader(&theHeader,packetName);
+    makeLink(packetName,tempLinkDir);
+}
+
+
+void fakeSurfHk(struct timeval *currentTime) {
+    
+    FullSurfHkStruct_t theSurfHk;
+    char theFilename[FILENAME_MAX];
+    int retVal=0,i=0;
+    theSurfHk.gHdr.code=PACKET_MONITOR;
+    theSurfHk.gHdr.numBytes=sizeof(MonitorStruct_t);
+    theSurfHk.unixTime=currentTime->tv_sec;
+    theSurfHk.unixTimeUs=currentTime->tv_usec;
+    theSurfHk.gHdr.feByte=0xfe;
+    theSurfHk.gHdr.verId=VER_SURF_HK;
+
+    sprintf(theFilename,"%s/surfhk_%ld.dat",
+	    monitordTelemDir,theSurfHk.unixTime);
+    retVal=writeSurfHk(&theSurfHk,theFilename);
+    retVal=makeLink(theFilename,monitordTelemLinkDir);
+
+}
+
+
+void fakeMonitor(struct timeval *currentTime) {
+// Monitord struct
+    MonitorStruct_t theMon;
+    char theFilename[FILENAME_MAX];
+    int retVal=0,i=0;
+    theMon.gHdr.code=PACKET_MONITOR;
+    theMon.gHdr.numBytes=sizeof(MonitorStruct_t);
+    theMon.gHdr.feByte=0xfe;
+    theMon.gHdr.verId=VER_MONITOR;
+    theMon.unixTime=currentTime->tv_sec;
+    theMon.diskInfo.mainDisk=10;
+    for(i=0;i<64;i++) {
+	theMon.diskInfo.usbDisk[i]=100-i;
+    }
+    theMon.queueInfo.cmdLinks=0;
+    theMon.queueInfo.hkLinks=10;
+    theMon.queueInfo.gpsLinks=30;
+    theMon.queueInfo.monitorLinks=20;
+    for(i=0;i<10;i++) {
+	theMon.queueInfo.eventLinks[i]=i*10;
+    }
+
+    sprintf(theFilename,"%s/mon_%ld.dat",
+	    monitordTelemDir,theMon.unixTime);
+    retVal=writeMonitor(&theMon,theFilename);
+    retVal=makeLink(theFilename,monitordTelemLinkDir);
+
 }
 	    
 
-void fakePat(long unixTime) {
+void fakeAdu5Pat(struct timeval *currentTime) {
 
     GpsAdu5PatStruct_t thePat;
     char theFilename[FILENAME_MAX];
     int retVal;
     thePat.gHdr.code=PACKET_GPS_ADU5_PAT;
-    thePat.unixTime=unixTime;
+    thePat.gHdr.numBytes=sizeof(GpsAdu5PatStruct_t);
+    thePat.unixTime=currentTime->tv_sec;
+    thePat.unixTimeUs=currentTime->tv_usec;
     thePat.heading=0;
     thePat.pitch=0;
     thePat.roll=0;
@@ -312,12 +464,35 @@ void fakePat(long unixTime) {
     thePat.altitude=1238.38;
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld.dat",gpsdSipdDir,thePat.unixTime);
+    sprintf(theFilename,"%s/pat_%ld_%ld.dat",gpsTelemDir,thePat.unixTime,thePat.unixTimeUs);
     retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,gpsdSipdLinkDir); 
+    retVal=makeLink(theFilename,gpsTelemLinkDir); 
 }
 
-void fakeSat(long unixTime) {
+
+void fakeAdu5Vtg(struct timeval *currentTime) {
+
+    GpsAdu5VtgStruct_t theVtg;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+    theVtg.gHdr.code=PACKET_GPS_ADU5_VTG;
+    theVtg.gHdr.numBytes=sizeof(GpsAdu5VtgStruct_t);
+    theVtg.unixTime=currentTime->tv_sec;
+    theVtg.unixTimeUs=currentTime->tv_usec;
+    theVtg.trueCourse=10.5;
+    theVtg.magneticCourse=9.5;
+    theVtg.speedInKnots=50;
+    theVtg.speedInKPH=92.6;
+
+
+    //Write file and link for sipd
+    sprintf(theFilename,"%s/vtg_%ld_%ld.dat",gpsTelemDir,theVtg.unixTime,theVtg.unixTimeUs);
+    retVal=writeGpsVtg(&theVtg,theFilename);  
+    retVal=makeLink(theFilename,gpsTelemLinkDir); 
+}
+
+
+void fakeAdu5Sat(struct timeval *currentTime) {
     GpsAdu5SatStruct_t theSat;
     char theFilename[FILENAME_MAX];
     int retVal,antNum;
@@ -325,7 +500,8 @@ void fakeSat(long unixTime) {
 
 
     theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
-    theSat.unixTime=unixTime;
+    theSat.gHdr.numBytes=sizeof(GpsAdu5SatStruct_t);
+    theSat.unixTime=currentTime->tv_sec;
     for(antNum=0;antNum<4;antNum++) {
 	theSat.numSats[antNum]=3;
 	for(satNum=0;satNum<(char)theSat.numSats[antNum];satNum++) {
@@ -337,13 +513,68 @@ void fakeSat(long unixTime) {
 	}
     }
 
-    sprintf(theFilename,"%s/pat_%ld.dat",gpsdSipdDir,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%ld.dat",gpsTelemDir,theSat.unixTime);
     retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,gpsdSipdLinkDir);
+    retVal=makeLink(theFilename,gpsTelemLinkDir);
 }
 
 
-void fakeHkCal(long unixTime) 
+void fakeG12Pos(struct timeval *currentTime) {
+
+    GpsG12PosStruct_t thePos;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+    thePos.gHdr.code=PACKET_GPS_ADU5_PAT;
+    thePos.gHdr.numBytes=sizeof(GpsG12PosStruct_t);
+    thePos.unixTime=currentTime->tv_sec;
+    thePos.unixTimeUs=currentTime->tv_usec;
+    thePos.numSats=9;
+    thePos.latitude=34.489885;
+    thePos.longitude=-1*104.2218668;
+    thePos.altitude=1238.38;
+    thePos.trueCourse=9.5;
+    thePos.verticalVelocity=1.5;
+    thePos.speedInKnots=50;
+    thePos.pdop=0.5;
+    thePos.hdop=0.5;
+    thePos.vdop=0.5;
+    thePos.tdop=0.5;
+
+    //Write file and link for sipd
+    sprintf(theFilename,"%s/pat_%ld_%ld.dat",gpsTelemDir,thePos.unixTime,thePos.unixTimeUs);
+    retVal=writeGpsPos(&thePos,theFilename);  
+    retVal=makeLink(theFilename,gpsTelemLinkDir); 
+}
+
+
+void fakeG12Sat(struct timeval *currentTime) {
+    GpsG12SatStruct_t theSat;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+    int satNum;
+
+
+    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
+    theSat.gHdr.numBytes=sizeof(GpsG12SatStruct_t);
+    theSat.unixTime=currentTime->tv_sec;
+    theSat.numSats=3;
+    for(satNum=0;satNum<(char)theSat.numSats;satNum++) {
+	theSat.sat[satNum].prn=satNum+10;
+	theSat.sat[satNum].azimuth=15;
+	theSat.sat[satNum].elevation=15;
+	theSat.sat[satNum].snr=99;
+//	theSat.sat[satNum].flag=0;
+    }
+    
+
+    sprintf(theFilename,"%s/sat_%ld.dat",gpsTelemDir,theSat.unixTime);
+    retVal=writeGpsG12Sat(&theSat,theFilename);  
+    retVal=makeLink(theFilename,gpsTelemLinkDir);
+}
+
+
+
+void fakeHkCal(struct timeval *currentTime) 
 {
 
     int retVal,chan,board;
@@ -351,7 +582,9 @@ void fakeHkCal(long unixTime)
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
     theHkData.gHdr.code=PACKET_HKD;
-    theHkData.unixTime=unixTime;
+    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
+    theHkData.unixTime=currentTime->tv_sec;
+    theHkData.unixTimeUs=currentTime->tv_usec;
     theHkData.ip320.code=IP320_CAL;
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
@@ -364,13 +597,13 @@ void fakeHkCal(long unixTime)
     theHkData.sbs.temp[0]=25.5;
     theHkData.sbs.temp[1]=25.5;   
      	
-    sprintf(theFilename,"hk_%ld.cal.dat",theHkData.unixTime);    
+    sprintf(theFilename,"hk_%ld_%ld.cal.dat",theHkData.unixTime,theHkData.unixTimeUs);    
     //Write file and make link for SIPd
-    sprintf(fullFilename,"%s/%s",hkdSipdDir,theFilename);
+    sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,hkdSipdLinkDir);
+    retVal+=makeLink(fullFilename,hkTelemLinkDir);
 
-    sprintf(theFilename,"hk_%ld.avz.dat",theHkData.unixTime);
+    sprintf(theFilename,"hk_%ld_%ld.avz.dat",theHkData.unixTime,theHkData.unixTimeUs);
     theHkData.ip320.code=IP320_AVZ;
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
@@ -378,20 +611,22 @@ void fakeHkCal(long unixTime)
 	}
     }    
     //Write file and make link for SIPd
-    sprintf(fullFilename,"%s/%s",hkdSipdDir,theFilename);
+    sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,hkdSipdLinkDir);      
+    retVal+=makeLink(fullFilename,hkTelemLinkDir);      
 
 }
 
-void fakeHkRaw(long unixTime) 
+void fakeHkRaw(struct timeval *currentTime) 
 {
     int retVal,chan,board;
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
     theHkData.gHdr.code=PACKET_HKD;
-    theHkData.unixTime=unixTime;
+    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
+    theHkData.unixTime=currentTime->tv_sec;
+    theHkData.unixTimeUs=currentTime->tv_usec;
     theHkData.ip320.code=IP320_RAW;    
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
@@ -403,12 +638,12 @@ void fakeHkRaw(long unixTime)
     theHkData.mag.z=2.3;
     theHkData.sbs.temp[0]=25.5;
     theHkData.sbs.temp[1]=25.5;   
-    sprintf(theFilename,"hk_%ld.raw.dat",theHkData.unixTime);
+    sprintf(theFilename,"hk_%ld_%ld.raw.dat",theHkData.unixTime,theHkData.unixTimeUs);
     
     //Write file and make link for SIPd
-    sprintf(fullFilename,"%s/%s",hkdSipdDir,theFilename);
+    sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,hkdSipdLinkDir);    
+    retVal+=makeLink(fullFilename,hkTelemLinkDir);    
 }
 
 
