@@ -55,6 +55,7 @@ int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename);
 int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename);
 int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename);
 int writeHk(HkDataStruct_t *hkPtr, char *filename);
+int writeSurfHk(FullSurfHkStruct_t *hkPtr, char *filename);
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
 int writeCmd(CommandStruct_t *cmdPtr, char *filename);
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);

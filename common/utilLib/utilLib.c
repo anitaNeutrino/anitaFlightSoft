@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <zlib.h>
 
-//#define NO_ZLIB
+#define NO_ZLIB
 
 extern  int versionsort(const void *a, const void *b);
 
@@ -431,6 +431,31 @@ int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename)
     fclose(outfile);
 #else
     numObjs=gzwrite(outfile,surfPtr,sizeof(RawSurfPacket_t));
+    gzclose(outfile);  
+#endif
+    return 0;
+}
+
+
+int writeSurfHk(FullSurfHkStruct_t *surfPtr, char *filename)
+/* Writes the surf hk packet pointed to by surfPtr to filename */
+{
+    int numObjs;    
+      
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb9");    
+#endif
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(surfPtr,sizeof(FullSurfHkStruct_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,surfPtr,sizeof(FullSurfHkStruct_t));
     gzclose(outfile);  
 #endif
     return 0;
