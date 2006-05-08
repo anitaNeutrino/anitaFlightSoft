@@ -211,6 +211,10 @@ typedef struct {
      TransientChannel8_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
 			    averaging, and gain correction */
+typedef struct {
+     TransientChannel6_t S0,S1,S2;
+} AnitaStokes6_t;
+
 
 typedef struct {
     AnitaEventHeader_t header;
