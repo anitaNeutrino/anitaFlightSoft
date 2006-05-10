@@ -39,15 +39,22 @@ int surfIndex[MAX_SURFS];
 int dacChans[NUM_DAC_CHANS];
 int printToScreen=0,standAloneMode=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
+int turfRateTelemEvery=1,turfRateTelemInterval=60;
+int surfHkPeriod=0;
+int lastSurfHk=0;
+int lastTurfHk=0;
+int turfHkCounter=0;
 int surfMask;
+int useUSBDisks=0;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
+TurfRateStruct_t turfRates;
 
 
 SimpleScalerStruct_t theScalers;
-FullSurfHkStruct_t theHk;
+FullSurfHkStruct_t theSurfHk;
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
@@ -66,6 +73,15 @@ char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 char scalerOutputDir[FILENAME_MAX];
 char hkOutputDir[FILENAME_MAX];
+char surfHkTelemDir[FILENAME_MAX];
+char turfHkTelemDir[FILENAME_MAX];
+char surfHkTelemLinkDir[FILENAME_MAX];
+char turfHkTelemLinkDir[FILENAME_MAX];
+char surfHkArchiveDir[FILENAME_MAX];
+char turfHkArchiveDir[FILENAME_MAX];
+char surfHkUSBArchiveDir[FILENAME_MAX];
+char turfHkUSBArchiveDir[FILENAME_MAX];
+
 
 #define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
 #define N_FTMO 200    /* number of msec wait for Lab_f before timed out. */
@@ -218,11 +234,11 @@ int main(int argc, char **argv) {
 	//Write RFCM Mask
 	writeRFCMMask(turfioHandle);
 	
-	theHk.globalThreshold=0;
+	theSurfHk.globalThreshold=0;
 	//Set Thresholds
 	if(setGlobalThreshold) {
 	    setGloablDACThreshold(surfHandles,globalThreshold);
-	    theHk.globalThreshold=globalThreshold;
+	    theSurfHk.globalThreshold=globalThreshold;
 	    if(printToScreen) 
 		printf("Setting Global Threshold %d\n",globalThreshold);
 	}
@@ -238,9 +254,9 @@ int main(int argc, char **argv) {
 	    }
 	    //Fill theEvent with zeros 
 	    bzero(&theEvent, sizeof(theEvent)) ;
-	    memset(&theHk,0,sizeof(FullSurfHkStruct_t));
+	    memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
 	    if(setGlobalThreshold) 
-		theHk.globalThreshold=globalThreshold;
+		theSurfHk.globalThreshold=globalThreshold;
 
 	    if(doGlobalDacCycle) {		
 //		if(dacVal<=500) dacVal=4095;
@@ -250,7 +266,7 @@ int main(int argc, char **argv) {
 		if(printToScreen) 
 		    printf("Setting Local Threshold %d\n",dacVal);
 		setGloablDACThreshold(surfHandles,dacVal);	
-		theHk.globalThreshold=dacVal;
+		theSurfHk.globalThreshold=dacVal;
 		if(doingDacVal>4095) exit(0);//doingDacVal=0;
 		doingDacVal++;
 	    }
@@ -312,11 +328,18 @@ int main(int argc, char **argv) {
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
 	    status+=readSurfEventData(surfHandles);
+	    hdPtr->unixTime=timeStruct.tv_sec;
+	    hdPtr->unixTimeUs=timeStruct.tv_usec;
+	    turfRates.unixTime=timeStruct.tv_sec;
+	    turfRates.unixTimeUs=timeStruct.tv_usec;
 	    if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
 
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
+	    gettimeofday(&timeStruct,NULL);
 	    status+=readSurfHkData(surfHandles);
+	    theSurfHk.unixTime=timeStruct.tv_sec;
+	    theSurfHk.unixTimeUs=timeStruct.tv_usec;
 	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
 	    if(enableChanServo) {
 		if(verbosity && printToScreen) 
@@ -339,9 +362,7 @@ int main(int argc, char **argv) {
 		status=ACQD_E_OK;
 	    }
 	    else {
-		hdPtr->gHdr.code=PACKET_HD;
-		hdPtr->unixTime=timeStruct.tv_sec;
-		hdPtr->unixTimeUs=timeStruct.tv_usec;
+		fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
 		hdPtr->eventNumber=getEventNumber();
 		hdPtr->surfMask=surfMask;
 //		hdPtr->numChannels=CHANNELS_PER_SURF*numSurfs;
@@ -354,6 +375,31 @@ int main(int argc, char **argv) {
 			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
 		    else 
 			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
+
+		    //Do the housekeeping stuff
+		    if((theSurfHk.unixTime-lastSurfHk)>surfHkPeriod || !surfHkPeriod) {
+			writeSurfHousekeeping(3);
+			lastSurfHk=theSurfHk.unixTime;
+		    }
+		    else writeSurfHousekeeping(1);
+		    
+		    writeTurfHousekeeping(1);
+		    if(turfHkCounter>=turfRateTelemEvery) {
+			turfHkCounter=0;
+			writeTurfHousekeeping(2);
+			lastTurfHk=turfRates.unixTime;
+		    }
+		    else if(turfRateTelemInterval && 
+			    (turfRateTelemInterval>
+			     (turfRates.unixTime-lastTurfHk))) {
+			turfHkCounter=0;
+			writeTurfHousekeeping(2);
+			lastTurfHk=turfRates.unixTime;
+		    }
+			
+		    
+
+
 		}
 		//Insert stats call here
 		if(printStatistics) calculateStatistics();
@@ -793,6 +839,98 @@ int readConfigFile()
 	    printToScreen=1;
 	    addedVerbosity--;
 	}
+
+	tempString=kvpGetString("baseHouseTelemDir");
+	if(tempString) {
+	    strncpy(surfHkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(turfHkTelemDir,tempString,FILENAME_MAX-1);
+	}
+	else {
+	    syslog(LOG_ERR,"Error baseHouseTelemDir");
+	    fprintf(stderr,"Error baseHouseTelemDir\n");
+	}
+	tempString=kvpGetString("surfHkTelemDir");
+	if(tempString) {
+	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
+	    sprintf(surfHkTelemDir,"%s/link",surfHkTelemDir);
+	    makeDirectories(surfHkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting surfHkTelemDir");
+	    fprintf(stderr,"Error getting surfHkTelemDir\n");
+	}
+	tempString=kvpGetString("turfHkTelemDir");
+	if(tempString) {
+	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
+	    sprintf(turfHkTelemDir,"%s/link",turfHkTelemDir);
+	    makeDirectories(turfHkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting turfHkTelemDir");
+	    fprintf(stderr,"Error getting turfHkTelemDir\n");
+	}
+
+	tempString=kvpGetString("mainDataDisk");
+	if(tempString) {
+	    strncpy(surfHkArchiveDir,tempString,FILENAME_MAX-1);
+	    strncpy(turfHkArchiveDir,tempString,FILENAME_MAX-1);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting mainDataDisk");
+	    fprintf(stderr,"Error getting mainDataDisk\n");
+	}
+	tempString=kvpGetString("usbDataDiskLink");
+	if(tempString) {
+	    strncpy(surfHkUSBArchiveDir,tempString,FILENAME_MAX-1);
+	    strncpy(turfHkUSBArchiveDir,tempString,FILENAME_MAX-1);
+
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting usbDataDiskLink");
+	    fprintf(stderr,"Error getting usbDataDiskLink\n");
+	}
+	    
+	 
+	useUSBDisks=kvpGetInt("useUSBDisks",0);
+   
+	tempString=kvpGetString("baseHouseArchiveDir");
+	if(tempString) {
+	    sprintf(surfHkArchiveDir,"%s/%s/",surfHkArchiveDir,tempString);
+	    sprintf(turfHkArchiveDir,"%s/%s/",turfHkArchiveDir,tempString);
+	    sprintf(surfHkUSBArchiveDir,"%s/%s/",surfHkUSBArchiveDir,tempString);
+	    sprintf(turfHkUSBArchiveDir,"%s/%s/",turfHkUSBArchiveDir,tempString);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
+	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
+	}	    
+	tempString=kvpGetString("surfHkArchiveSubDir");
+	if(tempString) {
+	    strcat(surfHkArchiveDir,tempString);
+	    strcat(surfHkUSBArchiveDir,tempString);
+	    makeDirectories(surfHkArchiveDir);
+	    if(useUSBDisks) makeDirectories(surfHkUSBArchiveDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting surfHkArchiveSubDir");
+	    fprintf(stderr,"Error getting surfHkArchiveSubDir");
+	}	    
+	tempString=kvpGetString("turfHkArchiveSubDir");
+	if(tempString) {
+	    strcat(turfHkArchiveDir,tempString);
+	    strcat(turfHkUSBArchiveDir,tempString);
+	    makeDirectories(turfHkArchiveDir);
+	    if(useUSBDisks) makeDirectories(turfHkUSBArchiveDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting turfHkArchiveSubDir");
+	    fprintf(stderr,"Error getting turfHkArchiveSubDir");
+	}
+
+
+	surfHkPeriod=kvpGetInt("surfHkPeriod",1);
+	turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
+	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
 	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
@@ -1258,6 +1396,71 @@ int getEventNumber() {
 
 }
 
+int writeSurfHousekeeping(int dataOrTelem) 
+// dataOrTelem 
+// 1 == data
+// 2 == telem
+// anything else == both
+{
+    char theFilename[FILENAME_MAX];
+    int retVal=0;
+
+    //Write data to disk
+    if(dataOrTelem!=2) {
+	sprintf(theFilename,"%s/hk_%ld_%ld.dat",surfHkArchiveDir,
+		theSurfHk.unixTime,theSurfHk.unixTimeUs);
+	retVal+=writeSurfHk(&theSurfHk,theFilename);
+	if(useUSBDisks) {
+	    sprintf(theFilename,"%s/hk_%ld_%ld.dat",surfHkUSBArchiveDir,
+		    theSurfHk.unixTime,theSurfHk.unixTimeUs);
+	    retVal+=writeSurfHk(&theSurfHk,theFilename);
+	}
+    }
+    if(dataOrTelem!=1) {
+	// Write data for Telem
+	sprintf(theFilename,"%s/hk_%ld_%ld.dat",surfHkTelemDir,
+		theSurfHk.unixTime,theSurfHk.unixTimeUs);
+	retVal+=writeSurfHk(&theSurfHk,theFilename);
+	makeLink(theFilename,surfHkTelemLinkDir);
+    }
+    return retVal;
+
+	
+}
+
+
+int writeTurfHousekeeping(int dataOrTelem) 
+// dataOrTelem 
+// 1 == data
+// 2 == telem
+// anything else == both
+{
+    char theFilename[FILENAME_MAX];
+    int retVal=0;
+
+    //Write data to disk
+    if(dataOrTelem!=2) {
+	sprintf(theFilename,"%s/hk_%ld_%ld.dat",turfHkArchiveDir,
+		turfRates.unixTime,turfRates.unixTimeUs);
+	retVal+=writeTurfRate(&turfRates,theFilename);
+	if(useUSBDisks) {
+	    sprintf(theFilename,"%s/hk_%ld_%ld.dat",turfHkUSBArchiveDir,
+		    turfRates.unixTime,turfRates.unixTimeUs);
+	    retVal+=writeTurfRate(&turfRates,theFilename);
+	}
+    }
+    if(dataOrTelem!=1) {
+	// Write data for Telem
+	sprintf(theFilename,"%s/hk_%ld_%ld.dat",turfHkTelemDir,
+		turfRates.unixTime,turfRates.unixTimeUs);
+	writeTurfRate(&turfRates,theFilename);
+	retVal+=makeLink(theFilename,turfHkTelemLinkDir);
+    }
+
+    return retVal;
+}
+
+
 
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr)
 {
@@ -1319,14 +1522,10 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    fclose(scalerFile);
     }
 
-    if(writeFullHk) {
-
+    if(writeFullHk && standAloneMode) {
 	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
-	writeSurfHk(&theHk,theFilename);
+	writeSurfHk(&theSurfHk,theFilename);
     }
-
-
-    
 
 }
 
@@ -1521,16 +1720,16 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
-	    theHk.scaler[surf][rfChan]=dataInt&0xffff;
+	    theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theHk.scaler[surf][rfChan]);
+		printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.scaler[surf][rfChan]);
 	    
 	    if(rfChan==0) {
 		//Do something with upperWord
-		theHk.upperWords[surf]=GetUpper16(dataInt);
+		theSurfHk.upperWords[surf]=GetUpper16(dataInt);
 	    }
-	    else if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
-		theHk.errorFlag|=(1>>surf);
+	    else if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
+		theSurfHk.errorFlag|=(1>>surf);
 	    }
 
 
@@ -1549,12 +1748,12 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
-	    theHk.threshold[surf][rfChan]=dataInt&0xffff;
+	    theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theHk.threshold[surf][rfChan]);
+		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theSurfHk.threshold[surf][rfChan]);
 	    //Should check if it is the same or not
-	    if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
-		theHk.errorFlag|=(1>>surf);
+	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
+		theSurfHk.errorFlag|=(1>>surf);
 	    }
 	}
 	
@@ -1569,11 +1768,11 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
-	    theHk.rfPower[surf][rfChan]=dataInt&0xffff;
+	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xffff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theHk.rfPower[surf][rfChan]);
-	    if(theHk.upperWords[surf]!=GetUpper16(dataInt)) {
-		theHk.errorFlag|=(1>>surf);
+		printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]);
+	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
+		theSurfHk.errorFlag|=(1>>surf);
 	    }
 
 	}
@@ -1623,16 +1822,16 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 	    case 5: turfioPtr->trigTime+=(dataWord<<16); break;
 	    case 6: turfioPtr->trigInterval=dataWord; break;
 	    case 7: turfioPtr->trigInterval+=(dataWord<<16); break;
-	    default: turfioPtr->l1Rate[(wordNum/4)-2][wordNum%4]=dataWord; break;
+	    default: turfRates.l1Rate[(wordNum/4)-2][wordNum%4]=dataWord; break;
 	}
 	else if(wordNum<160) {
-	    turfioPtr->l2Rate[(wordNum/16)-8][wordNum%16]=dataWord;
+	    turfRates.l2Rate[(wordNum/16)-8][wordNum%16]=dataWord;
 	}
 	else if(wordNum<176) {
-	    turfioPtr->vetoMon[wordNum-160]=dataWord;
+	    turfRates.vetoMon[wordNum-160]=dataWord;
 	}
 	else if(wordNum<240) {
-	    turfioPtr->l3Rate[(wordNum/16)-176][wordNum%16]=dataWord;
+	    turfRates.l3Rate[(wordNum/16)-176][wordNum%16]=dataWord;
 	}
 	
     }
@@ -1741,7 +1940,7 @@ int updateThresholdsUsingPID() {
     avgCount++;
     for(surf=0;surf<numSurfs;surf++) {
 	for(dac=0;dac<N_RFTRIG;dac++) {
-	    avgScalerData[surf][dac]+=theHk.scaler[surf][dac];
+	    avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
 	    if(avgCount==pidAverage) {
 		value=avgScalerData[surf][dac]/avgCount;
 		avgScalerData[surf][dac]=0;

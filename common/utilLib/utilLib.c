@@ -705,6 +705,29 @@ int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
     return 0;
 }
 
+int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename)
+/* Writes the TurfRateStruct_t object pointed to by turfPtr to filename */
+{   
+    int numObjs;    
+#ifdef NO_ZLIB
+    FILE *outfile = fopen (filename, "wb");
+#else
+    gzFile outfile = gzopen (filename, "wb9");    
+#endif
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+#ifdef NO_ZLIB
+    numObjs=fwrite(turfPtr,sizeof(TurfRateStruct_t),1,outfile);
+    fclose(outfile);
+#else
+    numObjs=gzwrite(outfile,turfPtr,sizeof(TurfRateStruct_t));
+    gzclose(outfile);  
+#endif
+    return 0;
+}
+
 
 
  
@@ -752,4 +775,44 @@ void addDay(struct tm *timeinfo) {
 	    timeinfo->tm_year++;
 	}
     }
+}
+
+
+unsigned long simpleLongCrc(unsigned long *p, unsigned long n)
+{
+    unsigned long sum = 0;
+    unsigned long i;
+    for (i=0L; i<n; i++) {
+	sum += *p++;
+    }
+    return ((0xffffffff - sum) + 1);
+}
+
+void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes) {
+    unsigned long longBytes=numBytes/4;
+    GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
+    unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t));
+    gHdr->code=code;
+    gHdr->numBytes=numBytes;
+    gHdr->feByte=0xfe;
+    switch(code) {
+	case PACKET_HD: gHdr->verId=VER_EVENT_HEADER; break;
+	case PACKET_WV: gHdr->verId=VER_WAVE_PACKET; break;
+	case PACKET_SURF: gHdr->verId=VER_SURF_PACKET; break;
+	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;
+	case PACKET_ENC_WV: gHdr->verId=VER_ENC_WAVE_PACKET; break;
+	case PACKET_ENC_SURF: gHdr->verId=VER_ENC_SURF_PACKET; break;
+	case PACKET_GPS_ADU5_PAT: gHdr->verId=VER_ADU5_PAT; break;
+	case PACKET_GPS_ADU5_SAT: gHdr->verId=VER_ADU5_SAT; break;
+	case PACKET_GPS_ADU5_VTG: gHdr->verId=VER_ADU5_VTG; break;
+	case PACKET_GPS_G12_POS: gHdr->verId=VER_G12_POS; break;
+	case PACKET_GPS_G12_SAT: gHdr->verId=VER_G12_SAT; break;
+	case PACKET_HKD: gHdr->verId=VER_HK_FULL; break;
+	case PACKET_CMD_ECHO: gHdr->verId=VER_CMD_ECHO; break;
+	case PACKET_MONITOR: gHdr->verId=VER_MONITOR; break;
+	default: 
+	    gHdr->verId=0; break;
+    }
+    gHdr->checksum=simpleLongCrc(dataPtr,longBytes);
+
 }
