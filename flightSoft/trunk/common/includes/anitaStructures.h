@@ -23,6 +23,8 @@
 #define VER_EVENT_HEADER 3
 #define VER_WAVE_PACKET 3
 #define VER_SURF_PACKET 3
+#define VER_ENC_WAVE_PACKET 3
+#define VER_ENC_SURF_PACKET 3
 #define VER_SURF_HK 3
 #define VER_ADU5_PAT 3
 #define VER_ADU5_SAT 3
@@ -54,7 +56,10 @@ typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101,
     PACKET_SURF = 0x102,
-    PACKET_SURF_HK = 0x103,
+    PACKET_SURF_HK = 0x110,
+    PACKET_TURF_RATE = 0x111,
+    PACKET_ENC_WV = 0x120,
+    PACKET_ENC_SURF = 0x121,
     PACKET_GPS_ADU5_PAT = 0x200,
     PACKET_GPS_ADU5_SAT = 0x201,
     PACKET_GPS_ADU5_VTG = 0x202,
@@ -124,11 +129,18 @@ typedef struct {
     unsigned long ppsNum;     // 1PPS
     unsigned long trigTime;     // trig time
     unsigned long trigInterval; // interval since last trig
+} TurfioStruct_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;
     unsigned int l1Rate[40][4]; // Antenna trigger output rates (Hz)
     unsigned int l2Rate[2][16]; // level 2 trigger rate
     unsigned int l3Rate[4][16];
     unsigned int vetoMon[16];
-} TurfioStruct_t;
+} TurfRateStruct_t;
+    
     
 typedef struct {
     unsigned char chanId;   // chan+9*surf

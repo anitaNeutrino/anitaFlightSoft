@@ -128,4 +128,8 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle);
 void setGloablDACThreshold(PlxHandle_t *surfHandles, unsigned short threshold);
 //PlxReturnCode_t blockReadPlxData(PlxHandle_t handle, unsigned short *dataArray, int numBytes);
 int updateThresholdsUsingPID();
+int writeSurfHousekeeping(int dataOrTelem);
+int writeTurfHousekeeping(int dataOrTelem);
+
+
 #endif //ACQD_H

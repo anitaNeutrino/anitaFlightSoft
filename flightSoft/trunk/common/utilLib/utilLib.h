@@ -58,6 +58,7 @@ int writeHk(HkDataStruct_t *hkPtr, char *filename);
 int writeSurfHk(FullSurfHkStruct_t *hkPtr, char *filename);
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
 int writeCmd(CommandStruct_t *cmdPtr, char *filename);
+int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename);
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);
 int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
 
@@ -69,5 +70,11 @@ ProgramStateCode currentState;
 void sigUsr1Handler(int sig); 
 void sigUsr2Handler(int sig);
 void writePidFile(char *fileName);
+
+//Generic Header Stuff
+void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes);
+int checkGenericHeader(void *thePtr);
+unsigned long simpleLongCrc(unsigned long *p, unsigned long n);
+
 
 #endif /* UTILLIB_H */

@@ -24,6 +24,7 @@ void fakeHkCal(struct timeval *currentTime);
 void fakeHkRaw(struct timeval *currentTime);
 void fakeMonitor(struct timeval *currentTime);
 void fakeSurfHk(struct timeval *currentTime);
+void fakeTurfRate(struct timeval *currentTime);
 
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
@@ -56,6 +57,7 @@ int hkReadoutPeriod=5;
 int hkCalPeriod=600;
 int monitorPeriod=60; //In seconds
 int surfHkPeriod=10;
+int turfRateTelemInterval=60;
 
 
 // Event structs
@@ -100,6 +102,7 @@ int main(int argc, char *argv[])
 	hkCalPeriod=kvpGetInt("calibrationPeriod",600);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
 	surfHkPeriod=kvpGetInt("surfHkPeriod",10);
+	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",60);
 
 	//Output and Link Directories
 	tempString=kvpGetString("baseHouseTelemDir");
@@ -236,6 +239,7 @@ int main(int argc, char *argv[])
     struct timeval lastHkData;
     struct timeval lastMonitor;
     struct timeval lastSurfHk;
+    struct timeval lastTurfRate;
     struct timeval currentTime;
 
     while(1) {
@@ -280,6 +284,14 @@ int main(int argc, char *argv[])
 		lastSurfHk=currentTime;
 	    }
 	}
+	//Check last Turf Rate
+	if(turfRateTelemInterval) {
+	    //If not one per event
+	    if(getTimeDiff(lastTurfRate,currentTime)>turfRateTelemInterval) {
+		fakeTurfRate(&currentTime);
+		lastTurfRate=currentTime;
+	    }
+	}
 	
 
 	if(getTimeDiff(lastHkCal,currentTime)>hkCalPeriod) {
@@ -319,10 +331,11 @@ void fakeEvent(int trigType)
 	}
     }
     gettimeofday(&timeStruct,NULL);
-    theHeader.gHdr.feByte=0xfe;
-    theHeader.gHdr.verId=VER_EVENT_HEADER;
-    theHeader.gHdr.code=PACKET_HD;
-    theHeader.gHdr.numBytes=sizeof(AnitaEventHeader_t);
+    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));
+//    theHeader.gHdr.feByte=0xfe;
+//    theHeader.gHdr.verId=VER_EVENT_HEADER;
+//    theHeader.gHdr.code=PACKET_HD;
+//    theHeader.gHdr.numBytes=sizeof(AnitaEventHeader_t);
 //    theHeader.turfio.trigType=trigType;
     theHeader.unixTime=timeStruct.tv_sec;
     theHeader.unixTimeUs=timeStruct.tv_usec;
@@ -374,10 +387,12 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
     RawSurfPacket_t surfPacket;
     sprintf(tempDir,"%s%d/",eventTelemDirBase,(int)(hdPtr->priority&0xf));
     sprintf(tempLinkDir,"%s/link/",tempDir);
-    surfPacket.gHdr.code=PACKET_SURF;
-    surfPacket.gHdr.numBytes=sizeof(RawSurfPacket_t);
-    surfPacket.gHdr.feByte=0xfe;
-    surfPacket.gHdr.verId=VER_SURF_PACKET;
+    
+    fillGenericHeader(&surfPacket,PACKET_SURF,sizeof(RawSurfPacket_t));
+//    surfPacket.gHdr.code=PACKET_SURF;
+//    surfPacket.gHdr.numBytes=sizeof(RawSurfPacket_t);
+//    surfPacket.gHdr.feByte=0xfe;
+//    surfPacket.gHdr.verId=VER_SURF_PACKET;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	sprintf(packetName,"%s/surfpk_%lu_%d.dat",tempDir,hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
@@ -398,17 +413,67 @@ void fakeSurfHk(struct timeval *currentTime) {
     
     FullSurfHkStruct_t theSurfHk;
     char theFilename[FILENAME_MAX];
-    int retVal=0,i=0;
-    theSurfHk.gHdr.code=PACKET_MONITOR;
-    theSurfHk.gHdr.numBytes=sizeof(MonitorStruct_t);
+    int retVal=0,i=0,j=0;
+    fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
+//    theSurfHk.gHdr.code=PACKET_SURF_HK;
+//    theSurfHk.gHdr.numBytes=sizeof(FullSurfHkStruct_t);
+//    theSurfHk.gHdr.feByte=0xfe;
+//    theSurfHk.gHdr.verId=VER_SURF_HK;
     theSurfHk.unixTime=currentTime->tv_sec;
     theSurfHk.unixTimeUs=currentTime->tv_usec;
-    theSurfHk.gHdr.feByte=0xfe;
-    theSurfHk.gHdr.verId=VER_SURF_HK;
+    for(i=0;i<ACTIVE_SURFS;i++) {
+	theSurfHk.upperWords[i]=i;
+	for(j=0;j<SCALERS_PER_SURF;j++) {
+	    theSurfHk.scaler[i][j]=200+i*j;
+	    theSurfHk.threshold[i][j]=4000-i*j;
+	}
+	for(j=0;j<RFCHAN_PER_SURF;j++) {
+	    theSurfHk.rfPower[i][j]=1000+i*j;
+
+	}
+    }
+	    
+
 
     sprintf(theFilename,"%s/surfhk_%ld.dat",
 	    monitordTelemDir,theSurfHk.unixTime);
     retVal=writeSurfHk(&theSurfHk,theFilename);
+    retVal=makeLink(theFilename,monitordTelemLinkDir);
+
+}
+
+
+void fakeTurfRate(struct timeval *currentTime) {
+    
+    TurfRateStruct_t theTurfRates;
+    char theFilename[FILENAME_MAX];
+    int retVal=0,i=0,j=0;
+    fillGenericHeader(&theTurfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
+    theTurfRates.unixTime=currentTime->tv_sec;
+    theTurfRates.unixTimeUs=currentTime->tv_usec;
+    for(i=0;i<40;i++) {
+	for(j=0;j<2;j++) {
+	    theTurfRates.l1Rate[i][j]=i*j;
+	}
+    }
+    for(i=0;i<2;i++) {
+	for(j=0;j<16;j++) {
+	    theTurfRates.l2Rate[i][j]=i*j;
+	}
+    }
+    for(i=0;i<4;i++) {
+	for(j=0;j<16;j++) {
+	    theTurfRates.l3Rate[i][j]=i*j;
+	}
+    }
+    for(i=0;i<16;i++) {
+	theTurfRates.vetoMon[i]=i*2;
+    }
+
+
+    sprintf(theFilename,"%s/turfrate_%ld.dat",
+	    monitordTelemDir,theTurfRates.unixTime);
+    retVal=writeTurfRate(&theTurfRates,theFilename);
     retVal=makeLink(theFilename,monitordTelemLinkDir);
 
 }
@@ -419,10 +484,11 @@ void fakeMonitor(struct timeval *currentTime) {
     MonitorStruct_t theMon;
     char theFilename[FILENAME_MAX];
     int retVal=0,i=0;
-    theMon.gHdr.code=PACKET_MONITOR;
-    theMon.gHdr.numBytes=sizeof(MonitorStruct_t);
-    theMon.gHdr.feByte=0xfe;
-    theMon.gHdr.verId=VER_MONITOR;
+    fillGenericHeader(&theMon,PACKET_MONITOR,sizeof(MonitorStruct_t));
+//    theMon.gHdr.code=PACKET_MONITOR;
+//    theMon.gHdr.numBytes=sizeof(MonitorStruct_t);
+//    theMon.gHdr.feByte=0xfe;
+//    theMon.gHdr.verId=VER_MONITOR;
     theMon.unixTime=currentTime->tv_sec;
     theMon.diskInfo.mainDisk=10;
     for(i=0;i<64;i++) {
@@ -449,8 +515,9 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     GpsAdu5PatStruct_t thePat;
     char theFilename[FILENAME_MAX];
     int retVal;
-    thePat.gHdr.code=PACKET_GPS_ADU5_PAT;
-    thePat.gHdr.numBytes=sizeof(GpsAdu5PatStruct_t);
+    fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
+//    thePat.gHdr.code=PACKET_GPS_ADU5_PAT;
+//    thePat.gHdr.numBytes=sizeof(GpsAdu5PatStruct_t);
     thePat.unixTime=currentTime->tv_sec;
     thePat.unixTimeUs=currentTime->tv_usec;
     thePat.heading=0;
@@ -475,8 +542,9 @@ void fakeAdu5Vtg(struct timeval *currentTime) {
     GpsAdu5VtgStruct_t theVtg;
     char theFilename[FILENAME_MAX];
     int retVal;
-    theVtg.gHdr.code=PACKET_GPS_ADU5_VTG;
-    theVtg.gHdr.numBytes=sizeof(GpsAdu5VtgStruct_t);
+    fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
+//    theVtg.gHdr.code=PACKET_GPS_ADU5_VTG;
+//    theVtg.gHdr.numBytes=sizeof(GpsAdu5VtgStruct_t);
     theVtg.unixTime=currentTime->tv_sec;
     theVtg.unixTimeUs=currentTime->tv_usec;
     theVtg.trueCourse=10.5;
@@ -499,8 +567,9 @@ void fakeAdu5Sat(struct timeval *currentTime) {
     int satNum;
 
 
-    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
-    theSat.gHdr.numBytes=sizeof(GpsAdu5SatStruct_t);
+    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
+//    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
+//    theSat.gHdr.numBytes=sizeof(GpsAdu5SatStruct_t);
     theSat.unixTime=currentTime->tv_sec;
     for(antNum=0;antNum<4;antNum++) {
 	theSat.numSats[antNum]=3;
@@ -524,8 +593,9 @@ void fakeG12Pos(struct timeval *currentTime) {
     GpsG12PosStruct_t thePos;
     char theFilename[FILENAME_MAX];
     int retVal;
-    thePos.gHdr.code=PACKET_GPS_ADU5_PAT;
-    thePos.gHdr.numBytes=sizeof(GpsG12PosStruct_t);
+    fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
+//    thePos.gHdr.code=PACKET_GPS_ADU5_PAT;
+//    thePos.gHdr.numBytes=sizeof(GpsG12PosStruct_t);
     thePos.unixTime=currentTime->tv_sec;
     thePos.unixTimeUs=currentTime->tv_usec;
     thePos.numSats=9;
@@ -554,8 +624,9 @@ void fakeG12Sat(struct timeval *currentTime) {
     int satNum;
 
 
-    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
-    theSat.gHdr.numBytes=sizeof(GpsG12SatStruct_t);
+    fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
+//    theSat.gHdr.code=PACKET_GPS_G12_SAT;
+//    theSat.gHdr.numBytes=sizeof(GpsG12SatStruct_t);
     theSat.unixTime=currentTime->tv_sec;
     theSat.numSats=3;
     for(satNum=0;satNum<(char)theSat.numSats;satNum++) {
@@ -581,8 +652,9 @@ void fakeHkCal(struct timeval *currentTime)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
-    theHkData.gHdr.code=PACKET_HKD;
-    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
+    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
+//    theHkData.gHdr.code=PACKET_HKD;
+//    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
     theHkData.unixTime=currentTime->tv_sec;
     theHkData.unixTimeUs=currentTime->tv_usec;
     theHkData.ip320.code=IP320_CAL;
@@ -623,8 +695,9 @@ void fakeHkRaw(struct timeval *currentTime)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
-    theHkData.gHdr.code=PACKET_HKD;
-    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
+    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
+//    theHkData.gHdr.code=PACKET_HKD;
+//    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
     theHkData.unixTime=currentTime->tv_sec;
     theHkData.unixTimeUs=currentTime->tv_usec;
     theHkData.ip320.code=IP320_RAW;    
