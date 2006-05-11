@@ -1089,7 +1089,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	    retVal=makeLink(theFilename,gpsTelemLinkDir);  
 	    
 	    //Write file to main disk
-	    sprintf(theFilename,"%s/sat_%ld.dat",gpsAdu5SatArchiveDir,theSat.unixTime);
+	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",gpsAdu5SatArchiveDir,theSat.unixTime);
 	    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
 //	    printf("%s\n",theFilename); 
 //	    exit(0);
@@ -1097,7 +1097,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	    
 	    if(useUsbDisks) {
 		//Write file to usb disk
-		sprintf(theFilename,"%s/sat_%ld.dat",
+		sprintf(theFilename,"%s/sat_adu5_%ld.dat",
 			gpsAdu5SatUsbArchiveDir,theSat.unixTime);
 		retVal=writeGpsAdu5Sat(&theSat,theFilename); 
 		

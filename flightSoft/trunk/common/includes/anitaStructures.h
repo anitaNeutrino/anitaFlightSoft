@@ -34,6 +34,7 @@
 #define VER_HK_FULL 3
 #define VER_CMD_ECHO 3
 #define VER_MONITOR 3
+#define VER_TURF_RATE 3
 
 
 //Relay Bit Masks

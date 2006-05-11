@@ -73,7 +73,7 @@ void writePidFile(char *fileName);
 
 //Generic Header Stuff
 void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes);
-int checkGenericHeader(void *thePtr);
+int checkPacket(void *thePtr);
 unsigned long simpleLongCrc(unsigned long *p, unsigned long n);
 
 
