@@ -800,6 +800,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_WV: gHdr->verId=VER_WAVE_PACKET; break;
 	case PACKET_SURF: gHdr->verId=VER_SURF_PACKET; break;
 	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;
+	case PACKET_TURF_RATE: gHdr->verId=VER_TURF_RATE; break;
 	case PACKET_ENC_WV: gHdr->verId=VER_ENC_WAVE_PACKET; break;
 	case PACKET_ENC_SURF: gHdr->verId=VER_ENC_SURF_PACKET; break;
 	case PACKET_GPS_ADU5_PAT: gHdr->verId=VER_ADU5_PAT; break;
@@ -814,5 +815,50 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	    gHdr->verId=0; break;
     }
     gHdr->checksum=simpleLongCrc(dataPtr,longBytes);
+
+}
+
+#define PKT_E_CHECKSUM 0x1
+#define PKT_E_CODE 0x2
+#define PKT_E_FEBYTE 0x4
+#define PKT_E_SIZE 0x8
+
+int checkPacket(void *thePtr)
+//0 means no errors
+//1 means checksum mismatch
+//2 means unknown packet code
+//4 means missing feByte missing
+//8 means packet size mismatch
+{
+    int retVal=0,packetSize=0;
+    GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
+    unsigned long longBytes=gHdr->numBytes/4;
+    unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t)); 
+    unsigned long checksum=simpleLongCrc(dataPtr,longBytes);
+    if(checksum!=gHdr->checksum) retVal+=PKT_E_CHECKSUM;
+    PacketCode_t code=gHdr->code;
+    switch(code) {
+	case PACKET_HD: packetSize=sizeof(AnitaEventHeader_t); break;	    
+	case PACKET_WV: packetSize=sizeof(RawWaveformPacket_t); break;
+	case PACKET_SURF: packetSize=sizeof(RawSurfPacket_t); break;
+	case PACKET_SURF_HK: packetSize=sizeof(FullSurfHkStruct_t); break;
+	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
+	case PACKET_ENC_WV: break;
+	case PACKET_ENC_SURF: break;
+	case PACKET_GPS_ADU5_PAT: packetSize=sizeof(GpsAdu5PatStruct_t); break;
+	case PACKET_GPS_ADU5_SAT: packetSize=sizeof(GpsAdu5SatStruct_t); break;
+	case PACKET_GPS_ADU5_VTG: packetSize=sizeof(GpsAdu5VtgStruct_t); break;
+	case PACKET_GPS_G12_POS: packetSize=sizeof(GpsG12PosStruct_t); break;
+	case PACKET_GPS_G12_SAT: packetSize=sizeof(GpsG12SatStruct_t); break;
+	case PACKET_HKD: packetSize=sizeof(HkDataStruct_t); break;
+	case PACKET_CMD_ECHO: packetSize=sizeof(CommandEcho_t); break;
+	case PACKET_MONITOR: packetSize=sizeof(MonitorStruct_t); break;
+	default: 
+	    retVal+=PKT_E_CODE; break;
+    }
+    if(packetSize && (packetSize!=gHdr->numBytes))
+	retVal+=PKT_E_SIZE;
+    if(gHdr->feByte!=0xfe) retVal+=PKT_E_FEBYTE;
+    return retVal;
 
 }

@@ -54,6 +54,7 @@ int adu5SatPeriod=600;
 float adu5PatPeriod=10;
 float adu5VtgPeriod=10;
 int hkReadoutPeriod=5;
+float actualHkPeriod=0.1;
 int hkCalPeriod=600;
 int monitorPeriod=60; //In seconds
 int surfHkPeriod=10;
@@ -99,6 +100,7 @@ int main(int argc, char *argv[])
 
     if (status == CONFIG_E_OK) {
 	hkReadoutPeriod=kvpGetInt("readoutPeriod",5);
+	actualHkPeriod=0.1*((float)hkReadoutPeriod);
 	hkCalPeriod=kvpGetInt("calibrationPeriod",600);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
 	surfHkPeriod=kvpGetInt("surfHkPeriod",10);
@@ -242,6 +244,17 @@ int main(int argc, char *argv[])
     struct timeval lastTurfRate;
     struct timeval currentTime;
 
+    printf("ADU5 PAT Period %f\n",adu5PatPeriod);
+    printf("ADU5 SAT Period %d\n",adu5SatPeriod);
+    printf("ADU5 VTG Period %f\n",adu5VtgPeriod);
+    printf("G12 PAT Period %f\n",g12PosPeriod);
+    printf("G12 SAT Period %d\n",g12SatPeriod);
+    printf("Monitor Period %d\n",monitorPeriod);
+    printf("SURF Hk Period %d\n",surfHkPeriod);
+    printf("TURF Rate Period %d\n",turfRateTelemInterval);
+    printf("Acromag Cal Period %d\n",hkCalPeriod);
+    printf("Acromag Data Period %f\n",actualHkPeriod);
+
     while(1) {
 	gettimeofday(&currentTime,0);
 //	time(&rawTime);
@@ -298,7 +311,7 @@ int main(int argc, char *argv[])
 	    fakeHkCal(&currentTime);
 	    lastHkCal=currentTime;
 	}
-	if(getTimeDiff(lastHkData,currentTime)>hkReadoutPeriod) {
+	if(getTimeDiff(lastHkData,currentTime)>actualHkPeriod) {
 	    fakeHkRaw(&currentTime);
 	    lastHkData=currentTime;
 	}
@@ -314,6 +327,7 @@ int main(int argc, char *argv[])
 
 void fakeEvent(int trigType) 
 {
+    int retVal=0;
     char sipdHdFilename[FILENAME_MAX];
     int chan=0;
     int samp=0;
@@ -331,7 +345,6 @@ void fakeEvent(int trigType)
 	}
     }
     gettimeofday(&timeStruct,NULL);
-    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));
 //    theHeader.gHdr.feByte=0xfe;
 //    theHeader.gHdr.verId=VER_EVENT_HEADER;
 //    theHeader.gHdr.code=PACKET_HD;
@@ -344,7 +357,12 @@ void fakeEvent(int trigType)
     theHeader.priority=3;
     evNum++;      
     	    
-    /* Write output for SIPd*/	    
+    /* Write output for SIPd*/	
+    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));    
+    retVal=checkPacket(&theHeader);
+    if(retVal) 
+	printf("Problem with AnitaEventHeader_t %d\n",retVal);
+
     writePackets(&theBody,&theHeader);
     
     //Move and link header
@@ -380,6 +398,7 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 /* 	writeWaveformPacket(&wavePacket,packetName); */
 /* 	makeLink(packetName,prioritizerdSipdWvLinkDir); */
 /*     } */
+    int retVal;
     char tempDir[FILENAME_MAX];
     char tempLinkDir[FILENAME_MAX];
     int surf;
@@ -388,7 +407,6 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
     sprintf(tempDir,"%s%d/",eventTelemDirBase,(int)(hdPtr->priority&0xf));
     sprintf(tempLinkDir,"%s/link/",tempDir);
     
-    fillGenericHeader(&surfPacket,PACKET_SURF,sizeof(RawSurfPacket_t));
 //    surfPacket.gHdr.code=PACKET_SURF;
 //    surfPacket.gHdr.numBytes=sizeof(RawSurfPacket_t);
 //    surfPacket.gHdr.feByte=0xfe;
@@ -398,6 +416,10 @@ void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
 	surfPacket.eventNumber=hdPtr->eventNumber;
 //	surfPacket.packetNumber=surf;
 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
+	fillGenericHeader(&surfPacket,PACKET_SURF,sizeof(RawSurfPacket_t));    
+	retVal=checkPacket(&surfPacket);
+	if(retVal) 
+	    printf("Problem with RawSurfPacket_t %d\n",retVal);
 	writeSurfPacket(&surfPacket,packetName);
 //	printf("Wrote %s\n",packetName);
 //	makeLink(packetName,tempLinkDir);
@@ -414,7 +436,6 @@ void fakeSurfHk(struct timeval *currentTime) {
     FullSurfHkStruct_t theSurfHk;
     char theFilename[FILENAME_MAX];
     int retVal=0,i=0,j=0;
-    fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
 //    theSurfHk.gHdr.code=PACKET_SURF_HK;
 //    theSurfHk.gHdr.numBytes=sizeof(FullSurfHkStruct_t);
 //    theSurfHk.gHdr.feByte=0xfe;
@@ -435,6 +456,10 @@ void fakeSurfHk(struct timeval *currentTime) {
 	    
 
 
+    fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
+    retVal=checkPacket(&theSurfHk);
+    if(retVal) 
+	printf("Problem with FullSurfHkStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/surfhk_%ld.dat",
 	    monitordTelemDir,theSurfHk.unixTime);
     retVal=writeSurfHk(&theSurfHk,theFilename);
@@ -448,7 +473,6 @@ void fakeTurfRate(struct timeval *currentTime) {
     TurfRateStruct_t theTurfRates;
     char theFilename[FILENAME_MAX];
     int retVal=0,i=0,j=0;
-    fillGenericHeader(&theTurfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     theTurfRates.unixTime=currentTime->tv_sec;
     theTurfRates.unixTimeUs=currentTime->tv_usec;
     for(i=0;i<40;i++) {
@@ -471,6 +495,10 @@ void fakeTurfRate(struct timeval *currentTime) {
     }
 
 
+    fillGenericHeader(&theTurfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
+    retVal=checkPacket(&theTurfRates);
+    if(retVal) 
+	printf("Problem with TurfRateStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/turfrate_%ld.dat",
 	    monitordTelemDir,theTurfRates.unixTime);
     retVal=writeTurfRate(&theTurfRates,theFilename);
@@ -484,7 +512,6 @@ void fakeMonitor(struct timeval *currentTime) {
     MonitorStruct_t theMon;
     char theFilename[FILENAME_MAX];
     int retVal=0,i=0;
-    fillGenericHeader(&theMon,PACKET_MONITOR,sizeof(MonitorStruct_t));
 //    theMon.gHdr.code=PACKET_MONITOR;
 //    theMon.gHdr.numBytes=sizeof(MonitorStruct_t);
 //    theMon.gHdr.feByte=0xfe;
@@ -502,6 +529,10 @@ void fakeMonitor(struct timeval *currentTime) {
 	theMon.queueInfo.eventLinks[i]=i*10;
     }
 
+    fillGenericHeader(&theMon,PACKET_MONITOR,sizeof(MonitorStruct_t));
+    retVal=checkPacket(&theMon);
+    if(retVal) 
+	printf("Problem with MonitorStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/mon_%ld.dat",
 	    monitordTelemDir,theMon.unixTime);
     retVal=writeMonitor(&theMon,theFilename);
@@ -515,7 +546,6 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     GpsAdu5PatStruct_t thePat;
     char theFilename[FILENAME_MAX];
     int retVal;
-    fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
 //    thePat.gHdr.code=PACKET_GPS_ADU5_PAT;
 //    thePat.gHdr.numBytes=sizeof(GpsAdu5PatStruct_t);
     thePat.unixTime=currentTime->tv_sec;
@@ -531,6 +561,10 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     thePat.altitude=1238.38;
 
     //Write file and link for sipd
+    fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
+    retVal=checkPacket(&thePat);
+    if(retVal) 
+	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/pat_%ld_%ld.dat",gpsTelemDir,thePat.unixTime,thePat.unixTimeUs);
     retVal=writeGpsPat(&thePat,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir); 
@@ -542,7 +576,6 @@ void fakeAdu5Vtg(struct timeval *currentTime) {
     GpsAdu5VtgStruct_t theVtg;
     char theFilename[FILENAME_MAX];
     int retVal;
-    fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
 //    theVtg.gHdr.code=PACKET_GPS_ADU5_VTG;
 //    theVtg.gHdr.numBytes=sizeof(GpsAdu5VtgStruct_t);
     theVtg.unixTime=currentTime->tv_sec;
@@ -554,6 +587,10 @@ void fakeAdu5Vtg(struct timeval *currentTime) {
 
 
     //Write file and link for sipd
+    fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
+    retVal=checkPacket(&theVtg);
+    if(retVal) 
+	printf("Problem with GpsAdu5VtgStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/vtg_%ld_%ld.dat",gpsTelemDir,theVtg.unixTime,theVtg.unixTimeUs);
     retVal=writeGpsVtg(&theVtg,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir); 
@@ -567,7 +604,6 @@ void fakeAdu5Sat(struct timeval *currentTime) {
     int satNum;
 
 
-    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
 //    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
 //    theSat.gHdr.numBytes=sizeof(GpsAdu5SatStruct_t);
     theSat.unixTime=currentTime->tv_sec;
@@ -582,7 +618,11 @@ void fakeAdu5Sat(struct timeval *currentTime) {
 	}
     }
 
-    sprintf(theFilename,"%s/sat_%ld.dat",gpsTelemDir,theSat.unixTime);
+    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
+    retVal=checkPacket(&theSat);
+    if(retVal) 
+	printf("Problem with GpsAdu5SatStruct_t %d\n",retVal);
+    sprintf(theFilename,"%s/sat_adu5_%ld.dat",gpsTelemDir,theSat.unixTime);
     retVal=writeGpsAdu5Sat(&theSat,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir);
 }
@@ -593,7 +633,6 @@ void fakeG12Pos(struct timeval *currentTime) {
     GpsG12PosStruct_t thePos;
     char theFilename[FILENAME_MAX];
     int retVal;
-    fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
 //    thePos.gHdr.code=PACKET_GPS_ADU5_PAT;
 //    thePos.gHdr.numBytes=sizeof(GpsG12PosStruct_t);
     thePos.unixTime=currentTime->tv_sec;
@@ -610,8 +649,12 @@ void fakeG12Pos(struct timeval *currentTime) {
     thePos.vdop=0.5;
     thePos.tdop=0.5;
 
+    fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
+    retVal=checkPacket(&thePos);
+    if(retVal) 
+	printf("Problem with GpsG12PosStruct_t %d\n",retVal);
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld_%ld.dat",gpsTelemDir,thePos.unixTime,thePos.unixTimeUs);
+    sprintf(theFilename,"%s/pos_%ld_%ld.dat",gpsTelemDir,thePos.unixTime,thePos.unixTimeUs);
     retVal=writeGpsPos(&thePos,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir); 
 }
@@ -624,7 +667,6 @@ void fakeG12Sat(struct timeval *currentTime) {
     int satNum;
 
 
-    fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
 //    theSat.gHdr.code=PACKET_GPS_G12_SAT;
 //    theSat.gHdr.numBytes=sizeof(GpsG12SatStruct_t);
     theSat.unixTime=currentTime->tv_sec;
@@ -638,6 +680,10 @@ void fakeG12Sat(struct timeval *currentTime) {
     }
     
 
+    fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
+    retVal=checkPacket(&theSat);
+    if(retVal) 
+	printf("Problem with GpsG12SatStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/sat_%ld.dat",gpsTelemDir,theSat.unixTime);
     retVal=writeGpsG12Sat(&theSat,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir);
@@ -652,7 +698,6 @@ void fakeHkCal(struct timeval *currentTime)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
-    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
 //    theHkData.gHdr.code=PACKET_HKD;
 //    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
     theHkData.unixTime=currentTime->tv_sec;
@@ -671,6 +716,10 @@ void fakeHkCal(struct timeval *currentTime)
      	
     sprintf(theFilename,"hk_%ld_%ld.cal.dat",theHkData.unixTime,theHkData.unixTimeUs);    
     //Write file and make link for SIPd
+    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
+    retVal=checkPacket(&theHkData);
+    if(retVal) 
+	printf("Problem with HkDataStruct_t %d\n",retVal);
     sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
     retVal+=makeLink(fullFilename,hkTelemLinkDir);
@@ -683,6 +732,10 @@ void fakeHkCal(struct timeval *currentTime)
 	}
     }    
     //Write file and make link for SIPd
+    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
+    retVal=checkPacket(&theHkData);
+    if(retVal) 
+	printf("Problem with HkDataStruct_t %d\n",retVal);
     sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
     retVal+=makeLink(fullFilename,hkTelemLinkDir);      
@@ -695,7 +748,6 @@ void fakeHkRaw(struct timeval *currentTime)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
-    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
 //    theHkData.gHdr.code=PACKET_HKD;
 //    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
     theHkData.unixTime=currentTime->tv_sec;
@@ -711,6 +763,10 @@ void fakeHkRaw(struct timeval *currentTime)
     theHkData.mag.z=2.3;
     theHkData.sbs.temp[0]=25.5;
     theHkData.sbs.temp[1]=25.5;   
+    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
+    retVal=checkPacket(&theHkData);
+    if(retVal) 
+	printf("Problem with HkDataStruct_t %d\n",retVal);
     sprintf(theFilename,"hk_%ld_%ld.raw.dat",theHkData.unixTime,theHkData.unixTimeUs);
     
     //Write file and make link for SIPd

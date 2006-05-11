@@ -44,6 +44,8 @@ int main (void)
 	   sizeof(RawSurfChannelHeader_t));
     printf("Size of EncodedSurfChannelHeader_t: %d\n",
 	   sizeof(EncodedSurfChannelHeader_t));
+    printf("Size of RawWaveformPacket_t: %d\n",sizeof(RawWaveformPacket_t));
+    printf("Size of RawSurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
     printf("Size of TurfRateStruct_t: %d\n",sizeof(TurfRateStruct_t));
     printf("Size of FullSurfHkStruct_t: %d\n",sizeof(FullSurfHkStruct_t));
