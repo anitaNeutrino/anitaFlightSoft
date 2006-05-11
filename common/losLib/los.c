@@ -37,7 +37,7 @@ static int Poll_pause = 0;
 // get the number of ms to delay after writing a buffer to the board. I.e.
 // 	ms = nbytes / Delay_factor
 // This value can be changed by the los_set_delay_factor() function.
-static unsigned int Delay_factor = 32;
+static unsigned int Delay_factor = 100000;
 
 static int Write = -1;	// read mode = 0, write mode = 1
 
@@ -49,12 +49,15 @@ static char Error_string[ERROR_STRING_LEN];
 
 static void pause_ms(int ms);
 static int poll_addr_0(U16 want);
+
 #ifdef NOTDEF
-static int poll_data_avail();
+    static int poll_data_avail();
 #endif
+
 static int poll_data_ready();
 static int prep_interrupt(void);
 static int read_addr_0(U16 *val);
+static int read_addr_01(U16 *val);
 static void set_error_string(char *fmt, ...);
 static int wait_for_interrupt(int ms);
 static int write_addr_0(unsigned short val);
@@ -284,7 +287,132 @@ los_write(unsigned char *buf, short nbytes)
 }
 
 int
-los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
+los_read(unsigned char *buf, short *nwords)
+{
+    int ret = 0;
+    U16 val[2];
+    U16 words_clocked_in;
+
+    if (Write != 0) {
+	set_error_string("los_read: not initialized for reading");
+	return -4;
+    }
+
+    if (Wait_for_interrupt) {
+	ret = wait_for_interrupt(0);
+	if (ret == -2) {
+	    // error
+	    prep_interrupt();
+	    return -2;
+	}
+
+	ret = read_addr_01(val);
+	if (ret) {
+	    set_error_string("los_read: bad read_addr_01\n");
+	    ret = -1;
+	    goto finito;
+	}
+
+    } else {
+	while (1) {
+	    int retval = read_addr_01(val);
+	    if (retval) {
+		set_error_string("los_read: bad read_addr_01\n");
+		ret = -1;
+		goto finito;
+	    }
+
+	    if (DATA_AVAIL == val[0]) {
+		break;
+	    }
+
+	    if (LOST_SYNC == val[0]) {
+		set_error_string("los_read: lost sync\n");
+		ret = -1;
+		goto finito;
+	    }
+
+	    if (NO_END_FOUND == val[0]) {
+		set_error_string("los_read: buffer not ended correctly\n");
+		ret = -1;
+		goto finito;
+	    }
+	}
+    }
+
+    words_clocked_in = val[1];
+    if (words_clocked_in > 4095) {
+	set_error_string("los_read: too many words (%u)\n", words_clocked_in);
+	ret = -1;
+	goto finito;
+    }
+
+    {
+	// Word 0 is f00d, word 1 is the word count (words_clocked_in) put in by the
+	// ground LOS board, word 2 is garbage, and the actual data starts
+	// at word offset 3 instead. We give the application the buffer
+	// starting at word 0, followed by words_clocked_in + 2 words from LOS.
+
+	// Read the data. We read INITIAL_READ_WDS words to start. Then, we
+	// issue a DATA_READY to allow the board to write more data when it
+	// comes in, and we continue to read the rest of the data.
+
+	int INITIAL_READ_WDS = 500;
+
+	// The extra 3 words are for address 0, addr 1, and addr 2.
+	int REMAINING_READ_WDS = (words_clocked_in - INITIAL_READ_WDS) + 3;
+
+	RETURN_CODE rc;
+	U16 *sp;
+	U32 bytes_read_so_far = 0;
+
+	// Read first INITIAL_READ_WDS words.
+	rc = PlxBusIopRead(Dev_handle, IopSpace,
+	    0, FALSE,
+	    buf, INITIAL_READ_WDS * sizeof(U16),
+	    BitSize16);
+
+	if (rc != ApiSuccess) {
+	    set_error_string("los_read: bad initial read");
+	    ret = -1;
+	    goto finito;
+	}
+
+	sp = (unsigned short *)buf;
+
+	// Tell the hardware we are ready for more data.
+	write_addr_0(DATA_READY);
+
+	*nwords = words_clocked_in + 3;
+	bytes_read_so_far = INITIAL_READ_WDS * sizeof(U16);
+
+	if (words_clocked_in > INITIAL_READ_WDS) {
+	    // Read the rest of the data.
+	    rc = PlxBusIopRead(Dev_handle, IopSpace,
+		bytes_read_so_far, FALSE,
+		buf + bytes_read_so_far, REMAINING_READ_WDS * sizeof(U16),
+		BitSize16);
+
+	    if (rc != ApiSuccess) {
+		set_error_string("los_read: bad big read");
+		ret = -7;
+		goto finito;
+	    }
+	}
+    }
+
+    return(0);
+
+finito:
+
+    // Tell the hardware we are ready for more data.
+    write_addr_0(DATA_READY);
+
+    return(ret);
+}
+
+int
+los_read2(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
 {
     int ret = 0;
 
@@ -328,23 +456,26 @@ los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
     }
 
     {
-	// Due to a hardware bug, we must read the data from word
-	// offset 2 instead of word offset 1. This is taken care of by the
+	// Due to hardware reasons, we must read the data from word
+	// offset 3 instead of word offset 2. This is taken care of by the
 	// variable bug_byte_offset in the PlxBusIopRead() call.
 
-	// Read the data. We read 6 words to start. The number of data
-	// bytes is at word offset 5.
+	// Read the data. We read INITIAL_READ_WDS words to start. Then, we
+	// issue a DATA_READY to allow the board to write more data when it
+	// comes in, and we continue to read the rest of the data. For this
+	// version we assume that we always read 1010 words. The number of
+	// data bytes is at word offset 5.
 
-	int INITIAL_READ = 6;
+	int INITIAL_READ_WDS = 500;
 
-	int bug_byte_offset = 2 * sizeof(U16);
+	int bug_byte_offset = 3 * sizeof(U16);
 	RETURN_CODE rc;
 	U16 *sp;
-	U32 total_bytes_read = 0;
+	U32 bytes_read_so_far = 0;
 
-	// Read first INITIAL_READ words.
+	// Read first INITIAL_READ_WDS words.
 	rc = PlxBusIopRead(Dev_handle, IopSpace, bug_byte_offset + 0, FALSE,
-	    buf, INITIAL_READ * sizeof(U16), BitSize16);
+	    buf, INITIAL_READ_WDS * sizeof(U16), BitSize16);
 
 	if (rc != ApiSuccess) {
 	    set_error_string("los_read: bad initial read");
@@ -352,9 +483,12 @@ los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
 	    goto finito;
 	}
 
-	total_bytes_read = INITIAL_READ * sizeof(U16);
+	bytes_read_so_far = INITIAL_READ_WDS * sizeof(U16);
 
 	sp = (unsigned short *)buf;
+
+	// Tell the hardware we are ready for more data.
+	write_addr_0(DATA_READY);
 
 	if (DATA_AVAIL == *sp) {
 	    // Should be properly formatted data there.
@@ -364,7 +498,8 @@ los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
 	    if ((ID_HDR & 0xfffd) == sp[2]) {
 		U16 nb;
 		unsigned long bufcnt;
-		U32 bytes_to_read = 0;
+		long bytes_to_read = 0L;
+		long bytes_total = 0L;
 
 		{
 		    // Fill in the bufcnt.
@@ -380,30 +515,53 @@ los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes)
 		nb = sp[5];
 		bufinfo->science_nbytes = nb;
 		bufinfo->byte_offset_to_science_data = 12;
-		bytes_to_read = nb;
 
-		// 4 * sizeof(U16) for the 4 words at the end: chksum,
-		// SW_END_HDR (aeff), END_HDR, and AUX_HEADER.
-		bytes_to_read += (4 * sizeof(U16));
+		bytes_total = (6 * sizeof(U16)) +  // header
+			      nb +                 // science bytes
+			      (4 * sizeof(U16));   // ender
 
-		// Read the rest of the data.
-		rc = PlxBusIopRead(Dev_handle, IopSpace,
-		    bug_byte_offset + total_bytes_read, FALSE,
-		    buf + (INITIAL_READ*2), bytes_to_read, BitSize16);
 
-		if (rc != ApiSuccess) {
-		    set_error_string("los_read: bad big read");
-		    ret = -7;
-		    goto finito;
+		bytes_to_read = bytes_total - bytes_read_so_far;
+
+		{
+		    long v = LOS_MAX_WORDS * 2;
+		    if (bytes_to_read > v) {
+			set_error_string("los_read: bad read amt (%ld) (%ld)",
+			    bytes_to_read, v);
+			ret = -8;
+			goto finito;
+		    }
+		}
+
+#ifdef NOTDEF
+	    printf("bytes_read_so_far %u   bytes_to_read %u addr %u offset %u\n",
+		    bytes_read_so_far, bytes_to_read,
+		    bug_byte_offset + bytes_read_so_far,
+		    (INITIAL_READ_WDS*2));
+#endif
+
+		if (bytes_to_read > 0) {
+		    // Read the rest of the data.
+		    rc = PlxBusIopRead(Dev_handle, IopSpace,
+			bug_byte_offset + bytes_read_so_far, FALSE,
+			buf + (INITIAL_READ_WDS*2), bytes_to_read, BitSize16);
+
+		    if (rc != ApiSuccess) {
+			set_error_string("los_read: bad big read");
+			ret = -7;
+			goto finito;
+		    }
 		}
 
 		bufinfo->checksum = *((unsigned short *)buf + 6 +
 		    (nb/sizeof(short)));
-		total_bytes_read += bytes_to_read;
-		*nbytes = total_bytes_read;
+
+		*nbytes = bytes_total;
 	    }
 	}
     }
+
+    return(0);
 
 finito:
 
@@ -411,6 +569,24 @@ finito:
     write_addr_0(DATA_READY);
 
     return(ret);
+}
+
+unsigned long
+los_bufcnt(unsigned char *buf)
+{
+    unsigned long bufcnt;
+    memcpy(&bufcnt, buf+6, sizeof(long));
+    return bufcnt;
+}
+
+void
+los_bufinfo(unsigned char *buf, struct buffer_info *bi)
+{
+    bi->buffer_count = los_bufcnt(buf);
+    bi->status = *((U16 *)buf + 2);
+    bi->science_nbytes = *((U16 *)buf + 5);
+    bi->byte_offset_to_science_data = 12;
+    bi->checksum  = *((U16 *)buf + 6 + (bi->science_nbytes/sizeof(U16)));
 }
 
 void
@@ -456,6 +632,23 @@ read_addr_0(U16 *val)
     RETURN_CODE rc;
 
     rc = PlxBusIopRead(Dev_handle, IopSpace, 0, FALSE, val, sizeof(U16),
+    	BitSize16);
+
+    if (rc != ApiSuccess) {
+	return -1;
+    }
+
+    return 0;
+}
+
+// read_addr_01 - copies the values in address 0 and addr 1 of the on-board
+// memory into val[0] and val[1]. Returns 0 if all went well, else -1.
+static int
+read_addr_01(U16 *val)
+{
+    RETURN_CODE rc;
+
+    rc = PlxBusIopRead(Dev_handle, IopSpace, 0, FALSE, val, 2 * sizeof(U16),
     	BitSize16);
 
     if (rc != ApiSuccess) {
@@ -644,10 +837,10 @@ poll_data_ready()
 }
 
 #ifdef NOTDEF
-// poll_data_avail - Poll addr 0 for DATA_AVAIL.
-static int
-poll_data_avail()
-{
-    return poll_addr_0(DATA_AVAIL);
-}
+    // poll_data_avail - Poll addr 0 for DATA_AVAIL.
+    static int
+    poll_data_avail()
+    {
+	return poll_addr_0(DATA_AVAIL);
+    }
 #endif

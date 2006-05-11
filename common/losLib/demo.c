@@ -39,6 +39,7 @@ int screen_keypress(int ms);
 #define M11_check_data	'c'	/* check_data */
 #define M12_mix_mode    'x'	/* mix_mode */
 #define M13_delay_fac   'd'	/* set_delay_factor */
+#define M14_quick_tog   't'	/* quick_tog */
 
 static void init(void);
 static void end(void);
@@ -52,6 +53,7 @@ static void set_write_amt(void);
 static void check_data(void);
 static void mix_mode(void);
 static void set_delay_factor(void);
+static void quick_tog(void);
 
 static void initdisp(void);
 static void menu(char **m, int nlines);
@@ -61,7 +63,7 @@ static void generic_exit_routine(void);
 char *menuformat[] = {
 "%c=quit        %c=init        %c=end        %c=error_mesg  %c=version",
 "%c=write_once  %c=write_cont  %c=read_once  %c=read_cont   %c=set_write_amt",
-"%c=check_data  %c=mix_mode    %c=delay_fact"
+"%c=check_data  %c=mix_mode    %c=delay_fact %c=quick_tog"
 };
 
 #define NM ((sizeof(menuformat)/sizeof(menuformat[0])) + 1)
@@ -77,7 +79,11 @@ static unsigned short Buf[LOS_MAX_WORDS];
 static short Bytes_to_write = 100;	// bytes to write
 static int Check_data = 0;
 static int Mix_mode = 0;
-static unsigned int Delay_factor = 32;
+static unsigned int Delay_factor = 100000;
+static int Quick_mode = 1;
+
+static unsigned long Bad_checksum_count = 0L;
+static unsigned long Bad_sequence_count = 0L;
 
 int
 main(void)
@@ -140,6 +146,9 @@ main(void)
 	case M13_delay_fac:
 	    set_delay_factor();
 	    break;
+	case M14_quick_tog:
+	    quick_tog();
+	    break;
 	case CTL('L'):
 	    clear_screen();
 	    break;
@@ -193,7 +202,7 @@ initdisp()
     	M6_write_once, M7_write_cont, M8_read_once, M9_read_cont,
 	M10_set_wr_amt);
     sprintf(progmenu[2], menuformat[2],
-    	M11_check_data, M12_mix_mode, M13_delay_fac);
+    	M11_check_data, M12_mix_mode, M13_delay_fac, M14_quick_tog);
 
     menu(progmenu, NMENULINES);
 }
@@ -331,14 +340,18 @@ write_cont()
     //static unsigned char start = 0;
     //int want;
 
+    static int Maxb = LOS_MAX_WORDS * 2;
+    static unsigned char Seq_offset = 0;
+
     cp = (unsigned char *)Buf;
-    for (i=0; i<6000; i++) {
-	*cp++ = (i & 0xff);
+    for (i=0; i<Maxb; i++) {
+	*cp++ = ((i + Seq_offset) & 0xff);
     }
+    Seq_offset++;
 
 #ifdef NOTDEF
     cp = (unsigned char *)Buf;
-    for (want=0, i=0; i<6000; want++, i++) {
+    for (want=0, i=0; i<Maxb; want++, i++) {
 	if (256 == want) {
 	    want = 0;
 	}
@@ -414,6 +427,18 @@ check_data()
 }
 
 static void
+quick_tog()
+{
+    if (Quick_mode) {
+	Quick_mode = 0;
+	screen_printf("NOT using quick mode\n");
+    } else {
+	Quick_mode = 1;
+	screen_printf("Using quick mode\n");
+    }
+}
+
+static void
 mix_mode()
 {
     if (Mix_mode) {
@@ -428,9 +453,21 @@ mix_mode()
 static int
 read_once(struct buffer_info *bufinfo)
 {
+    unsigned short *Dataptr;
     short nbytes;
+    short nwords;
+    int ret;
 
-    int ret = los_read(bufinfo, (unsigned char *)Buf, &nbytes);
+    if (Quick_mode) {
+	ret = los_read((unsigned char *)Buf, &nwords);
+	nbytes = nwords * 2;
+	los_bufinfo((unsigned char *)(Buf+3), bufinfo);
+	Dataptr = Buf + 3;
+    } else {
+	ret = los_read2(bufinfo, (unsigned char *)Buf, &nbytes);
+	Dataptr = Buf;
+    }
+
     if (ret) {
 	// Don't print the "timed out" errors.
 	if (ret != -5) {
@@ -438,18 +475,21 @@ read_once(struct buffer_info *bufinfo)
 	    ret = -5;
 	}
     } else {
-	//memcpy(&bufcnt, Buf+3, sizeof(unsigned long));
 	screen_printf("Read %u bytes (buf no. %lu)\n",
 	    nbytes, bufinfo->buffer_count);
 
 	if (Check_data) {
 	    unsigned char *cp;
 	    int i;
+	    unsigned char seq_offset;
 	    int want;
 
-	    cp = (unsigned char *)Buf + bufinfo->byte_offset_to_science_data;
+	    cp = (unsigned char *)Dataptr +
+	    	bufinfo->byte_offset_to_science_data;
 
-	    for (want=0, i=0; i<bufinfo->science_nbytes; want++, i++) {
+	    seq_offset = *cp;
+	    for (want = seq_offset, i=0;
+	    		i<bufinfo->science_nbytes; want++, i++) {
 		if (256 == want) {
 		    want = 0;
 		}
@@ -463,6 +503,7 @@ read_once(struct buffer_info *bufinfo)
 			screen_printf("%02x ", *cp2++);
 		    }
 		    screen_printf("\n");
+		    Bad_sequence_count++;
 		    break;
 		}
 		cp++;
@@ -483,12 +524,24 @@ read_once(struct buffer_info *bufinfo)
 
 		int nwds = bufinfo->science_nbytes / sizeof(short);
 
-		actual_chksum = crc_short(Buf+6, nwds);
+		actual_chksum = crc_short(Dataptr+6, nwds);
 		if (expected_chksum == actual_chksum) {
 		    screen_printf("Checksum okay\n");
 		} else {
 		    screen_printf("Bad checksum. Wanted %04x, got %04x\n",
 		    	expected_chksum, actual_chksum);
+		    Bad_checksum_count++;
+
+		    {
+			int j;
+			screen_printf(
+			    "Error at data byte %d: expected %02x, got %02x\n",
+			    i, want, *cp);
+			for (j=0; j<16; j++) {
+			    screen_printf("%02x ", Dataptr[j]);
+			}
+			screen_printf("\n");
+		    }
 		}
 	    }
 	}
@@ -506,6 +559,9 @@ read_cont()
     unsigned long missed_buffers = 0L;
     int ms = 0;  			// ms to sleep between polls
     unsigned long prev_bufcnt = 0L;
+
+    Bad_checksum_count = 0L;
+    Bad_sequence_count = 0L;
 
     screen_printf("        PRESS ANY KEY TO STOP READING.\n");
 
@@ -529,22 +585,36 @@ read_cont()
 	    prev_bufcnt = last_bufcnt = bufinfo.buffer_count;
 	}
 
-	screen_printf("Buffer #%u missed: %lu\n",
-	    bufinfo.buffer_count, missed_buffers);
-	
-#ifdef NOTDEF
-	{
-	    unsigned long got = last_bufcnt - first_bufcnt;
-	    if (got >= 3000 && got < 3010) {
+	if (Check_data) {
+	    screen_printf("Buffer #%u  missed %lu  bad chk %lu  bad seq %lu\n",
+		bufinfo.buffer_count, missed_buffers,
+		Bad_checksum_count, Bad_sequence_count);
+
+#ifdef BREAK_ON_ERROR
+	    if (Bad_sequence_count != 0L) {
 		break;
 	    }
-	}
-#endif
 
+	    if (Bad_checksum_count != 0L) {
+		break;
+	    }
+#endif // BREAK_ON_ERROR
+
+	} else {
+	    screen_printf("Buffer #%u  missed %lu\n",
+		bufinfo.buffer_count, missed_buffers);
+	}
+	
     }
 
     screen_printf("buffers: missed %lu   got %lu first %lu   last %lu\n",
     	missed_buffers, last_bufcnt - first_bufcnt, first_bufcnt, last_bufcnt);
+
+    if (Check_data) {
+	screen_printf("\tbad chksum %lu  bad seq %lu\n",
+	    Bad_checksum_count, Bad_sequence_count);
+    }
+	
 
     /***
     screen_printf("intr timeouts with good evt = %lu\n",

@@ -1,10 +1,36 @@
 # Don't forget to update the VERSION file.
 
-2.5e	01 Mar 06	Marty Olevitch
-	Updated documentation
-	    los.h
-	    los.txt.in
-	    ndinfo/Menu.txt
+2.5l	10 May 06	Marty Olevitch
+	los.txt.in - updated documentation
+	data.fmt - updated
+
+2.5k	10 May 06	Marty Olevitch
+	demo.c - offset the sequence start by 1 each time write_cont() is
+	called (not for each buffer).
+
+2.5j	04 May 06	Marty Olevitch
+	los.c - oops! Wasn't checking for short buffer in los_read().
+
+2.5i	04 May 06	Marty Olevitch
+	demo.c - make delay factor in demo.c also default 100,000.
+
+2.5h	03 May 06	Marty Olevitch
+	los.c - Delay_factor is now default 100,000. This causes there to
+	be no delay. It used to be 32.
+
+2.5g	01 May 06	Marty Olevitch
+	los.h, los.c, demo.c - changes for hardware change: number of
+	    words clocked in at word 1.
+
+2.5f	27 Apr 06	Marty Olevitch
+	demo.c -
+	    bug fix: was only writing pattern into first 6000 bytes of buffer.
+	    feature: keep track of chksum and sequence errors.
+	los.c - bug fix: if buffer size was less than initial read size,
+	    would crash the computer!
+
+2.5e	26 Apr 06	Marty Olevitch
+	los.c - new PD method of reading buffer.
 
 2.5d	28 Feb 06	Marty Olevitch
 	los.c - poll word 0 for FEED continually.

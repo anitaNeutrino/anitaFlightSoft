@@ -7,48 +7,14 @@
 #ifndef _LOS_H
 #define _LOS_H
 
-/* Interface: API */
-
-/*
- * struct: buffer_info
- *       Struct that returns details about the current buffer.
- *       See <los_read>.
- *       The buffer_info structure has the following fields.
- */
 struct buffer_info {
-    /*
-     * ulong: buffer_count
-     *     Sequential count of buffers sent. Restarts at 0 when the writing
-     *     program is started.
-     */
     unsigned long buffer_count;
-
-    /*
-     * ushort: status
-     *     The <ID_HDR> for this buffer.
-     */
     unsigned short status;
-
-    /*
-     * ushort: science_nbytes
-     *     Number of bytes of science data.
-     */
     unsigned short science_nbytes;
-
-    /* ushort: checksum
-     *     Checksum of the science bytes. See <Checksum>.
-     */
     unsigned short checksum;
-
-    /*
-     * ushort: byte_offset_to_science_data
-     *     Offset in bytes from the beginning of the buffer to the start of
-     *     science data.
-     */
     unsigned short byte_offset_to_science_data;
+    unsigned short nwords;
 };
-
-/* section: Macros and functions */
 
 /*
  * Macro: LOS_MAX_BYTES
@@ -77,15 +43,8 @@ struct buffer_info {
 #define AUX_HDR		0xd0cc
 
 /*
- * Macro:    ID_HDR 
+ * Macro:    SW_START_HDR 
  *      value 0xAE00
- *
- *          - bit 0 = 0 LOS data
- *          - bit 0 = 1 SIP high-rate data
- *
- *          - bit 1 = 0 Even number of science bytes.
- *          - bit 1 = 1 Odd number of science bytes. NB must be
- *              decremented and 0x00 pad byte at end of data removed.
  */
 #define ID_HDR		0xae00
 
@@ -180,8 +139,7 @@ char *los_version(void);
  *
  * 	Write data to the LOS telemetry board (and from there to the GSE).
  * 	Before using this routine for the first time, one must execute
- * 	<los_init>. Note that after writing the data into the telemetry
- * 	board, a delay is inserted. See <los_set_delay_factor> for details.
+ * 	<los_init>.
  *
  * Parameters:
  *
@@ -205,13 +163,31 @@ int los_write(unsigned char *buf, short nbytes);
  * 	Read data from the LOS telemetry board. Before using this routine
  * 	for the first time, one must execute <los_init>
  *
- * 	After returning successfully, the <buffer_info> struct will be
- * 	filled in, buf will contain the data read from the telemetry board,
- * 	and nbytes will hold the number of bytes read.
+ * Parameters:
+ *
+ * 	buf - pointer to array of bytes to read to (should be at least
+ * 	    8192 bytes long).
+ * 	nwords - pointer to number of 16-bit words actually read
+ *
+ * Returns:
+ * 	0 - all went well.
+ * 	-1 - lost sync or improperly ended buffer
+ * 	-2 - wait for board interrupt timed out or failed
+ * 	-4 - not initialized for reading
+ * 	-5 - poll for DATA_AVAIL timed out
+ */
+int los_read(unsigned char *buf, short *nwords);
+
+/* Function: los_read2
+ *
+ * Description:
+ *
+ * 	Read data from the LOS telemetry board. Before using this routine
+ * 	for the first time, one must execute <los_init>
  *
  * Parameters:
  *
- * 	bufinfo - pointer to a struct <buffer_info> which will be filled in
+ * 	bufinfo - pointer to a struct buffer_info which will be filled in
  * 	    this function.
  * 	buf - pointer to array of bytes to read to (should be at least
  * 	    8192 bytes long).
@@ -224,7 +200,43 @@ int los_write(unsigned char *buf, short nbytes);
  * 	-4 - not initialized for reading
  * 	-5 - poll for DATA_AVAIL timed out
  */
-int los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes);
+int los_read2(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes);
+
+/* Function: los_bufcnt
+ *
+ * Description:
+ *
+ * 	Given the first 12 bytes of a LOS buffer, returns the value
+ * 	of the buffer count.
+ *
+ * Parameters:
+ * 	
+ * 	buf - pointer to array of bytes containing the data.
+ *
+ * Returns:
+ * 	
+ * 	Value of buffer count.
+ *
+ */
+unsigned long los_bufcnt(unsigned char *buf);
+
+/* Function: los_bufinfo
+ *
+ * Description:
+ *
+ * 	Given a LOS buffer, fills in the buffer_info struct.
+ *
+ * Parameters:
+ * 	
+ * 	buf - pointer to array of bytes containing the data.
+ * 	bi - pointer to struct buffer_info to be filled in.
+ *
+ * Returns:
+ * 	
+ * 	Value of buffer count.
+ *
+ */
+void los_bufinfo(unsigned char *buf, struct buffer_info *bi);
 
 /* Function: los_reset
  *
@@ -238,30 +250,24 @@ int los_read(struct buffer_info *bufinfo, unsigned char *buf, short *nbytes);
 void los_reset(void);
 
 /* Function: los_set_delay_factor
- 
-  Description:
- 
-  	After writing a buffer to the telemetry board, we pause for a
-  	number of milliseconds proportional to the size of the buffer
-  	according to the following formula:
- 
- > 		ms = nbytes / Delay_factor
- >
- > 		if (nbytes < 150) {
- > 		    ms = ms * 8;
- > 		} else if (nbytes < 500) {
- > 		    ms = ms * 4;
- > 		}
- 
-  	This function allows the application to set the value of the
-  	Delay_factor. The default value may be 32.
- 
-  Parameters:
- 
-  	df - new delay factor
- 
-  Returns:
-  	Previous value of delay factor.
+ *
+ * Description:
+ *
+ * 	After writing a buffer to the telemetry board, we pause for a
+ * 	number of milliseconds proportional to the size of the buffer
+ * 	according to this formula:
+ *
+ * 		ms = nbytes / Delay_factor
+ *
+ * 	This function allows the application to set the value of the
+ * 	Delay_factor.
+ *
+ * Parameters:
+ *
+ * 	df - new delay factor
+ *
+ * Returns:
+ * 	Previous value of delay factor.
  */
 unsigned int los_set_delay_factor(unsigned int df);
 #endif // _LOS_H
