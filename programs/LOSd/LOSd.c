@@ -23,21 +23,37 @@
 #include "losLib/los.h"
 
 int initDevice();
-void tryToSendData();
-int bufferAndWrite(unsigned char *buf, short nbytes,int doWrite);
-int fillBufferWithPackets();
+//void tryToSendData();
+//int bufferAndWrite(unsigned char *buf, short nbytes,int doWrite);
+//int fillBufferWithPackets();
 int doWrite();
 int readConfig();
+int checkHeaders(int maxCopy);
+
 
 /*Config Thingies*/
-char baseEventTelemDir[FILENAME_MAX];
+char losdPidFile[FILENAME_MAX];
+
+//Packet Dirs
+char eventTelemDirs[FILENAME_MAX][NUM_PRIORITIES];
+char headerTelemDir[FILENAME_MAX];
 char cmdTelemDir[FILENAME_MAX];
+char surfHkTelemDir[FILENAME_MAX];
+char turfHkTelemDir[FILENAME_MAX];
 char hkTelemDir[FILENAME_MAX];
 char gpsTelemDir[FILENAME_MAX];
-char monitordTelemDir[FILENAME_MAX];
+char monitorTelemDir[FILENAME_MAX];
 
-int maxPacketsPerDir=50;
-int maxEventsInARow=100;
+//Packet Link Dirs
+char eventTelemLinkDirs[FILENAME_MAX][NUM_PRIORITIES];
+char headerTelemLinkDir[FILENAME_MAX];
+char cmdTelemLinkDir[FILENAME_MAX];
+char surfHkTelemLinkDir[FILENAME_MAX];
+char turfHkTelemLinkDir[FILENAME_MAX];
+char hkTelemLinkDir[FILENAME_MAX];
+char gpsTelemLinkDir[FILENAME_MAX];
+char monitorTelemLinkDir[FILENAME_MAX];
+
 int losBus;
 int losSlot;
 int verbosity;
@@ -49,17 +65,15 @@ int priorityBandwidths[NUM_PRIORITIES];
 
 
 /*Global Variables*/
-#define BSIZE 10000 //Silly hack until I packet up Events
-unsigned char theBuffer[BSIZE];
-unsigned char bufferToWrite[LOS_MAX_BYTES];
-short numBytesInBuffer=0;
+unsigned char rawBuffer[LOS_MAX_BYTES*5];
+unsigned char losBuffer[LOS_MAX_BYTES];
+int numBytesInBuffer=0;
 
 
 int main(int argc, char *argv[])
 {
     int pk,retVal;
     char *tempString;
-    char tempDir[FILENAME_MAX];
 
     /* Config file thingies */
     int status=0;
@@ -91,43 +105,135 @@ int main(int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get losdPidFile");
 	    fprintf(stderr,"Couldn't get losdPidFile\n");
 	}
-	tempString=kvpGetString("losdPacketDir");
+	
+	tempString=kvpGetString("baseHouseTelemDir");
 	if(tempString) {
-	    strncpy(losdPacketDir,tempString,FILENAME_MAX);
-	    for(pk=0;pk<numPacketDirs;pk++) {
-		sprintf(tempDir,"%s/pk%d/link",losdPacketDir,pk);
-		makeDirectories(tempDir);
-	    }
-		
+	    strncpy(cmdTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(surfHkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(turfHkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(gpsTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(monitorTelemDir,tempString,FILENAME_MAX-1);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get losdPacketDir");
-	    fprintf(stderr,"Couldn't get losdPacketDir\n");
+	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
+	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
 	}
+	
+	tempString=kvpGetString("cmdEchoTelemSubDir");
+	if(tempString) {
+	    sprintf(cmdTelemDir,"%s/%s",cmdTelemDir,tempString);
+	    sprintf(cmdTelemLinkDir,"%s/link",cmdTelemDir);
+	    makeDirectories(cmdTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmdEchoTelemSubDir");
+	    fprintf(stderr,"Couldn't get cmdEchoTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("hkTelemSubDir");
+	if(tempString) {
+	    sprintf(hkTelemDir,"%s/%s",hkTelemDir,tempString);
+	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
+	    makeDirectories(hkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get hkTelemSubDir");
+	    fprintf(stderr,"Couldn't get hkTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("surfHkTelemSubDir");
+	if(tempString) {
+	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
+	    sprintf(surfHkTelemLinkDir,"%s/link",surfHkTelemDir);
+	    makeDirectories(surfHkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get surfHkTelemSubDir");
+	    fprintf(stderr,"Couldn't get surfHkTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("turfHkTelemSubDir");
+	if(tempString) {
+	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
+	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
+	    makeDirectories(turfHkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get turfHkTelemSubDir");
+	    fprintf(stderr,"Couldn't get turfHkTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("gpsTelemSubDir");
+	if(tempString) {
+	    sprintf(gpsTelemDir,"%s/%s",gpsTelemDir,tempString);
+	    sprintf(gpsTelemLinkDir,"%s/link",gpsTelemDir);
+	    makeDirectories(gpsTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get gpsTelemSubDir");
+	    fprintf(stderr,"Couldn't get gpsTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("monitorTelemSubDir");
+	if(tempString) {
+	    sprintf(monitorTelemDir,"%s/%s",monitorTelemDir,tempString);
+	    sprintf(monitorTelemLinkDir,"%s/link",monitorTelemDir);
+	    makeDirectories(monitorTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
+	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("headerTelemDir");
+	if(tempString) {
+	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
+	    sprintf(headerTelemLinkDir,"%s/link",headerTelemDir);
+	    makeDirectories(headerTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get headerTelemSubDir");
+	    fprintf(stderr,"Couldn't get headerTelemSubDir\n");
+	}
+
+	tempString=kvpGetString("baseEventTelemDir");
+	if(tempString) {
+	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
+		sprintf(eventTelemDirs[pk],"%s/pk%d",tempString,pk);
+		sprintf(eventTelemLinkDirs[pk],"%s/link",eventTelemDirs[pk]);
+		makeDirectories(eventTelemLinkDirs[pk]);
+	    }
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
+	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
+	    exit(0);
+	}
+
+	    
+	
+
 	//printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
     }
-
+    retVal=readConfig();
     retVal=initDevice();
     if(retVal!=0) {
 	return 1;
     }
+
     
-    sprintf(eventLinkDir,"%s/pk0/link",losdPacketDir);
-    sprintf(eventDir,"%s/pk0",losdPacketDir);
-    for(pk=1;pk<numPacketDirs;pk++) {
-	sprintf(packetLinkDir[pk],"%s/pk%d/link",losdPacketDir,pk);
-	sprintf(packetDir[pk],"%s/pk%d",losdPacketDir,pk);
-    }
-
-
     do {
 	if(verbosity) printf("Initializing LOSd\n");
+	retVal=readConfig();
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
-	    tryToSendData();
+//	    tryToSendData();
+	    checkHeaders(4000);
+	    doWrite();
 	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);
@@ -136,203 +242,202 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int fillBufferWithPackets() 
-{
+/* int fillBufferWithPackets()  */
+/* { */
 
-    int pk;
-    int retVal,count;
-    int numLinks=0;
-    int filledBuffer=0;
-    int numBytes=0;
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    int fd;
-    struct dirent **linkList;
-    for(pk=1;pk<numPacketDirs;pk++) {
-	numLinks=getListofLinks(packetLinkDir[pk],&linkList);
-	if(numLinks<=0) continue;
-	if(verbosity) printf("Got %d links in %s\n",numLinks,packetLinkDir[pk]);
-//	if(numLinks) break;
+/*     int pk; */
+/*     int retVal,count; */
+/*     int numLinks=0; */
+/*     int filledBuffer=0; */
+/*     int numBytes=0; */
+/*     char currentFilename[FILENAME_MAX]; */
+/*     char currentLinkname[FILENAME_MAX]; */
+/*     int fd; */
+/*     struct dirent **linkList; */
+/*     for(pk=1;pk<numPacketDirs;pk++) { */
+/* 	numLinks=getListofLinks(packetLinkDir[pk],&linkList); */
+/* 	if(numLinks<=0) continue; */
+/* 	if(verbosity) printf("Got %d links in %s\n",numLinks,packetLinkDir[pk]); */
+/* //	if(numLinks) break; */
 	
-//	if(numLinks==0) return 0;
-	//Need to put something here so that it doesn't dick around 
-	//forever in pk4, when there is data waiting in pk1, etc.
-//    printf("%d links in packet %d\n",numLinks,pk);
-	/* Nasty RJN Hack */
-	if(numLinks>500) {
-	    for(count=0;count<100;count++) {	    
-		sprintf(currentFilename,"%s/%s",
-			packetDir[pk],linkList[count]->d_name);
-		sprintf(currentLinkname,"%s/%s",
-			packetLinkDir[pk],linkList[count]->d_name);
+/* //	if(numLinks==0) return 0; */
+/* 	//Need to put something here so that it doesn't dick around  */
+/* 	//forever in pk4, when there is data waiting in pk1, etc. */
+/* //    printf("%d links in packet %d\n",numLinks,pk); */
+/* 	/\* Nasty RJN Hack *\/ */
+/* 	if(numLinks>500) { */
+/* 	    for(count=0;count<100;count++) {	     */
+/* 		sprintf(currentFilename,"%s/%s", */
+/* 			packetDir[pk],linkList[count]->d_name); */
+/* 		sprintf(currentLinkname,"%s/%s", */
+/* 			packetLinkDir[pk],linkList[count]->d_name); */
 		
-		removeFile(currentLinkname);
-		unlink(currentFilename);
-	    }
-	}
-	for(count=0;count<numLinks;count++)
-	    free(linkList[count]);
-	free(linkList);
-	numLinks=getListofLinks(packetLinkDir[pk],&linkList);
-	if(numLinks<=0) continue;
-	for(count=numLinks-1;count>=0;count--) {
+/* 		removeFile(currentLinkname); */
+/* 		unlink(currentFilename); */
+/* 	    } */
+/* 	} */
+/* 	for(count=0;count<numLinks;count++) */
+/* 	    free(linkList[count]); */
+/* 	free(linkList); */
+/* 	numLinks=getListofLinks(packetLinkDir[pk],&linkList); */
+/* 	if(numLinks<=0) continue; */
+/* 	for(count=numLinks-1;count>=0;count--) { */
 	
-	    sprintf(currentFilename,"%s/%s",
-		    packetDir[pk],linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/%s",
-		    packetLinkDir[pk],linkList[count]->d_name);
-	    fd = open(currentFilename,O_RDONLY);
-//	fp = fopen(currentFilename,"rb");
-	    if(fd == 0) {
-//	if(fp==NULL) {
-		syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename);
-		fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename);
+/* 	    sprintf(currentFilename,"%s/%s", */
+/* 		    packetDir[pk],linkList[count]->d_name); */
+/* 	    sprintf(currentLinkname,"%s/%s", */
+/* 		    packetLinkDir[pk],linkList[count]->d_name); */
+/* 	    fd = open(currentFilename,O_RDONLY); */
+/* //	fp = fopen(currentFilename,"rb"); */
+/* 	    if(fd == 0) { */
+/* //	if(fp==NULL) { */
+/* 		syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename); */
+/* 		fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename); */
 		
-		removeFile(currentFilename);
-		removeFile(currentLinkname);
-		//Mayhaps we should delete
-		continue;
-	    }
+/* 		removeFile(currentFilename); */
+/* 		removeFile(currentLinkname); */
+/* 		//Mayhaps we should delete */
+/* 		continue; */
+/* 	    } */
 	    
 	
 	    
-	    if(verbosity>1) { 
-		printf("Opened file: %s\n",currentFilename);
-	    }
+/* 	    if(verbosity>1) {  */
+/* 		printf("Opened file: %s\n",currentFilename); */
+/* 	    } */
 	
-	    numBytes=read(fd,theBuffer,BSIZE);
-	    if(numBytes<=0) {
-//		removeFile(currentLinkname);
-		unlink(currentLinkname);
-		unlink(currentFilename);
-		continue;
-	    }
-	    close (fd);
-	    retVal=0;
-//	    retVal = los_write((unsigned char *)theBuffer, numBytes);
-	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0);
-	    if (retVal < 0) {
-		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename);
-		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror());
-		break;
-	    }
-	    else {
-		removeFile(currentLinkname);
-		removeFile(currentFilename);
-//	    unlink(currentLinkname);
-//	    unlink(currentFilename);
-		if(retVal==0) {
-		    filledBuffer=1;
-		    break;
-		}
-	    }    	    	    
-	    if((numLinks-count)>maxPacketsPerDir) break;
+/* 	    numBytes=read(fd,theBuffer,BSIZE); */
+/* 	    if(numBytes<=0) { */
+/* //		removeFile(currentLinkname); */
+/* 		unlink(currentLinkname); */
+/* 		unlink(currentFilename); */
+/* 		continue; */
+/* 	    } */
+/* 	    close (fd); */
+/* 	    retVal=0; */
+/* //	    retVal = los_write((unsigned char *)theBuffer, numBytes); */
+/* 	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0); */
+/* 	    if (retVal < 0) { */
+/* 		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename); */
+/* 		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror()); */
+/* 		break; */
+/* 	    } */
+/* 	    else { */
+/* 		removeFile(currentLinkname); */
+/* 		removeFile(currentFilename); */
+/* //	    unlink(currentLinkname); */
+/* //	    unlink(currentFilename); */
+/* 		if(retVal==0) { */
+/* 		    filledBuffer=1; */
+/* 		    break; */
+/* 		} */
+/* 	    }    	    	     */
+/* 	    if((numLinks-count)>maxPacketsPerDir) break; */
 	    
-	}
+/* 	} */
 	
-	for(count=0;count<numLinks;count++)
-	    free(linkList[count]);
-	free(linkList);
-	if(filledBuffer) return 1;
-    }
-    return 0;
-}    
+/* 	for(count=0;count<numLinks;count++) */
+/* 	    free(linkList[count]); */
+/* 	free(linkList); */
+/* 	if(filledBuffer) return 1; */
+/*     } */
+/*     return 0; */
+/* }     */
     
 
-void tryToSendData()
-{
-    int retVal,eventCount;
-    int numEventLinks=0;
-    int numBytes=0;
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
+/* void tryToSendData() */
+/* { */
+/*     int retVal,eventCount; */
+/*     int numEventLinks=0; */
+/*     int numBytes=0; */
+/*     char currentFilename[FILENAME_MAX]; */
+/*     char currentLinkname[FILENAME_MAX]; */
 
-//    int numItems=0;
-//    FILE *fp;
-    int fd;
-    struct dirent **eventLinkList;
-
+/* //    int numItems=0; */
+/* //    FILE *fp; */
+/*     int fd; */
+/*     struct dirent **eventLinkList; */
     
-    numEventLinks=getListofLinks(eventLinkDir,&eventLinkList);
-    if(verbosity) printf("Got %d links in %s\n",numEventLinks,eventLinkDir);
-    if(!numEventLinks) {
-	fillBufferWithPackets();
-    }	
-    else {
-	/* Nasty RJN Hack */
-	if(numEventLinks>500) {
-	    for(eventCount=0;eventCount<100;eventCount++) {
-		sprintf(currentFilename,"%s/%s",
-			    eventDir,eventLinkList[eventCount]->d_name);
-		sprintf(currentLinkname,"%s/%s",
-			eventLinkDir,eventLinkList[eventCount]->d_name);
-		unlink(currentLinkname);
-		unlink(currentFilename);
-	    }
-	}
+/*     numEventLinks=getListofLinks(eventLinkDir,&eventLinkList); */
+/*     if(verbosity) printf("Got %d links in %s\n",numEventLinks,eventLinkDir); */
+/*     if(!numEventLinks) { */
+/* 	fillBufferWithPackets(); */
+/*     }	 */
+/*     else { */
+/* 	/\* Nasty RJN Hack *\/ */
+/* 	if(numEventLinks>500) { */
+/* 	    for(eventCount=0;eventCount<100;eventCount++) { */
+/* 		sprintf(currentFilename,"%s/%s", */
+/* 			    eventDir,eventLinkList[eventCount]->d_name); */
+/* 		sprintf(currentLinkname,"%s/%s", */
+/* 			eventLinkDir,eventLinkList[eventCount]->d_name); */
+/* 		unlink(currentLinkname); */
+/* 		unlink(currentFilename); */
+/* 	    } */
+/* 	} */
 	
-	for(eventCount=0;eventCount<numEventLinks;eventCount++)
-	    free(eventLinkList[eventCount]);
-	free(eventLinkList);
-	numEventLinks=getListofLinks(eventLinkDir,&eventLinkList);
-	if(numEventLinks<=0) {
-	    fillBufferWithPackets();
-	    if(numBytesInBuffer) doWrite();
-	    return;
-	}
-	for(eventCount=numEventLinks-1;eventCount>=0;eventCount--) {	    
-	    sprintf(currentFilename,"%s/%s",
-		    eventDir,eventLinkList[eventCount]->d_name);
-	    sprintf(currentLinkname,"%s/%s",
-		    eventLinkDir,eventLinkList[eventCount]->d_name);
-	    fd = open(currentFilename,O_RDONLY);
-	    if(fd == 0) {
-		syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename);
-		fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename);		
-		removeFile(currentFilename);
-		removeFile(currentLinkname);
-		//Mayhaps we should delete
-		continue;
-	    }
-	    if(verbosity>1) { 
-		printf("Opened Event File: %s\n",currentFilename);
-	    }
+/* 	for(eventCount=0;eventCount<numEventLinks;eventCount++) */
+/* 	    free(eventLinkList[eventCount]); */
+/* 	free(eventLinkList); */
+/* 	numEventLinks=getListofLinks(eventLinkDir,&eventLinkList); */
+/* 	if(numEventLinks<=0) { */
+/* 	    fillBufferWithPackets(); */
+/* 	    if(numBytesInBuffer) doWrite(); */
+/* 	    return; */
+/* 	} */
+/* 	for(eventCount=numEventLinks-1;eventCount>=0;eventCount--) {	     */
+/* 	    sprintf(currentFilename,"%s/%s", */
+/* 		    eventDir,eventLinkList[eventCount]->d_name); */
+/* 	    sprintf(currentLinkname,"%s/%s", */
+/* 		    eventLinkDir,eventLinkList[eventCount]->d_name); */
+/* 	    fd = open(currentFilename,O_RDONLY); */
+/* 	    if(fd == 0) { */
+/* 		syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename); */
+/* 		fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename);		 */
+/* 		removeFile(currentFilename); */
+/* 		removeFile(currentLinkname); */
+/* 		//Mayhaps we should delete */
+/* 		continue; */
+/* 	    } */
+/* 	    if(verbosity>1) {  */
+/* 		printf("Opened Event File: %s\n",currentFilename); */
+/* 	    } */
 	    
-	    numBytes=read(fd,theBuffer,BSIZE);
-	    if(numBytes<=0) {
-		removeFile(currentLinkname);
-		unlink(currentFilename);
-		continue;
-	    }
-	    close (fd);
-	    retVal=0;
-//	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0);
-	    retVal = los_write((unsigned char *)theBuffer, numBytes);
-//	    retVal = los_write((unsigned char *)theBuffer, numBytes);
-	    if(verbosity>1) printf("retVal %d\n",retVal);
-	    if (retVal < 0) {
-		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename);
-		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror());
-		break;
-	    }
-	    else {
-		removeFile(currentLinkname);
-		removeFile(currentFilename);
-//		unlink(currentFilename);
-//		fillBufferWithPackets();
-//		if(numBytesInBuffer) doWrite();    
-	    }    	    	    
-	    if((numEventLinks-eventCount)>maxEventsInARow) break;
-	}
+/* 	    numBytes=read(fd,theBuffer,BSIZE); */
+/* 	    if(numBytes<=0) { */
+/* 		removeFile(currentLinkname); */
+/* 		unlink(currentFilename); */
+/* 		continue; */
+/* 	    } */
+/* 	    close (fd); */
+/* 	    retVal=0; */
+/* //	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0); */
+/* 	    retVal = los_write((unsigned char *)theBuffer, numBytes); */
+/* //	    retVal = los_write((unsigned char *)theBuffer, numBytes); */
+/* 	    if(verbosity>1) printf("retVal %d\n",retVal); */
+/* 	    if (retVal < 0) { */
+/* 		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename); */
+/* 		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror()); */
+/* 		break; */
+/* 	    } */
+/* 	    else { */
+/* 		removeFile(currentLinkname); */
+/* 		removeFile(currentFilename); */
+/* //		unlink(currentFilename); */
+/* //		fillBufferWithPackets(); */
+/* //		if(numBytesInBuffer) doWrite();     */
+/* 	    }    	    	     */
+/* 	    if((numEventLinks-eventCount)>maxEventsInARow) break; */
+/* 	} */
 	
-	for(eventCount=0;eventCount<numEventLinks;eventCount++)
-	    free(eventLinkList[eventCount]);
-	free(eventLinkList);
-    }
+/* 	for(eventCount=0;eventCount<numEventLinks;eventCount++) */
+/* 	    free(eventLinkList[eventCount]); */
+/* 	free(eventLinkList); */
+/*     } */
     
-    fillBufferWithPackets();
-    if(numBytesInBuffer) doWrite(); 
-}
+/*     fillBufferWithPackets(); */
+/*     if(numBytesInBuffer) doWrite();  */
+/* } */
 
 
 int initDevice() {
@@ -349,50 +454,17 @@ int initDevice() {
     return retVal;
 }
 
-int bufferAndWrite(unsigned char *buf, short nbytes, int doWrite) 
-{
-    int retVal=0; 
-/*     if((numBytesInBuffer+nbytes)<(LOS_MAX_BYTES-1000)) { */
-/* 	strcat(bufferToWrite,buf); */
-/* 	numBytesInBuffer+=nbytes; */
-/* 	return 0; */
-/*     } */
-/*     else { */
-/* 	printf("Sending %d bytes\n",numBytesInBuffer); */
-/* 	retVal=los_write((unsigned char*)bufferToWrite,numBytesInBuffer); */
-/* //	bzero(bufferToWrite,LOS_MAX_BYTES); */
-/* 	strcat(bufferToWrite,buf); */
-/* 	numBytesInBuffer=nbytes; */
-/* 	return retVal; */
-/*     } */
-//    printf("%d %d\n",numBytesInBuffer,nbytes);
-    if((numBytesInBuffer+nbytes)<(LOS_MAX_BYTES-1000)) {
-//	strcat(bufferToWrite,buf);
-//	sprintf(bufferToWrite,"%s%s",bufferToWrite,buf);
-	memcpy(&bufferToWrite[numBytesInBuffer],buf,nbytes);
-	numBytesInBuffer+=nbytes;
-	return numBytesInBuffer;
-    }
-    if(verbosity) printf("Sending %d bytes\n",numBytesInBuffer);
-    retVal=los_write(bufferToWrite,numBytesInBuffer);
-//    bzero(bufferToWrite,LOS_MAX_BYTES);
-//    sprintf(bufferToWrite,"%s",buf);
-    numBytesInBuffer=0;
-    memcpy(buf,&bufferToWrite[numBytesInBuffer],nbytes);
-    numBytesInBuffer+=nbytes;
-    return retVal;
-}
-
 int doWrite() {
     
-    return los_write(bufferToWrite,numBytesInBuffer);
+    return los_write(losBuffer,numBytesInBuffer);
+    numBytesInBuffer=0;
     
 }
 
-int readConfig() {    
-/* Load LOSd config stuff */
+int readConfig()
+// Load LOSd config stuff
 {
-    /* Config file thingies */
+    // Config file thingies
     KvpErrorCode kvpStatus=0;
     int status=0,tempNum,count;
     char* eString ;
@@ -404,7 +476,7 @@ int readConfig() {
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,
 		   "Couldn't fetch printToScreen, defaulting to zero");
-	    printToScreen=0;	    
+	    printToScreen=0;
 	}
     }
     else {
@@ -417,7 +489,6 @@ int readConfig() {
     if(status == CONFIG_E_OK) {
 	losBus=kvpGetInt("losBus",1);
 	losSlot=kvpGetInt("losSlot",1);
-	maxPacketsPerDir=kvpGetInt("maxPacketsPerDir",200);
     }
     else {
 	eString=configErrorString (status) ;
@@ -425,7 +496,7 @@ int readConfig() {
 	fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
     }
     kvpReset();
-    status = configLoad ("LOSd.config","bandwidth") ;    
+    status = configLoad ("LOSd.config","bandwidth") ;
     if(status == CONFIG_E_OK) {
 	eventBandwidth=kvpGetInt("eventBandwidth",80);
 	tempNum=10;
@@ -448,9 +519,63 @@ int readConfig() {
 	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
 	fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
     }
+
     return status;
 }
 
+int checkHeaders(int maxCopy)
+/* Looks in the event header dir and fills buffer up to maxCopy */
+{
+    char currentFilename[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+    int fd,numLinks,count,numBytes,totalBytes=0;
+    struct dirent **linkList;
+
+
+    numLinks=getListofLinks(headerTelemLinkDir,&linkList); 
+    if(numLinks<=0) {
+	return 0;
+    }
+        
+    for(count=numLinks-1;count>=0;count--) {
+	sprintf(currentFilename,"%s/%s",headerTelemDir,
+		linkList[count]->d_name);
+	sprintf(currentLinkname,"%s/%s",
+		headerTelemLinkDir,linkList[count]->d_name);
+	fd = open(currentFilename,O_RDONLY);
+	if(fd == 0) {
+	    syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename);
+	    fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename);
+	    removeFile(currentFilename);
+	    removeFile(currentLinkname);
+	    continue;
+	}
+	if(verbosity>1) {
+	    printf("Opened  File: %s\n",currentFilename);
+	}
+	    
+	numBytes=read(fd,&(losBuffer[numBytesInBuffer]),LOS_MAX_BYTES-numBytesInBuffer);
+	if(numBytes<=0) {
+	    removeFile(currentLinkname);
+	    unlink(currentFilename);
+	    continue;
+	}
+	numBytesInBuffer+=numBytes;
+	totalBytes+=numBytes;
+	close (fd);
+	removeFile(currentLinkname);
+	removeFile(currentFilename);
+
+	if((totalBytes+sizeof(AnitaEventHeader_t))>maxCopy ||
+	   (numBytesInBuffer+sizeof(AnitaEventHeader_t))>LOS_MAX_BYTES) break;
+    }
+    
+    for(count=0;count<numLinks;count++)
+	free(linkList[count]);
+    free(linkList);
+    
+    return totalBytes;
+}
 
 
 
