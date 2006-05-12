@@ -23,13 +23,15 @@
 #include "losLib/los.h"
 
 int initDevice();
+void sendWakeUpBuffer();
 //void tryToSendData();
 //int bufferAndWrite(unsigned char *buf, short nbytes,int doWrite);
 //int fillBufferWithPackets();
 int doWrite();
 int readConfig();
-int checkHeaders(int maxCopy);
+int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 
+char fakeOutputDir[]="/tmp/fake/los";
 
 /*Config Thingies*/
 char losdPidFile[FILENAME_MAX];
@@ -58,6 +60,7 @@ int losBus;
 int losSlot;
 int verbosity;
 int printToScreen;
+int laptopDebug;
 
 // Bandwidth variables
 int eventBandwidth=80;
@@ -72,7 +75,7 @@ int numBytesInBuffer=0;
 
 int main(int argc, char *argv[])
 {
-    int pk,retVal;
+    int pk,retVal,firstTime=1;
     char *tempString;
 
     /* Config file thingies */
@@ -220,7 +223,12 @@ int main(int argc, char *argv[])
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
     }
     retVal=readConfig();
-    retVal=initDevice();
+    if(!laptopDebug) 
+	retVal=initDevice();
+    else {
+	printf("Running in debug mode not actually trying to talk to device\n");
+	makeDirectories(fakeOutputDir);
+    }
     if(retVal!=0) {
 	return 1;
     }
@@ -229,11 +237,58 @@ int main(int argc, char *argv[])
     do {
 	if(verbosity) printf("Initializing LOSd\n");
 	retVal=readConfig();
+	if(firstTime) {
+	    sendWakeUpBuffer();
+	    firstTime=0;
+	}
+	    
+	
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
 //	    tryToSendData();
-	    checkHeaders(4000);
-	    doWrite();
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
+			 ,cmdTelemDir,cmdTelemLinkDir,sizeof(CommandEcho_t)); 
+	    if(numBytesInBuffer>7000) {
+		doWrite();
+		continue;
+	    }
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
+			 ,monitorTelemDir,monitorTelemLinkDir,sizeof(MonitorStruct_t)); 
+	    if(numBytesInBuffer>7000) {
+		doWrite();
+		continue;
+	    }
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,gpsTelemDir,
+			 gpsTelemLinkDir,sizeof(GpsAdu5SatStruct_t)); 
+	    if(numBytesInBuffer>7000) {
+		doWrite();
+		continue;
+	    }
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,hkTelemDir,
+			 hkTelemLinkDir,sizeof(HkDataStruct_t)); 
+	    if(numBytesInBuffer>7000) {
+		doWrite();
+		continue;
+	    }
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,surfHkTelemDir,
+			 surfHkTelemLinkDir,sizeof(FullSurfHkStruct_t)); 
+	    if(numBytesInBuffer>7000) {
+		doWrite();
+		continue;
+	    }
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,turfHkTelemDir,
+			 turfHkTelemLinkDir,sizeof(TurfRateStruct_t)); 
+	    if(numBytesInBuffer>7000) {
+		doWrite();
+		continue;
+	    }
+	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,headerTelemDir,
+			 headerTelemLinkDir,sizeof(AnitaEventHeader_t));
+	    if(numBytesInBuffer>4000) {
+		doWrite();
+		continue;
+	    }
+	    
 	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);
@@ -455,10 +510,15 @@ int initDevice() {
 }
 
 int doWrite() {
-    
-    return los_write(losBuffer,numBytesInBuffer);
+    int retVal;
+    if(!laptopDebug) {
+	retVal=los_write(losBuffer,numBytesInBuffer);
+    }
+    else {
+	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
+    }	
     numBytesInBuffer=0;
-    
+    return retVal;    
 }
 
 int readConfig()
@@ -487,6 +547,7 @@ int readConfig()
     kvpReset();
     status = configLoad ("LOSd.config","losd");
     if(status == CONFIG_E_OK) {
+	laptopDebug=kvpGetInt("laptopDebug",0);
 	losBus=kvpGetInt("losBus",1);
 	losSlot=kvpGetInt("losSlot",1);
     }
@@ -523,25 +584,28 @@ int readConfig()
     return status;
 }
 
-int checkHeaders(int maxCopy)
-/* Looks in the event header dir and fills buffer up to maxCopy */
+int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
+/* Looks in the specified directroy and fill buffer upto maxCopy. */
+/* fileSize is the maximum size of a packet in the directory */
 {
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     int fd,numLinks,count,numBytes,totalBytes=0;
     struct dirent **linkList;
 
+    if((numBytesInBuffer+fileSize)>LOS_MAX_BYTES) return 0;
 
-    numLinks=getListofLinks(headerTelemLinkDir,&linkList); 
+
+    numLinks=getListofLinks(linkDir,&linkList); 
     if(numLinks<=0) {
 	return 0;
     }
         
     for(count=numLinks-1;count>=0;count--) {
-	sprintf(currentFilename,"%s/%s",headerTelemDir,
+	sprintf(currentFilename,"%s/%s",telemDir,
 		linkList[count]->d_name);
 	sprintf(currentLinkname,"%s/%s",
-		headerTelemLinkDir,linkList[count]->d_name);
+		linkDir,linkList[count]->d_name);
 	fd = open(currentFilename,O_RDONLY);
 	if(fd == 0) {
 	    syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename);
@@ -560,14 +624,16 @@ int checkHeaders(int maxCopy)
 	    unlink(currentFilename);
 	    continue;
 	}
+//	printf("Read %d bytes from file\n",numBytes);
+	checkPacket(&(losBuffer[numBytesInBuffer]));
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
 	close (fd);
 	removeFile(currentLinkname);
 	removeFile(currentFilename);
 
-	if((totalBytes+sizeof(AnitaEventHeader_t))>maxCopy ||
-	   (numBytesInBuffer+sizeof(AnitaEventHeader_t))>LOS_MAX_BYTES) break;
+	if((totalBytes+fileSize)>maxCopy ||
+	   (numBytesInBuffer+fileSize)>LOS_MAX_BYTES) break;
     }
     
     for(count=0;count<numLinks;count++)
@@ -578,4 +644,14 @@ int checkHeaders(int maxCopy)
 }
 
 
+void sendWakeUpBuffer() 
+{
+    int count;
+    for(count=0;count<LOS_MAX_BYTES-10;count++) {
+	losBuffer[count]=0xfe;
+    }
+    numBytesInBuffer=count;
+    doWrite();
+    
+}
 

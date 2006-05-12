@@ -844,3 +844,135 @@ poll_data_ready()
 	return poll_addr_0(DATA_AVAIL);
     }
 #endif
+
+
+int fake_los_write(unsigned char *buf, short nbytes, char *outputDir)
+{
+    FILE *losFile;
+    FILE *numFile;
+    static int losNumber=0;
+    static unsigned long bytesInFile=0;
+    char filename[FILENAME_MAX];
+    long ms;
+    int odd_number_of_science_bytes = 0;
+    U32 offset;
+//    RETURN_CODE rc;
+//    int ret;
+    U16 *sp;
+    U16 *startp;
+    U16 total_bytes;
+
+
+    if (nbytes > LOS_MAX_BYTES) {
+	set_error_string("los_write: too many bytes (%d) [maximum = %d]",
+	    nbytes, LOS_MAX_BYTES);
+	return -1;
+    }
+
+    if(losNumber==0) {
+	sprintf(filename,"%s/losNumber.txt",outputDir);
+	numFile = fopen (filename, "r");
+	if(numFile) {
+	    fscanf(numFile,"%d",&losNumber);
+	    fclose(numFile);
+	}	
+	losNumber++;
+	bytesInFile=0;
+    }
+
+    
+
+    // Set up our buffer.
+    sp = Data_buf;
+    // RJN -- Faking board words
+    *sp++ = START_HDR;
+    *sp++ = 0;
+    *sp++ = 0;
+//Back to Marty
+    *sp++ = START_HDR;	// Hardware bug. Need to have this here.
+    *sp++ = AUX_HDR;
+
+    *sp = ID_HDR;
+    if (nbytes % 2) {
+	// odd number of science bytes
+	odd_number_of_science_bytes = 1;
+	*sp |= 0x02;
+    }
+    sp++;
+
+    {
+	unsigned short *sp2;
+	sp2 = (unsigned short *)&Bufcnt;
+	*sp++ = *sp2++;
+	*sp++ = *sp2;
+    }
+
+    if (odd_number_of_science_bytes) {
+	*sp++ = nbytes + 1;
+    } else {
+	*sp++ = nbytes;
+    }
+
+    {
+	// Add the science data.
+	U8 *cp = (U8 *)sp;
+	memcpy(cp, buf, nbytes);
+	cp += nbytes;
+	if (odd_number_of_science_bytes) {
+	    // Add a fill byte.
+	    *cp++ = FILL_BYTE;
+	}
+	sp = (U16 *)cp;
+    }
+
+    // Add the checksum and enders.
+    startp = Data_buf + CHKSUM_WORD_OFFSET;
+    *sp = crc_short(startp, sp - startp);
+    sp++;
+    *sp++ = SW_END_HDR;
+    *sp++ = END_HDR;
+    *sp++ = AUX_HDR;
+
+    // Write buffer.
+    offset = sizeof(U16);	// offset of 1 word
+    total_bytes = (sp - Data_buf) * sizeof(U16);
+
+    sprintf(filename,"%s/los_%d",outputDir,losNumber);
+    losFile = fopen (filename, "ab");
+    bytesInFile=ftell(losFile);
+    if(!losFile) {
+	printf("Couldn't open %s\n",filename);
+	return -3;
+    }
+    if(fwrite(Data_buf,1,total_bytes,losFile)!=total_bytes) {
+	printf("Error writing file %s\n",filename);
+	fclose(losFile);
+	return -3;
+    }
+    fclose(losFile);
+    bytesInFile+=total_bytes;
+    if(bytesInFile>1000000) {
+	losNumber++;
+	sprintf(filename,"%s/losNumber.txt",outputDir);
+	numFile = fopen (filename, "w");
+	if(numFile) {
+	    fprintf(numFile,"%d\n",losNumber);
+	    fclose(numFile);
+	}		
+    }
+
+    Bufcnt++;
+
+    ms = total_bytes / Delay_factor;
+
+    if (total_bytes < 150) {
+	ms *= 8;
+    } else if (total_bytes < 500) {
+	ms *= 4;
+    }
+
+    pause_ms(ms);
+
+    return 0;
+
+}
