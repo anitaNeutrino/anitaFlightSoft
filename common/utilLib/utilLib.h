@@ -76,5 +76,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 int checkPacket(void *thePtr);
 unsigned long simpleLongCrc(unsigned long *p, unsigned long n);
 
+char *packetCodeAsString(PacketCode_t code);
+
 
 #endif /* UTILLIB_H */

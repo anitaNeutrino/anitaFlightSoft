@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
     printf("ADU5 PAT Period %f\n",adu5PatPeriod);
     printf("ADU5 SAT Period %d\n",adu5SatPeriod);
     printf("ADU5 VTG Period %f\n",adu5VtgPeriod);
-    printf("G12 PAT Period %f\n",g12PosPeriod);
+    printf("G12 POS Period %f\n",g12PosPeriod);
     printf("G12 SAT Period %d\n",g12SatPeriod);
     printf("Monitor Period %d\n",monitorPeriod);
     printf("SURF Hk Period %d\n",surfHkPeriod);
@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
 	    lastAdu5Sat=currentTime;
 	}
 	//Check last Adu5 VTG
-	if(getTimeDiff(lastAdu5Vtg,currentTime)>adu5SatPeriod) {
+	if(getTimeDiff(lastAdu5Vtg,currentTime)>adu5VtgPeriod) {
 	    fakeAdu5Vtg(&currentTime);
 	    lastAdu5Vtg=currentTime;
 	}
@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
 	    lastG12Sat=currentTime;
 	}
 	//Check last G12 SAT
-	if(getTimeDiff(lastG12Pos,currentTime)>g12SatPeriod) {
+	if(getTimeDiff(lastG12Pos,currentTime)>g12PosPeriod) {
 	    fakeG12Pos(&currentTime);
 	    lastG12Pos=currentTime;
 	}

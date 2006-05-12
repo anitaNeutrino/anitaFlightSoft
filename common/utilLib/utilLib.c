@@ -783,13 +783,14 @@ unsigned long simpleLongCrc(unsigned long *p, unsigned long n)
     unsigned long sum = 0;
     unsigned long i;
     for (i=0L; i<n; i++) {
+//	printf("%lu\n",*p);
 	sum += *p++;
     }
     return ((0xffffffff - sum) + 1);
 }
 
 void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes) {
-    unsigned long longBytes=numBytes/4;
+    unsigned long longBytes=(numBytes-sizeof(GenericHeader_t))/4;
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
     unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t));
     gHdr->code=code;
@@ -832,10 +833,14 @@ int checkPacket(void *thePtr)
 {
     int retVal=0,packetSize=0;
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
-    unsigned long longBytes=gHdr->numBytes/4;
+    unsigned long longBytes=(gHdr->numBytes-sizeof(GenericHeader_t))/4;
     unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t)); 
     unsigned long checksum=simpleLongCrc(dataPtr,longBytes);
-    if(checksum!=gHdr->checksum) retVal+=PKT_E_CHECKSUM;
+    if(checksum!=gHdr->checksum) {
+	printf("Checksum Mismatch (%lu bytes) %lu -- %lu \n",
+	       longBytes,checksum,gHdr->checksum);	
+	retVal+=PKT_E_CHECKSUM;
+    }
     PacketCode_t code=gHdr->code;
     switch(code) {
 	case PACKET_HD: packetSize=sizeof(AnitaEventHeader_t); break;	    
@@ -861,4 +866,28 @@ int checkPacket(void *thePtr)
     if(gHdr->feByte!=0xfe) retVal+=PKT_E_FEBYTE;
     return retVal;
 
+}
+
+char *packetCodeAsString(PacketCode_t code) {
+    char* string ;
+    switch(code) {
+	case PACKET_HD: string="AnitaEventHeader_t"; break;	    
+	case PACKET_WV: string="RawWaveformPacket_t"; break;
+	case PACKET_SURF: string="RawSurfPacket_t"; break;
+	case PACKET_SURF_HK: string="FullSurfHkStruct_t"; break;
+	case PACKET_TURF_RATE: string="TurfRateStruct_t"; break;
+	case PACKET_ENC_WV: string="EncodedWaveformPacket_t"; break;
+	case PACKET_ENC_SURF: string="EncodedSurfPacketHeader_t"; break;
+	case PACKET_GPS_ADU5_PAT: string="GpsAdu5PatStruct_t"; break;
+	case PACKET_GPS_ADU5_SAT: string="GpsAdu5SatStruct_t"; break;
+	case PACKET_GPS_ADU5_VTG: string="GpsAdu5VtgStruct_t"; break;
+	case PACKET_GPS_G12_POS: string="GpsG12PosStruct_t"; break;
+	case PACKET_GPS_G12_SAT: string="GpsG12SatStruct_t"; break;
+	case PACKET_HKD: string="HkDataStruct_t"; break;
+	case PACKET_CMD_ECHO: string="CommandEcho_t"; break;
+	case PACKET_MONITOR: string="MonitorStruct_t"; break;
+	default: 
+	    string="Unknown Packet Code"; break;
+    }
+    return string;
 }
