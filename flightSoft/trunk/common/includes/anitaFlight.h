@@ -52,6 +52,16 @@
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
+#define EVENT_LINK_INDEX "/mnt/data/index/event"
+#define GPS_INDEX "/mnt/data/index/gps"
+#define HK_INDEX "/mnt/data/index/hk"
+#define SURF_HK_INDEX "/mnt/data/index/surfHk"
+#define TURF_HK_INDEX "/mnt/data/index/turfHk"
+#define MONITOR_INDEX "/mnt/data/index/monitor"
+#define CMD_INDEX "/mnt/data/index/cmd"
+
+#define MAIN_DATA_DISK_LINK "/mnt/dataCurrent"
+#define BACKUP_DATA_DISK_LINK "/mnt/dataBackup"
 
     
 

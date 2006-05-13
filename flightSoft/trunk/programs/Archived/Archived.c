@@ -1,9 +1,7 @@
 /*! \file Archived.c
-  \brief The Archived program that creates Event objects 
+  \brief The Archived program that writes Events to disk
     
-  Takes data from Acqd (waveforms), GPSd (gps time) and Calibd (calibration)
-  and forms event objects. It passes these objects on to Prioritizerd.
-  August 2004  rjn@mps.ohio-state.edu
+  May 2006 rjn@mps.ohio-state.edu
 */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -13,6 +11,9 @@
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
+#include <zlib.h>
+
+#include "Archived.h"
 
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -20,62 +21,45 @@
 #include "anitaStructures.h"
 #include "anitaFlight.h"
 
-#define MAX_FILES_PER_COMMAND 50
 
 
-int readConfigFile();
-void executeCommand(char *tarCommand);
-void checkAdu5TTT();
-void checkAdu5PAT();
-void checkAdu5SAT();
-void checkHk();
-void checkEvent();
-
-
-/*Global Variables*/
-int gpsTTTNumber=100;
-int gpsPATNumber=100;
-int gpsSATNumber=100;
-int hkNumber=100;
-int eventBodyNumber=1;
-int eventHeaderNumber=100;
-int gzipGps=1;
-int gzipHk=1;
-int gzipEventBody=1;
-int gzipEventHeader=1;
-int printToScreen=1;
-int useSecondDisk=0;
-
-/* Directories and gubbins */
+// Directories and gubbins 
 char archivedPidFile[FILENAME_MAX];
-char archivedMainDisk[FILENAME_MAX];
-char archivedSecondDisk[FILENAME_MAX];
-char archivedGpsAdu5TTTDir[FILENAME_MAX];
-char archivedGpsAdu5PATDir[FILENAME_MAX];
-char archivedGpsAdu5SATDir[FILENAME_MAX];
-char archivedEventDir[FILENAME_MAX];
-char archivedHkDir[FILENAME_MAX];
-char archivedCalibDir[FILENAME_MAX];
-char gpsdAdu5TTTArchiveDir[FILENAME_MAX];
-char gpsdAdu5TTTArchiveLinkDir[FILENAME_MAX];
-char gpsdAdu5PATArchiveDir[FILENAME_MAX];
-char gpsdAdu5PATArchiveLinkDir[FILENAME_MAX];
-char gpsdAdu5SATArchiveDir[FILENAME_MAX];
-char gpsdAdu5SATArchiveLinkDir[FILENAME_MAX];
-char hkdArchiveDir[FILENAME_MAX];
-char hkdArchiveLinkDir[FILENAME_MAX];
-char prioritizerdArchiveDir[FILENAME_MAX];
-char prioritizerdArchiveLinkDir[FILENAME_MAX];
+char prioritizerdEventDir[FILENAME_MAX];
+char prioritizerdEventLinkDir[FILENAME_MAX];
+char mainEventArchivePrefix[FILENAME_MAX];
+char backupEventArchivePrefix[FILENAME_MAX];
+char currentEventIndex[FILENAME_MAX];
+char currentEventDir[FILENAME_MAX];
+char currentEventBackupDir[FILENAME_MAX];
+int priorityEncodingVal[NUM_PRIORITIES];
+float priorityFractionRaw[NUM_PRIORITIES];
+char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
+char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
+int useBackupDisk=1;
+int useGzip=1;
+
+int eventEpoch=-1000;
+
+//Event Structures
+AnitaEventHeader_t theHead;
+AnitaEventBody_t theBody;
+
+//Encoding Buffer
+unsigned char outputBuffer[MAX_WAVE_BUFFER];
+
+int printToScreen=0;
+int verbosity=0;
+
 
 int main (int argc, char *argv[])
 {
-    int retVal;
+    int retVal,pk;
     char *tempString;
     /* Config file thingies */
     int status=0;
     char* eString ;
 
-    char tempDir[FILENAME_MAX];
     
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -103,286 +87,104 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
 	    fprintf(stderr,"Couldn't get archivedPidFile\n");
 	}
-	tempString=kvpGetString("archivedMainDisk");
+	makeDirectories(prioritizerdEventDir);
+	tempString=kvpGetString("baseEventArchivePrefix");
 	if(tempString) {
-	    strncpy(archivedMainDisk,tempString,FILENAME_MAX-1);	    
-	    makeDirectories(archivedMainDisk);
+	    sprintf(mainEventArchivePrefix,"%s/%s",MAIN_DATA_DISK_LINK,
+		    tempString);
+	    sprintf(backupEventArchivePrefix,"%s/%s",BACKUP_DATA_DISK_LINK,
+		    tempString);	    
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get archivedMainDisk");
-	    fprintf(stderr,"Couldn't get archivedMainDisk\n");
-	    exit(0);
+	    syslog(LOG_ERR,"Couldn't get baseEventArchivePrefix");
+	    fprintf(stderr,"Couldn't get baseEventArchivePrefix\n");
 	}
-	tempString=kvpGetString("archivedSecondDisk");
+	tempString=kvpGetString("prioritizerdEventDir");
 	if(tempString) {
-	    strncpy(archivedSecondDisk,tempString,FILENAME_MAX-1);
-	    makeDirectories(archivedSecondDisk);
+	    strncpy(prioritizerdEventDir,tempString,FILENAME_MAX-1);
+	    sprintf(prioritizerdEventLinkDir,"%s/link",tempString);
+	    makeDirectories(prioritizerdEventLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get archivedSecondDisk");
-	    fprintf(stderr,"Couldn't get archivedSecondDisk\n");
-	    exit(0);
+	    syslog(LOG_ERR,"Couldn't get prioritizerdEventDir");
+	    fprintf(stderr,"Couldn't get prioritizerdEventDir\n");
 	}
-	tempString=kvpGetString("archivedGpsAdu5TTTDir");
-	if(tempString) {
-	    strncpy(archivedGpsAdu5TTTDir,tempString,FILENAME_MAX-1);
-	    sprintf(tempDir,"%s/%s",archivedMainDisk,archivedGpsAdu5TTTDir);
-	    makeDirectories(tempDir);
-	    if(useSecondDisk) {
-		sprintf(tempDir,"%s/%s",
-			archivedSecondDisk,archivedGpsAdu5TTTDir);
-		makeDirectories(tempDir);
-	    }
-		
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedGpsAdu5TTTDir");
-	    fprintf(stderr,"Couldn't get archivedGpsAdu5TTTDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("archivedGpsAdu5PATDir");
-	if(tempString) {
-	    strncpy(archivedGpsAdu5PATDir,tempString,FILENAME_MAX-1);
-	    sprintf(tempDir,"%s/%s",archivedMainDisk,archivedGpsAdu5PATDir);
-	    makeDirectories(tempDir);
-	    if(useSecondDisk) {
-		sprintf(tempDir,"%s/%s",
-			archivedSecondDisk,archivedGpsAdu5PATDir);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedGpsAdu5PATDir");
-	    fprintf(stderr,"Couldn't get archivedGpsAdu5PATDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("archivedGpsAdu5SATDir");
-	if(tempString) {
-	    strncpy(archivedGpsAdu5SATDir,tempString,FILENAME_MAX-1);
-	    sprintf(tempDir,"%s/%s",archivedMainDisk,archivedGpsAdu5SATDir);
-	    makeDirectories(tempDir);
-	    if(useSecondDisk) {
-		sprintf(tempDir,"%s/%s",
-			archivedSecondDisk,archivedGpsAdu5SATDir);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedGpsAdu5SATDir");
-	    fprintf(stderr,"Couldn't get archivedGpsAdu5SATDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("archivedEventDir");
-	if(tempString) {
-	    strncpy(archivedEventDir,tempString,FILENAME_MAX-1);
-	    sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir);
-	    makeDirectories(tempDir);
-	    if(useSecondDisk) {
-		sprintf(tempDir,"%s/%s",
-			archivedSecondDisk,archivedEventDir);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedEventDir");
-	    fprintf(stderr,"Couldn't get archivedEventDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("archivedHkDir");
-	if(tempString) {
-	    strncpy(archivedHkDir,tempString,FILENAME_MAX-1);
-	    sprintf(tempDir,"%s/%s",archivedMainDisk,archivedHkDir);
-	    makeDirectories(tempDir);
-	    if(useSecondDisk) {
-		sprintf(tempDir,"%s/%s",
-			archivedSecondDisk,archivedHkDir);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedHkDir");
-	    fprintf(stderr,"Couldn't get archivedHkDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("archivedCalibDir");
-	if(tempString) {
-	    strncpy(archivedCalibDir,tempString,FILENAME_MAX-1);
-	    sprintf(tempDir,"%s/%s",archivedMainDisk,archivedCalibDir);
-	    makeDirectories(tempDir);
-	    if(useSecondDisk) {
-		sprintf(tempDir,"%s/%s",
-			archivedSecondDisk,archivedCalibDir);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedCalibDir");
-	    fprintf(stderr,"Couldn't get archivedCalibDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("gpsdAdu5TTTArchiveDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5TTTArchiveDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(gpsdAdu5TTTArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5TTTArchiveDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5TTTArchiveDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("gpsdAdu5TTTArchiveLinkDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5TTTArchiveLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(gpsdAdu5TTTArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5TTTArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5TTTArchiveLinkDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("gpsdAdu5PATArchiveDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5PATArchiveDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(gpsdAdu5PATArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5PATArchiveDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5PATArchiveDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("gpsdAdu5PATArchiveLinkDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5PATArchiveLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(gpsdAdu5PATArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5PATArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5PATArchiveLinkDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("gpsdAdu5SATArchiveDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5SATArchiveDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(gpsdAdu5SATArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5SATArchiveDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5SATArchiveDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("gpsdAdu5SATArchiveLinkDir");
-	if(tempString) {
-	    strncpy(gpsdAdu5SATArchiveLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(gpsdAdu5SATArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdAdu5SATArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get gpsdAdu5SATArchiveLinkDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("hkdArchiveDir");
-	if(tempString) {
-	    strncpy(hkdArchiveDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(hkdArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkdArchiveDir");
-	    fprintf(stderr,"Couldn't get hkdArchiveDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("hkdArchiveLinkDir");
-	if(tempString) {
-	    strncpy(hkdArchiveLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(hkdArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkdArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get hkdArchiveLinkDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("prioritizerdArchiveDir");
-	if(tempString) {
-	    strncpy(prioritizerdArchiveDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdArchiveDir");
-	    fprintf(stderr,"Couldn't get prioritizerdArchiveDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("prioritizerdArchiveLinkDir");
-	if(tempString) {
-	    strncpy(prioritizerdArchiveLinkDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(prioritizerdArchiveLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdArchiveLinkDir");
-	    fprintf(stderr,"Couldn't get prioritizerdArchiveLinkDir\n");
-	    exit(0);
-	}
+	useBackupDisk=kvpGetInt("useUsbDisks",1);
 
+	tempString=kvpGetString("baseEventTelemDir");
+	if(tempString) {
+	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
+		sprintf(eventTelemDirs[pk],"%s/pk%d",tempString,pk);
+		sprintf(eventTelemLinkDirs[pk],"%s/link",eventTelemDirs[pk]);
+		printf("%d %s %s\n",pk,eventTelemDirs[pk],eventTelemLinkDirs[pk]);
+		makeDirectories(eventTelemLinkDirs[pk]);
+	    }
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
+	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
+	    exit(0);
+	}
+				
     }
     
 
     retVal=0;
     /* Main event getting loop. */
-
     do {
 	if(printToScreen) printf("Initalizing Archived\n");
 	retVal=readConfigFile();
 	if(retVal<0) {
-	    syslog(LOG_ERR,"Problem reading GPSd.config");
-	    printf("Problem reading GPSd.config\n");
-	    exit(1);
+	    syslog(LOG_ERR,"Problem reading Archived.config");
+	    printf("Problem reading Archived.config\n");
 	}
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
-	    checkAdu5TTT();
-	    checkAdu5PAT();
-	    checkAdu5SAT();
-	    checkHk();
-	    checkEvent();
-	    usleep(1);
+	    checkEvents();
+	    usleep(100);
 	}
     } while(currentState==PROG_STATE_INIT);    
     return 0;
 }
 
 
-void executeCommand(char *tarCommand) {
-    if(printToScreen) printf("%s\n\n",tarCommand);
-    int retVal=system(tarCommand);
-    if(retVal<0) {
-	syslog(LOG_ERR,"Archived problem tarring");
-	fprintf(stderr,"Archived problem tarring\n");
-    }
-
-}
-
 
 int readConfigFile() 
 /* Load Archived config stuff */
 {
     /* Config file thingies */
-    int status=0;
+    int status=0,tempNum=0;
     char* eString ;
+    KvpErrorCode kvpStatus;
     kvpReset();
     status = configLoad ("Archived.config","archived") ;
     status += configLoad ("Archived.config","output") ;
 
     if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",0);
-	gpsTTTNumber=kvpGetInt("gpsTTTNumber",100);
-	gpsPATNumber=kvpGetInt("gpsPATNumber",100);
-	gpsSATNumber=kvpGetInt("gpsSATNumber",100);
-	hkNumber=kvpGetInt("hkNumber",100);
-	eventBodyNumber=kvpGetInt("eventBodyNumber",1);
-	eventHeaderNumber=kvpGetInt("eventHeaderNumber",100);
-	gzipGps=kvpGetInt("gzipGps",1);
-	gzipHk=kvpGetInt("gzipHk",1);
-	gzipEventBody=kvpGetInt("gzipEventBody",1);
-	gzipEventHeader=kvpGetInt("gzipEventHeader",1);
-	useSecondDisk=kvpGetInt("useSecondDisk",0);
+	verbosity=kvpGetInt("verbosity",0);
+	useGzip=kvpGetInt("useGzip",1);
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priorityEncodingVal",
+				   priorityEncodingVal,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityEncodingVal): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityEncodingVal): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=10;
+	kvpStatus = kvpGetFloatArray("priorityFractionRaw",
+				     priorityFractionRaw,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionRaw): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityFractionRaw): %s\n",
+			kvpErrorString(kvpStatus));
+	}
     }
     else {
 	eString=configErrorString (status) ;
@@ -392,129 +194,34 @@ int readConfigFile()
     return status;
 }
 
-void checkAdu5TTT() 
+void checkEvents() 
 {
-    int count;
+    int count,retVal;
     /* Directory reading things */
     struct dirent **linkList;
     int numLinks;
 
-    long unixTime,subTime;
-    char currentFilename[FILENAME_MAX];
+    char currentHeadname[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-    char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
-    char gzipCommand[FILENAME_MAX];
-    char gzipFile[FILENAME_MAX];
-    char tempDir[FILENAME_MAX];
+    char currentBodyname[FILENAME_MAX];
 
-    numLinks=getListofLinks(gpsdAdu5TTTArchiveLinkDir,&linkList);
-    if(printToScreen) printf("Found %d links\n",numLinks);
-    if(numLinks>gpsTTTNumber) {
-	//Do something
-	sscanf(linkList[0]->d_name,
-	       "gps_%ld_%ld.dat",&unixTime,&subTime);
-	sprintf(tarCommand,"cd %s ; tar -cf /tmp/adu5ttt%ld_%ld.tar ",gpsdAdu5TTTArchiveDir,unixTime,subTime);
-	
-	for(count=0;count<numLinks;count++) {
-	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
-//		    printf("%s\n",tarCommand);
-		executeCommand(tarCommand);
-		sprintf(tarCommand,"cd %s ; tar -rf /tmp/adu5ttt%ld_%ld.tar ",gpsdAdu5TTTArchiveDir,unixTime,subTime);
-	    }	
-	    strcat(tarCommand,linkList[count]->d_name);
-	    strcat(tarCommand," ");
-		
-	}
-	executeCommand(tarCommand);	   
-	if(gzipGps) {
-	    sprintf(gzipCommand,"gzip /tmp/adu5ttt%ld_%ld.tar",unixTime,subTime);
-	    executeCommand(gzipCommand);
-	    sprintf(gzipFile,"/tmp/adu5ttt%ld_%ld.tar.gz",unixTime,subTime);		
-	}
-	else sprintf(gzipFile,"/tmp/adu5ttt%ld_%ld.tar",unixTime,subTime);
-	if(useSecondDisk) {
-	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedGpsAdu5TTTDir);
-	    copyFile(gzipFile,tempDir);
-	}
-	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedGpsAdu5TTTDir);
-	moveFile(gzipFile,tempDir);
-	    
-//	    exit(0);
-	for(count=0;count<numLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",gpsdAdu5TTTArchiveDir,
-		    linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/%s",gpsdAdu5TTTArchiveLinkDir,
-		    linkList[count]->d_name);
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	}
-    }
-	
+    numLinks=getListofLinks(prioritizerdEventLinkDir,&linkList);
+    if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
+    for(count=0;count<numLinks;count++) {
+	sprintf(currentHeadname,"%s/%s",prioritizerdEventDir,
+		linkList[count]->d_name);
+	sprintf(currentLinkname,"%s/%s",prioritizerdEventLinkDir,
+		linkList[count]->d_name);
+	retVal=fillHeader(&theHead,currentHeadname);
 
-    /* Free up the space used by dir queries */
-    for(count=0;count<numLinks;count++)
-	free(linkList[count]);
-    free(linkList);
-	    
-}
+	sprintf(currentBodyname,"%s/ev_%lu.dat",prioritizerdEventDir,
+		theHead.eventNumber);
+	retVal=fillBody(&theBody,currentBodyname);
 
-
-void checkAdu5PAT() 
-{
-    int count;
-    /* Directory reading things */
-    struct dirent **linkList;
-    int numLinks;
-
-    long unixTime;
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
-    char gzipCommand[FILENAME_MAX];
-    char gzipFile[FILENAME_MAX];
-    char tempDir[FILENAME_MAX];
-
-    numLinks=getListofLinks(gpsdAdu5PATArchiveLinkDir,&linkList);
-    if(printToScreen) printf("Found %d links\n",numLinks);
-    if(numLinks>gpsPATNumber) {
-	//Do something
-	sscanf(linkList[0]->d_name,
-	       "gps_%ld.dat",&unixTime);
-	sprintf(tarCommand,"cd %s ; tar -cf /tmp/adu5pat%ld.tar ",gpsdAdu5PATArchiveDir,unixTime);
-	
-	for(count=0;count<numLinks;count++) {
-	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
-//		    printf("%s\n",tarCommand);
-		executeCommand(tarCommand);
-		sprintf(tarCommand,"cd %s ; tar -rf /tmp/adu5pat%ld.tar ",gpsdAdu5PATArchiveDir,unixTime);
-	    }	
-	    strcat(tarCommand,linkList[count]->d_name);
-	    strcat(tarCommand," ");
-		
-	}
-	executeCommand(tarCommand);	   
-	if(gzipGps) {
-	    sprintf(gzipCommand,"gzip /tmp/adu5pat%ld.tar",unixTime);
-	    executeCommand(gzipCommand);
-	    sprintf(gzipFile,"/tmp/adu5pat%ld.tar.gz",unixTime);		
-	}
-	else sprintf(gzipFile,"/tmp/adu5pat%ld.tar",unixTime);
-
-	if(useSecondDisk) {
-	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedGpsAdu5PATDir);
-	    copyFile(gzipFile,tempDir);
-	}
-	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedGpsAdu5PATDir);
-	moveFile(gzipFile,tempDir);
-//	    exit(0);
-	for(count=0;count<numLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",gpsdAdu5PATArchiveDir,
-		    linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/%s",gpsdAdu5PATArchiveLinkDir,
-		    linkList[count]->d_name);
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	}
+	processEvent();
+	removeFile(currentLinkname);
+	removeFile(currentBodyname);
+	removeFile(currentHeadname);
     }
 	
     /* Free up the space used by dir queries */
@@ -524,335 +231,204 @@ void checkAdu5PAT()
 	    
 }
 
-
-void checkAdu5SAT() 
+void processEvent() 
+// This just fills the buffer with 9 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
 {
-    int count;
-    /* Directory reading things */
-    struct dirent **linkList;
-    int numLinks;
-
-    long unixTime;
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
-    char gzipCommand[FILENAME_MAX];
-    char gzipFile[FILENAME_MAX];
-    char tempDir[FILENAME_MAX];
-
-    numLinks=getListofLinks(gpsdAdu5SATArchiveLinkDir,&linkList);
-    if(printToScreen) printf("Found %d links\n",numLinks);
-    if(numLinks>gpsSATNumber) {
-	//Do something
-	sscanf(linkList[0]->d_name,
-	       "gps_%ld.dat",&unixTime);
-	sprintf(tarCommand,"cd %s ; tar -cf /tmp/adu5sat%ld.tar ",gpsdAdu5SATArchiveDir,unixTime);
-	
-	for(count=0;count<numLinks;count++) {
-	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) {
-//		    printf("%s\n",tarCommand);
-		executeCommand(tarCommand);
-		sprintf(tarCommand,"cd %s ; tar -rf /tmp/adu5sat%ld.tar ",gpsdAdu5SATArchiveDir,unixTime);
-	    }	
-	    strcat(tarCommand,linkList[count]->d_name);
-	    strcat(tarCommand," ");
-		
+    EncodingType_t encType=(EncodingType_t) (theHead.priority & 0xf);    
+    int count=0,surfStart=0;
+    int surf=0;
+    int chan=0;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &outputBuffer[count];
+	surfStart=count;
+	surfHdPtr->eventNumber=theHead.eventNumber;
+	count+=sizeof(EncodedSurfPacketHeader_t);
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    count+=encodeChannel(encType,
+				 &theBody.channel[chan+CHANNELS_PER_SURF*surf],
+				 &outputBuffer[count]);
 	}
-	executeCommand(tarCommand);	   
-	if(gzipGps) {
-	    sprintf(gzipCommand,"gzip /tmp/adu5sat%ld.tar",unixTime);
-	    executeCommand(gzipCommand);
-	    sprintf(gzipFile,"/tmp/adu5sat%ld.tar.gz",unixTime);		
-	}
-	else sprintf(gzipFile,"/tmp/adu5sat%ld.tar",unixTime);
-	if(useSecondDisk) {
-	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedGpsAdu5SATDir);
-	    copyFile(gzipFile,tempDir);
-	}
-	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedGpsAdu5SATDir);
-	moveFile(gzipFile,tempDir); 
-//	    exit(0);
-	for(count=0;count<numLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",gpsdAdu5SATArchiveDir,
-		    linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/%s",gpsdAdu5SATArchiveLinkDir,
-		    linkList[count]->d_name);
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	}
+	//Fill Generic Header_t;
+	fillGenericHeader(surfHdPtr,PACKET_ENC_SURF,(count-surfStart));
+							 
     }
-	
-    /* Free up the space used by dir queries */
-    for(count=0;count<numLinks;count++)
-	free(linkList[count]);
-    free(linkList);
-	    
+
+    writeOutput(count);
+    
+
 }
 
-
-void checkHk() 
+int encodeChannel(EncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer) 
 {
-    int count;
-    /* Directory reading things */
-    struct dirent **linkList;
-    int numLinks;
-
-    long unixTime;
-    long unixTimeUs;
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
-//    char gzipCommand[FILENAME_MAX];
-    char gzipFile[FILENAME_MAX];
-    char tempDir[FILENAME_MAX];
-//    char *testString
-
-    numLinks=getListofLinks(hkdArchiveLinkDir,&linkList);
-    if(printToScreen) printf("Found %d links\n",numLinks);
-    if(numLinks>hkNumber) {
-	//Do something
-	
-	if(strstr(linkList[0]->d_name,"raw"))
-	   sscanf(linkList[0]->d_name,
-		  "hk_%ld_%ld.raw.dat",&unixTime,&unixTimeUs);
-	if(strstr(linkList[0]->d_name,"cal"))
-	   sscanf(linkList[0]->d_name,
-		  "hk_%ld_%ld.raw.dat",&unixTime,&unixTimeUs);
-	if(strstr(linkList[0]->d_name,"avz"))
-	   sscanf(linkList[0]->d_name,
-		  "hk_%ld_%ld.raw.dat",&unixTime,&unixTimeUs);
-	
-	sprintf(tarCommand,"cd %s ; tar -czf /tmp/hk%ld_%ld.tar.gz hk*",hkdArchiveDir,unixTime,unixTimeUs);
- 	executeCommand(tarCommand);
-
-	sprintf(gzipFile,"/tmp/hk%ld_%ld.tar.gz",unixTime,unixTimeUs);
-	if(useSecondDisk) {
-	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedHkDir);
-	    copyFile(gzipFile,tempDir);
-	}
-	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedHkDir);
-	moveFile(gzipFile,tempDir); 
-//	    exit(0);
-	for(count=0;count<numLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",hkdArchiveDir,
-		    linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/%s",hkdArchiveLinkDir,
-		    linkList[count]->d_name);
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	}
-    }
-	
-    /* Free up the space used by dir queries */
-    for(count=0;count<numLinks;count++)
-	free(linkList[count]);
-    free(linkList);
-	    
+    EncodedSurfChannelHeader_t *chanHdPtr
+	=(EncodedSurfChannelHeader_t*) &buffer[0];
+    int count=0;    
+    int encSize=0;
+    chanHdPtr->rawHdr=chanPtr->header;
+    count+=sizeof(EncodedSurfChannelHeader_t);
+    
+    switch(encType) {
+	case ENCODE_NONE:
+	    encSize=encodeWaveNone(&buffer[count],chanPtr);
+	    break;
+	default:
+	    encType=ENCODE_NONE;
+	    encSize=encodeWaveNone(&buffer[count],chanPtr);
+	    break;	    
+    }    
+    chanHdPtr->numBytes=encSize;
+    chanHdPtr->crc=simpleCrcShort((unsigned short*)&buffer[count],
+				  encSize);
+    return (count+encSize);        
 }
 
-
-void checkEvent() 
-{
-    int count;
-    /* Directory reading things */
-    struct dirent **linkList;
-    int numLinks;
-//    FILE *testfp;
-
-    long eventNumber;
-    long bodyEventNumber;
-    char currentHeaderName[FILENAME_MAX];
-    char currentBodyName[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND];
-    char gzipCommand[FILENAME_MAX];
-    char gzipFile[FILENAME_MAX];
-    char tempDir[FILENAME_MAX];
-//    char *testString
-
-    numLinks=getListofLinks(prioritizerdArchiveLinkDir,&linkList);
-    if(printToScreen) printf("Found %d links\n",numLinks);
-    if(numLinks>eventHeaderNumber) {
-	//Do something
-	sscanf(linkList[0]->d_name,
-	       "hd_%ld.dat",&eventNumber);	
-		
-	sprintf(tarCommand,"cd %s ; tar -czf /tmp/header%ld.tar.gz hd*",prioritizerdArchiveDir,eventNumber);
- 	executeCommand(tarCommand);
-	sprintf(tarCommand,"cd %s ; tar -czf /tmp/body%ld.tar.gz ev*",prioritizerdArchiveDir,eventNumber);
- 	executeCommand(tarCommand);
-	
-
-/* 	for(count=0;count<numLinks;count++) { */
-	    
-/* 	    sscanf(linkList[count]->d_name, */
-/* 	       "hd_%ld.dat",&bodyEventNumber); */
-/* 	    //First zip up event file */
-/* 	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir, */
-/* 		    bodyEventNumber);	     */
-/* 	    testfp=fopen(currentBodyName,"rb"); */
-/* 	    if(testfp) { */
-/* 		fclose(testfp); */
-/* 		//Do something */
-/* 		if(gzipEventBody) { */
-/* 		    sprintf(gzipCommand,"gzip %s",currentBodyName); */
-/* 		    executeCommand(gzipCommand); */
-/* 		    strcat(currentBodyName,".gz"); */
-/* 		} */
-/* 		if(useSecondDisk) { */
-/* 		    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); */
-/* 		    copyFile(currentBodyName,tempDir); */
-/* 		} */
-/* 		sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); */
-/* 		moveFile(currentBodyName,tempDir); */
-/* 	    } */
-
-/* 	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) { */
-/* //		    printf("%s\n",tarCommand); */
-/* 		executeCommand(tarCommand); */
-/* 		sprintf(tarCommand,"cd %s ; tar -rf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber); */
-/* 	    }	 */
-/* 	    strcat(tarCommand,linkList[count]->d_name); */
-/* 	    strcat(tarCommand," "); */
-		
-/* 	} */
-/* 	executeCommand(tarCommand);	    */
-/* 	if(gzipEventHeader) { */
-/* 	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber); */
-/* 	    executeCommand(gzipCommand); */
-/* 	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		 */
-/* 	} */
-/* 	else */
-	sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber); 
- 	if(useSecondDisk) { 
- 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); 
- 	    copyFile(gzipFile,tempDir); 
- 	} 
- 	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); 
- 	moveFile(gzipFile,tempDir); 
-	sprintf(gzipFile,"/tmp/body%ld.tar.gz",eventNumber); 
- 	if(useSecondDisk) { 
- 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); 
- 	    copyFile(gzipFile,tempDir); 
- 	} 
- 	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); 
- 	moveFile(gzipFile,tempDir);  
-	
-
-/* //	    exit(0); */
+int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {    
+    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
+    memcpy(buffer,chanPtr->data,encSize);
+    return encSize;
+}
+    
 
 
-	for(count=0;count<numLinks;count++) {
-	    sprintf(currentHeaderName,"%s/%s",prioritizerdArchiveDir,
-		    linkList[count]->d_name);
-	    sprintf(currentLinkname,"%s/%s",prioritizerdArchiveLinkDir,
-		    linkList[count]->d_name);
-	    sscanf(linkList[count]->d_name, 
-		   "hd_%ld.dat",&bodyEventNumber); 
- 	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir, 
- 		    bodyEventNumber);	   
-	    unlink(currentLinkname);
-	    unlink(currentHeaderName);
-	    unlink(currentBodyName);
+void writeOutput(int numBytes) {
+    char headName[FILENAME_MAX];
+    char bodyName[FILENAME_MAX];
+    char realHeadName[FILENAME_MAX];
+    char realBodyName[FILENAME_MAX];
+    char realBackupHeadName[FILENAME_MAX];
+    char realBackupBodyName[FILENAME_MAX];    
+    char mainDiskDir[FILENAME_MAX];
+    char backupDiskDir[FILENAME_MAX];
+    
+
+    int len;
+    FILE *fpNorm;
+    FILE *fpIndex;
+    gzFile fpZip;
+    int numThings=0;
+    int pri=theHead.priority&0xf;
+
+    
+
+    if(pri>9) pri=9;
+
+    //Get real disk names for index and telem
+    if ((len = readlink(MAIN_DATA_DISK_LINK, mainDiskDir, FILENAME_MAX-1)) != -1)
+	mainDiskDir[len] = '\0';
+    if ((len = readlink(BACKUP_DATA_DISK_LINK,backupDiskDir, FILENAME_MAX-1)) != -1)
+	backupDiskDir[len] = '\0';	
+
+//    fprintf(stderr,"%s %s\n",mainDiskDir,backupDiskDir);
+//    fprintf(stderr,"%d %d\n",strlen(MAIN_DATA_DISK_LINK),strlen(BACKUP_DATA_DISK_LINK));
+
+    if((theHead.eventNumber>eventEpoch+MAX_EVENTS_PER_DIR) || 
+       theHead.eventNumber<eventEpoch) {
+	//Need to make directories
+	eventEpoch=MAX_EVENTS_PER_DIR*(int)(theHead.eventNumber/MAX_EVENTS_PER_DIR);
+	sprintf(currentEventDir,"%s%d",mainEventArchivePrefix,eventEpoch);
+	sprintf(currentEventBackupDir,"%s%d",
+		backupEventArchivePrefix,eventEpoch);
+	makeDirectories(currentEventDir);
+	sprintf(currentEventIndex,"%s/ev%d.txt",EVENT_LINK_INDEX,eventEpoch);
+	if(useBackupDisk)
+	    makeDirectories(currentEventBackupDir);
+    }
+
+    if(useBackupDisk) {
+	sprintf(headName,"%s/hd_%ld.dat",
+		currentEventBackupDir,theHead.eventNumber);
+	sprintf(bodyName,"%s/ev_%ld.dat",
+		currentEventBackupDir,theHead.eventNumber);
+	sprintf(realBackupHeadName,"%s%s",backupDiskDir,&headName[strlen(BACKUP_DATA_DISK_LINK)]);
+	sprintf(realBackupBodyName,"%s%s",backupDiskDir,&bodyName[strlen(BACKUP_DATA_DISK_LINK)]);
+
+	writeHeader(&theHead,headName);
+	if(!useGzip) {
+	    fpNorm = fopen(bodyName,"wb");
+	    if(!fpNorm) {
+		syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName,
+		       strerror(errno));
+		fprintf(stderr,"Error Opening File %s -- %s\n",bodyName,
+		       strerror(errno));
+	    }
+	    else {
+		numThings=fwrite(outputBuffer,numBytes,1,fpNorm);
+		fclose(fpNorm);
+	    }
+	}
+	else {
+	    strcat(bodyName,".gz");
+	    fpZip = gzopen(bodyName,"wb");
+	    if(!fpZip) {
+		syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
+		       ,strerror(errno));
+		fprintf(stderr,"Error Opening File %s -- %s\n",bodyName
+		       ,strerror(errno));
+	    }
+	    else {
+		numThings=gzwrite(fpZip,outputBuffer,numBytes);
+		gzclose(fpZip);
+	    }	    
+	}
+
+    }
+
+
+    sprintf(headName,"%s/hd_%ld.dat",currentEventDir,theHead.eventNumber);
+    sprintf(bodyName,"%s/ev_%ld.dat",currentEventDir,theHead.eventNumber);
+    sprintf(realHeadName,"%s%s",mainDiskDir,&headName[strlen(MAIN_DATA_DISK_LINK)]);
+    sprintf(realBodyName,"%s%s",mainDiskDir,&bodyName[strlen(MAIN_DATA_DISK_LINK)]);
+    writeHeader(&theHead,headName);
+    if(!useGzip) {
+	fpNorm = fopen(bodyName,"wb");
+	if(!fpNorm) {
+	    syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
+		   ,strerror(errno));
+	    fprintf(stderr,"Error Opening File %s -- %s\n",bodyName
+		    ,strerror(errno));
+	}
+	else {
+	    numThings=fwrite(outputBuffer,numBytes,1,fpNorm);
+	    fclose(fpNorm);
 	}
     }
-	
-    /* Free up the space used by dir queries */
-    for(count=0;count<numLinks;count++)
-	free(linkList[count]);
-    free(linkList);
-	    
+    else {
+	strcat(bodyName,".gz");
+	fpZip = gzopen(bodyName,"wb");
+	if(!fpZip) {
+	    syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
+		   ,strerror(errno));
+	    fprintf(stderr,"Error Opening File %s -- %s\n",bodyName
+		    ,strerror(errno));
+	}
+	else {
+	    numThings=gzwrite(fpZip,outputBuffer,numBytes);
+	    gzclose(fpZip);
+	}	    
+    }	
+    
+    
+    fpIndex = fopen(currentEventIndex,"aw");
+//    fprintf(stderr,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
+//	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
+    fprintf(fpIndex,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
+	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
+    fclose(fpIndex);
+	   
+
+    makeLink(realBodyName,eventTelemDirs[pri]);
+    makeLink(realHeadName,eventTelemLinkDirs[pri]);
+ 
 }
 
+unsigned short simpleCrcShort(unsigned short *p, unsigned long n)
+{
 
-/* void checkEvent()  */
-/* { */
-/*     int count; */
-/*     /\* Directory reading things *\/ */
-/*     struct dirent **linkList; */
-/*     int numLinks; */
-/*     FILE *testfp; */
-
-/*     long eventNumber; */
-/*     long bodyEventNumber; */
-/*     char currentHeaderName[FILENAME_MAX]; */
-/*     char currentBodyName[FILENAME_MAX]; */
-/*     char currentLinkname[FILENAME_MAX]; */
-/*     char tarCommand[FILENAME_MAX*MAX_FILES_PER_COMMAND]; */
-/*     char gzipCommand[FILENAME_MAX]; */
-/*     char gzipFile[FILENAME_MAX]; */
-/*     char tempDir[FILENAME_MAX]; */
-/* //    char *testString */
-
-/*     numLinks=getListofLinks(prioritizerdArchiveLinkDir,&linkList); */
-/*     if(printToScreen) printf("Found %d links\n",numLinks); */
-/*     if(numLinks>eventHeaderNumber) { */
-/* 	//Do something */
-/* 	sscanf(linkList[0]->d_name, */
-/* 	       "hd_%ld.dat",&eventNumber);	 */
-		
-/* 	sprintf(tarCommand,"cd %s ; tar -cf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber); */
-	
-/* 	for(count=0;count<numLinks;count++) { */
-	    
-/* 	    sscanf(linkList[count]->d_name, */
-/* 	       "hd_%ld.dat",&bodyEventNumber); */
-/* 	    //First zip up event file */
-/* 	    sprintf(currentBodyName,"%s/ev_%ld.dat",prioritizerdArchiveDir, */
-/* 		    bodyEventNumber);	     */
-/* 	    testfp=fopen(currentBodyName,"rb"); */
-/* 	    if(testfp) { */
-/* 		fclose(testfp); */
-/* 		//Do something */
-/* 		if(gzipEventBody) { */
-/* 		    sprintf(gzipCommand,"gzip %s",currentBodyName); */
-/* 		    executeCommand(gzipCommand); */
-/* 		    strcat(currentBodyName,".gz"); */
-/* 		} */
-/* 		if(useSecondDisk) { */
-/* 		    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); */
-/* 		    copyFile(currentBodyName,tempDir); */
-/* 		} */
-/* 		sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); */
-/* 		moveFile(currentBodyName,tempDir); */
-/* 	    } */
-
-/* 	    if((((count)%MAX_FILES_PER_COMMAND)==0) && count) { */
-/* //		    printf("%s\n",tarCommand); */
-/* 		executeCommand(tarCommand); */
-/* 		sprintf(tarCommand,"cd %s ; tar -rf /tmp/header%ld.tar ",prioritizerdArchiveDir,eventNumber); */
-/* 	    }	 */
-/* 	    strcat(tarCommand,linkList[count]->d_name); */
-/* 	    strcat(tarCommand," "); */
-		
-/* 	} */
-/* 	executeCommand(tarCommand);	    */
-/* 	if(gzipEventHeader) { */
-/* 	    sprintf(gzipCommand,"gzip /tmp/header%ld.tar",eventNumber); */
-/* 	    executeCommand(gzipCommand); */
-/* 	    sprintf(gzipFile,"/tmp/header%ld.tar.gz",eventNumber);		 */
-/* 	} */
-/* 	else sprintf(gzipFile,"/tmp/header%ld.tar",eventNumber); */
-/* 	if(useSecondDisk) { */
-/* 	    sprintf(tempDir,"%s/%s",archivedSecondDisk,archivedEventDir); */
-/* 	    copyFile(gzipFile,tempDir); */
-/* 	} */
-/* 	sprintf(tempDir,"%s/%s",archivedMainDisk,archivedEventDir); */
-/* 	moveFile(gzipFile,tempDir);  */
-/* //	    exit(0); */
-/* 	for(count=0;count<numLinks;count++) { */
-/* 	    sprintf(currentHeaderName,"%s/%s",prioritizerdArchiveDir, */
-/* 		    linkList[count]->d_name); */
-/* 	    sprintf(currentLinkname,"%s/%s",prioritizerdArchiveLinkDir, */
-/* 		    linkList[count]->d_name); */
-/* 	    removeFile(currentLinkname); */
-/* 	    removeFile(currentHeaderName); */
-/* 	} */
-/*     } */
-	
-/*     /\* Free up the space used by dir queries *\/ */
-/*     for(count=0;count<numLinks;count++) */
-/* 	free(linkList[count]); */
-/*     free(linkList); */
-	    
-/* } */
+    unsigned short sum = 0;
+    unsigned long i;
+    for (i=0L; i<n; i++) {
+	sum += *p++;
+    }
+    return ((0xffff - sum) + 1);
+}

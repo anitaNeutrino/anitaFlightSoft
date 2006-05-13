@@ -34,7 +34,6 @@ float gaussianRand(float mean, float stdev);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 
 // Config Thingies
-char eventTelemDirBase[FILENAME_MAX];
 char cmdTelemDir[FILENAME_MAX];
 char hkTelemDir[FILENAME_MAX];
 char gpsTelemDir[FILENAME_MAX];
@@ -45,6 +44,8 @@ char hkTelemLinkDir[FILENAME_MAX];
 char gpsTelemLinkDir[FILENAME_MAX];
 char monitordTelemLinkDir[FILENAME_MAX];
 char headerTelemLinkDir[FILENAME_MAX];
+char prioritizerdEventDir[FILENAME_MAX];
+char prioritizerdEventLinkDir[FILENAME_MAX];
 
 
 // Data rates
@@ -64,19 +65,15 @@ int turfRateTelemInterval=60;
 // Event structs
 AnitaEventHeader_t theHeader;
 AnitaEventBody_t theBody;
-RawWaveformPacket_t rawWave;
-RawSurfPacket_t rawSurf;
-EncodedWaveformPacket_t encWave;
-EncodedSurfPacketHeader_t encSurfHead;
 
 
 
 
 int main(int argc, char *argv[])
 {
-    int pk;//,retVal;
+//    int pk;//,retVal;
     char *tempString;
-    char tempDir[FILENAME_MAX];
+//    char tempDir[FILENAME_MAX];
 
     /* Config file thingies */
     int status=0;
@@ -107,6 +104,16 @@ int main(int argc, char *argv[])
 	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",60);
 
 	//Output and Link Directories
+	tempString=kvpGetString("prioritizerdEventDir");
+	if(tempString) {
+	    strncpy(prioritizerdEventDir,tempString,FILENAME_MAX-1);
+	    sprintf(prioritizerdEventLinkDir,"%s/link",tempString);
+	    makeDirectories(prioritizerdEventLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get prioritizerdEventDir");
+	    fprintf(stderr,"Couldn't get prioritizerdEventDir\n");
+	}
 	tempString=kvpGetString("baseHouseTelemDir");
 	if(tempString) {
 	    strncpy(monitordTelemDir,tempString,FILENAME_MAX-1);
@@ -177,20 +184,20 @@ int main(int argc, char *argv[])
 	    exit(0);
 	}
 
-	tempString=kvpGetString("baseEventTelemDir");
-	if(tempString) {
-	    strncpy(eventTelemDirBase,tempString,FILENAME_MAX-1);
-	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
-		sprintf(tempDir,"%s/pk%d/link",eventTelemDirBase,pk);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
-	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
-	    exit(0);
-	}
-	strcat(eventTelemDirBase,"/pk");
+/* 	tempString=kvpGetString("baseEventTelemDir"); */
+/* 	if(tempString) { */
+/* 	    strncpy(eventTelemDirBase,tempString,FILENAME_MAX-1); */
+/* 	    for(pk=0;pk<NUM_PRIORITIES;pk++) { */
+/* 		sprintf(tempDir,"%s/pk%d/link",eventTelemDirBase,pk); */
+/* 		makeDirectories(tempDir); */
+/* 	    } */
+/* 	} */
+/* 	else { */
+/* 	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir"); */
+/* 	    fprintf(stderr,"Couldn't get baseEventTelemDir\n"); */
+/* 	    exit(0); */
+/* 	} */
+/* 	strcat(eventTelemDirBase,"/pk"); */
 	
 
 
@@ -233,15 +240,25 @@ int main(int argc, char *argv[])
     int trigType=34;
     
     struct timeval lastAdu5Pat;
+    lastAdu5Pat.tv_sec=0;
     struct timeval lastAdu5Sat;
+    lastAdu5Sat.tv_sec=0;
     struct timeval lastAdu5Vtg;
+    lastAdu5Vtg.tv_sec=0;
     struct timeval lastG12Pos;
+    lastG12Pos.tv_sec=0;
     struct timeval lastG12Sat;
+    lastG12Sat.tv_sec=0;
     struct timeval lastHkCal;
+    lastHkCal.tv_sec=0;
     struct timeval lastHkData;
+    lastHkData.tv_sec=0;
     struct timeval lastMonitor;
+    lastMonitor.tv_sec=0;
     struct timeval lastSurfHk;
+    lastSurfHk.tv_sec=0;
     struct timeval lastTurfRate;
+    lastTurfRate.tv_sec=0;
     struct timeval currentTime;
 
     printf("ADU5 PAT Period %f\n",adu5PatPeriod);
@@ -258,8 +275,10 @@ int main(int argc, char *argv[])
     while(1) {
 	gettimeofday(&currentTime,0);
 //	time(&rawTime);
+
 	
 	//Check last PAT
+//	printf("%d %d\n",lastAdu5Pat.tv_sec,lastAdu5Pat.tv_usec);
 	if(getTimeDiff(lastAdu5Pat,currentTime)>adu5PatPeriod) {
 	    fakeAdu5Pat(&currentTime);
 	    lastAdu5Pat=currentTime;
@@ -329,19 +348,31 @@ void fakeEvent(int trigType)
 {
     int retVal=0;
     char sipdHdFilename[FILENAME_MAX];
+    char archiveFilename[FILENAME_MAX];
     int chan=0;
     int samp=0;
+    float mean=0;
+    float meanSq=0;
     struct timeval timeStruct;
-    static int evNum=1;    
+    static int evNum=1;   
+    static int thePriority=0;
     if(evNum==1){
 	//Fake some data
-	for(chan=0;chan<16;chan++) {
-	    for(samp=0;samp<256;samp++) {
+	for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
+	    mean=0;
+	    meanSq=0;
+	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
 		short value=(short)gaussianRand(2048,200);
-		value+=((evNum%4)<<14);
+//		value+=((evNum%4)<<14);
 		theBody.channel[chan].data[samp]=value;
+		mean+=value;
+		meanSq+=value*value;
 //		printf("%d\t%d\n",samp,theBody.channel[chan].data[samp]);
 	    }
+	    meanSq/=(float)MAX_NUMBER_SAMPLES;
+	    mean/=(float)MAX_NUMBER_SAMPLES;
+	    theBody.channel[chan].header.mean=mean;
+	    theBody.channel[chan].header.rms=sqrt(meanSq-mean*mean);
 	}
     }
     gettimeofday(&timeStruct,NULL);
@@ -354,7 +385,9 @@ void fakeEvent(int trigType)
     theHeader.unixTimeUs=timeStruct.tv_usec;
 //    theHeader.numChannels=16;
     theHeader.eventNumber=evNum;
-    theHeader.priority=3;
+    theHeader.priority=thePriority;
+    thePriority++;
+    if(thePriority>9) thePriority=0;
     evNum++;      
     	    
     /* Write output for SIPd*/	
@@ -363,7 +396,18 @@ void fakeEvent(int trigType)
     if(retVal) 
 	printf("Problem with AnitaEventHeader_t %d\n",retVal);
 
-    writePackets(&theBody,&theHeader);
+//    writePackets(&theBody,&theHeader);
+    
+    //Write body and header for Archived
+    sprintf(archiveFilename,"%s/ev_%lu.dat",prioritizerdEventDir,
+	    theHeader.eventNumber);
+    writeBody(&theBody,archiveFilename);
+    sprintf(archiveFilename,"%s/hd_%lu.dat",prioritizerdEventDir,
+	    theHeader.eventNumber);
+    writeHeader(&theHeader,archiveFilename);
+    makeLink(archiveFilename,prioritizerdEventLinkDir);
+    
+
     
     //Move and link header
     sprintf(sipdHdFilename,"%s/hd_%lu.dat",headerTelemDir,
@@ -383,52 +427,52 @@ float getTimeDiff(struct timeval oldTime, struct timeval currentTime) {
 
 
 
-void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr) 
-{
-/*    int chan; */
-/*    char packetName[FILENAME_MAX]; */
-/*    RawWaveformPacket_t wavePacket; */
-/*     wavePacket.gHdr.code=PACKET_WV; */
-/*     for(chan=0;chan<hdPtr->numChannels;chan++) { */
-/* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan); */
-/* //	printf("Packet: %s\n",packetName); */
-/* 	wavePacket.eventNumber=hdPtr->eventNumber; */
-/* 	wavePacket.packetNumber=chan; */
-/* 	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t)); */
-/* 	writeWaveformPacket(&wavePacket,packetName); */
-/* 	makeLink(packetName,prioritizerdSipdWvLinkDir); */
-/*     } */
-    int retVal;
-    char tempDir[FILENAME_MAX];
-    char tempLinkDir[FILENAME_MAX];
-    int surf;
-    char packetName[FILENAME_MAX];
-    RawSurfPacket_t surfPacket;
-    sprintf(tempDir,"%s%d/",eventTelemDirBase,(int)(hdPtr->priority&0xf));
-    sprintf(tempLinkDir,"%s/link/",tempDir);
+/* void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)  */
+/* { */
+/* /\*    int chan; *\/ */
+/* /\*    char packetName[FILENAME_MAX]; *\/ */
+/* /\*    RawWaveformPacket_t wavePacket; *\/ */
+/* /\*     wavePacket.gHdr.code=PACKET_WV; *\/ */
+/* /\*     for(chan=0;chan<hdPtr->numChannels;chan++) { *\/ */
+/* /\* 	sprintf(packetName,"%s/wvpk_%d_%d.dat",prioritizerdSipdWvDir,hdPtr->eventNumber,chan); *\/ */
+/* /\* //	printf("Packet: %s\n",packetName); *\/ */
+/* /\* 	wavePacket.eventNumber=hdPtr->eventNumber; *\/ */
+/* /\* 	wavePacket.packetNumber=chan; *\/ */
+/* /\* 	memcpy(&(wavePacket.waveform),&(bodyPtr->channel[chan]),sizeof(SurfChannelFull_t)); *\/ */
+/* /\* 	writeWaveformPacket(&wavePacket,packetName); *\/ */
+/* /\* 	makeLink(packetName,prioritizerdSipdWvLinkDir); *\/ */
+/* /\*     } *\/ */
+/*     int retVal; */
+/*     char tempDir[FILENAME_MAX]; */
+/*     char tempLinkDir[FILENAME_MAX]; */
+/*     int surf; */
+/*     char packetName[FILENAME_MAX]; */
+/*     RawSurfPacket_t surfPacket; */
+/*     sprintf(tempDir,"%s%d/",eventTelemDirBase,(int)(hdPtr->priority&0xf)); */
+/*     sprintf(tempLinkDir,"%s/link/",tempDir); */
     
-//    surfPacket.gHdr.code=PACKET_SURF;
-//    surfPacket.gHdr.numBytes=sizeof(RawSurfPacket_t);
-//    surfPacket.gHdr.feByte=0xfe;
-//    surfPacket.gHdr.verId=VER_SURF_PACKET;
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	sprintf(packetName,"%s/surfpk_%lu_%d.dat",tempDir,hdPtr->eventNumber,surf);
-	surfPacket.eventNumber=hdPtr->eventNumber;
-//	surfPacket.packetNumber=surf;
-	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
-	fillGenericHeader(&surfPacket,PACKET_SURF,sizeof(RawSurfPacket_t));    
-	retVal=checkPacket(&surfPacket);
-	if(retVal) 
-	    printf("Problem with RawSurfPacket_t %d\n",retVal);
-	writeSurfPacket(&surfPacket,packetName);
-//	printf("Wrote %s\n",packetName);
-//	makeLink(packetName,tempLinkDir);
-    }
-    //Write and link header
-    sprintf(packetName,"%s/hd_%lu.dat",tempDir,theHeader.eventNumber);
-    writeHeader(&theHeader,packetName);
-    makeLink(packetName,tempLinkDir);
-}
+/* //    surfPacket.gHdr.code=PACKET_SURF; */
+/* //    surfPacket.gHdr.numBytes=sizeof(RawSurfPacket_t); */
+/* //    surfPacket.gHdr.feByte=0xfe; */
+/* //    surfPacket.gHdr.verId=VER_SURF_PACKET; */
+/*     for(surf=0;surf<ACTIVE_SURFS;surf++) { */
+/* 	sprintf(packetName,"%s/surfpk_%lu_%d.dat",tempDir,hdPtr->eventNumber,surf); */
+/* 	surfPacket.eventNumber=hdPtr->eventNumber; */
+/* //	surfPacket.packetNumber=surf; */
+/* 	memcpy(&(surfPacket.waveform[0]),&(bodyPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF); */
+/* 	fillGenericHeader(&surfPacket,PACKET_SURF,sizeof(RawSurfPacket_t));     */
+/* 	retVal=checkPacket(&surfPacket); */
+/* 	if(retVal)  */
+/* 	    printf("Problem with RawSurfPacket_t %d\n",retVal); */
+/* 	writeSurfPacket(&surfPacket,packetName); */
+/* //	printf("Wrote %s\n",packetName); */
+/* //	makeLink(packetName,tempLinkDir); */
+/*     } */
+/*     //Write and link header */
+/*     sprintf(packetName,"%s/hd_%lu.dat",tempDir,theHeader.eventNumber); */
+/*     writeHeader(&theHeader,packetName); */
+/*     makeLink(packetName,tempLinkDir); */
+/* } */
 
 
 void fakeSurfHk(struct timeval *currentTime) {

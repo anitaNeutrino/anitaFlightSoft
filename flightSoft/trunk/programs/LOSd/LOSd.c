@@ -30,6 +30,7 @@ void sendWakeUpBuffer();
 int doWrite();
 int readConfig();
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
+void fillBufferWithHk();
 
 char fakeOutputDir[]="/tmp/fake/los";
 
@@ -37,7 +38,7 @@ char fakeOutputDir[]="/tmp/fake/los";
 char losdPidFile[FILENAME_MAX];
 
 //Packet Dirs
-char eventTelemDirs[FILENAME_MAX][NUM_PRIORITIES];
+char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char headerTelemDir[FILENAME_MAX];
 char cmdTelemDir[FILENAME_MAX];
 char surfHkTelemDir[FILENAME_MAX];
@@ -47,7 +48,7 @@ char gpsTelemDir[FILENAME_MAX];
 char monitorTelemDir[FILENAME_MAX];
 
 //Packet Link Dirs
-char eventTelemLinkDirs[FILENAME_MAX][NUM_PRIORITIES];
+char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 char headerTelemLinkDir[FILENAME_MAX];
 char cmdTelemLinkDir[FILENAME_MAX];
 char surfHkTelemLinkDir[FILENAME_MAX];
@@ -65,6 +66,7 @@ int laptopDebug;
 // Bandwidth variables
 int eventBandwidth=80;
 int priorityBandwidths[NUM_PRIORITIES];
+int eventCounters[NUM_PRIORITIES];
 
 
 /*Global Variables*/
@@ -155,8 +157,7 @@ int main(int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get surfHkTelemSubDir");
 	    fprintf(stderr,"Couldn't get surfHkTelemSubDir\n");
 	}
-	
-	tempString=kvpGetString("turfHkTelemSubDir");
+		tempString=kvpGetString("turfHkTelemSubDir");
 	if(tempString) {
 	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
 	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
@@ -245,254 +246,14 @@ int main(int argc, char *argv[])
 	
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
-//	    tryToSendData();
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
-			 ,cmdTelemDir,cmdTelemLinkDir,sizeof(CommandEcho_t)); 
-	    if(numBytesInBuffer>7000) {
-		doWrite();
-		continue;
-	    }
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
-			 ,monitorTelemDir,monitorTelemLinkDir,sizeof(MonitorStruct_t)); 
-	    if(numBytesInBuffer>7000) {
-		doWrite();
-		continue;
-	    }
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,gpsTelemDir,
-			 gpsTelemLinkDir,sizeof(GpsAdu5SatStruct_t)); 
-	    if(numBytesInBuffer>7000) {
-		doWrite();
-		continue;
-	    }
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,hkTelemDir,
-			 hkTelemLinkDir,sizeof(HkDataStruct_t)); 
-	    if(numBytesInBuffer>7000) {
-		doWrite();
-		continue;
-	    }
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,surfHkTelemDir,
-			 surfHkTelemLinkDir,sizeof(FullSurfHkStruct_t)); 
-	    if(numBytesInBuffer>7000) {
-		doWrite();
-		continue;
-	    }
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,turfHkTelemDir,
-			 turfHkTelemLinkDir,sizeof(TurfRateStruct_t)); 
-	    if(numBytesInBuffer>7000) {
-		doWrite();
-		continue;
-	    }
-	    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,headerTelemDir,
-			 headerTelemLinkDir,sizeof(AnitaEventHeader_t));
-	    if(numBytesInBuffer>4000) {
-		doWrite();
-		continue;
-	    }
-	    
+	    fillBufferWithHk();
 	    usleep(1);
 	}
     } while(currentState==PROG_STATE_INIT);
 
 //    fprintf(stderr, "Bye bye\n");
     return 0;
-}
-
-/* int fillBufferWithPackets()  */
-/* { */
-
-/*     int pk; */
-/*     int retVal,count; */
-/*     int numLinks=0; */
-/*     int filledBuffer=0; */
-/*     int numBytes=0; */
-/*     char currentFilename[FILENAME_MAX]; */
-/*     char currentLinkname[FILENAME_MAX]; */
-/*     int fd; */
-/*     struct dirent **linkList; */
-/*     for(pk=1;pk<numPacketDirs;pk++) { */
-/* 	numLinks=getListofLinks(packetLinkDir[pk],&linkList); */
-/* 	if(numLinks<=0) continue; */
-/* 	if(verbosity) printf("Got %d links in %s\n",numLinks,packetLinkDir[pk]); */
-/* //	if(numLinks) break; */
-	
-/* //	if(numLinks==0) return 0; */
-/* 	//Need to put something here so that it doesn't dick around  */
-/* 	//forever in pk4, when there is data waiting in pk1, etc. */
-/* //    printf("%d links in packet %d\n",numLinks,pk); */
-/* 	/\* Nasty RJN Hack *\/ */
-/* 	if(numLinks>500) { */
-/* 	    for(count=0;count<100;count++) {	     */
-/* 		sprintf(currentFilename,"%s/%s", */
-/* 			packetDir[pk],linkList[count]->d_name); */
-/* 		sprintf(currentLinkname,"%s/%s", */
-/* 			packetLinkDir[pk],linkList[count]->d_name); */
-		
-/* 		removeFile(currentLinkname); */
-/* 		unlink(currentFilename); */
-/* 	    } */
-/* 	} */
-/* 	for(count=0;count<numLinks;count++) */
-/* 	    free(linkList[count]); */
-/* 	free(linkList); */
-/* 	numLinks=getListofLinks(packetLinkDir[pk],&linkList); */
-/* 	if(numLinks<=0) continue; */
-/* 	for(count=numLinks-1;count>=0;count--) { */
-	
-/* 	    sprintf(currentFilename,"%s/%s", */
-/* 		    packetDir[pk],linkList[count]->d_name); */
-/* 	    sprintf(currentLinkname,"%s/%s", */
-/* 		    packetLinkDir[pk],linkList[count]->d_name); */
-/* 	    fd = open(currentFilename,O_RDONLY); */
-/* //	fp = fopen(currentFilename,"rb"); */
-/* 	    if(fd == 0) { */
-/* //	if(fp==NULL) { */
-/* 		syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename); */
-/* 		fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename); */
-		
-/* 		removeFile(currentFilename); */
-/* 		removeFile(currentLinkname); */
-/* 		//Mayhaps we should delete */
-/* 		continue; */
-/* 	    } */
-	    
-	
-	    
-/* 	    if(verbosity>1) {  */
-/* 		printf("Opened file: %s\n",currentFilename); */
-/* 	    } */
-	
-/* 	    numBytes=read(fd,theBuffer,BSIZE); */
-/* 	    if(numBytes<=0) { */
-/* //		removeFile(currentLinkname); */
-/* 		unlink(currentLinkname); */
-/* 		unlink(currentFilename); */
-/* 		continue; */
-/* 	    } */
-/* 	    close (fd); */
-/* 	    retVal=0; */
-/* //	    retVal = los_write((unsigned char *)theBuffer, numBytes); */
-/* 	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0); */
-/* 	    if (retVal < 0) { */
-/* 		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename); */
-/* 		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror()); */
-/* 		break; */
-/* 	    } */
-/* 	    else { */
-/* 		removeFile(currentLinkname); */
-/* 		removeFile(currentFilename); */
-/* //	    unlink(currentLinkname); */
-/* //	    unlink(currentFilename); */
-/* 		if(retVal==0) { */
-/* 		    filledBuffer=1; */
-/* 		    break; */
-/* 		} */
-/* 	    }    	    	     */
-/* 	    if((numLinks-count)>maxPacketsPerDir) break; */
-	    
-/* 	} */
-	
-/* 	for(count=0;count<numLinks;count++) */
-/* 	    free(linkList[count]); */
-/* 	free(linkList); */
-/* 	if(filledBuffer) return 1; */
-/*     } */
-/*     return 0; */
-/* }     */
-    
-
-/* void tryToSendData() */
-/* { */
-/*     int retVal,eventCount; */
-/*     int numEventLinks=0; */
-/*     int numBytes=0; */
-/*     char currentFilename[FILENAME_MAX]; */
-/*     char currentLinkname[FILENAME_MAX]; */
-
-/* //    int numItems=0; */
-/* //    FILE *fp; */
-/*     int fd; */
-/*     struct dirent **eventLinkList; */
-    
-/*     numEventLinks=getListofLinks(eventLinkDir,&eventLinkList); */
-/*     if(verbosity) printf("Got %d links in %s\n",numEventLinks,eventLinkDir); */
-/*     if(!numEventLinks) { */
-/* 	fillBufferWithPackets(); */
-/*     }	 */
-/*     else { */
-/* 	/\* Nasty RJN Hack *\/ */
-/* 	if(numEventLinks>500) { */
-/* 	    for(eventCount=0;eventCount<100;eventCount++) { */
-/* 		sprintf(currentFilename,"%s/%s", */
-/* 			    eventDir,eventLinkList[eventCount]->d_name); */
-/* 		sprintf(currentLinkname,"%s/%s", */
-/* 			eventLinkDir,eventLinkList[eventCount]->d_name); */
-/* 		unlink(currentLinkname); */
-/* 		unlink(currentFilename); */
-/* 	    } */
-/* 	} */
-	
-/* 	for(eventCount=0;eventCount<numEventLinks;eventCount++) */
-/* 	    free(eventLinkList[eventCount]); */
-/* 	free(eventLinkList); */
-/* 	numEventLinks=getListofLinks(eventLinkDir,&eventLinkList); */
-/* 	if(numEventLinks<=0) { */
-/* 	    fillBufferWithPackets(); */
-/* 	    if(numBytesInBuffer) doWrite(); */
-/* 	    return; */
-/* 	} */
-/* 	for(eventCount=numEventLinks-1;eventCount>=0;eventCount--) {	     */
-/* 	    sprintf(currentFilename,"%s/%s", */
-/* 		    eventDir,eventLinkList[eventCount]->d_name); */
-/* 	    sprintf(currentLinkname,"%s/%s", */
-/* 		    eventLinkDir,eventLinkList[eventCount]->d_name); */
-/* 	    fd = open(currentFilename,O_RDONLY); */
-/* 	    if(fd == 0) { */
-/* 		syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename); */
-/* 		fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename);		 */
-/* 		removeFile(currentFilename); */
-/* 		removeFile(currentLinkname); */
-/* 		//Mayhaps we should delete */
-/* 		continue; */
-/* 	    } */
-/* 	    if(verbosity>1) {  */
-/* 		printf("Opened Event File: %s\n",currentFilename); */
-/* 	    } */
-	    
-/* 	    numBytes=read(fd,theBuffer,BSIZE); */
-/* 	    if(numBytes<=0) { */
-/* 		removeFile(currentLinkname); */
-/* 		unlink(currentFilename); */
-/* 		continue; */
-/* 	    } */
-/* 	    close (fd); */
-/* 	    retVal=0; */
-/* //	    retVal = bufferAndWrite((unsigned char *)theBuffer, numBytes,0); */
-/* 	    retVal = los_write((unsigned char *)theBuffer, numBytes); */
-/* //	    retVal = los_write((unsigned char *)theBuffer, numBytes); */
-/* 	    if(verbosity>1) printf("retVal %d\n",retVal); */
-/* 	    if (retVal < 0) { */
-/* 		syslog(LOG_ERR,"Couldn't send file: %s",currentFilename); */
-/* 		fprintf(stderr, "Couldn't telemeterize: %s\n\t%s\n",currentFilename,los_strerror()); */
-/* 		break; */
-/* 	    } */
-/* 	    else { */
-/* 		removeFile(currentLinkname); */
-/* 		removeFile(currentFilename); */
-/* //		unlink(currentFilename); */
-/* //		fillBufferWithPackets(); */
-/* //		if(numBytesInBuffer) doWrite();     */
-/* 	    }    	    	     */
-/* 	    if((numEventLinks-eventCount)>maxEventsInARow) break; */
-/* 	} */
-	
-/* 	for(eventCount=0;eventCount<numEventLinks;eventCount++) */
-/* 	    free(eventLinkList[eventCount]); */
-/* 	free(eventLinkList); */
-/*     } */
-    
-/*     fillBufferWithPackets(); */
-/*     if(numBytesInBuffer) doWrite();  */
-/* } */
+} 
 
 
 int initDevice() {
@@ -625,7 +386,8 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	    continue;
 	}
 //	printf("Read %d bytes from file\n",numBytes);
-	checkPacket(&(losBuffer[numBytesInBuffer]));
+//	Maybe I'll add a packet check here
+//	checkPacket(&(losBuffer[numBytesInBuffer]));
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
 	close (fd);
@@ -655,3 +417,37 @@ void sendWakeUpBuffer()
     
 }
 
+void fillBufferWithHk() 
+{
+
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(CommandEcho_t)) {
+    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
+		 ,cmdTelemDir,cmdTelemLinkDir,sizeof(CommandEcho_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(MonitorStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
+		     ,monitorTelemDir,monitorTelemLinkDir,
+		     sizeof(MonitorStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5SatStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,gpsTelemDir,
+		     gpsTelemLinkDir,sizeof(GpsAdu5SatStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(HkDataStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,hkTelemDir,
+		     hkTelemLinkDir,sizeof(HkDataStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullSurfHkStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,surfHkTelemDir,
+		     surfHkTelemLinkDir,sizeof(FullSurfHkStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(TurfRateStruct_t)) {	
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,turfHkTelemDir,
+		     turfHkTelemLinkDir,sizeof(TurfRateStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,headerTelemDir,
+		     headerTelemLinkDir,sizeof(AnitaEventHeader_t));
+    }        
+    doWrite();	    
+}

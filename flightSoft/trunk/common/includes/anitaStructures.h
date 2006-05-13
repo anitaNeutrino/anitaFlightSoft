@@ -72,8 +72,8 @@ typedef enum {
 } PacketCode_t;
 
 typedef enum {
-    ENCODE_NONE=0x100,
-    ENCODE_SOMETHING
+    ENCODE_NONE=0,
+    ENCODE_SOMETHING=100
 } EncodingType_t;
 
 typedef struct {
