@@ -340,6 +340,8 @@ void writeOutput(int numBytes) {
 		currentEventBackupDir,theHead.eventNumber);
 	sprintf(bodyName,"%s/ev_%ld.dat",
 		currentEventBackupDir,theHead.eventNumber);
+	if(useGzip) 
+	    strcat(bodyName,".gz");
 	sprintf(realBackupHeadName,"%s%s",backupDiskDir,&headName[strlen(BACKUP_DATA_DISK_LINK)]);
 	sprintf(realBackupBodyName,"%s%s",backupDiskDir,&bodyName[strlen(BACKUP_DATA_DISK_LINK)]);
 
@@ -358,7 +360,6 @@ void writeOutput(int numBytes) {
 	    }
 	}
 	else {
-	    strcat(bodyName,".gz");
 	    fpZip = gzopen(bodyName,"wb");
 	    if(!fpZip) {
 		syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
@@ -377,6 +378,9 @@ void writeOutput(int numBytes) {
 
     sprintf(headName,"%s/hd_%ld.dat",currentEventDir,theHead.eventNumber);
     sprintf(bodyName,"%s/ev_%ld.dat",currentEventDir,theHead.eventNumber);
+    if(useGzip)
+	strcat(bodyName,".gz");
+
     sprintf(realHeadName,"%s%s",mainDiskDir,&headName[strlen(MAIN_DATA_DISK_LINK)]);
     sprintf(realBodyName,"%s%s",mainDiskDir,&bodyName[strlen(MAIN_DATA_DISK_LINK)]);
     writeHeader(&theHead,headName);
@@ -394,7 +398,6 @@ void writeOutput(int numBytes) {
 	}
     }
     else {
-	strcat(bodyName,".gz");
 	fpZip = gzopen(bodyName,"wb");
 	if(!fpZip) {
 	    syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
