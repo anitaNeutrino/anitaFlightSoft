@@ -1,4 +1,4 @@
-/* LOSd - Program that talks to sip.
+/* LOSd - Program that sends data ovwer the LOS link.
  *
  * Ryan Nichol, August '05
  * Started off as a modified version of Marty's driver program.
@@ -13,6 +13,7 @@
 #include <libgen.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <zlib.h>
 
 /* Flight soft includes */
 #include "anitaFlight.h"
@@ -31,6 +32,10 @@ int doWrite();
 int readConfig();
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void fillBufferWithHk();
+void readAndSendEvent(char *headerFilename);
+
+
+#define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
 
 char fakeOutputDir[]="/tmp/fake/los";
 
@@ -66,11 +71,15 @@ int laptopDebug;
 // Bandwidth variables
 int eventBandwidth=80;
 int priorityBandwidths[NUM_PRIORITIES];
-int eventCounters[NUM_PRIORITIES];
-
+int eventCounters[NUM_PRIORITIES]={0};
+int priorityOrder[NUM_PRIORITIES*100];
+int maxEventsBetweenLists;
+int numOrders=1000;
+int orderIndex=0;
+int currentPri=0;
 
 /*Global Variables*/
-unsigned char rawBuffer[LOS_MAX_BYTES*5];
+unsigned char eventBuffer[MAX_EVENT_SIZE];
 unsigned char losBuffer[LOS_MAX_BYTES];
 int numBytesInBuffer=0;
 
@@ -86,6 +95,15 @@ int main(int argc, char *argv[])
     char* eString ;
     
     char *progName=basename(argv[0]);
+
+    //Directory listing tools
+    char currentHeader[FILENAME_MAX];
+    int numLinks[NUM_PRIORITIES]={0};
+    int uptoLink[NUM_PRIORITIES]={0};
+    struct dirent **linkList[NUM_PRIORITIES];
+    int sillyEvNum=0;
+    int count=0;
+
    
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
@@ -246,8 +264,34 @@ int main(int argc, char *argv[])
 	
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
+	    currentPri=priorityOrder[orderIndex];	    
+	    if(numLinks[currentPri]<=uptoLink[currentPri] || 
+	       (sillyEvNum-eventCounters[currentPri])>maxEventsBetweenLists) {
+		if(numLinks[currentPri]>uptoLink[currentPri]) {
+		    //Need to free memory
+		    for(count=uptoLink[currentPri];count<numLinks[currentPri];
+			count++) 
+			free(linkList[currentPri][count]);		    
+		    free(linkList[currentPri]);
+		}		
+		numLinks[currentPri]=
+		    getListofLinks(eventTelemLinkDirs[currentPri],
+				   &linkList[currentPri]);		
+		uptoLink[currentPri]=0;
+	    }
+	    if(numLinks[currentPri]>uptoLink[currentPri]) {
+		//Got an event
+		
+		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+			linkList[currentPri][uptoLink[currentPri]]->d_name);
+		readAndSendEvent(currentHeader); //Also deletes
+		free(linkList[currentPri][uptoLink[currentPri]]);
+		uptoLink[currentPri]++;
+	    }
 	    fillBufferWithHk();
 	    usleep(1);
+	    orderIndex++;
+	    if(orderIndex>=numOrders) orderIndex=0;
 	}
     } while(currentState==PROG_STATE_INIT);
 
@@ -287,7 +331,7 @@ int readConfig()
 {
     // Config file thingies
     KvpErrorCode kvpStatus=0;
-    int status=0,tempNum,count;
+    int status=0,tempNum,count,maxVal,maxIndex;
     char* eString ;
     kvpReset();
     status = configLoad ("LOSd.config","output") ;
@@ -320,6 +364,7 @@ int readConfig()
     kvpReset();
     status = configLoad ("LOSd.config","bandwidth") ;
     if(status == CONFIG_E_OK) {
+	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	eventBandwidth=kvpGetInt("eventBandwidth",80);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);
@@ -331,8 +376,38 @@ int readConfig()
 			kvpErrorString(kvpStatus));
 	}
 	else {
-	    for(count=0;count<tempNum;count++) {
+	    for(orderIndex=0;orderIndex<NUM_PRIORITIES*100;orderIndex++) {
+		//Check for hundreds first
+		for(count=0;count<tempNum;count++) {
+		    if(priorityBandwidths[count]>=100) 
+			priorityOrder[orderIndex++]=count;
+		}
 		
+
+		//Next look for highest number
+		maxVal=0;
+		maxIndex=-1;
+		for(count=0;count<tempNum;count++) {
+		    if(priorityBandwidths[count]<100) {
+			if(priorityBandwidths[count]>maxVal) {
+			    maxVal=priorityBandwidths[count];
+			    maxIndex=count;
+			}
+		    }
+		}
+		if(maxIndex>-1) {
+		    priorityOrder[orderIndex]=maxIndex;
+		    priorityBandwidths[maxIndex]--;
+		}
+		else break;
+	    }			
+	    numOrders=orderIndex;
+	    if(printToScreen) {
+		printf("Priority Order\n");
+		for(orderIndex=0;orderIndex<numOrders;orderIndex++) {
+		    printf("%d ",priorityOrder[orderIndex]);
+		}
+		printf("\n");
 	    }
 	}
     }
@@ -450,4 +525,71 @@ void fillBufferWithHk()
 		     headerTelemLinkDir,sizeof(AnitaEventHeader_t));
     }        
     doWrite();	    
+}
+
+
+void readAndSendEvent(char *headerFilename) {
+    AnitaEventHeader_t *theHeader;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,useGzip=0;
+    char waveFilename[FILENAME_MAX];
+    FILE *eventFile;
+    gzFile gzippedEventFile;
+
+    if(printToScreen) printf("Trying file %s\n",headerFilename);
+
+
+    //First check if there is room for the header
+    if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t))
+	doWrite();
+
+    //Next load header
+    theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer];
+    fillHeader(theHeader,headerFilename);
+    numBytesInBuffer+=sizeof(AnitaEventHeader_t);
+
+    //Now get event file
+    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri],
+	    theHeader->eventNumber);
+    eventFile = fopen(waveFilename,"r");
+    if(!eventFile) {
+	sprintf(waveFilename,"%s/ev_%ld.dat.gz",eventTelemDirs[currentPri],
+		theHeader->eventNumber);
+	gzippedEventFile = gzopen(waveFilename,"rb");
+	if(!gzippedEventFile) {
+	    syslog(LOG_ERR,"Couldn't open %s -- %s",waveFilename,strerror(errno));
+	    fprintf(stderr,"Couldn't open %s -- %s\n",waveFilename,strerror(errno));	
+	    removeFile(headerFilename);
+	    removeFile(waveFilename);
+	    return;
+	}
+	useGzip=1;
+    }
+
+    if(useGzip) {
+	numBytes = gzread(gzippedEventFile,eventBuffer,MAX_EVENT_SIZE);
+	gzclose(gzippedEventFile);	
+    }
+    else {
+	numBytes = fread(eventBuffer,1,MAX_EVENT_SIZE,eventFile);
+	fclose(eventFile);
+    }
+    
+    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes)
+		fillBufferWithHk();
+	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
+	    count+=numBytes;
+	}
+	else break;			
+    }
+    if(printToScreen) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
+	        
+    removeFile(headerFilename);
+    removeFile(waveFilename);
+
 }
