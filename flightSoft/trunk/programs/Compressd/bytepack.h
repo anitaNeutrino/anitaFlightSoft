@@ -1,4 +1,11 @@
 #ifndef BYTEPACK_H
 #define BYTEPACK_H
-int bytepack(int n, int m, unsigned short *in, unsigned char *out);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+int bytepack(int n, int m, unsigned int *in, unsigned char *out);
+#ifdef __cplusplus
+}
+#endif
 #endif
