@@ -14,12 +14,15 @@ unpacktest: unpacktest.o fibonacci.o byteunpack.o
 ftest:	ftest.o fibonacci.o
 	gcc -o ftest ftest.o fibonacci.o
 
+btest:  btest.o bifurcate.o fibonacci.o
+	gcc -o btest btest.o bifurcate.o fibonacci.o
+
 clean:
 	/bin/rm -f ftest packtest unpacktest hpacktest *.o	
 
 %.o:	%.cxx
-	$(CXX) $(CXXFLAGS) $(ROOTINC) $(INCDIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 %.o:	%.cxx %.h
-	$(CXX) $(CXXFLAGS) $(ROOTINC) $(INCDIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 

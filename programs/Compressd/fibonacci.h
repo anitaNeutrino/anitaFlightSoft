@@ -4,8 +4,8 @@
 extern "C"
 {
 #endif
-unsigned short fibonacci(unsigned char input);
-unsigned char unfibonacci(unsigned short input);
+unsigned int fibonacci(unsigned short input);
+unsigned short unfibonacci(unsigned int input);
 #ifdef __cplusplus
 }
 #endif

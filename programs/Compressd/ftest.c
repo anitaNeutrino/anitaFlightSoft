@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include "fibonacci.h"
 
+// simple test code for fibonacci.c
 int main(int argc,char* argv[])
 {
-     unsigned char input;
+     unsigned short input;
      if(argc!=2){
 	  fprintf(stderr,"Usage: fibonacci <number>");
 	  exit(-1);
