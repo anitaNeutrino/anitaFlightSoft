@@ -1,14 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "bytepack.h"
-
-int bytepack(int n, int m, unsigned int *in, unsigned char *out)
+int bytepack(int n, int m, unsigned short *in, unsigned char *out)
 {
      //need to add checks on m!!!
      int byte,i;
      unsigned char bit, nbits;
-     unsigned int sbit,scratch,mask;
+     unsigned short sbit,scratch,mask;
      // in[n] is packed into out with leading zeros removed.
      // it must be filled with nonzero data in a prefix code
      byte=0;//current output byte
