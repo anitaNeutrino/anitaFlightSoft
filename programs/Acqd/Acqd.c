@@ -89,6 +89,7 @@ char turfHkUSBArchiveDir[FILENAME_MAX];
 //#define DAC_CHAN 4 /* might replace with N_CHIP at a later date */
 #define EVTF_TIMEOUT 10000000 /* in microseconds */
 
+int firmwareVersion=2;
 int verbosity = 0 ; /* control debug print out. */
 int addedVerbosity = 0 ; /* control debug print out. */
 int oldStyleFiles = FALSE;
@@ -117,6 +118,7 @@ int pps2TrigFlag = 0;
 
 //Threshold Stuff
 //int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
+int surfAntTrigMasks[ACTIVE_SURFS][2];
 int thresholdArray[ACTIVE_SURFS][N_RFTRIG];
 int setGlobalThreshold=0; 
 int globalThreshold=2200;
@@ -327,7 +329,13 @@ int main(int argc, char **argv) {
 
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
-	    status+=readSurfEventData(surfHandles);
+	    if(firmwareVersion==1) {
+		status+=readSurfEventData(surfHandles);
+	    }
+	    else {
+		status+=readSurfEventDataVer2(surfHandles);
+	    }
+		
 	    hdPtr->unixTime=timeStruct.tv_sec;
 	    hdPtr->unixTimeUs=timeStruct.tv_usec;
 	    turfRates.unixTime=timeStruct.tv_sec;
@@ -795,6 +803,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","acqd") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	firmwareVersion=kvpGetInt("firmwareVersion",2);
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -979,6 +988,17 @@ int readConfigFile()
 
 	turfioPos.bus=kvpGetInt("turfioBus",3); //in seconds
 	turfioPos.slot=kvpGetInt("turfioSlot",10); //in seconds
+	tempNum=18;
+	kvpStatus=kvpGetIntArray("surfAntTrigMasks",&surfAntTrigMasks[0][0],&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(surfAntTrigMasks): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(surfAntTrigMasks): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
 	tempNum=12;
 	kvpStatus = kvpGetIntArray("surfBus",surfBuses,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
@@ -1199,6 +1219,11 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
 			    surfIndex[surf],dac,rc);
 	    }
 	}
+
+
+	//Insert SURF trigger channel masking here
+	
+
 	rc=setSurfControl(surfHandles[surf],DACLoad);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surfIndex[surf],rc);
@@ -1234,6 +1259,24 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 			    surfIndex[surf],dac,rc);
 	    }
 	}
+
+	//Insert SURF trigger channel masking here
+	for (dac=N_RFTRIG ; dac<N_RFTRIG+2 ; dac++) {
+	    buf = (dac<<16) + 
+		surfAntTrigMasks[surfIndex[surf]-1][dac-N_RFTRIG];	    
+	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
+			      &buf, 4, BitSize32);
+	    if(rc!=ApiSuccess) {
+		syslog(LOG_ERR,"Error writing Surf Ant Trig Mask, SURF %d - DAC %d (%d)",
+		       surfIndex[surf],dac,rc);
+		if(printToScreen)
+		    fprintf(stderr,
+			    "Error writing Surf Ant Trig Mask, SURF %d - DAC %d (%d)\n",
+			    surfIndex[surf],dac,rc);
+	    }
+
+	}
+
 	rc=setSurfControl(surfHandles[surf],DACLoad);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surfIndex[surf],rc);
@@ -1618,6 +1661,224 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 		labData[surf][chan][samp]=dataInt;
 	    }
 	}
+    }
+    //Read out SURFs
+
+    if(!oldStyleFiles) {
+	for(surf=0;surf<numSurfs;surf++){  
+	    for (chan=0 ; chan<N_CHAN ; chan++) {
+		chanId=chan+surf*CHANNELS_PER_SURF;
+		firstHitbus=-1;
+		lastHitbus=-1;
+		wrappedHitbus=0;
+		for (samp=0 ; samp<N_SAMP ; samp++) {		
+		    dataInt=labData[surf][chan][samp];
+		    if(samp==0) upperWord=GetUpper16(dataInt);
+/* 		    if(upperWord!=GetUpper16(dataInt)) { */
+/* 			//Will add an error flag to the channel header */
+/* 			syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt)); */
+/* 			if(printToScreen) */
+/* 			    fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));			 */
+/* 		    } */
+		    
+		    theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt);
+		    
+		    //Now check for HITBUS
+		    if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS))
+			firstHitbus=samp;
+		    if(GetLower16(dataInt)&HITBUS) {
+			if(!wrappedHitbus) {
+			    if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) {
+				//Wrapped hitbus
+				wrappedHitbus=1;
+				firstHitbus=lastHitbus;
+			    }
+			    lastHitbus=samp;
+			}		    
+		    }				
+		}
+		//End of sample loop
+		tempVal=chan+N_CHAN*surf;
+		theEvent.body.channel[chanId].header.chanId=tempVal;
+		theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
+		tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
+		if(lastHitbus>255) {
+		    tempVal+=((lastHitbus-255)<<4);
+		    lastHitbus=255;
+		}
+		theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
+		theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
+		
+
+		if(printToScreen && verbosity>1) {
+		    printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %x\n\tLabchip %d\n\tchipIdFlag %d\n",
+			   surfIndex[surf],chan,
+			   theEvent.body.channel[chanId].header.chanId,
+			   theEvent.body.channel[chanId].header.firstHitbus,
+			   theEvent.body.channel[chanId].header.lastHitbus,
+			   wrappedHitbus,upperWord,((upperWord&0xc0)>>6),
+			   theEvent.body.channel[chanId].header.chipIdFlag);
+		}
+			   
+			   
+	    }
+	}
+    }   
+    return status;
+} 
+
+
+AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles) 
+/*! This is the code that is executed after we read the EVT_RDY flag */
+/* It is the equivalent of read_LABdata in Shige's crate_test program */
+/* And as the name suggests this is the code that expects version 2
+   firmware (i.e. double word reads). */
+{
+
+    PlxReturnCode_t rc;
+    AcqdErrorCode_t status=ACQD_E_OK;
+    unsigned int  dataInt=0;
+
+    unsigned char tempVal;
+    int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
+    unsigned int headerWord,samp=0;
+    unsigned short upperWord=0;
+    
+    doingEvent++;
+    if(verbosity && printToScreen) 
+	printf("Triggered, event %d (by software counter).\n",doingEvent);
+
+  	
+    //Loop over SURFs and read out data
+    for(surf=0;surf<numSurfs;surf++){  
+//	sleep(1);
+	if(printToScreen &&verbosity) {
+	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
+		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
+	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
+		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
+	}
+
+	//Set to read mode
+	rc=setSurfControl(surfHandles[surf],RDMode);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
+	}
+	rc=setSurfControl(surfHandles[surf],DTRead);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
+	}
+	
+	//In version 2 data is read as 32 bit words:
+	/* 0 -- Header Word
+	   The next word only has 16 useful bits (upper)
+	   1:128 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read)
+	   129:1152 -- Chans 1 through 8 128 reads per chan as above
+	   1153:1154 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
+	   1155:1168 -- Chans 1 through 8 2 reads per chan as above
+	   1169 last read; (only lower 16 bits)
+	*/
+
+	//First read header word
+	if(tryToUseBarMap) {
+	    headerWord=*(barMapAddr[surf]);
+	}
+	else if ((rc=readPlxDataWord(surfHandles[surf],&headerWord))!= ApiSuccess) {
+	    status=ACQD_E_PLXBUSREAD;
+	    syslog(LOG_ERR,"Failed to read header word SURF %d (rc = %d)",surfIndex[surf],rc);
+	    if(printToScreen) 
+		printf("Failed to read header word %d (rc = %d)\n", surfIndex[surf],rc) ;
+	}
+
+	
+	//Now read first 256 samples per SURF
+	for(chan=0;chan<N_CHAN; chan++) {
+	    for (readCount=samp=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {		
+		if(tryToUseBarMap) 
+		    dataInt=*(barMapAddr[surf]);
+		else if(readPlxDataWord(surfHandles[surf],&dataInt)
+			!= ApiSuccess) {
+		    status=ACQD_E_PLXBUSREAD;			
+		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, readCount %d",surfIndex[surf],chan,readCount);
+		    if(printToScreen) 
+			printf("Failed to read IO. surf=%d, chn=%d read=%d\n", surfIndex[surf], chan, readCount) ;
+		}
+		if(printToScreen && verbosity>2) {
+		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,dataInt);
+		}
+		
+		//Store in array (will move to 16bit array when bothered
+		if(readCount==0 ) {
+		    //Funkiness
+		    if(chan>0) {
+			labData[surf][chan][(N_SAMP_EFF/2)]=dataInt&0xffff;
+			labData[surf][chan][(N_SAMP_EFF/2)]|=headerWord&0xffff0000;
+		    }
+		    //if chan ==0 lower 16 bits are rubbish
+			
+		}
+		else {
+		    // Two 16 bit words
+		    labData[surf][chan][samp]=dataInt&0xffff;
+		    labData[surf][chan][samp++]|=headerWord&0xffff0000;
+		}
+		labData[surf][chan][samp]=(dataInt>>16);
+		labData[surf][chan][samp++]|=headerWord&0xffff0000;
+		
+	    }
+	}
+
+	//Now read last 4 samples (+ last sample from above)
+	for(chan=0;chan<N_CHAN; chan++) {
+	    samp=N_SAMP_EFF;
+	    for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
+		if(tryToUseBarMap) 
+		    dataInt=*(barMapAddr[surf]);
+		else if(readPlxDataWord(surfHandles[surf],&dataInt)
+			!= ApiSuccess) {
+		    status=ACQD_E_PLXBUSREAD;			
+		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surfIndex[surf],chan,samp);
+		    if(printToScreen) 
+			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surfIndex[surf], chan, samp) ;
+		} 
+		
+		if(printToScreen && verbosity>2) {
+		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,dataInt);
+		}
+		//Store in array (will move to 16bit array when bothered
+		if(readCount==N_SAMP_EFF/2) {
+		    if(chan==0) {
+			labData[surf][N_CHAN-1][samp-1]=dataInt&0xffff;
+			labData[surf][N_CHAN-1][samp-1]|=headerWord&0xffff0000;
+		    }
+		    else {
+			labData[surf][chan-1][N_SAMP-1]=dataInt&0xffff;
+			labData[surf][chan-1][N_SAMP-1]|=headerWord&0xffff0000;
+		    }
+			
+		}
+		labData[surf][chan][samp]=(dataInt>>16);
+		labData[surf][chan][samp++]|=headerWord&0xffff0000;
+		labData[surf][chan][samp]=dataInt;
+	    }
+	}
+	
+	if(tryToUseBarMap) 
+	    dataInt=*(barMapAddr[surf]);
+	else if(readPlxDataWord(surfHandles[surf],&dataInt)
+		!= ApiSuccess) {
+	    status=ACQD_E_PLXBUSREAD;			
+	    syslog(LOG_ERR,"Failed to read last word: SURF %d",surfIndex[surf]);
+	    if(printToScreen) 
+		printf("Failed to read last word surf=%d\n", surfIndex[surf]) ;
+	} 
+	labData[surf][N_CHAN-1][N_SAMP-1]=dataInt&0xffff;
+	labData[surf][N_CHAN-1][N_SAMP-1]|=headerWord&0xffff0000;
+	
     }
     //Read out SURFs
 
