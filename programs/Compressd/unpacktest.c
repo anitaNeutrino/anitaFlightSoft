@@ -5,8 +5,8 @@
 
 int main(int argc, char* argv){
      int packedbytes, i, codewords;
-     unsigned char packed[1024];
-     unsigned short testcode[1024];
+     unsigned char packed[200000];
+     unsigned int testcode[65536];
      scanf("%i",&packedbytes);
      printf("%i\n",packedbytes);
      for (i=0;i<packedbytes; i++){
@@ -16,10 +16,10 @@ int main(int argc, char* argv){
 //     for (i=0;i<packedbytes;i++){
 //	  printf("%02x\n",packed[i]);
 //     }
-     codewords=byteunpack(packedbytes,1024,packed,testcode);
+     codewords=byteunpack(packedbytes,65536,packed,testcode);
      printf("%i\n",codewords);
      for (i=0;i<codewords;i++){
-	  printf("%hhu\n",unfibonacci(testcode[i]));
+	  printf("%hi\n",unbifurcate(unfibonacci(testcode[i])));
      }
 }
 	  

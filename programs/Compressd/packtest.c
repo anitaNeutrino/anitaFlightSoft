@@ -3,22 +3,22 @@
 #include "fibonacci.h"
 #include "bytepack.h"
 int main(int argc, char* argv[]){
-     unsigned char nbytes;
+     short nwords;
      int packedbytes;
-     unsigned char testbyte[255];
-     unsigned short testcode[255];
-     unsigned char packed[1024];
+     unsigned short testword[65536];
+     unsigned int testcode[65536];
+     unsigned char packed[200000];
      int i,j,k;
      if (argc!=2){
-	  fprintf(stderr,"Usage: packtest <number of bytes to code and pack>");
+	  fprintf(stderr,"Usage: packtest <1/2 number of words to code and pack>");
 	  exit(-1);
      }
-     sscanf(argv[1],"%u",&nbytes);
-     for (i=0;i<nbytes;i++){
-	  testbyte[i]=i+1; //fibonacci code cannot represent zero
-	  testcode[i]=fibonacci(testbyte[i]);
+     sscanf(argv[1],"%hu",&nwords);
+     for (i=0;i<2*nwords+1;i++){
+	  testword[i]=bifurcate((short)(i-nwords)); 
+	  testcode[i]=fibonacci(testword[i]);
      }
-     packedbytes=bytepack(nbytes,1024,testcode,packed);
+     packedbytes=bytepack(2*nwords+1,200000,testcode,packed);
      printf("%i\n",packedbytes);
      for (i=0;i<packedbytes;i++){
 	  printf("%02x\n",packed[i]);

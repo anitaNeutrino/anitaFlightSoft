@@ -3,13 +3,13 @@ CXX	= g++
 CXXFLAGS = -Wall -g -O2 -Wno-unused
 CFLAGS= -g
 
-all:	ftest packtest unpacktest 
+all:	ftest btest packtest unpacktest 
 
-packtest: packtest.o fibonacci.o bytepack.o
-	gcc -o packtest packtest.o fibonacci.o bytepack.o
+packtest: packtest.o fibonacci.o bytepack.o bifurcate.o
+	gcc -o packtest packtest.o bifurcate.o fibonacci.o bytepack.o
 
-unpacktest: unpacktest.o fibonacci.o byteunpack.o
-	gcc -o unpacktest unpacktest.o fibonacci.o byteunpack.o
+unpacktest: unpacktest.o fibonacci.o byteunpack.o bifurcate.o
+	gcc -o unpacktest unpacktest.o bifurcate.o fibonacci.o byteunpack.o
 
 ftest:	ftest.o fibonacci.o
 	gcc -o ftest ftest.o fibonacci.o
