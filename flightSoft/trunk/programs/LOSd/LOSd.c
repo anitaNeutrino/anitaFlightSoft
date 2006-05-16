@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <zlib.h>
+#include <sys/time.h>
 
 /* Flight soft includes */
 #include "anitaFlight.h"
@@ -33,6 +34,7 @@ int readConfig();
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void fillBufferWithHk();
 void readAndSendEvent(char *headerFilename);
+float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 
 
 #define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
@@ -315,6 +317,16 @@ int initDevice() {
 }
 
 int doWrite() {
+    static unsigned int dataCounter=0;
+    static int first=1;
+    static struct timeval lastTime;
+    struct timeval newTime;
+    float timeDiff;
+    if(first) {
+	gettimeofday(&lastTime,0);
+	first=0;
+    }
+
     int retVal;
     if(!laptopDebug) {
 	retVal=los_write(losBuffer,numBytesInBuffer);
@@ -322,9 +334,26 @@ int doWrite() {
     else {
 	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
     }	
+    dataCounter+=numBytesInBuffer;
+//    printf("%d %d\n",numBytesInBuffer,dataCounter);
+    if(dataCounter>1000000) {
+	gettimeofday(&newTime,0);
+	timeDiff=getTimeDiff(lastTime,newTime);
+	printf("Transferred %u bytes in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,timeDiff,((float)dataCounter)/timeDiff);
+	dataCounter=0;
+	lastTime=newTime;
+    }
+
     numBytesInBuffer=0;
     return retVal;    
 }
+
+float getTimeDiff(struct timeval oldTime, struct timeval currentTime) {
+    float timeDiff=currentTime.tv_sec-oldTime.tv_sec;
+    timeDiff+=1e-6*(float)(currentTime.tv_usec-oldTime.tv_usec);
+    return timeDiff;
+}
+	
 
 int readConfig()
 // Load LOSd config stuff
@@ -536,7 +565,7 @@ void readAndSendEvent(char *headerFilename) {
     FILE *eventFile;
     gzFile gzippedEventFile;
 
-    if(printToScreen) printf("Trying file %s\n",headerFilename);
+    if(printToScreen && verbosity) printf("Trying file %s\n",headerFilename);
 
 
     //First check if there is room for the header
@@ -584,10 +613,11 @@ void readAndSendEvent(char *headerFilename) {
 		fillBufferWithHk();
 	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
 	    count+=numBytes;
+	    numBytesInBuffer+=numBytes;
 	}
 	else break;			
     }
-    if(printToScreen) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
+    if(printToScreen && verbosity) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
 	        
     removeFile(headerFilename);
     removeFile(waveFilename);

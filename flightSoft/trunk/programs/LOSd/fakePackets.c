@@ -415,7 +415,7 @@ void fakeEvent(int trigType)
     writeHeader(&theHeader,sipdHdFilename);
     makeLink(sipdHdFilename,headerTelemLinkDir);
     if(evNum%100==0) 
-	printf("Event %d, sec %ld\n",evNum,theHeader.unixTime);
+	printf("Event %d, sec %ld\n%s\n",evNum,theHeader.unixTime,headerTelemLinkDir);
        
 }
 
