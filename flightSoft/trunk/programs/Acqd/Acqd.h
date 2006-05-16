@@ -130,6 +130,6 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles, unsigned short threshold);
 int updateThresholdsUsingPID();
 int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);
-
+AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
 
 #endif //ACQD_H
