@@ -10,10 +10,10 @@ unsigned int fn[24]={1,2,3,5,8,13,21,34,55,89,
 //convert a short to its fibonacci representation with a 11 prefix
 unsigned int fibonacci(unsigned short input){
      unsigned int output;
-     int i;
+     unsigned int i;
      i=0;
      // find the first fibonacci number greater than input
-     while(input>=fn[i]){
+     while((unsigned int) input>=fn[i]){
 	  i++;
      }
      // set the prefix bit
@@ -21,7 +21,7 @@ unsigned int fibonacci(unsigned short input){
      i--; // we are now at the largest fibonacci number less than input
      //now set the bits for the minimal fibonacci representation
      while(i>=0){
-	  if (input>=fn[i]){
+	  if ((unsigned int) input>=fn[i]){
 	       output += (1<<i);
 	       input -= fn[i];
 	  }

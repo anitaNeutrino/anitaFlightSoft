@@ -22,11 +22,9 @@ int bytepack(int n, int m, unsigned int *in, unsigned char *out)
 	  //last 1 is in bit (nbit-1)
 	  scratch=in[i];
 	  while (nbits>0){
-	       if (nbits>(8-bit)){
+	       if (nbits>((unsigned char)8-bit)){
                //pack the least significant bits into the current byte
-		    mask= ~((0xffff)<<(8-bit));
-		    /* printf("1 nbits=%i,bit=%i,scratch=%x,mask=%x\n",nbits,bit, */
-                    /* 			   scratch,mask); */
+		    mask= ~((unsigned int)(0xffffffff)<<(8-bit));
 		    out[byte] |= (scratch & mask) << bit;
 		    mask = ~mask;
 		    scratch=(scratch & mask) >> (8-bit);
