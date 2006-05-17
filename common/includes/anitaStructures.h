@@ -46,7 +46,7 @@
 #define GPS_MASK 0x20
 #define CAL_PULSER_MASK 0x40
 
-#define RFSWITCH_MASK 0x200
+#define RFSWITCH_MASK 0xf00
 #define RFSWITCH_SHIFT 8
 
 #define SS1_MASK 0xf0000
