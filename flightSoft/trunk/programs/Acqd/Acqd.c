@@ -133,6 +133,11 @@ int pidGoal;
 int pidAverage;
 
 //RFCM Mask
+//1 is disable
+//lowest bit of first word is antenna 1
+//bit 8 in second word is 48th antenna
+//We load in reverse order starting with the missing SURF 10 
+//and working backwards to SURF 1
 unsigned int rfcmMask[2] = {0x10001000, 0x00008000} ;
 
 
@@ -2181,7 +2186,7 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) {
     while(i<48) {
 	if (i==32) j=chanBit=1 ;
 	
-//	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\n",i,j,chanBit,rfcmMask[j]);
+	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and%d\n",i,j,chanBit,rfcmMask[j],(rfcmMask[j]&chanBit));
 	if(rfcmMask[j]&chanBit) rc=setTurfControl(turfioHandle,RFCBit);
 	else rc=setTurfControl(turfioHandle,RFCClk);
 	if (rc != ApiSuccess) {
