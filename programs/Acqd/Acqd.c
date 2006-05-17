@@ -228,8 +228,8 @@ int main(int argc, char **argv) {
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
 	trigMode=TrigNone;
-	if(pps1TrigFlag) trigMode+=TrigPPS1;
-	if(pps2TrigFlag) trigMode+=TrigPPS2;
+	if(pps1TrigFlag) trigMode|=TrigPPS1;
+	if(pps2TrigFlag) trigMode|=TrigPPS2;
 	// RJN debugging
 //	setTurfControl(turfioHandle,SetTrigMode);
 
@@ -1450,18 +1450,18 @@ int writeSurfHousekeeping(int dataOrTelem)
 
     //Write data to disk
     if(dataOrTelem!=2) {
-	sprintf(theFilename,"%s/hk_%ld_%ld.dat",surfHkArchiveDir,
+	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat",surfHkArchiveDir,
 		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	retVal+=writeSurfHk(&theSurfHk,theFilename);
 	if(useUSBDisks) {
-	    sprintf(theFilename,"%s/hk_%ld_%ld.dat",surfHkUSBArchiveDir,
+	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat",surfHkUSBArchiveDir,
 		    theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	    retVal+=writeSurfHk(&theSurfHk,theFilename);
 	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
-	sprintf(theFilename,"%s/hk_%ld_%ld.dat",surfHkTelemDir,
+	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat",surfHkTelemDir,
 		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	retVal+=writeSurfHk(&theSurfHk,theFilename);
 	makeLink(theFilename,surfHkTelemLinkDir);
@@ -1815,8 +1815,8 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 		if(readCount==0 ) {
 		    //Funkiness
 		    if(chan>0) {
-			labData[surf][chan][(N_SAMP_EFF/2)]=dataInt&0xffff;
-			labData[surf][chan][(N_SAMP_EFF/2)]|=headerWord&0xffff0000;
+			labData[surf][chan-1][N_SAMP_EFF-1]=dataInt&0xffff;
+			labData[surf][chan-1][N_SAMP_EFF-1]|=headerWord&0xffff0000;
 		    }
 		    //if chan ==0 lower 16 bits are rubbish
 			
@@ -1852,8 +1852,8 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 		//Store in array (will move to 16bit array when bothered
 		if(readCount==N_SAMP_EFF/2) {
 		    if(chan==0) {
-			labData[surf][N_CHAN-1][samp-1]=dataInt&0xffff;
-			labData[surf][N_CHAN-1][samp-1]|=headerWord&0xffff0000;
+			labData[surf][N_CHAN-1][N_SAMP_EFF-1]=dataInt&0xffff;
+			labData[surf][N_CHAN-1][N_SAMP_EFF-1]|=headerWord&0xffff0000;
 		    }
 		    else {
 			labData[surf][chan-1][N_SAMP-1]=dataInt&0xffff;
@@ -1942,6 +1942,18 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 	    }
 	}
     }   
+    if(printToScreen && verbosity>1) {
+	
+	for(surf=0;surf<numSurfs;surf++){  
+	    for(chan=0;chan<N_CHAN;chan++) {
+		for(samp=0;samp<5;samp++) {
+		    printf("SURF %d, chan %d, samp %d, data %d\n",surf,chan,samp,labData[surf][chan][samp]&0xfff);
+		}
+	    }
+	}
+
+
+    }
     return status;
 } 
 
