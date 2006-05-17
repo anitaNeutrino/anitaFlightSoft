@@ -7,7 +7,6 @@ int byteunpack(int m, int nmax, unsigned char *in, unsigned int *out)
      int inbyte, inbit;
      int outword, outbit;
      unsigned int curbit, lastbit;
-     int n;
 /* proceed one bit at a time.  When two ones are seen, advance
 	to the next output word */
      inbyte=0; inbit=0;
