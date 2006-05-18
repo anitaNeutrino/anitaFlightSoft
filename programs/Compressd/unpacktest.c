@@ -3,7 +3,7 @@
 #include "fibonacci.h"
 #include "byteunpack.h"
 
-int main(int argc, char* argv){
+int main(int argc, char* argv[]){
      int packedbytes, i, codewords;
      unsigned char packed[200000];
      unsigned int testcode[65536];
