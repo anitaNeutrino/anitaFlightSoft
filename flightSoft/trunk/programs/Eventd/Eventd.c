@@ -477,12 +477,12 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
     char theFilename[FILENAME_MAX];
     int retVal;
 
-    sprintf(theFilename,"%s/gps_%ld_%d.dat",gpsdSubTimeLinkDir,
+    sprintf(theFilename,"%s/gps_%lu_%lu.dat",gpsdSubTimeLinkDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity) 
 	printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
-    sprintf(theFilename,"%s/gps_%ld_%d.dat",gpsdSubTimeDir,
+    sprintf(theFilename,"%s/gps_%lu_%lu.dat",gpsdSubTimeDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);

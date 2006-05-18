@@ -167,21 +167,23 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;       /* unix UTC sec*/
-    long unixTimeUs;     /* unix UTC microsec */
-    long gpsSubTime;     /* the GPS fraction of second (in ns) 
+    unsigned long unixTime;       /* unix UTC sec*/
+    unsigned long unixTimeUs;     /* unix UTC microsec */
+    unsigned long gpsSubTime;     /* the GPS fraction of second (in ns) 
 			   (for the X events per second that get 
 			   tagged with it */
     unsigned long eventNumber;    /* Global event number */
-    short surfMask;
-    short calibStatus;   /* Were we flashing the pulser? */
-    long priority;
+    unsigned short surfMask;
+    unsigned short calibStatus;   /* Were we flashing the pulser? */
+    unsigned long priority;
+    unsigned long rfcmMask[2]; // What was the RFCM trigger mask
+    unsigned short surfAntMask[10][2];
     TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
 } AnitaEventHeader_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    int eventNumber;    /* Global event number */
+    unsigned long eventNumber;    /* Global event number */
     SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
 } AnitaEventBody_t;
 
@@ -237,37 +239,37 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    int eventNumber;
+    unsigned long eventNumber;
     SurfChannelFull_t waveform;
 } RawWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    int eventNumber;
+    unsigned long eventNumber;
     SurfChannelFull_t waveform[CHANNELS_PER_SURF];
 } RawSurfPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    int eventNumber;
+    unsigned long eventNumber;
     EncodedSurfChannelHeader_t chanHead;
 } EncodedWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    int eventNumber;
+    unsigned long eventNumber;
 } EncodedSurfPacketHeader_t;
 
 typedef struct {
-    long unixTime;
-    int subTime;
+    unsigned long unixTime;
+    unsigned long subTime;
 } GpsSubTime_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
-    long unixTimeUs;
-    long timeOfDay;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;
+    unsigned long timeOfDay;
     float heading;
     float pitch;
     float roll;
@@ -276,7 +278,7 @@ typedef struct {
     float latitude;
     float longitude;
     float altitude;
-    long attFlag;
+    unsigned long attFlag;
 } GpsAdu5PatStruct_t;
 
 typedef struct {
@@ -284,27 +286,27 @@ typedef struct {
     unsigned char elevation;
     unsigned char snr;
     unsigned char flag; 
-    short azimuth;
+    unsigned short azimuth;
 } GpsSatInfo_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
-    long numSats;
+    unsigned long unixTime;
+    unsigned long numSats;
     GpsSatInfo_t sat[MAX_SATS];
 } GpsG12SatStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
+    unsigned long unixTime;
     unsigned char numSats[4];
     GpsSatInfo_t sat[4][MAX_SATS];
 } GpsAdu5SatStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
-    long unixTimeUs;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;
     float trueCourse;
     float magneticCourse;
     float speedInKnots;
@@ -313,10 +315,10 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
-    long unixTimeUs;
-    long timeOfDay;
-    int numSats;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;
+    unsigned long timeOfDay;
+    unsigned long numSats;
     float latitude;
     float longitude;
     float altitude;
@@ -336,8 +338,8 @@ typedef enum {
 } AnalogueCode_t;
 
 typedef struct {
-    long unixTime;
-    long status;
+    unsigned long unixTime;
+    unsigned long status;
 } CalibStruct_t;
 
 typedef struct {
@@ -365,8 +367,8 @@ typedef struct {
 
 typedef struct {    
     GenericHeader_t gHdr;
-    long unixTime;
-    long unixTimeUs;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;
     FullAnalogueStruct_t ip320;
     MagnetometerDataStruct_t mag;
     SBSTemperatureDataStruct_t sbs;
@@ -379,8 +381,8 @@ typedef struct {
 
 typedef struct { 
     GenericHeader_t gHdr;
-    long unixTime;
-    long unixTimeUs;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;
     unsigned short globalThreshold; //set to zero if there isn't one
     unsigned short errorFlag; //Will define at some point    
     unsigned short upperWords[ACTIVE_SURFS];
@@ -390,13 +392,13 @@ typedef struct {
 } FullSurfHkStruct_t;
 
 typedef struct {    
-    char numCmdBytes;
+    unsigned char numCmdBytes;
     unsigned char cmd[MAX_CMD_LENGTH];
 } CommandStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
+    unsigned long unixTime;
     unsigned short goodFlag; // 0 is bad, 1 is good
     unsigned short numCmdBytes; // number of cmd bytes (upto 10)
     unsigned char cmd[MAX_CMD_LENGTH]; // the cmd bytes
@@ -432,14 +434,14 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    long unixTime;
+    unsigned long unixTime;
     DiskSpaceStruct_t diskInfo;
     QueueStruct_t queueInfo;
 } MonitorStruct_t;
 
 typedef struct {
-     long unixTime; /* when were these taken? */
-     int nsamples; /* how many samples in the average? */
+     unsigned long unixTime; /* when were these taken? */
+     unsigned long nsamples; /* how many samples in the average? */
      float thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
      float pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
                /* RMS of the samples (not of mean */

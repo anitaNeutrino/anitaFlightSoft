@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
 	    sipcom_set_cmd_length(count,cmdLengths[count]);
 	}
     }
+    printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
     ret = sipcom_init(MAX_WRITE_RATE);
     if (ret) {
 	char *s = sipcom_strerror();
@@ -186,9 +187,9 @@ write_highrate(int *ignore)
     long amtb;
 #define BSIZE 2048
     unsigned char buf[BSIZE];
-    long bufno = 1;
+//    long bufno = 1;
     int lim;
-    int bytes_avail;
+//    int bytes_avail;
     int retval;
 
     //memset(buf, 'a', BSIZE);

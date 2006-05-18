@@ -94,7 +94,7 @@ int checkForFakeTriggerAndWriteSubTime(const char *theGpsSubTimeDir, const char 
 		syslog (LOG_ERR,"fopen: %s\t %s",strerror(errno),filename);
 		return -1;
 	    }
-	    fscanf(pFile,"%ld %d",
+	    fscanf(pFile,"%lu %lu",
 		   &(tempGPS.unixTime),&(tempGPS.subTime));
 	    fclose(pFile);
 	    removeFile(filename);  
@@ -103,7 +103,7 @@ int checkForFakeTriggerAndWriteSubTime(const char *theGpsSubTimeDir, const char 
 	    removeFile(filename); 
 
 	    //Write file for eventd
-	    sprintf(filename,"%s/gps_%ld_%d.dat",theGpsSubTimeDir,tempGPS.unixTime,tempGPS.subTime);
+	    sprintf(filename,"%s/gps_%lu_%lu.dat",theGpsSubTimeDir,tempGPS.unixTime,tempGPS.subTime);
 	    writeGpsTtt(&tempGPS,filename);
 	    retVal=makeLink(filename,theGpsSubTimeLinkDir); 
    

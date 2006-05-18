@@ -771,7 +771,7 @@ void processPosString(char *gpsString, int gpsLength) {
     //Scan string
     subString = strtok (gpsCopy,"*");
 //    printf("%s\n",subString);
-    sscanf(subString,"$PASHR,POS,%d,%d,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%f,%f,%f,%s",
+    sscanf(subString,"$PASHR,POS,%d,%lu,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%f,%f,%f,%s",
 	   &posType,&(thePos.numSats),&hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
 	   &(thePos.altitude),&reserved,&(thePos.trueCourse),
@@ -915,17 +915,17 @@ void processTttString(char *gpsString, int gpsLength) {
     theTTT.subTime=subSecond;
     
     //Write file for eventd
-    sprintf(filename,"%s/gps_%ld_%d.dat",gpsSubTimeDir,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%lu_%lu.dat",gpsSubTimeDir,theTTT.unixTime,theTTT.subTime);
     writeGpsTtt(&theTTT,filename);
     retVal=makeLink(filename,gpsSubTimeLinkDir);  
 
     //Write file to main disk
-    sprintf(filename,"%s/gps_%ld_%d.dat",gpsAdu5TttArchiveDir,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%lu_%lu.dat",gpsAdu5TttArchiveDir,theTTT.unixTime,theTTT.subTime);
     writeGpsTtt(&theTTT,filename);
     
     if(useUsbDisks) {
 	//Write file to usb disk
-	sprintf(filename,"%s/gps_%ld_%d.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
+	sprintf(filename,"%s/gps_%lu_%lu.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
 	writeGpsTtt(&theTTT,filename);
     }
     
@@ -1141,7 +1141,7 @@ void processGppatString(char *gpsString, int gpsLength) {
      //Scan string
     subString = strtok (gpsCopy,"*");
 //    printf("%s\n",subString);
-    sscanf(subString,"$GPPAT,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%d",
+    sscanf(subString,"$GPPAT,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%lu",
 	   &hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
 	   &(thePat.altitude),&(thePat.heading),&(thePat.pitch),

@@ -52,7 +52,7 @@ int prettyFormat = 0;
 #define MAX_COLUMN 5
 #define MAX_ROW 20
 int numRows = 0;
-unsigned int rowaddr[MAX_ROW][MAX_COLUMN];
+int rowaddr[MAX_ROW][MAX_COLUMN];
 void prettyprint();
 
 int main (int argc, char **argv)
