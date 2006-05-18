@@ -35,7 +35,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void fillBufferWithHk();
 void readAndSendEvent(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
-
+int getLosNumber();
 
 #define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
 
@@ -43,6 +43,8 @@ char fakeOutputDir[]="/tmp/fake/los";
 
 /*Config Thingies*/
 char losdPidFile[FILENAME_MAX];
+char lastLosNumberFile[FILENAME_MAX];
+
 
 //Packet Dirs
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -129,6 +131,15 @@ int main(int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Couldn't get losdPidFile");
 	    fprintf(stderr,"Couldn't get losdPidFile\n");
+	}
+	tempString=kvpGetString("lastLosNumberFile");
+	if(tempString) {
+	    strncpy(lastLosNumberFile,tempString,FILENAME_MAX);
+	    writePidFile(losdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get lastLosNumberFile");
+	    fprintf(stderr,"Couldn't get lastLosNumberFile\n");
 	}
 	
 	tempString=kvpGetString("baseHouseTelemDir");
@@ -456,6 +467,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     int fd,numLinks,count,numBytes,totalBytes=0;
+    GenericHeader_t *gHdr;
     struct dirent **linkList;
 
     if((numBytesInBuffer+fileSize)>LOS_MAX_BYTES) return 0;
@@ -491,7 +503,9 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	}
 //	printf("Read %d bytes from file\n",numBytes);
 //	Maybe I'll add a packet check here
-//	checkPacket(&(losBuffer[numBytesInBuffer]));
+	gHdr = (GenericHeader_t*) (&(losBuffer[numBytesInBuffer]));
+//	checkPacket(gHdr);
+	gHdr->packetNumber=getLosNumber();
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
 	close (fd);
@@ -575,6 +589,7 @@ void readAndSendEvent(char *headerFilename) {
     //Next load header
     theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer];
     fillHeader(theHeader,headerFilename);
+    theHeader->gHdr.packetNumber=getLosNumber();
     numBytesInBuffer+=sizeof(AnitaEventHeader_t);
 
     //Now get event file
@@ -607,6 +622,7 @@ void readAndSendEvent(char *headerFilename) {
     // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getLosNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
 	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes)
@@ -621,5 +637,49 @@ void readAndSendEvent(char *headerFilename) {
 	        
     removeFile(headerFilename);
     removeFile(waveFilename);
+
+}
+
+
+int getLosNumber() {
+    int retVal=0;
+    static int firstTime=1;
+    static int losNumber=0;
+    /* This is just to get the lastLosNumber in case of program restart. */
+    FILE *pFile;
+    if(firstTime) {
+	pFile = fopen (lastLosNumberFile, "r");
+	if(pFile == NULL) {
+	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		    lastLosNumberFile);
+	}
+	else {	    	    
+	    retVal=fscanf(pFile,"%d",&losNumber);
+	    if(retVal<0) {
+		syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
+			lastLosNumberFile);
+	    }
+	    fclose (pFile);
+	}
+	if(printToScreen) printf("The last los number is %d\n",losNumber);
+	firstTime=0;
+    }
+    losNumber++;
+
+    pFile = fopen (lastLosNumberFile, "w");
+    if(pFile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		lastLosNumberFile);
+    }
+    else {
+	retVal=fprintf(pFile,"%d\n",losNumber);
+	if(retVal<0) {
+	    syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+		    lastLosNumberFile);
+	    }
+	fclose (pFile);
+    }
+
+    return losNumber;
 
 }
