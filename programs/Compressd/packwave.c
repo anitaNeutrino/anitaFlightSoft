@@ -32,12 +32,19 @@ unsigned short packwave(unsigned short nwords,
 	  packbytes=bitpack(npack,nwords,in,out+6);
 	  bitstrip(npack,nwords,in);
      }
+     else{
+	  packbytes=0;
+     }
      if ((width-(nstrip+npack))!=0){
 	  for (i=0; i<nwords; i++){
 	       median=findmedian(nwords,in);
 	       scratch[i]=fibonacci(bifurcate((int) in[i]- (int)median));
 	       codebytes=bytepack(nwords,scratch,out+6+packbytes);
 	  }
+     }
+     else
+     {
+	  codebytes=0;
      }
      out[0]=(unsigned char) (packbytes>>8);
      out[1]=(unsigned char) (packbytes & 0xff);
