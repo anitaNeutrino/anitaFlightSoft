@@ -25,9 +25,12 @@
 #ifndef ANITA_FLIGHT_H
 #define ANITA_FLIGHT_H
 
-#include <syslog.h>
 
+#ifndef HACK_FOR_ROOT
+#include <syslog.h>
 #define ANITA_LOG_FACILITY LOG_LOCAL4
+#endif
+
 
 /* Hardware stuff -- might move to a config file */
 #define ACTIVE_SURFS 9
