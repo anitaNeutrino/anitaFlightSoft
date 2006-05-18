@@ -20,21 +20,21 @@
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 
-#define VER_EVENT_HEADER 3
-#define VER_WAVE_PACKET 3
-#define VER_SURF_PACKET 3
-#define VER_ENC_WAVE_PACKET 3
-#define VER_ENC_SURF_PACKET 3
-#define VER_SURF_HK 3
-#define VER_ADU5_PAT 3
-#define VER_ADU5_SAT 3
-#define VER_ADU5_VTG 3
-#define VER_G12_POS 3
-#define VER_G12_SAT 3
-#define VER_HK_FULL 3
-#define VER_CMD_ECHO 3
-#define VER_MONITOR 3
-#define VER_TURF_RATE 3
+#define VER_EVENT_HEADER 4
+#define VER_WAVE_PACKET 4
+#define VER_SURF_PACKET 4
+#define VER_ENC_WAVE_PACKET 4
+#define VER_ENC_SURF_PACKET 4
+#define VER_SURF_HK 4
+#define VER_ADU5_PAT 4
+#define VER_ADU5_SAT 4
+#define VER_ADU5_VTG 4
+#define VER_G12_POS 4
+#define VER_G12_SAT 4
+#define VER_HK_FULL 4
+#define VER_CMD_ECHO 4
+#define VER_MONITOR 4
+#define VER_TURF_RATE 4
 
 
 //Relay Bit Masks
@@ -78,6 +78,7 @@ typedef enum {
 
 typedef struct {
     PacketCode_t code;    
+    unsigned long packetNumber; //Especially for Ped
     unsigned short numBytes;
     unsigned char feByte;
     unsigned char verId;
