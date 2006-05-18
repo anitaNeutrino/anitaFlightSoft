@@ -16,7 +16,7 @@ unsigned short bifurcate(short input)
 {
      unsigned short output;
      if (input>=0){
-	  output=(2*(unsigned short) input+1);
+	  output=(2*(unsigned short) input + 1);
      }
      else{
 	  output=(2* (unsigned short)abs(input));

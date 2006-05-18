@@ -8,7 +8,7 @@ int main(int argc, char* argv[]){
      unsigned short testword[65536];
      unsigned int testcode[65536];
      unsigned char packed[200000];
-     int i,j,k;
+     short i;
      if (argc!=2){
 	  fprintf(stderr,"Usage: packtest <1/2 number of words to code and pack>");
 	  exit(-1);

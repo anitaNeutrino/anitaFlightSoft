@@ -18,7 +18,7 @@ btest:  btest.o bifurcate.o fibonacci.o
 	gcc -o btest btest.o bifurcate.o fibonacci.o
 
 clean:
-	/bin/rm -f ftest packtest unpacktest hpacktest *.o	
+	/bin/rm -f ftest btest packtest unpacktest *.o	
 
 %.o:	%.cxx
 	$(CXX) $(CXXFLAGS) -c $< -o $@
