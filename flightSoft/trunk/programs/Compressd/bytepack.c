@@ -3,7 +3,7 @@
 
 #include "bytepack.h"
 
-int bytepack(int n, int m, unsigned int *in, unsigned char *out)
+int bytepack(int n, unsigned int *in, unsigned char *out)
 {
      //need to add checks on m!!!
      int byte,i;
