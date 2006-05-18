@@ -12,12 +12,12 @@ int main(int argc, char* argv[]){
 	  printf("Usage: packwavetest <width> <nstrip> <npack>\n.");
 	  exit(-1);
      }
-     sscanf(argv[1],"%hu",width);
-     sscanf(argv[2],"%hu",nstrip);
-     sscanf(argv[3],"%hu",npack);
-     scanf("%hu",nwords);
+     sscanf(argv[1],"%hu",&width);
+     sscanf(argv[2],"%hu",&nstrip);
+     sscanf(argv[3],"%hu",&npack);
+     scanf("%hu",&nwords);
      for (i=0; i< nwords; i++){
-	  scanf("%hu",data[i]);
+	  scanf("%hu",&data[i]);
      }
      packedbytes=packwave(nwords,width,nstrip,npack,data,packed);
      printf("%hu\n",packedbytes);
