@@ -98,7 +98,7 @@ int setGpsTerminalOptions(int fd,int isNtp)
     options.c_oflag=0;
     options.c_cflag=3261;
     options.c_lflag=0;
-    strncpy(options.c_cc,"",2);
+    strncpy((char*)options.c_cc,"",2);
     options.c_ispeed=13;
     options.c_ospeed=13;
 
@@ -193,7 +193,7 @@ int toggleCRTCTS(char devName[])
     options.c_oflag=0;
     options.c_cflag=3261;
     options.c_lflag=0;
-    strncpy(options.c_cc,"",2);
+    strncpy((char*)options.c_cc,"",2);
     options.c_ispeed=13;
     options.c_ospeed=13;
 
