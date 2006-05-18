@@ -18,7 +18,7 @@ int main(int argc, char* argv[]){
 	  testword[i]=bifurcate((short)(i-nwords)); 
 	  testcode[i]=fibonacci(testword[i]);
      }
-     packedbytes=bytepack(2*nwords+1,200000,testcode,packed);
+     packedbytes=bytepack(2*nwords+1,testcode,packed);
      printf("%i\n",packedbytes);
      for (i=0;i<packedbytes;i++){
 	  printf("%02x\n",packed[i]);
