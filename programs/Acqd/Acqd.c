@@ -25,6 +25,7 @@
 #include "anitaStructures.h"
 #include "Acqd.h"
 
+//#define TIME_DEBUG 1
 
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
     return (a>>8)+(a<<8);
@@ -167,6 +168,10 @@ int main(int argc, char **argv) {
     
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
+    
+#ifdef TIME_DEBUG
+    struct timeval timeStruct2;
+#endif
 
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -256,6 +261,11 @@ int main(int argc, char **argv) {
 	
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"while() { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(stderr,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    if(standAloneMode && (numEvents && numEvents<doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
@@ -297,6 +307,11 @@ int main(int argc, char **argv) {
 	    }
 
 	    // Wait for ready to read (EVT_RDY) 
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"Waitf for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(stderr,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    tmo=0;	    
 	    if(!dontWaitForEvtF) {
 		if(verbosity && printToScreen) 
@@ -306,7 +321,8 @@ int main(int argc, char **argv) {
 		    tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc);
 		    if(verbosity>3 && printToScreen) 
 			printf("SURF %d GPIO: 0x%o %d\n",surfIndex[0],tmpGPIO,tmpGPIO);
-		    usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
+		    if(tmo%2)
+			usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
 		    tmo++;
 		    if((tmo%1000)==0) {
 			if(currentState!=PROG_STATE_RUN) 
@@ -330,18 +346,32 @@ int main(int argc, char **argv) {
 	    else {
 		printf("Didn't wait for EVT_RDY\n");
 		sleep(1);
-	    }
-	    
+	    }	
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"Got for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(stderr,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif    
 
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
+#ifdef TIME_DEBUG
+//	    fprintf(stderr,"readSurfEventData -- start %ld s, %ld ms\n",timeStruct.tv_sec,timeStruct.tv_usec);
+	    fprintf(stderr,"4 %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec);  
+#endif
 	    if(firmwareVersion==1) {
 		status+=readSurfEventData(surfHandles);
 	    }
 	    else {
 		status+=readSurfEventDataVer2(surfHandles);
 	    }
-		
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readSurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+//	    fprintf(stderr,"%ld %ld %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec,timeStruct2.tv_sec,timeStruct2.tv_usec);
+#endif
+	    
 	    hdPtr->unixTime=timeStruct.tv_sec;
 	    hdPtr->unixTimeUs=timeStruct.tv_usec;
 	    turfRates.unixTime=timeStruct.tv_sec;
@@ -351,7 +381,19 @@ int main(int argc, char **argv) {
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
 	    gettimeofday(&timeStruct,NULL);
+
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(stderr,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+//	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+#endif
 	    status+=readSurfHkData(surfHandles);
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    theSurfHk.unixTime=timeStruct.tv_sec;
 	    theSurfHk.unixTimeUs=timeStruct.tv_usec;
 	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
@@ -363,9 +405,25 @@ int main(int argc, char **argv) {
 		    setDACThresholds(surfHandles);
 		
 	    }
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 
 
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readTurfEventData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    status+=readTurfEventData(turfioHandle);
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 
 	    if(verbosity && printToScreen) printf("Done reading\n");
 	    //Error checking
@@ -420,7 +478,12 @@ int main(int argc, char **argv) {
 		//Insert stats call here
 		if(printStatistics) calculateStatistics();
 	    }
-	    
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"Wrote data %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif	    
+
 	    // Clear boards
 	    for(surf=0;surf<numSurfs;++surf)
 		if (setSurfControl(surfHandles[surf], SurfClearEvent) != ApiSuccess)
@@ -430,7 +493,11 @@ int main(int argc, char **argv) {
 		if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
 		    printf("  failed to send clear event pulse on TURFIO.\n") ;
 	    
-	    
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"Sent Clear -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(stderr,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif	    
 //	if(selftrig) sleep (2) ;
 	}  /* closing master while loop. */
     } while(currentState==PROG_STATE_INIT);
@@ -866,25 +933,26 @@ int readConfigFile()
 	    syslog(LOG_ERR,"Error baseHouseTelemDir");
 	    fprintf(stderr,"Error baseHouseTelemDir\n");
 	}
-	tempString=kvpGetString("surfHkTelemDir");
+	tempString=kvpGetString("surfHkTelemSubDir");
 	if(tempString) {
 	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
-	    sprintf(surfHkTelemDir,"%s/link",surfHkTelemDir);
+	    sprintf(surfHkTelemLinkDir,"%s/link",surfHkTelemDir);
 	    makeDirectories(surfHkTelemLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting surfHkTelemDir");
-	    fprintf(stderr,"Error getting surfHkTelemDir\n");
+	    syslog(LOG_ERR,"Error getting surfHkTelemSubDir");
+	    fprintf(stderr,"Error getting surfHkTelemSubDir\n");
 	}
-	tempString=kvpGetString("turfHkTelemDir");
+	tempString=kvpGetString("turfHkTelemSubDir");
 	if(tempString) {
 	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
-	    sprintf(turfHkTelemDir,"%s/link",turfHkTelemDir);
+	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
 	    makeDirectories(turfHkTelemLinkDir);
+//	    printf("TURF Dir %s\n",turfHkTelemLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting turfHkTelemDir");
-	    fprintf(stderr,"Error getting turfHkTelemDir\n");
+	    syslog(LOG_ERR,"Error getting turfHkTelemSubDir");
+	    fprintf(stderr,"Error getting turfHkTelemSubDir\n");
 	}
 
 	tempString=kvpGetString("mainDataDisk");
@@ -957,7 +1025,8 @@ int readConfigFile()
 	tryToUseBarMap=kvpGetInt("tryToUseBarMap",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
-	writeData=kvpGetInt("writeData",1);
+	if(!writeData)
+	    writeData=kvpGetInt("writeData",1);
 	writeScalers=kvpGetInt("writeScalers",1);
 	writeFullHk=kvpGetInt("writeFullHk",1);
 	justWriteHeader=kvpGetInt("justWriteHeader",0);
@@ -2179,7 +2248,11 @@ PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) 
     
 }
 
-PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) {
+PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) 
+/*!
+  Remember that 0 in the RFCM mask means on
+*/
+{
     PlxReturnCode_t rc;
     U32 gpio ;  
     int i=0,j=0,chanBit=1;
@@ -2195,7 +2268,7 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) {
     while(i<48) {
 	if (i==32) j=chanBit=1 ;
 	
-	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and%d\n",i,j,chanBit,rfcmMask[j],(rfcmMask[j]&chanBit));
+//	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,rfcmMask[j],(rfcmMask[j]&chanBit));
 	if(rfcmMask[j]&chanBit) rc=setTurfControl(turfioHandle,RFCBit);
 	else rc=setTurfControl(turfioHandle,RFCClk);
 	if (rc != ApiSuccess) {
