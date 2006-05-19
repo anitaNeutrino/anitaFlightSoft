@@ -14,6 +14,7 @@
 #include <libgen.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <zlib.h>
 
 /* Flight soft includes */
 #include "sipcomLib/sipcom.h"
@@ -23,34 +24,78 @@
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
 
-
-
-pthread_t Hr_thread;
-
 #define SLBUF_SIZE 240
-
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
 
+
+int getTdrssNumber();
+void commandHandler(unsigned char *cmd);
+void comm1Handler();
+void comm2Handler();
+void highrateHandler(int *ignore);
+int readConfig();
+void readAndSendEvent(char *headerFilename);
+int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
+void sendWakeUpBuffer();
+
+// Config Thingies
+char sipdPidFile[FILENAME_MAX];
+char lastTdrssNumberFile[FILENAME_MAX];
 int cmdLengths[256];
 
-void handle_command(unsigned char *cmd);
-void handle_slowrate_comm1();
-void handle_slowrate_comm2();
-void write_highrate(int *ignore);
-
-char sipdPacketDir[FILENAME_MAX];
+//Command Dirs
 char cmddCommandDir[FILENAME_MAX];
 char cmddCommandLinkDir[FILENAME_MAX];
-char sipdPidFile[FILENAME_MAX];
 
-int numPacketDirs=0;
-int maxPacketsPerDir=20;
+//Packet Dirs
+char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
+char headerTelemDir[FILENAME_MAX];
+char cmdTelemDir[FILENAME_MAX];
+char surfHkTelemDir[FILENAME_MAX];
+char turfHkTelemDir[FILENAME_MAX];
+char hkTelemDir[FILENAME_MAX];
+char gpsTelemDir[FILENAME_MAX];
+char monitorTelemDir[FILENAME_MAX];
+
+//Packet Link Dirs
+char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
+char headerTelemLinkDir[FILENAME_MAX];
+char cmdTelemLinkDir[FILENAME_MAX];
+char surfHkTelemLinkDir[FILENAME_MAX];
+char turfHkTelemLinkDir[FILENAME_MAX];
+char hkTelemLinkDir[FILENAME_MAX];
+char gpsTelemLinkDir[FILENAME_MAX];
+char monitorTelemLinkDir[FILENAME_MAX];
+
+//Output variables
+int verbosity;
+int printToScreen;
+
+// Bandwidth variables
+int eventBandwidth=80;
+int priorityBandwidths[NUM_PRIORITIES];
+int priorityOrder[NUM_PRIORITIES*100];
+int numOrders=1000;
+int orderIndex=0;
+int currentPri=0;
+unsigned long eventDataSent=0;
+unsigned long hkDataSent=0;
+
+//Data buffer
+unsigned char theBuffer[MAX_EVENT_SIZE];
+
+
+
+//High rate thread
+pthread_t Hr_thread;
+int throttleRate=MAX_WRITE_RATE;
+
 int main(int argc, char *argv[])
 {
-    int ret,numCmds=256,count,pk;
+    //Temporary variables
+    int retVal,numCmds=256,count,pk;
     char *tempString;
-    char tempDir[FILENAME_MAX];
 
     /* Config file thingies */
     int status=0;
@@ -71,14 +116,12 @@ int main(int argc, char *argv[])
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status += configLoad ("Cmdd.config","lengths") ;
-    status += configLoad ("SIPd.config","global") ;
     eString = configErrorString (status) ;
 
-
     if (status == CONFIG_E_OK) {
-//	printf("Here\n");
-	numPacketDirs=kvpGetInt("numPacketDirs",9);
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
+	
+	//Get PID File location
 	tempString=kvpGetString("sipdPidFile");
 	if(tempString) {
 	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
@@ -88,19 +131,18 @@ int main(int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
 	    fprintf(stderr,"Couldn't get sipdPidFile\n");
 	}
-	tempString=kvpGetString("sipdPacketDir");
+
+	//Get TDRSS number file
+	tempString=kvpGetString("lastTdrssNumberFile");
 	if(tempString) {
-	    strncpy(sipdPacketDir,tempString,FILENAME_MAX);
-	    for(pk=0;pk<numPacketDirs;pk++) {
-		sprintf(tempDir,"%s/pk%d/link",sipdPacketDir,pk);
-		makeDirectories(tempDir);
-	    }
-		
+	    strncpy(lastTdrssNumberFile,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get sipdPacketDir");
-	    fprintf(stderr,"Couldn't get sipdPacketDir\n");
+	    syslog(LOG_ERR,"Couldn't get lastLosNumberFile");
+	    fprintf(stderr,"Couldn't get lastLosNumberFile\n");
 	}
+
+	//Get output dir for Cmdd
 	tempString=kvpGetString("cmddCommandDir");
 	if(tempString) {
 	    strncpy(cmddCommandDir,tempString,FILENAME_MAX);
@@ -111,32 +153,138 @@ int main(int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get cmddCommandDir");
 	    fprintf(stderr,"Couldn't get cmddCommandDir\n");
 	}
-	//printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
+
+	//Get telemetry packet dirs	
+	tempString=kvpGetString("baseHouseTelemDir");
+	if(tempString) {
+	    strncpy(cmdTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(surfHkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(turfHkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(gpsTelemDir,tempString,FILENAME_MAX-1);
+	    strncpy(monitorTelemDir,tempString,FILENAME_MAX-1);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
+	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
+	}
+	
+	tempString=kvpGetString("cmdEchoTelemSubDir");
+	if(tempString) {
+	    sprintf(cmdTelemDir,"%s/%s",cmdTelemDir,tempString);
+	    sprintf(cmdTelemLinkDir,"%s/link",cmdTelemDir);
+	    makeDirectories(cmdTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmdEchoTelemSubDir");
+	    fprintf(stderr,"Couldn't get cmdEchoTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("hkTelemSubDir");
+	if(tempString) {
+	    sprintf(hkTelemDir,"%s/%s",hkTelemDir,tempString);
+	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
+	    makeDirectories(hkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get hkTelemSubDir");
+	    fprintf(stderr,"Couldn't get hkTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("surfHkTelemSubDir");
+	if(tempString) {
+	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
+	    sprintf(surfHkTelemLinkDir,"%s/link",surfHkTelemDir);
+	    makeDirectories(surfHkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get surfHkTelemSubDir");
+	    fprintf(stderr,"Couldn't get surfHkTelemSubDir\n");
+	}
+		tempString=kvpGetString("turfHkTelemSubDir");
+	if(tempString) {
+	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
+	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
+	    makeDirectories(turfHkTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get turfHkTelemSubDir");
+	    fprintf(stderr,"Couldn't get turfHkTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("gpsTelemSubDir");
+	if(tempString) {
+	    sprintf(gpsTelemDir,"%s/%s",gpsTelemDir,tempString);
+	    sprintf(gpsTelemLinkDir,"%s/link",gpsTelemDir);
+	    makeDirectories(gpsTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get gpsTelemSubDir");
+	    fprintf(stderr,"Couldn't get gpsTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("monitorTelemSubDir");
+	if(tempString) {
+	    sprintf(monitorTelemDir,"%s/%s",monitorTelemDir,tempString);
+	    sprintf(monitorTelemLinkDir,"%s/link",monitorTelemDir);
+	    makeDirectories(monitorTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
+	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
+	}
+	
+	tempString=kvpGetString("headerTelemDir");
+	if(tempString) {
+	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
+	    sprintf(headerTelemLinkDir,"%s/link",headerTelemDir);
+	    makeDirectories(headerTelemLinkDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get headerTelemSubDir");
+	    fprintf(stderr,"Couldn't get headerTelemSubDir\n");
+	}
+
+	tempString=kvpGetString("baseEventTelemDir");
+	if(tempString) {
+	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
+		sprintf(eventTelemDirs[pk],"%s/pk%d",tempString,pk);
+		sprintf(eventTelemLinkDirs[pk],"%s/link",eventTelemDirs[pk]);
+		makeDirectories(eventTelemLinkDirs[pk]);
+	    }
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
+	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
+	    exit(0);
+	}
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
 	fprintf(stderr,"Error reading config file: %s\n",eString);
     }
+
+    retVal=readConfig();
             
-    ret = sipcom_set_slowrate_callback(COMM1, handle_slowrate_comm1);
-    if (ret) {
+    retVal = sipcom_set_slowrate_callback(COMM1, comm1Handler);
+    if (retVal) {
 	char *s = sipcom_strerror();
-	fprintf(stderr, "%s\n", s);
-	exit(1);
+	syslog(LOG_ERR,"Couldn't set COMM1 Handler -- %s\n",s);
+	fprintf(stderr,"Couldn't set COMM1 Handler -- %s\n",s);
     }
 
-    ret = sipcom_set_slowrate_callback(COMM2, handle_slowrate_comm2);
-    if (ret) {
+    retVal = sipcom_set_slowrate_callback(COMM2, comm2Handler);
+    if (retVal) {
 	char *s = sipcom_strerror();
-	fprintf(stderr, "%s\n", s);
-	exit(1);
+	syslog(LOG_ERR,"Couldn't set COMM2 Handler -- %s\n",s);
+	fprintf(stderr,"Couldn't set COMM2 Handler -- %s\n",s);
     }
 
-    sipcom_set_cmd_callback(handle_command);
-    if (ret) {
+    sipcom_set_cmd_callback(commandHandler);
+    if (retVal) {
 	char *s = sipcom_strerror();
-	fprintf(stderr, "%s\n", s);
-	exit(1);
+	syslog(LOG_ERR,"Couldn't set COMM2 Handler -- %s\n",s);
+	fprintf(stderr,"Couldn't set COMM2 Handler -- %s\n",s);
     }
     for(count=0;count<numCmds;count++) {
 	if(cmdLengths[count]) {
@@ -145,15 +293,15 @@ int main(int argc, char *argv[])
 	}
     }
     printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
-    ret = sipcom_init(MAX_WRITE_RATE);
-    if (ret) {
+    retVal = sipcom_init(MAX_WRITE_RATE);
+    if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
 	exit(1);
     }
     
 /*     // Start the high rate writer process. */
-    pthread_create(&Hr_thread, NULL, (void *)write_highrate, NULL);
+    pthread_create(&Hr_thread, NULL, (void *)highrateHandler, NULL);
     pthread_detach(Hr_thread);
 
 
@@ -164,173 +312,55 @@ int main(int argc, char *argv[])
 }
 
 
-
-int
-rand_no(int lim)
+void highrateHandler(int *ignore)
 {
-    float a;
-    a = (float)rand() / RAND_MAX;
-    a *= lim;
-    return ((int) a);
-}
-
-void
-rand_no_seed(unsigned int seed)
-{
-    srand(seed);
-}
-
-
-void
-write_highrate(int *ignore)
-{
-    long amtb;
-#define BSIZE 2048
-    unsigned char buf[BSIZE];
-//    long bufno = 1;
-    int lim;
-//    int bytes_avail;
-    int retval;
-
-    //memset(buf, 'a', BSIZE);
-    {
-	int i;
-	for (i=0; i<2048; i++) {
-	    buf[i] = i % 256;
-	}
-    }
-    rand_no_seed(getpid());
-    
-    lim = 2000;
+    char currentHeader[FILENAME_MAX];
+    int currentPri=0;
+    int numLinks=0;
+    struct dirent **linkList;    
 
     {
-	// We make this thread cancellable by any thread, at any time. This
-	// should be okay since we don't have any state to undo or locks to
-	// release.
-	int oldtype;
-	int oldstate;
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+        // We make this thread cancellable by any thread, at any time. This
+        // should be okay since we don't have any state to undo or locks to
+        // release.
+        int oldtype;
+        int oldstate;
+        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
     }
 
-    while (1) {
-	
-	amtb=1500;
-	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
-	retval = sipcom_highrate_write(buf, amtb);
-	if (retval != 0) {
-	    fprintf(stderr, "Bad write\n");
+    sendWakeUpBuffer();
+
+    while(1) {
+	currentPri=priorityOrder[orderIndex];	
+	numLinks=getListofLinks(eventTelemLinkDirs[currentPri],&linkList);
+	if(numLinks) {
+	    //Got an event	    
+	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+		    linkList[numLinks-1]->d_name);
+	    readAndSendEvent(currentHeader); //Also deletes
+
+	    while(numLinks) {
+		free(linkList[numLinks-1]);
+		numLinks--;
+	    }
+	    free(linkList);
+		 
 	}
-    }
+	usleep(1);
+	orderIndex++;
+	if(orderIndex>=numOrders) orderIndex=0;
+
+	//Need to think about housekeeping and add something here
+
+    }	
 
 }
 
 
-/* void write_highrate(int *ignore) */
-/* { */
-/* //    long amtb; */
-/* #define BSIZE 20000 //Silly hack until I packet up Events */
-/*     unsigned char buf[BSIZE]; */
-/* //    long bufno = 1; */
-/*     int pk; */
-/* //    int bytes_avail; */
-/*     int retVal,count; */
-/*     int numLinks=0; */
-/* //    long fileSize=0; */
-/*     char linkDir[FILENAME_MAX]; */
-/*     char currentFilename[FILENAME_MAX]; */
-/*     char currentLinkname[FILENAME_MAX]; */
-/*     int fd; */
-/*     int numBytes=3000; */
-/* /\*     int numItems=0; *\/ */
-/* /\*     FILE *fp; *\/ */
-/* //    struct dirent **linkList; */
-
-/*     //memset(buf, 'a', BSIZE); */
-
-/* //lim = 2000;     */
-/*     { */
-/* 	// We make this thread cancellable by any thread, at any time. This */
-/* 	// should be okay since we don't have any state to undo or locks to */
-/* 	// release. */
-/* 	int oldtype; */
-/* 	int oldstate; */
-/* 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype); */
-/* 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate); */
-/*     } */
-
-/*     while (1) { */
-/* //	usleep(10); */
-/* //	for(pk=0;pk<numPacketDirs;pk++) { */
-/* //	    sprintf(linkDir,"%s/pk%d/link",sipdPacketDir,pk); */
-/* //	    numLinks=getListofLinks(linkDir,&linkList); */
-/* //	    if(numLinks) break; */
-/* //	} */
-/* 	//Need to put something here so that it doesn't dick around  */
-/* 	//forever in pk4, when there is data waiting in pk1, etc. */
-/* //	for(count=numLinks-1;count>=0;count--) {	 */
-/* //	for(count=0;count<numLinks;count++) { */
-/* //	    sprintf(currentFilename,"%s/pk%d/%s", */
-/* //		    sipdPacketDir,pk,linkList[count]->d_name); */
-/* //	    sprintf(currentLinkname,"%s/pk%d/link/%s", */
-/* //		    sipdPacketDir,pk,linkList[count]->d_name); */
-/* //	    fp = fopen(currentFilename,"rb"); */
-/* //	    if(fp == NULL) { */
-/* //	    fd = open(currentFilename,O_RDONLY);	     */
-/* //	    if(fd == 0) { */
-/* //		syslog(LOG_ERR,"Error opening file: %s",currentFilename); */
-/* //		fprintf(stderr,"Error opening file: %s\n",currentFilename); */
-/* //		removeFile(currentFilename); */
-/* //		removeFile(currentLinkname); */
-/* 		//Mayhaps we should delete */
-/* //		continue; */
-/* //	    } */
-/* 	    // Obtain file size */
-/* /\* 	    fseek(fp,0,SEEK_END); *\/ */
-/* /\* 	    fileSize=ftell(fp); *\/ */
-/* /\* 	    rewind(fp); *\/ */
-	    
-
-/* //	    numItems = fread(buf,1,fileSize,fp); */
-/* //	    numBytes=read(fd,buf,BSIZE); */
-/* /\* 	    if(numItems!=1) { *\/ */
-/* /\* 		syslog(LOG_ERR,"Error reading file: %s",currentFilename); *\/ */
-/* /\* 		fprintf(stderr,"Error reading file: %s\n",currentFilename); *\/ */
-/* /\* 	    }	    *\/  */
-/* 	    /\*** the whole file is loaded in the buffer. ***\/	     */
-/* //	    fclose (fp); */
-/* //	    close(fd); */
-/* //	    removeFile(currentLinkname); */
-/* //	    unlink(currentFilename); */
-/* //	    fprintf(stderr, "=== high rate ===> amtb = %ld\n", fileSize); */
-/* 	    retVal = sipcom_highrate_write(buf, numBytes); */
-/* 	    if (retVal != 0) { */
-/* 		syslog(LOG_ERR,"Couldn't write file: %s",currentFilename); */
-/* 		fprintf(stderr, "Bad write\n"); */
-/* 	    } */
-/* 	    else { */
-/* //		removeFile(currentFilename); */
-	    
-/* 	    } */
-/* 	    if((numLinks-count)>maxPacketsPerDir) break; */
-/* //	    break; */
-	    
-/* 	} */
-	
-/*         for(count=0;count<numLinks;count++) */
-/*             free(linkList[count]); */
-/*         free(linkList); */
-
-
-
-/*     } */
-
-/* } */
-
-void
-handle_command(unsigned char *cmd)
+void commandHandler(unsigned char *cmd)
 {
-//    fprintf(stderr, "handle_command: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
+//    fprintf(stderr, "commandHandler: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
     char executeCommand[FILENAME_MAX];
     int byteNum=0;
     int retVal=0;
@@ -373,8 +403,7 @@ handle_command(unsigned char *cmd)
 /*     } */
 }
 
-void
-handle_slowrate_comm1()
+void comm1Handler()
 {
     static unsigned char start = 0;
     unsigned char buf[SLBUF_SIZE + 6];
@@ -395,16 +424,15 @@ handle_slowrate_comm1()
     ++count;
 
     ++start;
-    fprintf(stderr, "handle_slowrate_comm1 %02x %02x\n", count, start);
+    fprintf(stderr, "comm1Handler %02x %02x\n", count, start);
 
     ret = sipcom_slowrate_write(COMM1, buf, SLBUF_SIZE+6);
     if (ret) {
-	fprintf(stderr, "handle_slowrate_comm1: %s\n", sipcom_strerror());
+	fprintf(stderr, "comm1Handler: %s\n", sipcom_strerror());
     }
 }
 
-void
-handle_slowrate_comm2()
+void comm2Handler()
 {
     static unsigned char start = 255;
     unsigned char buf[SLBUF_SIZE];
@@ -415,10 +443,226 @@ handle_slowrate_comm2()
 	buf[i] = start - i;
     }
     --start;
-    fprintf(stderr, "handle_slowrate_comm2 %02x\n", start);
+    fprintf(stderr, "comm2Handler %02x\n", start);
 
     ret = sipcom_slowrate_write(COMM2, buf, SLBUF_SIZE);
     if (ret) {
-	fprintf(stderr, "handle_slowrate_comm1: %s\n", sipcom_strerror());
+	fprintf(stderr, "comm2Handler: %s\n", sipcom_strerror());
     }
+}
+
+
+int readConfig()
+// Load SIPd config stuff
+{
+    // Config file thingies
+    KvpErrorCode kvpStatus=0;
+    int status=0,tempNum,count,maxVal,maxIndex;
+    char* eString ;
+    
+    //Load output settings
+    kvpReset();
+    status = configLoad ("SIPd.config","output") ;
+    if(status == CONFIG_E_OK) {
+	printToScreen=kvpGetInt("printToScreen",-1);
+	verbosity=kvpGetInt("verbosity",-1);
+	if(printToScreen<0) {
+	    printf("Couldn't fetch printToScreen, defaulting to zero\n");
+	    printToScreen=0;
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading SIPd.config: %s\n",eString);
+	fprintf(stderr,"Error reading SIPd.config: %s\n",eString);
+    }
+
+    //Load SIPd specfic settings
+    kvpReset();
+    status = configLoad ("SIPd.config","sipd");
+    if(status == CONFIG_E_OK) {
+	throttleRate=kvpGetInt("throttleRate",680);
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading SIPd.config: %s\n",eString);
+	fprintf(stderr,"Error reading SIPd.config: %s\n",eString);
+    }
+
+    //Load bandwidth settings
+    kvpReset();
+    status = configLoad ("SIPd.config","bandwidth") ;
+    if(status == CONFIG_E_OK) {
+//	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
+	eventBandwidth=kvpGetInt("eventBandwidth",80);
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityBandwidths): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityBandwidths): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+	else {
+	    for(orderIndex=0;orderIndex<NUM_PRIORITIES*100;orderIndex++) {
+		//Check for hundreds first
+		for(count=0;count<tempNum;count++) {
+		    if(priorityBandwidths[count]>=100) 
+			priorityOrder[orderIndex++]=count;
+		}
+		
+		//Next look for highest number
+		maxVal=0;
+		maxIndex=-1;
+		for(count=0;count<tempNum;count++) {
+		    if(priorityBandwidths[count]<100) {
+			if(priorityBandwidths[count]>maxVal) {
+			    maxVal=priorityBandwidths[count];
+			    maxIndex=count;
+			}
+		    }
+		}
+		if(maxIndex>-1) {
+		    priorityOrder[orderIndex]=maxIndex;
+		    priorityBandwidths[maxIndex]--;
+		}
+		else break;
+	    }			
+	    numOrders=orderIndex;
+	    if(printToScreen) {
+		printf("Priority Order\n");
+		for(orderIndex=0;orderIndex<numOrders;orderIndex++) {
+		    printf("%d ",priorityOrder[orderIndex]);
+		}
+		printf("\n");
+	    }
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading SIPd.config: %s\n",eString);
+	fprintf(stderr,"Error reading SIPd.config: %s\n",eString);
+    }
+
+    return status;
+}
+
+
+
+void readAndSendEvent(char *headerFilename) {
+    AnitaEventHeader_t *theHeader;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,useGzip=0,retVal=0;
+    char waveFilename[FILENAME_MAX];
+    FILE *eventFile;
+    gzFile gzippedEventFile;
+
+    if(printToScreen && verbosity) printf("Trying file %s\n",headerFilename);
+
+    //Fitst load header
+    theHeader=(AnitaEventHeader_t*) theBuffer;
+    fillHeader(theHeader,headerFilename);
+    theHeader->gHdr.packetNumber=getTdrssNumber();
+    retVal = sipcom_highrate_write(theBuffer,sizeof(AnitaEventHeader_t));
+    if(retVal<0) {
+	//Problem sending data
+	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
+	fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());	
+    }
+    eventDataSent+=sizeof(AnitaEventHeader_t);
+
+
+    //Now get event file
+    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri],
+	    theHeader->eventNumber);
+    eventFile = fopen(waveFilename,"r");
+    if(!eventFile) {
+	sprintf(waveFilename,"%s/ev_%ld.dat.gz",eventTelemDirs[currentPri],
+		theHeader->eventNumber);
+	gzippedEventFile = gzopen(waveFilename,"rb");
+	if(!gzippedEventFile) {
+	    syslog(LOG_ERR,"Couldn't open %s -- %s",waveFilename,strerror(errno));
+	    fprintf(stderr,"Couldn't open %s -- %s\n",waveFilename,strerror(errno));	
+	    removeFile(headerFilename);
+	    removeFile(waveFilename);
+	    return;
+	}
+	useGzip=1;
+    }
+
+    if(useGzip) {
+	numBytes = gzread(gzippedEventFile,theBuffer,MAX_EVENT_SIZE);
+	gzclose(gzippedEventFile);	
+    }
+    else {
+	numBytes = fread(theBuffer,1,MAX_EVENT_SIZE,eventFile);
+	fclose(eventFile);
+    }
+    
+    // Remember what the file contains is actually:
+    //   9 EncodedSurfPacketHeader_t's
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    retVal = sipcom_highrate_write(theBuffer, numBytes);
+	    if(retVal<0) {
+		//Problem sending data
+		syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
+		fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());	
+	    }
+	    eventDataSent+=numBytes;
+	}
+	else break;			
+    }
+    if(printToScreen && verbosity>1) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
+	        
+    removeFile(headerFilename);
+    removeFile(waveFilename);
+
+}
+
+int getTdrssNumber() {
+    int retVal=0;
+    static int firstTime=1;
+    static int tdrssNumber=0;
+    /* This is just to get the lastTdrssNumber in case of program restart. */
+    FILE *pFile;
+    if(firstTime) {
+	pFile = fopen (lastTdrssNumberFile, "r");
+	if(pFile == NULL) {
+	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		    lastTdrssNumberFile);
+	}
+	else {	    	    
+	    retVal=fscanf(pFile,"%d",&tdrssNumber);
+	    if(retVal<0) {
+		syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
+			lastTdrssNumberFile);
+	    }
+	    fclose (pFile);
+	}
+	if(printToScreen) printf("The last tdrss number is %d\n",tdrssNumber);
+	firstTime=0;
+    }
+    tdrssNumber++;
+
+    pFile = fopen (lastTdrssNumberFile, "w");
+    if(pFile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		lastTdrssNumberFile);
+    }
+    else {
+	retVal=fprintf(pFile,"%d\n",tdrssNumber);
+	if(retVal<0) {
+	    syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+		    lastTdrssNumberFile);
+	    }
+	fclose (pFile);
+    }
+
+    return tdrssNumber;
+
 }

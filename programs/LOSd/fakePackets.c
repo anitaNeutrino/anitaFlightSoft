@@ -87,9 +87,7 @@ int main(int argc, char *argv[])
     
 
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status += configLoad ("SIPd.config","global") ;
     status += configLoad ("Acqd.config","acqd") ;
-    status += configLoad ("SIPd.config","losd") ;
     status += configLoad ("Hkd.config","hkd");
     status += configLoad ("Monitord.config","monitord") ;
     eString = configErrorString (status) ;
