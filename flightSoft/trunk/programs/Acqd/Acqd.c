@@ -46,6 +46,7 @@ int lastTurfHk=0;
 int turfHkCounter=0;
 int surfMask;
 int useUSBDisks=0;
+int compressWavefile=1;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -389,25 +390,27 @@ int main(int argc, char **argv) {
 		    else 
 			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 
-		    //Do the housekeeping stuff
-		    if((theSurfHk.unixTime-lastSurfHk)>surfHkPeriod || !surfHkPeriod) {
-			writeSurfHousekeeping(3);
-			lastSurfHk=theSurfHk.unixTime;
-		    }
-		    else writeSurfHousekeeping(1);
-		    
-		    writeTurfHousekeeping(1);
-		    if(turfHkCounter>=turfRateTelemEvery) {
-			turfHkCounter=0;
-			writeTurfHousekeeping(2);
-			lastTurfHk=turfRates.unixTime;
-		    }
-		    else if(turfRateTelemInterval && 
-			    (turfRateTelemInterval>
-			     (turfRates.unixTime-lastTurfHk))) {
-			turfHkCounter=0;
-			writeTurfHousekeeping(2);
-			lastTurfHk=turfRates.unixTime;
+		    if(writeFullHk) {
+			//Do the housekeeping stuff
+			if((theSurfHk.unixTime-lastSurfHk)>surfHkPeriod || !surfHkPeriod) {
+			    writeSurfHousekeeping(3);
+			    lastSurfHk=theSurfHk.unixTime;
+			}
+			else writeSurfHousekeeping(1);
+			
+			writeTurfHousekeeping(1);
+			if(turfHkCounter>=turfRateTelemEvery) {
+			    turfHkCounter=0;
+			    writeTurfHousekeeping(2);
+			    lastTurfHk=turfRates.unixTime;
+			}
+			else if(turfRateTelemInterval && 
+				(turfRateTelemInterval>
+				 (turfRates.unixTime-lastTurfHk))) {
+			    turfHkCounter=0;
+			    writeTurfHousekeeping(2);
+			    lastTurfHk=turfRates.unixTime;
+			}
 		    }
 			
 		    
@@ -1523,8 +1526,14 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     if(justWriteHeader==0 && writeData) {
 	sprintf(theFilename,"%s/ev_%ld.dat",theEventDir,
 		theEventPtr->header.eventNumber);
-	if(!oldStyleFiles) 
-	    retVal=writeBody(theBody,theFilename);  
+	if(!oldStyleFiles) {
+	    if(!compressWavefile) 
+		retVal=writeBody(theBody,theFilename);  
+	    else {
+		strcat(theFilename,".gz");
+		retVal=writeZippedBody(theBody,theFilename);
+	    }
+	}
 	else {
 	    sprintf(theFilename,"%s/surf_data.%ld",theEventDir,
 		theEventPtr->header.eventNumber);
@@ -2052,9 +2061,9 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		if(printToScreen) 
 		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
-	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xffff;
+	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
 	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]);
+		printf("Surf %d, RF Power %d (%d) == %d\n",surfIndex[surf],rfChan,((dataInt&0xe000)>>13),(theSurfHk.rfPower[surf][rfChan]&0xfff));
 	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theSurfHk.errorFlag|=(1>>surf);
 	    }
