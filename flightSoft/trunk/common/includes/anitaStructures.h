@@ -20,12 +20,12 @@
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 
-#define VER_EVENT_HEADER 4
+#define VER_EVENT_HEADER 5
 #define VER_WAVE_PACKET 4
 #define VER_SURF_PACKET 4
 #define VER_ENC_WAVE_PACKET 4
 #define VER_ENC_SURF_PACKET 4
-#define VER_SURF_HK 4
+#define VER_SURF_HK 5
 #define VER_ADU5_PAT 4
 #define VER_ADU5_SAT 4
 #define VER_ADU5_VTG 4
@@ -177,7 +177,6 @@ typedef struct {
     unsigned short calibStatus;   /* Were we flashing the pulser? */
     unsigned long priority;
     unsigned long rfcmMask[2]; // What was the RFCM trigger mask
-    unsigned short surfAntMask[10][2];
     TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
 } AnitaEventHeader_t;
 
@@ -389,6 +388,7 @@ typedef struct {
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
+    unsigned short surfAntMask[ACTIVE_SURFS][2];
 } FullSurfHkStruct_t;
 
 typedef struct {    

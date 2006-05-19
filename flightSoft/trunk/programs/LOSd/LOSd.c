@@ -37,14 +37,13 @@ void readAndSendEvent(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 int getLosNumber();
 
-#define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
+
 
 char fakeOutputDir[]="/tmp/fake/los";
 
 /*Config Thingies*/
 char losdPidFile[FILENAME_MAX];
 char lastLosNumberFile[FILENAME_MAX];
-
 
 //Packet Dirs
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -103,7 +102,6 @@ int main(int argc, char *argv[])
     //Directory listing tools
     char currentHeader[FILENAME_MAX];
     int numLinks[NUM_PRIORITIES]={0};
-    int uptoLink[NUM_PRIORITIES]={0};
     struct dirent **linkList[NUM_PRIORITIES];
     int sillyEvNum=0;
     int count=0;
@@ -135,7 +133,6 @@ int main(int argc, char *argv[])
 	tempString=kvpGetString("lastLosNumberFile");
 	if(tempString) {
 	    strncpy(lastLosNumberFile,tempString,FILENAME_MAX);
-	    writePidFile(losdPidFile);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get lastLosNumberFile");
@@ -246,10 +243,6 @@ int main(int argc, char *argv[])
 	    exit(0);
 	}
 
-	    
-	
-
-	//printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -278,11 +271,11 @@ int main(int argc, char *argv[])
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
 	    currentPri=priorityOrder[orderIndex];	    
-	    if(numLinks[currentPri]<=uptoLink[currentPri] || 
-	       (sillyEvNum-eventCounters[currentPri])>maxEventsBetweenLists) {
-		if(numLinks[currentPri]>uptoLink[currentPri]) {
+	    if(numLinks[currentPri]==0 || 
+	       (sillyEvNum)>maxEventsBetweenLists) {
+		if(numLinks[currentPri]>0) {
 		    //Need to free memory
-		    for(count=uptoLink[currentPri];count<numLinks[currentPri];
+		    for(count=0;count<numLinks[currentPri];
 			count++) 
 			free(linkList[currentPri][count]);		    
 		    free(linkList[currentPri]);
@@ -290,16 +283,21 @@ int main(int argc, char *argv[])
 		numLinks[currentPri]=
 		    getListofLinks(eventTelemLinkDirs[currentPri],
 				   &linkList[currentPri]);		
-		uptoLink[currentPri]=0;
+		if(printToScreen && verbosity>1) {
+		    printf("Got %d links in %s\n",numLinks[currentPri],
+			   eventTelemLinkDirs[currentPri]);
+		}
+		sillyEvNum=0;
 	    }
-	    if(numLinks[currentPri]>uptoLink[currentPri]) {
+	    if(numLinks[currentPri]>0) {
 		//Got an event
 		
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
-			linkList[currentPri][uptoLink[currentPri]]->d_name);
+			linkList[currentPri][numLinks[currentPri]-1]->d_name);
 		readAndSendEvent(currentHeader); //Also deletes
-		free(linkList[currentPri][uptoLink[currentPri]]);
-		uptoLink[currentPri]++;
+		free(linkList[currentPri][numLinks[currentPri]-1]);
+		numLinks[currentPri]--;
+		sillyEvNum++;
 	    }
 	    fillBufferWithHk();
 	    usleep(1);
@@ -633,7 +631,7 @@ void readAndSendEvent(char *headerFilename) {
 	}
 	else break;			
     }
-    if(printToScreen && verbosity) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
+    if(printToScreen && verbosity>1) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
 	        
     removeFile(headerFilename);
     removeFile(waveFilename);

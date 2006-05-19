@@ -66,7 +66,7 @@
 #define MAIN_DATA_DISK_LINK "/mnt/dataCurrent"
 #define BACKUP_DATA_DISK_LINK "/mnt/dataBackup"
 
-    
+#define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
 
 #endif /* ANITA_FLIGHT_H */
 
