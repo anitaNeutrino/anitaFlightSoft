@@ -46,6 +46,7 @@ int fillCommand(CommandStruct_t *theStruct, char *filename);
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
+int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename);
 int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename);
 int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename);
 int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename);

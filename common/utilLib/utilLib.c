@@ -291,7 +291,7 @@ int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 {    
     int numObjs;    
-#ifdef NO_ZLIB
+#ifdef NO_ZLIB2
     FILE *infile = fopen (filename, "rb");
 #else
     gzFile infile = gzopen (filename, "rb");    
@@ -300,7 +300,7 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }   
-#ifdef NO_ZLIB
+#ifdef NO_ZLIB2
     numObjs=fread(theEventBodyPtr,sizeof(AnitaEventBody_t),1,infile);
     fclose(infile);
     if(numObjs==1) return 0; /*Success*/
@@ -384,6 +384,21 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
     numObjs=gzwrite(outfile,bodyPtr,sizeof(AnitaEventBody_t));
     gzclose(outfile);
 #endif
+    return 0;
+}
+
+
+int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename)
+/* Writes the body pointed to by bodyPtr to filename */
+{
+    int numObjs;    
+    gzFile outfile = gzopen (filename, "wb9");    
+    if(outfile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }   
+    numObjs=gzwrite(outfile,bodyPtr,sizeof(AnitaEventBody_t));
+    gzclose(outfile);
     return 0;
 }
 
