@@ -380,8 +380,6 @@ int main(int argc, char **argv) {
 
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
-	    gettimeofday(&timeStruct,NULL);
-
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -450,13 +448,18 @@ int main(int argc, char **argv) {
 
 		    if(writeFullHk) {
 			//Do the housekeeping stuff
-			if((theSurfHk.unixTime-lastSurfHk)>surfHkPeriod || !surfHkPeriod) {
+			if((theSurfHk.unixTime-lastSurfHk)>=surfHkPeriod || !surfHkPeriod) {
+//			    printf("SURF HK %ld %ld %d\n",theSurfHk.unixTime,lastSurfHk,surfHkPeriod);
 			    writeSurfHousekeeping(3);
 			    lastSurfHk=theSurfHk.unixTime;
 			}
-			else writeSurfHousekeeping(1);
+			else {
+//			    printf("\tSURF HK %ld %ld\n",theSurfHk.unixTime,lastSurfHk);
+			    writeSurfHousekeeping(1);
+			}
 			
 			writeTurfHousekeeping(1);
+			turfHkCounter++;
 			if(turfHkCounter>=turfRateTelemEvery) {
 			    turfHkCounter=0;
 			    writeTurfHousekeeping(2);
@@ -1012,10 +1015,10 @@ int readConfigFile()
 	    fprintf(stderr,"Error getting turfHkArchiveSubDir");
 	}
 
-
 	surfHkPeriod=kvpGetInt("surfHkPeriod",1);
 	turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
 	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
+//	printf("HK surfPeriod %d\nturfRateTelemEvery %d\nturfRateTelemInterval %d\n",surfHkPeriod,turfRateTelemEvery,turfRateTelemInterval);
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
 	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
@@ -1560,18 +1563,18 @@ int writeTurfHousekeeping(int dataOrTelem)
 
     //Write data to disk
     if(dataOrTelem!=2) {
-	sprintf(theFilename,"%s/hk_%ld_%ld.dat",turfHkArchiveDir,
+	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkArchiveDir,
 		turfRates.unixTime,turfRates.unixTimeUs);
 	retVal+=writeTurfRate(&turfRates,theFilename);
 	if(useUSBDisks) {
-	    sprintf(theFilename,"%s/hk_%ld_%ld.dat",turfHkUSBArchiveDir,
+	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkUSBArchiveDir,
 		    turfRates.unixTime,turfRates.unixTimeUs);
 	    retVal+=writeTurfRate(&turfRates,theFilename);
 	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
-	sprintf(theFilename,"%s/hk_%ld_%ld.dat",turfHkTelemDir,
+	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkTelemDir,
 		turfRates.unixTime,turfRates.unixTimeUs);
 	writeTurfRate(&turfRates,theFilename);
 	retVal+=makeLink(theFilename,turfHkTelemLinkDir);
@@ -1648,10 +1651,10 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    fclose(scalerFile);
     }
 
-    if(writeFullHk && standAloneMode) {
-	sprintf(theFilename,"%s/hk_%d.dat",hkOutputDir,hkNumber);
-	writeSurfHk(&theSurfHk,theFilename);
-    }
+//    if(writeFullHk && standAloneMode) {
+//	sprintf(theFilename,"%s/surfhk_%d.dat",hkOutputDir,hkNumber);
+//	writeSurfHk(&theSurfHk,theFilename);
+//    }
 
 }
 
