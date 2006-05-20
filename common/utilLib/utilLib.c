@@ -901,6 +901,11 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_HKD: string="HkDataStruct_t"; break;
 	case PACKET_CMD_ECHO: string="CommandEcho_t"; break;
 	case PACKET_MONITOR: string="MonitorStruct_t"; break;
+	case PACKET_WAKEUP_LOS: string="LosWakeUpPacket"; break;
+	case PACKET_WAKEUP_HIGHRATE: string="TdrssWakeUpPacket"; break;
+	case PACKET_WAKEUP_COMM1: string="Comm1WakeUpPacket"; break;
+	case PACKET_WAKEUP_COMM2: string="Comm2WakeUpPacket"; break;
+
 	default: 
 	    string="Unknown Packet Code"; break;
     }
