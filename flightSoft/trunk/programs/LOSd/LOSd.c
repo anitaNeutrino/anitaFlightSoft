@@ -524,10 +524,13 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 
 void sendWakeUpBuffer() 
 {
+    GenericHeader_t *gHdr = (GenericHeader_t*) &losBuffer[0];
     int count;
-    for(count=0;count<LOS_MAX_BYTES-10;count++) {
+    for(count=sizeof(GenericHeader_t);count<WAKEUP_LOS_BUFFER_SIZE-sizeof(GenericHeader_t);count++) {
 	losBuffer[count]=0xfe;
     }
+    fillGenericHeader(gHdr,PACKET_WAKEUP_LOS,WAKEUP_LOS_BUFFER_SIZE);
+    gHdr->packetNumber=getLosNumber();
     numBytesInBuffer=count;
     doWrite();
     

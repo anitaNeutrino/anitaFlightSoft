@@ -666,3 +666,21 @@ int getTdrssNumber() {
     return tdrssNumber;
 
 }
+
+void sendWakeUpBuffer() 
+{
+    GenericHeader_t *gHdr = (GenericHeader_t*) &theBuffer[0];
+    int count,retVal=0;
+    for(count=sizeof(GenericHeader_t);count<WAKEUP_TDRSS_BUFFER_SIZE-sizeof(GenericHeader_t);count++) {
+	theBuffer[count]=0xfe;
+    }
+    fillGenericHeader(gHdr,PACKET_WAKEUP_HIGHRATE,WAKEUP_TDRSS_BUFFER_SIZE);
+    gHdr->packetNumber=getTdrssNumber();
+    retVal = sipcom_highrate_write(theBuffer, count);
+    if(retVal<0) {
+	//Problem sending data
+	syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
+	fprintf(stderr,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());	
+    }
+    
+}
