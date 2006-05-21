@@ -132,4 +132,12 @@ int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);
 AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
 
+typedef struct {
+    unsigned char test[8];
+} TurfioTestPattern_t;
+
+	
+	
+
+
 #endif //ACQD_H

@@ -2154,23 +2154,31 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 //    PlxReturnCode_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned short  dataWord=0;
+    unsigned char upperChar;
+    unsigned char dataChar;
+    unsigned short dataShort;
+    unsigned long dataLong;
 
-    int wordNum;
+    int wordNum,surf,ant;
+    TurfioTestPattern_t startPat;
+    TurfioTestPattern_t endPat;
     
     //First read to prime pipe
 //    if(tryToUseBarMap) {
 //	dataWord=*(turfBarMap);
 //    }
 //    else 
-    if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
-	status=ACQD_E_PLXBUSREAD;
-	syslog(LOG_ERR,"Failed to prime pipe TURFIO");
-	if(printToScreen) 
-	    printf("Failed to prime pipe TURFIO\n") ;
-    }
+// Do we need prime read (rjn 20/05/06)
+
+//    if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
+//	status=ACQD_E_PLXBUSREAD;
+//	syslog(LOG_ERR,"Failed to prime pipe TURFIO");
+//	if(printToScreen) 
+//	    printf("Failed to prime pipe TURFIO\n") ;
+//  }
     
-    //Read out 256 words
-    for(wordNum=0;wordNum<256;wordNum++) {
+    //Read out 144 words
+    for(wordNum=0;wordNum<144;wordNum++) {
 	if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
 	    status=ACQD_E_PLXBUSREAD;
 	    syslog(LOG_ERR,"Failed to read TURFIO word %d",wordNum);
@@ -2178,32 +2186,91 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 		printf("Failed to read TURFIO word %d\n",wordNum) ;
 	    continue;
 	}
-	if(wordNum<128) switch(wordNum) {
-	    case 0: turfioPtr->rawTrig=dataWord; break;
-	    case 1: turfioPtr->l3ATrig=dataWord; break;
-	    case 2: turfioPtr->ppsNum=dataWord; break;
-	    case 3: turfioPtr->ppsNum+=(dataWord<<16); break;
-	    case 4: turfioPtr->trigTime=dataWord; break;
-	    case 5: turfioPtr->trigTime+=(dataWord<<16); break;
-	    case 6: turfioPtr->trigInterval=dataWord; break;
-	    case 7: turfioPtr->trigInterval+=(dataWord<<16); break;
-	    default: turfRates.l1Rate[(wordNum/4)-2][wordNum%4]=dataWord; break;
+	dataChar=0;
+	dataShort=0;
+	dataLong=0;
+	dataChar=dataWord&0xff;
+	dataShort=dataWord&0xff;
+	dataLong=dataWord&0xff;
+	upperChar=(dataWord&0xff00)>>8;
+	if(printToScreen && verbosity>1) {
+	    printf("TURFIO -- Word %d  -- %u -- %x + %x\n",wordNum,dataWord,
+		   dataShort,upperChar);
 	}
-	else if(wordNum<160) {
-	    turfRates.l2Rate[(wordNum/16)-8][wordNum%16]=dataWord;
+
+	if(wordNum<8) {
+	    startPat.test[wordNum]=dataChar; 
+	} 
+	else if(wordNum<24) {
+	    switch(wordNum) {
+		case 8:
+		    turfioPtr->trigType=dataChar; break;
+		case 9:
+		    turfioPtr->l3Type1Count=dataChar; break;
+		case 10:
+		    turfioPtr->trigNum=dataShort; break;
+		case 11:
+		    turfioPtr->trigNum+=(dataShort<<8); break;
+		case 12:
+		    turfioPtr->trigType=dataLong; break;
+		case 13:
+		    turfioPtr->trigType+=(dataLong<<8); break;
+		case 14:
+		    turfioPtr->trigType+=(dataLong<<16); break;
+		case 15:
+		    turfioPtr->trigType+=(dataLong<<24); break;
+		case 16:
+		    turfioPtr->ppsNum=dataLong; break;
+		case 17:
+		    turfioPtr->ppsNum+=(dataLong<<8); break;
+		case 18:
+		    turfioPtr->ppsNum+=(dataLong<<16); break;
+		case 19:
+		    turfioPtr->ppsNum+=(dataLong<<24); break;
+		case 20:
+		    turfioPtr->c3poNum=dataLong; break;
+		case 21:
+		    turfioPtr->c3poNum+=(dataLong<<8); break;
+		case 22:
+		    turfioPtr->c3poNum+=(dataLong<<16); break;
+		case 23:
+		    turfioPtr->c3poNum+=(dataLong<<24); break;
+		default:
+		    // Can't get here
+		    break;
+	    }
 	}
-	else if(wordNum<176) {
-	    turfRates.vetoMon[wordNum-160]=dataWord;
+	else if(wordNum<88) {
+	    //Surf Antenna counters
+	    surf=(wordNum-24)/8;
+	    ant=(wordNum%8)/2;
+	    if(wordNum%2==0) {
+		//First word
+		turfRates.l1Rates[surf][ant]=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfRates.l1Rates[surf][ant]+=(dataShort<<8);
+	    }	    
 	}
-	else if(wordNum<240) {
-	    turfRates.l3Rate[(wordNum/16)-176][wordNum%16]=dataWord;
+	else if(wordNum<104) {
+	    turfRates.upperL2Rates[wordNum-88]=dataChar;
 	}
+	else if(wordNum<120) {
+	    turfRates.lowerL2Rates[wordNum-104]=dataChar;
+	}
+	else if(wordNum<136) {
+	    turfRates.l3Rates[wordNum-120]=dataChar;
+	}
+	else if(wordNum<144) {
+	    endPat.test[wordNum-136]=dataChar; 
+	}
+	    
 	
     }
     if(verbosity && printToScreen) {
-	printf("raw: %hu\nL3A: %hu\n1PPS: %lu\ntime: %lu\nint: %lu\n",
-	       turfioPtr->rawTrig,turfioPtr->l3ATrig,turfioPtr->ppsNum,
-	       turfioPtr->trigTime,turfioPtr->trigInterval);
+	printf("TURF Data\n\tEvent (software):\t%lu\n\ttrigNum:\t%u\n\ttrigType:\t%x\n\ttrigTime:\t%lu\n\tppsNum:\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u",
+	       hdPtr->eventNumber,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count);
     }
 	
     return status;	
@@ -2354,3 +2421,4 @@ int updateThresholdsUsingPID() {
     }
     return 0;
 }
+ 

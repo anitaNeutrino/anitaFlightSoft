@@ -32,7 +32,8 @@
 #endif
 
 
-/* Hardware stuff -- might move to a config file */
+// Hardware stuff
+
 #define ACTIVE_SURFS 9
 #define MAX_SURFS 12
 #define CHANNELS_PER_SURF 9
@@ -46,8 +47,14 @@
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
 
 
+//Acromag stuff
 #define CHANS_PER_IP320 40
 #define NUM_IP320_BOARDS 3
+
+//Trigger Stuff
+#define ANTS_PER_SURF 4
+#define TRIGGER_SURFS 8
+#define PHI_SECTORS 16
 
 
 #define NUM_PRIORITIES 10

@@ -517,25 +517,16 @@ void fakeTurfRate(struct timeval *currentTime) {
     int retVal=0,i=0,j=0;
     theTurfRates.unixTime=currentTime->tv_sec;
     theTurfRates.unixTimeUs=currentTime->tv_usec;
-    for(i=0;i<40;i++) {
-	for(j=0;j<2;j++) {
-	    theTurfRates.l1Rate[i][j]=i*j;
+    for(i=0;i<TRIGGER_SURFS;i++) {
+	for(j=0;j<ANTS_PER_SURF;j++) {
+	    theTurfRates.l1Rates[i][j]=i*j;
 	}
     }
-    for(i=0;i<2;i++) {
-	for(j=0;j<16;j++) {
-	    theTurfRates.l2Rate[i][j]=i*j;
-	}
+    for(i=0;i<PHI_SECTORS;i++) {
+	theTurfRates.upperL2Rates[i]=255-i;
+	theTurfRates.lowerL2Rates[i]=i;
+	theTurfRates.l3Rates[i]=128+i;
     }
-    for(i=0;i<4;i++) {
-	for(j=0;j<16;j++) {
-	    theTurfRates.l3Rate[i][j]=i*j;
-	}
-    }
-    for(i=0;i<16;i++) {
-	theTurfRates.vetoMon[i]=i*2;
-    }
-
 
     fillGenericHeader(&theTurfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     retVal=checkPacket(&theTurfRates);

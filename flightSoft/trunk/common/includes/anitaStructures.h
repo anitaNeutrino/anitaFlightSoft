@@ -133,21 +133,22 @@ typedef struct {
 //} TurfioStruct_t;
   
 typedef struct {
-    unsigned short rawTrig; // raw trigger number
-    unsigned short l3ATrig; // same as raw trig
+    unsigned char trigType; //Trig type bit masks
+    unsigned char l3Type1Count; //L3 counter
+    unsigned short trigNum; //turf trigger counter
+    unsigned long trigTime;
     unsigned long ppsNum;     // 1PPS
-    unsigned long trigTime;     // trig time
-    unsigned long trigInterval; // interval since last trig
+    unsigned long c3poNum;     // 1 number of trigger time ticks per PPS
 } TurfioStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long unixTime;
-    unsigned long unixTimeUs;
-    unsigned int l1Rate[40][4]; // Antenna trigger output rates (Hz)
-    unsigned int l2Rate[2][16]; // level 2 trigger rate
-    unsigned int l3Rate[4][16];
-    unsigned int vetoMon[16];
+    unsigned long unixTimeUs;    
+    unsigned short l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
+    unsigned char upperL2Rates[PHI_SECTORS];
+    unsigned char lowerL2Rates[PHI_SECTORS];
+    unsigned char l3Rates[PHI_SECTORS];
 } TurfRateStruct_t;
     
     
