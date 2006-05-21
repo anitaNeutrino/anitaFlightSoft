@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"while() { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 	    fprintf(stderr,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    if(standAloneMode && (numEvents && numEvents<doingEvent)) {
+	    if(standAloneMode && (numEvents && numEvents<=doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
 	    }
@@ -1186,6 +1186,26 @@ int readConfigFile()
 	fprintf(stderr,"Error reading Acqd.config: %s\n",eString);
 	    
     }
+
+    if(printToScreen) {
+	printf("Read Config File\n");
+	printf("writeData %d",writeData);
+	if(writeData) {
+	    if(useAltDir) 
+		printf("\t--\t%s",altOutputdir);
+	    else
+		printf("\t--\t%s",acqdEventDir);
+	}
+	printf("\n");
+	printf("writeFullHk %d\n",writeFullHk);
+	if(writeFullHk) {
+	    printf("\t surfHkArchiveDir -- %s\n",surfHkArchiveDir);
+	    printf("\t turfHkArchiveDir -- %s\n",turfHkArchiveDir);
+	}
+    }   
+	    
+	    
+
     
 //    printf("Debug rc3\n");
     return status;
@@ -1557,18 +1577,18 @@ int writeSurfHousekeeping(int dataOrTelem)
 
     //Write data to disk
     if(dataOrTelem!=2) {
-	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat",surfHkArchiveDir,
+	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
 		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	retVal+=writeSurfHk(&theSurfHk,theFilename);
 	if(useUSBDisks) {
-	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat",surfHkUSBArchiveDir,
+	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkUSBArchiveDir,
 		    theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	    retVal+=writeSurfHk(&theSurfHk,theFilename);
 	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
-	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat",surfHkTelemDir,
+	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkTelemDir,
 		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	retVal+=writeSurfHk(&theSurfHk,theFilename);
 	makeLink(theFilename,surfHkTelemLinkDir);
@@ -1592,18 +1612,18 @@ int writeTurfHousekeeping(int dataOrTelem)
     fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
-	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkArchiveDir,
+	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkArchiveDir,
 		turfRates.unixTime,turfRates.unixTimeUs);
 	retVal+=writeTurfRate(&turfRates,theFilename);
 	if(useUSBDisks) {
-	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkUSBArchiveDir,
+	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkUSBArchiveDir,
 		    turfRates.unixTime,turfRates.unixTimeUs);
 	    retVal+=writeTurfRate(&turfRates,theFilename);
 	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
-	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkTelemDir,
+	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkTelemDir,
 		turfRates.unixTime,turfRates.unixTimeUs);
 	writeTurfRate(&turfRates,theFilename);
 	retVal+=makeLink(theFilename,turfHkTelemLinkDir);
@@ -2223,9 +2243,11 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 	dataLong=dataWord&0xff;
 	upperChar=(dataWord&0xff00)>>8;
 	if(printToScreen && verbosity>1) {
-	    printf("TURFIO -- Word %d  -- %u -- %x + %x\n",wordNum,dataWord,
+	    printf("TURFIO -- Word %d  -- %x -- %x + %x\n",wordNum,dataWord,
 		   dataShort,upperChar);
 	}
+	if(wordNum==0) 
+	    hdPtr->turfUpperWord=upperChar;
 
 	if(wordNum<8) {
 	    startPat.test[wordNum]=dataChar; 
@@ -2301,13 +2323,13 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 	if(startPat.test[wordNum]!=endPat.test[wordNum]) 
 	    errCount++;
 	if(verbosity && printToScreen) {
-	    printf("Test Pattern %d -- %x -- %x",wordNum,startPat.test[wordNum],
+	    printf("Test Pattern %d -- %x -- %x\n",wordNum,startPat.test[wordNum],
 		   endPat.test[wordNum]);
 	}
     }
     
     if(verbosity && printToScreen) {
-	printf("TURF Data\n\tEvent (software):\t%lu\n\ttrigNum:\t%u\n\ttrigType:\t%x\n\ttrigTime:\t%lu\n\tppsNum:\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u",
+	printf("TURF Data\n\tEvent (software):\t%lu\n\ttrigNum:\t%u\n\ttrigType:\t%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n",
 	       hdPtr->eventNumber,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count);
     }
 	
