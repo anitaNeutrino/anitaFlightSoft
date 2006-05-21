@@ -144,7 +144,7 @@ typedef struct {
     unsigned short surfMask;
     unsigned short calibStatus;   /* Were we flashing the pulser? */
     unsigned char priority; // priority and other
-    unsigned char turfUppweWord; // The upper 8 bits from the TURF
+    unsigned char turfUpperWord; // The upper 8 bits from the TURF
     unsigned char otherFlag; //Currently unused 
     unsigned char otherFlag2; //Currently unused 
     unsigned long rfcmMask[2]; // What was the RFCM trigger mask
