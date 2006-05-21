@@ -345,22 +345,22 @@ int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 /* Writes the header pointed to by hdPtr to filename */
 {
     int numObjs;    
-#ifdef NO_ZLIB
+//#ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");
-#else
-    gzFile outfile = gzopen (filename, "wb9");    
-#endif
+//#else
+//    gzFile outfile = gzopen (filename, "wb9");    
+//#endif
     if(outfile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	return -1;
     }   
-#ifdef NO_ZLIB
+//#ifdef NO_ZLIB
     numObjs=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,outfile);
     fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,hdPtr,sizeof(AnitaEventHeader_t));
-    gzclose(outfile);
-#endif
+//#else
+//    numObjs=gzwrite(outfile,hdPtr,sizeof(AnitaEventHeader_t));
+//    gzclose(outfile);
+//#endif
     return 0;
 }
 
