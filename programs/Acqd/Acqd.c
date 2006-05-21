@@ -26,6 +26,8 @@
 #include "Acqd.h"
 
 //#define TIME_DEBUG 1
+//#define BAD_DEBUG 1
+
 
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
     return (a>>8)+(a<<8);
@@ -140,7 +142,7 @@ int pidAverage;
 //bit 8 in second word is 48th antenna
 //We load in reverse order starting with the missing SURF 10 
 //and working backwards to SURF 1
-unsigned int rfcmMask[2] = {0x10001000, 0x00008000} ;
+int rfcmMask[2] = {0x10001000, 0x00008000} ;
 
 
 //Test of BarMap
@@ -175,7 +177,9 @@ int main(int argc, char **argv) {
 
     /* Log stuff */
     char *progName=basename(argv[0]);
-
+#ifdef BAD_DEBUG
+    printf("Starting %s\n",progName);
+#endif
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
     turfioPtr=&(hdPtr->turfio);
@@ -192,9 +196,13 @@ int main(int argc, char **argv) {
     signal(SIGUSR2, sigUsr2Handler);
 
     retVal=readConfigFile();
+#ifdef BAD_DEBUG
+    printf("Read config %d\n",retVal);
+#endif
 
     if(retVal!=CONFIG_E_OK) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
+	fprintf(stderr,"Error reading config file Acqd.config: bailing\n");
 	return -1;
     }
 
@@ -432,13 +440,22 @@ int main(int argc, char **argv) {
 		status=ACQD_E_OK;
 	    }
 	    else {
-		fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
 		hdPtr->eventNumber=getEventNumber();
 		hdPtr->surfMask=surfMask;
-//		hdPtr->numChannels=CHANNELS_PER_SURF*numSurfs;
-//		hdPtr->numSamples=N_SAMP;
+		hdPtr->rfcmMask[0]=(unsigned int)rfcmMask[0];
+		hdPtr->rfcmMask[1]=(unsigned int)rfcmMask[1];
+		
+
+		/* 
+		   Filled by Eventd
+		hdPtr->gpsSubTime;
+		hdPtr->calibStatus;
+		*/
+
 		if(printToScreen && verbosity) 
 		    printf("Event:\t%lu\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+		//Fill Generic Header
+		fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
 		    if(useAltDir) 
@@ -1063,6 +1080,16 @@ int readConfigFile()
 	    syslog(LOG_WARNING,"Couldn't fetch standAloneMode, defaulting to zero");
 	    standAloneMode=0;	    
 	}
+	tempNum=2;
+	kvpStatus=kvpGetIntArray("rfcmMask",rfcmMask,&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(rfcmMask): %s",
+		   kvpErrorString(kvpStatus));
+	    fprintf(stderr,"kvpGetIntArray(rfcmMask): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+	
+
 	
 	if(printToScreen) printf("Print to screen flag is %d\n",printToScreen);
 
@@ -1155,7 +1182,7 @@ int readConfigFile()
     else {
 	eString=configErrorString (status) ;
 	syslog(LOG_ERR,"Error reading Acqd.config: %s\n",eString);
-	if(printToScreen)
+//	if(printToScreen)
 	fprintf(stderr,"Error reading Acqd.config: %s\n",eString);
 	    
     }
@@ -1561,6 +1588,8 @@ int writeTurfHousekeeping(int dataOrTelem)
     char theFilename[FILENAME_MAX];
     int retVal=0;
 
+
+    fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
 	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat",turfHkArchiveDir,
@@ -2159,7 +2188,7 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
     unsigned short dataShort;
     unsigned long dataLong;
 
-    int wordNum,surf,ant;
+    int wordNum,surf,ant,errCount=0;
     TurfioTestPattern_t startPat;
     TurfioTestPattern_t endPat;
     
@@ -2212,13 +2241,13 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 		case 11:
 		    turfioPtr->trigNum+=(dataShort<<8); break;
 		case 12:
-		    turfioPtr->trigType=dataLong; break;
+		    turfioPtr->trigTime=dataLong; break;
 		case 13:
-		    turfioPtr->trigType+=(dataLong<<8); break;
+		    turfioPtr->trigTime+=(dataLong<<8); break;
 		case 14:
-		    turfioPtr->trigType+=(dataLong<<16); break;
+		    turfioPtr->trigTime+=(dataLong<<16); break;
 		case 15:
-		    turfioPtr->trigType+=(dataLong<<24); break;
+		    turfioPtr->trigTime+=(dataLong<<24); break;
 		case 16:
 		    turfioPtr->ppsNum=dataLong; break;
 		case 17:
@@ -2268,6 +2297,15 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 	    
 	
     }
+    for(wordNum=0;wordNum<8;wordNum++) {
+	if(startPat.test[wordNum]!=endPat.test[wordNum]) 
+	    errCount++;
+	if(verbosity && printToScreen) {
+	    printf("Test Pattern %d -- %x -- %x",wordNum,startPat.test[wordNum],
+		   endPat.test[wordNum]);
+	}
+    }
+    
     if(verbosity && printToScreen) {
 	printf("TURF Data\n\tEvent (software):\t%lu\n\ttrigNum:\t%u\n\ttrigType:\t%x\n\ttrigTime:\t%lu\n\tppsNum:\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u",
 	       hdPtr->eventNumber,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count);
@@ -2335,7 +2373,7 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle)
     }	
 
     //Now send bit pattern to TURF using RFCBit and RFCClk
-    while(i<48) {
+    while(i<40) {
 	if (i==32) j=chanBit=1 ;
 	
 //	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,rfcmMask[j],(rfcmMask[j]&chanBit));

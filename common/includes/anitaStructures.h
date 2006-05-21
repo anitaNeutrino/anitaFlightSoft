@@ -20,7 +20,7 @@
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 
-#define VER_EVENT_HEADER 5
+#define VER_EVENT_HEADER 6
 #define VER_WAVE_PACKET 4
 #define VER_SURF_PACKET 4
 #define VER_ENC_WAVE_PACKET 4
@@ -34,7 +34,7 @@
 #define VER_HK_FULL 4
 #define VER_CMD_ECHO 4
 #define VER_MONITOR 4
-#define VER_TURF_RATE 4
+#define VER_TURF_RATE 5
 
 
 //Relay Bit Masks
@@ -92,46 +92,6 @@ typedef struct {
     unsigned long checksum;
 } GenericHeader_t;
 
-// TURFIO data structure, TV test
-/* typedef struct { */
-/*     unsigned short rawtrig; // raw trigger number */
-/*     unsigned short L3Atrig; // same as raw trig */
-/*     unsigned long pps1;     // 1PPS */
-/*     unsigned long time;     // trig time */
-/*     unsigned long interval; // interval since last trig */
-/*     unsigned int rate[2][4]; // Antenna trigger output rates (Hz) */
-/* } TurfioStruct_t; */
-
-/* typedef struct { */
-/*     unsigned char otherBits; */
-/*     unsigned char trigType; */
-/*     unsigned char trigNumByte1; */
-/*     unsigned char trigNumByte2; */
-/*     unsigned char trigNumByte3; */
-/*     unsigned char trigTimeByte1; */
-/*     unsigned char trigTimeByte2; */
-/*     unsigned char trigTimeByte3; */
-/*     unsigned char trigTimeByte4; */
-/*     unsigned char ppsNumByte1; */
-/*     unsigned char ppsNumByte2; */
-/*     unsigned char ppsNumByte3; */
-/*     unsigned char ppsNumByte4; */
-/*     unsigned char c3poByte1; */
-/*     unsigned char c3poByte2; */
-/*     unsigned char c3poByte3; */
-/*     unsigned char c3poByte4; */
-/* } TurfioStruct_t; */
-    
-  
-//typedef struct {
-//  unsigned char otherBits;
-//    unsigned char trigType;
-//    unsigned long trigNum;
-//    unsigned long trigTime;
-//    unsigned long ppsNum;
-//    unsigned long c3poNum;
-//} TurfioStruct_t;
-  
 typedef struct {
     unsigned char trigType; //Trig type bit masks
     unsigned char l3Type1Count; //L3 counter
@@ -183,7 +143,10 @@ typedef struct {
     unsigned long eventNumber;    /* Global event number */
     unsigned short surfMask;
     unsigned short calibStatus;   /* Were we flashing the pulser? */
-    unsigned long priority;
+    unsigned char priority; // priority and other
+    unsigned char turfUppweWord; // The upper 8 bits from the TURF
+    unsigned char otherFlag; //Currently unused 
+    unsigned char otherFlag2; //Currently unused 
     unsigned long rfcmMask[2]; // What was the RFCM trigger mask
     TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
 } AnitaEventHeader_t;
