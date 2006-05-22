@@ -4,7 +4,7 @@
 extern "C"
 {
 #endif
-int byteunpack(int m, int nmax, unsigned char *in, unsigned int *out);
+int byteunpack(int m, unsigned char *in, unsigned int *out);
 #ifdef __cplusplus
 }
 #endif

@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
 //     for (i=0;i<packedbytes;i++){
 //	  printf("%02x\n",packed[i]);
 //     }
-     codewords=byteunpack(packedbytes,65536,packed,testcode);
+     codewords=byteunpack(packedbytes,packed,testcode);
      printf("%i\n",codewords);
      for (i=0;i<codewords;i++){
 	  printf("%hi\n",unbifurcate(unfibonacci(testcode[i])));
