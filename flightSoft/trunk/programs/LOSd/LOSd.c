@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 		
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 			linkList[currentPri][numLinks[currentPri]-1]->d_name);
-//		readAndSendEvent(currentHeader); //Also deletes
+		readAndSendEvent(currentHeader); //Also deletes
 		free(linkList[currentPri][numLinks[currentPri]-1]);
 		numLinks[currentPri]--;
 		sillyEvNum++;
@@ -464,7 +464,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 {
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-    int fd,numLinks,count,numBytes,totalBytes=0,checkVal=0;
+    int retVal,numLinks,count,numBytes,totalBytes=0,checkVal=0;
     GenericHeader_t *gHdr;
     struct dirent **linkList;
 
@@ -481,24 +481,25 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 		linkList[count]->d_name);
 	sprintf(currentLinkname,"%s/%s",
 		linkDir,linkList[count]->d_name);
-	fd = open(currentFilename,O_RDONLY);
-	if(fd == 0) {
-	    syslog(LOG_ERR,"Error opening file, will delete: %s",currentFilename);
-	    fprintf(stderr,"Error opening file, will delete: %s\n",currentFilename);
+
+	retVal=genericReadOfFile((char*)&(losBuffer[numBytesInBuffer]),
+				 currentFilename,
+				 LOS_MAX_BYTES-numBytesInBuffer);
+	if(retVal<=0) {
+	    syslog(LOG_ERR,"Error opening file, will delete: %s",
+		   currentFilename);
+	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
 	    removeFile(currentFilename);
 	    removeFile(currentLinkname);
 	    continue;
 	}
+	numBytes=retVal;
+
 	if(verbosity>1) {
-	    printf("Opened  File: %s\n",currentFilename);
+	    printf("Read File: %s -- (%d bytes)\n",currentFilename,numBytes);
 	}
-	    
-	numBytes=read(fd,&(losBuffer[numBytesInBuffer]),LOS_MAX_BYTES-numBytesInBuffer);
-	if(numBytes<=0) {
-	    removeFile(currentLinkname);
-	    unlink(currentFilename);
-	    continue;
-	}
+	
+
 //	printf("Read %d bytes from file\n",numBytes);
 //	Maybe I'll add a packet check here
 	gHdr = (GenericHeader_t*) (&(losBuffer[numBytesInBuffer]));
@@ -509,7 +510,6 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	gHdr->packetNumber=getLosNumber();
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
-	close (fd);
 	removeFile(currentLinkname);
 	removeFile(currentFilename);
 
