@@ -55,3 +55,25 @@ unsigned short packwave(unsigned short nwords,
      return (packbytes+codebytes+6);
 }
 	
+unsigned short unpackwave(unsigned short nbytes, 
+			  unsigned short width, unsigned short nstrip, 
+			  unsigned short npack, unsigned char *in,
+			  unsigned short *out)
+{
+     unsigned short median,codebytes,packbytes;
+     unsigned int scratch[65536];
+     unsigned short nwords;
+     int i;
+     median=in[4]*256+in[5];
+     codebytes=in[2]*256+in[3];
+     packbytes=in[0]*256+in[2];
+     //data length only known from the fibonacci code part
+     nwords=byteunpack(codebytes,&(in[6+packbytes]),scratch);
+     for (i=0;i<nwords;i++){
+	  out[i]=median+
+	       (unbifurcate(unfibonacci(scratch[i]))<<(nstrip+npack));
+     }
+//handle packed bits here     
+     return nwords;
+}
+

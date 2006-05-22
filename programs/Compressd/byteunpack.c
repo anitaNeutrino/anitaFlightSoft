@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "byteunpack.h"
 
-int byteunpack(int m, int nmax, unsigned char *in, unsigned int *out)
+int byteunpack(int m, unsigned char *in, unsigned int *out)
 {
      int inbyte, inbit;
      int outword, outbit;
