@@ -340,6 +340,39 @@ int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
     return 1;
 }
 
+int genericReadOfFile(char *buffer, char *filename, int maxBytes) 
+/*!
+  Reads all the bytes in a file and returns the number of bytes read
+*/
+{
+    int numBytes;
+#ifdef NO_ZLIB
+    int fd;
+    fd = open(filename,O_RDONLY);
+    if(fd == 0) {
+	return -1;
+    }
+    numBytes=read(fd,buffer,maxBytes);
+    close (fd);
+    if(numBytes<=0) {
+	return -2;
+    }
+    return numBytes;
+#else
+    gzFile infile = gzopen(filename,"rb");
+    if(infile == NULL) {
+	syslog (LOG_ERR,"gzopen: %s ---  %s\n",strerror(errno),filename);
+	return -1;
+    }       
+    numBytes=gzread(infile,buffer,maxBytes);
+    gzclose(infile);
+    if(numBytes<=0) {
+	return -2;
+    }
+    return numBytes;
+#endif
+}
+
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 /* Writes the header pointed to by hdPtr to filename */
