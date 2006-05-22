@@ -44,9 +44,11 @@ int printToScreen=0,standAloneMode=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
 int turfRateTelemEvery=1,turfRateTelemInterval=60;
 int surfHkPeriod=0;
+int surfHkTelemEvery=0;
 int lastSurfHk=0;
 int lastTurfHk=0;
 int turfHkCounter=0;
+int surfHkCounter=0;
 int surfMask;
 int useUSBDisks=0;
 int compressWavefile=1;
@@ -167,6 +169,7 @@ int main(int argc, char **argv) {
     int tmpGPIO;
     unsigned short dacVal=2200;
     int surf;
+    int gotSurfHk=0;
     
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
@@ -269,6 +272,7 @@ int main(int argc, char **argv) {
 	
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
+	    gotSurfHk=0;
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"while() { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -394,28 +398,36 @@ int main(int argc, char **argv) {
 	    fprintf(stderr,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
-	    status+=readSurfHkData(surfHandles);
+	    if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
+		//Record housekeeping data
+		status+=readSurfHkData(surfHandles);
+		gotSurfHk=1;
+		lastSurfHk=timeStruct.tv_sec;
+		theSurfHk.unixTime=timeStruct.tv_sec;
+		theSurfHk.unixTimeUs=timeStruct.tv_usec;
+		if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
+
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
+		gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(stderr,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    theSurfHk.unixTime=timeStruct.tv_sec;
-	    theSurfHk.unixTimeUs=timeStruct.tv_usec;
-	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
-	    if(enableChanServo) {
-		if(verbosity && printToScreen) 
-		    printf("Will servo on channel scalers\n");
-		
-		if(updateThresholdsUsingPID())
-		    setDACThresholds(surfHandles);
-		
-	    }
+		if(enableChanServo) {
+		    if(verbosity && printToScreen) 
+			printf("Will servo on channel scalers\n");
+		    
+		    if(updateThresholdsUsingPID())
+			setDACThresholds(surfHandles);
+		    
+		}
+
+
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
+		gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(stderr,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+	    }
 
 
 
@@ -464,27 +476,31 @@ int main(int argc, char **argv) {
 			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 
 		    if(writeFullHk) {
-			//Do the housekeeping stuff
-			if((theSurfHk.unixTime-lastSurfHk)>=surfHkPeriod || !surfHkPeriod) {
-//			    printf("SURF HK %ld %ld %d\n",theSurfHk.unixTime,lastSurfHk,surfHkPeriod);
-			    writeSurfHousekeeping(3);
-			    lastSurfHk=theSurfHk.unixTime;
-			}
-			else {
+
+			if(gotSurfHk) {
+			    //Do the housekeeping stuff
+			    surfHkCounter++;
+			    if(surfHkCounter>=surfHkTelemEvery) {
+				writeSurfHousekeeping(3);
+				surfHkCounter=0;
+			    }
+			    else {
 //			    printf("\tSURF HK %ld %ld\n",theSurfHk.unixTime,lastSurfHk);
-			    writeSurfHousekeeping(1);
+				writeSurfHousekeeping(1);
+			    }
 			}
-			
 			writeTurfHousekeeping(1);
 			turfHkCounter++;
 			if(turfHkCounter>=turfRateTelemEvery) {
+//			    printf("turfHk %d %d\n",turfHkCounter,turfRateTelemEvery);
 			    turfHkCounter=0;
 			    writeTurfHousekeeping(2);
 			    lastTurfHk=turfRates.unixTime;
 			}
 			else if(turfRateTelemInterval && 
-				(turfRateTelemInterval>
+				(turfRateTelemInterval<=
 				 (turfRates.unixTime-lastTurfHk))) {
+//			    printf("turfHk times %d %d -- %d\n",turfRates.unixTime,lastTurfHk,turfRateTelemInterval);
 			    turfHkCounter=0;
 			    writeTurfHousekeeping(2);
 			    lastTurfHk=turfRates.unixTime;
@@ -1033,6 +1049,7 @@ int readConfigFile()
 	}
 
 	surfHkPeriod=kvpGetInt("surfHkPeriod",1);
+	surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
 	turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
 	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
 //	printf("HK surfPeriod %d\nturfRateTelemEvery %d\nturfRateTelemInterval %d\n",surfHkPeriod,turfRateTelemEvery,turfRateTelemInterval);
