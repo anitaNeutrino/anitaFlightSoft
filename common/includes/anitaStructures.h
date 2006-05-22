@@ -33,7 +33,7 @@
 #define VER_G12_SAT 4
 #define VER_HK_FULL 4
 #define VER_CMD_ECHO 4
-#define VER_MONITOR 4
+#define VER_MONITOR 5
 #define VER_TURF_RATE 5
 
 
@@ -148,7 +148,7 @@ typedef struct {
     unsigned char otherFlag; //Currently unused 
     unsigned char otherFlag2; //Currently unused 
     unsigned long rfcmMask[2]; // What was the RFCM trigger mask
-    TurfioStruct_t turfio; /*The 32 byte TURFIO data*/
+    TurfioStruct_t turfio; /*The 16 byte TURFIO data*/
 } AnitaEventHeader_t;
 
 typedef struct {
@@ -391,16 +391,20 @@ typedef enum {
 
 typedef struct {
     unsigned short mainDisk; //In MegaBytes
-    unsigned short secondDisk; //In MegaBytes
+    unsigned short otherDisks[5]; //In MegaBytes
     unsigned short usbDisk[NUM_USBDISKS]; //In MegaBytes
 } DiskSpaceStruct_t;
 
 typedef struct {
     unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
     unsigned short cmdLinks;
+    unsigned short headLinks;
     unsigned short gpsLinks;
     unsigned short hkLinks;
     unsigned short monitorLinks;
+    unsigned short surfHkLinks;
+    unsigned short turfHkLinks;
+    unsigned short forcedLinks;
 } QueueStruct_t;
 
 typedef struct {

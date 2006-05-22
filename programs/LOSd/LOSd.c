@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 		
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 			linkList[currentPri][numLinks[currentPri]-1]->d_name);
-		readAndSendEvent(currentHeader); //Also deletes
+//		readAndSendEvent(currentHeader); //Also deletes
 		free(linkList[currentPri][numLinks[currentPri]-1]);
 		numLinks[currentPri]--;
 		sillyEvNum++;
@@ -464,7 +464,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 {
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-    int fd,numLinks,count,numBytes,totalBytes=0;
+    int fd,numLinks,count,numBytes,totalBytes=0,checkVal=0;
     GenericHeader_t *gHdr;
     struct dirent **linkList;
 
@@ -502,7 +502,10 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 //	printf("Read %d bytes from file\n",numBytes);
 //	Maybe I'll add a packet check here
 	gHdr = (GenericHeader_t*) (&(losBuffer[numBytesInBuffer]));
-//	checkPacket(gHdr);
+	checkVal=checkPacket(gHdr);
+	if(checkVal!=0 ) {
+	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
+	}
 	gHdr->packetNumber=getLosNumber();
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
@@ -531,7 +534,7 @@ void sendWakeUpBuffer()
     }
     fillGenericHeader(gHdr,PACKET_WAKEUP_LOS,WAKEUP_LOS_BUFFER_SIZE);
     gHdr->packetNumber=getLosNumber();
-    numBytesInBuffer=count;
+    numBytesInBuffer=WAKEUP_LOS_BUFFER_SIZE;
     doWrite();
     
 }
