@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
 	
 	fakeEvent(trigType);
 	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
-	usleep(200000);
+	usleep(50000);
 	evCounter++;
 	if(evCounter==6) evCounter=0;
     }
@@ -599,6 +599,7 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     if(retVal) 
 	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/pat_%ld_%ld.dat",gpsTelemDir,thePat.unixTime,thePat.unixTimeUs);
+    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
     retVal=writeGpsPat(&thePat,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir); 
 }

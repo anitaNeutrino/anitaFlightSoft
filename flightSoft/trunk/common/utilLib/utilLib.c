@@ -851,12 +851,12 @@ int checkPacket(void *thePtr)
     unsigned long longBytes=(gHdr->numBytes-sizeof(GenericHeader_t))/4;
     unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t)); 
     unsigned long checksum=simpleLongCrc(dataPtr,longBytes);
+    PacketCode_t code=gHdr->code;
     if(checksum!=gHdr->checksum) {
-	printf("Checksum Mismatch (%lu bytes) %lu -- %lu \n",
-	       longBytes,checksum,gHdr->checksum);	
+	printf("Checksum Mismatch (possibly %s (%d)) (%lu bytes) %lu -- %lu \n",
+	       packetCodeAsString(code),code,longBytes,checksum,gHdr->checksum);	
 	retVal+=PKT_E_CHECKSUM;
     }
-    PacketCode_t code=gHdr->code;
     switch(code) {
 	case PACKET_HD: packetSize=sizeof(AnitaEventHeader_t); break;	    
 	case PACKET_WV: packetSize=sizeof(RawWaveformPacket_t); break;
@@ -873,6 +873,13 @@ int checkPacket(void *thePtr)
 	case PACKET_HKD: packetSize=sizeof(HkDataStruct_t); break;
 	case PACKET_CMD_ECHO: packetSize=sizeof(CommandEcho_t); break;
 	case PACKET_MONITOR: packetSize=sizeof(MonitorStruct_t); break;
+	case PACKET_WAKEUP_LOS: packetSize=WAKEUP_LOS_BUFFER_SIZE; break;
+	case PACKET_WAKEUP_HIGHRATE: packetSize=WAKEUP_TDRSS_BUFFER_SIZE; 
+	    break;
+	case PACKET_WAKEUP_COMM1: packetSize=WAKEUP_LOW_RATE_BUFFER_SIZE; 
+	    break;
+	case PACKET_WAKEUP_COMM2: packetSize=WAKEUP_LOW_RATE_BUFFER_SIZE; 
+	    break;
 	default: 
 	    retVal+=PKT_E_CODE; break;
     }
