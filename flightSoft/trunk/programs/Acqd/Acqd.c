@@ -466,8 +466,8 @@ int main(int argc, char **argv) {
 
 		if(printToScreen && verbosity) 
 		    printf("Event:\t%lu\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
-		//Fill Generic Header
-		fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
+
+
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
 		    if(useAltDir) 
@@ -1591,7 +1591,7 @@ int writeSurfHousekeeping(int dataOrTelem)
 {
     char theFilename[FILENAME_MAX];
     int retVal=0;
-
+    fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
 	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
@@ -1659,6 +1659,10 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     AnitaEventHeader_t *theHeader=&(theEventPtr->header);
     AnitaEventBody_t *theBody=&(theEventPtr->body);
 
+
+		//Fill Generic Header
+    fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
+    fillGenericHeader(theBody,PACKET_WV,sizeof(AnitaEventBody_t));
 
 
     if(justWriteHeader==0 && writeData) {

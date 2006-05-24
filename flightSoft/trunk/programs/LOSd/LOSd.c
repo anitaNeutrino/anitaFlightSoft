@@ -529,7 +529,7 @@ void sendWakeUpBuffer()
 {
     GenericHeader_t *gHdr = (GenericHeader_t*) &losBuffer[0];
     int count;
-    for(count=sizeof(GenericHeader_t);count<WAKEUP_LOS_BUFFER_SIZE-sizeof(GenericHeader_t);count++) {
+    for(count=sizeof(GenericHeader_t);count<WAKEUP_LOS_BUFFER_SIZE;count++) {
 	losBuffer[count]=0xfe;
     }
     fillGenericHeader(gHdr,PACKET_WAKEUP_LOS,WAKEUP_LOS_BUFFER_SIZE);
