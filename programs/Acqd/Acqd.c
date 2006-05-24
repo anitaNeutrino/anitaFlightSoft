@@ -52,6 +52,7 @@ int surfHkCounter=0;
 int surfMask;
 int useUSBDisks=0;
 int compressWavefile=1;
+int useInterrupts=0;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -90,6 +91,7 @@ char turfHkUSBArchiveDir[FILENAME_MAX];
 
 
 #define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
+#define N_TMO_INT 10000 //Millisec to wait for interrupt
 #define N_FTMO 200    /* number of msec wait for Lab_f before timed out. */
 //#define N_FTMO 2000    /* number of msec wait for Lab_f before timed out. */
 //#define DAC_CHAN 4 /* might replace with N_CHIP at a later date */
@@ -156,6 +158,8 @@ int main(int argc, char **argv) {
     
     PlxHandle_t surfHandles[MAX_SURFS];
     PlxHandle_t turfioHandle;
+    PlxHandle_t lint1Handle;
+    PlxIntr_t plxIntr, plxState;
     PlxDevLocation_t surfLocation[MAX_SURFS];
     PlxDevLocation_t turfioLocation;
     PlxReturnCode_t rc;
@@ -166,7 +170,7 @@ int main(int argc, char **argv) {
 
     int i=0,tmo=0; 
     int numDevices, numEvents=0 ;
-    int tmpGPIO;
+    int tmpGPIO,tmpINTR;
     unsigned short dacVal=2200;
     int surf;
     int gotSurfHk=0;
@@ -228,6 +232,25 @@ int main(int argc, char **argv) {
 	    printf("Error setting bar map\n");
 	}
     }
+    
+    // Initialize interrupt structure.
+    memset(&plxIntr, 0, sizeof(PlxIntr_t)) ;
+    memset(&plxState, 0, sizeof(PlxIntr_t)) ;
+    
+    plxIntr.IopToPciInt = 1 ;    // LINT1 interrupt line 
+    plxIntr.IopToPciInt_2 = 1 ;  // LINT2 interrupt line 
+    plxIntr.PciMainInt = 1 ;
+
+  /*    if (PlxRegisterWrite(PlxHandle, PCI9030_INT_CTRL_STAT, 0x00300000 )  */
+  /*        != ApiSuccess)  */
+  /*      printf("  failed to reset interrupt control bits.\n") ;  */
+
+    if(useInterrupts) {
+	if (PlxIntrDisable(surfHandles[0], &plxIntr) != ApiSuccess)
+	    printf(" Failed to disable interrupt.\n") ;
+	plxIntr.IopToPciInt_2 = 0 ;  // LINT2 interrupt line 
+    }
+
 
 //Reprogram TURF if desired
     if (reprogramTurf) {
@@ -235,7 +258,7 @@ int main(int argc, char **argv) {
 	setTurfControl(turfioHandle,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
-    
+
     // Clear devices 
     clearDevices(surfHandles,turfioHandle);
     
@@ -318,47 +341,112 @@ int main(int argc, char **argv) {
 		    }
 	    }
 
+	    
+	    // attachment should be done while LINT1 is not active.  
+	    // Otherwise, API disables LINT1 and waiting for it 
+	    // will time out.   21-Jan-05, SM. 
+	    if (useInterrupts) {
+		if (PlxIntrAttach(surfHandles[0], plxIntr, &lint1Handle) 
+		    != ApiSuccess)
+		    printf(" failed to attatch interrupt. \n") ;
+		
+		if (PlxIntrEnable(surfHandles[0], &plxIntr) != ApiSuccess)
+		    printf("  failed to enable interrupt.\n") ;
+		if(verbosity && printToScreen) {
+		    tmpGPIO=PlxRegisterRead(surfHandles[0], 
+					    PCI9030_GP_IO_CTRL, &rc);
+		    printf("SURF %d GPIO (after INTR attachment) : 0x%o %d\n",
+			   surfIndex[0],tmpGPIO,tmpGPIO);
+		    
+		    tmpINTR=PlxRegisterRead(surfHandles[0],
+					    PCI9030_INT_CTRL_STAT, &rc); 
+		    printf("INTR Reg (after INTR attachment) contents SURF %d = %x\n",
+			   surfIndex[i],tmpINTR);
+		}
+		
+		if (setSurfControl(surfHandles[0], IntEnb) != ApiSuccess)
+		    printf("  failed to send IntEnb pulse to SURF %d.\n",i) ;
+	    }
+
+
 	    // Wait for ready to read (EVT_RDY) 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Waitf for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 	    fprintf(stderr,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    tmo=0;	    
-	    if(!dontWaitForEvtF) {
-		if(verbosity && printToScreen) 
-		    printf("Waiting for EVT_RDY on SURF %d\n",surfIndex[0]);
-
-		do {
-		    tmpGPIO=PlxRegisterRead(surfHandles[0], PCI9030_GP_IO_CTRL, &rc);
-		    if(verbosity>3 && printToScreen) 
-			printf("SURF %d GPIO: 0x%o %d\n",surfIndex[0],tmpGPIO,tmpGPIO);
-		    if(tmo%2)
-			usleep(1); /*GV removed, RJN put it back in as it completely abuses the CPU*/
-		    tmo++;
-		    if((tmo%1000)==0) {
-			if(currentState!=PROG_STATE_RUN) 
-			    break;
-			//Time out not in self trigger mode
-			if(tmo==EVTF_TIMEOUT) break;
-		    }
+	    if(useInterrupts) {
+		if(printToScreen) 
+		    printf("Using Interrupt Logic\n");
+		//wait for an interrupt on LINT1 line.  worked, 21-Jan-05
+		switch(PlxIntrWait(surfHandles[0],lint1Handle,N_TMO_INT)) {
+		    case ApiSuccess:
+			if(printToScreen)
+			    printf("\tGot Interrput!\n");
+			break;
+		    case ApiWaitTimeout:
+			// any setSurfControl call will reset IntEnb
+			if(setSurfControl(surfHandles[0],RDMode) !=
+			   ApiSuccess) {
+			    printf("Failed to set RDMode (reset IntEnb) on SURF %d \n",surfIndex[0]);
+			}
+			printf("Timed out waiting for interrupt.\n");
+			continue;
+			
+		    case ApiWaitCanceled : 
+			printf(" interrupt wait was canceled ") ;
+			printf("(likely indicates attach failure).\n") ;
+		    case ApiFailed :
+		    default: printf(" API failed for PlxIntrWait.\n") ;
+			exit(1) ;
+		}
+	    
+		if(printToScreen && verbosity) {		
+		    tmpINTR=PlxRegisterRead(surfHandles[0],
+					    PCI9030_INT_CTRL_STAT, &rc); 
+		    printf("INTR Reg (after INTR wait) contents SURF %d = %x\n",
+			   surfIndex[i],tmpINTR);
 		    
-		    
-		} while(!(tmpGPIO & EVT_RDY) && (selftrig?(tmo<N_TMO):1) );
-
-		if(currentState!=PROG_STATE_RUN) continue;
-		
-		if (tmo == N_TMO || tmo==EVTF_TIMEOUT){
-		    syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
-		    if(printToScreen)
-			printf(" Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", N_TMO) ;
-		    continue;
 		}
 	    }
-	    else {
-		printf("Didn't wait for EVT_RDY\n");
-		sleep(1);
-	    }	
+	    else {	    
+		tmo=0;	    
+		if(!dontWaitForEvtF) {
+		    if(verbosity && printToScreen) 
+			printf("Wait for EVT_RDY on SURF %d\n",surfIndex[0]);
+		    do {
+			tmpGPIO=PlxRegisterRead(surfHandles[0], 
+						PCI9030_GP_IO_CTRL, &rc);
+			if(verbosity>3 && printToScreen) 
+			    printf("SURF %d GPIO: 0x%o %d\n",
+				   surfIndex[0],tmpGPIO,tmpGPIO);
+			if(tmo%2 && tmo) //Might change tmo%2
+			    usleep(1); 
+			tmo++;
+			if((tmo%1000)==0) {
+			    if(currentState!=PROG_STATE_RUN) 
+				break;
+			    //Time out not in self trigger mode
+			    if(tmo==EVTF_TIMEOUT) break;
+			}		    		    
+		    } while(!(tmpGPIO & EVT_RDY) && (selftrig?(tmo<N_TMO):1));
+
+		    if(currentState!=PROG_STATE_RUN) 
+			continue;
+		    
+		    if (tmo == N_TMO || tmo==EVTF_TIMEOUT){
+			syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
+			if(printToScreen)
+			    printf(" Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", N_TMO) ;
+			continue;
+			
+		    }
+		}
+		else {
+		    printf("Didn't wait for EVT_RDY\n");
+		    sleep(1);
+		}	
+	    }
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Got for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -576,8 +664,8 @@ char *surfControlActionAsString(SurfControlAction_t action) {
 	case CHGChp :
 	    string = "CHGChp" ;
 	    break ;
-	case AdvLAB :
-	    string = "AdvLAB" ;
+	case IntEnb :
+	    string = "IntEnb" ;
 	    break ;
 	default :
 	    string = "Unknown" ;
@@ -634,6 +722,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
     U32 rdWrFlag   = 0000004000 ;  /* rd/_wr flag */
     U32 dataHkFlag = 0000040000 ;  /* dt/_hk flag */
     U32 dacLoad    = 0004000000 ;
+    U32 intEnable    = 0040000000 ;
 //    U32 changeChip = 0040000000 ;
     
  
@@ -653,6 +742,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 	case WTMode   : gpioVal = baseVal & ~rdWrFlag ; break ;
 	case DTRead   : gpioVal = baseVal | dataHkFlag ; break ;
 	case DACLoad  : gpioVal = (baseVal&~rdWrFlag) | dacLoad ; break ;
+	case IntEnb : gpioVal = baseVal | intEnable; break;
 	default :
 	    syslog(LOG_WARNING,"setSurfControl: undefined action %d",action);
 	    if(printToScreen)
@@ -914,6 +1004,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","acqd") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	useInterrupts=kvpGetInt("useInterrupts",0);
 	firmwareVersion=kvpGetInt("firmwareVersion",2);
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
@@ -1206,6 +1297,7 @@ int readConfigFile()
 
     if(printToScreen) {
 	printf("Read Config File\n");
+	printf("useInterrupts %d\n",useInterrupts);
 	printf("writeData %d",writeData);
 	if(writeData) {
 	    if(useAltDir) 
@@ -2350,8 +2442,8 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
     }
     
     if(verbosity && printToScreen) {
-	printf("TURF Data\n\tEvent (software):\t%lu\n\ttrigNum:\t%u\n\ttrigType:\t%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n",
-	       hdPtr->eventNumber,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count);
+	printf("TURF Data\n\tEvent (software):\t%lu\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n",
+	       hdPtr->eventNumber,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count);
     }
 	
     return status;	
