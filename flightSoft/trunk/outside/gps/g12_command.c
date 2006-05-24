@@ -87,8 +87,8 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 
 
 /* send the commands to G12 */
- strcat(buff, "$PASHQ,PRT\n"); 
- strcat(buff, "$PASHQ,RIO\n"); 
+ strcat(buff, "$PASHQ,PRT\r\n"); 
+ strcat(buff, "$PASHQ,RIO\r\n"); 
  strcat(buff, "$PASHS,RCI,000.05\n"); 
  strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
