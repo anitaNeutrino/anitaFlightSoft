@@ -45,6 +45,7 @@
 typedef HANDLE PlxHandle_t;
 typedef DEVICE_LOCATION PlxDevLocation_t;
 typedef RETURN_CODE PlxReturnCode_t;
+typedef PLX_INTR PlxIntr_t;
 
 typedef enum __SURF_control_act {  
     SurfClearAll,
@@ -53,9 +54,9 @@ typedef enum __SURF_control_act {
     RDMode,
     WTMode,
     DTRead,
+    IntEnb,
     DACLoad,
-    CHGChp,
-    AdvLAB,
+    CHGChp
 } SurfControlAction_t ;
 
 typedef enum __TURF_control_act { 
