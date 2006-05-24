@@ -279,7 +279,7 @@ int encodeChannel(EncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned c
     }    
     chanHdPtr->numBytes=encSize;
     chanHdPtr->crc=simpleCrcShort((unsigned short*)&buffer[count],
-				  encSize);
+				  encSize/2);
     return (count+encSize);        
 }
 
