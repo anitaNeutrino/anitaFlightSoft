@@ -9,19 +9,34 @@
 #ifndef UTILLIB_H
 #define UTILLIB_H
 
-typedef enum {
-    PROG_STATE_INIT=0,
-    PROG_STATE_RUN=1,
-    PROG_STATE_TERMINATE
-} ProgramStateCode;
-
-
 /* Includes */
 #include <dirent.h>
 #include "anitaStructures.h"
 #include <time.h>
 #include <zlib.h>
 #include <stdio.h>
+
+
+typedef enum {
+    PROG_STATE_INIT=0,
+    PROG_STATE_RUN=1,
+    PROG_STATE_TERMINATE
+} ProgramStateCode;
+
+typedef struct {
+    gzFile currentFilePtr;
+    int writeCount;
+    int fileCount;
+    int dirCount;
+    int maxSubDirsPerDir;
+    int maxFilesPerDir;
+    int maxWritesPerFile;
+    char baseDirname[FILENAME_MAX];
+    char filePrefix[FILENAME_MAX];
+    char currentDirName[FILENAME_MAX];
+    char currentSubDirName[FILENAME_MAX];
+} AnitaWriterStruct_t;
+
 
 void makeDirectories(char *theTmpDir);
 int is_dir(const char *path);
@@ -70,10 +85,15 @@ int genericReadOfFile(char *buffer, char *filename, int maxBytes);
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
 gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,
 			      unsigned long unixTime);
+int getCurrentZippedHkFileDescriptor(char *currentDir,char *prefix,
+				     unsigned long unixTime);
 int zippedSingleWrite(char *buffer, char *filename, int numBytes);
 int normalSingleWrite(char *buffer, char *filename, int numBytes);
 
 FILE *getCurrentHkFile(char *currentDir, char *prefix, unsigned long unixTime);
+
+int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
+
 
 // Signal handling routines
 
