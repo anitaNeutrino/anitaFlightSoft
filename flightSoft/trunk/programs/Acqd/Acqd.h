@@ -30,6 +30,10 @@
 #define LOWER16 0xffff
 #define UPPER16 0xffff0000
 #define HITBUS 0x1000
+#define MAX_EVENTS_PER_DIR 1000
+
+
+
 
 #define GetUpper16(A) (((A)&UPPER16)>>16)
 #define GetLower16(A) ((A)&LOWER16)
@@ -132,6 +136,8 @@ int updateThresholdsUsingPID();
 int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);
 AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
+void makeSubAltDir();
+int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
 
 typedef struct {
     unsigned char test[8];

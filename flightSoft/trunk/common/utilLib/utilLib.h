@@ -20,6 +20,8 @@ typedef enum {
 #include <dirent.h>
 #include "anitaStructures.h"
 #include <time.h>
+#include <zlib.h>
+#include <stdio.h>
 
 void makeDirectories(char *theTmpDir);
 int is_dir(const char *path);
@@ -65,6 +67,13 @@ int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
 
 int genericReadOfFile(char *buffer, char *filename, int maxBytes);
 
+char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
+gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,
+			      unsigned long unixTime);
+int zippedSingleWrite(char *buffer, char *filename, int numBytes);
+int normalSingleWrite(char *buffer, char *filename, int numBytes);
+
+FILE *getCurrentHkFile(char *currentDir, char *prefix, unsigned long unixTime);
 
 // Signal handling routines
 

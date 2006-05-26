@@ -25,6 +25,86 @@
 
 extern  int versionsort(const void *a, const void *b);
 
+char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime)
+{
+    char *newDir;   
+    int ext=0;
+    newDir=malloc(FILENAME_MAX);
+    sprintf(newDir,"%s/sub_%lu",baseHkDir,unixTime);
+    while(is_dir(newDir)) {
+	ext++;
+	sprintf(newDir,"%s/sub_%lu_%d",baseHkDir,unixTime,ext);
+    }
+    makeDirectories(newDir);
+    return newDir;    
+}
+
+
+FILE *getCurrentHkFile(char *currentDir,char *prefix,unsigned long unixTime)
+{
+    char newFile[FILENAME_MAX];
+    int ext=0;
+    FILE *fpTest;
+    sprintf(newFile,"%s/%s_%lu.dat",currentDir,prefix,unixTime);
+    fpTest=fopen(newFile,"r");   
+    while(fpTest) {
+	fclose(fpTest);
+	ext++;
+	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
+	fpTest=fopen(newFile,"r");
+    }
+    fclose(fpTest);
+    fpTest=fopen(newFile,"wb");
+    return fpTest;
+}
+
+
+gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,unsigned long unixTime)
+{
+    char newFile[FILENAME_MAX];
+    int ext=0;
+    gzFile fpTest;
+    sprintf(newFile,"%s/%s_%lu.dat.gz",currentDir,prefix,unixTime);
+    fpTest=gzopen(newFile,"r");   
+    while(fpTest) {
+	gzclose(fpTest);
+	ext++;
+	sprintf(newFile,"%s/%s_%lu.dat_%d.gz",currentDir,prefix,unixTime,ext);
+	fpTest=gzopen(newFile,"r");
+    }
+    gzclose(fpTest);
+    fpTest=gzopen(newFile,"wb5");
+    return fpTest;
+}
+
+
+int normalSingleWrite(char *buffer, char *filename, int numBytes)
+{
+   int numObjs;    
+   FILE *outfile = fopen (filename, "wb");
+   if(outfile == NULL) {
+       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+       return -1;
+   }   
+   numObjs=fwrite(buffer,numBytes,1,outfile);
+   fclose(outfile);
+   return 0;
+   
+}
+
+int zippedSingleWrite(char *buffer, char *filename, int numBytes) 
+{
+   int numObjs;    
+   gzFile outfile = gzopen (filename, "wb5");  
+   if(outfile == NULL) {
+       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+       return -1;
+   } 
+   numObjs=gzwrite(outfile,buffer,numBytes);
+   gzclose(outfile);  
+   return 0;   
+}
+
 
 void makeDirectories(char *theTmpDir) 
 {
@@ -377,62 +457,24 @@ int genericReadOfFile(char *buffer, char *filename, int maxBytes)
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 /* Writes the header pointed to by hdPtr to filename */
 {
-    int numObjs;    
-//#ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
-//#else
-//    gzFile outfile = gzopen (filename, "wb9");    
-//#endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-//#ifdef NO_ZLIB
-    numObjs=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,outfile);
-    fclose(outfile);
-//#else
-//    numObjs=gzwrite(outfile,hdPtr,sizeof(AnitaEventHeader_t));
-//    gzclose(outfile);
-//#endif
-    return 0;
+    return normalSingleWrite((char*)hdPtr,filename,sizeof(AnitaEventHeader_t));
 }
 
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
-    int numObjs;    
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(bodyPtr,sizeof(AnitaEventBody_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,bodyPtr,sizeof(AnitaEventBody_t));
-    gzclose(outfile);
-#endif
-    return 0;
 }
 
 
 int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
-    int numObjs;    
-    gzFile outfile = gzopen (filename, "wb9");    
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-    numObjs=gzwrite(outfile,bodyPtr,sizeof(AnitaEventBody_t));
-    gzclose(outfile);
-    return 0;
+    return zippedSingleWrite((char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 }
 
 int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename)
@@ -753,9 +795,12 @@ int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
     return 0;
 }
 
+
+
 int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename)
 /* Writes the TurfRateStruct_t object pointed to by turfPtr to filename */
-{   
+{
+
     int numObjs;    
 #ifdef NO_ZLIB
     FILE *outfile = fopen (filename, "wb");

@@ -25,7 +25,7 @@
 #include "anitaStructures.h"
 #include "Acqd.h"
 
-//#define TIME_DEBUG 1
+#define TIME_DEBUG 1
 //#define BAD_DEBUG 1
 
 
@@ -75,6 +75,7 @@ unsigned int avgScalerData[MAX_SURFS][N_RFTRIG];
 /* Ports and directories */
 char acqdEventDir[FILENAME_MAX];
 char altOutputdir[FILENAME_MAX];
+char subAltOutputdir[FILENAME_MAX];
 char acqdPidFile[FILENAME_MAX];
 char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
@@ -102,6 +103,7 @@ int verbosity = 0 ; /* control debug print out. */
 int addedVerbosity = 0 ; /* control debug print out. */
 int oldStyleFiles = FALSE;
 int useAltDir = FALSE;
+int madeAltDir = FALSE;
 int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
@@ -154,8 +156,16 @@ int rfcmMask[2] = {0x10001000, 0x00008000} ;
 __volatile__ int *barMapAddr[ACTIVE_SURFS];
 __volatile__ int *turfBarMap;
 
+
+
+
+
+#ifdef TIME_DEBUG
+    FILE *timeFile;
+#endif    
+
+
 int main(int argc, char **argv) {
-    
     PlxHandle_t surfHandles[MAX_SURFS];
     PlxHandle_t turfioHandle;
     PlxHandle_t lint1Handle;
@@ -180,6 +190,11 @@ int main(int argc, char **argv) {
     
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
+    timeFile = fopen("/tmp/testTimeLog.txt","w");
+    if(!timeFile) {
+	fprintf(stderr,"Couldn't open time file\n");
+	exit(0);
+    }
 #endif
 
     /* Log stuff */
@@ -299,7 +314,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"while() { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-	    fprintf(stderr,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    if(standAloneMode && (numEvents && numEvents<=doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
@@ -373,7 +388,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Waitf for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-	    fprintf(stderr,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    if(useInterrupts) {
 		if(printToScreen) 
@@ -450,14 +465,14 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Got for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-	    fprintf(stderr,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif    
 
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
 #ifdef TIME_DEBUG
 //	    fprintf(stderr,"readSurfEventData -- start %ld s, %ld ms\n",timeStruct.tv_sec,timeStruct.tv_usec);
-	    fprintf(stderr,"4 %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec);  
+	    fprintf(timeFile,"4 %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec);  
 #endif
 	    if(firmwareVersion==1) {
 		status+=readSurfEventData(surfHandles);
@@ -468,7 +483,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readSurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"%ld %ld %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec,timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
 	    
@@ -483,7 +498,7 @@ int main(int argc, char **argv) {
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(stderr,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
 	    if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
@@ -498,7 +513,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 		gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-		fprintf(stderr,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 		if(enableChanServo) {
 		    if(verbosity && printToScreen) 
@@ -513,7 +528,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 		gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-		fprintf(stderr,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    }
 
@@ -522,13 +537,13 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readTurfEventData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    status+=readTurfEventData(turfioHandle);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
 	    if(verbosity && printToScreen) printf("Done reading\n");
@@ -558,10 +573,21 @@ int main(int argc, char **argv) {
 
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
-		    if(useAltDir) 
-			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
+		    if(useAltDir) {
+			if(!madeAltDir || 
+			   hdPtr->eventNumber%MAX_EVENTS_PER_DIR==0) 
+			    makeSubAltDir();
+			writeEventAndMakeLink(subAltOutputdir,acqdEventLinkDir,&theEvent);	
+		    }
 		    else 
 			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
+
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 
 		    if(writeFullHk) {
 
@@ -577,6 +603,13 @@ int main(int argc, char **argv) {
 				writeSurfHousekeeping(1);
 			    }
 			}
+
+
+#ifdef TIME_DEBUG
+			gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+			fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 			writeTurfHousekeeping(1);
 			turfHkCounter++;
 			if(turfHkCounter>=turfRateTelemEvery) {
@@ -594,7 +627,12 @@ int main(int argc, char **argv) {
 			    lastTurfHk=turfRates.unixTime;
 			}
 		    }
-			
+		    
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 		    
 
 
@@ -605,7 +643,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Wrote data %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"14 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif	    
 
 	    // Clear boards
@@ -620,7 +658,7 @@ int main(int argc, char **argv) {
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Sent Clear -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(stderr,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"15 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif	    
 //	if(selftrig) sleep (2) ;
 	}  /* closing master while loop. */
@@ -1721,9 +1759,10 @@ int writeTurfHousekeeping(int dataOrTelem)
     fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
-	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkArchiveDir,
-		turfRates.unixTime,turfRates.unixTimeUs);
-	retVal+=writeTurfRate(&turfRates,theFilename);
+//	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkArchiveDir,
+//		turfRates.unixTime,turfRates.unixTimeUs);
+//	retVal+=writeTurfRate(&turfRates,theFilename);
+	retVal+=bufferedTurfHkWrite(&turfRates,turfHkArchiveDir);
 	if(useUSBDisks) {
 	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkUSBArchiveDir,
 		    turfRates.unixTime,turfRates.unixTimeUs);
@@ -1739,6 +1778,51 @@ int writeTurfHousekeeping(int dataOrTelem)
     }
 
     return retVal;
+}
+
+int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir) 
+{    
+    int retVal=0;
+    char *tempDir;
+    static int firstTime=1;
+    static int currentFileCount=0;
+    static int currentDirCount=0;
+    static char currentDir[FILENAME_MAX];
+    static gzFile turfHkFile;
+    if(firstTime) {
+	tempDir=getCurrentHkDir(baseDir,turfPtr->unixTime);
+	strncpy(currentDir,tempDir,FILENAME_MAX-1);
+	free(tempDir);
+	turfHkFile=getCurrentZippedHkFile(currentDir,"turfhk",turfPtr->unixTime);
+	firstTime=0;
+    }
+    
+//    printf("gzFile %d\n",(int)turfHkFile);
+    //Check if we need a new file or directory
+    if(currentFileCount>=HK_PER_FILE) {
+	gzclose(turfHkFile);
+	currentDirCount++;
+
+	if(currentDirCount>=HK_FILES_PER_DIR) {
+	    tempDir=getCurrentHkDir(baseDir,turfPtr->unixTime);
+	    strncpy(currentDir,tempDir,FILENAME_MAX-1);
+	    free(tempDir);
+	    currentDirCount=0;
+	}
+	turfHkFile=getCurrentZippedHkFile(currentDir,"turfhk",turfPtr->unixTime);
+	currentFileCount=0;
+    }
+    currentFileCount++;
+    retVal=gzwrite(turfHkFile,turfPtr,sizeof(TurfRateStruct_t));
+    if(retVal<0) {
+	printf("Error writing to file (write %d) -- %s (%d)\n",currentFileCount,
+	       gzerror(turfHkFile,&retVal),retVal);
+    }
+    //Should do some checking here
+//    if(currentFileCount%100==0)
+    gzflush(turfHkFile,Z_SYNC_FLUSH);    
+    return retVal;
+   
 }
 
 
@@ -2595,3 +2679,11 @@ int updateThresholdsUsingPID() {
     return 0;
 }
  
+
+void makeSubAltDir() {
+    int dirNum;
+    madeAltDir=1;
+    dirNum=MAX_EVENTS_PER_DIR*(int)(hdPtr->eventNumber/MAX_EVENTS_PER_DIR);
+    sprintf(subAltOutputdir,"%s/ev%d",altOutputdir,dirNum);
+    makeDirectories(subAltOutputdir);
+}
