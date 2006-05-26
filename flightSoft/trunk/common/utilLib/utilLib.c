@@ -20,10 +20,74 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 #include <zlib.h>
-
+#include <fcntl.h>
 //#define NO_ZLIB
 
 extern  int versionsort(const void *a, const void *b);
+
+int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr)
+{
+    int retVal=0;
+    static int errorCounter=0;
+    char *tempDir;
+    if(!awsPtr->currentFilePtr) {
+	//First time
+	tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime);
+	strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1);
+	awsPtr->dirCount=0;
+	free(tempDir);
+	tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime);
+	strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1);
+	awsPtr->fileCount=0;
+	free(tempDir);
+	awsPtr->currentFilePtr=
+	    getCurrentZippedHkFile(awsPtr->currentSubDirName,
+				   awsPtr->filePrefix,unixTime);
+	awsPtr->writeCount=0;						      
+    }
+    
+    //Check if we need a new file or directory
+    if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
+	//Need a new file
+	gzclose(awsPtr->currentFilePtr);
+	awsPtr->fileCount++;
+	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
+	    awsPtr->dirCount++;
+	    if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
+		tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime);
+		strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1);
+		awsPtr->dirCount=0;
+		free(tempDir);
+	    }
+	    
+	    tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime);
+	    strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1);
+	    awsPtr->fileCount=0;
+	    free(tempDir);
+	}
+	
+	awsPtr->currentFilePtr=
+	    getCurrentZippedHkFile(awsPtr->currentSubDirName,
+				   awsPtr->filePrefix,unixTime);
+	awsPtr->writeCount=0;						      
+    }
+
+    awsPtr->writeCount++;
+    if(errorCounter<100) {
+	retVal=gzwrite(awsPtr->currentFilePtr,buffer,numBytes);
+	if(retVal<0) {
+	    errorCounter++;
+	    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+		   errorCounter,awsPtr->writeCount,
+		   gzerror(awsPtr->currentFilePtr,&retVal),retVal);
+	}
+	gzflush(awsPtr->currentFilePtr,Z_SYNC_FLUSH);  
+    }
+    else return -1;
+	        	       
+    return retVal;
+}
+
 
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime)
 {
@@ -53,7 +117,7 @@ FILE *getCurrentHkFile(char *currentDir,char *prefix,unsigned long unixTime)
 	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
 	fpTest=fopen(newFile,"r");
     }
-    fclose(fpTest);
+//    fclose(fpTest);
     fpTest=fopen(newFile,"wb");
     return fpTest;
 }
@@ -72,10 +136,31 @@ gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,unsigned long unixTi
 	sprintf(newFile,"%s/%s_%lu.dat_%d.gz",currentDir,prefix,unixTime,ext);
 	fpTest=gzopen(newFile,"r");
     }
-    gzclose(fpTest);
+//    gzclose(fpTest);
     fpTest=gzopen(newFile,"wb5");
     return fpTest;
 }
+
+
+int getCurrentZippedHkFileDescriptor(char *currentDir,char *prefix,unsigned long unixTime)
+{
+    char newFile[FILENAME_MAX];
+    int ext=0;
+    int fdTest;
+    sprintf(newFile,"%s/%s_%lu.dat.gz",currentDir,prefix,unixTime);
+    fdTest=open(newFile,O_RDONLY);   
+    while(fdTest>0) {
+	close(fdTest);
+	ext++;
+	sprintf(newFile,"%s/%s_%lu.dat_%d.gz",currentDir,prefix,unixTime,ext);
+	fdTest=open(newFile,O_RDONLY);   
+    }
+//    close(fdTest);
+    fdTest=open(newFile,O_WRONLY|O_CREAT);
+//    fpTest=gzopen(newFile,"wb5");
+    return fdTest;
+}
+
 
 
 int normalSingleWrite(char *buffer, char *filename, int numBytes)

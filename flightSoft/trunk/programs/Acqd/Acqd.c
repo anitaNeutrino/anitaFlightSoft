@@ -157,6 +157,9 @@ __volatile__ int *barMapAddr[ACTIVE_SURFS];
 __volatile__ int *turfBarMap;
 
 
+//File writing structures
+AnitaWriterStruct_t turfHkWriter;
+AnitaWriterStruct_t surfHkWriter;
 
 
 
@@ -226,7 +229,7 @@ int main(int argc, char **argv) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	fprintf(stderr,"Error reading config file Acqd.config: bailing\n");
 	return -1;
-    }
+    }    
 
     if(standAloneMode) {
 	init_param(argc, argv,  &numEvents, &dacVal) ;
@@ -279,11 +282,13 @@ int main(int argc, char **argv) {
     
     do {
 	retVal=readConfigFile();
-
 	if(retVal!=CONFIG_E_OK) {
 	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	    return -1;
 	}
+	if(numEvents==0) prepWriterStructs();
+
+
 
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
@@ -1168,9 +1173,9 @@ int readConfigFile()
 	tempString=kvpGetString("turfHkArchiveSubDir");
 	if(tempString) {
 	    strcat(turfHkArchiveDir,tempString);
-	    strcat(turfHkUSBArchiveDir,tempString);
+//	    strcat(turfHkUSBArchiveDir,tempString);
 	    makeDirectories(turfHkArchiveDir);
-	    if(useUSBDisks) makeDirectories(turfHkUSBArchiveDir);
+//	    if(useUSBDisks) makeDirectories(turfHkUSBArchiveDir);
 	}
 	else {
 	    syslog(LOG_ERR,"Error getting turfHkArchiveSubDir");
@@ -1726,12 +1731,14 @@ int writeSurfHousekeeping(int dataOrTelem)
     if(dataOrTelem!=2) {
 	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
 		theSurfHk.unixTime,theSurfHk.unixTimeUs);
-	retVal+=writeSurfHk(&theSurfHk,theFilename);
-	if(useUSBDisks) {
-	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkUSBArchiveDir,
-		    theSurfHk.unixTime,theSurfHk.unixTimeUs);
-	    retVal+=writeSurfHk(&theSurfHk,theFilename);
-	}
+//	retVal+=writeSurfHk(&theSurfHk,theFilename);
+	retVal=cleverHkWrite((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
+			     theSurfHk.unixTime,&surfHkWriter);
+//	if(useUSBDisks) {
+//	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkUSBArchiveDir,
+//		    theSurfHk.unixTime,theSurfHk.unixTimeUs);
+//	    retVal+=writeSurfHk(&theSurfHk,theFilename);
+//	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
@@ -1762,12 +1769,15 @@ int writeTurfHousekeeping(int dataOrTelem)
 //	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkArchiveDir,
 //		turfRates.unixTime,turfRates.unixTimeUs);
 //	retVal+=writeTurfRate(&turfRates,theFilename);
-	retVal+=bufferedTurfHkWrite(&turfRates,turfHkArchiveDir);
-	if(useUSBDisks) {
-	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkUSBArchiveDir,
-		    turfRates.unixTime,turfRates.unixTimeUs);
-	    retVal+=writeTurfRate(&turfRates,theFilename);
-	}
+//	retVal+=bufferedTurfHkWrite(&turfRates,turfHkArchiveDir);
+	retVal=cleverHkWrite((char*)&turfRates,sizeof(TurfRateStruct_t),
+			     turfRates.unixTime,&turfHkWriter);
+
+//	if(useUSBDisks) {
+//	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkUSBArchiveDir,
+//		    turfRates.unixTime,turfRates.unixTimeUs);
+//	    retVal+=writeTurfRate(&turfRates,theFilename);
+//	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
@@ -1779,53 +1789,6 @@ int writeTurfHousekeeping(int dataOrTelem)
 
     return retVal;
 }
-
-int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir) 
-{    
-    int retVal=0;
-    char *tempDir;
-    static int firstTime=1;
-    static int currentFileCount=0;
-    static int currentDirCount=0;
-    static char currentDir[FILENAME_MAX];
-    static gzFile turfHkFile;
-    if(firstTime) {
-	tempDir=getCurrentHkDir(baseDir,turfPtr->unixTime);
-	strncpy(currentDir,tempDir,FILENAME_MAX-1);
-	free(tempDir);
-	turfHkFile=getCurrentZippedHkFile(currentDir,"turfhk",turfPtr->unixTime);
-	firstTime=0;
-    }
-    
-//    printf("gzFile %d\n",(int)turfHkFile);
-    //Check if we need a new file or directory
-    if(currentFileCount>=HK_PER_FILE) {
-	gzclose(turfHkFile);
-	currentDirCount++;
-
-	if(currentDirCount>=HK_FILES_PER_DIR) {
-	    tempDir=getCurrentHkDir(baseDir,turfPtr->unixTime);
-	    strncpy(currentDir,tempDir,FILENAME_MAX-1);
-	    free(tempDir);
-	    currentDirCount=0;
-	}
-	turfHkFile=getCurrentZippedHkFile(currentDir,"turfhk",turfPtr->unixTime);
-	currentFileCount=0;
-    }
-    currentFileCount++;
-    retVal=gzwrite(turfHkFile,turfPtr,sizeof(TurfRateStruct_t));
-    if(retVal<0) {
-	printf("Error writing to file (write %d) -- %s (%d)\n",currentFileCount,
-	       gzerror(turfHkFile,&retVal),retVal);
-    }
-    //Should do some checking here
-//    if(currentFileCount%100==0)
-    gzflush(turfHkFile,Z_SYNC_FLUSH);    
-    return retVal;
-   
-}
-
-
 
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr)
 {
@@ -2686,4 +2649,25 @@ void makeSubAltDir() {
     dirNum=MAX_EVENTS_PER_DIR*(int)(hdPtr->eventNumber/MAX_EVENTS_PER_DIR);
     sprintf(subAltOutputdir,"%s/ev%d",altOutputdir,dirNum);
     makeDirectories(subAltOutputdir);
+}
+
+void prepWriterStructs() {
+    if(printToScreen) 
+	printf("Preparing Writer Structs\n");
+
+    //Turf Hk Writer
+    strncpy(turfHkWriter.baseDirname,turfHkArchiveDir,FILENAME_MAX-1);
+    sprintf(turfHkWriter.filePrefix,"turfhk");
+    turfHkWriter.currentFilePtr=0;
+    turfHkWriter.maxSubDirsPerDir=1000;
+    turfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
+    turfHkWriter.maxWritesPerFile=HK_PER_FILE;
+
+    //Surf Hk Writer
+    strncpy(surfHkWriter.baseDirname,surfHkArchiveDir,FILENAME_MAX-1);
+    sprintf(surfHkWriter.filePrefix,"surfhk");
+    surfHkWriter.currentFilePtr=0;
+    surfHkWriter.maxSubDirsPerDir=1000;
+    surfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
+    surfHkWriter.maxWritesPerFile=HK_PER_FILE;
 }

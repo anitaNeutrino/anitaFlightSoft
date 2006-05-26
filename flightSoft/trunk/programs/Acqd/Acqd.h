@@ -137,7 +137,9 @@ int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);
 AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
 void makeSubAltDir();
-int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
+//int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
+void prepWriterStructs();
+
 
 typedef struct {
     unsigned char test[8];
