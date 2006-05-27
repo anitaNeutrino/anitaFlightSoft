@@ -37,6 +37,19 @@ typedef struct {
     char currentSubDirName[FILENAME_MAX];
 } AnitaWriterStruct_t;
 
+typedef struct {
+    gzFile currentEventFilePtr;
+    gzFile currentHeaderFilePtr;
+    int writeCount;
+    int fileCount;
+    int dirCount;
+    int maxSubDirsPerDir;
+    int maxFilesPerDir;
+    int maxWritesPerFile;
+    char baseDirname[FILENAME_MAX];
+    char currentDirName[FILENAME_MAX];
+    char currentSubDirName[FILENAME_MAX];
+} AnitaEventWriterStruct_t;
 
 void makeDirectories(char *theTmpDir);
 int is_dir(const char *path);
@@ -93,6 +106,7 @@ int normalSingleWrite(char *buffer, char *filename, int numBytes);
 FILE *getCurrentHkFile(char *currentDir, char *prefix, unsigned long unixTime);
 
 int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
+int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 
 
 // Signal handling routines
