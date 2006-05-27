@@ -25,7 +25,7 @@
 #include "anitaStructures.h"
 #include "Acqd.h"
 
-#define TIME_DEBUG 1
+//#define TIME_DEBUG 1
 //#define BAD_DEBUG 1
 
 
@@ -160,7 +160,7 @@ __volatile__ int *turfBarMap;
 //File writing structures
 AnitaWriterStruct_t turfHkWriter;
 AnitaWriterStruct_t surfHkWriter;
-
+AnitaEventWriterStruct_t eventWriter;
 
 
 #ifdef TIME_DEBUG
@@ -1804,61 +1804,67 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     fillGenericHeader(theBody,PACKET_WV,sizeof(AnitaEventBody_t));
 
 
-    if(justWriteHeader==0 && writeData) {
-	sprintf(theFilename,"%s/ev_%ld.dat",theEventDir,
-		theEventPtr->header.eventNumber);
-	if(!oldStyleFiles) {
-	    if(!compressWavefile) 
-		retVal=writeBody(theBody,theFilename);  
+
+    if(!useAltDir) {
+	if(justWriteHeader==0 && writeData) {
+	    sprintf(theFilename,"%s/ev_%ld.dat",theEventDir,
+		    theEventPtr->header.eventNumber);
+	    if(!oldStyleFiles) {
+		if(!compressWavefile) 
+		    retVal=writeBody(theBody,theFilename);  
+		else {
+		    strcat(theFilename,".gz");
+		    retVal=writeZippedBody(theBody,theFilename);
+		}
+	    }
 	    else {
-		strcat(theFilename,".gz");
-		retVal=writeZippedBody(theBody,theFilename);
-	    }
+		sprintf(theFilename,"%s/surf_data.%ld",theEventDir,
+			theEventPtr->header.eventNumber);
+		FILE *eventFile;
+		int n;
+		if ((eventFile=fopen(theFilename, "wb")) == NULL) { 
+		    printf("Failed to open event file, %s\n", theFilename) ;
+		    return ;
+		}
+		if ((n=fwrite(labData, sizeof(int), 
+			      N_SAMP*N_CHAN*numSurfs,eventFile)) 
+		    != N_SAMP*N_CHAN*numSurfs)  
+		    printf("Failed to write all event data. wrote only %d.\n", n) ;
+		fclose(eventFile);
+	    }	    	    	    
 	}
-	else {
-	    sprintf(theFilename,"%s/surf_data.%ld",theEventDir,
-		theEventPtr->header.eventNumber);
-	    FILE *eventFile;
-	    int n;
-	    if ((eventFile=fopen(theFilename, "wb")) == NULL) { 
-		printf("Failed to open event file, %s\n", theFilename) ;
-		return ;
-	    }
-	    if ((n=fwrite(labData, sizeof(int), 
-			  N_SAMP*N_CHAN*numSurfs,eventFile)) 
-		!= N_SAMP*N_CHAN*numSurfs)  
-		printf("Failed to write all event data. wrote only %d.\n", n) ;
-	    fclose(eventFile);
+	
+	if(writeData) {
+	    sprintf(theFilename,"%s/hd_%ld.dat",theEventDir,
+		    theEventPtr->header.eventNumber);
+	    retVal=writeHeader(theHeader,theFilename);
 	}
-
-	    
-	    
+	
+	/* Make links, not sure what to do with return value here */
+	if(!standAloneMode && writeData) 
+	    retVal=makeLink(theFilename,theLinkDir);
     }
-      
-    if(writeData) {
-	sprintf(theFilename,"%s/hd_%ld.dat",theEventDir,
-		theEventPtr->header.eventNumber);
-	retVal=writeHeader(theHeader,theFilename);
-    }
-
-    /* Make links, not sure what to do with return value here */
-    if(!standAloneMode && writeData) 
-	retVal=makeLink(theFilename,theLinkDir);
-
-    if(writeScalers) {
-	sprintf(theFilename,"%s/scale_3%ld.dat",scalerOutputDir,
-		theEventPtr->header.eventNumber);
-	FILE *scalerFile;
-	int n;
-	if ((scalerFile=fopen(theFilename, "wb")) == NULL) { 
-	    printf("Failed to open scaler file, %s\n", theFilename) ;
-	    return ;
+    else {
+	retVal=cleverRawEventWrite(theBody,theHeader,&eventWriter);
+	if(retVal<0) {
+	    //Do something
 	}
-	    
-	if ((n=fwrite(&theScalers, sizeof(SimpleScalerStruct_t),1,scalerFile))!=1)
-	    printf("Failed to write all scaler data. wrote only %d.\n", n) ;
-	    fclose(scalerFile);
     }
+
+/*     if(writeScalers) { */
+/* 	sprintf(theFilename,"%s/scale_3%ld.dat",scalerOutputDir, */
+/* 		theEventPtr->header.eventNumber); */
+/* 	FILE *scalerFile; */
+/* 	int n; */
+/* 	if ((scalerFile=fopen(theFilename, "wb")) == NULL) {  */
+/* 	    printf("Failed to open scaler file, %s\n", theFilename) ; */
+/* 	    return ; */
+/* 	} */
+	    
+/* 	if ((n=fwrite(&theScalers, sizeof(SimpleScalerStruct_t),1,scalerFile))!=1) */
+/* 	    printf("Failed to write all scaler data. wrote only %d.\n", n) ; */
+/* 	    fclose(scalerFile); */
+/*     } */
 
 //    if(writeFullHk && standAloneMode) {
 //	sprintf(theFilename,"%s/surfhk_%d.dat",hkOutputDir,hkNumber);
@@ -2659,7 +2665,7 @@ void prepWriterStructs() {
     strncpy(turfHkWriter.baseDirname,turfHkArchiveDir,FILENAME_MAX-1);
     sprintf(turfHkWriter.filePrefix,"turfhk");
     turfHkWriter.currentFilePtr=0;
-    turfHkWriter.maxSubDirsPerDir=1000;
+    turfHkWriter.maxSubDirsPerDir=100;
     turfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
     turfHkWriter.maxWritesPerFile=HK_PER_FILE;
 
@@ -2667,7 +2673,16 @@ void prepWriterStructs() {
     strncpy(surfHkWriter.baseDirname,surfHkArchiveDir,FILENAME_MAX-1);
     sprintf(surfHkWriter.filePrefix,"surfhk");
     surfHkWriter.currentFilePtr=0;
-    surfHkWriter.maxSubDirsPerDir=1000;
+    surfHkWriter.maxSubDirsPerDir=100;
     surfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
     surfHkWriter.maxWritesPerFile=HK_PER_FILE;
+
+    //Event Writer
+    if(useAltDir) 
+	strncpy(eventWriter.baseDirname,altOutputdir,FILENAME_MAX-1);
+    eventWriter.currentHeaderFilePtr=0;
+    eventWriter.currentEventFilePtr=0;
+    eventWriter.maxSubDirsPerDir=EVENT_FILES_PER_DIR;
+    eventWriter.maxFilesPerDir=EVENT_FILES_PER_DIR;
+    eventWriter.maxWritesPerFile=EVENTS_PER_FILE;
 }

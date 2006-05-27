@@ -78,5 +78,10 @@
 #define HK_PER_FILE 1000
 #define HK_FILES_PER_DIR 100
 
+#define EVENTS_PER_FILE 100
+#define EVENT_FILES_PER_DIR 100
+
+
+
 #endif /* ANITA_FLIGHT_H */
 

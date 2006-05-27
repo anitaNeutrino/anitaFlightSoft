@@ -88,6 +88,136 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
     return retVal;
 }
 
+int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
+{
+
+    int retVal=0;
+    static int errorCounter=0;
+    char currentFilename[FILENAME_MAX];
+    int dirNum;
+    if(!awsPtr->currentEventFilePtr) {
+	//First time
+	//Make base dir
+	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
+	sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
+	makeDirectories(awsPtr->currentDirName);
+	
+	awsPtr->fileCount=0;
+
+	//Make sub dir
+	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
+	sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
+	makeDirectories(awsPtr->currentSubDirName);
+
+	awsPtr->dirCount=0;
+
+	//Make files
+	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
+	sprintf(currentFilename,"%s/hd_%d.dat.gz",awsPtr->currentSubDirName,
+		dirNum);
+	awsPtr->currentHeaderFilePtr=gzopen(currentFilename,"wb5");
+
+	awsPtr->writeCount=0;
+	if(awsPtr->currentHeaderFilePtr<0) {	    
+	    if(errorCounter<100) {
+		errorCounter++;
+		printf("Error (%d of 100) trying to open file %s\n",
+		       errorCounter,currentFilename);
+	    }
+	}
+
+	sprintf(currentFilename,"%s/ev_%d.dat.gz",awsPtr->currentSubDirName,
+		dirNum);
+	awsPtr->currentEventFilePtr=gzopen(currentFilename,"wb5");
+	if(awsPtr->currentEventFilePtr<0) {	    
+	    if(errorCounter<100) {
+		errorCounter++;
+		printf("Error (%d of 100) trying to open file %s\n",
+		       errorCounter,currentFilename);
+	    }
+	}
+    }
+    if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
+	if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
+	    gzclose(awsPtr->currentEventFilePtr);
+	    gzclose(awsPtr->currentHeaderFilePtr);
+	    awsPtr->fileCount++;
+	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
+		awsPtr->dirCount++;
+		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
+		    //Make base dir
+		    dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
+		    sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
+		    makeDirectories(awsPtr->currentDirName);
+		    awsPtr->dirCount=0;
+		}
+		
+		//Make sub dir
+		dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
+		sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentSubDirName,dirNum);
+		makeDirectories(awsPtr->currentSubDirName);
+		awsPtr->fileCount=0;
+	    }
+	
+	    //Make files
+	    dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
+	    sprintf(currentFilename,"%s/hd_%d.dat.gz",awsPtr->currentSubDirName,
+		    dirNum);
+	    awsPtr->currentHeaderFilePtr=gzopen(currentFilename,"wb5");
+	    if(awsPtr->currentHeaderFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,currentFilename);
+		}
+	    }
+	    
+	    sprintf(currentFilename,"%s/ev_%d.dat.gz",awsPtr->currentSubDirName,
+		    dirNum);
+	    awsPtr->currentEventFilePtr=gzopen(currentFilename,"wb5");
+	    if(awsPtr->currentEventFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,currentFilename);
+		}
+	    }
+	    awsPtr->writeCount=0;
+	}	    
+
+	awsPtr->writeCount++;
+	if(errorCounter<100) {
+	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,
+			   sizeof(AnitaEventHeader_t));
+	    if(retVal<0) {
+		errorCounter++;
+		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+		       errorCounter,awsPtr->writeCount,
+		       gzerror(awsPtr->currentHeaderFilePtr,&retVal),retVal);
+	    }
+	    else gzflush(awsPtr->currentHeaderFilePtr,Z_SYNC_FLUSH);  
+	    retVal=gzwrite(awsPtr->currentEventFilePtr,bdPtr,
+			   sizeof(AnitaEventBody_t));
+	    if(retVal<0) {
+		errorCounter++;
+		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+		       errorCounter,awsPtr->writeCount,
+		       gzerror(awsPtr->currentEventFilePtr,&retVal),retVal);
+	    }
+	    else gzflush(awsPtr->currentEventFilePtr,Z_SYNC_FLUSH);  
+	    
+
+	}
+	else return -1;
+	
+	
+    }
+    return -1;
+
+
+}
+
+
 
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime)
 {
