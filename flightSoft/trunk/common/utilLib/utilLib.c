@@ -154,7 +154,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 		
 		//Make sub dir
 		dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
-		sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentSubDirName,dirNum);
+		sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
 		makeDirectories(awsPtr->currentSubDirName);
 		awsPtr->fileCount=0;
 	    }
