@@ -579,10 +579,10 @@ int main(int argc, char **argv) {
 		// Save data
 		if(writeData || writeScalers || writeFullHk){
 		    if(useAltDir) {
-			if(!madeAltDir || 
-			   hdPtr->eventNumber%MAX_EVENTS_PER_DIR==0) 
-			    makeSubAltDir();
-			writeEventAndMakeLink(subAltOutputdir,acqdEventLinkDir,&theEvent);	
+//			if(!madeAltDir || 
+//			   hdPtr->eventNumber%MAX_EVENTS_PER_DIR==0) 
+//			    makeSubAltDir();
+			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
 		    }
 		    else 
 			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
