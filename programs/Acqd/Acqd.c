@@ -2674,7 +2674,7 @@ void prepWriterStructs() {
     strncpy(turfHkWriter.baseDirname,turfHkArchiveDir,FILENAME_MAX-1);
     sprintf(turfHkWriter.filePrefix,"turfhk");
     turfHkWriter.currentFilePtr=0;
-    turfHkWriter.maxSubDirsPerDir=100;
+    turfHkWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
     turfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
     turfHkWriter.maxWritesPerFile=HK_PER_FILE;
 
@@ -2682,7 +2682,7 @@ void prepWriterStructs() {
     strncpy(surfHkWriter.baseDirname,surfHkArchiveDir,FILENAME_MAX-1);
     sprintf(surfHkWriter.filePrefix,"surfhk");
     surfHkWriter.currentFilePtr=0;
-    surfHkWriter.maxSubDirsPerDir=100;
+    surfHkWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
     surfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
     surfHkWriter.maxWritesPerFile=HK_PER_FILE;
 
