@@ -312,9 +312,9 @@ void prettyprint()
              int chan = rowaddr[i][j]-1;  
 	    /* RJN HACK */
 	     if(useRange==10)
-		 printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+		 printf("%7.7s: %+4.2f\t", desc[chan].description, (ip320_cor_data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
 	     else 
-		 printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
+		 printf("%7.7s: %+4.2f\t", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
 //             printf("%5.5s: %+7.2f ", desc[chan].description, (ip320_cor_data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
           } else printf("               ");
       }

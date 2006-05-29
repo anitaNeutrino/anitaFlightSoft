@@ -25,7 +25,7 @@ int breakdownTimeString(char *subString, int *hour, int *minute, int *second);
 
 
 int main() { 
-    char devName[]="/dev/ttyUSB3";
+    char devName[]="/dev/ttyUSB0";
 
     int fd, i, retVal,currentIndex ; 
     struct termios options;
@@ -90,7 +90,7 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
  strcat(buff, "$PASHQ,PRT\r\n"); 
  strcat(buff, "$PASHQ,RIO\r\n"); 
  strcat(buff, "$PASHS,RCI,000.05\n"); 
- strcat(buff, "$PASHQ,RAW\n"); 
+// strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
 //strcat(buff, "$PASHS,PPS,0.2,3,R\n");
 /* strcat(buff, "$PASHQ,STA\n"); */

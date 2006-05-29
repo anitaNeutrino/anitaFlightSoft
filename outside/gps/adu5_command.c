@@ -19,7 +19,7 @@
 #define COMMAND "$PASHS,ELM,0\r\n"  /* set elevation mask angle to 0 degree */
 
 int main() { 
-    char devName[]="/dev/ttyUSB3";
+    char devName[]="/dev/ttyUSB2";
     int fd, i; 
     struct termios options;
     char buff[COMMAND_SIZE] = COMMAND;
@@ -79,7 +79,7 @@ int main() {
 /*     strcat(buff, "$PASHS,KFP,ON\r\n");     /\* enable the Kalman filter  *\/ */
     strcat(buff, "$PASHS,NME,ALL,B,OFF\r\n");
     strcat(buff, "$PASHQ,PRT\r\n");
-    strcat(buff, "$PASHQ,SAT\r\n");    
+    strcat(buff, "$PASHQ,SA4\r\n");    
     strcat(buff, "$PASHS,NME,TTT,B,ON\r\n");
     strcat(buff, "$PASHS,NME,PAT,B,ON\r\n");
     strcat(buff, "$PASHS,NME,PER,5\r\n");
