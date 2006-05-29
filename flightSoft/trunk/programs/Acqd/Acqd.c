@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
 	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	    return -1;
 	}
-	if(numEvents==0) prepWriterStructs();
+	if(doingEvent==0) prepWriterStructs();
 
 
 
@@ -594,20 +594,20 @@ int main(int argc, char **argv) {
 	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
-		    if(writeFullHk) {
-
-			if(gotSurfHk) {
-			    //Do the housekeeping stuff
-			    surfHkCounter++;
-			    if(surfHkCounter>=surfHkTelemEvery) {
-				writeSurfHousekeeping(3);
-				surfHkCounter=0;
-			    }
-			    else {
+	    if(writeFullHk) {
+		
+		if(gotSurfHk) {
+		    //Do the housekeeping stuff
+		    surfHkCounter++;
+		    if(surfHkCounter>=surfHkTelemEvery) {
+			writeSurfHousekeeping(3);
+			surfHkCounter=0;
+		    }
+		    else {
 //			    printf("\tSURF HK %ld %ld\n",theSurfHk.unixTime,lastSurfHk);
-				writeSurfHousekeeping(1);
-			    }
-			}
+			writeSurfHousekeeping(1);
+		    }
+		}
 
 
 #ifdef TIME_DEBUG
@@ -2288,6 +2288,13 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    if(printToScreen)
 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
 	}
+
+
+	//First just fill in antMask in SURF
+	for(rfChan=0;rfChan<2;rfChan++) {
+	    theSurfHk.surfAntMask[surf][rfChan]=surfAntTrigMasks[surf][rfChan];
+	}
+
 	
 	//First read the scaler data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
@@ -2601,43 +2608,45 @@ int updateThresholdsUsingPID() {
     float pTerm, dTerm, iTerm;
     avgCount++;
     for(surf=0;surf<numSurfs;surf++) {
-	for(dac=0;dac<N_RFTRIG;dac++) {
-	    avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
-	    if(avgCount==pidAverage) {
-		value=avgScalerData[surf][dac]/avgCount;
-		avgScalerData[surf][dac]=0;
-		error=pidGoal-value;
+	if(dacSurfs[surf]==1) {
+	    for(dac=0;dac<N_RFTRIG;dac++) {
+		avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
+		if(avgCount==pidAverage) {
+		    value=avgScalerData[surf][dac]/avgCount;
+		    avgScalerData[surf][dac]=0;
+		    error=pidGoal-value;
 //		printf("%d %d %d %d\n",thePids[surf][dac].iState,
 //		       avgScalerData[surf][dac],value,error);
 	    
-		// Proportional term
-		pTerm = dacPGain * error;
-		
-		// Calculate integral with limiting factors
-		thePids[surf][dac].iState+=error;
+		    // Proportional term
+		    pTerm = dacPGain * error;
+		    
+		    // Calculate integral with limiting factors
+		    thePids[surf][dac].iState+=error;
 //		printf("Here %d %d\n",thePids[surf][dac].iState,dacIMax);
-		if (thePids[surf][dac].iState > dacIMax) 
-		    thePids[surf][dac].iState = dacIMax;
-		else if (thePids[surf][dac].iState < dacIMin) 
-		    thePids[surf][dac].iState = dacIMin;
-		
-		// Integral and Derivative Terms
-		iTerm = dacIGain * (float)(thePids[surf][dac].iState);  
-		dTerm = dacDGain * (float)(value -thePids[surf][dac].dState);
-		thePids[surf][dac].dState = value;
-		
-		//Put them together
-		change = (int) (pTerm + iTerm - dTerm);
-		thresholdArray[surfIndex[surf]-1][dac]+=change;
-		if(thresholdArray[surfIndex[surf]-1][dac]>4095)
-		    thresholdArray[surfIndex[surf]-1][dac]=4095;
-		if(thresholdArray[surfIndex[surf]-1][dac]<1)
-		    thresholdArray[surfIndex[surf]-1][dac]=1;
+		    if (thePids[surf][dac].iState > dacIMax) 
+			thePids[surf][dac].iState = dacIMax;
+		    else if (thePids[surf][dac].iState < dacIMin) 
+			thePids[surf][dac].iState = dacIMin;
+		    
+		    // Integral and Derivative Terms
+		    iTerm = dacIGain * (float)(thePids[surf][dac].iState);  
+		    dTerm = dacDGain * (float)(value -thePids[surf][dac].dState);
+		    thePids[surf][dac].dState = value;
+		    
+		    //Put them together
+		    change = (int) (pTerm + iTerm - dTerm);
+		    thresholdArray[surfIndex[surf]-1][dac]+=change;
+		    if(thresholdArray[surfIndex[surf]-1][dac]>4095)
+			thresholdArray[surfIndex[surf]-1][dac]=4095;
+		    if(thresholdArray[surfIndex[surf]-1][dac]<1)
+			thresholdArray[surfIndex[surf]-1][dac]=1;
 //		printf("%d %d\n",thePids[surf][dac].dState,
 //		       thePids[surf][dac].iState);
 //		printf("%d %d %f %f %f\n",change,
 //		       thresholdArray[surfIndex[surf]-1][dac],
 //		       pTerm,iTerm,dTerm);
+		}
 	    }
 	}
     }
