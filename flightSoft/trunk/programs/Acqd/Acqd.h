@@ -66,7 +66,7 @@ typedef enum __SURF_control_act {
 typedef enum __TURF_control_act { 
     SetTrigMode,
     RprgTurf,
-    TurfClearEvent,
+    TurfLoadRam,
     SendSoftTrg,
     RFCBit,
     RFCClk,
