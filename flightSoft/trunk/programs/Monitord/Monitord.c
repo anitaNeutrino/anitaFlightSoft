@@ -24,6 +24,7 @@ int readConfigFile();
 int checkDisks(DiskSpaceStruct_t *dsPtr);
 int checkQueues(QueueStruct_t *queuePtr);
 int writeFileAndLink(MonitorStruct_t *monitorPtr);
+void prepWriterStructs();
 
 // Global Variables
 int printToScreen=0;
@@ -37,25 +38,19 @@ char usbDataDiskLink[FILENAME_MAX];
 char usbDataDiskPrefix[FILENAME_MAX];
 
 //Link Directories
-char cmdTelemLinkDir[FILENAME_MAX];
-char hkTelemLinkDir[FILENAME_MAX];
-char gpsTelemLinkDir[FILENAME_MAX];
-//char monitordTelemLinkDir[FILENAME_MAX];
-char eventTelemDirBase[FILENAME_MAX];
+char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 
-//Telemetry and Archiving Directories
-char monitordTelemDir[FILENAME_MAX];
-char monitordTelemLinkDir[FILENAME_MAX];
+
 char monitordArchiveDir[FILENAME_MAX];
 char monitordUSBArchiveDir[FILENAME_MAX];
 
+AnitaWriterStruct_t monWriter;
 
 int main (int argc, char *argv[])
 {
-    int retVal;
+    int retVal,pri;
 //    DiskSpaceStruct_t diskSpace;
     MonitorStruct_t monData;
-
 
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -67,11 +62,21 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-   
+    
     retVal=0;
-    monData.gHdr.code=PACKET_MONITOR;
-    monData.gHdr.numBytes=sizeof(MonitorStruct_t);
-
+    for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	sprintf(eventTelemLinkDirs[pri],"%s/%s%d/link",BASE_EVENT_TELEM_DIR,
+		EVENT_PRI_PREFIX,pri);
+	makeDirectories(eventTelemLinkDirs[pri]);
+    }
+    
+    retVal=readConfigFile();
+    if(retVal<0) {
+	syslog(LOG_ERR,"Problem reading Monitord.config");
+	printf("Problem reading Monitord.config\n");
+	exit(1);
+    }
+    prepWriterStructs();
     /* Main monitor loop. */
     do {
 	if(printToScreen) printf("Initalizing Monitord\n");
@@ -102,18 +107,20 @@ int main (int argc, char *argv[])
 int writeFileAndLink(MonitorStruct_t *monitorPtr) {
     char theFilename[FILENAME_MAX];
     int retVal=0;
+    
+    fillGenericHeader(monitorPtr,PACKET_MONITOR,sizeof(MonitorStruct_t));
+    
     sprintf(theFilename,"%s/mon_%ld.dat",
-	    monitordTelemDir,monitorPtr->unixTime);
+	    MONITOR_TELEM_DIR,monitorPtr->unixTime);
     retVal=writeMonitor(monitorPtr,theFilename);
-    retVal=makeLink(theFilename,monitordTelemLinkDir);
-    sprintf(theFilename,"%s/mon_%ld.dat",
-	    monitordArchiveDir,monitorPtr->unixTime);
-    retVal=writeMonitor(monitorPtr,theFilename);
-    if(useUSBDisks) {
-	sprintf(theFilename,"%s/mon_%ld.dat",
-		monitordUSBArchiveDir,monitorPtr->unixTime);
-	retVal=writeMonitor(monitorPtr,theFilename);
+    retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
+
+    retVal=cleverHkWrite((char*)monitorPtr,sizeof(MonitorStruct_t),
+			 monitorPtr->unixTime,&monWriter);
+    if(retVal<0) {
+	//Had an error
     }
+    
     return retVal;        
 }
 
@@ -123,8 +130,7 @@ int readConfigFile()
 {
     /* Config file thingies */
     char *tempString;
-    char tempDir[FILENAME_MAX];
-    int status=0,count=0;
+    int status=0;
     char* eString ;
     kvpReset();
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
@@ -165,90 +171,6 @@ int readConfigFile()
 	    exit(0);
 	}
 
-
-
-	//Output and Link Directories
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(monitordTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(cmdTelemLinkDir,tempString,FILENAME_MAX-1);
-	    strncpy(hkTelemLinkDir,tempString,FILENAME_MAX-1);
-	    strncpy(gpsTelemLinkDir,tempString,FILENAME_MAX-1);	    
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
-	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("monitorTelemSubDir");
-	if(tempString) {
-	    strcat(monitordTelemDir,tempString);	    
-	    sprintf(monitordTelemLinkDir,"%s/link",monitordTelemDir);
-	    makeDirectories(monitordTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
-	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("cmdEchoTelemSubDir");
-	if(tempString) {
-	    strcat(cmdTelemLinkDir,tempString);
-	    strcat(cmdTelemLinkDir,"/link");
-	    makeDirectories(cmdTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmdEchoTelemSubDir");
-	    fprintf(stderr,"Couldn't get cmdEchoTelemSubDir\n");
-	    exit(0);
-	}	
-	tempString=kvpGetString("hkTelemSubDir");
-	if(tempString) {
-	    strcat(hkTelemLinkDir,tempString);
-	    strcat(hkTelemLinkDir,"/link");
-	    makeDirectories(hkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkTelemSubDir");
-	    fprintf(stderr,"Couldn't get hkTelemSubDir\n");
-	    exit(0);
-	}	
-	tempString=kvpGetString("gpsTelemSubDir");
-	if(tempString) {
-	    strcat(gpsTelemLinkDir,tempString);
-	    strcat(gpsTelemLinkDir,"/link");
-	    makeDirectories(gpsTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsTelemSubDir");
-	    fprintf(stderr,"Couldn't get gpsTelemSubDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("baseEventTelemDir");
-	if(tempString) {
-	    strncpy(eventTelemDirBase,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
-	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("eventTelemSubDirPrefix");
-	if(tempString) {
-	    strcat(eventTelemDirBase,"/");
-	    strcat(eventTelemDirBase,tempString);
-	    for(count=0;count<NUM_PRIORITIES;count++) {
-		sprintf(tempDir,"%s%d/link",eventTelemDirBase,count);
-		makeDirectories(tempDir);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventTelemSubDirPrefix");
-	    fprintf(stderr,"Couldn't get eventTelemSubDirPrefix\n");
-	    exit(0);
-	}
-	
-
 	tempString=kvpGetString("baseHouseArchiveDir");
 	if(tempString) {
 	    sprintf(monitordArchiveDir,"%s/%s/",mainDataDisk,tempString);
@@ -268,8 +190,8 @@ int readConfigFile()
 	    makeDirectories(monitordUSBArchiveDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
-	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
+	    syslog(LOG_ERR,"Couldn't get monitorArchiveSubDir");
+	    fprintf(stderr,"Couldn't get monitorArchiveSubDir\n");
 	    exit(0);
 	}	       	
 	
@@ -281,8 +203,8 @@ int readConfigFile()
     
     if(printToScreen && verbosity>1)
 	printf("Dirs:\n\t%s\n\t%s\n\t%s\n\t%s\n",
-	       monitordTelemDir,
-	       monitordTelemLinkDir,
+	       MONITOR_TELEM_DIR,
+	       MONITOR_TELEM_LINK_DIR,
 	       monitordArchiveDir,
 	       monitordUSBArchiveDir);
 	       
@@ -316,33 +238,61 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 int checkQueues(QueueStruct_t *queuePtr) {
     int retVal=0,count;
     unsigned short numLinks=0;
-    char tempDir[FILENAME_MAX];
-    numLinks=countFilesInDir(cmdTelemLinkDir);
+    numLinks=countFilesInDir(CMD_ECHO_TELEM_DIR);
     queuePtr->cmdLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",cmdTelemLinkDir,numLinks);
+    if(printToScreen) printf("%s\t%u\n",CMD_ECHO_TELEM_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
 
-    numLinks=countFilesInDir(hkTelemLinkDir);
+    numLinks=countFilesInDir(HK_TELEM_LINK_DIR);
     queuePtr->hkLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",hkTelemLinkDir,numLinks);
+    if(printToScreen) printf("%s\t%u\n",HK_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
 
-    numLinks=countFilesInDir(gpsTelemLinkDir);
+    numLinks=countFilesInDir(GPS_TELEM_LINK_DIR);
     queuePtr->gpsLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",gpsTelemLinkDir,numLinks);
+    if(printToScreen) printf("%s\t%u\n",GPS_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
 
-    numLinks=countFilesInDir(monitordTelemLinkDir);
+    numLinks=countFilesInDir(MONITOR_TELEM_LINK_DIR);
     queuePtr->monitorLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",monitordTelemLinkDir,numLinks);
+    if(printToScreen) printf("%s\t%u\n",MONITOR_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+
+    numLinks=countFilesInDir(SURFHK_TELEM_LINK_DIR);
+    queuePtr->surfHkLinks=numLinks;
+    if(printToScreen) printf("%s\t%u\n",SURFHK_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+
+    numLinks=countFilesInDir(TURFHK_TELEM_LINK_DIR);
+    queuePtr->turfHkLinks=numLinks;
+    if(printToScreen) printf("%s\t%u\n",TURFHK_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+
+    numLinks=countFilesInDir(HEADER_TELEM_LINK_DIR);
+    queuePtr->headLinks=numLinks;
+    if(printToScreen) printf("%s\t%u\n",HEADER_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
     
     for(count=0;count<NUM_PRIORITIES;count++) {
-	sprintf(tempDir,"%s%d/link",eventTelemDirBase,count);
-	numLinks=countFilesInDir(tempDir);
+	numLinks=countFilesInDir(eventTelemLinkDirs[count]);
 	queuePtr->eventLinks[count]=numLinks;
-    if(printToScreen) printf("%s\t%u\n",tempDir,numLinks);
+	if(printToScreen) printf("%s\t%u\n",eventTelemLinkDirs[count]
+				 ,numLinks);
 	if(((short)numLinks)==-1) retVal--;
     }
     return retVal;
+}
+
+
+
+void prepWriterStructs() {
+    if(printToScreen) 
+	printf("Preparing Writer Struct\n");
+
+    strncpy(monWriter.baseDirname,monitordArchiveDir,FILENAME_MAX-1);
+    sprintf(monWriter.filePrefix,"mon");
+    monWriter.currentFilePtr=0;
+    monWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
+    monWriter.maxFilesPerDir=HK_FILES_PER_DIR;
+    monWriter.maxWritesPerFile=HK_PER_FILE;
 }

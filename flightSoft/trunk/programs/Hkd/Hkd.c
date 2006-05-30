@@ -57,6 +57,7 @@ int closeMagnetometer();
 
 /* Output Function */
 int outputData(AnalogueCode_t code);
+void prepWriterStructs();
 
 
 // Device names;
@@ -89,8 +90,6 @@ SBSTemperatureDataStruct_t sbsData;
 //char carrierDevName[FILENAME_MAX];
 int useUSBDisks=0;
 
-char hkTelemDir[FILENAME_MAX];
-char hkTelemLinkDir[FILENAME_MAX];
 char hkdArchiveDir[FILENAME_MAX];
 char hkdUSBArchiveDir[FILENAME_MAX];
 int ip320Ranges[NUM_IP320_BOARDS];
@@ -98,6 +97,11 @@ int numIP320s;
 int printToScreen;
 int readoutPeriod;
 int calibrationPeriod;
+
+
+AnitaWriterStruct_t hkRawWriter;
+AnitaWriterStruct_t hkCalWriter;
+
 
 int main (int argc, char *argv[])
 {
@@ -155,27 +159,7 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting magentometerDevName");
 	    fprintf(stderr,"Error getting magentometerDevName\n");
 	}	  
-
-	
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error baseHouseTelemDir");
-	    fprintf(stderr,"Error baseHouseTelemDir\n");
-	}
-	tempString=kvpGetString("hkTelemSubDir");
-	if(tempString) {
-	    sprintf(hkTelemDir,"%s/%s",hkTelemDir,tempString);
-	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
-	    makeDirectories(hkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting hkTelemSubDir");
-	    fprintf(stderr,"Error getting hkTelemSubDir\n");
-	}
-
+       
 	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
 	    strncpy(hkdArchiveDir,tempString,FILENAME_MAX-1);
@@ -216,13 +200,17 @@ int main (int argc, char *argv[])
 	}
 	    
     }
-//    printf("%s",hkTelemLinkDir
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;
     calDataStruct.code=IP320_CAL;
     
     retVal=0;
     retVal=readConfigFile();
+
+    makeDirectories(HK_TELEM_DIR);
+    makeDirectories(HK_TELEM_LINK_DIR);
+
+    prepWriterStructs();
 	
 //    printSBSTemps();
     acromagSetup();
@@ -233,7 +221,7 @@ int main (int argc, char *argv[])
 	retVal=readConfigFile();
 	
 	//    milliWait.tv_nsec=100000000;
-	milliWait.tv_nsec=40000000;
+	milliWait.tv_nsec=10000000;
 	readoutPeriod*=2;
 	ip320Setup();
 	currentState=PROG_STATE_RUN;
@@ -513,12 +501,12 @@ int outputData(AnalogueCode_t code)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
-    theHkData.gHdr.code=PACKET_HKD;
-//    time_t rawtime;
+    AnitaWriterStruct_t *wrPtr;
+
+
     struct timeval timeStruct;
     gettimeofday(&timeStruct,NULL);
 	    
-//    time ( &rawtime );
     theHkData.unixTime=timeStruct.tv_sec;;
     theHkData.unixTimeUs=timeStruct.tv_usec;;
     switch(code) {
@@ -526,42 +514,48 @@ int outputData(AnalogueCode_t code)
 	    sprintf(theFilename,"hk_%ld_%ld.raw.dat",theHkData.unixTime,
 		theHkData.unixTimeUs);
 	    theHkData.ip320=rawDataStruct;
+	    wrPtr=&hkRawWriter;
 	    break;
 	case(IP320_CAL):
 	    sprintf(theFilename,"hk_%ld_%ld.cal.dat",theHkData.unixTime,
 		    theHkData.unixTimeUs);
 	    theHkData.ip320=calDataStruct;
+	    wrPtr=&hkCalWriter;
 	    break;
 	case(IP320_AVZ):
 	    sprintf(theFilename,"hk_%ld_%ld.avz.dat",theHkData.unixTime,
 		    theHkData.unixTimeUs);
 	    theHkData.ip320=autoZeroStruct;
+	    wrPtr=&hkCalWriter;
 	    break;
 	default:
 	    syslog(LOG_WARNING,"Unknown HK data code: %d",code);
 	    if(printToScreen) 
 		fprintf(stderr,"Unknown HK data code: %d\n",code);
-	    break;
+	    return -1;
     }
 	    
     theHkData.mag=magData;
     theHkData.sbs=sbsData;
     if(printToScreen) printf("%s\n",theFilename);
+
+    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
+
     
     //Write file and make link for SIPd
-    sprintf(fullFilename,"%s/%s",hkTelemDir,theFilename);
+    sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);
     retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,hkTelemLinkDir);      
+    retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
+    
+    //Write file to main disk
+    retVal=cleverHkWrite((char*)&theHkData,sizeof(HkDataStruct_t),
+			 theHkData.unixTime,wrPtr);
+    if(retVal<0) {
+	//Had an error
+	//Do something
+    }	    
+    
 
-//Write file to mainDataDisk
-    sprintf(fullFilename,"%s/%s",hkdArchiveDir,theFilename);
-    retVal+=writeHk(&theHkData,fullFilename);     
-
-    if(useUSBDisks) {	
-	// Write file to usb disk
-	sprintf(fullFilename,"%s/%s",hkdUSBArchiveDir,theFilename);
-	retVal+=writeHk(&theHkData,fullFilename); 
-    }
     return retVal;
 }
 
@@ -644,7 +638,7 @@ int setupMagnetometer()
     }
     else {
 //	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
-	if(printToScreen)
+//	if(printToScreen)
 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
     }
     usleep(1);
@@ -663,14 +657,13 @@ int setupMagnetometer()
     }
     else {
 //	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
-	if(printToScreen)
-	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
+//	if(printToScreen)
+//	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
     }
     usleep(1);
     retVal=isThereDataNow(fdMag);
     if(retVal) {
 	retVal=read(fdMag,tempData,256);
-//	printf("%s\n",tempData);
     }
 /*     sprintf(setupCommand,"B=38400\n"); */
 /*     retVal=write(fdMag, setupCommand, strlen(setupCommand)); */
@@ -711,8 +704,8 @@ int sendMagnetometerRequest()
     }
     else {
 //	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
-	if(printToScreen)
-	    printf("Sent %d bytes to Magnetometer serial port\n",retVal);
+//	if(printToScreen)
+//	    printf("Sent %d bytes to Magnetometer serial port\n",retVal);
     }
     return 0;
 }
@@ -771,4 +764,36 @@ int checkMagnetometer()
 int closeMagnetometer()
 {
     return close(fdMag);   
+}
+
+
+
+void prepWriterStructs() {
+    if(printToScreen) 
+	printf("Preparing Writer Structs\n");
+    //Hk Writer
+    
+    sprintf(hkRawWriter.baseDirname,"%s/raw",hkdArchiveDir);
+    sprintf(hkRawWriter.filePrefix,"hk_raw");
+    hkRawWriter.currentFilePtr=0;
+    hkRawWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
+    hkRawWriter.maxFilesPerDir=HK_FILES_PER_DIR;
+    hkRawWriter.maxWritesPerFile=10;
+//    hkRawWriter.maxWritesPerFile=HK_PER_FILE;
+
+    //Hk Cal Writer
+    sprintf(hkCalWriter.baseDirname,"%s/cal",hkdArchiveDir);
+    sprintf(hkCalWriter.filePrefix,"hk_cal_avz");
+    hkCalWriter.currentFilePtr=0;
+    hkCalWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
+    hkCalWriter.maxFilesPerDir=HK_FILES_PER_DIR;
+    hkCalWriter.maxWritesPerFile=HK_PER_FILE;
+
+    //Hk Avz Writer
+/*     sprintf(hkAvzWriter.baseDirname,"%s/avz",hkdArchiveDir); */
+/*     sprintf(hkAvzWriter.filePrefix,"hk_avz"); */
+/*     hkAvzWriter.currentFilePtr=0; */
+/*     hkAvzWriter.maxSubDirsPerDir=HK_FILES_PER_DIR; */
+/*     hkAvzWriter.maxFilesPerDir=HK_FILES_PER_DIR; */
+/*     hkAvzWriter.maxWritesPerFile=HK_PER_FILE; */
 }

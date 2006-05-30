@@ -24,7 +24,7 @@ typedef enum {
 } ProgramStateCode;
 
 typedef struct {
-    gzFile currentFilePtr;
+    FILE *currentFilePtr;
     int writeCount;
     int fileCount;
     int dirCount;
@@ -33,6 +33,7 @@ typedef struct {
     int maxWritesPerFile;
     char baseDirname[FILENAME_MAX];
     char filePrefix[FILENAME_MAX];
+    char currentFileName[FILENAME_MAX];
     char currentDirName[FILENAME_MAX];
     char currentSubDirName[FILENAME_MAX];
 } AnitaWriterStruct_t;
@@ -96,9 +97,11 @@ int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
 int genericReadOfFile(char *buffer, char *filename, int maxBytes);
 
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
+char *getCurrentHkFilename(char *currentDir, char *prefix, 
+			   unsigned long unixTime);
 gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,
 			      unsigned long unixTime);
-int getCurrentZippedHkFileDescriptor(char *currentDir,char *prefix,
+int getCurrentHkFileDescriptor(char *currentDir,char *prefix,
 				     unsigned long unixTime);
 int zippedSingleWrite(char *buffer, char *filename, int numBytes);
 int normalSingleWrite(char *buffer, char *filename, int numBytes);
@@ -106,6 +109,7 @@ int normalSingleWrite(char *buffer, char *filename, int numBytes);
 FILE *getCurrentHkFile(char *currentDir, char *prefix, unsigned long unixTime);
 
 int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
+int cleverZippedHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 
 

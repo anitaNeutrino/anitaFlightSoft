@@ -30,6 +30,11 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
     int retVal=0;
     static int errorCounter=0;
     char *tempDir;
+    char *bufferToZip=0;
+    char zippedFilename[FILENAME_MAX];
+    gzFile zipFile;
+    int numberOfBytes=0;
+    
     if(!awsPtr->currentFilePtr) {
 	//First time
 	tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime);
@@ -40,16 +45,62 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
 	strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1);
 	awsPtr->fileCount=0;
 	free(tempDir);
-	awsPtr->currentFilePtr=
-	    getCurrentZippedHkFile(awsPtr->currentSubDirName,
-				   awsPtr->filePrefix,unixTime);
+	
+	tempDir=getCurrentHkFilename(awsPtr->currentSubDirName,
+				     awsPtr->filePrefix,unixTime);
+	strncpy(awsPtr->currentFileName,tempDir,FILENAME_MAX-1);
+	free(tempDir);
+	awsPtr->currentFilePtr=fopen(awsPtr->currentFileName,"wb");	    
 	awsPtr->writeCount=0;						      
     }
     
     //Check if we need a new file or directory
     if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
 	//Need a new file
-	gzclose(awsPtr->currentFilePtr);
+	fclose(awsPtr->currentFilePtr);
+	if(errorCounter<100) {
+	    awsPtr->currentFilePtr=fopen(awsPtr->currentFileName,"rb");
+	    fseek(awsPtr->currentFilePtr,0,SEEK_END);
+	    numberOfBytes=ftell(awsPtr->currentFilePtr);
+//	    printf("numberOfBytes %d\n",numberOfBytes);
+	    fseek(awsPtr->currentFilePtr,0,SEEK_SET);
+	    
+	    if(numberOfBytes) {
+		bufferToZip = malloc(numberOfBytes);
+		if(bufferToZip) {
+		    retVal=fread(bufferToZip,numberOfBytes,
+				 1,awsPtr->currentFilePtr);
+		    fclose(awsPtr->currentFilePtr);
+		    if(retVal==1) {
+			// Read succesfully
+			sprintf(zippedFilename,"%s.gz",
+				awsPtr->currentFileName);
+			zipFile=gzopen(zippedFilename,"wb5");
+			if(zipFile) {
+			    retVal=gzwrite(zipFile,bufferToZip,numberOfBytes);
+			    if(retVal<0) {
+				errorCounter++;
+				printf("Error (%d of 100) writing zip file -- %s (%d)\n",
+				       errorCounter,
+				       gzerror(zipFile,&retVal),retVal);
+				gzclose(zipFile);
+			    }
+			    else {
+				retVal=gzclose(zipFile);
+				removeFile(awsPtr->currentFileName);
+			    }
+				
+			}
+
+		    }
+		}
+	    }
+	    
+
+	}
+
+
+
 	awsPtr->fileCount++;
 	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
 	    awsPtr->dirCount++;
@@ -66,27 +117,99 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
 	    free(tempDir);
 	}
 	
-	awsPtr->currentFilePtr=
-	    getCurrentZippedHkFile(awsPtr->currentSubDirName,
-				   awsPtr->filePrefix,unixTime);
+	tempDir=getCurrentHkFilename(awsPtr->currentSubDirName,
+				     awsPtr->filePrefix,unixTime);
+	strncpy(awsPtr->currentFileName,tempDir,FILENAME_MAX-1);
+	free(tempDir);
+	awsPtr->currentFilePtr=fopen(awsPtr->currentFileName,"wb");	    
+
 	awsPtr->writeCount=0;						      
     }
 
     awsPtr->writeCount++;
     if(errorCounter<100) {
-	retVal=gzwrite(awsPtr->currentFilePtr,buffer,numBytes);
+	retVal=fwrite(buffer,numBytes,1,awsPtr->currentFilePtr);
 	if(retVal<0) {
 	    errorCounter++;
 	    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		   errorCounter,awsPtr->writeCount,
-		   gzerror(awsPtr->currentFilePtr,&retVal),retVal);
+		   strerror(errno),retVal);
 	}
-	gzflush(awsPtr->currentFilePtr,Z_SYNC_FLUSH);  
+	retVal=fflush(awsPtr->currentFilePtr);  
+//	printf("Here %d -- fflush RetVal %d \n",awsPtr->writeCount,
+//	       retVal);
     }
     else return -1;
 	        	       
     return retVal;
+
+    
 }
+
+/* int cleverZippedHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr) */
+/* { */
+/*     int retVal=0; */
+/*     static int errorCounter=0; */
+/*     char *tempDir; */
+/*     if(!awsPtr->currentGzFilePtr) { */
+/* 	//First time */
+/* 	tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime); */
+/* 	strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1); */
+/* 	awsPtr->dirCount=0; */
+/* 	free(tempDir); */
+/* 	tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime); */
+/* 	strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1); */
+/* 	awsPtr->fileCount=0; */
+/* 	free(tempDir); */
+/* 	awsPtr->currentGzFilePtr= */
+/* 	    getCurrentZippedHkFile(awsPtr->currentSubDirName, */
+/* 				   awsPtr->filePrefix,unixTime); */
+/* 	awsPtr->writeCount=0;						       */
+/*     } */
+    
+/*     //Check if we need a new file or directory */
+/*     if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) { */
+/* 	//Need a new file */
+/* 	gzclose(awsPtr->currentGzFilePtr); */
+/* 	awsPtr->fileCount++; */
+/* 	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) { */
+/* 	    awsPtr->dirCount++; */
+/* 	    if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) { */
+/* 		tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime); */
+/* 		strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1); */
+/* 		awsPtr->dirCount=0; */
+/* 		free(tempDir); */
+/* 	    } */
+	    
+/* 	    tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime); */
+/* 	    strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1); */
+/* 	    awsPtr->fileCount=0; */
+/* 	    free(tempDir); */
+/* 	} */
+	
+/* 	awsPtr->currentGzFilePtr= */
+/* 	    getCurrentZippedHkFile(awsPtr->currentSubDirName, */
+/* 				   awsPtr->filePrefix,unixTime); */
+/* 	awsPtr->writeCount=0;						       */
+/*     } */
+
+/*     awsPtr->writeCount++; */
+/*     if(errorCounter<100) { */
+/* 	retVal=gzwrite(awsPtr->currentGzFilePtr,buffer,numBytes); */
+/* 	if(retVal<0) { */
+/* 	    errorCounter++; */
+/* 	    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n", */
+/* 		   errorCounter,awsPtr->writeCount, */
+/* 		   gzerror(awsPtr->currentGzFilePtr,&retVal),retVal); */
+/* 	} */
+/* 	retVal=gzflush(awsPtr->currentGzFilePtr,Z_SYNC_FLUSH);   */
+/* //	printf("Here %d -- gzflush RetVal %d \n",awsPtr->writeCount, */
+/* //	       retVal); */
+/*     } */
+/*     else return -1; */
+	        	       
+/*     return retVal; */
+/* } */
 
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
@@ -252,6 +375,24 @@ FILE *getCurrentHkFile(char *currentDir,char *prefix,unsigned long unixTime)
     return fpTest;
 }
 
+char *getCurrentHkFilename(char *currentDir, char *prefix, 
+			   unsigned long unixTime) 
+{
+    char *newFile;
+    int ext=0;
+    FILE *fpTest;
+    newFile=malloc(FILENAME_MAX);
+    sprintf(newFile,"%s/%s_%lu.dat",currentDir,prefix,unixTime);
+    fpTest=fopen(newFile,"r");   
+    while(fpTest) {
+	fclose(fpTest);
+	ext++;
+	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
+	fpTest=fopen(newFile,"r");
+    }
+    return newFile;
+}
+    
 
 gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,unsigned long unixTime)
 {
@@ -267,26 +408,26 @@ gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,unsigned long unixTi
 	fpTest=gzopen(newFile,"r");
     }
 //    gzclose(fpTest);
-    fpTest=gzopen(newFile,"wb5");
+    fpTest=gzopen(newFile,"wb9");
     return fpTest;
 }
 
 
-int getCurrentZippedHkFileDescriptor(char *currentDir,char *prefix,unsigned long unixTime)
+int getCurrentHkFileDescriptor(char *currentDir,char *prefix,unsigned long unixTime)
 {
     char newFile[FILENAME_MAX];
     int ext=0;
     int fdTest;
-    sprintf(newFile,"%s/%s_%lu.dat.gz",currentDir,prefix,unixTime);
+    sprintf(newFile,"%s/%s_%lu.dat",currentDir,prefix,unixTime);
     fdTest=open(newFile,O_RDONLY);   
     while(fdTest>0) {
 	close(fdTest);
 	ext++;
-	sprintf(newFile,"%s/%s_%lu.dat_%d.gz",currentDir,prefix,unixTime,ext);
+	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
 	fdTest=open(newFile,O_RDONLY);   
     }
 //    close(fdTest);
-    fdTest=open(newFile,O_WRONLY|O_CREAT);
+    fdTest=open(newFile,O_WRONLY|O_CREAT|O_TRUNC);
 //    fpTest=gzopen(newFile,"wb5");
     return fdTest;
 }

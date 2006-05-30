@@ -81,7 +81,26 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 
+//Housekeeping Telem Dirs
+#define CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmd"
+#define HK_TELEM_DIR "/tmp/anita/telem/house/hk"
+#define SURFHK_TELEM_DIR "/tmp/anita/telem/house/surfhk"
+#define TURFHK_TELEM_DIR "/tmp/anita/telem/house/turfhk"
+#define GPS_TELEM_DIR "/tmp/anita/telem/house/gps"
+#define MONITOR_TELEM_DIR "/tmp/anita/telem/house/monitor"
+#define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 
+#define CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmd/link"
+#define HK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
+#define SURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/surfhk/link"
+#define TURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/turfhk/link"
+#define GPS_TELEM_LINK_DIR "/tmp/anita/telem/house/gps/link"
+#define MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/monitor/link"
+#define HEADER_TELEM_LINK_DIR "/tmp/anita/telem/head/link"
+
+//Event telemetry dirs
+#define BASE_EVENT_TELEM_DIR "/mnt/data/telem/event"
+#define EVENT_PRI_PREFIX "pri"
 
 #endif /* ANITA_FLIGHT_H */
 
