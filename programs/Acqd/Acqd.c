@@ -124,7 +124,7 @@ int pps2TrigFlag = 0;
 
 //Threshold Stuff
 //int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
-int surfAntTrigMasks[ACTIVE_SURFS][2];
+int surfTrigBandMasks[ACTIVE_SURFS][2];
 int thresholdArray[ACTIVE_SURFS][N_RFTRIG];
 int setGlobalThreshold=0; 
 int globalThreshold=2200;
@@ -144,7 +144,7 @@ int pidAverage;
 //bit 8 in second word is 48th antenna
 //We load in reverse order starting with the missing SURF 10 
 //and working backwards to SURF 1
-int rfcmMask[2] = {0x10001000, 0x00008000} ;
+int antTrigMask=0;
 
 
 //Test of BarMap
@@ -469,6 +469,14 @@ int main(int argc, char **argv) {
 	    fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif    
 
+
+//Is now load event into ram
+	    if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
+		printf("  failed to send clear event pulse on TURFIO.\n") ;
+
+
+
+
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
 #ifdef TIME_DEBUG
@@ -558,8 +566,7 @@ int main(int argc, char **argv) {
 	    else {
 		hdPtr->eventNumber=getEventNumber();
 		hdPtr->surfMask=surfMask;
-		hdPtr->rfcmMask[0]=(unsigned int)rfcmMask[0];
-		hdPtr->rfcmMask[1]=(unsigned int)rfcmMask[1];
+		hdPtr->antTrigMask=(unsigned int)antTrigMask;
 		
 
 		/* 
@@ -652,9 +659,9 @@ int main(int argc, char **argv) {
 		if (setSurfControl(surfHandles[surf], SurfClearEvent) != ApiSuccess)
 		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 	    
-	    if(!surfonly)
-		if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
-		    printf("  failed to send clear event pulse on TURFIO.\n") ;
+//	    if(!surfonly)
+//		if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
+//		    printf("  failed to send clear event pulse on TURFIO.\n") ;
 	    
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -1198,27 +1205,19 @@ int readConfigFile()
 	    standAloneMode=0;	    
 	}
 	tempNum=2;
-	kvpStatus=kvpGetIntArray("rfcmMask",rfcmMask,&tempNum);
-	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(rfcmMask): %s",
-		   kvpErrorString(kvpStatus));
-	    fprintf(stderr,"kvpGetIntArray(rfcmMask): %s\n",
-			kvpErrorString(kvpStatus));
-	}
-	
-
+	antTrigMask=kvpGetInt("antTrigMask",0);
 	
 	if(printToScreen) printf("Print to screen flag is %d\n",printToScreen);
 
 	turfioPos.bus=kvpGetInt("turfioBus",3); //in seconds
 	turfioPos.slot=kvpGetInt("turfioSlot",10); //in seconds
 	tempNum=18;
-	kvpStatus=kvpGetIntArray("surfAntTrigMasks",&surfAntTrigMasks[0][0],&tempNum);
+	kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0][0],&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(surfAntTrigMasks): %s",
+	    syslog(LOG_WARNING,"kvpGetIntArray(surfTrigBandMasks): %s",
 		   kvpErrorString(kvpStatus));
 	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(surfAntTrigMasks): %s\n",
+		fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
@@ -1508,7 +1507,7 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 	//Insert SURF trigger channel masking here
 	for (dac=N_RFTRIG ; dac<N_RFTRIG+2 ; dac++) {
 	    buf = (dac<<16) + 
-		surfAntTrigMasks[surfIndex[surf]-1][dac-N_RFTRIG];	    
+		surfTrigBandMasks[surfIndex[surf]-1][dac-N_RFTRIG];	    
 	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
 			      &buf, 4, BitSize32);
 	    if(rc!=ApiSuccess) {
@@ -2030,6 +2029,18 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 	    if(printToScreen) 
 		printf("Failed to read header word %d (rc = %d)\n", surfIndex[surf],rc) ;
 	}
+	
+
+	//Now prime data stream
+	if(tryToUseBarMap) {
+	    dataInt=*(barMapAddr[surf]);
+	}
+	else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
+	    status=ACQD_E_PLXBUSREAD;
+	    syslog(LOG_ERR,"Failed to read header word SURF %d (rc = %d)",surfIndex[surf],rc);
+	    if(printToScreen) 
+		printf("Failed to read header word %d (rc = %d)\n", surfIndex[surf],rc) ;
+	}
 
 	
 	//Now read first 256 samples per SURF
@@ -2228,7 +2239,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 
 	//First just fill in antMask in SURF
 	for(rfChan=0;rfChan<2;rfChan++) {
-	    theSurfHk.surfAntMask[surf][rfChan]=surfAntTrigMasks[surf][rfChan];
+	    theSurfHk.surfTrigBandMask[surf][rfChan]=surfTrigBandMasks[surf][rfChan];
 	}
 
 	
@@ -2335,8 +2346,8 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 //	    printf("Failed to prime pipe TURFIO\n") ;
 //  }
     
-    //Read out 144 words
-    for(wordNum=0;wordNum<144;wordNum++) {
+    //Read out 160 words
+    for(wordNum=0;wordNum<160;wordNum++) {
 	if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
 	    status=ACQD_E_PLXBUSREAD;
 	    syslog(LOG_ERR,"Failed to read TURFIO word %d",wordNum);
@@ -2422,8 +2433,71 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
 	else if(wordNum<136) {
 	    turfRates.l3Rates[wordNum-120]=dataChar;
 	}
+	else if(wordNum<138) {
+	    if(wordNum%2==0) {
+		//First word
+		turfioPtr->upperL1TrigPattern=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfioPtr->upperL1TrigPattern+=(dataShort<<8);
+	    }
+	}
+	else if(wordNum<140) {
+	    if(wordNum%2==0) {
+		//First word
+		turfioPtr->lowerL1TrigPattern=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfioPtr->lowerL1TrigPattern+=(dataShort<<8);
+	    }
+	}
+	else if(wordNum<142) {
+	    if(wordNum%2==0) {
+		//First word
+		turfioPtr->upperL2TrigPattern=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfioPtr->upperL2TrigPattern+=(dataShort<<8);
+	    }
+	}
 	else if(wordNum<144) {
-	    endPat.test[wordNum-136]=dataChar; 
+	    if(wordNum%2==0) {
+		//First word
+		turfioPtr->lowerL2TrigPattern=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfioPtr->lowerL2TrigPattern+=(dataShort<<8);
+	    }
+	}
+	else if(wordNum<146) {
+	    if(wordNum%2==0) {
+		//First word
+		turfioPtr->l3TrigPattern=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfioPtr->l3TrigPattern+=(dataShort<<8);
+	    }
+	}
+	else if(wordNum<148) {
+	    if(wordNum%2==0) {
+		//First word
+		turfioPtr->l3TrigPattern2=dataShort;
+	    }
+	    else if(wordNum%2==1) {
+		//Second word
+		turfioPtr->l3TrigPattern2+=(dataShort<<8);
+	    }
+	}	    	    	
+	else if(wordNum<152) {
+	    //do nothing
+	}
+	else if(wordNum<160) {
+	    endPat.test[wordNum-152]=dataChar; 
 	}
 	    
 	
@@ -2440,6 +2514,13 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
     if(verbosity && printToScreen) {
 	printf("TURF Data\n\tEvent (software):\t%lu\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%lu\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n",
 	       hdPtr->eventNumber,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count);
+	printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\nL32:\t%x\n",
+	       turfioPtr->upperL1TrigPattern,
+	       turfioPtr->lowerL2TrigPattern,
+	       turfioPtr->upperL2TrigPattern,
+	       turfioPtr->lowerL2TrigPattern,
+	       turfioPtr->l3TrigPattern,
+	       turfioPtr->l3TrigPattern2);
     }
 	
     return status;	
@@ -2495,6 +2576,10 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle)
     PlxReturnCode_t rc;
     U32 gpio ;  
     int i=0,j=0,chanBit=1;
+    int actualMask[2]={255,0};
+    actualMask[0]|=((antTrigMask&0xffffff)<<8);
+    actualMask[1]=(antTrigMask&0xff000000)>>24;
+
 
     rc=setTurfControl(turfioHandle,RFCBit);
     if(rc!=ApiSuccess) {		
@@ -2507,15 +2592,15 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle)
     while(i<40) {
 	if (i==32) j=chanBit=1 ;
 	
-//	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,rfcmMask[j],(rfcmMask[j]&chanBit));
-	if(rfcmMask[j]&chanBit) rc=setTurfControl(turfioHandle,RFCBit);
+//	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,actualMask[j],(actualMask[j]&chanBit));
+	if(actualMask[j]&chanBit) rc=setTurfControl(turfioHandle,RFCBit);
 	else rc=setTurfControl(turfioHandle,RFCClk);
 	if (rc != ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to send RFC bit %d to TURF, %x %x",
-		   i,rfcmMask[1],rfcmMask[0]);
+		   i,actualMask[1],actualMask[0]);
 	    if(printToScreen)
 		fprintf(stderr,"Failed to send RFC bit %d to TURF, %x %x\n",
-			i,rfcmMask[1],rfcmMask[0]);
+			i,actualMask[1],actualMask[0]);
 	}	
 	chanBit<<=1;
 	i++;
@@ -2524,9 +2609,9 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle)
   /* check GPIO8 is set or not. */
     if((gpio=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc )) 
        & 0400000000) {
-	syslog(LOG_INFO,"writeRFCMMask: GPIO8 on, so mask should be set to %x%x.\n", rfcmMask[1],rfcmMask[0]) ;
+	syslog(LOG_INFO,"writeRFCMMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1],actualMask[0]) ;
 	if(printToScreen) 
-	    printf("writeRFCMMask: GPIO8 on, so mask should be set to %x%x.\n", rfcmMask[1], rfcmMask[0]) ;
+	    printf("writeRFCMMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1], actualMask[0]) ;
     }   
     else {
 	syslog(LOG_ERR,"writeRFCMMask: GPIO 8 not on: GPIO=%o",gpio);
