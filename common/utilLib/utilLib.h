@@ -39,8 +39,8 @@ typedef struct {
 } AnitaWriterStruct_t;
 
 typedef struct {
-    gzFile currentEventFilePtr;
-    gzFile currentHeaderFilePtr;
+    FILE *currentEventFilePtr;
+    FILE *currentHeaderFilePtr;
     int writeCount;
     int fileCount;
     int dirCount;
@@ -48,6 +48,8 @@ typedef struct {
     int maxFilesPerDir;
     int maxWritesPerFile;
     char baseDirname[FILENAME_MAX];
+    char currentEventFileName[FILENAME_MAX];
+    char currentHeaderFileName[FILENAME_MAX];
     char currentDirName[FILENAME_MAX];
     char currentSubDirName[FILENAME_MAX];
 } AnitaEventWriterStruct_t;
@@ -66,7 +68,6 @@ unsigned short countFilesInDir(char *dirName);
 
 /* Time stuff */
 void addDay(struct tm *timeinfo);
-
 
 /* IO routines for inter-process communication */
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename);
@@ -96,20 +97,18 @@ int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
 
 int genericReadOfFile(char *buffer, char *filename, int maxBytes);
 
+
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
 char *getCurrentHkFilename(char *currentDir, char *prefix, 
 			   unsigned long unixTime);
-gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,
-			      unsigned long unixTime);
-int getCurrentHkFileDescriptor(char *currentDir,char *prefix,
-				     unsigned long unixTime);
+
+
+
 int zippedSingleWrite(char *buffer, char *filename, int numBytes);
 int normalSingleWrite(char *buffer, char *filename, int numBytes);
 
-FILE *getCurrentHkFile(char *currentDir, char *prefix, unsigned long unixTime);
 
 int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
-int cleverZippedHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 
 

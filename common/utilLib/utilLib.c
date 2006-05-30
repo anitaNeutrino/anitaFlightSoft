@@ -32,7 +32,6 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
     char *tempDir;
     char *bufferToZip=0;
     char zippedFilename[FILENAME_MAX];
-    gzFile zipFile;
     int numberOfBytes=0;
     
     if(!awsPtr->currentFilePtr) {
@@ -75,31 +74,13 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
 			// Read succesfully
 			sprintf(zippedFilename,"%s.gz",
 				awsPtr->currentFileName);
-			zipFile=gzopen(zippedFilename,"wb5");
-			if(zipFile) {
-			    retVal=gzwrite(zipFile,bufferToZip,numberOfBytes);
-			    if(retVal<0) {
-				errorCounter++;
-				printf("Error (%d of 100) writing zip file -- %s (%d)\n",
-				       errorCounter,
-				       gzerror(zipFile,&retVal),retVal);
-				gzclose(zipFile);
-			    }
-			    else {
-				retVal=gzclose(zipFile);
-				removeFile(awsPtr->currentFileName);
-			    }
-				
-			}
-
+			zippedSingleWrite(bufferToZip,zippedFilename,
+					  numberOfBytes);		       
 		    }
+		    free(bufferToZip);
 		}
-	    }
-	    
-
+	    }	    	    
 	}
-
-
 
 	awsPtr->fileCount++;
 	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
@@ -146,80 +127,18 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
     
 }
 
-/* int cleverZippedHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr) */
-/* { */
-/*     int retVal=0; */
-/*     static int errorCounter=0; */
-/*     char *tempDir; */
-/*     if(!awsPtr->currentGzFilePtr) { */
-/* 	//First time */
-/* 	tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime); */
-/* 	strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1); */
-/* 	awsPtr->dirCount=0; */
-/* 	free(tempDir); */
-/* 	tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime); */
-/* 	strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1); */
-/* 	awsPtr->fileCount=0; */
-/* 	free(tempDir); */
-/* 	awsPtr->currentGzFilePtr= */
-/* 	    getCurrentZippedHkFile(awsPtr->currentSubDirName, */
-/* 				   awsPtr->filePrefix,unixTime); */
-/* 	awsPtr->writeCount=0;						       */
-/*     } */
-    
-/*     //Check if we need a new file or directory */
-/*     if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) { */
-/* 	//Need a new file */
-/* 	gzclose(awsPtr->currentGzFilePtr); */
-/* 	awsPtr->fileCount++; */
-/* 	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) { */
-/* 	    awsPtr->dirCount++; */
-/* 	    if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) { */
-/* 		tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime); */
-/* 		strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1); */
-/* 		awsPtr->dirCount=0; */
-/* 		free(tempDir); */
-/* 	    } */
-	    
-/* 	    tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime); */
-/* 	    strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1); */
-/* 	    awsPtr->fileCount=0; */
-/* 	    free(tempDir); */
-/* 	} */
-	
-/* 	awsPtr->currentGzFilePtr= */
-/* 	    getCurrentZippedHkFile(awsPtr->currentSubDirName, */
-/* 				   awsPtr->filePrefix,unixTime); */
-/* 	awsPtr->writeCount=0;						       */
-/*     } */
-
-/*     awsPtr->writeCount++; */
-/*     if(errorCounter<100) { */
-/* 	retVal=gzwrite(awsPtr->currentGzFilePtr,buffer,numBytes); */
-/* 	if(retVal<0) { */
-/* 	    errorCounter++; */
-/* 	    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n", */
-/* 		   errorCounter,awsPtr->writeCount, */
-/* 		   gzerror(awsPtr->currentGzFilePtr,&retVal),retVal); */
-/* 	} */
-/* 	retVal=gzflush(awsPtr->currentGzFilePtr,Z_SYNC_FLUSH);   */
-/* //	printf("Here %d -- gzflush RetVal %d \n",awsPtr->writeCount, */
-/* //	       retVal); */
-/*     } */
-/*     else return -1; */
-	        	       
-/*     return retVal; */
-/* } */
-
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
-
     int retVal=0;
     static int errorCounter=0;
-    char currentFilename[FILENAME_MAX];
     int dirNum;
+    int numberOfBytes;
+    char *bufferToZip;
+    char zippedFilename[FILENAME_MAX];
+    
     if(!awsPtr->currentEventFilePtr) {
 	//First time
+
 	//Make base dir
 	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
 	sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
@@ -236,34 +155,87 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 
 	//Make files
 	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
-	sprintf(currentFilename,"%s/hd_%d.dat.gz",awsPtr->currentSubDirName,
-		dirNum);
-	awsPtr->currentHeaderFilePtr=gzopen(currentFilename,"wb5");
+	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
+		awsPtr->currentSubDirName,dirNum);
+	awsPtr->currentHeaderFilePtr=fopen(awsPtr->currentHeaderFileName,"wb");
 
 	awsPtr->writeCount=0;
 	if(awsPtr->currentHeaderFilePtr<0) {	    
 	    if(errorCounter<100) {
 		errorCounter++;
 		printf("Error (%d of 100) trying to open file %s\n",
-		       errorCounter,currentFilename);
+		       errorCounter,awsPtr->currentHeaderFileName);
 	    }
 	}
 
-	sprintf(currentFilename,"%s/ev_%d.dat.gz",awsPtr->currentSubDirName,
-		dirNum);
-	awsPtr->currentEventFilePtr=gzopen(currentFilename,"wb5");
+	sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
+		awsPtr->currentSubDirName,dirNum);
+	awsPtr->currentEventFilePtr=
+	    fopen(awsPtr->currentEventFileName,"wb");
 	if(awsPtr->currentEventFilePtr<0) {	    
 	    if(errorCounter<100) {
 		errorCounter++;
 		printf("Error (%d of 100) trying to open file %s\n",
-		       errorCounter,currentFilename);
+		       errorCounter,awsPtr->currentEventFileName);
 	    }
 	}
     }
     if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
 	if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
-	    gzclose(awsPtr->currentEventFilePtr);
-	    gzclose(awsPtr->currentHeaderFilePtr);
+	    fclose(awsPtr->currentEventFilePtr);
+	    fclose(awsPtr->currentHeaderFilePtr);
+	    
+	    //Write zipped file
+	    if(errorCounter<100) {
+		awsPtr->currentEventFilePtr
+		    =fopen(awsPtr->currentEventFileName,"rb");
+		fseek(awsPtr->currentEventFilePtr,0,SEEK_END);
+		numberOfBytes=ftell(awsPtr->currentEventFilePtr);
+		fseek(awsPtr->currentEventFilePtr,0,SEEK_SET);
+	    
+		if(numberOfBytes) {
+		    bufferToZip = malloc(numberOfBytes);
+		    if(bufferToZip) {
+			retVal=fread(bufferToZip,numberOfBytes,
+				     1,awsPtr->currentEventFilePtr);
+			fclose(awsPtr->currentEventFilePtr);
+			if(retVal==1) {
+			    // Read succesfully
+			    sprintf(zippedFilename,"%s.gz",
+				    awsPtr->currentEventFileName);
+			    zippedSingleWrite(bufferToZip,zippedFilename,
+					      numberOfBytes);		       
+			}
+			free(bufferToZip);
+		    }
+		}	    	    
+		//And headers
+		awsPtr->currentHeaderFilePtr
+		    =fopen(awsPtr->currentEventFileName,"rb");
+		fseek(awsPtr->currentHeaderFilePtr,0,SEEK_END);
+		numberOfBytes=ftell(awsPtr->currentHeaderFilePtr);
+		fseek(awsPtr->currentHeaderFilePtr,0,SEEK_SET);
+	    
+		if(numberOfBytes) {
+		    bufferToZip = malloc(numberOfBytes);
+		    if(bufferToZip) {
+			retVal=fread(bufferToZip,numberOfBytes,
+				     1,awsPtr->currentHeaderFilePtr);
+			fclose(awsPtr->currentHeaderFilePtr);
+			if(retVal==1) {
+			    // Read succesfully
+			    sprintf(zippedFilename,"%s.gz",
+				    awsPtr->currentHeaderFileName);
+			    zippedSingleWrite(bufferToZip,zippedFilename,
+					      numberOfBytes);		       
+			}
+			free(bufferToZip);
+		    }
+		}	    	    
+
+	    }
+
+
 	    awsPtr->fileCount++;
 	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
 		awsPtr->dirCount++;
@@ -284,25 +256,25 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	
 	    //Make files
 	    dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
-	    sprintf(currentFilename,"%s/hd_%d.dat.gz",awsPtr->currentSubDirName,
-		    dirNum);
-	    awsPtr->currentHeaderFilePtr=gzopen(currentFilename,"wb5");
+	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
+		    awsPtr->currentSubDirName,dirNum);
+	    awsPtr->currentHeaderFilePtr=fopen(awsPtr->currentHeaderFileName,"wb");
 	    if(awsPtr->currentHeaderFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
 		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,currentFilename);
+			   errorCounter,awsPtr->currentHeaderFileName);
 		}
 	    }
 	    
-	    sprintf(currentFilename,"%s/ev_%d.dat.gz",awsPtr->currentSubDirName,
-		    dirNum);
-	    awsPtr->currentEventFilePtr=gzopen(currentFilename,"wb5");
+	    sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
+		    awsPtr->currentSubDirName,dirNum);
+	    awsPtr->currentEventFilePtr=fopen(awsPtr->currentEventFileName,"wb");
 	    if(awsPtr->currentEventFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
 		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,currentFilename);
+			   errorCounter,awsPtr->currentEventFileName);
 		}
 	    }
 	    awsPtr->writeCount=0;
@@ -310,24 +282,23 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 
 	awsPtr->writeCount++;
 	if(errorCounter<100) {
-	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,
-			   sizeof(AnitaEventHeader_t));
+	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
 	    if(retVal<0) {
 		errorCounter++;
 		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		       errorCounter,awsPtr->writeCount,
 		       gzerror(awsPtr->currentHeaderFilePtr,&retVal),retVal);
 	    }
-	    else gzflush(awsPtr->currentHeaderFilePtr,Z_SYNC_FLUSH);  
-	    retVal=gzwrite(awsPtr->currentEventFilePtr,bdPtr,
-			   sizeof(AnitaEventBody_t));
+	    else fflush(awsPtr->currentHeaderFilePtr);  
+
+	    retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
 	    if(retVal<0) {
 		errorCounter++;
 		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		       errorCounter,awsPtr->writeCount,
 		       gzerror(awsPtr->currentEventFilePtr,&retVal),retVal);
 	    }
-	    else gzflush(awsPtr->currentEventFilePtr,Z_SYNC_FLUSH);  
+	    else fflush(awsPtr->currentEventFilePtr);  
 	    
 
 	}
@@ -356,25 +327,6 @@ char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime)
     return newDir;    
 }
 
-
-FILE *getCurrentHkFile(char *currentDir,char *prefix,unsigned long unixTime)
-{
-    char newFile[FILENAME_MAX];
-    int ext=0;
-    FILE *fpTest;
-    sprintf(newFile,"%s/%s_%lu.dat",currentDir,prefix,unixTime);
-    fpTest=fopen(newFile,"r");   
-    while(fpTest) {
-	fclose(fpTest);
-	ext++;
-	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
-	fpTest=fopen(newFile,"r");
-    }
-//    fclose(fpTest);
-    fpTest=fopen(newFile,"wb");
-    return fpTest;
-}
-
 char *getCurrentHkFilename(char *currentDir, char *prefix, 
 			   unsigned long unixTime) 
 {
@@ -393,46 +345,6 @@ char *getCurrentHkFilename(char *currentDir, char *prefix,
     return newFile;
 }
     
-
-gzFile getCurrentZippedHkFile(char *currentDir,char *prefix,unsigned long unixTime)
-{
-    char newFile[FILENAME_MAX];
-    int ext=0;
-    gzFile fpTest;
-    sprintf(newFile,"%s/%s_%lu.dat.gz",currentDir,prefix,unixTime);
-    fpTest=gzopen(newFile,"r");   
-    while(fpTest) {
-	gzclose(fpTest);
-	ext++;
-	sprintf(newFile,"%s/%s_%lu.dat_%d.gz",currentDir,prefix,unixTime,ext);
-	fpTest=gzopen(newFile,"r");
-    }
-//    gzclose(fpTest);
-    fpTest=gzopen(newFile,"wb9");
-    return fpTest;
-}
-
-
-int getCurrentHkFileDescriptor(char *currentDir,char *prefix,unsigned long unixTime)
-{
-    char newFile[FILENAME_MAX];
-    int ext=0;
-    int fdTest;
-    sprintf(newFile,"%s/%s_%lu.dat",currentDir,prefix,unixTime);
-    fdTest=open(newFile,O_RDONLY);   
-    while(fdTest>0) {
-	close(fdTest);
-	ext++;
-	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
-	fdTest=open(newFile,O_RDONLY);   
-    }
-//    close(fdTest);
-    fdTest=open(newFile,O_WRONLY|O_CREAT|O_TRUNC);
-//    fpTest=gzopen(newFile,"wb5");
-    return fdTest;
-}
-
-
 
 int normalSingleWrite(char *buffer, char *filename, int numBytes)
 {
@@ -464,7 +376,6 @@ int zippedSingleWrite(char *buffer, char *filename, int numBytes)
 
 void makeDirectories(char *theTmpDir) 
 {
-    char theCommand[FILENAME_MAX+20];
     char copyDir[FILENAME_MAX];
     char newDir[FILENAME_MAX];
     char *subDir;
@@ -472,17 +383,15 @@ void makeDirectories(char *theTmpDir)
     
     strncpy(copyDir,theTmpDir,FILENAME_MAX);
 
-    strcpy(theCommand,"mkdir ");
     strcpy(newDir,"");
 
     subDir = strtok(copyDir,"/");
     while(subDir != NULL) {
-	sprintf(theCommand,"%s/%s",theCommand,subDir);
 	sprintf(newDir,"%s/%s",newDir,subDir);
 	retVal=is_dir(newDir);
 	if(!retVal) {	
-	    retVal=system(theCommand);
-/* 	    printf("%s\n",theCommand); */
+	    retVal=mkdir(newDir,0777);
+// 	    printf("%s\t%s\n",theTmpDir,newDir);
 /* 	    printf("Ret Val %d\n",retVal); */
 	}
 	subDir = strtok(NULL,"/");
@@ -493,14 +402,6 @@ void makeDirectories(char *theTmpDir)
 
 int makeLink(const char *theFile, const char *theLinkDir)
 {
-/*     char theCommand[2*FILENAME_MAX]; */
-/*     int retVal; */
-/*     sprintf(theCommand,"ln -s %s %s",theFile,theLinkDir); */
-/*     retVal=system(theCommand); */
-/*     if(retVal!=0) { */
-/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
-/*     } */
-/*     return retVal;     */
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
     sprintf(newFile,"%s/%s",theLinkDir,justFile);
@@ -512,14 +413,7 @@ int makeLink(const char *theFile, const char *theLinkDir)
 
 int moveFile(const char *theFile, const char *theDir)
 {
-/*     char theCommand[2*FILENAME_MAX]; */
-/*     int retVal; */
-/*     sprintf(theCommand,"mv %s %s",theFile,theDir); */
-/*     retVal=system(theCommand); */
-/*     if(retVal!=0) { */
-/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
-/*     } */
-/*     return retVal;     */
+
     int retVal;
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
@@ -533,14 +427,7 @@ int moveFile(const char *theFile, const char *theDir)
 
 int copyFile(const char *theFile, const char *theDir)
 {
-/*     char theCommand[2*FILENAME_MAX]; */
-/*     int retVal; */
-/*     sprintf(theCommand,"cp %s %s",theFile,theDir); */
-/*     retVal=system(theCommand); */
-/*     if(retVal!=0) { */
-/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
-/*     } */
-/*     return retVal;   */
+
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
     sprintf(newFile,"%s/%s",theDir,justFile);
@@ -550,14 +437,7 @@ int copyFile(const char *theFile, const char *theDir)
 
 int removeFile(const char *theFile)
 {
-/*     int retVal; */
-/*     char theCommand[FILENAME_MAX]; */
-/*     sprintf(theCommand,"rm %s",theFile); */
-/*     retVal=system(theCommand); */
-/*     if(retVal!=0) { */
-/* 	syslog(LOG_ERR,"%s returned %d",theCommand,retVal); */
-/*     } */
-/*     return retVal; */
+
     int retVal=unlink(theFile);
     if(retVal!=0) {
 	syslog(LOG_ERR,"Error removing %s:\t%s",theFile,strerror(errno));
@@ -836,319 +716,154 @@ int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename)
 int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename)
 /* Writes the waveform pointed to by wavePtr to filename */
 {
-     int numObjs;    
-  
+    
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(wavePtr,sizeof(RawWaveformPacket_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,wavePtr,sizeof(RawWaveformPacket_t));
-    gzclose(outfile);  
-#endif
-    return 0;
 }
 
 
 int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename)
 /* Writes the surf packet pointed to by surfPtr to filename */
 {
-    int numObjs;    
-      
+  
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)surfPtr,filename,sizeof(RawSurfPacket_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)surfPtr,filename,sizeof(RawSurfPacket_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(surfPtr,sizeof(RawSurfPacket_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,surfPtr,sizeof(RawSurfPacket_t));
-    gzclose(outfile);  
-#endif
-    return 0;
 }
 
 
 int writeSurfHk(FullSurfHkStruct_t *surfPtr, char *filename)
 /* Writes the surf hk packet pointed to by surfPtr to filename */
 {
-    int numObjs;    
-      
+
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(surfPtr,sizeof(FullSurfHkStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,surfPtr,sizeof(FullSurfHkStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename)
 /* Writes the pat pointed to by patPtr to filename */
 {
-      int numObjs;    
-    
+
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(patPtr,sizeof(GpsAdu5PatStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,patPtr,sizeof(GpsAdu5PatStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 
 int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename)
 /* Writes the vtg pointed to by vtgPtr to filename */
 {
-      int numObjs;    
-    
+
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(vtgPtr,sizeof(GpsAdu5VtgStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,vtgPtr,sizeof(GpsAdu5VtgStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename)
 /* Writes the pos pointed to by posPtr to filename */
 {
-      int numObjs;    
-    
+
+
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(posPtr,sizeof(GpsG12PosStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,posPtr,sizeof(GpsG12PosStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename)
 /* Writes the sat pointed to by satPtr to filename */
 {   
-    int numObjs;        
+
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(satPtr,sizeof(GpsAdu5SatStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,satPtr,sizeof(GpsAdu5SatStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 
 int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename)
 /* Writes the sat pointed to by satPtr to filename */
 {   
-    int numObjs;        
+
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(satPtr,sizeof(GpsG12SatStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,satPtr,sizeof(GpsG12SatStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 
 int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename)
 /* Writes the ttt pointed to by tttPtr to filename */
 {     
-    int numObjs;    
-#ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
-#else
-    gzFile outfile = gzopen (filename, "wb9");    
-#endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(tttPtr,sizeof(GpsSubTime_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,tttPtr,sizeof(GpsSubTime_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+    return normalSingleWrite((char*)tttPtr,filename,sizeof(GpsSubTime_t));
 }
 
 int writeHk(HkDataStruct_t *hkPtr, char *filename)
 /* Writes the hk pointed to by hkPtr to filename */
 {     
-    int numObjs;    
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)hkPtr,filename,sizeof(HkDataStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)hkPtr,filename,sizeof(HkDataStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(hkPtr,sizeof(HkDataStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,hkPtr,sizeof(HkDataStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 
 int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 /* Writes the echo pointed to by echoPtr to filename */
-{   
-    int numObjs;    
+{
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)echoPtr,filename,sizeof(CommandEcho_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)echoPtr,filename,sizeof(CommandEcho_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(echoPtr,sizeof(CommandEcho_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,echoPtr,sizeof(CommandEcho_t));
-    gzclose(outfile);  
-#endif
-    return 0;
 }
 
 
 int writeCmd(CommandStruct_t *cmdPtr, char *filename)
 /* Writes the cmd pointed to by cmdPtr to filename */
 {   
-    int numObjs;    
-    FILE *outfile = fopen (filename, "wb");
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-    numObjs=fwrite(cmdPtr,sizeof(CommandStruct_t),1,outfile);
-    fclose(outfile);
-    return 0;
+    return normalSingleWrite((char*)cmdPtr,filename,sizeof(CommandStruct_t));
 }
 
 int writeCalibStatus(CalibStruct_t *calibPtr, char *filename)
 /* Writes the cmd pointed to by cmdPtr to filename */
 {   
-    int numObjs;    
-    FILE *outfile = fopen (filename, "wb");
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-    numObjs=fwrite(calibPtr,sizeof(CalibStruct_t),1,outfile);
-    fclose(outfile);
-    return 0;
+    return normalSingleWrite((char*)calibPtr,filename,sizeof(CalibStruct_t));
 }
 
 
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
 /* Writes the monitor object pointed to by monitorPtr to filename */
 {   
-    int numObjs;    
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)monitorPtr,filename,sizeof(MonitorStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)monitorPtr,filename,sizeof(MonitorStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(monitorPtr,sizeof(MonitorStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,monitorPtr,sizeof(MonitorStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 
@@ -1157,24 +872,12 @@ int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename)
 /* Writes the TurfRateStruct_t object pointed to by turfPtr to filename */
 {
 
-    int numObjs;    
 #ifdef NO_ZLIB
-    FILE *outfile = fopen (filename, "wb");
+    return normalSingleWrite((char*)turfPtr,filename,sizeof(TurfRateStruct_t));
 #else
-    gzFile outfile = gzopen (filename, "wb9");    
+    return zippedSingleWrite((char*)turfPtr,filename,sizeof(TurfRateStruct_t));
 #endif
-    if(outfile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fwrite(turfPtr,sizeof(TurfRateStruct_t),1,outfile);
-    fclose(outfile);
-#else
-    numObjs=gzwrite(outfile,turfPtr,sizeof(TurfRateStruct_t));
-    gzclose(outfile);  
-#endif
-    return 0;
+
 }
 
 
