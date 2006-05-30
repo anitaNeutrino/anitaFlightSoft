@@ -54,12 +54,6 @@ int tryToStartNtpd();
 #define ADU5_DATA_SIZE 1024
 
 
-// Device names;
-char g12ADevName[FILENAME_MAX];
-char g12BDevName[FILENAME_MAX];
-char adu5ADevName[FILENAME_MAX];
-//char adu5aDevName[FILENAME_MAX];
-
 // File desciptors for GPS serial ports
 int fdG12,fdAdu5A;//,fdMag
 
@@ -95,11 +89,7 @@ float adu5RelV14[3]={0};
 int useUsbDisks=0;
 char mainDataDisk[FILENAME_MAX];
 char usbDataDiskLink[FILENAME_MAX];
-char baseHouseTelemDir[FILENAME_MAX];
 char baseHouseArchiveDir[FILENAME_MAX];
-char gpsdG12LogDir[FILENAME_MAX];
-char gpsTelemDir[FILENAME_MAX];
-char gpsTelemLinkDir[FILENAME_MAX];
 char gpsSubTimeDir[FILENAME_MAX];
 char gpsSubTimeLinkDir[FILENAME_MAX];
 
@@ -166,30 +156,7 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
 	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
 	}
-	tempString=kvpGetString("g12ADevName");
-	if(tempString) {
-	    strncpy(g12ADevName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get g12ADevName");
-	    fprintf(stderr,"Couldn't get g12ADevName\n");
-	}
-	tempString=kvpGetString("g12BDevName");
-	if(tempString) {
-	    strncpy(g12BDevName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get g12BDevName");
-	    fprintf(stderr,"Couldn't get g12BDevName\n");
-	}
-	tempString=kvpGetString("adu5ADevName");
-	if(tempString) {
-	    strncpy(adu5ADevName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get adu5ADevName");
-	    fprintf(stderr,"Couldn't get adu5ADevName\n");
-	}
+
 	
 	//Disk locations
 	tempString=kvpGetString("mainDataDisk");
@@ -209,34 +176,6 @@ int main (int argc, char *argv[])
 	    fprintf(stderr,"Couldn't get usbDataDiskLink\n");
 	}	
 
-	//Data locations
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(baseHouseTelemDir,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
-	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
-	}	
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    strncpy(baseHouseArchiveDir,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");
-	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
-	}
-
-	tempString=kvpGetString("gpsTelemSubDir");
-	if(tempString) {
-	    sprintf(gpsTelemDir,"%s/%s",baseHouseTelemDir,tempString);
-	    sprintf(gpsTelemLinkDir,"%s/%s/link",baseHouseTelemDir,tempString);
-	    makeDirectories(gpsTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsTelemDir");
-	    fprintf(stderr,"Couldn't get gpsTelemDir\n");
-	}
 	tempString=kvpGetString("gpsSubTimeDir");
 	if(tempString) {
 	    strncpy(gpsSubTimeDir,tempString,FILENAME_MAX);
@@ -320,7 +259,7 @@ int main (int argc, char *argv[])
 	    exit(1);
 	}
 	if(printToScreen)  
-	    printf("Device fd's: %d %d\nDevices:\t%s\t%s\n",fdG12,fdAdu5A,g12ADevName,adu5ADevName);
+	    printf("Device fd's: %d %d\nDevices:\t%s\t%s\n",fdG12,fdAdu5A,G12A_DEV_NAME,ADU5A_DEV_NAME);
 	retVal=setupG12();
 	retVal=setupAdu5();
 	
@@ -424,24 +363,24 @@ int openDevices()
 {
     int retVal;
 // Initialize the various devices    
-    retVal=openGpsDevice(g12ADevName);
+    retVal=openGpsDevice(G12A_DEV_NAME);
     if(retVal<=0) {
-	syslog(LOG_ERR,"Couldn't open: %s\n",g12ADevName);
-	if(printToScreen) printf("Couldn't open: %s\n",g12ADevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",G12A_DEV_NAME);
+	if(printToScreen) printf("Couldn't open: %s\n",G12A_DEV_NAME);
 	exit(1);
     }
     else fdG12=retVal;
  
 
-    retVal=openGpsDevice(adu5ADevName);	
+    retVal=openGpsDevice(ADU5A_DEV_NAME);	
     if(retVal<=0) {
-	syslog(LOG_ERR,"Couldn't open: %s\n",adu5ADevName);
-	if(printToScreen) printf("Couldn't open: %s\n",adu5ADevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",ADU5A_DEV_NAME);
+	if(printToScreen) printf("Couldn't open: %s\n",ADU5A_DEV_NAME);
 	exit(1);
     }
     else fdAdu5A=retVal;
 
-//    printf("%s %s %s\n",g12ADevName,adu5ADevName,adu5ADevName);
+//    printf("%s %s %s\n",G12A_DEV_NAME,ADU5A_DEV_NAME,ADU5A_DEV_NAME);
     return 0;
 }
 
@@ -503,7 +442,7 @@ int setupG12()
 
 
     if(printToScreen) 
-	fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",g12ADevName,g12Command,strlen(g12Command));
+	fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",G12A_DEV_NAME,g12Command,strlen(g12Command));
     retVal=write(fdG12, g12Command, strlen(g12Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
@@ -731,9 +670,9 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
            
     //Write file and link for sipd
-    sprintf(theFilename,"%s/vtg_%ld.dat",gpsTelemDir,theVtg.unixTime);
+    sprintf(theFilename,"%s/vtg_%ld.dat",GPS_TELEM_DIR,theVtg.unixTime);
     retVal=writeGpsVtg(&theVtg,theFilename);  
-    retVal=makeLink(theFilename,gpsTelemLinkDir);  
+    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
     //Write file to main disk
     retVal=cleverHkWrite((char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
@@ -821,9 +760,9 @@ void processPosString(char *gpsString, int gpsLength) {
 
     fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%ld.dat",gpsTelemDir,thePos.unixTime);
+    sprintf(theFilename,"%s/pos_%ld.dat",GPS_TELEM_DIR,thePos.unixTime);
     retVal=writeGpsPos(&thePos,theFilename);  
-    retVal=makeLink(theFilename,gpsTelemLinkDir);  
+    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
     //Write file to main disk
 
@@ -1022,9 +961,9 @@ void processG12SatString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/sat_%ld.dat",gpsTelemDir,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsG12Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,gpsTelemLinkDir);  
+    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
     //Write file to main disk
     retVal=cleverHkWrite((char*)&theSat,sizeof(GpsG12SatStruct_t),
@@ -1111,9 +1050,9 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	else {
 	    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
 	    //Write file and link for sipd
-	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",gpsTelemDir,theSat.unixTime);
+	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
 	    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-	    retVal=makeLink(theFilename,gpsTelemLinkDir);  
+	    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
 	    //Write file to main disk
 	    retVal=cleverHkWrite((char*)&theSat,sizeof(GpsAdu5SatStruct_t),
@@ -1203,9 +1142,9 @@ void processGppatString(char *gpsString, int gpsLength) {
     fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld.dat",gpsTelemDir,thePat.unixTime);
+    sprintf(theFilename,"%s/pat_%ld.dat",GPS_TELEM_DIR,thePat.unixTime);
     retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,gpsTelemLinkDir);  
+    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
 
     //Write file to main disk
@@ -1296,7 +1235,7 @@ int setupAdu5()
     strcat(adu5Command,"$PASHQ,PRT\r\n");
     if(adu5EnableTtt) strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
 
-    if(printToScreen) printf("ADU5:\n%s\n%s\n",adu5ADevName,adu5Command);
+    if(printToScreen) printf("ADU5:\n%s\n%s\n",ADU5A_DEV_NAME,adu5Command);
     retVal=write(fdAdu5A, adu5Command, strlen(adu5Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to ADU5 Serial port\n, write: %s",
@@ -1354,10 +1293,10 @@ int tryToStartNtpd()
     time_t theTime=time(NULL);
     char ntpdCommand[]="sudo /etc/init.d/ntpd restart";
     if(!donePort) {
-	retVal=openGpsDevice(g12BDevName);
+	retVal=openGpsDevice(G12B_DEV_NAME);
 	//May put something here to read message
 	close(retVal);
-	if(printToScreen) printf("Opened and closed: %s\n",g12BDevName);
+	if(printToScreen) printf("Opened and closed: %s\n",G12B_DEV_NAME);
 	donePort=1;
     }
     if(theTime>1e9) {

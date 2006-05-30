@@ -81,10 +81,6 @@ char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 char scalerOutputDir[FILENAME_MAX];
 char hkOutputDir[FILENAME_MAX];
-char surfHkTelemDir[FILENAME_MAX];
-char turfHkTelemDir[FILENAME_MAX];
-char surfHkTelemLinkDir[FILENAME_MAX];
-char turfHkTelemLinkDir[FILENAME_MAX];
 char surfHkArchiveDir[FILENAME_MAX];
 char turfHkArchiveDir[FILENAME_MAX];
 char surfHkUSBArchiveDir[FILENAME_MAX];
@@ -1094,36 +1090,6 @@ int readConfigFile()
 	    addedVerbosity--;
 	}
 
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(surfHkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(turfHkTelemDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error baseHouseTelemDir");
-	    fprintf(stderr,"Error baseHouseTelemDir\n");
-	}
-	tempString=kvpGetString("surfHkTelemSubDir");
-	if(tempString) {
-	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
-	    sprintf(surfHkTelemLinkDir,"%s/link",surfHkTelemDir);
-	    makeDirectories(surfHkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting surfHkTelemSubDir");
-	    fprintf(stderr,"Error getting surfHkTelemSubDir\n");
-	}
-	tempString=kvpGetString("turfHkTelemSubDir");
-	if(tempString) {
-	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
-	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
-	    makeDirectories(turfHkTelemLinkDir);
-//	    printf("TURF Dir %s\n",turfHkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting turfHkTelemSubDir");
-	    fprintf(stderr,"Error getting turfHkTelemSubDir\n");
-	}
 
 	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
@@ -1729,8 +1695,8 @@ int writeSurfHousekeeping(int dataOrTelem)
     fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
-	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
-		theSurfHk.unixTime,theSurfHk.unixTimeUs);
+//	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
+//		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 //	retVal+=writeSurfHk(&theSurfHk,theFilename);
 	retVal=cleverHkWrite((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 			     theSurfHk.unixTime,&surfHkWriter);
@@ -1742,10 +1708,10 @@ int writeSurfHousekeeping(int dataOrTelem)
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
-	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkTelemDir,
+	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",SURFHK_TELEM_DIR,
 		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 	retVal+=writeSurfHk(&theSurfHk,theFilename);
-	makeLink(theFilename,surfHkTelemLinkDir);
+	makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
     }
     return retVal;
 
@@ -1766,25 +1732,15 @@ int writeTurfHousekeeping(int dataOrTelem)
     fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
-//	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkArchiveDir,
-//		turfRates.unixTime,turfRates.unixTimeUs);
-//	retVal+=writeTurfRate(&turfRates,theFilename);
-//	retVal+=bufferedTurfHkWrite(&turfRates,turfHkArchiveDir);
 	retVal=cleverHkWrite((char*)&turfRates,sizeof(TurfRateStruct_t),
 			     turfRates.unixTime,&turfHkWriter);
-
-//	if(useUSBDisks) {
-//	    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkUSBArchiveDir,
-//		    turfRates.unixTime,turfRates.unixTimeUs);
-//	    retVal+=writeTurfRate(&turfRates,theFilename);
-//	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
-	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",turfHkTelemDir,
+	sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",TURFHK_TELEM_DIR,
 		turfRates.unixTime,turfRates.unixTimeUs);
 	writeTurfRate(&turfRates,theFilename);
-	retVal+=makeLink(theFilename,turfHkTelemLinkDir);
+	retVal+=makeLink(theFilename,TURFHK_TELEM_LINK_DIR);
     }
 
     return retVal;
@@ -1850,26 +1806,6 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    //Do something
 	}
     }
-
-/*     if(writeScalers) { */
-/* 	sprintf(theFilename,"%s/scale_3%ld.dat",scalerOutputDir, */
-/* 		theEventPtr->header.eventNumber); */
-/* 	FILE *scalerFile; */
-/* 	int n; */
-/* 	if ((scalerFile=fopen(theFilename, "wb")) == NULL) {  */
-/* 	    printf("Failed to open scaler file, %s\n", theFilename) ; */
-/* 	    return ; */
-/* 	} */
-	    
-/* 	if ((n=fwrite(&theScalers, sizeof(SimpleScalerStruct_t),1,scalerFile))!=1) */
-/* 	    printf("Failed to write all scaler data. wrote only %d.\n", n) ; */
-/* 	    fclose(scalerFile); */
-/*     } */
-
-//    if(writeFullHk && standAloneMode) {
-//	sprintf(theFilename,"%s/surfhk_%d.dat",hkOutputDir,hkNumber);
-//	writeSurfHk(&theSurfHk,theFilename);
-//    }
 
 }
 

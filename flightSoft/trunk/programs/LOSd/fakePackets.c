@@ -61,12 +61,14 @@ int monitorPeriod=60; //In seconds
 int surfHkPeriod=10;
 int turfRateTelemInterval=60;
 
-
 // Event structs
 AnitaEventHeader_t theHeader;
 AnitaEventBody_t theBody;
 
 
+//Max Events
+int maxEvents=0;
+int evNum=1;   
 
 
 int main(int argc, char *argv[])
@@ -80,6 +82,9 @@ int main(int argc, char *argv[])
 //    KvpErrorCode kvpStatus=0;
     char* eString ;
     
+    if(argc==2)
+	maxEvents=atoi(argv[1]);
+
     rand_no_seed(getpid());
 
     /* Load Config */
@@ -270,7 +275,7 @@ int main(int argc, char *argv[])
     printf("Acromag Cal Period %d\n",hkCalPeriod);
     printf("Acromag Data Period %f\n",actualHkPeriod);
 
-    while(1) {
+    while(!maxEvents || (evNum<=maxEvents)) {
 	gettimeofday(&currentTime,0);
 //	time(&rawTime);
 
@@ -335,7 +340,7 @@ int main(int argc, char *argv[])
 	
 	fakeEvent(trigType);
 	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
-	usleep(50000);
+//	usleep(50000);
 	evCounter++;
 	if(evCounter==6) evCounter=0;
     }
@@ -352,7 +357,6 @@ void fakeEvent(int trigType)
     float mean=0;
     float meanSq=0;
     struct timeval timeStruct;
-    static int evNum=1;   
     static int thePriority=0;
     if(evNum==1){
 	//Fake some data
@@ -412,8 +416,10 @@ void fakeEvent(int trigType)
 	    theHeader.eventNumber);
     writeHeader(&theHeader,sipdHdFilename);
     makeLink(sipdHdFilename,headerTelemLinkDir);
-    if(evNum%100==0) 
-	printf("Event %d, sec %ld\n%s\n",evNum,theHeader.unixTime,headerTelemLinkDir);
+//    if(evNum%100==0) 
+//	printf("Event %d, sec %ld\n%s\n",evNum,theHeader.unixTime,headerTelemLinkDir);
+    if(evNum%100==0)
+	printf("Event %d, sec %ld, millisec %ld\n",evNum,theHeader.unixTime,theHeader.unixTimeUs);
        
 }
 
@@ -599,7 +605,7 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     if(retVal) 
 	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/pat_%ld_%ld.dat",gpsTelemDir,thePat.unixTime,thePat.unixTimeUs);
-    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
+//    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
     retVal=writeGpsPat(&thePat,theFilename);  
     retVal=makeLink(theFilename,gpsTelemLinkDir); 
 }

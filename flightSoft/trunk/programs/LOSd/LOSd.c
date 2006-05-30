@@ -47,23 +47,9 @@ char lastLosNumberFile[FILENAME_MAX];
 
 //Packet Dirs
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
-char headerTelemDir[FILENAME_MAX];
-char cmdTelemDir[FILENAME_MAX];
-char surfHkTelemDir[FILENAME_MAX];
-char turfHkTelemDir[FILENAME_MAX];
-char hkTelemDir[FILENAME_MAX];
-char gpsTelemDir[FILENAME_MAX];
-char monitorTelemDir[FILENAME_MAX];
 
 //Packet Link Dirs
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
-char headerTelemLinkDir[FILENAME_MAX];
-char cmdTelemLinkDir[FILENAME_MAX];
-char surfHkTelemLinkDir[FILENAME_MAX];
-char turfHkTelemLinkDir[FILENAME_MAX];
-char hkTelemLinkDir[FILENAME_MAX];
-char gpsTelemLinkDir[FILENAME_MAX];
-char monitorTelemLinkDir[FILENAME_MAX];
 
 int losBus;
 int losSlot;
@@ -89,7 +75,7 @@ int numBytesInBuffer=0;
 
 int main(int argc, char *argv[])
 {
-    int pk,retVal,firstTime=1;
+    int pri,retVal,firstTime=1;
     char *tempString;
 
     /* Config file thingies */
@@ -138,126 +124,31 @@ int main(int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get lastLosNumberFile");
 	    fprintf(stderr,"Couldn't get lastLosNumberFile\n");
 	}
-	
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(cmdTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(surfHkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(turfHkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(gpsTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(monitorTelemDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
-	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
-	}
-	
-	tempString=kvpGetString("cmdEchoTelemSubDir");
-	if(tempString) {
-	    sprintf(cmdTelemDir,"%s/%s",cmdTelemDir,tempString);
-	    sprintf(cmdTelemLinkDir,"%s/link",cmdTelemDir);
-	    makeDirectories(cmdTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmdEchoTelemSubDir");
-	    fprintf(stderr,"Couldn't get cmdEchoTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("hkTelemSubDir");
-	if(tempString) {
-	    sprintf(hkTelemDir,"%s/%s",hkTelemDir,tempString);
-	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
-	    makeDirectories(hkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkTelemSubDir");
-	    fprintf(stderr,"Couldn't get hkTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("surfHkTelemSubDir");
-	if(tempString) {
-	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
-	    sprintf(surfHkTelemLinkDir,"%s/link",surfHkTelemDir);
-	    makeDirectories(surfHkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get surfHkTelemSubDir");
-	    fprintf(stderr,"Couldn't get surfHkTelemSubDir\n");
-	}
-		tempString=kvpGetString("turfHkTelemSubDir");
-	if(tempString) {
-	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
-	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
-	    makeDirectories(turfHkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get turfHkTelemSubDir");
-	    fprintf(stderr,"Couldn't get turfHkTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("gpsTelemSubDir");
-	if(tempString) {
-	    sprintf(gpsTelemDir,"%s/%s",gpsTelemDir,tempString);
-	    sprintf(gpsTelemLinkDir,"%s/link",gpsTelemDir);
-	    makeDirectories(gpsTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsTelemSubDir");
-	    fprintf(stderr,"Couldn't get gpsTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("monitorTelemSubDir");
-	if(tempString) {
-	    sprintf(monitorTelemDir,"%s/%s",monitorTelemDir,tempString);
-	    sprintf(monitorTelemLinkDir,"%s/link",monitorTelemDir);
-	    makeDirectories(monitorTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
-	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("headerTelemDir");
-	if(tempString) {
-	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
-	    sprintf(headerTelemLinkDir,"%s/link",headerTelemDir);
-	    makeDirectories(headerTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get headerTelemSubDir");
-	    fprintf(stderr,"Couldn't get headerTelemSubDir\n");
-	}
-
-	tempString=kvpGetString("baseEventTelemDir");
-	if(tempString) {
-	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
-		sprintf(eventTelemDirs[pk],"%s/pk%d",tempString,pk);
-		sprintf(eventTelemLinkDirs[pk],"%s/link",eventTelemDirs[pk]);
-		makeDirectories(eventTelemLinkDirs[pk]);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
-	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
-	    exit(0);
-	}
 
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
     }
     retVal=readConfig();
-    if(!laptopDebug) 
+    if(!laptopDebug) {
 	retVal=initDevice();
+	if(retVal!=0) {
+	    return 1;
+	}
+    }
     else {
 	printf("Running in debug mode not actually trying to talk to device\n");
 	makeDirectories(fakeOutputDir);
     }
-    if(retVal!=0) {
-	return 1;
-    }
 
+    
+    //Fill event dir names
+    for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
+		EVENT_PRI_PREFIX,pri);
+	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
+	makeDirectories(eventTelemLinkDirs[pri]);
+    }
     
     do {
 	if(verbosity) printf("Initializing LOSd\n");
@@ -266,8 +157,7 @@ int main(int argc, char *argv[])
 	    sendWakeUpBuffer();
 	    firstTime=0;
 	}
-	    
-	
+	    	
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
 	    currentPri=priorityOrder[orderIndex];	    
@@ -543,33 +433,34 @@ void fillBufferWithHk()
 {
 
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(CommandEcho_t)) {
-    checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
-		 ,cmdTelemDir,cmdTelemLinkDir,sizeof(CommandEcho_t)); 
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     CMD_ECHO_TELEM_DIR,CMD_ECHO_TELEM_LINK_DIR,
+		     sizeof(CommandEcho_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(MonitorStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer
-		     ,monitorTelemDir,monitorTelemLinkDir,
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
 		     sizeof(MonitorStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5SatStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,gpsTelemDir,
-		     gpsTelemLinkDir,sizeof(GpsAdu5SatStruct_t)); 
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,GPS_TELEM_DIR,
+		     GPS_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(HkDataStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,hkTelemDir,
-		     hkTelemLinkDir,sizeof(HkDataStruct_t)); 
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HK_TELEM_DIR,
+		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullSurfHkStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,surfHkTelemDir,
-		     surfHkTelemLinkDir,sizeof(FullSurfHkStruct_t)); 
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,SURFHK_TELEM_DIR,
+		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(TurfRateStruct_t)) {	
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,turfHkTelemDir,
-		     turfHkTelemLinkDir,sizeof(TurfRateStruct_t)); 
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,TURFHK_TELEM_DIR,
+		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,headerTelemDir,
-		     headerTelemLinkDir,sizeof(AnitaEventHeader_t));
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
+		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
     }        
     doWrite();	    
 }

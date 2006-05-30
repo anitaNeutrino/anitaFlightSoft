@@ -57,6 +57,13 @@
 #define PHI_SECTORS 16
 
 
+//Whiteheat things
+
+#define G12A_DEV_NAME "/dev/ttyUSB0"
+#define G12B_DEV_NAME "/dev/ttyUSB3"
+#define ADU5A_DEV_NAME "/dev/ttyUSB2"
+#define MAGNETOMETER_DEV_NAME "/dev/ttyUSB1"
+
 #define NUM_PRIORITIES 10
 #define NUM_USBDISKS 64
 

@@ -31,8 +31,6 @@
 #include "carrier/apc8620.h"
 #include "ip320/ip320.h"
 
-
-
 /*Config stuff*/
 int readConfigFile();
 
@@ -60,8 +58,7 @@ int outputData(AnalogueCode_t code);
 void prepWriterStructs();
 
 
-// Device names;
-char magDevName[FILENAME_MAX];
+//Magnetometer Stuff
 int fdMag; //Magnetometer
 
 
@@ -151,14 +148,6 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting hkdPidFile");
 	    fprintf(stderr,"Error getting hkdPidFile\n");
 	}
-	tempString=kvpGetString("magentometerDevName");
-	if(tempString) {
-	    strncpy(magDevName,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting magentometerDevName");
-	    fprintf(stderr,"Error getting magentometerDevName\n");
-	}	  
        
 	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
@@ -609,16 +598,16 @@ int openMagnetometer()
 
     int retVal;
 // Initialize the various devices
-    retVal=openMagnetometerDevice(magDevName);
+    retVal=openMagnetometerDevice(MAGNETOMETER_DEV_NAME);
     fdMag=0;
     if(retVal<=0) {
-	syslog(LOG_ERR,"Couldn't open: %s\n",magDevName);
-	if(printToScreen) printf("Couldn't open: %s\n",magDevName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",MAGNETOMETER_DEV_NAME);
+	if(printToScreen) printf("Couldn't open: %s\n",MAGNETOMETER_DEV_NAME);
 //	exit(1);
     }
     else fdMag=retVal;
 
-    printf("Opened %s %d\n",magDevName,fdMag);
+    printf("Opened %s %d\n",MAGNETOMETER_DEV_NAME,fdMag);
     return 0;
 }
 
@@ -639,7 +628,7 @@ int setupMagnetometer()
     else {
 //	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
 //	if(printToScreen)
-	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
+	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
     }
     usleep(1);
     retVal=isThereDataNow(fdMag);
@@ -658,7 +647,7 @@ int setupMagnetometer()
     else {
 //	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
 //	if(printToScreen)
-//	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName);
+//	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
     }
     usleep(1);
     retVal=isThereDataNow(fdMag);
@@ -676,7 +665,7 @@ int setupMagnetometer()
 /*     else { */
 /* 	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal); */
 /* 	if(printToScreen) */
-/* 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,magDevName); */
+/* 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME); */
 /*     } */
 /*     usleep(1); */
 /*     retVal=isThereDataNow(fdMag); */
@@ -789,11 +778,5 @@ void prepWriterStructs() {
     hkCalWriter.maxFilesPerDir=HK_FILES_PER_DIR;
     hkCalWriter.maxWritesPerFile=HK_PER_FILE;
 
-    //Hk Avz Writer
-/*     sprintf(hkAvzWriter.baseDirname,"%s/avz",hkdArchiveDir); */
-/*     sprintf(hkAvzWriter.filePrefix,"hk_avz"); */
-/*     hkAvzWriter.currentFilePtr=0; */
-/*     hkAvzWriter.maxSubDirsPerDir=HK_FILES_PER_DIR; */
-/*     hkAvzWriter.maxFilesPerDir=HK_FILES_PER_DIR; */
-/*     hkAvzWriter.maxWritesPerFile=HK_PER_FILE; */
+
 }

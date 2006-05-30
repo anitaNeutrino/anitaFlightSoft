@@ -52,6 +52,11 @@ int printToScreen=0;
 int verbosity=0;
 
 
+//File management
+int eventsPerFile=1;
+int maxFilesPerDir=1000;
+
+
 int main (int argc, char *argv[])
 {
     int retVal,pk;
