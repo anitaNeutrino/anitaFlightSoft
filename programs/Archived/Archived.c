@@ -22,11 +22,11 @@
 #include "anitaFlight.h"
 
 
-
 // Directories and gubbins 
 char archivedPidFile[FILENAME_MAX];
 char prioritizerdEventDir[FILENAME_MAX];
 char prioritizerdEventLinkDir[FILENAME_MAX];
+
 char mainEventArchivePrefix[FILENAME_MAX];
 char backupEventArchivePrefix[FILENAME_MAX];
 char currentEventIndex[FILENAME_MAX];
@@ -34,8 +34,10 @@ char currentEventDir[FILENAME_MAX];
 char currentEventBackupDir[FILENAME_MAX];
 int priorityEncodingVal[NUM_PRIORITIES];
 float priorityFractionRaw[NUM_PRIORITIES];
+
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
+
 int useBackupDisk=1;
 int useGzip=1;
 
@@ -116,23 +118,16 @@ int main (int argc, char *argv[])
 	}
 	useBackupDisk=kvpGetInt("useUsbDisks",1);
 
-	tempString=kvpGetString("baseEventTelemDir");
-	if(tempString) {
-	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
-		sprintf(eventTelemDirs[pk],"%s/pk%d",tempString,pk);
-		sprintf(eventTelemLinkDirs[pk],"%s/link",eventTelemDirs[pk]);
-		printf("%d %s %s\n",pk,eventTelemDirs[pk],eventTelemLinkDirs[pk]);
-		makeDirectories(eventTelemLinkDirs[pk]);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
-	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
-	    exit(0);
-	}
 				
     }
     
+    //Fill event dir names
+    for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
+		EVENT_PRI_PREFIX,pri);
+	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
+	makeDirectories(eventTelemLinkDirs[pri]);
+    }
 
     retVal=0;
     /* Main event getting loop. */
