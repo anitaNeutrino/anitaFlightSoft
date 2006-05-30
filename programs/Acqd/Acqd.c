@@ -471,7 +471,7 @@ int main(int argc, char **argv) {
 
 
 //Is now load event into ram
-	    if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
+	    if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
 		printf("  failed to send clear event pulse on TURFIO.\n") ;
 
 
@@ -660,7 +660,7 @@ int main(int argc, char **argv) {
 		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 	    
 //	    if(!surfonly)
-//		if (setTurfControl(turfioHandle,TurfClearEvent) != ApiSuccess)
+//		if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
 //		    printf("  failed to send clear event pulse on TURFIO.\n") ;
 	    
 #ifdef TIME_DEBUG
@@ -729,8 +729,8 @@ char *turfControlActionAsString(TurfControlAction_t action) {
 	case RprgTurf :
 	    string = "RprgTurf" ;
 	    break ;
-	case TurfClearEvent :
-	    string = "TurfClearEvent" ;
+	case TurfLoadRam :
+	    string = "TurfLoadRam" ;
 	    break ;
 	case SendSoftTrg : 
 	    string = "SendSoftTrg" ;
@@ -818,7 +818,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
     //These numbers are octal
     U32 baseClr          = 0022222222 ;
     U32 rprgTurf         = 0000000004 ;
-    U32 clearEvent       = 0000000040 ; 
+    U32 loadRam          = 0000000040 ; 
     U32 sendSoftTrig     = 0000000400 ;
     U32 rfcDbit          = 0004000000 ;
     U32 rfcClk           = 0000004000 ;
@@ -854,7 +854,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
     switch (action) {
 	case SetTrigMode : gpioVal =baseVal; break;
 	case RprgTurf : gpioVal = baseVal | rprgTurf ; break ;
-	case TurfClearEvent : gpioVal = baseVal | clearEvent ; break ; 
+	case TurfLoadRam : gpioVal = baseVal | loadRam ; break ; 
 	case SendSoftTrg : gpioVal = baseVal | sendSoftTrig ; break ;
 	case RFCBit : gpioVal = (baseVal |= rfcDbit) | rfcClk ; break ;
 	case RFCClk : gpioVal = (baseVal &= ~rfcDbit) | rfcClk ; break ;
