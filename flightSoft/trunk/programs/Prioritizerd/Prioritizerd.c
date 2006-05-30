@@ -10,13 +10,10 @@ int useUsbDisks=0;
 int maxEventsPerDir=1000;
 char eventdEventDir[FILENAME_MAX];
 char eventdEventLinkDir[FILENAME_MAX];
-char headerTelemDir[FILENAME_MAX];
-char headerTelemLinkDir[FILENAME_MAX];
-char eventTelemDir[NUM_PRIORITIES][FILENAME_MAX]; 
-char eventTelemLinkDir[NUM_PRIORITIES][FILENAME_MAX]; 
 
-char eventArchiveDir[FILENAME_MAX];
-char eventUSBArchiveDir[FILENAME_MAX];
+char prioritizerdEventDir[FILENAME_MAX];
+char prioritizerdEventLinkDir[FILENAME_MAX];
+
 char prioritizerdPidFile[FILENAME_MAX];
 
 int main (int argc, char *argv[])
@@ -46,8 +43,8 @@ int main (int argc, char *argv[])
     char *progName=basename(argv[0]);
 
    /*Event object*/
-    AnitaEventHeader_t theEventHeader;
-    AnitaEventBody_t theEventBody;
+    AnitaEventHeader_t theHeader;
+    AnitaEventBody_t theBody;
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -81,64 +78,22 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting eventdEventDir");
 	    fprintf(stderr,"Error getting eventdEventDir\n");
 	}
-	tempString=kvpGetString("baseEventTelemDir");
+
+	//Output and Link Directories
+	tempString=kvpGetString("prioritizerdEventDir");
 	if(tempString) {
-	    for(priority=0;priority<NUM_PRIORITIES;priority++) {
-		sprintf(eventTelemDir[priority],
-			"%s/pri%d",tempString,priority);
-		sprintf(eventTelemLinkDir[priority],
-			"%s/pri%d/link",tempString,priority);
-		makeDirectories(eventTelemLinkDir[priority]);
-	    }
+	    strncpy(prioritizerdEventDir,tempString,FILENAME_MAX-1);
+	    sprintf(prioritizerdEventLinkDir,"%s/link",tempString);
+	    makeDirectories(prioritizerdEventLinkDir);
 	}
 	else {
-	    syslog(LOG_ERR,"Error getting baseEventTelemDir");
-	    fprintf(stderr,"Error getting baseEventTelemDir\n");
-	}
-	tempString=kvpGetString("headerTelemDir");
-	if(tempString) {
-	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(headerTelemLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(headerTelemLinkDir,"/link");
-	    makeDirectories(headerTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting headerTelemDir");
-	    fprintf(stderr,"Error getting headerTelemDir\n");
+	    syslog(LOG_ERR,"Couldn't get prioritizerdEventDir");
+	    fprintf(stderr,"Couldn't get prioritizerdEventDir\n");
 	}
 	
 
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(eventArchiveDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting mainDataDisk");
-	    fprintf(stderr,"Error getting mainDataDisk\n");
-	}
-	tempString=kvpGetString("usbDataDiskLink");
-	if(tempString) {
-	    strncpy(eventUSBArchiveDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting usbDataDiskLink");
-	    fprintf(stderr,"Error getting usbDataDiskLink\n");
-	}
-	    
-	    
-	tempString=kvpGetString("baseEventArchiveDir");
-	if(tempString) {
-	    sprintf(eventArchiveDir,"%s/%s/",eventArchiveDir,tempString);
-	    sprintf(eventUSBArchiveDir,"%s/%s/",eventUSBArchiveDir,tempString);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
-	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
-	}
     }
     
-
-
     
     retVal=0;
     /* Main event getting loop. */
@@ -158,38 +113,27 @@ int main (int argc, char *argv[])
 		    doingEvent);
 	    
 
-	    retVal=fillBody(&theEventBody,bodyFilename);
-	    retVal=fillHeader(&theEventHeader,hdFilename);
+	    retVal=fillBody(&theBody,bodyFilename);
+	    retVal=fillHeader(&theHeader,hdFilename);
 	    
 	    //Must determine priority here
 	    priority=1;
-	    theEventHeader.priority=1;
+	    theHeader.priority=1;
 
-	    sprintf(telemHdFilename,"%s/hd_%d.dat",headerTelemDir,
+	    //Write body and header for Archived
+	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",prioritizerdEventDir,
+		    theHeader.eventNumber);
+	    writeBody(&theBody,archiveBodyFilename);
+	    sprintf(archiveHdFilename,"%s/hd_%lu.dat",prioritizerdEventDir,
+		    theHeader.eventNumber);
+	    writeHeader(&theHeader,archiveHdFilename);
+	    makeLink(archiveHdFilename,prioritizerdEventLinkDir);
+    
+	    //Write Header and make Link for telemetry 	    
+	    sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
 		    doingEvent);
-	    //Write Header and make Link (in Header directory)
-	    retVal=writeHeader(&theEventHeader,telemHdFilename);
-	    makeLink(telemHdFilename,headerTelemLinkDir);
-
-	    //Write data to Main Disk 
-//	    if(firstTime || (doingEvent%1000)==0) checkOutputDirs(doingEvent);
-	    sprintf(archiveHdFilename,"%s/hd_%d.dat",eventArchiveDir,
-		    doingEvent);
-	    sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventArchiveDir,
-		    doingEvent);	    
-	    retVal=writeHeader(&theEventHeader,archiveHdFilename);
-	    retVal=writeBody(&theEventBody,archiveBodyFilename);
-	    if(useUsbDisks) {
-		sprintf(archiveHdFilename,"%s/hd_%d.dat",eventUSBArchiveDir,
-			doingEvent);
-		sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventUSBArchiveDir,
-			doingEvent);	    
-		retVal=writeHeader(&theEventHeader,archiveHdFilename);
-		retVal=writeBody(&theEventBody,archiveBodyFilename);
-	    }
-	    
-	    // Write output for Telem	    
-	    writePacketsAndHeader(&theEventBody,&theEventHeader);
+	    retVal=writeHeader(&theHeader,telemHdFilename);
+	    makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 
 	    /* Delete input */
 	    removeFile(linkFilename);
