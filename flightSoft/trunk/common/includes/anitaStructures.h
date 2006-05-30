@@ -20,7 +20,7 @@
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 
-#define VER_EVENT_HEADER 6
+#define VER_EVENT_HEADER 7
 #define VER_WAVE_PACKET 4
 #define VER_SURF_PACKET 4
 #define VER_ENC_WAVE_PACKET 4
@@ -31,10 +31,10 @@
 #define VER_ADU5_VTG 4
 #define VER_G12_POS 4
 #define VER_G12_SAT 4
-#define VER_HK_FULL 4
+#define VER_HK_FULL 6
 #define VER_CMD_ECHO 4
 #define VER_MONITOR 5
-#define VER_TURF_RATE 5
+#define VER_TURF_RATE 6
 
 
 //Relay Bit Masks
@@ -99,6 +99,12 @@ typedef struct {
     unsigned long trigTime;
     unsigned long ppsNum;     // 1PPS
     unsigned long c3poNum;     // 1 number of trigger time ticks per PPS
+    unsigned short upperL1TrigPattern;
+    unsigned short lowerL1TrigPattern;
+    unsigned short upperL2TrigPattern;
+    unsigned short lowerL2TrigPattern;
+    unsigned short l3TrigPattern;
+    unsigned short l3TrigPattern2;
 } TurfioStruct_t;
 
 typedef struct {
@@ -147,8 +153,8 @@ typedef struct {
     unsigned char turfUpperWord; // The upper 8 bits from the TURF
     unsigned char otherFlag; //Currently unused 
     unsigned char otherFlag2; //Currently unused 
-    unsigned long rfcmMask[2]; // What was the RFCM trigger mask
-    TurfioStruct_t turfio; /*The 16 byte TURFIO data*/
+    unsigned long antTrigMask; // What was the ant trigger mask
+    TurfioStruct_t turfio; /*The X byte TURFIO data*/
 } AnitaEventHeader_t;
 
 typedef struct {
@@ -360,7 +366,7 @@ typedef struct {
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
-    unsigned short surfAntMask[ACTIVE_SURFS][2];
+    unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
 } FullSurfHkStruct_t;
 
 typedef struct {    
