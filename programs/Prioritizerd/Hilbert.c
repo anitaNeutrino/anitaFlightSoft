@@ -40,7 +40,7 @@ double hilbertFilter(int k,double *a)
 
 double hilbertSymFilter(int k,double *a)
 {
-/* This is a zero phase shift filter with the sam degree of (non)locality
+/* This is a zero phase shift filter with the same degree of (non)locality
    as the Hilbert filter.  The frequency response is conjugate (swap Nyquist 
    and zero frequencies.)  Same caveats as hilbertFilter re: pointers.
 */
@@ -57,3 +57,48 @@ double hilbertSymFilter(int k,double *a)
 }
 
 /* below add scaled int versions of last two functions */
+
+int intHilbertFilter(int k,int *a)
+{
+/* the user is responsible for validity of the pointers 
+ *(a-k) to *(a+(k-1)), so for a[i] in a[n] call this 
+ for k < i < n-k  and reduce the order beyond here.
+
+ The pointer points to the data item just to the right of
+ the filter center point. (i.e. filter is antisymmetric about (a-0.5)).
+
+ this works in integer scale, but the user needs to avoid overflows by
+ ensuring that the scale of input data leaves the top 13 (including
+ sign) bits empty.  For 12 bit data, this means keeping the scale
+ at seven bits or less. (default scale is 3 bits).
+
+*/
+     int i;
+     int result;
+     if (k>10) k=10;
+     result=0;
+     for (i=0; i<k; i++){
+	  result+=IntHilbertCoefficient[i][k]* (*(a+i) - *(a-(i+1)));
+     }
+     result=result >> 12;
+     return result;
+}
+
+int intHilbertSymFilter(int k,int *a)
+{
+/* This is a zero phase shift filter with the same degree of (non)locality
+   as the Hilbert filter.  The frequency response is conjugate (swap Nyquist 
+   and zero frequencies.)  Same caveats as hilbertFilter re: pointers.
+*/
+     int i;
+     int result, sign;
+     if (k>10) k=10;
+     result=0;
+     sign=1
+     for (i=0; i<k; i++){
+	  result+=IntHilbertCoefficient[i][k]* (*(a+i) + *(a-(i+1)))*sign;
+	  sign *=-1;
+     }
+     result = result >> 12;
+     return result;
+}

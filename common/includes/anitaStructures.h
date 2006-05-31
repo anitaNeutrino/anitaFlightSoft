@@ -204,7 +204,7 @@ typedef struct {
 } AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
 			    averaging, and gain correction */
 typedef struct {
-     TransientChannel6_t S0,S1,S2;
+     TransientChannel6_t S0,S1,S2,S3;
 } AnitaStokes6_t;
 
 
