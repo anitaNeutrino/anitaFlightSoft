@@ -27,7 +27,7 @@ unpackwavetest: unpackwavetest.o packwave.o bitpack.o bitstrip.o findmedian.o fi
 	gcc -o unpackwavetest unpackwavetest.o packwave.o bitpack.o bitstrip.o findmedian.o fibonacci.o bytepack.o byteunpack.o bifurcate.o
 
 clean:
-	/bin/rm -f ftest btest packtest unpacktest *.o	
+	/bin/rm -f  *.o	ftest btest packtest unpacktest testmedian packwavetest unpackwavetest
 
 %.o:	%.cxx
 	$(CXX) $(CXXFLAGS) -c $< -o $@
