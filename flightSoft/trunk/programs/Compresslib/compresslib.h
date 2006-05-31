@@ -9,8 +9,8 @@ short unbifurcate(unsigned short input);
 unsigned short bitpack(unsigned short bits,unsigned short nwords, 
 		  unsigned short *in, unsigned char *out);
 void bitstrip(unsigned short nbits,unsigned short nwords,unsigned short *data);
-int bytepack(int n, unsigned int *in, unsigned char *out);
-int byteunpack(int m, unsigned char *in, unsigned int *out);
+int codepack(int n, unsigned int *in, unsigned char *out);
+int codeunpack(int m, unsigned char *in, unsigned int *out);
 unsigned int fibonacci(unsigned short input);
 unsigned short unfibonacci(unsigned int input);
 unsigned short findmedian(unsigned short nwords, unsigned short *in);

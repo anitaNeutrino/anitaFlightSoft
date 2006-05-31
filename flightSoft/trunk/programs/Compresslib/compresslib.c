@@ -133,7 +133,7 @@ unsigned short bitpack(unsigned short nbits, unsigned short nwords,
 
 //pack fibonacci code into bytes
 
-int bytepack(int n, unsigned int *in, unsigned char *out)
+int codepack(int n, unsigned int *in, unsigned char *out)
 {
      //need to add checks on m!!!
      int byte,i;
@@ -175,7 +175,7 @@ int bytepack(int n, unsigned int *in, unsigned char *out)
 
 //unpack fibonacci code 
 
-int byteunpack(int m, unsigned char *in, unsigned int *out)
+int codeunpack(int m, unsigned char *in, unsigned int *out)
 {
      int inbyte, inbit;
      int outword, outbit;
@@ -253,7 +253,7 @@ unsigned short packwave(unsigned short nwords,
 	  for (i=0; i<nwords; i++){
 	       median=findmedian(nwords,in);
 	       scratch[i]=fibonacci(bifurcate((int) in[i]- (int)median));
-	       codebytes=bytepack(nwords,scratch,out+6+packbytes);
+	       codebytes=codepack(nwords,scratch,out+6+packbytes);
 	  }
      }
      else
@@ -282,7 +282,7 @@ unsigned short unpackwave(unsigned short nbytes,
      codebytes=in[2]*256+in[3];
      packbytes=in[0]*256+in[2];
      //data length only known from the fibonacci code part
-     nwords=byteunpack(codebytes,&(in[6+packbytes]),scratch);
+     nwords=codeunpack(codebytes,&(in[6+packbytes]),scratch);
      for (i=0;i<nwords;i++){
 	  out[i]=median+
 	       (unbifurcate(unfibonacci(scratch[i]))<<(nstrip+npack));
