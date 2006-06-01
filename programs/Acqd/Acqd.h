@@ -54,7 +54,7 @@ typedef PLX_INTR PlxIntr_t;
 typedef enum __SURF_control_act {  
     SurfClearAll,
     SurfClearEvent,
-    LTrig,
+    SurfClearHk,
     RDMode,
     WTMode,
     DTRead,
@@ -129,7 +129,7 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle);
 void setDACThresholds(PlxHandle_t *surfHandles);
 PlxReturnCode_t setBarMap(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle);
 PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles,PlxHandle_t turfioHandle);
-PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle);
+PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle);
 void setGloablDACThreshold(PlxHandle_t *surfHandles, unsigned short threshold);
 //PlxReturnCode_t blockReadPlxData(PlxHandle_t handle, unsigned short *dataArray, int numBytes);
 int updateThresholdsUsingPID();

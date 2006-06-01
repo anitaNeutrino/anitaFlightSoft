@@ -39,8 +39,8 @@ typedef struct {
 } AnitaWriterStruct_t;
 
 typedef struct {
-    FILE *currentEventFilePtr;
-    FILE *currentHeaderFilePtr;
+    gzFile currentEventFilePtr;
+    gzFile currentHeaderFilePtr;
     int writeCount;
     int fileCount;
     int dirCount;

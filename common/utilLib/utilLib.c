@@ -23,6 +23,8 @@
 #include <fcntl.h>
 //#define NO_ZLIB
 
+//#define OPEN_CLOSE_ALL_THE_TIME
+
 extern  int versionsort(const void *a, const void *b);
 
 int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr)
@@ -74,8 +76,10 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
 			// Read succesfully
 			sprintf(zippedFilename,"%s.gz",
 				awsPtr->currentFileName);
-			zippedSingleWrite(bufferToZip,zippedFilename,
-					  numberOfBytes);		       
+			retVal=zippedSingleWrite(bufferToZip,zippedFilename,
+						 numberOfBytes);
+			if(retVal==0)
+			    removeFile(awsPtr->currentFileName);
 		    }
 		    free(bufferToZip);
 		}
@@ -132,9 +136,9 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
     int retVal=0;
     static int errorCounter=0;
     int dirNum;
-    int numberOfBytes;
-    char *bufferToZip;
-    char zippedFilename[FILENAME_MAX];
+//    int numberOfBytes;
+//    char *bufferToZip;
+//    char zippedFilename[FILENAME_MAX];
     
     if(!awsPtr->currentEventFilePtr) {
 	//First time
@@ -157,7 +161,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
 	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
 		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentHeaderFilePtr=fopen(awsPtr->currentHeaderFileName,"wb");
+	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
 
 	awsPtr->writeCount=0;
 	if(awsPtr->currentHeaderFilePtr<0) {	    
@@ -171,7 +175,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
 		awsPtr->currentSubDirName,dirNum);
 	awsPtr->currentEventFilePtr=
-	    fopen(awsPtr->currentEventFileName,"wb");
+	    gzopen(awsPtr->currentEventFileName,"wb5");
 	if(awsPtr->currentEventFilePtr<0) {	    
 	    if(errorCounter<100) {
 		errorCounter++;
@@ -182,59 +186,10 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
     }
     if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
 	if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
-	    fclose(awsPtr->currentEventFilePtr);
-	    fclose(awsPtr->currentHeaderFilePtr);
-	    
-	    //Write zipped file
-	    if(errorCounter<100) {
-		awsPtr->currentEventFilePtr
-		    =fopen(awsPtr->currentEventFileName,"rb");
-		fseek(awsPtr->currentEventFilePtr,0,SEEK_END);
-		numberOfBytes=ftell(awsPtr->currentEventFilePtr);
-		fseek(awsPtr->currentEventFilePtr,0,SEEK_SET);
-	    
-		if(numberOfBytes) {
-		    bufferToZip = malloc(numberOfBytes);
-		    if(bufferToZip) {
-			retVal=fread(bufferToZip,numberOfBytes,
-				     1,awsPtr->currentEventFilePtr);
-			fclose(awsPtr->currentEventFilePtr);
-			if(retVal==1) {
-			    // Read succesfully
-			    sprintf(zippedFilename,"%s.gz",
-				    awsPtr->currentEventFileName);
-			    zippedSingleWrite(bufferToZip,zippedFilename,
-					      numberOfBytes);		       
-			}
-			free(bufferToZip);
-		    }
-		}	    	    
-		//And headers
-		awsPtr->currentHeaderFilePtr
-		    =fopen(awsPtr->currentEventFileName,"rb");
-		fseek(awsPtr->currentHeaderFilePtr,0,SEEK_END);
-		numberOfBytes=ftell(awsPtr->currentHeaderFilePtr);
-		fseek(awsPtr->currentHeaderFilePtr,0,SEEK_SET);
-	    
-		if(numberOfBytes) {
-		    bufferToZip = malloc(numberOfBytes);
-		    if(bufferToZip) {
-			retVal=fread(bufferToZip,numberOfBytes,
-				     1,awsPtr->currentHeaderFilePtr);
-			fclose(awsPtr->currentHeaderFilePtr);
-			if(retVal==1) {
-			    // Read succesfully
-			    sprintf(zippedFilename,"%s.gz",
-				    awsPtr->currentHeaderFileName);
-			    zippedSingleWrite(bufferToZip,zippedFilename,
-					      numberOfBytes);		       
-			}
-			free(bufferToZip);
-		    }
-		}	    	    
-
-	    }
-
+#ifndef OPEN_CLOSE_ALL_THE_TIME // In NOT defined
+	    gzclose(awsPtr->currentEventFilePtr);
+	    gzclose(awsPtr->currentHeaderFilePtr);
+#endif
 
 	    awsPtr->fileCount++;
 	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
@@ -258,7 +213,8 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	    dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
 	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
-	    awsPtr->currentHeaderFilePtr=fopen(awsPtr->currentHeaderFileName,"wb");
+//	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
+	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
 	    if(awsPtr->currentHeaderFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -269,7 +225,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	    
 	    sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
-	    awsPtr->currentEventFilePtr=fopen(awsPtr->currentEventFileName,"wb");
+	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"wb5");
 	    if(awsPtr->currentEventFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -278,27 +234,59 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 		}
 	    }
 	    awsPtr->writeCount=0;
-	}	    
+	}
+#ifdef OPEN_CLOSE_ALL_THE_TIME
+	else {
+	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"ab5");	    
+	    if(awsPtr->currentHeaderFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentHeaderFileName);
+		}
+	    }
+	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");	    
+	    if(awsPtr->currentEventFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentEventFileName);
+		}
+	    }
+	}
+#endif
 
 	awsPtr->writeCount++;
-	if(errorCounter<100) {
-	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
+	if(errorCounter<100 && awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
+//	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
+	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,sizeof(AnitaEventHeader_t));
 	    if(retVal<0) {
 		errorCounter++;
 		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		       errorCounter,awsPtr->writeCount,
 		       gzerror(awsPtr->currentHeaderFilePtr,&retVal),retVal);
 	    }
-	    else fflush(awsPtr->currentHeaderFilePtr);  
+//	    else {
+//		fflush(awsPtr->currentHeaderFilePtr);  
+#ifdef OPEN_CLOSE_ALL_THE_TIME
+	    gzclose(awsPtr->currentHeaderFilePtr);
+#endif
+//	    }
 
-	    retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
+//	    retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
+	    retVal=gzwrite(awsPtr->currentEventFilePtr,bdPtr,sizeof(AnitaEventBody_t));
 	    if(retVal<0) {
 		errorCounter++;
 		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		       errorCounter,awsPtr->writeCount,
 		       gzerror(awsPtr->currentEventFilePtr,&retVal),retVal);
 	    }
-	    else fflush(awsPtr->currentEventFilePtr);  
+//	    else {
+//		fflush(awsPtr->currentEventFilePtr);  
+#ifdef OPEN_CLOSE_ALL_THE_TIME	   
+	    gzclose(awsPtr->currentEventFilePtr);
+#endif
+//	    }
 	    
 
 	}

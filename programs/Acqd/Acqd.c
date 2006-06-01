@@ -27,7 +27,7 @@
 
 //#define TIME_DEBUG 1
 //#define BAD_DEBUG 1
-
+#define HK_DEBUG 0
 
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
     return (a>>8)+(a<<8);
@@ -160,7 +160,7 @@ AnitaEventWriterStruct_t eventWriter;
 
 
 #ifdef TIME_DEBUG
-    FILE *timeFile;
+FILE *timeFile;
 #endif    
 
 
@@ -255,9 +255,9 @@ int main(int argc, char **argv) {
     plxIntr.IopToPciInt_2 = 1 ;  // LINT2 interrupt line 
     plxIntr.PciMainInt = 1 ;
 
-  /*    if (PlxRegisterWrite(PlxHandle, PCI9030_INT_CTRL_STAT, 0x00300000 )  */
-  /*        != ApiSuccess)  */
-  /*      printf("  failed to reset interrupt control bits.\n") ;  */
+    /*    if (PlxRegisterWrite(PlxHandle, PCI9030_INT_CTRL_STAT, 0x00300000 )  */
+    /*        != ApiSuccess)  */
+    /*      printf("  failed to reset interrupt control bits.\n") ;  */
 
     if(useInterrupts) {
 	if (PlxIntrDisable(surfHandles[0], &plxIntr) != ApiSuccess)
@@ -285,7 +285,6 @@ int main(int argc, char **argv) {
 	if(doingEvent==0) prepWriterStructs();
 
 
-
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
 	trigMode=TrigNone;
@@ -295,7 +294,7 @@ int main(int argc, char **argv) {
 //	setTurfControl(turfioHandle,SetTrigMode);
 
 	//Write RFCM Mask
-	writeRFCMMask(turfioHandle);
+	writeAntTrigMask(turfioHandle);
 	
 	theSurfHk.globalThreshold=0;
 	//Set Thresholds
@@ -317,7 +316,7 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"while() { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 	    fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    if(standAloneMode && (numEvents && numEvents<=doingEvent)) {
+	    if(standAloneMode && (numEvents && numEvents<doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
 	    }
@@ -328,6 +327,7 @@ int main(int argc, char **argv) {
 		theSurfHk.globalThreshold=globalThreshold;
 
 	    if(doGlobalDacCycle) {		
+		enableChanServo=0;
 //		if(dacVal<=500) dacVal=4095;
 //		else if(dacVal>=4000) dacVal=0;
 		dacVal=doingDacVal;
@@ -341,20 +341,9 @@ int main(int argc, char **argv) {
 	    }
 
 	    //Send software trigger if we want to
-	    if(sendSoftTrigger) {
+	    if(sendSoftTrigger || doingEvent==0) {
 		sleep(softTrigSleepPeriod);
 		setTurfControl(turfioHandle,SendSoftTrg);
-	    }
-
-	    if (selftrig){  /* --- send a trigger ---- */ 
-		if(printToScreen) printf(" try to trigger it locally.\n") ;
-		for(surf=0;surf<numSurfs;++surf) 
-		    if (setSurfControl(surfHandles[surf], LTrig) != ApiSuccess) {
-			status=ACQD_E_LTRIG;
-			syslog(LOG_ERR,"Failed to set LTrig on SURF %d",surfIndex[surf]);
-			if(printToScreen)
-			    printf("Failed to set LTrig flag on SURF %d.\n",surfIndex[surf]);
-		    }
 	    }
 
 	    
@@ -368,7 +357,7 @@ int main(int argc, char **argv) {
 		
 		if (PlxIntrEnable(surfHandles[0], &plxIntr) != ApiSuccess)
 		    printf("  failed to enable interrupt.\n") ;
-		if(verbosity && printToScreen) {
+		if(verbosity>1 && printToScreen) {
 		    tmpGPIO=PlxRegisterRead(surfHandles[0], 
 					    PCI9030_GP_IO_CTRL, &rc);
 		    printf("SURF %d GPIO (after INTR attachment) : 0x%o %d\n",
@@ -417,7 +406,7 @@ int main(int argc, char **argv) {
 			exit(1) ;
 		}
 	    
-		if(printToScreen && verbosity) {		
+		if(printToScreen && verbosity>1) {		
 		    tmpINTR=PlxRegisterRead(surfHandles[0],
 					    PCI9030_INT_CTRL_STAT, &rc); 
 		    printf("INTR Reg (after INTR wait) contents SURF %d = %x\n",
@@ -436,14 +425,70 @@ int main(int argc, char **argv) {
 			if(verbosity>3 && printToScreen) 
 			    printf("SURF %d GPIO: 0x%o %d\n",
 				   surfIndex[0],tmpGPIO,tmpGPIO);
-			if(tmo%2 && tmo) //Might change tmo%2
+			if(tmo) //Might change tmo%2
 			    usleep(1); 
 			tmo++;
-			if((tmo%1000)==0) {
+			if(tmo>5) {
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
-			    //Time out not in self trigger mode
-			    if(tmo==EVTF_TIMEOUT) break;
+//			    //Time out not in self trigger mode
+//			    if(tmo==EVTF_TIMEOUT) break;
+
+			    if(enableChanServo) {
+				tmo=0;
+				//Give us a chance to servo thresholds
+				status=readSurfHkData(surfHandles);
+				
+
+				//Will change to SurfClearHk
+				for(surf=0;surf<numSurfs;++surf)
+				    if (setSurfControl(surfHandles[surf], 
+						       SurfClearHk) 
+					!= ApiSuccess)
+					printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+				if(verbosity && printToScreen) 
+				    printf("Read SURF Housekeeping\n");
+
+				if(verbosity && printToScreen) 
+				    printf("Will servo on channel scalers\n");
+				gettimeofday(&timeStruct,NULL);
+
+//				printf("Pre Read Time %lu secs, %lu microsecs\n",
+//				       timeStruct.tv_sec,
+//				       timeStruct.tv_usec);
+		    
+				if(updateThresholdsUsingPID())
+				    setDACThresholds(surfHandles);
+				
+				
+				gettimeofday(&timeStruct,NULL);
+
+//				printf("Post Read Time %lu secs, %lu microsecs\n",
+//				       timeStruct.tv_sec,
+//				       timeStruct.tv_usec);
+				if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
+				    //Record housekeeping data
+				    lastSurfHk=timeStruct.tv_sec;
+				    theSurfHk.unixTime=timeStruct.tv_sec;
+				    theSurfHk.unixTimeUs=timeStruct.tv_usec;
+				    
+
+				    surfHkCounter++;
+				    if(surfHkCounter>=surfHkTelemEvery) {
+					writeSurfHousekeeping(3);
+					surfHkCounter=0;
+				    }
+				    else {
+					writeSurfHousekeeping(1);
+				    }
+
+
+				}
+
+		    
+			    }
+						    
+
 			}		    		    
 		    } while(!(tmpGPIO & EVT_RDY) && (selftrig?(tmo<N_TMO):1));
 
@@ -463,6 +508,8 @@ int main(int argc, char **argv) {
 		    sleep(1);
 		}	
 	    }
+//	    printf("tmo was %d\n",tmo);
+
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Got for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -510,35 +557,35 @@ int main(int argc, char **argv) {
 	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
+	    status=readSurfHkData(surfHandles);
+	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
+		
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+	    if(enableChanServo) {
+		if(verbosity && printToScreen) 
+		    printf("Will servo on channel scalers\n");
+		
+		if(updateThresholdsUsingPID())
+		    setDACThresholds(surfHandles);
+	    }    
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+//	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
+	    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+	    
 	    if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
 		//Record housekeeping data
-		status+=readSurfHkData(surfHandles);
 		gotSurfHk=1;
 		lastSurfHk=timeStruct.tv_sec;
 		theSurfHk.unixTime=timeStruct.tv_sec;
 		theSurfHk.unixTimeUs=timeStruct.tv_usec;
-		if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
-
-#ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
-//	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-		fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
-		if(enableChanServo) {
-		    if(verbosity && printToScreen) 
-			printf("Will servo on channel scalers\n");
-		    
-		    if(updateThresholdsUsingPID())
-			setDACThresholds(surfHandles);
-		    
-		}
-
-
-#ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
-//	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
+		
 	    }
 
 
@@ -548,6 +595,7 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readTurfEventData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+	    
 	    status+=readTurfEventData(turfioHandle);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -563,7 +611,7 @@ int main(int argc, char **argv) {
 		
 		status=ACQD_E_OK;
 	    }
-	    else {
+	    else if(doingEvent>1) {
 		hdPtr->eventNumber=getEventNumber();
 		hdPtr->surfMask=surfMask;
 		hdPtr->antTrigMask=(unsigned int)antTrigMask;
@@ -571,8 +619,8 @@ int main(int argc, char **argv) {
 
 		/* 
 		   Filled by Eventd
-		hdPtr->gpsSubTime;
-		hdPtr->calibStatus;
+		   hdPtr->gpsSubTime;
+		   hdPtr->calibStatus;
 		*/
 
 		if(printToScreen && verbosity) 
@@ -592,26 +640,26 @@ int main(int argc, char **argv) {
 
 
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
+		    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-
-	    if(writeFullHk) {
-		
-		if(gotSurfHk) {
-		    //Do the housekeeping stuff
-		    surfHkCounter++;
-		    if(surfHkCounter>=surfHkTelemEvery) {
-			writeSurfHousekeeping(3);
-			surfHkCounter=0;
-		    }
-		    else {
+		    
+		    if(writeFullHk) {
+			
+			if(gotSurfHk) {
+			    //Do the housekeeping stuff
+			    surfHkCounter++;
+			    if(surfHkCounter>=surfHkTelemEvery) {
+				writeSurfHousekeeping(3);
+				surfHkCounter=0;
+			    }
+			    else {
 //			    printf("\tSURF HK %ld %ld\n",theSurfHk.unixTime,lastSurfHk);
-			writeSurfHousekeeping(1);
-		    }
-		}
-
+				writeSurfHousekeeping(1);
+			    }
+			}
+			
 
 #ifdef TIME_DEBUG
 			gettimeofday(&timeStruct2,NULL);
@@ -637,9 +685,9 @@ int main(int argc, char **argv) {
 		    }
 		    
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
+		    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		    fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 		    
 
@@ -692,8 +740,8 @@ char *surfControlActionAsString(SurfControlAction_t action) {
 	case SurfClearEvent :
 	    string = "SurfClearEvent" ;
 	    break ;
-	case LTrig :
-	    string = "LTrig" ;
+	case SurfClearHk :
+	    string = "SurfClearHk" ;
 	    break ;
 	case RDMode :
 	    string = "RDMode" ;
@@ -764,11 +812,11 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
     U32 baseVal    = 0222222220 ;
     U32 clearEvent = 0000000040 ;
     U32 clearAll   = 0000000400 ;  
-    U32 locTrig    = 0000400000 ;  /* local software trigger for a SURF */
-    U32 rdWrFlag   = 0000004000 ;  /* rd/_wr flag */
-    U32 dataHkFlag = 0000040000 ;  /* dt/_hk flag */
+    U32 clearHk    = 0000400000 ;  // Clears hk
+    U32 rdWrFlag   = 0000004000 ;  // rd/_wr flag 
+    U32 dataHkFlag = 0000040000 ;  // dt/_hk flag 
     U32 dacLoad    = 0004000000 ;
-    U32 intEnable    = 0040000000 ;
+    U32 intEnable  = 0040000000 ;
 //    U32 changeChip = 0040000000 ;
     
  
@@ -783,7 +831,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
     switch (action) {
 	case SurfClearAll : gpioVal = baseVal | clearAll      ; break ; 
 	case SurfClearEvent : gpioVal = baseVal | clearEvent  ; break ; 
-	case LTrig  : gpioVal = baseVal | locTrig  ; break ;
+	case SurfClearHk  : gpioVal = baseVal | clearHk  ; break ;
 	case RDMode  : gpioVal = baseVal | rdWrFlag ; break ; //Default 
 	case WTMode   : gpioVal = baseVal & ~rdWrFlag ; break ;
 	case DTRead   : gpioVal = baseVal | dataHkFlag ; break ;
@@ -795,7 +843,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 		fprintf(stderr,"setSurfControl: undefined action, %d\n", action) ;
 	    return ApiFailed ;
     }
-    if (verbosity && printToScreen) 
+    if (verbosity>1 && printToScreen) 
 	printf(" setSurfControl: action %s, gpio= %o\n", 
 	       surfControlActionAsString(action), gpioVal) ; 
 
@@ -806,7 +854,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 	    fprintf(stderr,"setSurfControl: failed to set GPIO to %o.\n", gpioVal) ; 
 	return rc ;
     }
-    if (LTrig < action && action < DACLoad) return rc ; 
+    if (SurfClearHk < action && action < DACLoad) return rc ; 
     //Reset GPIO to base val
     return PlxRegisterWrite(surfHandle, PCI9030_GP_IO_CTRL, baseVal ) ;
 
@@ -869,7 +917,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
 	    return ApiFailed ;
     }
 
-    if (verbosity && printToScreen) 
+    if (verbosity>1 && printToScreen) 
 	printf("setTurfControl: action %s, gpioVal = %o\n", 
 	       turfControlActionAsString(action), gpioVal) ; 
 
@@ -1063,10 +1111,10 @@ int readConfigFile()
 	}
 	tempString=kvpGetString ("acqdEventDir");
 	if(tempString) {
-	   strncpy(acqdEventDir,tempString,FILENAME_MAX-1);	   
-	   strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);	   
-	   strcat(acqdEventLinkDir,"/link");
-	   makeDirectories(acqdEventLinkDir);
+	    strncpy(acqdEventDir,tempString,FILENAME_MAX-1);	   
+	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);	   
+	    strcat(acqdEventLinkDir,"/link");
+	    makeDirectories(acqdEventLinkDir);
 	}
 	else
 	    fprintf(stderr,"Couldn't fetch acqdEventDir\n");
@@ -1413,7 +1461,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
 
 /* parse command arg
-uments to initialize parameter(s). */
+   uments to initialize parameter(s). */
 int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
 
     while (--argn) {
@@ -1528,7 +1576,7 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 		fprintf(stderr,"Error loading DAC Vals, SURF %d (%d)\n",
 			surfIndex[surf],rc);
 	}
-	else if(printToScreen && verbosity)
+	else if(printToScreen && verbosity>1)
 	    printf("DAC Vals set on SURF %d\n",surfIndex[surf]);
     }
 		    
@@ -1576,67 +1624,67 @@ void calculateStatistics() {
   
 
 
-	// Calculate mean,rms,std dev
-	for(surf=0;surf<numSurfs;++surf) {
-	    for(chan=0;chan<N_CHAN;++chan){
-		double sum[N_CHIP]={0};
-		double sumSqd[N_CHIP]={0};
-		int tempNum[N_CHIP]={0};
-		for(samp=0;samp<N_SAMP;++samp) {
-		    int tempChip=theEvent.body.channel[chan+surf*CHANNELS_PER_SURF].data[samp]>>14;
-		    int tempData=theEvent.body.channel[chan+surf*CHANNELS_PER_SURF].data[samp] & DATA_MASK;
-		    if(tempData) {
+    // Calculate mean,rms,std dev
+    for(surf=0;surf<numSurfs;++surf) {
+	for(chan=0;chan<N_CHAN;++chan){
+	    double sum[N_CHIP]={0};
+	    double sumSqd[N_CHIP]={0};
+	    int tempNum[N_CHIP]={0};
+	    for(samp=0;samp<N_SAMP;++samp) {
+		int tempChip=theEvent.body.channel[chan+surf*CHANNELS_PER_SURF].data[samp]>>14;
+		int tempData=theEvent.body.channel[chan+surf*CHANNELS_PER_SURF].data[samp] & DATA_MASK;
+		if(tempData) {
 /* 	    printf("%d\t%d\n",tempChip,tempData); */
-			sum[tempChip]+=tempData;
-			sumSqd[tempChip]+=tempData*tempData;
-			tempNum[tempChip]++;
-		    }
+		    sum[tempChip]+=tempData;
+		    sumSqd[tempChip]+=tempData*tempData;
+		    tempNum[tempChip]++;
 		}
+	    }
 
-		for(chip=0;chip<N_CHIP;chip++) {	  
-		    if(tempNum[chip]) {
-			float tempRMS=0;
-			tempRMS=sqrt(sumSqd[chip]/(float)tempNum[chip]);
-			float temp1=mean_rms[surf][chip][chan]*((float)(numChipEvents[chip]))/(float)(numChipEvents[chip]+1);
-			float temp2=tempRMS/(float)(numChipEvents[chip]+1);	  
-			mean_rms[surf][chip][chan]=temp1+temp2;
-			numChipEvents[chip]++;
+	    for(chip=0;chip<N_CHIP;chip++) {	  
+		if(tempNum[chip]) {
+		    float tempRMS=0;
+		    tempRMS=sqrt(sumSqd[chip]/(float)tempNum[chip]);
+		    float temp1=mean_rms[surf][chip][chan]*((float)(numChipEvents[chip]))/(float)(numChipEvents[chip]+1);
+		    float temp2=tempRMS/(float)(numChipEvents[chip]+1);	  
+		    mean_rms[surf][chip][chan]=temp1+temp2;
+		    numChipEvents[chip]++;
 
-			/* Ryan's statistics */	    
-			double tempMean=sum[chip];///(double)tempNum[chip];
-			double tempMeanSqd=sumSqd[chip];///(double)tempNum[chip];
+		    /* Ryan's statistics */	    
+		    double tempMean=sum[chip];///(double)tempNum[chip];
+		    double tempMeanSqd=sumSqd[chip];///(double)tempNum[chip];
 /* 	    printf("%f\t%f\n",tempMean,tempMeanSqd); */
-			chanMean[surf][chip][chan]=(chanMean[surf][chip][chan]*((double)chanNumReads[surf][chip][chan]/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]))) +
-			    (tempMean/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]));
-			chanMeanSqd[surf][chip][chan]=(chanMeanSqd[surf][chip][chan]*((double)chanNumReads[surf][chip][chan]/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]))) +
-			    (tempMeanSqd/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]));
-			chanNumReads[surf][chip][chan]+=tempNum[chip];	    
-		    }
+		    chanMean[surf][chip][chan]=(chanMean[surf][chip][chan]*((double)chanNumReads[surf][chip][chan]/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]))) +
+			(tempMean/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]));
+		    chanMeanSqd[surf][chip][chan]=(chanMeanSqd[surf][chip][chan]*((double)chanNumReads[surf][chip][chan]/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]))) +
+			(tempMeanSqd/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]));
+		    chanNumReads[surf][chip][chan]+=tempNum[chip];	    
 		}
 	    }
 	}
+    }
   
-	// Display Mean
-	if (verbosity && printStatistics) {
-	    for(surf=0;surf<numSurfs;++surf){
-		printf("Board %d Mean, After Event %d (Software)\n",surfIndex[surf],doingEvent);
-		for(chip=0;chip<N_CHIP;++chip){
-		    for(chan=0;chan<N_CHAN;++chan)
-			printf("%.2f ",chanMean[surf][chip][chan]);
-		    printf("\n");
-		}
-	    }
-
-	    // Display Std Dev
-	    for(surf=0;surf<numSurfs;++surf){
-		printf("Board %d Std Dev., After Event %d (Software)\n",surfIndex[surf],doingEvent);
-		for(chip=0;chip<N_CHIP;++chip){
-		    for(chan=0;chan<N_CHAN;++chan)
-			printf("%.2f ",sqrt(chanMeanSqd[surf][chip][chan]-chanMean[surf][chip][chan]*chanMean[surf][chip][chan]));
-		    printf("\n");
-		}
+    // Display Mean
+    if (verbosity && printStatistics) {
+	for(surf=0;surf<numSurfs;++surf){
+	    printf("Board %d Mean, After Event %d (Software)\n",surfIndex[surf],doingEvent);
+	    for(chip=0;chip<N_CHIP;++chip){
+		for(chan=0;chan<N_CHAN;++chan)
+		    printf("%.2f ",chanMean[surf][chip][chan]);
+		printf("\n");
 	    }
 	}
+
+	// Display Std Dev
+	for(surf=0;surf<numSurfs;++surf){
+	    printf("Board %d Std Dev., After Event %d (Software)\n",surfIndex[surf],doingEvent);
+	    for(chip=0;chip<N_CHIP;++chip){
+		for(chan=0;chan<N_CHAN;++chan)
+		    printf("%.2f ",sqrt(chanMeanSqd[surf][chip][chan]-chanMean[surf][chip][chan]*chanMean[surf][chip][chan]));
+		printf("\n");
+	    }
+	}
+    }
 
 }
 
@@ -1754,7 +1802,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     AnitaEventBody_t *theBody=&(theEventPtr->body);
 
 
-		//Fill Generic Header
+    //Fill Generic Header
     fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
     fillGenericHeader(theBody,PACKET_WV,sizeof(AnitaEventBody_t));
 
@@ -1830,7 +1878,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
     //Loop over SURFs and read out data
     for(surf=0;surf<numSurfs;surf++){  
 //	sleep(1);
-	if(printToScreen &&verbosity) {
+	if(printToScreen &&verbosity>1) {
 	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
 		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
 	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
@@ -1988,7 +2036,7 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
     //Loop over SURFs and read out data
     for(surf=0;surf<numSurfs;surf++){  
 //	sleep(1);
-	if(printToScreen &&verbosity) {
+	if(printToScreen &&verbosity>1) {
 	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
 		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
 	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
@@ -2255,7 +2303,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
 	    theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
-	    if(printToScreen && verbosity>1) 
+	    if((printToScreen && verbosity>1) || HK_DEBUG) 
 		printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.scaler[surf][rfChan]);
 	    
 	    if(rfChan==0) {
@@ -2283,8 +2331,8 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
 	    theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
-	    if(printToScreen && verbosity>1) 
-		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theSurfHk.threshold[surf][rfChan]);
+	    if((printToScreen && verbosity>1) || HK_DEBUG) 
+		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theSurfHk.threshold[surf][rfChan]&0xfff);
 	    //Should check if it is the same or not
 	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theSurfHk.errorFlag|=(1>>surf);
@@ -2303,7 +2351,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
 	    }
 	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
-	    if(printToScreen && verbosity>1) 
+	    if((printToScreen && verbosity>1) || HK_DEBUG) 
 		printf("Surf %d, RF Power %d (%d) == %d\n",surfIndex[surf],rfChan,((dataInt&0xe000)>>13),(theSurfHk.rfPower[surf][rfChan]&0xfff));
 	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theSurfHk.errorFlag|=(1>>surf);
@@ -2568,7 +2616,7 @@ PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) 
     
 }
 
-PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle) 
+PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle) 
 /*!
   Remember that 0 in the RFCM mask means on
 */
@@ -2606,17 +2654,17 @@ PlxReturnCode_t writeRFCMMask(PlxHandle_t turfioHandle)
 	i++;
     }
 
-  /* check GPIO8 is set or not. */
+    /* check GPIO8 is set or not. */
     if((gpio=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc )) 
        & 0400000000) {
-	syslog(LOG_INFO,"writeRFCMMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1],actualMask[0]) ;
+	syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1],actualMask[0]) ;
 	if(printToScreen) 
-	    printf("writeRFCMMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1], actualMask[0]) ;
+	    printf("writeAntTrigMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1], actualMask[0]) ;
     }   
     else {
-	syslog(LOG_ERR,"writeRFCMMask: GPIO 8 not on: GPIO=%o",gpio);
+	syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpio);
 	if(printToScreen) 
-	    printf("writeRFCMMask: GPIO 8 not on: GPIO=%o\n",gpio);
+	    printf("writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpio);
     }
     return ApiSuccess;
     
@@ -2636,8 +2684,8 @@ int updateThresholdsUsingPID() {
 		    value=avgScalerData[surf][dac]/avgCount;
 		    avgScalerData[surf][dac]=0;
 		    error=pidGoal-value;
-//		printf("%d %d %d %d\n",thePids[surf][dac].iState,
-//		       avgScalerData[surf][dac],value,error);
+//		    printf("%d %d %d %d\n",thePids[surf][dac].iState,
+//			   avgScalerData[surf][dac],value,error);
 	    
 		    // Proportional term
 		    pTerm = dacPGain * error;
@@ -2655,8 +2703,12 @@ int updateThresholdsUsingPID() {
 		    dTerm = dacDGain * (float)(value -thePids[surf][dac].dState);
 		    thePids[surf][dac].dState = value;
 		    
-		    //Put them together
+		    //Put them together		   
 		    change = (int) (pTerm + iTerm - dTerm);
+//		    if(surf==0 && dac==10) {
+//			printf("thresh %d, change %d (scaler %d)\n",
+//			       thresholdArray[surfIndex[surf]-1][dac],change,value);
+//		    }
 		    thresholdArray[surfIndex[surf]-1][dac]+=change;
 		    if(thresholdArray[surfIndex[surf]-1][dac]>4095)
 			thresholdArray[surfIndex[surf]-1][dac]=4095;
