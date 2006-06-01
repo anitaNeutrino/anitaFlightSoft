@@ -1,0 +1,9 @@
+set term png interlace
+set autoscale
+set xrange [0:256]
+set style data lines
+set output "T0Hraw.png"
+plot "current.dat" index 0 using 1:2 notitle
+set output "T0Vraw.png"
+plot "current.dat" index 0 using 1:2 notitle
+
