@@ -8,16 +8,17 @@ fi
 
 
 n=0
-HK_DIR=/mnt/data/archive/$1
-EVENT_DIR=/mnt/data/acqdData/$1
+HK_DIR=/mnt/blade4/hkData/$1
+EVENT_DIR=/mnt/blade4/acqdData/$1
 
 while [ -d $HK_DIR ] ; do
   let "n = n + 1"
-  HK_DIR=/mnt/data/archive/$1_$n
-  EVENT_DIR=/mnt/data/acqdData/$1_$n
+  HK_DIR=/mnt/blade4/hkData/$1_$n
+  EVENT_DIR=/mnt/blade4/acqdData/$1_$n
 done
 
 mkdir ${HK_DIR}
+rm /mnt/data/anita
 ln -sf ${HK_DIR} /mnt/data/anita
 echo "Using Hk directory: $HK_DIR" 
 echo "Using Event directory: $EVENT_DIR" 

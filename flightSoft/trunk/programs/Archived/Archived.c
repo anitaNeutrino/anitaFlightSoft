@@ -61,7 +61,7 @@ int maxFilesPerDir=1000;
 
 int main (int argc, char *argv[])
 {
-    int retVal,pk;
+    int retVal,pri;
     char *tempString;
     /* Config file thingies */
     int status=0;
