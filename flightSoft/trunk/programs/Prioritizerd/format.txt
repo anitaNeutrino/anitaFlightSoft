@@ -1,0 +1,35 @@
+FORMAT OF TEXT DATA FILE FOR PRIORITIZER DEBUGGING
+--------------------------------------------------
+SURF channels are separated by two blank lines
+and a comment, for use with the GNUplot index
+mechanism.  
+
+Raw data is in surf channel order, indexed by surf 
+channel.  
+
+1: sample number
+2: raw
+3: unwrapped (zero after end)
+4: baseline subtracted
+
+There is another file for antenna level. The order is:
+
+top ring: phi=0->15
+bottom ring: phi=0>15
+bicones in phi order
+discones in phi order
+
+the columns are as follows:
+
+1: sample number
+2: horizontal 
+3: vertical 
+4: gain matched horiz
+5: gain matched vertical
+6: s0
+7: s1
+8: s2
+9: s3
+
+
+There will be another file for coincidence debugging.

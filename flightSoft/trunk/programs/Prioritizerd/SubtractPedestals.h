@@ -13,6 +13,10 @@ typedef enum {
     kLastPed,
     kPenultimatePed
 } PedestalOption_t;
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int readPedestals(PedestalOption_t opt);
 /* pedOption 0=all pedestals are zero
@@ -25,7 +29,9 @@ int subtractPedestals(AnitaEventBody_t *rawSurfEvent,AnitaTransientBody8_t *surf
 /* 
    The RawSurfChannelHeader with each SurfChannelFull 
    has the chip information */
-
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif /* SUBTRACTPEDESTALS_H */

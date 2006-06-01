@@ -4,6 +4,12 @@
 #include "anitaFlight.h"
 #include "anitaStructures.h"
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int readWrapOffsets(int offsetOption);
 
 int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
