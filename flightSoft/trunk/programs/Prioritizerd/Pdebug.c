@@ -28,7 +28,9 @@ int main(int argc, char *argv[]){
      sprintf(bodyName,"ev_%d.dat",theEvent);
      sprintf(rawDumpName,"rd_%d.txt",theEvent);
      retVal=fillBody(&theBody,bodyName);
+     if (retVal !=0){printf("Error filling body.\n"); exit(-2);}
      retVal=fillHeader(&theHeader,headerName);
+     if (retVal !=0){printf("Error filling header.\n"); exit(-3);}
 // do the raw data manipulations here
      readPedestals(kZeroPed);
      subtractPedestals(&theBody,&theSurfTransientPS);
