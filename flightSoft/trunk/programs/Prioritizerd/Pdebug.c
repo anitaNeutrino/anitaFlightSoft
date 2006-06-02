@@ -5,18 +5,22 @@
 #include "anitaStructures.h"
 #include "utilLib/utilLib.h"
 
+#include "SubtractPedestals.h"
+#include "Unwrap.h"
+
 int main(int argc, char *argv[]){
      int theEvent, retVal;
-     double UTCtime;
      char headerName[FILENAME_MAX],bodyName[FILENAME_MAX];
      char rawDumpName[FILENAME_MAX];
      FILE *rawDumpFile;
      int i,j;
      AnitaEventHeader_t theHeader;
      AnitaEventBody_t theBody;
+     
+     AnitaTransientBody8_t theSurfTransientPS,theSurfTransientUW;
 
      if (argc!=2){
-	  printf("Usage: Pdebug <header filename>");
+	  printf("Usage: Pdebug <header filename>\n");
 	  exit(-1);
      }
      sscanf(argv[1],"hd_%d.dat",&theEvent);
@@ -25,14 +29,17 @@ int main(int argc, char *argv[]){
      sprintf(rawDumpName,"rd_%d.txt",theEvent);
      retVal=fillBody(&theBody,bodyName);
      retVal=fillHeader(&theHeader,headerName);
+// do the raw data manipulations here
+     readPedestals(kZeroPed);
+     subtractPedestals(&theBody,&theSurfTransientPS);
 // the raw dump file is formatted for use with gnuplot
 // indexing is separated by newlines
 // zeroth index contains the header dump
 // indices 1..81 are surf records
      rawDumpFile=fopen(rawDumpName,"w");
      fprintf(rawDumpFile,"#ANITA Event Raw Dumpfile for event %d\n",theEvent);
-     UTCtime=theHeader.unixTime+1e-6*theHeader.unixTimeUs;
-     fprintf(rawDumpFile,"%16.6f #UTC Unix Time (s)\n",UTCtime);
+     fprintf(rawDumpFile,"%lu #UTC Unix Time (s)\n",theHeader.unixTime);
+     fprintf(rawDumpFile,"%lu #Unix microsec\n",theHeader.unixTimeUs);
      fprintf(rawDumpFile,"%lu #GPS SubTime (ns)\n",theHeader.gpsSubTime);
      fprintf(rawDumpFile,"%lu #Event Number\n",theHeader.eventNumber);
      fprintf(rawDumpFile,"%hhu #Priority\n",theHeader.priority);
@@ -49,7 +56,11 @@ int main(int argc, char *argv[]){
 		  ((theBody.channel[i]).header).firstHitbus,
 		  ((theBody.channel[i]).header).lastHitbus);
 	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
-	       fprintf(rawDumpFile,"%i %hu\n",i,(theBody.channel[i]).data[j]);
+	       fprintf(rawDumpFile,"%i %hu %d %d \n",i,
+		       (theBody.channel[i]).data[j],
+		       (theSurfTransientPS.ch[i]).data[j],
+		       (theSurfTransientUW.ch[i]).data[j]
+		       );
 	  }
 	  fprintf(rawDumpFile,"\n\n"); //end index i+1
      }
