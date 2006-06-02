@@ -7,6 +7,7 @@
 
 #include "SubtractPedestals.h"
 #include "Unwrap.h"
+#include "BaselineSubtract.h"
 
 int main(int argc, char *argv[]){
      int theEvent, retVal;
@@ -34,6 +35,9 @@ int main(int argc, char *argv[]){
 // do the raw data manipulations here
      readPedestals(kZeroPed);
      subtractPedestals(&theBody,&theSurfTransientPS);
+     readWrapOffsets(1);
+     unwrapTransient(&theBody,&theSurfTransientPS,&theSurfTransientUW);
+     BaselineSubtract(&theSurfTransientUW);
 // the raw dump file is formatted for use with gnuplot
 // indexing is separated by newlines
 // zeroth index contains the header dump

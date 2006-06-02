@@ -17,8 +17,8 @@ $(Targets): % : %.o ${Objs}
 	@chmod 555 $@
 	ln -sf $(shell pwd)/$@ ${ANITA_FLIGHT_SOFT_DIR}/bin
 
-Pdebug:	Pdebug.o SubtractPedestals.o Unwrap.o
-	@$(LD) Pdebug.o SubtractPedestals.o Unwrap.o -static $(LDFLAGS) $(ANITA_LIBS)  -o Pdebug
+Pdebug:	Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o
+	@$(LD) Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o -static $(LDFLAGS) $(ANITA_LIBS)  -o Pdebug
 
 clean: objclean
 	@-rm -f $(Targets) Pdebug
