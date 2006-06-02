@@ -22,6 +22,7 @@
 #include "anitaFlight.h"
 
 
+
 // Directories and gubbins 
 char archivedPidFile[FILENAME_MAX];
 char prioritizerdEventDir[FILENAME_MAX];
@@ -29,9 +30,11 @@ char prioritizerdEventLinkDir[FILENAME_MAX];
 
 char mainEventArchivePrefix[FILENAME_MAX];
 char backupEventArchivePrefix[FILENAME_MAX];
-char currentEventIndex[FILENAME_MAX];
-char currentEventDir[FILENAME_MAX];
-char currentEventBackupDir[FILENAME_MAX];
+
+
+//char currentEventIndex[FILENAME_MAX];
+//char currentEventDir[FILENAME_MAX];
+//char currentEventBackupDir[FILENAME_MAX];
 int priorityEncodingVal[NUM_PRIORITIES];
 float priorityFractionRaw[NUM_PRIORITIES];
 
@@ -40,8 +43,6 @@ char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 int useBackupDisk=1;
 int useGzip=1;
-
-int eventEpoch=-1000;
 
 //Event Structures
 AnitaEventHeader_t theHead;
@@ -54,9 +55,7 @@ int printToScreen=0;
 int verbosity=0;
 
 
-//File management
-int eventsPerFile=1;
-int maxFilesPerDir=1000;
+AnitaEventWriterStruct_t eventWriter;
 
 
 int main (int argc, char *argv[])
@@ -128,7 +127,7 @@ int main (int argc, char *argv[])
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
-
+    prepWriterStructs();
     retVal=0;
     /* Main event getting loop. */
     do {
@@ -292,26 +291,24 @@ int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {
 
 
 void writeOutput(int numBytes) {
-    char headName[FILENAME_MAX];
-    char bodyName[FILENAME_MAX];
-    char realHeadName[FILENAME_MAX];
-    char realBodyName[FILENAME_MAX];
-    char realBackupHeadName[FILENAME_MAX];
-    char realBackupBodyName[FILENAME_MAX];    
+//    char headName[FILENAME_MAX];
+//    char bodyName[FILENAME_MAX];
+//    char realHeadName[FILENAME_MAX];
+//    char realBodyName[FILENAME_MAX];
+//    char realBackupHeadName[FILENAME_MAX];
+//    char realBackupBodyName[FILENAME_MAX];    
     char mainDiskDir[FILENAME_MAX];
     char backupDiskDir[FILENAME_MAX];
     
 
-    int len;
-    FILE *fpNorm;
-    FILE *fpIndex;
-    gzFile fpZip;
-    int numThings=0;
-    int pri=theHead.priority&0xf;
-
-    
-
-    if(pri>9) pri=9;
+    int len,retVal;
+//    FILE *fpNorm;
+//    FILE *fpIndex;
+//    gzFile fpZip;
+//    int numThings=0;
+//    int pri=theHead.priority&0xf;
+   
+//    if(pri>9) pri=9;
 
     //Get real disk names for index and telem
     if ((len = readlink(MAIN_DATA_DISK_LINK, mainDiskDir, FILENAME_MAX-1)) != -1)
@@ -322,106 +319,20 @@ void writeOutput(int numBytes) {
 //    fprintf(stderr,"%s %s\n",mainDiskDir,backupDiskDir);
 //    fprintf(stderr,"%d %d\n",strlen(MAIN_DATA_DISK_LINK),strlen(BACKUP_DATA_DISK_LINK));
 
-    if((theHead.eventNumber>eventEpoch+MAX_EVENTS_PER_DIR) || 
-       theHead.eventNumber<eventEpoch) {
-	//Need to make directories
-	eventEpoch=MAX_EVENTS_PER_DIR*(int)(theHead.eventNumber/MAX_EVENTS_PER_DIR);
-	sprintf(currentEventDir,"%s%d",mainEventArchivePrefix,eventEpoch);
-	sprintf(currentEventBackupDir,"%s%d",
-		backupEventArchivePrefix,eventEpoch);
-	makeDirectories(currentEventDir);
-	sprintf(currentEventIndex,"%s/ev%d.txt",EVENT_LINK_INDEX,eventEpoch);
-	if(useBackupDisk)
-	    makeDirectories(currentEventBackupDir);
-    }
-
-    if(useBackupDisk) {
-	sprintf(headName,"%s/hd_%ld.dat",
-		currentEventBackupDir,theHead.eventNumber);
-	sprintf(bodyName,"%s/ev_%ld.dat",
-		currentEventBackupDir,theHead.eventNumber);
-	if(useGzip) 
-	    strcat(bodyName,".gz");
-	sprintf(realBackupHeadName,"%s%s",backupDiskDir,&headName[strlen(BACKUP_DATA_DISK_LINK)]);
-	sprintf(realBackupBodyName,"%s%s",backupDiskDir,&bodyName[strlen(BACKUP_DATA_DISK_LINK)]);
-
-	writeHeader(&theHead,headName);
-	if(!useGzip) {
-	    fpNorm = fopen(bodyName,"wb");
-	    if(!fpNorm) {
-		syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName,
-		       strerror(errno));
-		fprintf(stderr,"Error Opening File %s -- %s\n",bodyName,
-		       strerror(errno));
-	    }
-	    else {
-		numThings=fwrite(outputBuffer,numBytes,1,fpNorm);
-		fclose(fpNorm);
-	    }
-	}
-	else {
-	    fpZip = gzopen(bodyName,"wb");
-	    if(!fpZip) {
-		syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
-		       ,strerror(errno));
-		fprintf(stderr,"Error Opening File %s -- %s\n",bodyName
-		       ,strerror(errno));
-	    }
-	    else {
-		numThings=gzwrite(fpZip,outputBuffer,numBytes);
-		gzclose(fpZip);
-	    }	    
-	}
-
-    }
-
-
-    sprintf(headName,"%s/hd_%ld.dat",currentEventDir,theHead.eventNumber);
-    sprintf(bodyName,"%s/ev_%ld.dat",currentEventDir,theHead.eventNumber);
-    if(useGzip)
-	strcat(bodyName,".gz");
-
-    sprintf(realHeadName,"%s%s",mainDiskDir,&headName[strlen(MAIN_DATA_DISK_LINK)]);
-    sprintf(realBodyName,"%s%s",mainDiskDir,&bodyName[strlen(MAIN_DATA_DISK_LINK)]);
-    writeHeader(&theHead,headName);
-    if(!useGzip) {
-	fpNorm = fopen(bodyName,"wb");
-	if(!fpNorm) {
-	    syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
-		   ,strerror(errno));
-	    fprintf(stderr,"Error Opening File %s -- %s\n",bodyName
-		    ,strerror(errno));
-	}
-	else {
-	    numThings=fwrite(outputBuffer,numBytes,1,fpNorm);
-	    fclose(fpNorm);
-	}
-    }
-    else {
-	fpZip = gzopen(bodyName,"wb");
-	if(!fpZip) {
-	    syslog(LOG_ERR,"Error Opening File %s -- %s",bodyName
-		   ,strerror(errno));
-	    fprintf(stderr,"Error Opening File %s -- %s\n",bodyName
-		    ,strerror(errno));
-	}
-	else {
-	    numThings=gzwrite(fpZip,outputBuffer,numBytes);
-	    gzclose(fpZip);
-	}	    
-    }	
+    retVal=cleverEncEventWrite(outputBuffer,numBytes,&theHead,&eventWriter);
     
-    
-    fpIndex = fopen(currentEventIndex,"aw");
+
+
+//    fpIndex = fopen(currentEventIndex,"aw");
 //    fprintf(stderr,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
 //	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
-    fprintf(fpIndex,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
-	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
-    fclose(fpIndex);
+//    fprintf(fpIndex,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
+//	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
+//    fclose(fpIndex);
 	   
 
-    makeLink(realBodyName,eventTelemDirs[pri]);
-    makeLink(realHeadName,eventTelemLinkDirs[pri]);
+//    makeLink(realBodyName,eventTelemDirs[pri]);
+//    makeLink(realHeadName,eventTelemLinkDirs[pri]);
  
 }
 
@@ -434,4 +345,19 @@ unsigned short simpleCrcShort(unsigned short *p, unsigned long n)
 	sum += *p++;
     }
     return ((0xffff - sum) + 1);
+}
+
+
+void prepWriterStructs() {
+    if(printToScreen) 
+	printf("Preparing Writer Structs\n");
+
+    //Event Writer
+
+    strncpy(eventWriter.baseDirname,mainEventArchivePrefix,FILENAME_MAX-1);
+    eventWriter.currentHeaderFilePtr=0;
+    eventWriter.currentEventFilePtr=0;
+    eventWriter.maxSubDirsPerDir=EVENT_FILES_PER_DIR;
+    eventWriter.maxFilesPerDir=EVENT_FILES_PER_DIR;
+    eventWriter.maxWritesPerFile=EVENTS_PER_FILE;
 }

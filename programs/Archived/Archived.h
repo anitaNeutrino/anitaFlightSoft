@@ -19,6 +19,6 @@ int encodeChannel(EncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned c
 void processEvent();
 void checkEvents();
 int readConfigFile();
-
+void prepWriterStructs();
 
 #endif //ARCHIVED_H

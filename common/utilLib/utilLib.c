@@ -299,6 +299,174 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 
 }
 
+int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
+{
+    int retVal=0;
+    static int errorCounter=0;
+    int dirNum;
+//    int numberOfBytes;
+//    char *bufferToZip;
+//    char zippedFilename[FILENAME_MAX];
+    
+    if(!awsPtr->currentEventFilePtr) {
+	//First time
+
+	//Make base dir
+	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
+	sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
+	makeDirectories(awsPtr->currentDirName);
+	
+	awsPtr->fileCount=0;
+
+	//Make sub dir
+	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
+	sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
+	makeDirectories(awsPtr->currentSubDirName);
+
+	awsPtr->dirCount=0;
+
+	//Make files
+	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
+	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
+		awsPtr->currentSubDirName,dirNum);
+	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
+
+	awsPtr->writeCount=0;
+	if(awsPtr->currentHeaderFilePtr<0) {	    
+	    if(errorCounter<100) {
+		errorCounter++;
+		printf("Error (%d of 100) trying to open file %s\n",
+		       errorCounter,awsPtr->currentHeaderFileName);
+	    }
+	}
+
+	sprintf(awsPtr->currentEventFileName,"%s/encev_%d.dat.gz",
+		awsPtr->currentSubDirName,dirNum);
+	awsPtr->currentEventFilePtr=
+	    gzopen(awsPtr->currentEventFileName,"wb5");
+	if(awsPtr->currentEventFilePtr<0) {	    
+	    if(errorCounter<100) {
+		errorCounter++;
+		printf("Error (%d of 100) trying to open file %s\n",
+		       errorCounter,awsPtr->currentEventFileName);
+	    }
+	}
+    }
+    if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
+	if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
+#ifndef OPEN_CLOSE_ALL_THE_TIME // In NOT defined
+	    gzclose(awsPtr->currentEventFilePtr);
+	    gzclose(awsPtr->currentHeaderFilePtr);
+#endif
+
+	    awsPtr->fileCount++;
+	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
+		awsPtr->dirCount++;
+		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
+		    //Make base dir
+		    dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
+		    sprintf(awsPtr->currentDirName,"%s/encev%d",awsPtr->baseDirname,dirNum);
+		    makeDirectories(awsPtr->currentDirName);
+		    awsPtr->dirCount=0;
+		}
+		
+		//Make sub dir
+		dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
+		sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
+		makeDirectories(awsPtr->currentSubDirName);
+		awsPtr->fileCount=0;
+	    }
+	
+	    //Make files
+	    dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
+	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
+		    awsPtr->currentSubDirName,dirNum);
+//	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
+	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
+	    if(awsPtr->currentHeaderFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentHeaderFileName);
+		}
+	    }
+	    
+	    sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
+		    awsPtr->currentSubDirName,dirNum);
+	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"wb5");
+	    if(awsPtr->currentEventFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentEventFileName);
+		}
+	    }
+	    awsPtr->writeCount=0;
+	}
+#ifdef OPEN_CLOSE_ALL_THE_TIME
+	else {
+	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"ab5");	    
+	    if(awsPtr->currentHeaderFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentHeaderFileName);
+		}
+	    }
+	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");	    
+	    if(awsPtr->currentEventFilePtr<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentEventFileName);
+		}
+	    }
+	}
+#endif
+
+	awsPtr->writeCount++;
+	if(errorCounter<100 && awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
+//	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
+	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,sizeof(AnitaEventHeader_t));
+	    if(retVal<0) {
+		errorCounter++;
+		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+		       errorCounter,awsPtr->writeCount,
+		       gzerror(awsPtr->currentHeaderFilePtr,&retVal),retVal);
+	    }
+//	    else {
+//		fflush(awsPtr->currentHeaderFilePtr);  
+#ifdef OPEN_CLOSE_ALL_THE_TIME
+	    gzclose(awsPtr->currentHeaderFilePtr);
+#endif
+//	    }
+
+//	    retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
+	    retVal=gzwrite(awsPtr->currentEventFilePtr,outputBuffer,numBytes);
+	    if(retVal<0) {
+		errorCounter++;
+		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+		       errorCounter,awsPtr->writeCount,
+		       gzerror(awsPtr->currentEventFilePtr,&retVal),retVal);
+	    }
+//	    else {
+//		fflush(awsPtr->currentEventFilePtr);  
+#ifdef OPEN_CLOSE_ALL_THE_TIME	   
+	    gzclose(awsPtr->currentEventFilePtr);
+#endif
+//	    }
+	    
+
+	}
+	else return -1;
+	
+	
+    }
+    return -1;
+
+
+}
+
 
 
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime)
