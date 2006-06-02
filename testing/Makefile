@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets =  sillyTest simpleLOSTest simplePacketReader
+Targets =  sillyTest simpleLOSTest simplePacketReader unpackFilesForPrioritizerd
 
 all: $(Targets)
 

@@ -75,7 +75,7 @@ typedef enum {
     PACKET_WAKEUP_LOS = 0x600,
     PACKET_WAKEUP_HIGHRATE = 0x601,
     PACKET_WAKEUP_COMM1 = 0x602,
-    PACKET_WAKEUP_COMM2 = 0x603,
+    PACKET_WAKEUP_COMM2 = 0x603
 } PacketCode_t;
 
 typedef enum {
