@@ -57,7 +57,7 @@
 #define PHI_SECTORS 16
 
 //Prioritizer Stuff
-#define SURF_BITMASK 0xfffc  /* masks off the two wired-or bits for analysis */
+#define SURF_BITMASK 0x0ffc  /* masks off the two wired-or bits for analysis */
 #define HILBERT_ORDER 5 /*order used for Hilbert transforms in Stokes S3 */
 
 //Whiteheat things

@@ -58,10 +58,10 @@ int main(int argc, char *argv[]){
 		  ((theBody.channel[i]).header).firstHitbus,
 		  ((theBody.channel[i]).header).lastHitbus);
 	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
-	       fprintf(rawDumpFile,"%i %hu %d %d \n",j,
+	       fprintf(rawDumpFile,"%i %hu %f %f \n",j,
 		       (theBody.channel[i]).data[j],
-		       (theSurfTransientPS.ch[i]).data[j],
-		       (theSurfTransientUW.ch[i]).data[j]
+		       (1./256.)*(theSurfTransientPS.ch[i]).data[j],
+		       (1./256.)*(theSurfTransientUW.ch[i]).data[j]
 		       );
 	  }
 	  fprintf(rawDumpFile,"\n\n"); //end index i+1
