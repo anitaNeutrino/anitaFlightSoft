@@ -26,7 +26,7 @@
 #define MAX_CALIB_TIMES 100
 
 #define TIME_MATCH 0.05 //seconds
-#define DEFAULT_C3PO 200453324
+#define DEFAULT_C3PO 133000000
 
 int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr);
 int getCalibStatus(int unixTime);
@@ -34,6 +34,8 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr);
 int deleteGPSFiles(GpsSubTime_t *theGpsPtr);
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset);
 int readConfigFile();
+int compareGpsTimes(const void *ptr1, const void *ptr2);
+
 
 /* Directories and gubbins */
 char eventdPidFile[FILENAME_MAX];
@@ -232,7 +234,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     float fracUnix,fracTurf,fracGps;
     numGpsTimeLinks=getListofLinks(gpsdSubTimeLinkDir,&gpsSubTimeLinkList);
     
-    if(verbosity>1) 	
+    if(verbosity>1 && printToScreen) 	
 	printf("There are %d gps links.\n",numGpsTimeLinks);
    
 
@@ -253,6 +255,12 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     for(count=0;count<numGpsTimeLinks;count++)
 	free(gpsSubTimeLinkList[count]);
     free(gpsSubTimeLinkList);
+    
+    // As we are reading out two GPS units there is a chance that the times
+    // will come out of time order.
+    qsort(gpsArray,numGpsStored,sizeof(GpsSubTime_t),compareGpsTimes);
+
+
     if(printToScreen && verbosity)
 	printf("There are %d gps times stored\n",numGpsStored);
     for(count=0;count<numGpsStored;count++) {
@@ -260,10 +268,10 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	fracTurf=((float)theHeaderPtr->turfio.trigTime)/((float)DEFAULT_C3PO);
 	fracGps=((float)gpsArray[count].subTime)/1e7;
 	fracGps+=(gpsArray[count].unixTime-theHeaderPtr->unixTime);
-/* 	printf("Event %d\t%ld.%ld\t%lu\n\tGPS %ld.%d\n", */
-/* 	       theHeaderPtr->eventNumber,theHeaderPtr->unixTime, */
-/* 	       theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.trigTime, */
-	/* 	       gpsArray[count].unixTime,gpsArray[count].subTime); */
+// 	printf("Event %lu\t%ld.%ld\t%lu\n\tGPS %ld.%lu\n", 
+// 	       theHeaderPtr->eventNumber,theHeaderPtr->unixTime, 
+// 	       theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.trigTime, 
+//		       gpsArray[count].unixTime,gpsArray[count].subTime); 
 	if(printToScreen && (verbosity>1  ))
 	    printf("Event %ld\t%f\t%f\t%f\n",theHeaderPtr->eventNumber,
 		   fracUnix,fracTurf,fracGps);
@@ -319,13 +327,13 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
     /* Delete previous hd_ file */
     sprintf(theFilename,"%s/hd_%ld.dat",acqdEventDir,
 	    theHeaderPtr->eventNumber);
-    if(printToScreen && verbosity) printf("Deleting %s\n",theFilename);
+    if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
    
     /* And the link */
     sprintf(theFilename,"%s/hd_%ld.dat",acqdEventLinkDir,
 	    theHeaderPtr->eventNumber);
-    if(printToScreen && verbosity) printf("Deleting %s\n",theFilename);
+    if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
     
     return retVal;
@@ -455,7 +463,7 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
     }
 	
     double diff=computerTime-gpsTime;
-    if(verbosity>1 && printToScreen) { 
+    if(verbosity>2 && printToScreen) { 
 	printf("Old:\t%lu\t%lu\t%lu\n",lastUnixTime,lastTrigTime,lastPPSNum);
 	printf("New:\t%ld\t%lu\t%lu\n",theHeaderPtr->unixTime,
 	       theHeaderPtr->turfio.trigTime,theHeaderPtr->turfio.ppsNum);
@@ -479,12 +487,12 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
 
     sprintf(theFilename,"%s/gps_%lu_%lu.dat",gpsdSubTimeLinkDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
-    if(printToScreen && verbosity) 
+    if(printToScreen && verbosity>2) 
 	printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
     sprintf(theFilename,"%s/gps_%lu_%lu.dat",gpsdSubTimeDir,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
-    if(printToScreen && verbosity) printf("Deleting: %s\n",theFilename);
+    if(printToScreen && verbosity>2) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
     return retVal;
 }
@@ -514,4 +522,19 @@ int readConfigFile()
     
 //    printf("Debug rc3\n");
     return status;
+}
+
+int compareGpsTimes(const void *ptr1, const void *ptr2) {
+    GpsSubTime_t *gps1 = (GpsSubTime_t*) ptr1;
+    GpsSubTime_t *gps2 = (GpsSubTime_t*) ptr2;
+
+
+    if(gps1->unixTime<gps2->unixTime) return -1;
+    else if(gps1->unixTime>gps2->unixTime) return 1;
+
+    if(gps1->subTime<gps2->subTime) return -1;
+    else if(gps1->subTime>gps2->subTime) return 1;
+    
+    return 0;
+
 }

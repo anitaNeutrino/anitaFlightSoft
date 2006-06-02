@@ -5,6 +5,7 @@
     March 2005 rjn@mps.ohio-state.edu
 */
 #include "Prioritizerd.h"
+//#define TIME_DEBUG 1
 
 int useUsbDisks=0;
 int maxEventsPerDir=1000;
@@ -16,6 +17,9 @@ char prioritizerdEventLinkDir[FILENAME_MAX];
 
 char prioritizerdPidFile[FILENAME_MAX];
 
+#ifdef TIME_DEBUG
+FILE *timeFile;
+#endif    
 int main (int argc, char *argv[])
 {
     int retVal,count;
@@ -45,6 +49,16 @@ int main (int argc, char *argv[])
    /*Event object*/
     AnitaEventHeader_t theHeader;
     AnitaEventBody_t theBody;
+
+
+#ifdef TIME_DEBUG
+    struct timeval timeStruct2;
+    timeFile = fopen("/tmp/priTimeLog.txt","w");
+    if(!timeFile) {
+	fprintf(stderr,"Couldn't open time file\n");
+	exit(0);
+    }
+#endif
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -93,14 +107,31 @@ int main (int argc, char *argv[])
 	
 
     }
-    
+
+    makeDirectories(HEADER_TELEM_LINK_DIR);
+    makeDirectories(HEADER_TELEM_DIR);
     
     retVal=0;
     /* Main event getting loop. */
     while(1) {
-	usleep(1);
+
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+//	usleep(1);
 	numEventLinks=getListofLinks(eventdEventLinkDir,&eventLinkList);
-	printf("Got %d events\n",numEventLinks);
+
+	if(!numEventLinks) {
+	    usleep(1000);
+	    continue;
+	}
+
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+//	printf("Got %d events\n",numEventLinks);
 	/* What to do with our events? */	
 	for(count=0;count<numEventLinks;count++) {
  	    printf("%s\n",eventLinkList[count]->d_name); 
@@ -111,10 +142,22 @@ int main (int argc, char *argv[])
 		    doingEvent);
 	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
 		    doingEvent);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    
 
 	    retVal=fillBody(&theBody,bodyFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    retVal=fillHeader(&theHeader,hdFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    
 	    //Must determine priority here
 	    priority=1;
@@ -124,21 +167,53 @@ int main (int argc, char *argv[])
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",prioritizerdEventDir,
 		    theHeader.eventNumber);
 	    writeBody(&theBody,archiveBodyFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    sprintf(archiveHdFilename,"%s/hd_%lu.dat",prioritizerdEventDir,
 		    theHeader.eventNumber);
 	    writeHeader(&theHeader,archiveHdFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    makeLink(archiveHdFilename,prioritizerdEventLinkDir);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
     
-	    //Write Header and make Link for telemetry 	    
-	    sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
-		    doingEvent);
-	    retVal=writeHeader(&theHeader,telemHdFilename);
-	    makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
+	//Write Header and make Link for telemetry 	    
+	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
+		doingEvent);
+	retVal=writeHeader(&theHeader,telemHdFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+	makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 
 	    /* Delete input */
 	    removeFile(linkFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    removeFile(bodyFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    removeFile(hdFilename);
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	}
 	
 	/* Free up the space used by dir queries */

@@ -137,6 +137,9 @@ int dacIMin; // minimum integrator state
 int enableChanServo = FALSE; //Turn on the individual chanel servo
 int pidGoal;
 int pidAverage;
+int lastRateTime=0;
+int lastEventCounter=0;
+int calculateRateAfter=5;
 
 //RFCM Mask
 //1 is disable
@@ -313,7 +316,6 @@ int main(int argc, char **argv) {
 	    gotSurfHk=0;
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-//	    fprintf(stderr,"while() { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 	    fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    if(standAloneMode && (numEvents && numEvents<doingEvent)) {
@@ -333,7 +335,7 @@ int main(int argc, char **argv) {
 		dacVal=doingDacVal;
 		theScalers.threshold=dacVal;
 		if(printToScreen) 
-		    printf("Setting Local Threshold %d\n",dacVal);
+		    printf("Setting Local Threshold %d\r",dacVal);
 		setGloablDACThreshold(surfHandles,dacVal);	
 		theSurfHk.globalThreshold=dacVal;
 		if(doingDacVal>4095) exit(0);//doingDacVal=0;
@@ -461,7 +463,7 @@ int main(int argc, char **argv) {
 				    setDACThresholds(surfHandles);
 				
 				
-				gettimeofday(&timeStruct,NULL);
+//				gettimeofday(&timeStruct,NULL);
 
 //				printf("Post Read Time %lu secs, %lu microsecs\n",
 //				       timeStruct.tv_sec,
@@ -521,11 +523,22 @@ int main(int argc, char **argv) {
 	    if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
 		printf("  failed to send clear event pulse on TURFIO.\n") ;
 
-
-
-
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
+	    
+	    if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
+		//Make rate calculation;
+		if((doingEvent-lastEventCounter)>0) {
+		    printf("Current Rate %3.2f Hz\n",(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
+//		    if(lastEventCounter<200) 
+//			printf("\n");
+		}
+		lastRateTime=timeStruct.tv_sec;
+		lastEventCounter=doingEvent;
+	    }
+	    
+
+
 #ifdef TIME_DEBUG
 //	    fprintf(stderr,"readSurfEventData -- start %ld s, %ld ms\n",timeStruct.tv_sec,timeStruct.tv_usec);
 	    fprintf(timeFile,"4 %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec);  
