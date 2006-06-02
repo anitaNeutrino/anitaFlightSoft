@@ -14,10 +14,9 @@ channel.
 
 There is another file for antenna level. The order is:
 
-top ring: phi=0->15
-bottom ring: phi=0>15
-bicones in phi order
+Seaveys in antenna number order
 discones in phi order
+bicones in phi order
 
 the columns are as follows:
 
@@ -31,5 +30,11 @@ the columns are as follows:
 8: s2
 9: s3
 
+For the discones and bicones we have
+
+1: sample number
+2: signal
+3: gain matched
+4: power 
 
 There will be another file for coincidence debugging.

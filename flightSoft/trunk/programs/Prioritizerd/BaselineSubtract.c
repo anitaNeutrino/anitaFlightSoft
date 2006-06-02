@@ -1,3 +1,5 @@
+#include "anitaFilght.h"
+#include "BaselineSubtract.h"
 
 int BaselineSubtract(AnitaTransientBody8_t *surfTransient){
 /* subtract the DC offset, in place */
@@ -16,5 +18,6 @@ int BaselineSubtract(AnitaTransientBody8_t *surfTransient){
 	  }
 	  (surfTransient->ch[digCh]).baseline=baseline/nsamples;
      }
+     return 0;
 }       
      
