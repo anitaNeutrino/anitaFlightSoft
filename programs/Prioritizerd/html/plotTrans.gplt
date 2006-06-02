@@ -1,6 +1,6 @@
-set term png 
+set term png size 1024,768
 set autoscale
-set xrange [0:256]
+set xrange [0:260]
 set data style lines
 set output "plots/SURF0C0raw.png"
 plot "current.txt" index 1 using 1:2 notitle
