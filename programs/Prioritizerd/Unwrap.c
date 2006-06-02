@@ -1,20 +1,21 @@
 /* Unwrap the Labrador records */
 #include "Unwrap.h"
 
-unsigned char wrapOffset[surf][chip][chan];
+unsigned char wrapOffset[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF];
 
 int readWrapOffsets(int offsetOption){
-     int surf,chip,chan;
+     int surf,lab,chan;
      /* just set all to offsetOption for now; 
 	if needed negative options can be used to control
 	reading these from a file.*/
-     do (surf=0; surf<ACTIVE_SURFS; surf++){
-	  do (lab=0;lab<LABRADORS_PER_SURF;lab++){
-	       do (chan=0; chan<CHANNELS_PER_SURF;chan++){
-		    wrapOffset[surf][chip][chan]=offsetOption;
+     for (surf=0; surf<ACTIVE_SURFS; surf++){
+	  for (lab=0;lab<LABRADORS_PER_SURF;lab++){
+	       for (chan=0; chan<CHANNELS_PER_SURF;chan++){
+		    wrapOffset[surf][lab][chan]=offsetOption;
 		}
 	   }
       }
+     return 0;
 }
 
 int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
@@ -24,10 +25,18 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
      int digCh, surf,chan,chip,samp, splice;
      unsigned char chanId,chipIdFlag;
      unsigned char firstHitbus, lastHitbus, wrapped, offset;
-     do (digCh=0; digCh<NUM_DIGITIZED_CHANNELS; digch++){
+     // initialize the output transient to zero for debuggging
+     // this can be commented out once we are sure everything is unwrapped OK
+     for (digCh=0; digCh<NUM_DIGITZED_CHANNELS; digCh++){
+	  for(samp=0; samp<MAX_NUMBER_SAMPLES; samp++){
+	       (surfTransientUW->ch[digCh]).data[samp]=0;
+	  }
+     }
+     // end initialization
+     for (digCh=0; digCh<NUM_DIGITZED_CHANNELS; digCh++){
 	  chanId=((rawSurfEvent->channel[digCh]).header).chanId;
 	  chipIdFlag=((rawSurfEvent->channel[digCh]).header).chipIdFlag;
-	  surf=chanId/9; chan=chanid%9;
+	  surf=chanId/9; chan=chanId%9;
 	  chip=(chipIdFlag & 0x3);
 	  wrapped=(chipIdFlag & 0x08)>>3;
 	  firstHitbus=((rawSurfEvent->channel[digCh]).header).firstHitbus;
@@ -37,7 +46,7 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 	  if (wrapped==0){ /* good data is from lastHitbus+1 to end,
 			      then from beginning to firstHitbus-1
 			   */
-	       do (samp=lastHitbus+1;samp<MAX_NUMBER_SAMPLES; samp++){
+	       for (samp=lastHitbus+1;samp<MAX_NUMBER_SAMPLES; samp++){
 		    (surfTransientUW->ch[digCh]).data[samp-(lastHitbus+1)]=
 			 (surfTransientPS->ch[digCh]).data[samp];
 	       }
@@ -46,7 +55,7 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 	       offset=wrapOffset[surf][chip][chan];
 	       /* offset is how many samples from the end 
 		  are repeated at beginning */
-	       do (samp=offset;samp<firstHitbus;samp++){
+	       for (samp=offset;samp<firstHitbus;samp++){
 		    (surfTransientUW->ch[digCh]).data[samp+splice-offset]=
 			 (surfTransientPS->ch[digCh]).data[samp];
 	       }
@@ -57,7 +66,7 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 	  else if (wrapped==1){ /*good data is from firstHitbus+1
 				  to lastHitbus-1
 				*/
-	       do (samp=firstHitbus+1;samp<lastHitbus; samp++){
+	       for (samp=firstHitbus+1;samp<lastHitbus; samp++){
 		    (surfTransientUW->ch[digCh]).data[samp-(firstHitbus+1)]=
 			 (surfTransientPS->ch[digCh]).data[samp];
 	       }
@@ -65,4 +74,5 @@ int unwrapTransient(AnitaEventBody_t *rawSurfEvent,
 		    lastHitbus-(firstHitbus+1);
 	  }
      }
+     return 0;
 }

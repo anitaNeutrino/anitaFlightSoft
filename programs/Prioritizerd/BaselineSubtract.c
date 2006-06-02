@@ -3,7 +3,7 @@ int BaselineSubtract(AnitaTransientBody8_t *surfTransient){
 /* subtract the DC offset, in place */
      int digCh,samp,nsamples;
      Fixed8_t baseline;
-     do (digCh=0; digCh<NUM_DIGITIZED_CHANNELS; digch++){
+     do (digCh=0; digCh<NUM_DIGITZED_CHANNELS; digch++){
 	  nsamples=(surfTransient->ch[digCh]).valid_samples;
 	  baseline=0;
 	  do (samp=0;samp<nsamples; samp++){

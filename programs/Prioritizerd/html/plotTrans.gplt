@@ -1,9 +1,500 @@
-set term png interlace
+set term png 
 set autoscale
 set xrange [0:256]
-set style data lines
-set output "T0Hraw.png"
-plot "current.dat" index 0 using 1:2 notitle
-set output "T0Vraw.png"
-plot "current.dat" index 0 using 1:2 notitle
-
+set data style lines
+set output "plots/SURF0C0raw.png"
+plot "current.txt" index 1 using 1:2 notitle
+set output "plots/SURF0C1raw.png"
+plot "current.txt" index 2 using 1:2 notitle
+set output "plots/SURF0C2raw.png"
+plot "current.txt" index 3 using 1:2 notitle
+set output "plots/SURF0C3raw.png"
+plot "current.txt" index 4 using 1:2 notitle
+set output "plots/SURF0C4raw.png"
+plot "current.txt" index 5 using 1:2 notitle
+set output "plots/SURF0C5raw.png"
+plot "current.txt" index 6 using 1:2 notitle
+set output "plots/SURF0C6raw.png"
+plot "current.txt" index 7 using 1:2 notitle
+set output "plots/SURF0C7raw.png"
+plot "current.txt" index 8 using 1:2 notitle
+set output "plots/SURF0C8raw.png"
+plot "current.txt" index 9 using 1:2 notitle
+set output "plots/SURF1C0raw.png"
+plot "current.txt" index 10 using 1:2 notitle
+set output "plots/SURF1C1raw.png"
+plot "current.txt" index 11 using 1:2 notitle
+set output "plots/SURF1C2raw.png"
+plot "current.txt" index 12 using 1:2 notitle
+set output "plots/SURF1C3raw.png"
+plot "current.txt" index 13 using 1:2 notitle
+set output "plots/SURF1C4raw.png"
+plot "current.txt" index 14 using 1:2 notitle
+set output "plots/SURF1C5raw.png"
+plot "current.txt" index 15 using 1:2 notitle
+set output "plots/SURF1C6raw.png"
+plot "current.txt" index 16 using 1:2 notitle
+set output "plots/SURF1C7raw.png"
+plot "current.txt" index 17 using 1:2 notitle
+set output "plots/SURF1C8raw.png"
+plot "current.txt" index 18 using 1:2 notitle
+set output "plots/SURF2C0raw.png"
+plot "current.txt" index 19 using 1:2 notitle
+set output "plots/SURF2C1raw.png"
+plot "current.txt" index 20 using 1:2 notitle
+set output "plots/SURF2C2raw.png"
+plot "current.txt" index 21 using 1:2 notitle
+set output "plots/SURF2C3raw.png"
+plot "current.txt" index 22 using 1:2 notitle
+set output "plots/SURF2C4raw.png"
+plot "current.txt" index 23 using 1:2 notitle
+set output "plots/SURF2C5raw.png" 
+plot "current.txt" index 24 using 1:2 notitle
+set output "plots/SURF2C6raw.png"
+plot "current.txt" index 25 using 1:2 notitle
+set output "plots/SURF2C7raw.png"
+plot "current.txt" index 26 using 1:2 notitle
+set output "plots/SURF2C8raw.png"
+plot "current.txt" index 27 using 1:2 notitle
+set output "plots/SURF3C0raw.png"
+plot "current.txt" index 28 using 1:2 notitle
+set output "plots/SURF3C1raw.png"
+plot "current.txt" index 29 using 1:2 notitle
+set output "plots/SURF3C2raw.png"
+plot "current.txt" index 30 using 1:2 notitle
+set output "plots/SURF3C3raw.png"
+plot "current.txt" index 31 using 1:2 notitle
+set output "plots/SURF3C4raw.png"
+plot "current.txt" index 32 using 1:2 notitle
+set output "plots/SURF3C5raw.png"
+plot "current.txt" index 33 using 1:2 notitle
+set output "plots/SURF3C6raw.png"
+plot "current.txt" index 34 using 1:2 notitle
+set output "plots/SURF3C7raw.png"
+plot "current.txt" index 35 using 1:2 notitle
+set output "plots/SURF3C8raw.png"
+plot "current.txt" index 36 using 1:2 notitle
+set output "plots/SURF4C0raw.png"
+plot "current.txt" index 37 using 1:2 notitle
+set output "plots/SURF4C1raw.png"
+plot "current.txt" index 38 using 1:2 notitle
+set output "plots/SURF4C2raw.png"
+plot "current.txt" index 39 using 1:2 notitle
+set output "plots/SURF4C3raw.png"
+plot "current.txt" index 40 using 1:2 notitle
+set output "plots/SURF4C4raw.png"
+plot "current.txt" index 41 using 1:2 notitle
+set output "plots/SURF4C5raw.png"
+plot "current.txt" index 42using 1:2 notitle
+set output "plots/SURF4C6raw.png
+plot "current.txt" index 43 using 1:2 notitle
+set output "plots/SURF4C7raw.png"
+plot "current.txt" index 44 using 1:2 notitle
+set output "plots/SURF4C8raw.png"
+plot "current.txt" index 45  using 1:2 notitle
+set output "plots/SURF5C0raw.png"
+plot "current.txt" index 46 using 1:2 notitle
+set output "plots/SURF5C1raw.png"
+plot "current.txt" index 47 using 1:2 notitle
+set output "plots/SURF5C2raw.png"
+plot "current.txt" index 48 using 1:2 notitle
+set output "plots/SURF5C3raw.png"
+plot "current.txt" index 49 using 1:2 notitle
+set output "plots/SURF5C4raw.png"
+plot "current.txt" index 50 using 1:2 notitle
+set output "plots/SURF5C5raw.png"
+plot "current.txt" index 51 using 1:2 notitle
+set output "plots/SURF5C6raw.png"
+plot "current.txt" index 52 using 1:2 notitle
+set output "plots/SURF5C7raw.png"
+plot "current.txt" index 53 using 1:2 notitle
+set output "plots/SURF5C8raw.png"
+plot "current.txt" index 54 using 1:2 notitle
+set output "plots/SURF6C0raw.png"
+plot "current.txt" index 55 using 1:2 notitle
+set output "plots/SURF6C1raw.png"
+plot "current.txt" index 56 using 1:2 notitle
+set output "plots/SURF6C2raw.png"
+plot "current.txt" index 57 using 1:2 notitle
+set output "plots/SURF6C3raw.png"
+plot "current.txt" index 58 using 1:2 notitle
+set output "plots/SURF6C4raw.png"
+plot "current.txt" index 59 using 1:2 notitle
+set output "plots/SURF6C5raw.png"
+plot "current.txt" index 60 using 1:2 notitle
+set output "plots/SURF6C6raw.png"
+plot "current.txt" index 61 using 1:2 notitle
+set output "plots/SURF6C7raw.png"
+plot "current.txt" index 62 using 1:2 notitle
+set output "plots/SURF6C8raw.png"
+plot "current.txt" index 63 using 1:2 notitle
+set output "plots/SURF7C0raw.png"
+plot "current.txt" index 64 using 1:2 notitle
+set output "plots/SURF7C1raw.png"
+plot "current.txt" index 65 using 1:2 notitle
+set output "plots/SURF7C2raw.png"
+plot "current.txt" index 66 using 1:2 notitle
+set output "plots/SURF7C3raw.png"
+plot "current.txt" index 67 using 1:2 notitle
+set output "plots/SURF7C4raw.png"
+plot "current.txt" index 68 using 1:2 notitle
+set output "plots/SURF7C5raw.png"
+plot "current.txt" index 69 using 1:2 notitle
+set output "plots/SURF7C6raw.png"
+plot "current.txt" index 70 using 1:2 notitle
+set output "plots/SURF7C7raw.png"
+plot "current.txt" index 71 using 1:2 notitle
+set output "plots/SURF7C8raw.png"
+plot "current.txt" index 72 using 1:2 notitle
+set output "plots/SURF8C0raw.png"
+plot "current.txt" index 73 using 1:2 notitle
+set output "plots/SURF8C1raw.png"
+plot "current.txt" index 74 using 1:2 notitle
+set output "plots/SURF8C2raw.png"
+plot "current.txt" index 75 using 1:2 notitle
+set output "plots/SURF8C3raw.png"
+plot "current.txt" index 76  using 1:2 notitle
+set output "plots/SURF8C4raw.png"
+plot "current.txt" index 77 using 1:2 notitle
+set output "plots/SURF8C5raw.png"
+plot "current.txt" index 78 using 1:2 notitle
+set output "plots/SURF8C6raw.png"
+plot "current.txt" index 79 using 1:2 notitle
+set output "plots/SURF8C7raw.png"
+plot "current.txt" index 80 using 1:2 notitle
+set output "plots/SURF8C8raw.png"
+plot "current.txt" index 81 using 1:2 notitle
+#
+#begin pedestal subtracted plots
+#
+set output "plots/SURF0C0pedsub.png"
+plot "current.txt" index 1 using 1:3 notitle
+set output "plots/SURF0C1pedsub.png"
+plot "current.txt" index 2 using 1:3 notitle
+set output "plots/SURF0C2pedsub.png"
+plot "current.txt" index 3 using 1:3 notitle
+set output "plots/SURF0C3pedsub.png"
+plot "current.txt" index 4 using 1:3 notitle
+set output "plots/SURF0C4pedsub.png"
+plot "current.txt" index 5 using 1:3 notitle
+set output "plots/SURF0C5pedsub.png"
+plot "current.txt" index 6 using 1:3 notitle
+set output "plots/SURF0C6pedsub.png"
+plot "current.txt" index 7 using 1:3 notitle
+set output "plots/SURF0C7pedsub.png"
+plot "current.txt" index 8 using 1:3 notitle
+set output "plots/SURF0C8pedsub.png"
+plot "current.txt" index 9 using 1:3 notitle
+set output "plots/SURF1C0pedsub.png"
+plot "current.txt" index 10 using 1:3 notitle
+set output "plots/SURF1C1pedsub.png"
+plot "current.txt" index 11 using 1:3 notitle
+set output "plots/SURF1C2pedsub.png"
+plot "current.txt" index 12 using 1:3 notitle
+set output "plots/SURF1C3pedsub.png"
+plot "current.txt" index 13 using 1:3 notitle
+set output "plots/SURF1C4pedsub.png"
+plot "current.txt" index 14 using 1:3 notitle
+set output "plots/SURF1C5pedsub.png"
+plot "current.txt" index 15 using 1:3 notitle
+set output "plots/SURF1C6pedsub.png"
+plot "current.txt" index 16 using 1:3 notitle
+set output "plots/SURF1C7pedsub.png"
+plot "current.txt" index 17 using 1:3 notitle
+set output "plots/SURF1C8pedsub.png"
+plot "current.txt" index 18 using 1:3 notitle
+set output "plots/SURF2C0pedsub.png"
+plot "current.txt" index 19 using 1:3 notitle
+set output "plots/SURF2C1pedsub.png"
+plot "current.txt" index 20 using 1:3 notitle
+set output "plots/SURF2C2pedsub.png"
+plot "current.txt" index 21 using 1:3 notitle
+set output "plots/SURF2C3pedsub.png"
+plot "current.txt" index 22 using 1:3 notitle
+set output "plots/SURF2C4pedsub.png"
+plot "current.txt" index 23 using 1:3 notitle
+set output "plots/SURF2C5pedsub.png" 
+plot "current.txt" index 24 using 1:3 notitle
+set output "plots/SURF2C6pedsub.png"
+plot "current.txt" index 25 using 1:3 notitle
+set output "plots/SURF2C7pedsub.png"
+plot "current.txt" index 26 using 1:3 notitle
+set output "plots/SURF2C8pedsub.png"
+plot "current.txt" index 27 using 1:3 notitle
+set output "plots/SURF3C0pedsub.png"
+plot "current.txt" index 28 using 1:3 notitle
+set output "plots/SURF3C1pedsub.png"
+plot "current.txt" index 29 using 1:3 notitle
+set output "plots/SURF3C2pedsub.png"
+plot "current.txt" index 30 using 1:3 notitle
+set output "plots/SURF3C3pedsub.png"
+plot "current.txt" index 31 using 1:3 notitle
+set output "plots/SURF3C4pedsub.png"
+plot "current.txt" index 32 using 1:3 notitle
+set output "plots/SURF3C5pedsub.png"
+plot "current.txt" index 33 using 1:3 notitle
+set output "plots/SURF3C6pedsub.png"
+plot "current.txt" index 34 using 1:3 notitle
+set output "plots/SURF3C7pedsub.png"
+plot "current.txt" index 35 using 1:3 notitle
+set output "plots/SURF3C8pedsub.png"
+plot "current.txt" index 36 using 1:3 notitle
+set output "plots/SURF4C0pedsub.png"
+plot "current.txt" index 37 using 1:3 notitle
+set output "plots/SURF4C1pedsub.png"
+plot "current.txt" index 38 using 1:3 notitle
+set output "plots/SURF4C2pedsub.png"
+plot "current.txt" index 39 using 1:3 notitle
+set output "plots/SURF4C3pedsub.png"
+plot "current.txt" index 40 using 1:3 notitle
+set output "plots/SURF4C4pedsub.png"
+plot "current.txt" index 41 using 1:3 notitle
+set output "plots/SURF4C5pedsub.png"
+plot "current.txt" index 42using 1:3 notitle
+set output "plots/SURF4C6pedsub.png
+plot "current.txt" index 43 using 1:3 notitle
+set output "plots/SURF4C7pedsub.png"
+plot "current.txt" index 44 using 1:3 notitle
+set output "plots/SURF4C8pedsub.png"
+plot "current.txt" index 45  using 1:3 notitle
+set output "plots/SURF5C0pedsub.png"
+plot "current.txt" index 46 using 1:3 notitle
+set output "plots/SURF5C1pedsub.png"
+plot "current.txt" index 47 using 1:3 notitle
+set output "plots/SURF5C2pedsub.png"
+plot "current.txt" index 48 using 1:3 notitle
+set output "plots/SURF5C3pedsub.png"
+plot "current.txt" index 49 using 1:3 notitle
+set output "plots/SURF5C4pedsub.png"
+plot "current.txt" index 50 using 1:3 notitle
+set output "plots/SURF5C5pedsub.png"
+plot "current.txt" index 51 using 1:3 notitle
+set output "plots/SURF5C6pedsub.png"
+plot "current.txt" index 52 using 1:3 notitle
+set output "plots/SURF5C7pedsub.png"
+plot "current.txt" index 53 using 1:3 notitle
+set output "plots/SURF5C8pedsub.png"
+plot "current.txt" index 54 using 1:3 notitle
+set output "plots/SURF6C0pedsub.png"
+plot "current.txt" index 55 using 1:3 notitle
+set output "plots/SURF6C1pedsub.png"
+plot "current.txt" index 56 using 1:3 notitle
+set output "plots/SURF6C2pedsub.png"
+plot "current.txt" index 57 using 1:3 notitle
+set output "plots/SURF6C3pedsub.png"
+plot "current.txt" index 58 using 1:3 notitle
+set output "plots/SURF6C4pedsub.png"
+plot "current.txt" index 59 using 1:3 notitle
+set output "plots/SURF6C5pedsub.png"
+plot "current.txt" index 60 using 1:3 notitle
+set output "plots/SURF6C6pedsub.png"
+plot "current.txt" index 61 using 1:3 notitle
+set output "plots/SURF6C7pedsub.png"
+plot "current.txt" index 62 using 1:3 notitle
+set output "plots/SURF6C8pedsub.png"
+plot "current.txt" index 63 using 1:3 notitle
+set output "plots/SURF7C0pedsub.png"
+plot "current.txt" index 64 using 1:3 notitle
+set output "plots/SURF7C1pedsub.png"
+plot "current.txt" index 65 using 1:3 notitle
+set output "plots/SURF7C2pedsub.png"
+plot "current.txt" index 66 using 1:3 notitle
+set output "plots/SURF7C3pedsub.png"
+plot "current.txt" index 67 using 1:3 notitle
+set output "plots/SURF7C4pedsub.png"
+plot "current.txt" index 68 using 1:3 notitle
+set output "plots/SURF7C5pedsub.png"
+plot "current.txt" index 69 using 1:3 notitle
+set output "plots/SURF7C6pedsub.png"
+plot "current.txt" index 70 using 1:3 notitle
+set output "plots/SURF7C7pedsub.png"
+plot "current.txt" index 71 using 1:3 notitle
+set output "plots/SURF7C8pedsub.png"
+plot "current.txt" index 72 using 1:3 notitle
+set output "plots/SURF8C0pedsub.png"
+plot "current.txt" index 73 using 1:3 notitle
+set output "plots/SURF8C1pedsub.png"
+plot "current.txt" index 74 using 1:3 notitle
+set output "plots/SURF8C2pedsub.png"
+plot "current.txt" index 75 using 1:3 notitle
+set output "plots/SURF8C3pedsub.png"
+plot "current.txt" index 76  using 1:3 notitle
+set output "plots/SURF8C4pedsub.png"
+plot "current.txt" index 77 using 1:3 notitle
+set output "plots/SURF8C5pedsub.png"
+plot "current.txt" index 78 using 1:3 notitle
+set output "plots/SURF8C6pedsub.png"
+plot "current.txt" index 79 using 1:3 notitle
+set output "plots/SURF8C7pedsub.png"
+plot "current.txt" index 80 using 1:3 notitle
+set output "plots/SURF8C8pedsub.png"
+plot "current.txt" index 81 using 1:3 notitle
+#
+#begin unwrapped plots
+#
+set output "plots/SURF0C0unwrap.png"
+plot "current.txt" index 1 using 1:4 notitle
+set output "plots/SURF0C1unwrap.png"
+plot "current.txt" index 2 using 1:4 notitle
+set output "plots/SURF0C2unwrap.png"
+plot "current.txt" index 3 using 1:4 notitle
+set output "plots/SURF0C3unwrap.png"
+plot "current.txt" index 4 using 1:4 notitle
+set output "plots/SURF0C4unwrap.png"
+plot "current.txt" index 5 using 1:4 notitle
+set output "plots/SURF0C5unwrap.png"
+plot "current.txt" index 6 using 1:4 notitle
+set output "plots/SURF0C6unwrap.png"
+plot "current.txt" index 7 using 1:4 notitle
+set output "plots/SURF0C7unwrap.png"
+plot "current.txt" index 8 using 1:4 notitle
+set output "plots/SURF0C8unwrap.png"
+plot "current.txt" index 9 using 1:4 notitle
+set output "plots/SURF1C0unwrap.png"
+plot "current.txt" index 10 using 1:4 notitle
+set output "plots/SURF1C1unwrap.png"
+plot "current.txt" index 11 using 1:4 notitle
+set output "plots/SURF1C2unwrap.png"
+plot "current.txt" index 12 using 1:4 notitle
+set output "plots/SURF1C3unwrap.png"
+plot "current.txt" index 13 using 1:4 notitle
+set output "plots/SURF1C4unwrap.png"
+plot "current.txt" index 14 using 1:4 notitle
+set output "plots/SURF1C5unwrap.png"
+plot "current.txt" index 15 using 1:4 notitle
+set output "plots/SURF1C6unwrap.png"
+plot "current.txt" index 16 using 1:4 notitle
+set output "plots/SURF1C7unwrap.png"
+plot "current.txt" index 17 using 1:4 notitle
+set output "plots/SURF1C8unwrap.png"
+plot "current.txt" index 18 using 1:4 notitle
+set output "plots/SURF2C0unwrap.png"
+plot "current.txt" index 19 using 1:4 notitle
+set output "plots/SURF2C1unwrap.png"
+plot "current.txt" index 20 using 1:4 notitle
+set output "plots/SURF2C2unwrap.png"
+plot "current.txt" index 21 using 1:4 notitle
+set output "plots/SURF2C3unwrap.png"
+plot "current.txt" index 22 using 1:4 notitle
+set output "plots/SURF2C4unwrap.png"
+plot "current.txt" index 23 using 1:4 notitle
+set output "plots/SURF2C5unwrap.png" 
+plot "current.txt" index 24 using 1:4 notitle
+set output "plots/SURF2C6unwrap.png"
+plot "current.txt" index 25 using 1:4 notitle
+set output "plots/SURF2C7unwrap.png"
+plot "current.txt" index 26 using 1:4 notitle
+set output "plots/SURF2C8unwrap.png"
+plot "current.txt" index 27 using 1:4 notitle
+set output "plots/SURF3C0unwrap.png"
+plot "current.txt" index 28 using 1:4 notitle
+set output "plots/SURF3C1unwrap.png"
+plot "current.txt" index 29 using 1:4 notitle
+set output "plots/SURF3C2unwrap.png"
+plot "current.txt" index 30 using 1:4 notitle
+set output "plots/SURF3C3unwrap.png"
+plot "current.txt" index 31 using 1:4 notitle
+set output "plots/SURF3C4unwrap.png"
+plot "current.txt" index 32 using 1:4 notitle
+set output "plots/SURF3C5unwrap.png"
+plot "current.txt" index 33 using 1:4 notitle
+set output "plots/SURF3C6unwrap.png"
+plot "current.txt" index 34 using 1:4 notitle
+set output "plots/SURF3C7unwrap.png"
+plot "current.txt" index 35 using 1:4 notitle
+set output "plots/SURF3C8unwrap.png"
+plot "current.txt" index 36 using 1:4 notitle
+set output "plots/SURF4C0unwrap.png"
+plot "current.txt" index 37 using 1:4 notitle
+set output "plots/SURF4C1unwrap.png"
+plot "current.txt" index 38 using 1:4 notitle
+set output "plots/SURF4C2unwrap.png"
+plot "current.txt" index 39 using 1:4 notitle
+set output "plots/SURF4C3unwrap.png"
+plot "current.txt" index 40 using 1:4 notitle
+set output "plots/SURF4C4unwrap.png"
+plot "current.txt" index 41 using 1:4 notitle
+set output "plots/SURF4C5unwrap.png"
+plot "current.txt" index 42using 1:4 notitle
+set output "plots/SURF4C6unwrap.png
+plot "current.txt" index 43 using 1:4 notitle
+set output "plots/SURF4C7unwrap.png"
+plot "current.txt" index 44 using 1:4 notitle
+set output "plots/SURF4C8unwrap.png"
+plot "current.txt" index 45  using 1:4 notitle
+set output "plots/SURF5C0unwrap.png"
+plot "current.txt" index 46 using 1:4 notitle
+set output "plots/SURF5C1unwrap.png"
+plot "current.txt" index 47 using 1:4 notitle
+set output "plots/SURF5C2unwrap.png"
+plot "current.txt" index 48 using 1:4 notitle
+set output "plots/SURF5C3unwrap.png"
+plot "current.txt" index 49 using 1:4 notitle
+set output "plots/SURF5C4unwrap.png"
+plot "current.txt" index 50 using 1:4 notitle
+set output "plots/SURF5C5unwrap.png"
+plot "current.txt" index 51 using 1:4 notitle
+set output "plots/SURF5C6unwrap.png"
+plot "current.txt" index 52 using 1:4 notitle
+set output "plots/SURF5C7unwrap.png"
+plot "current.txt" index 53 using 1:4 notitle
+set output "plots/SURF5C8unwrap.png"
+plot "current.txt" index 54 using 1:4 notitle
+set output "plots/SURF6C0unwrap.png"
+plot "current.txt" index 55 using 1:4 notitle
+set output "plots/SURF6C1unwrap.png"
+plot "current.txt" index 56 using 1:4 notitle
+set output "plots/SURF6C2unwrap.png"
+plot "current.txt" index 57 using 1:4 notitle
+set output "plots/SURF6C3unwrap.png"
+plot "current.txt" index 58 using 1:4 notitle
+set output "plots/SURF6C4unwrap.png"
+plot "current.txt" index 59 using 1:4 notitle
+set output "plots/SURF6C5unwrap.png"
+plot "current.txt" index 60 using 1:4 notitle
+set output "plots/SURF6C6unwrap.png"
+plot "current.txt" index 61 using 1:4 notitle
+set output "plots/SURF6C7unwrap.png"
+plot "current.txt" index 62 using 1:4 notitle
+set output "plots/SURF6C8unwrap.png"
+plot "current.txt" index 63 using 1:4 notitle
+set output "plots/SURF7C0unwrap.png"
+plot "current.txt" index 64 using 1:4 notitle
+set output "plots/SURF7C1unwrap.png"
+plot "current.txt" index 65 using 1:4 notitle
+set output "plots/SURF7C2unwrap.png"
+plot "current.txt" index 66 using 1:4 notitle
+set output "plots/SURF7C3unwrap.png"
+plot "current.txt" index 67 using 1:4 notitle
+set output "plots/SURF7C4unwrap.png"
+plot "current.txt" index 68 using 1:4 notitle
+set output "plots/SURF7C5unwrap.png"
+plot "current.txt" index 69 using 1:4 notitle
+set output "plots/SURF7C6unwrap.png"
+plot "current.txt" index 70 using 1:4 notitle
+set output "plots/SURF7C7unwrap.png"
+plot "current.txt" index 71 using 1:4 notitle
+set output "plots/SURF7C8unwrap.png"
+plot "current.txt" index 72 using 1:4 notitle
+set output "plots/SURF8C0unwrap.png"
+plot "current.txt" index 73 using 1:4 notitle
+set output "plots/SURF8C1unwrap.png"
+plot "current.txt" index 74 using 1:4 notitle
+set output "plots/SURF8C2unwrap.png"
+plot "current.txt" index 75 using 1:4 notitle
+set output "plots/SURF8C3unwrap.png"
+plot "current.txt" index 76  using 1:4 notitle
+set output "plots/SURF8C4unwrap.png"
+plot "current.txt" index 77 using 1:4 notitle
+set output "plots/SURF8C5unwrap.png"
+plot "current.txt" index 78 using 1:4 notitle
+set output "plots/SURF8C6unwrap.png"
+plot "current.txt" index 79 using 1:4 notitle
+set output "plots/SURF8C7unwrap.png"
+plot "current.txt" index 80 using 1:4 notitle
+set output "plots/SURF8C8unwrap.png"
+plot "current.txt" index 81 using 1:4 notitle
+#
+# we are done!
+#
+quit

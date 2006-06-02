@@ -5,8 +5,6 @@
 #include "anitaFlight.h"
 #include "anitaStructures.h"
 
-PedestalStruct_t currentPedestals;
-
 typedef enum {
     kZeroPed,
     kDefaultPed,
