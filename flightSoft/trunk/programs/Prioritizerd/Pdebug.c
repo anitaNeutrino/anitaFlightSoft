@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
 		  ((theBody.channel[i]).header).firstHitbus,
 		  ((theBody.channel[i]).header).lastHitbus);
 	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
-	       fprintf(rawDumpFile,"%i %hu %d %d \n",i,
+	       fprintf(rawDumpFile,"%i %hu %d %d \n",j,
 		       (theBody.channel[i]).data[j],
 		       (theSurfTransientPS.ch[i]).data[j],
 		       (theSurfTransientUW.ch[i]).data[j]
