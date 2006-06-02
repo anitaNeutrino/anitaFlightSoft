@@ -84,6 +84,11 @@ int main(int argc, char** argv) {
 	}
 
     }
+
+
+    printf("Input Dir: %s\n",dirName);
+    printf("Output Dir: %s\n",eventdEventDir);
+    printf("Link Dir: %s\n",eventdEventLinkDir);
     
     for(eventNum=0;1;eventNum+=10000) {
 	dirNum=1000000*(int)((eventNum)/1000000);
@@ -113,6 +118,8 @@ int main(int argc, char** argv) {
 		usleep(usleepNum);
 		
 	    }
+	    gzclose(inputEvent);
+	    gzclose(inputHead);
 	    if(count2!=EVENTS_PER_FILE) break;       
 	}
     }
