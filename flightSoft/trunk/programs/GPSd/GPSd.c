@@ -176,6 +176,16 @@ int main (int argc, char *argv[])
 	    fprintf(stderr,"Couldn't get usbDataDiskLink\n");
 	}	
 
+	tempString=kvpGetString("baseHouseArchiveDir");
+	if(tempString) {
+	    strncpy(baseHouseArchiveDir,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");
+	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
+	}	
+
+
 	tempString=kvpGetString("gpsSubTimeDir");
 	if(tempString) {
 	    strncpy(gpsSubTimeDir,tempString,FILENAME_MAX);
@@ -187,6 +197,9 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get gpsSubTimeDir");
 	    fprintf(stderr,"Couldn't get gpsSubTimeDir\n");
 	}
+	
+
+
 	tempString=kvpGetString("gpsArchiveSubDir");
 	if(tempString) {
 	    sprintf(gpsAdu5PatArchiveDir,"%s/%s/%s/adu5/pat",

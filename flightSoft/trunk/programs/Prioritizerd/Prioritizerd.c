@@ -103,7 +103,7 @@ int main (int argc, char *argv[])
 	printf("Got %d events\n",numEventLinks);
 	/* What to do with our events? */	
 	for(count=0;count<numEventLinks;count++) {
-/* 	    printf("%s\n",eventLinkList[count]->d_name); */
+ 	    printf("%s\n",eventLinkList[count]->d_name); 
 	    sscanf(eventLinkList[count]->d_name,"hd_%d.dat",&doingEvent);
 	    sprintf(linkFilename,"%s/%s",eventdEventLinkDir,
 		    eventLinkList[count]->d_name);

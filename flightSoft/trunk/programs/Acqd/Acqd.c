@@ -1813,12 +1813,13 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    sprintf(theFilename,"%s/ev_%ld.dat",theEventDir,
 		    theEventPtr->header.eventNumber);
 	    if(!oldStyleFiles) {
-		if(!compressWavefile) 
+//		if(!compressWavefile) 
 		    retVal=writeBody(theBody,theFilename);  
-		else {
-		    strcat(theFilename,".gz");
-		    retVal=writeZippedBody(theBody,theFilename);
-		}
+//		else {
+//		    strcat(theFilename,".gz");
+//		    retVal=writeZippedBody(theBody,theFilename);
+//		}
+//		printf("%s\n",theFilename);
 	    }
 	    else {
 		sprintf(theFilename,"%s/surf_data.%ld",theEventDir,

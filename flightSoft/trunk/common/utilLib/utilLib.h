@@ -110,6 +110,7 @@ int normalSingleWrite(char *buffer, char *filename, int numBytes);
 
 int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
+int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 
 
 // Signal handling routines
