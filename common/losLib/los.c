@@ -70,7 +70,7 @@ static int write_minimal_buffer();
 #define NO_END_FOUND	0xbeef
 #define SYNC_HDR	0xeb90
 
-static const int CHKSUM_WORD_OFFSET = 6;
+static const int CHKSUM_WORD_OFFSET = 9;
 
 int
 los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
