@@ -1,5 +1,15 @@
 Don't forget to update the VERSION file!
 
+1.11a	21 Dec 05	MAO
+	Bugs in 1.11.
+	sipcom.c
+	demo/driver.c
+
+1.11	21 Dec 05	MAO
+	New data format for high-rate data.
+	sipcom.c
+	sipcom.txt
+
 1.10	11 Jul 05	MAO
 	sipcom.c
 	demo/driver.c

@@ -1,4 +1,4 @@
-/*! \file socketLib.c
+/*! \file utilLib.c
     \brief Utility library, full of (hopefully) useful stuff
     
     Some functions that do some useful things

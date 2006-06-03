@@ -147,7 +147,7 @@ void sipcom_reset();
  *	< 0 - there were problems, in which case, use <sipcom_strerror> to
  *		retrieve a hopefully meaningful error message.
  */
-int sipcom_highrate_write(unsigned char *buf, int nbytes);
+int sipcom_highrate_write(unsigned char *buf, unsigned short nbytes);
 
 /*
  * Function: sipcom_highrate_set_throttle

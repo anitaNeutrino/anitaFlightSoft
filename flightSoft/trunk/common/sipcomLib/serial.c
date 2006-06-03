@@ -7,12 +7,9 @@
 #include "sipcom_impl.h"
 
 #include <stdio.h>
-#include <unistd.h>
-
 #include <fcntl.h>
 #include <termios.h>
 #include <errno.h>
-#include <string.h>
 
 struct termios Origopts;
 
