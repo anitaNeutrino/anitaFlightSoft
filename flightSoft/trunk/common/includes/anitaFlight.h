@@ -109,7 +109,7 @@
 #define HEADER_TELEM_LINK_DIR "/tmp/anita/telem/head/link"
 
 //Event telemetry dirs
-#define BASE_EVENT_TELEM_DIR "/mnt/data/telem/event"
+#define BASE_EVENT_TELEM_DIR "/mnt/blade1/telem/event"
 #define EVENT_PRI_PREFIX "pri"
 
 #endif /* ANITA_FLIGHT_H */

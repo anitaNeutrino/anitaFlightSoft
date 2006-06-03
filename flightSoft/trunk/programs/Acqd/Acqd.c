@@ -529,7 +529,7 @@ int main(int argc, char **argv) {
 	    if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
 		//Make rate calculation;
 		if((doingEvent-lastEventCounter)>0) {
-		    printf("Current Rate %3.2f Hz\n",(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
+		    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
 //		    if(lastEventCounter<200) 
 //			printf("\n");
 		}
