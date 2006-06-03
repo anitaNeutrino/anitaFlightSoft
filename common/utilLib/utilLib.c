@@ -365,7 +365,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
 		    //Make base dir
 		    dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
-		    sprintf(awsPtr->currentDirName,"%s/encev%d",awsPtr->baseDirname,dirNum);
+		    sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
 		    makeDirectories(awsPtr->currentDirName);
 		    awsPtr->dirCount=0;
 		}
@@ -391,7 +391,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 		}
 	    }
 	    
-	    sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
+	    sprintf(awsPtr->currentEventFileName,"%s/encev_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
 	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"wb5");
 	    if(awsPtr->currentEventFilePtr<0) {	    

@@ -458,10 +458,10 @@ void fillBufferWithHk()
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,TURFHK_TELEM_DIR,
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
     }
-    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
-		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-    }        
+//    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
+//	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
+//		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+//    }        
     doWrite();	    
 }
 
@@ -477,57 +477,57 @@ void readAndSendEvent(char *headerFilename) {
     if(printToScreen && verbosity) printf("Trying file %s\n",headerFilename);
 
 
-    //First check if there is room for the header
-    if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t))
-	doWrite();
+/*     //First check if there is room for the header */
+/*     if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t)) */
+/* 	doWrite(); */
 
-    //Next load header
-    theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer];
-    fillHeader(theHeader,headerFilename);
-    theHeader->gHdr.packetNumber=getLosNumber();
-    numBytesInBuffer+=sizeof(AnitaEventHeader_t);
+/*     //Next load header */
+/*     theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer]; */
+/*     fillHeader(theHeader,headerFilename); */
+/*     theHeader->gHdr.packetNumber=getLosNumber(); */
+/*     numBytesInBuffer+=sizeof(AnitaEventHeader_t); */
 
-    //Now get event file
-    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri],
-	    theHeader->eventNumber);
-    eventFile = fopen(waveFilename,"r");
-    if(!eventFile) {
-	sprintf(waveFilename,"%s/ev_%ld.dat.gz",eventTelemDirs[currentPri],
-		theHeader->eventNumber);
-	gzippedEventFile = gzopen(waveFilename,"rb");
-	if(!gzippedEventFile) {
-	    syslog(LOG_ERR,"Couldn't open %s -- %s",waveFilename,strerror(errno));
-	    fprintf(stderr,"Couldn't open %s -- %s\n",waveFilename,strerror(errno));	
-	    removeFile(headerFilename);
-	    removeFile(waveFilename);
-	    return;
-	}
-	useGzip=1;
-    }
+/*     //Now get event file */
+/*     sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], */
+/* 	    theHeader->eventNumber); */
+/*     eventFile = fopen(waveFilename,"r"); */
+/*     if(!eventFile) { */
+/* 	sprintf(waveFilename,"%s/ev_%ld.dat.gz",eventTelemDirs[currentPri], */
+/* 		theHeader->eventNumber); */
+/* 	gzippedEventFile = gzopen(waveFilename,"rb"); */
+/* 	if(!gzippedEventFile) { */
+/* 	    syslog(LOG_ERR,"Couldn't open %s -- %s",waveFilename,strerror(errno)); */
+/* 	    fprintf(stderr,"Couldn't open %s -- %s\n",waveFilename,strerror(errno));	 */
+/* 	    removeFile(headerFilename); */
+/* 	    removeFile(waveFilename); */
+/* 	    return; */
+/* 	} */
+/* 	useGzip=1; */
+/*     } */
 
-    if(useGzip) {
-	numBytes = gzread(gzippedEventFile,eventBuffer,MAX_EVENT_SIZE);
-	gzclose(gzippedEventFile);	
-    }
-    else {
-	numBytes = fread(eventBuffer,1,MAX_EVENT_SIZE,eventFile);
-	fclose(eventFile);
-    }
+/*     if(useGzip) { */
+/* 	numBytes = gzread(gzippedEventFile,eventBuffer,MAX_EVENT_SIZE); */
+/* 	gzclose(gzippedEventFile);	 */
+/*     } */
+/*     else { */
+/* 	numBytes = fread(eventBuffer,1,MAX_EVENT_SIZE,eventFile); */
+/* 	fclose(eventFile); */
+/*     } */
     
-    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
-	surfHdPtr->gHdr.packetNumber=getLosNumber();
-	numBytes = surfHdPtr->gHdr.numBytes;
-	if(numBytes) {
-	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes)
-		fillBufferWithHk();
-	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
-	    count+=numBytes;
-	    numBytesInBuffer+=numBytes;
-	}
-	else break;			
-    }
+/*     // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's */
+/*     for(surf=0;surf<ACTIVE_SURFS;surf++) { */
+/* 	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count]; */
+/* 	surfHdPtr->gHdr.packetNumber=getLosNumber(); */
+/* 	numBytes = surfHdPtr->gHdr.numBytes; */
+/* 	if(numBytes) { */
+/* 	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) */
+/* 		fillBufferWithHk(); */
+/* 	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes); */
+/* 	    count+=numBytes; */
+/* 	    numBytesInBuffer+=numBytes; */
+/* 	} */
+/* 	else break;			 */
+/*     } */
     if(printToScreen && verbosity>1) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
 	        
     removeFile(headerFilename);
