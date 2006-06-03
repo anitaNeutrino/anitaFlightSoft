@@ -99,7 +99,7 @@ main(int argc, char *argv[])
 void
 write_highrate(int *ignore)
 {
-    long amtb;
+    unsigned short amtb;
 #define BSIZE 2048
     unsigned char buf[BSIZE];
     long bufno = 1;
@@ -148,8 +148,15 @@ write_highrate(int *ignore)
 	++cnt;
 #endif
 
+#ifdef NOTDEF
+	{
+	    int amti = rand_no(lim);
+	    fprintf(stderr, "======================= ARGH! %d\n", amti);
+	    amtb = amti;
+	}
+#endif
 	amtb = rand_no(lim);
-	fprintf(stderr, "=== high rate ===> amtb = %ld\n", amtb);
+	fprintf(stderr, "=== high rate ===> amtb = %u\n", amtb);
 	retval = sipcom_highrate_write(buf, amtb);
 	if (retval != 0) {
 	    fprintf(stderr, "Bad write\n");

@@ -11,10 +11,9 @@
 #include "crc_simple.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <string.h>
+#include <stdlib.h>	// malloc
 
 #include <pthread.h>
 #include <unistd.h>
@@ -568,47 +567,102 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
 }
 
 int
-sipcom_highrate_write(unsigned char *buf, int nbytes)
+sipcom_highrate_write(unsigned char *buf, unsigned short nbytes)
 {
+    // aligned_bufp - used for calculating the checksum.
+    static unsigned short *aligned_bufp = NULL;
+    static int aligned_nbytes = 0;
+
     static unsigned long Bufcnt = 1L;
-    struct highrate_ender ender;
-    struct highrate_header header;
+    int odd_number_of_science_bytes = 0;
     int retval = 0;
+
+#define HBUFSIZE 6
+    unsigned short header_buf[HBUFSIZE];
+
+    /* Ender handling. Kludge. If the number of science data bytes is even,
+     * then the ender consists of the following 16-bit words: checksum,
+     * SW_END_HDR, END_HDR, AUX_HDR. However, if the number is odd, then we
+     * prepend a single byte of 0x00 to the above.
+     *
+     * We put the checksum, SW_END_HDR, END_HDR, and AUX_HDR into the
+     * ender_buf starting at offset 1 (NOT offset 0) and set enderp to
+     * point at that location. If the number of bytes is even, then, we
+     * simply write the ender_buf starting at enderp. However, if the
+     * number is odd, then we take uchar *cp = ((uchar *)ender_buf) - 1;
+     * and write the 0x00 to *cp. Then, we set enderp to cp, and write the
+     * ender_buf from that location. */
+    unsigned short ender_buf[HBUFSIZE];
+    unsigned char *enderp = (unsigned char *)(ender_buf + 1);
+    int endersize = 8;
 
     if (nbytes == 0) {
 	return 0;
-
-    } else if (nbytes < 0) {
-	return -5;
-
-    } else {
-	header.id = HR_HEADER;
-	header.bufcnt = Bufcnt;
-	header.nbytes = nbytes;;
-
-	ender.id = HR_ENDER;
-	ender.bufcnt = Bufcnt;
-	ender.chksum = crc_char(buf, nbytes);
-	ender.filler[0] = ender.filler[1] = ender.filler[2] = '\0';
-
-	// Write header.
-	if ((retval = highrate_write_bytes(
-	    	(unsigned char *)&header, sizeof(header)))) {
-	    return retval;
-	}
-
-	// Write data.
-	if ((retval = highrate_write_bytes(buf, nbytes))) {
-	    return retval;
-	}
-
-	// Write ender.
-	if ((retval = highrate_write_bytes((unsigned char *)&ender, sizeof(ender)))) {
-	    return retval;
-	}
-
-	Bufcnt++;
     }
+
+    if (nbytes % 2) {
+	odd_number_of_science_bytes = 1;
+    }
+
+    if (aligned_nbytes < nbytes) {
+	// (Re)allocate the aligned buffer if it is not big enough.
+	free(aligned_bufp);
+	aligned_nbytes = nbytes;
+	aligned_bufp = (unsigned short *)malloc(nbytes);
+	if (NULL == aligned_bufp) {
+	    set_error_string("sipcom_highrate_write: bad malloc (%s).\n",
+	    	strerror(errno));
+	    return -1;
+	}
+    }
+
+    memcpy(aligned_bufp, buf, nbytes);
+
+    header_buf[0] = START_HDR;
+    header_buf[1] = AUX_HDR;
+    
+    header_buf[2] = ID_HDR;
+    header_buf[2] |= 0x0001;	// SIP data
+
+    if (odd_number_of_science_bytes) {
+	header_buf[2] |= 0x0002;
+	header_buf[5] = nbytes + 1;
+	enderp--;
+	*enderp = '\0';	// extra byte
+	endersize++;
+    } else {
+	header_buf[5] = nbytes;
+    }
+
+    {
+	unsigned short *sp;
+	sp = (unsigned short *)&Bufcnt;
+	header_buf[3] = *sp;
+	header_buf[4] = *(sp+1);
+    }
+
+    ender_buf[1] = crc_short(aligned_bufp, nbytes / sizeof(short));
+    ender_buf[2] = SW_END_HDR;
+    ender_buf[3] = END_HDR;
+    ender_buf[4] = AUX_HDR;
+
+    // Write header.
+    if (retval = highrate_write_bytes(
+	    (unsigned char *)header_buf, HBUFSIZE * sizeof(short))) {
+	return retval;
+    }
+
+    // Write data.
+    if (retval = highrate_write_bytes(buf, nbytes)) {
+	return retval;
+    }
+
+    // Write ender.
+    if (retval = highrate_write_bytes(enderp, endersize)) {
+	return retval;
+    }
+
+    Bufcnt++;
 
     return 0;
 }
