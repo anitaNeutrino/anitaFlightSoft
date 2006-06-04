@@ -23,8 +23,8 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 1000
-#define MAX_CALIB_TIMES 100
+#define MAX_GPS_TIMES 10000
+#define MAX_CALIB_TIMES 1000
 
 #define TIME_MATCH 0.05 //seconds
 #define DEFAULT_C3PO 133000000
@@ -40,17 +40,11 @@ int compareGpsTimes(const void *ptr1, const void *ptr2);
 
 /* Directories and gubbins */
 char eventdPidFile[FILENAME_MAX];
-char acqdEventLinkDir[FILENAME_MAX];
-char acqdEventDir[FILENAME_MAX];
-char eventdEventDir[FILENAME_MAX];
-char eventdEventLinkDir[FILENAME_MAX];
-char calibdLinkDir[FILENAME_MAX];
-char calibdStatusDir[FILENAME_MAX];
-char gpsdSubTimeLinkDir[FILENAME_MAX];
-char gpsdSubTimeDir[FILENAME_MAX];
 
 int printToScreen=0;
 int verbosity=0;
+
+AnitaEventHeader_t theAcqdEventHeader;
 
 // Global Variables
 GpsSubTime_t gpsArray[MAX_GPS_TIMES]; 
@@ -81,7 +75,7 @@ int main (int argc, char *argv[])
     char *progName=basename(argv[0]);
 
     /*Event object*/
-    AnitaEventHeader_t theAcqdEventHeader;
+
 
 
 #ifdef TIME_DEBUG
@@ -117,52 +111,13 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get eventdPidFile");
 	    fprintf(stderr,"Couldn't get eventdPidFile\n");
 	}
-	tempString=kvpGetString("gpsSubTimeDir");
-	if(tempString) {
-	    strncpy(gpsdSubTimeDir,tempString,FILENAME_MAX-1);
-	    strncpy(gpsdSubTimeLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(gpsdSubTimeLinkDir,"/link");
-	    makeDirectories(gpsdSubTimeLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdSubTimeDir");
-	    fprintf(stderr,"Couldn't get gpsdSubTimeDir");
-	}
-	tempString=kvpGetString("acqdEventDir");
-	if(tempString) {
-	    strncpy(acqdEventDir,tempString,FILENAME_MAX-1);
-	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(acqdEventLinkDir,"/link");
-	    makeDirectories(acqdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get acqdEventDir");
-	    fprintf(stderr,"Couldn't get acqdEventDir");
-	}
-	tempString=kvpGetString("eventdEventDir");
-	if(tempString) {
-	    strncpy(eventdEventDir,tempString,FILENAME_MAX-1);
-	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(eventdEventLinkDir,"/link");
-	    makeDirectories(eventdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventdEventDir");
-	    fprintf(stderr,"Couldn't get eventdEventDir");
-	}
-	tempString=kvpGetString("calibdStatusDir");
-	if(tempString) {
-	    strncpy(calibdStatusDir,tempString,FILENAME_MAX-1);
-	    strncpy(calibdLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(calibdLinkDir,"/link");
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get calibdStatusDir");
-	    fprintf(stderr,"Couldn't get calibdStatusDir");
 
-	}
     }
     
+    makeDirectories(ACQD_EVENT_LINK_DIR);
+    makeDirectories(EVENTD_EVENT_LINK_DIR);
+    makeDirectories(CALIBD_STATUS_LINK_DIR);
+    makeDirectories(GPSD_SUBTIME_LINK_DIR);
 
     do {
 	retVal=readConfigFile();
@@ -181,10 +136,10 @@ int main (int argc, char *argv[])
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    numEventLinks=getListofLinks(acqdEventLinkDir,&eventLinkList);
+	    numEventLinks=getListofLinks(ACQD_EVENT_LINK_DIR,&eventLinkList);
 /* 	printf("Got %d event links\n",numEventLinks); */
 	    if(numEventLinks<1) {
-		usleep(1);
+		usleep(1000);
 		continue;
 	    }
 	    if(verbosity>1 && printToScreen) 
@@ -206,26 +161,29 @@ int main (int argc, char *argv[])
 #endif
 		filledSubTime=0;
 //		printf("%s\n",eventLinkList[count]->d_name);
-		sprintf(currentFilename,"%s/%s",acqdEventLinkDir,
+		sprintf(currentFilename,"%s/%s",ACQD_EVENT_LINK_DIR,
 			eventLinkList[count]->d_name);
-//		printf("%s\n",currentFilename);
+
 		
 		retVal=fillHeader(&theAcqdEventHeader,currentFilename);
- 
+//		printf("%s\t%lu\t%d\n",currentFilename,theAcqdEventHeader.eventNumber,retVal); 
+//		exit(0);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-//		printf("RetVal %d\n",retVal);
+//		printf("RetVal %d\n",retVal;
 		if(retVal<0) {
 		    removeFile(currentFilename);
-		    sprintf(currentFilename,"%s/%s",acqdEventDir,
+
+		    sprintf(currentFilename,"%s/%s",ACQD_EVENT_DIR,
 			    eventLinkList[count]->d_name);
-		    removeFile(currentFilename);		    
+		    removeFile(currentFilename);	
+	    
 		    sscanf(eventLinkList[count]->d_name,
 			   "hd_%lu.dat",&tempNum);
 		    if(tempNum>0) {
-			sprintf(currentFilename,"%s/ev_%lu.dat",acqdEventDir,
+			sprintf(currentFilename,"%s/ev_%lu.dat",ACQD_EVENT_DIR,
 				tempNum);
 		    }		    
 		    continue;
@@ -233,8 +191,8 @@ int main (int argc, char *argv[])
 		filledSubTime=setGpsTime(&theAcqdEventHeader);
 		 
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 		if((time(NULL)-theAcqdEventHeader.unixTime)>2 
 		   || filledSubTime) {
@@ -295,7 +253,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     static int numGpsStored=0;
     int numGpsTimeLinks;
     float fracUnix,fracTurf,fracGps;
-    numGpsTimeLinks=getListofLinks(gpsdSubTimeLinkDir,&gpsSubTimeLinkList);
+    numGpsTimeLinks=getListofLinks(GPSD_SUBTIME_LINK_DIR,&gpsSubTimeLinkList);
     
     if(verbosity>1 && printToScreen) 	
 	printf("There are %d gps links.\n",numGpsTimeLinks);
@@ -303,10 +261,14 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 
     /* need to do something if we ever have more 
        than MAX_GPS_TIMES subTimes.*/
-//    numGpsStored=0;
-//    bzero(gpsArray, sizeof(GpsSubTime_t)*MAX_GPS_TIMES) ;	    
+    if(numGpsStored>MAX_GPS_TIMES-100) {
+	syslog(LOG_ERR,"GPS overload junking %d times\n",numGpsStored);
+	fprintf(stderr,"GPS overload junking %d times\n",numGpsStored);
+	numGpsStored=0;
+	bzero(gpsArray, sizeof(GpsSubTime_t)*MAX_GPS_TIMES) ;	    
+    }
     for(count=0;count<numGpsTimeLinks;count++) {
-	sprintf(currentFilename,"%s/%s",gpsdSubTimeLinkDir,
+	sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
 		gpsSubTimeLinkList[count]->d_name);     
 	retVal=fillGpsStruct(&gpsArray[numGpsStored],currentFilename);	
 	if(retVal==0) {
@@ -324,7 +286,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     qsort(gpsArray,numGpsStored,sizeof(GpsSubTime_t),compareGpsTimes);
 
 
-    if(printToScreen && verbosity)
+//    if(printToScreen && verbosity)
 	printf("There are %d gps times stored\n",numGpsStored);
     for(count=0;count<numGpsStored;count++) {
 	fracUnix=((float)theHeaderPtr->unixTimeUs)/1e6;
@@ -375,7 +337,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 #endif
     
 //    /* Move ev_ file first */
-//    sprintf(theFilename,"%s/ev_%ld.dat",acqdEventDir,
+//    sprintf(theFilename,"%s/ev_%ld.dat",ACQD_EVENT_DIR,
 //	    theHeaderPtr->eventNumber);
 //    testfp=fopen(theFilename,"rb");
 //    if(testfp) {
@@ -392,7 +354,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 #endif
     /* Should probably do something with retVal */
        
-    sprintf(theFilename,"%s/hd_%ld.dat",eventdEventDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",EVENTD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
     retVal=writeHeader(theHeaderPtr,theFilename);
@@ -404,7 +366,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 #endif
 
     /* Make links, not sure what to do with return value here */
-    retVal=makeLink(theFilename,eventdEventLinkDir);
+    retVal=makeLink(theFilename,EVENTD_EVENT_LINK_DIR);
     
 
 		 
@@ -414,7 +376,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 #endif
 
     /* Delete previous hd_ file */
-    sprintf(theFilename,"%s/hd_%ld.dat",acqdEventDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",ACQD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
@@ -427,7 +389,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 #endif
    
     /* And the link */
-    sprintf(theFilename,"%s/hd_%ld.dat",acqdEventLinkDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",ACQD_EVENT_LINK_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
@@ -449,7 +411,7 @@ int getCalibStatus(int unixTime)
     static int numStored=0;
     
     struct dirent **calibList;
-    int numCalibLinks=getListofLinks(calibdLinkDir,&calibList);
+    int numCalibLinks=getListofLinks(CALIBD_STATUS_LINK_DIR,&calibList);
     int count;
     char currentFilename[FILENAME_MAX];
     char otherFilename[FILENAME_MAX];
@@ -458,9 +420,9 @@ int getCalibStatus(int unixTime)
     if(numCalibLinks>1 || (numCalibLinks>0 && numStored==0)) {
 	/* Read out calib status, and delete all but the most recent link */
 	for(count=0;count<numCalibLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",calibdLinkDir,
+	    sprintf(currentFilename,"%s/%s",CALIBD_STATUS_LINK_DIR,
 		    calibList[count]->d_name);	
-	    sprintf(otherFilename,"%s/%s",calibdStatusDir,
+	    sprintf(otherFilename,"%s/%s",CALIBD_STATUS_DIR,
 		    calibList[count]->d_name);	       
 	    if(count==0) {
 		if(numStored==0) {
@@ -587,12 +549,12 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
     char theFilename[FILENAME_MAX];
     int retVal;
 
-    sprintf(theFilename,"%s/gps_%lu_%lu.dat",gpsdSubTimeLinkDir,
+    sprintf(theFilename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_LINK_DIR,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity>2) 
 	printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
-    sprintf(theFilename,"%s/gps_%lu_%lu.dat",gpsdSubTimeDir,
+    sprintf(theFilename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_DIR,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity>2) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);

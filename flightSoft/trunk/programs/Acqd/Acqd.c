@@ -73,11 +73,11 @@ unsigned int avgScalerData[MAX_SURFS][N_RFTRIG];
 
 //Configurable watchamacallits
 /* Ports and directories */
-char acqdEventDir[FILENAME_MAX];
+//char acqdEventDir[FILENAME_MAX];
 char altOutputdir[FILENAME_MAX];
 char subAltOutputdir[FILENAME_MAX];
 char acqdPidFile[FILENAME_MAX];
-char acqdEventLinkDir[FILENAME_MAX];
+//char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 char scalerOutputDir[FILENAME_MAX];
 char hkOutputDir[FILENAME_MAX];
@@ -646,10 +646,10 @@ int main(int argc, char **argv) {
 //			if(!madeAltDir || 
 //			   hdPtr->eventNumber%MAX_EVENTS_PER_DIR==0) 
 //			    makeSubAltDir();
-			writeEventAndMakeLink(altOutputdir,acqdEventLinkDir,&theEvent);	
+			writeEventAndMakeLink(altOutputdir,ACQD_EVENT_LINK_DIR,&theEvent);	
 		    }
 		    else 
-			writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
+			writeEventAndMakeLink(ACQD_EVENT_DIR,ACQD_EVENT_LINK_DIR,&theEvent);
 
 
 #ifdef TIME_DEBUG
@@ -1122,15 +1122,7 @@ int readConfigFile()
 	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
 	    fprintf(stderr,"Couldn't get acqdPidFile\n");
 	}
-	tempString=kvpGetString ("acqdEventDir");
-	if(tempString) {
-	    strncpy(acqdEventDir,tempString,FILENAME_MAX-1);	   
-	    strncpy(acqdEventLinkDir,tempString,FILENAME_MAX-1);	   
-	    strcat(acqdEventLinkDir,"/link");
-	    makeDirectories(acqdEventLinkDir);
-	}
-	else
-	    fprintf(stderr,"Couldn't fetch acqdEventDir\n");
+
 //	printf("%s\n",acqdEventDir);
 	tempString=kvpGetString ("lastEventNumberFile");
 	if(tempString)
@@ -1372,7 +1364,7 @@ int readConfigFile()
 	    if(useAltDir) 
 		printf("\t--\t%s",altOutputdir);
 	    else
-		printf("\t--\t%s",acqdEventDir);
+		printf("\t--\t%s",ACQD_EVENT_DIR);
 	}
 	printf("\n");
 	printf("writeFullHk %d\n",writeFullHk);

@@ -751,10 +751,18 @@ int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
-    int numBytes=genericReadOfFile((char*)theEventHdPtr,filename,
-				   sizeof(AnitaEventHeader_t));
-    if(numBytes==sizeof(AnitaEventHeader_t)) return 0;
-    return numBytes; 
+    int numObjs;
+    FILE *fp;
+    fp = fopen(filename,"rb");
+    if(fp == 0) {
+	return -1;
+    }
+    numObjs=fread(theEventHdPtr, sizeof(AnitaEventHeader_t),1,fp);
+    fclose(fp);
+    if(numObjs!=1) {
+	return -1;
+    }
+    return 0;
 }
 
 

@@ -18,7 +18,7 @@ while [ -d $HK_DIR ] ; do
 done
 
 mkdir ${HK_DIR}
-rm /mnt/data/anita
+rm -rf /mnt/data/anita
 ln -sf ${HK_DIR} /mnt/data/anita
 echo "Using Hk directory: $HK_DIR" 
 echo "Using Event directory: $EVENT_DIR" 

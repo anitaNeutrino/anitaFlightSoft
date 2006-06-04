@@ -63,8 +63,6 @@ int switchState=1;
 int printToScreen=1;
 
 //Output Dirs
-char calibdStatusDir[FILENAME_MAX];
-char calibdLinkDir[FILENAME_MAX];
 char calibArchiveDir[FILENAME_MAX];
 char calibArchiveLinkDir[FILENAME_MAX];
 
@@ -96,17 +94,6 @@ int main (int argc, char *argv[])
 
     // Get Calibd output dirs
     if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("calibdStatusDir");
-	if(tempString) {
-	    strncpy(calibdStatusDir,tempString,FILENAME_MAX-1);
-	    strncpy(calibdLinkDir,calibdStatusDir,FILENAME_MAX-1);
-	    strcat(calibdLinkDir,"/link");
-	    makeDirectories(calibdLinkDir);
-	}
-	else {	    
-	    syslog(LOG_ERR,"Error getting calibdStatusDir");
-	    fprintf(stderr,"Error getting calibdStatusDir\n");
-	}
 	
 	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
@@ -134,6 +121,8 @@ int main (int argc, char *argv[])
 	    fprintf(stderr,"Error getting calibArchiveSubDir\n");
 	}
     }
+
+    makeDirectories(CALIBD_STATUS_LINK_DIR);
 
     //Setup acromag
     acromagSetup();
@@ -217,9 +206,9 @@ void writeStatus()
     //Might change the below when we have any idea what it is doing
     theStatus.status |= (((ss1Gain)&0xf)<<SS1_SHIFT); 
     
-    sprintf(filename,"%s/calib_%ld.dat",calibdStatusDir,theStatus.unixTime);
+    sprintf(filename,"%s/calib_%ld.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);
-    makeLink(filename,calibdLinkDir);
+    makeLink(filename,CALIBD_STATUS_LINK_DIR);
     sprintf(filename,"%s/calib_%ld.dat",calibArchiveDir,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);
     makeLink(filename,calibArchiveLinkDir);

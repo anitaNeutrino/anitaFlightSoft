@@ -90,8 +90,6 @@ int useUsbDisks=0;
 char mainDataDisk[FILENAME_MAX];
 char usbDataDiskLink[FILENAME_MAX];
 char baseHouseArchiveDir[FILENAME_MAX];
-char gpsSubTimeDir[FILENAME_MAX];
-char gpsSubTimeLinkDir[FILENAME_MAX];
 
 char gpsAdu5PatArchiveDir[FILENAME_MAX];
 char gpsAdu5SatArchiveDir[FILENAME_MAX];
@@ -141,7 +139,6 @@ int main (int argc, char *argv[])
     /* Load Global Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status &= configLoad (GLOBAL_CONF_FILE,"whiteheat") ;
     eString = configErrorString (status) ;
 
     /* Get Device Names and config stuff */
@@ -185,19 +182,6 @@ int main (int argc, char *argv[])
 	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
 	}	
 
-
-	tempString=kvpGetString("gpsSubTimeDir");
-	if(tempString) {
-	    strncpy(gpsSubTimeDir,tempString,FILENAME_MAX);
-	    strncpy(gpsSubTimeLinkDir,tempString,FILENAME_MAX);
-	    strcat(gpsSubTimeLinkDir,"/link");
-	    makeDirectories(gpsSubTimeLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsSubTimeDir");
-	    fprintf(stderr,"Couldn't get gpsSubTimeDir\n");
-	}
-	
 
 
 	tempString=kvpGetString("gpsArchiveSubDir");
@@ -252,6 +236,8 @@ int main (int argc, char *argv[])
 	}
 
     }
+    makeDirectories(GPSD_SUBTIME_LINK_DIR);
+
     
     retVal=readConfigFile();
     if(retVal<0) {
@@ -891,9 +877,9 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     theTTT.fromAdu5=fromAdu5;
 
     //Write file for eventd
-    sprintf(filename,"%s/gps_%lu_%lu.dat",gpsSubTimeDir,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
     writeGpsTtt(&theTTT,filename);
-    retVal=makeLink(filename,gpsSubTimeLinkDir);  
+    retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
 
     //Write file to main disk
     retVal=cleverHkWrite((char*)&theTTT,sizeof(GpsSubTime_t),
