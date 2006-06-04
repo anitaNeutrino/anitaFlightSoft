@@ -380,6 +380,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 		   currentFilename);
 	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
 	    removeFile(currentFilename);
+
 	    removeFile(currentLinkname);
 	    continue;
 	}
@@ -458,11 +459,15 @@ void fillBufferWithHk()
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,TURFHK_TELEM_DIR,
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
     }
-//    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
-//	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
-//		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-//    }        
-    doWrite();	    
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
+		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+    }        
+    if(numBytesInBuffer>0)
+	doWrite();
+    if(numBytesInBuffer<0) {
+	printf("What the heck does %d bytes mean\n",numBytesInBuffer);
+    }
 }
 
 

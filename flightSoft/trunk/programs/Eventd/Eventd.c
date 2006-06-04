@@ -21,6 +21,7 @@
 #include "anitaStructures.h"
 #include "anitaFlight.h"
 
+//#define TIME_DEBUG 1
 
 #define MAX_GPS_TIMES 1000
 #define MAX_CALIB_TIMES 100
@@ -56,9 +57,15 @@ GpsSubTime_t gpsArray[MAX_GPS_TIMES];
 /*Will think about handling this better*/
 
 
+#ifdef TIME_DEBUG
+FILE *timeFile;
+struct timeval timeStruct2;
+#endif    
+
 int main (int argc, char *argv[])
 {
     int retVal,count,filledSubTime;
+    unsigned long tempNum;
     char currentFilename[FILENAME_MAX];
     char *tempString;
     /* Config file thingies */
@@ -77,6 +84,14 @@ int main (int argc, char *argv[])
     AnitaEventHeader_t theAcqdEventHeader;
 
 
+#ifdef TIME_DEBUG
+
+    timeFile = fopen("/tmp/evTimeLog.txt","w");
+    if(!timeFile) {
+	fprintf(stderr,"Couldn't open time file\n");
+	exit(0);
+    }
+#endif
 
     
     /* Set signal handlers */
@@ -111,6 +126,7 @@ int main (int argc, char *argv[])
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get gpsdSubTimeDir");
+	    fprintf(stderr,"Couldn't get gpsdSubTimeDir");
 	}
 	tempString=kvpGetString("acqdEventDir");
 	if(tempString) {
@@ -121,6 +137,7 @@ int main (int argc, char *argv[])
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get acqdEventDir");
+	    fprintf(stderr,"Couldn't get acqdEventDir");
 	}
 	tempString=kvpGetString("eventdEventDir");
 	if(tempString) {
@@ -131,6 +148,7 @@ int main (int argc, char *argv[])
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get eventdEventDir");
+	    fprintf(stderr,"Couldn't get eventdEventDir");
 	}
 	tempString=kvpGetString("calibdStatusDir");
 	if(tempString) {
@@ -140,6 +158,8 @@ int main (int argc, char *argv[])
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get calibdStatusDir");
+	    fprintf(stderr,"Couldn't get calibdStatusDir");
+
 	}
     }
     
@@ -156,6 +176,11 @@ int main (int argc, char *argv[])
 	int numEvents=0;
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    numEventLinks=getListofLinks(acqdEventLinkDir,&eventLinkList);
 /* 	printf("Got %d event links\n",numEventLinks); */
 	    if(numEventLinks<1) {
@@ -165,18 +190,52 @@ int main (int argc, char *argv[])
 	    if(verbosity>1 && printToScreen) 
 		printf("There are %d event links.\n",numEventLinks);
 
-	    //This is just tomake sure the GPS sub times are up to date
-	    sleep(1);
+	    //This is just to make sure the GPS sub times are up to date
+//	    sleep(1);
 	    
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 	    /* What to do with our events? */	
 	    for(count=0;count<numEventLinks;count++) {
+ 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 		filledSubTime=0;
-/* 	    printf("%s\n",eventLinkList[count]->d_name); */
+//		printf("%s\n",eventLinkList[count]->d_name);
 		sprintf(currentFilename,"%s/%s",acqdEventLinkDir,
 			eventLinkList[count]->d_name);
-		retVal=fillHeader(&theAcqdEventHeader,currentFilename);
-		filledSubTime=setGpsTime(&theAcqdEventHeader);
+//		printf("%s\n",currentFilename);
 		
+		retVal=fillHeader(&theAcqdEventHeader,currentFilename);
+ 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+//		printf("RetVal %d\n",retVal);
+		if(retVal<0) {
+		    removeFile(currentFilename);
+		    sprintf(currentFilename,"%s/%s",acqdEventDir,
+			    eventLinkList[count]->d_name);
+		    removeFile(currentFilename);		    
+		    sscanf(eventLinkList[count]->d_name,
+			   "hd_%lu.dat",&tempNum);
+		    if(tempNum>0) {
+			sprintf(currentFilename,"%s/ev_%lu.dat",acqdEventDir,
+				tempNum);
+		    }		    
+		    continue;
+		}		    
+		filledSubTime=setGpsTime(&theAcqdEventHeader);
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 		if((time(NULL)-theAcqdEventHeader.unixTime)>2 
 		   || filledSubTime) {
 		    if(!filledSubTime) {
@@ -199,7 +258,11 @@ int main (int argc, char *argv[])
 	
 		    
 		}
-		
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
 		
 	    }
 	    	    	    
@@ -303,17 +366,30 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 {
     char theFilename[FILENAME_MAX];
     int retVal;
-    FILE *testfp;
+//    FILE *testfp;
+
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
     
-    /* Move ev_ file first */
-    sprintf(theFilename,"%s/ev_%ld.dat",acqdEventDir,
-	    theHeaderPtr->eventNumber);
-    testfp=fopen(theFilename,"rb");
-    if(testfp) {
-	if(printToScreen && verbosity) printf("Moving %s\n",theFilename);
-	retVal=moveFile(theFilename,eventdEventDir);
-	fclose(testfp);
-    }
+//    /* Move ev_ file first */
+//    sprintf(theFilename,"%s/ev_%ld.dat",acqdEventDir,
+//	    theHeaderPtr->eventNumber);
+//    testfp=fopen(theFilename,"rb");
+//    if(testfp) {
+//	fclose(testfp);
+//	if(printToScreen && verbosity) printf("Moving %s\n",theFilename);
+//	retVal=moveFile(theFilename,eventdEventDir);
+//    }
+
+
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
     /* Should probably do something with retVal */
        
     sprintf(theFilename,"%s/hd_%ld.dat",eventdEventDir,
@@ -321,20 +397,46 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
     retVal=writeHeader(theHeaderPtr,theFilename);
 
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+
     /* Make links, not sure what to do with return value here */
     retVal=makeLink(theFilename,eventdEventLinkDir);
     
+
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+
     /* Delete previous hd_ file */
     sprintf(theFilename,"%s/hd_%ld.dat",acqdEventDir,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
+
+
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
    
     /* And the link */
     sprintf(theFilename,"%s/hd_%ld.dat",acqdEventLinkDir,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
+
+		 
+#ifdef TIME_DEBUG
+	gettimeofday(&timeStruct2,NULL);
+	fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
     
     return retVal;
 }

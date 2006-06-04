@@ -9,6 +9,7 @@
 
 int useUsbDisks=0;
 int maxEventsPerDir=1000;
+char acqdEventDir[FILENAME_MAX];
 char eventdEventDir[FILENAME_MAX];
 char eventdEventLinkDir[FILENAME_MAX];
 
@@ -81,11 +82,19 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting prioritizerdPidFile");
 	    fprintf(stderr,"Error getting prioritizerdPidFile\n");
 	}
+	tempString=kvpGetString("acqdEventDir");
+	if(tempString) {
+	    strncpy(acqdEventDir,tempString,FILENAME_MAX-1);
+	    makeDirectories(acqdEventDir);
+	}
+	else {
+	    syslog(LOG_ERR,"Error getting acqdEventDir");
+	    fprintf(stderr,"Error getting acqdEventDir\n");
+	}
 	tempString=kvpGetString("eventdEventDir");
 	if(tempString) {
 	    strncpy(eventdEventDir,tempString,FILENAME_MAX-1);
-	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(eventdEventLinkDir,"/link");
+	    sprintf(eventdEventLinkDir,"%s/link",eventdEventDir);
 	    makeDirectories(eventdEventLinkDir);
 	}
 	else {
@@ -140,7 +149,7 @@ int main (int argc, char *argv[])
 		    eventLinkList[count]->d_name);
 	    sprintf(hdFilename,"%s/hd_%d.dat",eventdEventDir,
 		    doingEvent);
-	    sprintf(bodyFilename,"%s/ev_%d.dat",eventdEventDir,
+	    sprintf(bodyFilename,"%s/ev_%d.dat",acqdEventDir,
 		    doingEvent);
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);

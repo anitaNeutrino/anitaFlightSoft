@@ -504,10 +504,15 @@ char *getCurrentHkFilename(char *currentDir, char *prefix,
 
 int normalSingleWrite(char *buffer, char *filename, int numBytes)
 {
+    static int errorCounter=0;
    int numObjs;    
    FILE *outfile = fopen (filename, "wb");
    if(outfile == NULL) {
-       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+       if(errorCounter<100) {
+	   syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	   fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),filename);
+	   errorCounter++;
+       }
        return -1;
    }   
    numObjs=fwrite(buffer,numBytes,1,outfile);
@@ -518,10 +523,15 @@ int normalSingleWrite(char *buffer, char *filename, int numBytes)
 
 int zippedSingleWrite(char *buffer, char *filename, int numBytes) 
 {
+    static int errorCounter=0;
    int numObjs;    
    gzFile outfile = gzopen (filename, "wb5");  
-   if(outfile == NULL) {
-       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+   if(outfile == NULL) { 
+       if(errorCounter<100) {
+	   syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	   fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),filename);
+	   errorCounter++;
+       }
        return -1;
    } 
    numObjs=gzwrite(outfile,buffer,numBytes);
@@ -593,10 +603,14 @@ int copyFile(const char *theFile, const char *theDir)
 
 int removeFile(const char *theFile)
 {
-
+    static int errorCounter=0;
     int retVal=unlink(theFile);
     if(retVal!=0) {
-	syslog(LOG_ERR,"Error removing %s:\t%s",theFile,strerror(errno));
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) removing %s:\t%s",errorCounter,theFile,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) removing %s:\t%s\n",errorCounter,theFile,strerror(errno));
+	    errorCounter++;
+	}
     }
     return retVal;
 }
@@ -615,9 +629,14 @@ int is_dir(const char *path)
 int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
 {
 /*     int count; */
+    static int errorCounter=0;
     int n = scandir(theEventLinkDir, namelist, filterOnDats, versionsort);
     if (n < 0) {
-	syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
+	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
+	}
+	    
     }	
  /*    for(count=0;count<n;count++)  */
 /* 	printf("%s\n",(*namelist)[count]->d_name); */
@@ -627,9 +646,13 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
 
 unsigned short getDiskSpace(char *dirName) {
     struct statfs diskStat;
+    static int errorCounter=0;
     int retVal=statfs(dirName,&diskStat); 
     if(retVal<0) {
-	syslog(LOG_ERR,"Unable to get disk space %s: %s",dirName,strerror(errno));       
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Unable to get disk space %s: %s",dirName,strerror(errno));  
+	    fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));            
+	}
 //	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
 	return -1;
     }    
@@ -655,6 +678,7 @@ unsigned short getDiskSpace(char *dirName) {
 }
 
 unsigned short countFilesInDir(char *dirName) {
+    static int errorCounter=0;
     unsigned short fileCount=0;
     struct dirent *subPtr;
     DIR *TheDir = opendir(dirName);
@@ -673,8 +697,13 @@ unsigned short countFilesInDir(char *dirName) {
 	    }
 	    else {
 		closedir(TheDir);
-		syslog(LOG_ERR,"Error reading directory %s:\t%s",
-		       dirName,strerror(errno));
+		if(errorCounter<100) {
+		    syslog(LOG_ERR,"Error reading directory %s:\t%s",
+			   dirName,strerror(errno));
+		    fprintf(stderr,"Error reading directory %s:\t%s\n",
+			    dirName,strerror(errno));
+		}
+		    
 		return -1;
 	    }
 	}
@@ -705,111 +734,45 @@ int filterOnDats(const struct dirent *dir)
 
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 {
-    int numObjs;
-    FILE * infile;
+    int numBytes=genericReadOfFile((char*)theStruct,filename,sizeof(CalibStruct_t));
+    if(numBytes==sizeof(CalibStruct_t)) return 0;
+    return numBytes;
 
-    infile = fopen (filename, "rb");
-    if(infile == NULL) {
-	syslog (LOG_ERR,"Couldn't open file: %s\n",filename);
-	return 0;
-    }
-    numObjs=fread(theStruct,sizeof(CalibStruct_t),1,infile);
-    fclose (infile); 
-    if(numObjs==1) return 0; //Success
-    return 1;
 }
 
 
 int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 {
-    int numObjs;    
-    FILE *infile = fopen (filename, "rb");
-    if(infile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-    numObjs=fread(cmdPtr,sizeof(CommandStruct_t),1,infile);
-    fclose(infile);
-    if(numObjs==1) return 0; /*Success*/
-    return 1;
+    int numBytes=genericReadOfFile((char*)cmdPtr,filename,sizeof(CommandStruct_t));
+    if(numBytes==sizeof(CommandStruct_t)) return 0;
+    return numBytes;
 }
 
 
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
-    int numObjs;    
-#ifdef NO_ZLIB
-    FILE *infile = fopen (filename, "rb");
-#else
-    gzFile infile = gzopen (filename, "rb");    
-#endif
-    if(infile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fread(theEventHdPtr,sizeof(AnitaEventHeader_t),1,infile);
-    fclose(infile);
-    if(numObjs==1) return 0; /*Success*/
-#else
-    numObjs=gzread(infile,theEventHdPtr,sizeof(AnitaEventHeader_t));
-    gzclose(infile);
-    if(numObjs==sizeof(AnitaEventHeader_t)) return 0;
-#endif
-    return 1;
+    int numBytes=genericReadOfFile((char*)theEventHdPtr,filename,
+				   sizeof(AnitaEventHeader_t));
+    if(numBytes==sizeof(AnitaEventHeader_t)) return 0;
+    return numBytes; 
 }
 
 
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
-{    
-    int numObjs;    
-#ifdef NO_ZLIB2
-    FILE *infile = fopen (filename, "rb");
-#else
-    gzFile infile = gzopen (filename, "rb");    
-#endif
-    if(infile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB2
-    numObjs=fread(theEventBodyPtr,sizeof(AnitaEventBody_t),1,infile);
-    fclose(infile);
-    if(numObjs==1) return 0; /*Success*/
-#else
-    numObjs=gzread(infile,theEventBodyPtr,sizeof(AnitaEventBody_t));
-    gzclose(infile);
-    if(numObjs==sizeof(AnitaEventBody_t)) return 0;
-#endif
-    return 1;
+{ 
+    int numBytes=genericReadOfFile((char*)theEventBodyPtr,filename,
+				   sizeof(AnitaEventBody_t));
+    if(numBytes==sizeof(AnitaEventBody_t)) return 0;
+    return numBytes;  
 }
 
 
 int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
 {
-    /* Takes a pointer to the next struct in the array */
-    /* Returns number of lines read*/
-       
-    int numObjs;    
-#ifdef NO_ZLIB
-    FILE *infile = fopen (filename, "rb");
-#else
-    gzFile infile = gzopen (filename, "rb");    
-#endif
-    if(infile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-	return -1;
-    }   
-#ifdef NO_ZLIB
-    numObjs=fread(tttPtr,sizeof(GpsSubTime_t),1,infile);
-    fclose(infile);
-    if(numObjs==1) return 0; /*Success*/
-#else
-    numObjs=gzread(infile,tttPtr,sizeof(GpsSubTime_t));
-    gzclose(infile);
-    if(numObjs==sizeof(GpsSubTime_t)) return 0;
-#endif
-    return 1;
+    int numBytes=genericReadOfFile((char*)tttPtr,filename,
+				   sizeof(GpsSubTime_t));
+    if(numBytes==sizeof(GpsSubTime_t)) return 0;
+    return numBytes;  
 }
 
 int genericReadOfFile(char *buffer, char *filename, int maxBytes) 
