@@ -767,7 +767,7 @@ void prepWriterStructs() {
     hkRawWriter.currentFilePtr=0;
     hkRawWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
     hkRawWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-//    hkRawWriter.maxWritesPerFile=10;
+//   hkRawWriter.maxWritesPerFile=10;
     hkRawWriter.maxWritesPerFile=HK_PER_FILE;
 
     //Hk Cal Writer

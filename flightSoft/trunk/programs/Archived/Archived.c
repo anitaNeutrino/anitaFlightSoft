@@ -227,8 +227,16 @@ void processEvent()
 {
     EncodingType_t encType=(EncodingType_t) (theHead.priority & 0xf);    
     int count=0,surfStart=0;
+    static unsigned long lastEvNum=0;
     int surf=0;
     int chan=0;
+//    EncodedEventWrapper_t *evWrap = (EncodedEventWrapper_t*) &outputBuffer[0];
+//    count+=sizeof(EncodedEventWrapper_t);
+
+    if(lastEvNum && (theHead.eventNumber-lastEvNum)!=1) {
+	printf("Event %lu followed %lu\n",theHead.eventNumber,lastEvNum);
+    }
+
     EncodedSurfPacketHeader_t *surfHdPtr;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &outputBuffer[count];
@@ -245,6 +253,8 @@ void processEvent()
 							 
     }
 
+    //evWrap.numBytes=count;
+    lastEvNum=theHead.eventNumber;
     writeOutput(count);
     
 
@@ -289,6 +299,7 @@ void writeOutput(int numBytes) {
 //    char realBodyName[FILENAME_MAX];
 //    char realBackupHeadName[FILENAME_MAX];
 //    char realBackupBodyName[FILENAME_MAX];    
+    char linkName[FILENAME_MAX];
     char mainDiskDir[FILENAME_MAX];
     char backupDiskDir[FILENAME_MAX];
     
@@ -328,8 +339,12 @@ void writeOutput(int numBytes) {
 
 
     //Need to think about this maybe we should take a hundred events and then write the file
-    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
-    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);
+    sprintf(linkName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+    symlink(eventWriter.currentEventFileName,linkName);
+//    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
+//    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);
+    sprintf(linkName,"%s/hd_%lu.dat",eventTelemLinkDirs[pri],theHead.eventNumber);
+    symlink(eventWriter.currentHeaderFileName,linkName);
 	   
 
 //    makeLink(realBodyName,eventTelemDirs[pri]);

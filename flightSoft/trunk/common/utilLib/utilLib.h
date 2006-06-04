@@ -71,10 +71,14 @@ void addDay(struct tm *timeinfo);
 
 /* IO routines for inter-process communication */
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename);
+int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
+			    unsigned long eventNumber);
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename);
 int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 int fillCommand(CommandStruct_t *theStruct, char *filename);
+int readEncodedEventFromFile(char *buffer, char *filename,
+			     unsigned long eventNumber);
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename);

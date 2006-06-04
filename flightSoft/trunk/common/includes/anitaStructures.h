@@ -237,6 +237,11 @@ typedef struct {
 } EncodedSurfPacketHeader_t;
 
 typedef struct {
+    unsigned long eventNumber;
+    unsigned long numBytes;
+} EncodedEventWrapper_t;
+
+typedef struct {
     unsigned long unixTime;
     unsigned long subTime;
     int fromAdu5; //1 is yes , 0 is g12
