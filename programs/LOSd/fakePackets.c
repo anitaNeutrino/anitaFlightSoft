@@ -34,10 +34,6 @@ float gaussianRand(float mean, float stdev);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 
 
-//Dirs
-char prioritizerdEventDir[FILENAME_MAX];
-char prioritizerdEventLinkDir[FILENAME_MAX];
-
 
 // Data rates
 float g12PosPeriod=10;
@@ -98,16 +94,6 @@ int main(int argc, char *argv[])
 	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",60);
 
 	//Output and Link Directories
-	tempString=kvpGetString("prioritizerdEventDir");
-	if(tempString) {
-	    strncpy(prioritizerdEventDir,tempString,FILENAME_MAX-1);
-	    sprintf(prioritizerdEventLinkDir,"%s/link",tempString);
-	    makeDirectories(prioritizerdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdEventDir");
-	    fprintf(stderr,"Couldn't get prioritizerdEventDir\n");
-	}
 
     }
     else {
@@ -180,6 +166,8 @@ int main(int argc, char *argv[])
     printf("Acromag Cal Period %d\n",hkCalPeriod);
     printf("Acromag Data Period %f\n",actualHkPeriod);
 
+    makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
+
     while(!maxEvents || (evNum<=maxEvents)) {
 	gettimeofday(&currentTime,0);
 //	time(&rawTime);
@@ -245,7 +233,7 @@ int main(int argc, char *argv[])
 	
 	fakeEvent(trigType);
 	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
-//	usleep(50000);
+	usleep(200000);
 	evCounter++;
 	if(evCounter==6) evCounter=0;
     }
@@ -306,13 +294,13 @@ void fakeEvent(int trigType)
 //    writePackets(&theBody,&theHeader);
     
     //Write body and header for Archived
-    sprintf(archiveFilename,"%s/ev_%lu.dat",prioritizerdEventDir,
+    sprintf(archiveFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 	    theHeader.eventNumber);
     writeBody(&theBody,archiveFilename);
-    sprintf(archiveFilename,"%s/hd_%lu.dat",prioritizerdEventDir,
+    sprintf(archiveFilename,"%s/hd_%lu.dat",PRIORITIZERD_EVENT_DIR,
 	    theHeader.eventNumber);
     writeHeader(&theHeader,archiveFilename);
-    makeLink(archiveFilename,prioritizerdEventLinkDir);
+    makeLink(archiveFilename,PRIORITIZERD_EVENT_LINK_DIR);
     
 
     

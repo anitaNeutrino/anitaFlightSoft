@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #define NO_ZLIB
 
-//#define OPEN_CLOSE_ALL_THE_TIME
+#define OPEN_CLOSE_ALL_THE_TIME
 
 extern  int versionsort(const void *a, const void *b);
 
@@ -32,9 +32,8 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
     int retVal=0;
     static int errorCounter=0;
     char *tempDir;
-    char *bufferToZip=0;
-    char zippedFilename[FILENAME_MAX];
-    int numberOfBytes=0;
+    pid_t childPid;
+    char *gzipArg[] = {"gzip",awsPtr->currentFileName,(char*)0};
     
     if(!awsPtr->currentFilePtr) {
 	//First time
@@ -59,32 +58,20 @@ int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWrite
     if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
 	//Need a new file
 	fclose(awsPtr->currentFilePtr);
-	if(errorCounter<100) {
-	    awsPtr->currentFilePtr=fopen(awsPtr->currentFileName,"rb");
-	    fseek(awsPtr->currentFilePtr,0,SEEK_END);
-	    numberOfBytes=ftell(awsPtr->currentFilePtr);
-//	    printf("numberOfBytes %d\n",numberOfBytes);
-	    fseek(awsPtr->currentFilePtr,0,SEEK_SET);
-	    
-	    if(numberOfBytes) {
-		bufferToZip = malloc(numberOfBytes);
-		if(bufferToZip) {
-		    retVal=fread(bufferToZip,numberOfBytes,
-				 1,awsPtr->currentFilePtr);
-		    fclose(awsPtr->currentFilePtr);
-		    if(retVal==1) {
-			// Read succesfully
-			sprintf(zippedFilename,"%s.gz",
-				awsPtr->currentFileName);
-			retVal=zippedSingleWrite(bufferToZip,zippedFilename,
-						 numberOfBytes);
-			if(retVal==0)
-			    removeFile(awsPtr->currentFileName);
-		    }
-		    free(bufferToZip);
-		}
-	    }	    	    
+	childPid=fork();
+	if(childPid==0) {
+	    //Child
+//	    awsPtr->currentFileName;
+	    execv("/bin/gzip",gzipArg);
+	    exit(0);
 	}
+	else if(childPid<0) {
+	    //Something wrong
+	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName);
+	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName);
+	}
+	
+	
 
 	awsPtr->fileCount++;
 	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
@@ -751,19 +738,194 @@ int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
-    int numObjs;
-    FILE *fp;
-    fp = fopen(filename,"rb");
-    if(fp == 0) {
+    int numBytes=genericReadOfFile((char*)theEventHdPtr,filename,
+				   sizeof(AnitaEventHeader_t));
+    if(numBytes==sizeof(AnitaEventHeader_t)) return 0;
+    return numBytes;  
+}
+
+
+int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
+			    unsigned long eventNumber)
+{
+    static int errorCounter=0;
+    int numBytes;  
+    int readNum=0;
+//    int firstEvent=0;
+//    int error=0;  
+    
+    gzFile infile = gzopen (filename, "rb");    
+    if(infile == NULL) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	    fprintf(stderr,"fopen: %s ---  %s\n",strerror(errno),filename);
+	    errorCounter++;
+	}
 	return -1;
+    }   
+
+    //Read first event
+    numBytes=gzread(infile,hdPtr,sizeof(AnitaEventHeader_t));
+    if(numBytes!=sizeof(AnitaEventHeader_t)) {
+	gzclose(infile);
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytes,filename);
+	    fprintf(stderr,"Only read %d bytes from %s\n",numBytes,filename);
+	    errorCounter++;
+	}	
+	return -2;
     }
-    numObjs=fread(theEventHdPtr, sizeof(AnitaEventHeader_t),1,fp);
-    fclose(fp);
-    if(numObjs!=1) {
-	return -1;
+
+    if(abs(((int)eventNumber-(int)hdPtr->eventNumber))>1000) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,hdPtr->eventNumber,filename);
+	    fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,hdPtr->eventNumber,filename);
+	    errorCounter++;
+	}	
+	return -3;
     }
+	
+    readNum=(eventNumber-hdPtr->eventNumber);
+    if(readNum) {	    
+	if(readNum>1) 
+	    gzseek(infile,sizeof(AnitaEventHeader_t)*(readNum-1),SEEK_CUR);
+	
+	numBytes=gzread(infile,hdPtr,sizeof(AnitaEventHeader_t));
+	
+	if(numBytes!=sizeof(AnitaEventHeader_t)) {
+	    gzclose(infile);
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytes,filename);
+		fprintf(stderr,"Only read %d bytes from %s\n",numBytes,filename);
+		errorCounter++;
+	    }	
+	    return -4;
+	}
+    }
+    gzclose(infile);
     return 0;
 }
+
+
+int readEncodedEventFromFile(char *buffer, char *filename,
+			     unsigned long eventNumber) 
+{
+    EncodedSurfPacketHeader_t *surfHeader = (EncodedSurfPacketHeader_t*) &buffer[0];
+    static int errorCounter=0;
+    int count=0;
+    int numBytesRead;  
+    int numBytesToSeek;
+    int numBytesToRead;
+    
+    gzFile infile = gzopen (filename, "rb");    
+    if(infile == NULL) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
+	    fprintf(stderr,"fopen: %s ---  %s\n",strerror(errno),filename);
+	    errorCounter++;
+	}
+	return -1;
+    }   
+
+    //Read first header
+    numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
+    if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+	gzclose(infile);
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
+	    fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
+	    errorCounter++;
+	}	
+	return -2;
+    }
+
+    printf("First read %lu (want %lu)\n\t%s\n",surfHeader->eventNumber,eventNumber,filename);
+
+    if(abs(((int)eventNumber-(int)surfHeader->eventNumber))>1000) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
+	    fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
+	    errorCounter++;
+	}	
+	gzclose(infile);
+	return -3;
+    }
+    int surfCounter=0;
+
+    while(surfHeader->eventNumber!=eventNumber) {
+	numBytesToSeek=surfHeader->gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
+//	printf("%d\t%lu\t%lu\t\t(seek: %d)\n",surfCounter,surfHeader->eventNumber,eventNumber,
+//	       numBytesToSeek);
+	surfCounter++;
+
+	gzseek(infile,numBytesToSeek,SEEK_CUR);
+	numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
+	if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+	    gzclose(infile);
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
+		fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
+		errorCounter++;
+	    }	
+	    return -4;
+	}
+	
+	
+	if(abs(((int)eventNumber-(int)surfHeader->eventNumber))>1000) {
+
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
+		fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
+		errorCounter++;
+	    }	
+	    gzclose(infile);
+	    return -5;
+	}
+    }
+
+    //Now ready to read event
+    count=sizeof(EncodedSurfPacketHeader_t);
+    for(surfCounter=0;surfCounter<9;surfCounter++) {
+	numBytesToRead=surfHeader->gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
+	numBytesRead=gzread(infile,&buffer[count],
+			    numBytesToRead);
+	if(numBytesRead!=numBytesToRead) {
+	    gzclose(infile);
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
+		fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
+		errorCounter++;
+	    }	
+	    return -6;
+	}
+	count+=numBytesRead;
+
+	if(surfCounter<8) {
+	    //Need to read next header
+	    surfHeader = (EncodedSurfPacketHeader_t*) &buffer[count];
+	    
+	    numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
+	    if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+		gzclose(infile);
+		if(errorCounter<100) {
+		    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
+		    fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
+		    errorCounter++;
+		}	
+		return -7;
+	    }
+	    count+=sizeof(EncodedSurfPacketHeader_t);
+	    
+	}
+	
+    }
+    
+    gzclose(infile);
+    return count;
+
+
+}
+
 
 
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
