@@ -25,8 +25,8 @@
 
 // Directories and gubbins 
 char archivedPidFile[FILENAME_MAX];
-char prioritizerdEventDir[FILENAME_MAX];
-char prioritizerdEventLinkDir[FILENAME_MAX];
+//char prioritizerdEventDir[FILENAME_MAX];
+//char prioritizerdEventLinkDir[FILENAME_MAX];
 
 char mainEventArchivePrefix[FILENAME_MAX];
 char backupEventArchivePrefix[FILENAME_MAX];
@@ -56,6 +56,7 @@ int verbosity=0;
 
 
 AnitaEventWriterStruct_t eventWriter;
+FILE *fpIndex;
 
 
 int main (int argc, char *argv[])
@@ -93,7 +94,7 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
 	    fprintf(stderr,"Couldn't get archivedPidFile\n");
 	}
-	makeDirectories(prioritizerdEventDir);
+
 	tempString=kvpGetString("baseEventArchivePrefix");
 	if(tempString) {
 	    sprintf(mainEventArchivePrefix,"%s/%s",MAIN_DATA_DISK_LINK,
@@ -105,18 +106,8 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get baseEventArchivePrefix");
 	    fprintf(stderr,"Couldn't get baseEventArchivePrefix\n");
 	}
-	tempString=kvpGetString("prioritizerdEventDir");
-	if(tempString) {
-	    strncpy(prioritizerdEventDir,tempString,FILENAME_MAX-1);
-	    sprintf(prioritizerdEventLinkDir,"%s/link",tempString);
-	    makeDirectories(prioritizerdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdEventDir");
-	    fprintf(stderr,"Couldn't get prioritizerdEventDir\n");
-	}
-	useBackupDisk=kvpGetInt("useUsbDisks",1);
 
+	useBackupDisk=kvpGetInt("useUsbDisks",1);
 				
     }
     
@@ -127,6 +118,7 @@ int main (int argc, char *argv[])
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
+    makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
     prepWriterStructs();
     retVal=0;
     /* Main event getting loop. */
@@ -204,16 +196,16 @@ void checkEvents()
     char currentLinkname[FILENAME_MAX];
     char currentBodyname[FILENAME_MAX];
 
-    numLinks=getListofLinks(prioritizerdEventLinkDir,&linkList);
+    numLinks=getListofLinks(PRIORITIZERD_EVENT_LINK_DIR,&linkList);
     if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
     for(count=0;count<numLinks;count++) {
-	sprintf(currentHeadname,"%s/%s",prioritizerdEventDir,
+	sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,
 		linkList[count]->d_name);
-	sprintf(currentLinkname,"%s/%s",prioritizerdEventLinkDir,
+	sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,
 		linkList[count]->d_name);
 	retVal=fillHeader(&theHead,currentHeadname);
 
-	sprintf(currentBodyname,"%s/ev_%lu.dat",prioritizerdEventDir,
+	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
 	retVal=fillBody(&theBody,currentBodyname);
 
@@ -300,15 +292,13 @@ void writeOutput(int numBytes) {
     char mainDiskDir[FILENAME_MAX];
     char backupDiskDir[FILENAME_MAX];
     
-
     int len,retVal;
 //    FILE *fpNorm;
-//    FILE *fpIndex;
 //    gzFile fpZip;
 //    int numThings=0;
-//    int pri=theHead.priority&0xf;
+    int pri=theHead.priority&0xf;
    
-//    if(pri>9) pri=9;
+    if(pri>9) pri=9;
 
     //Get real disk names for index and telem
     if ((len = readlink(MAIN_DATA_DISK_LINK, mainDiskDir, FILENAME_MAX-1)) != -1)
@@ -321,14 +311,25 @@ void writeOutput(int numBytes) {
 
     retVal=cleverEncEventWrite(outputBuffer,numBytes,&theHead,&eventWriter);
     
+    if(!fpIndex) {
+//	fprintf(stderr,"%s\n",EVENT_LINK_INDEX);
+	fpIndex = fopen(EVENT_LINK_INDEX,"aw");
+	if(!fpIndex) {
+	    fprintf(stderr,"Error opening file %s (%s)\n",EVENT_LINK_INDEX,
+		    strerror(errno));
+	}
+	if(theHead.eventNumber%10000==0) {
+	    //Do some archiving
+	}
+    }
+//    printf("fpIndex: %d\n",(int)fpIndex);
+    fprintf(fpIndex,"%lu\t%s\t%s\n",theHead.eventNumber,mainDiskDir,backupDiskDir);
+    fflush(fpIndex);
 
 
-//    fpIndex = fopen(currentEventIndex,"aw");
-//    fprintf(stderr,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
-//	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
-//    fprintf(fpIndex,"%lu\t%s\t%s\t%s\t%s\n",theHead.eventNumber,
-//	    realHeadName,realBackupHeadName,realBodyName,realBackupBodyName);
-//    fclose(fpIndex);
+    //Need to think about this maybe we should take a hundred events and then write the file
+    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
+    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);
 	   
 
 //    makeLink(realBodyName,eventTelemDirs[pri]);
@@ -353,7 +354,6 @@ void prepWriterStructs() {
 	printf("Preparing Writer Structs\n");
 
     //Event Writer
-
     strncpy(eventWriter.baseDirname,mainEventArchivePrefix,FILENAME_MAX-1);
     eventWriter.currentHeaderFilePtr=0;
     eventWriter.currentEventFilePtr=0;

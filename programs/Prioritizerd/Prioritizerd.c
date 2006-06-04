@@ -9,12 +9,12 @@
 
 int useUsbDisks=0;
 int maxEventsPerDir=1000;
-char acqdEventDir[FILENAME_MAX];
-char eventdEventDir[FILENAME_MAX];
-char eventdEventLinkDir[FILENAME_MAX];
+//char acqdEventDir[FILENAME_MAX];
+//char eventdEventDir[FILENAME_MAX];
+//char eventdEventLinkDir[FILENAME_MAX];
 
-char prioritizerdEventDir[FILENAME_MAX];
-char prioritizerdEventLinkDir[FILENAME_MAX];
+//char prioritizerdEventDir[FILENAME_MAX];
+//char prioritizerdEventLinkDir[FILENAME_MAX];
 
 char prioritizerdPidFile[FILENAME_MAX];
 
@@ -82,44 +82,19 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error getting prioritizerdPidFile");
 	    fprintf(stderr,"Error getting prioritizerdPidFile\n");
 	}
-	tempString=kvpGetString("acqdEventDir");
-	if(tempString) {
-	    strncpy(acqdEventDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(acqdEventDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting acqdEventDir");
-	    fprintf(stderr,"Error getting acqdEventDir\n");
-	}
-	tempString=kvpGetString("eventdEventDir");
-	if(tempString) {
-	    strncpy(eventdEventDir,tempString,FILENAME_MAX-1);
-	    sprintf(eventdEventLinkDir,"%s/link",eventdEventDir);
-	    makeDirectories(eventdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting eventdEventDir");
-	    fprintf(stderr,"Error getting eventdEventDir\n");
-	}
+
 
 	//Output and Link Directories
-	tempString=kvpGetString("prioritizerdEventDir");
-	if(tempString) {
-	    strncpy(prioritizerdEventDir,tempString,FILENAME_MAX-1);
-	    sprintf(prioritizerdEventLinkDir,"%s/link",tempString);
-	    makeDirectories(prioritizerdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdEventDir");
-	    fprintf(stderr,"Couldn't get prioritizerdEventDir\n");
-	}
-	
 
     }
 
     makeDirectories(HEADER_TELEM_LINK_DIR);
     makeDirectories(HEADER_TELEM_DIR);
-    
+    makeDirectories(EVENTD_EVENT_LINK_DIR);
+    makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
+    makeDirectories(ACQD_EVENT_LINK_DIR);
+
+ 
     retVal=0;
     /* Main event getting loop. */
     while(1) {
@@ -129,7 +104,7 @@ int main (int argc, char *argv[])
 	fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 //	usleep(1);
-	numEventLinks=getListofLinks(eventdEventLinkDir,&eventLinkList);
+	numEventLinks=getListofLinks(EVENTD_EVENT_LINK_DIR,&eventLinkList);
 
 	if(!numEventLinks) {
 	    usleep(1000);
@@ -143,85 +118,85 @@ int main (int argc, char *argv[])
 //	printf("Got %d events\n",numEventLinks);
 	/* What to do with our events? */	
 	for(count=0;count<numEventLinks;count++) {
- 	    printf("%s\n",eventLinkList[count]->d_name); 
+// 	    printf("%s\n",eventLinkList[count]->d_name); 
 	    sscanf(eventLinkList[count]->d_name,"hd_%d.dat",&doingEvent);
-	    sprintf(linkFilename,"%s/%s",eventdEventLinkDir,
+	    sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
 		    eventLinkList[count]->d_name);
-	    sprintf(hdFilename,"%s/hd_%d.dat",eventdEventDir,
+	    sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 		    doingEvent);
-	    sprintf(bodyFilename,"%s/ev_%d.dat",acqdEventDir,
+	    sprintf(bodyFilename,"%s/ev_%d.dat",ACQD_EVENT_DIR,
 		    doingEvent);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    
-
+	    
 	    retVal=fillBody(&theBody,bodyFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    retVal=fillHeader(&theHeader,hdFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    
 	    //Must determine priority here
 	    priority=1;
 	    theHeader.priority=1;
-
+	    
 	    //Write body and header for Archived
-	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",prioritizerdEventDir,
+	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
 	    writeBody(&theBody,archiveBodyFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    sprintf(archiveHdFilename,"%s/hd_%lu.dat",prioritizerdEventDir,
+	    sprintf(archiveHdFilename,"%s/hd_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
 	    writeHeader(&theHeader,archiveHdFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    makeLink(archiveHdFilename,prioritizerdEventLinkDir);
+	    makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
     
-	//Write Header and make Link for telemetry 	    
-	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
-		doingEvent);
-	retVal=writeHeader(&theHeader,telemHdFilename);
+	    //Write Header and make Link for telemetry 	    
+	    sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
+		    doingEvent);
+	    retVal=writeHeader(&theHeader,telemHdFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
+	    makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-
+	    
 	    /* Delete input */
 	    removeFile(linkFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    removeFile(bodyFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    removeFile(hdFilename);
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	}
 	

@@ -72,13 +72,14 @@
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
-#define EVENT_LINK_INDEX "/mnt/data/index/event"
-#define GPS_INDEX "/mnt/data/index/gps"
-#define HK_INDEX "/mnt/data/index/hk"
-#define SURF_HK_INDEX "/mnt/data/index/surfHk"
-#define TURF_HK_INDEX "/mnt/data/index/turfHk"
-#define MONITOR_INDEX "/mnt/data/index/monitor"
-#define CMD_INDEX "/mnt/data/index/cmd"
+#define ANITA_INDEX_DIR "/mnt/data/anita/index"
+#define EVENT_LINK_INDEX "/mnt/data/anita/index/event.ind"
+#define GPS_INDEX "/mnt/data/anita/index/gps.ind"
+#define HK_INDEX "/mnt/data/anita/index/hk.ind"
+#define SURF_HK_INDEX "/mnt/data/anita/index/surfHk.ind"
+#define TURF_HK_INDEX "/mnt/data/anita/index/turfHk.ind"
+#define MONITOR_INDEX "/mnt/data/anita/index/monitor.ind"
+#define CMD_INDEX "/mnt/data/anita/index/cmd.ind"
 
 #define MAIN_DATA_DISK_LINK "/mnt/dataCurrent"
 #define BACKUP_DATA_DISK_LINK "/mnt/dataBackup"
@@ -111,6 +112,22 @@
 //Event telemetry dirs
 #define BASE_EVENT_TELEM_DIR "/mnt/blade1/telem/event"
 #define EVENT_PRI_PREFIX "pri"
+
+//Inter-process communication dirs
+#define ACQD_EVENT_DIR "/tmp/anita/acqd/event"
+#define ACQD_EVENT_LINK_DIR "/tmp/anita/acqd/event/link"
+#define EVENTD_EVENT_DIR "/tmp/anita/eventd/event"
+#define EVENTD_EVENT_LINK_DIR "/tmp/anita/eventd/event/link"
+#define PRIORITIZERD_EVENT_DIR "/tmp/anita/prioritizerd/event"
+#define PRIORITIZERD_EVENT_LINK_DIR "/tmp/anita/prioritizerd/event/link"
+#define CMDD_COMMAND_DIR "/tmp/anita/cmdd"
+#define CMDD_COMMAND_LINK_DIR "/tmp/anita/cmdd/link"
+#define CALIBD_STATUS_DIR "/tmp/anita/calibd"
+#define CALIBD_STATUS_LINK_DIR "/tmp/anita/calibd/link"
+#define GPSD_SUBTIME_DIR "/tmp/anita/gpsd/ttt"
+#define GPSD_SUBTIME_LINK_DIR "/tmp/anita/gpsd/ttt/link"
+
+
 
 #endif /* ANITA_FLIGHT_H */
 
