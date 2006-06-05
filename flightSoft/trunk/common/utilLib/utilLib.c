@@ -148,7 +148,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
 	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
 		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
+	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");
 
 	awsPtr->writeCount=0;
 	if(awsPtr->currentHeaderFilePtr<0) {	    
@@ -162,7 +162,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
 		awsPtr->currentSubDirName,dirNum);
 	awsPtr->currentEventFilePtr=
-	    gzopen(awsPtr->currentEventFileName,"wb5");
+	    gzopen(awsPtr->currentEventFileName,"ab5");
 	if(awsPtr->currentEventFilePtr<0) {	    
 	    if(errorCounter<100) {
 		errorCounter++;
@@ -201,7 +201,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
 //	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
-	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
+	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");
 	    if(awsPtr->currentHeaderFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -212,7 +212,7 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 	    
 	    sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
-	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"wb5");
+	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"ab5");
 	    if(awsPtr->currentEventFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -316,7 +316,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
 	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
 		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
+	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");
 
 	awsPtr->writeCount=0;
 	if(awsPtr->currentHeaderFilePtr<0) {	    
@@ -330,7 +330,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	sprintf(awsPtr->currentEventFileName,"%s/encev_%d.dat.gz",
 		awsPtr->currentSubDirName,dirNum);
 	awsPtr->currentEventFilePtr=
-	    gzopen(awsPtr->currentEventFileName,"wb5");
+	    gzopen(awsPtr->currentEventFileName,"ab5");
 	if(awsPtr->currentEventFilePtr<0) {	    
 	    if(errorCounter<100) {
 		errorCounter++;
@@ -340,16 +340,20 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	}
     }
     if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
-	if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
+	if(hdPtr->eventNumber%awsPtr->maxWritesPerFile==0 ||
+	    awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
 #ifndef OPEN_CLOSE_ALL_THE_TIME // In NOT defined
 	    gzclose(awsPtr->currentEventFilePtr);
 	    gzclose(awsPtr->currentHeaderFilePtr);
 #endif
 
 	    awsPtr->fileCount++;
-	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
+	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir ||
+		hdPtr->eventNumber%(awsPtr->maxFilesPerDir*awsPtr->maxWritesPerFile)==0) {
 		awsPtr->dirCount++;
-		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
+		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir || 
+		    
+		hdPtr->eventNumber%(awsPtr->maxFilesPerDir*awsPtr->maxWritesPerFile*awsPtr->maxSubDirsPerDir)==0)  {
 		    //Make base dir
 		    dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
 		    sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
@@ -369,7 +373,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
 //	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
-	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"wb5");
+	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");
 	    if(awsPtr->currentHeaderFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -380,7 +384,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	    
 	    sprintf(awsPtr->currentEventFileName,"%s/encev_%d.dat.gz",
 		    awsPtr->currentSubDirName,dirNum);
-	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"wb5");
+	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"ab5");
 	    if(awsPtr->currentEventFilePtr<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;

@@ -172,7 +172,36 @@ int main(int argc, char *argv[])
 		}		
 		numLinks[currentPri]=
 		    getListofLinks(eventTelemLinkDirs[currentPri],
-				   &linkList[currentPri]);		
+				   &linkList[currentPri]);
+		
+		//Quick and dirty hack
+		if(numLinks[currentPri]>500) {
+//		    printf("Here %d %d\n",currentPri,numLinks[currentPri]);
+		    for(count=0;count<numLinks[currentPri]-100;
+			count++) {
+			
+			sscanf(linkList[currentPri][count]->d_name,
+			       "hd_%lu.dat",&eventNumber);
+									
+			sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+				linkList[currentPri][count]->d_name);
+			removeFile(currentHeader);
+			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+				eventNumber);
+			removeFile(currentHeader);			
+		    }
+		    for(count=0;count<numLinks[currentPri];
+			count++) 
+			free(linkList[currentPri][count]);		    
+		    free(linkList[currentPri]);
+			
+		    numLinks[currentPri]=
+			getListofLinks(eventTelemLinkDirs[currentPri],
+				       &linkList[currentPri]);	
+		    
+		}
+
+		
 		if(printToScreen && verbosity>1) {
 		    printf("Got %d links in %s\n",numLinks[currentPri],
 			   eventTelemLinkDirs[currentPri]);
@@ -231,12 +260,12 @@ int doWrite() {
     }
 
     int retVal;
-    if(!laptopDebug) {
+//    if(!laptopDebug) {
 	retVal=los_write(losBuffer,numBytesInBuffer);
-    }
-    else {
-	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
-    }	
+//    }
+//    else {
+//	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
+//    }	
     dataCounter+=numBytesInBuffer;
 //    printf("%d %d\n",numBytesInBuffer,dataCounter);
     if(dataCounter>1000000) {
@@ -398,10 +427,10 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 //	printf("Read %d bytes from file\n",numBytes);
 //	Maybe I'll add a packet check here
 	gHdr = (GenericHeader_t*) (&(losBuffer[numBytesInBuffer]));
-	checkVal=checkPacket(gHdr);
-	if(checkVal!=0 ) {
-	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
-	}
+//	checkVal=checkPacket(gHdr);
+//	if(checkVal!=0 ) {
+//	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
+//	}
 	gHdr->packetNumber=getLosNumber();
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
