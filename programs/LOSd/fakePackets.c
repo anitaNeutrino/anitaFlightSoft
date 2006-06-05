@@ -167,6 +167,12 @@ int main(int argc, char *argv[])
     printf("Acromag Data Period %f\n",actualHkPeriod);
 
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
+    makeDirectories(HEADER_TELEM_LINK_DIR);
+    makeDirectories(SURFHK_TELEM_LINK_DIR);
+    makeDirectories(TURFHK_TELEM_LINK_DIR);
+    makeDirectories(HK_TELEM_LINK_DIR);
+    makeDirectories(MONITOR_TELEM_LINK_DIR);
+    makeDirectories(GPS_TELEM_LINK_DIR);
 
     while(!maxEvents || (evNum<=maxEvents)) {
 	gettimeofday(&currentTime,0);
@@ -233,7 +239,7 @@ int main(int argc, char *argv[])
 	
 	fakeEvent(trigType);
 	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
-	usleep(200000);
+	usleep(50000);
 	evCounter++;
 	if(evCounter==6) evCounter=0;
     }

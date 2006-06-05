@@ -118,6 +118,7 @@ int main (int argc, char *argv[])
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
+    makeDirectories(ANITA_INDEX_DIR);
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
     prepWriterStructs();
     retVal=0;
@@ -233,9 +234,9 @@ void processEvent()
 //    EncodedEventWrapper_t *evWrap = (EncodedEventWrapper_t*) &outputBuffer[0];
 //    count+=sizeof(EncodedEventWrapper_t);
 
-    if(lastEvNum && (theHead.eventNumber-lastEvNum)!=1) {
-	printf("Event %lu followed %lu\n",theHead.eventNumber,lastEvNum);
-    }
+//    if(lastEvNum && (theHead.eventNumber-lastEvNum)!=1) {
+//	printf("Event %lu followed %lu\n",theHead.eventNumber,lastEvNum);
+//    }
 
     EncodedSurfPacketHeader_t *surfHdPtr;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {

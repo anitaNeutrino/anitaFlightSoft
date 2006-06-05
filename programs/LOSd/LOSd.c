@@ -141,6 +141,16 @@ int main(int argc, char *argv[])
 	makeDirectories(fakeOutputDir);
     }
 
+
+
+    makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
+    makeDirectories(HEADER_TELEM_LINK_DIR);
+    makeDirectories(SURFHK_TELEM_LINK_DIR);
+    makeDirectories(TURFHK_TELEM_LINK_DIR);
+    makeDirectories(HK_TELEM_LINK_DIR);
+    makeDirectories(MONITOR_TELEM_LINK_DIR);
+    makeDirectories(GPS_TELEM_LINK_DIR);
+    makeDirectories(CMD_ECHO_TELEM_LINK_DIR);
     
     //Fill event dir names
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
@@ -212,9 +222,6 @@ int main(int argc, char *argv[])
 		//Got an event
 		sscanf(linkList[currentPri][numLinks[currentPri]-1]->d_name,
 		       "hd_%lu.dat",&eventNumber);
-
-
-
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 			linkList[currentPri][numLinks[currentPri]-1]->d_name);
 		readAndSendEvent(currentHeader,eventNumber); //Also deletes
@@ -260,12 +267,12 @@ int doWrite() {
     }
 
     int retVal;
-//    if(!laptopDebug) {
+    if(!laptopDebug) {
 	retVal=los_write(losBuffer,numBytesInBuffer);
-//    }
-//    else {
-//	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
-//    }	
+    }
+    else {
+	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
+    }	
     dataCounter+=numBytesInBuffer;
 //    printf("%d %d\n",numBytesInBuffer,dataCounter);
     if(dataCounter>1000000) {
@@ -512,7 +519,7 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
 //    FILE *eventFile;
 //    gzFile gzippedEventFile;
 
-    if(printToScreen && verbosity) printf("Trying event %lu file %s\n",eventNumber,headerFilename);
+//    if(printToScreen) 
     
 //Now remember these files actually contain upto 100 events or headers
 
@@ -528,10 +535,15 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
      theHeader->gHdr.packetNumber=getLosNumber();
      numBytesInBuffer+=sizeof(AnitaEventHeader_t);
      
-//     printf("Have event %lu (wanted %lu) -- retVal %d\n",
-//	    theHeader->eventNumber,
-//	    eventNumber,retVal);
-
+     if(eventNumber!=theHeader->eventNumber) {
+	 printf("Trying event %lu file %s\n",eventNumber,headerFilename);
+	 printf("Have event %lu (wanted %lu) -- retVal %d\n",
+		theHeader->eventNumber,
+		eventNumber,retVal);
+     }
+	 
+	 
+     
      if(retVal<0) {
 	 removeFile(headerFilename);
 	 sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
@@ -544,7 +556,7 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
 
      //Now get event file
      sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
- 	    theHeader->eventNumber);
+ 	    eventNumber);
      numBytes=readEncodedEventFromFile(eventBuffer,waveFilename,
 				       eventNumber);
 
