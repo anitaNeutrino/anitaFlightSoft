@@ -271,6 +271,7 @@ void los_reset(void);
  */
 unsigned int los_set_delay_factor(unsigned int df);
 
-//RJN addition for debugging
+
 int fake_los_write(unsigned char *buf, short nbytes, char *outputDir);
+
 #endif // _LOS_H

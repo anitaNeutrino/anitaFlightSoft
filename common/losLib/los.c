@@ -107,6 +107,7 @@ los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
 	    return -2;
 	}
 
+//	fprintf(stderr,"read %04X wanted %04X\n",val,DATA_READY);
 	if (val != DATA_READY) {
 	    set_error_string(
 		"los_init: addr 0 value. Want %04X got %04x. Not LOS board?",
