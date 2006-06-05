@@ -135,6 +135,9 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    
+    //Dont' wait for children
+    signal(SIGCLD, SIG_IGN); 
    
     /* Load Global Config */
     kvpReset () ;

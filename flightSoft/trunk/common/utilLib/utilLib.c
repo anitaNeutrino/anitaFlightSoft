@@ -788,14 +788,19 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 	}	
 	return -3;
     }
+
+//    printf("Looking for %lu (first read %lu)\n",eventNumber,hdPtr->eventNumber);
 	
     readNum=(eventNumber-hdPtr->eventNumber);
     if(readNum) {	    
-	if(readNum>1) 
+	if(readNum>1) {
 	    gzseek(infile,sizeof(AnitaEventHeader_t)*(readNum-1),SEEK_CUR);
-	
+//	    printf("Sought %d bytes am now at %d\n",sizeof(AnitaEventHeader_t)*(readNum-1),(int)gztell(infile));
+	}
+
 	numBytes=gzread(infile,hdPtr,sizeof(AnitaEventHeader_t));
-	
+//	printf("Sought %d bytes got event %lu\n",sizeof(AnitaEventHeader_t)*(readNum-1),hdPtr->eventNumber);
+
 	if(numBytes!=sizeof(AnitaEventHeader_t)) {
 	    gzclose(infile);
 	    if(errorCounter<100) {
@@ -805,6 +810,26 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 	    }	
 	    return -4;
 	}
+	
+	if(eventNumber!=hdPtr->eventNumber) {
+	    //File not ordered numerically
+	    gzseek(infile,sizeof(AnitaEventHeader_t),SEEK_SET);
+	    do {
+		numBytes=gzread(infile,hdPtr,sizeof(AnitaEventHeader_t));
+		if(numBytes!=sizeof(AnitaEventHeader_t)) {
+		    gzclose(infile);
+		    if(errorCounter<100) {
+			syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytes,filename);
+			fprintf(stderr,"Only read %d bytes from %s\n",numBytes,filename);
+			errorCounter++;
+		    }	
+		    return -4;
+		}
+	    } while(eventNumber!=hdPtr->eventNumber);
+		
+	}
+	    
+
     }
     gzclose(infile);
     return 0;
@@ -843,7 +868,7 @@ int readEncodedEventFromFile(char *buffer, char *filename,
 	return -2;
     }
 
-    printf("First read %lu (want %lu)\n\t%s\n",surfHeader->eventNumber,eventNumber,filename);
+//    printf("First read %lu (want %lu)\n\t%s\n",surfHeader->eventNumber,eventNumber,filename);
 
     if(abs(((int)eventNumber-(int)surfHeader->eventNumber))>1000) {
 	if(errorCounter<100) {
@@ -954,30 +979,60 @@ int genericReadOfFile(char *buffer, char *filename, int maxBytes)
   Reads all the bytes in a file and returns the number of bytes read
 */
 {
+    static int errorCounter=0;
     int numBytes;
 #ifdef NO_ZLIB
     int fd;
     fd = open(filename,O_RDONLY);
     if(fd == 0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) opening file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) opening file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    errorCounter++;
+	}
 	return -1;
     }
     numBytes=read(fd,buffer,maxBytes);
-    close (fd);
     if(numBytes<=0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) reading file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) reading file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    errorCounter++;
+	}
+	close (fd);
 	return -2;
     }
+    close(fd);
     return numBytes;
 #else
     gzFile infile = gzopen(filename,"rb");
     if(infile == NULL) {
-	syslog (LOG_ERR,"gzopen: %s ---  %s\n",strerror(errno),filename);
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) opening file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) opening file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    errorCounter++;
+	}
 	return -1;
     }       
     numBytes=gzread(infile,buffer,maxBytes);
-    gzclose(infile);
     if(numBytes<=0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) reading file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) reading file %s -- %s\n",
+		   errorCounter,filename,strerror(errno));
+	    errorCounter++;
+	}
+	gzclose(infile);
 	return -2;
     }
+    gzclose(infile);
     return numBytes;
 #endif
 }
