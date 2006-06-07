@@ -25,6 +25,7 @@
 
 #define MAX_GPS_TIMES 10000
 #define MAX_CALIB_TIMES 1000
+#define EVENT_TIMEOUT 5
 
 #define TIME_MATCH 0.05 //seconds
 #define DEFAULT_C3PO 133000000
@@ -65,7 +66,6 @@ int main (int argc, char *argv[])
     /* Config file thingies */
     int status=0;
     char* eString ;
-
 
     /* Directory reading things */
     struct dirent **eventLinkList;
@@ -188,42 +188,44 @@ int main (int argc, char *argv[])
 		    }		    
 		    continue;
 		}		    
-		filledSubTime=setGpsTime(&theAcqdEventHeader);
-		 
+		do {
+		    filledSubTime=setGpsTime(&theAcqdEventHeader);
+		    if(!filledSubTime) sleep(1);
+		} while((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT
+			&& !filledSubTime);
+				
 #ifdef TIME_DEBUG
 		gettimeofday(&timeStruct2,NULL);
 		fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-		if((time(NULL)-theAcqdEventHeader.unixTime)>2 
-		   || filledSubTime) {
-		    if(!filledSubTime) {
-			theAcqdEventHeader.gpsSubTime=-1;
+		if(!filledSubTime) {
+		    theAcqdEventHeader.gpsSubTime=-1;
 //		    syslog (LOG_WARNING,"No GPS sub time for event %d",
 //			    theAcqdEventHeader.eventNumber);
-			if(printToScreen)
-			    printf("No GPS sub time for event %lu\t%ld\t%ld\n",
-				   theAcqdEventHeader.eventNumber,
-				   theAcqdEventHeader.unixTime,
-				   theAcqdEventHeader.unixTimeUs);
-		    }
-		    else if(printToScreen) 
-			 printf("Match: Event %lu\t Time:\t%ld\t%ld\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
-
+		    if(printToScreen)
+			printf("No GPS sub time for event %lu\t%ld\t%ld\n",
+			       theAcqdEventHeader.eventNumber,
+			       theAcqdEventHeader.unixTime,
+			       theAcqdEventHeader.unixTimeUs);
+		}
+		else if(printToScreen) 
+		    printf("Match: Event %lu\t Time:\t%ld\t%ld\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
+		
 //		    theAcqdEventHeader.calibStatus
 //			=getCalibStatus(theAcqdEventHeader.unixTime);
-		    writeHeaderAndMakeLink(&theAcqdEventHeader);
-		    numEvents++;
-	
-		    
-		}
-		 
-#ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
+		writeHeaderAndMakeLink(&theAcqdEventHeader);
+		numEvents++;
 		
+		    
 	    }
-	    	    	    
+	    
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+	    
+	    
+	    
 	    /* Free up the space used by dir queries */
 	    for(count=0;count<numEventLinks;count++)
 		free(eventLinkList[count]);
@@ -232,7 +234,7 @@ int main (int argc, char *argv[])
 //	usleep(10000);
 /* 	break; */
 //	sleep(2);
-
+	    
 	}
     } while(currentState==PROG_STATE_INIT); 
     return 0;
@@ -257,8 +259,8 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     
     if(verbosity>1 && printToScreen) 	
 	printf("There are %d gps links.\n",numGpsTimeLinks);
-   
-
+    
+    
     /* need to do something if we ever have more 
        than MAX_GPS_TIMES subTimes.*/
     if(numGpsStored>MAX_GPS_TIMES-100) {
@@ -287,7 +289,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 
 
 //    if(printToScreen && verbosity)
-	printf("There are %d gps times stored\n",numGpsStored);
+    printf("There are %d gps times stored\n",numGpsStored);
     for(count=0;count<numGpsStored;count++) {
 	fracUnix=((float)theHeaderPtr->unixTimeUs)/1e6;
 	fracTurf=((float)theHeaderPtr->turfio.trigTime)/((float)DEFAULT_C3PO);
