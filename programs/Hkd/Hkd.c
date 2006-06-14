@@ -137,7 +137,6 @@ int main (int argc, char *argv[])
     /* Load Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    status &= configLoad (GLOBAL_CONF_FILE,"whiteheat") ;
     eString = configErrorString (status) ;
 
     /* Get Port Numbers */
