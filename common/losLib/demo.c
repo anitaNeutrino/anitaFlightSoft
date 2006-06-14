@@ -524,7 +524,8 @@ read_once(struct buffer_info *bufinfo)
 
 		int nwds = bufinfo->science_nbytes / sizeof(short);
 
-		actual_chksum = crc_short(Dataptr+6, nwds);
+		actual_chksum = crc_short(Dataptr+CHKSUM_FLIGHT_WORD_OFFSET,
+			nwds);
 		if (expected_chksum == actual_chksum) {
 		    screen_printf("Checksum okay\n");
 		} else {

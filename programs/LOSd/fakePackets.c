@@ -106,9 +106,9 @@ int main(int argc, char *argv[])
     status = configLoad ("GPSd.config","adu5");
     if (status == CONFIG_E_OK) {
 //	printf("Here\n");
-	adu5PatPeriod=kvpGetInt("patPeriod",10);
+	adu5PatPeriod=kvpGetFloat("patPeriod",10);
 	adu5SatPeriod=kvpGetInt("satPeriod",600);
-	adu5VtgPeriod=kvpGetInt("vtgPeriod",600);
+	adu5VtgPeriod=kvpGetFloat("vtgPeriod",600);
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     status = configLoad ("GPSd.config","g12");   
     if (status == CONFIG_E_OK) {
 //	printf("Here\n");
-	g12PosPeriod=kvpGetInt("posPeriod",10);
+	g12PosPeriod=kvpGetFloat("posPeriod",10);
 	g12SatPeriod=kvpGetInt("satPeriod",600);
 
     }
@@ -237,11 +237,11 @@ int main(int argc, char *argv[])
 	    lastHkData=currentTime;
 	}
 	
-	fakeEvent(trigType);
-	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
+//	fakeEvent(trigType);
+//	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
 	usleep(50000);
-	evCounter++;
-	if(evCounter==6) evCounter=0;
+//	evCounter++;
+//	if(evCounter==6) evCounter=0;
     }
     return 0;
 }
@@ -586,6 +586,7 @@ void fakeHkCal(struct timeval *currentTime)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
+    float randomNum;
 //    theHkData.gHdr.code=PACKET_HKD;
 //    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
     theHkData.unixTime=currentTime->tv_sec;
@@ -593,7 +594,8 @@ void fakeHkCal(struct timeval *currentTime)
     theHkData.ip320.code=IP320_CAL;
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
-	    theHkData.ip320.board[board].data[chan]=0xffe0;
+	    randomNum=rand();
+	    theHkData.ip320.board[board].data[chan]=4095-(unsigned short)(10.*randomNum);
 	}
     }
     theHkData.mag.x=2.3;
@@ -616,7 +618,8 @@ void fakeHkCal(struct timeval *currentTime)
     theHkData.ip320.code=IP320_AVZ;
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
-	    theHkData.ip320.board[board].data[chan]=0x8fe0;
+	    randomNum=rand();
+	    theHkData.ip320.board[board].data[chan]=2053-(unsigned short)(10.*randomNum);
 	}
     }    
     //Write file and make link for SIPd
@@ -636,6 +639,7 @@ void fakeHkRaw(struct timeval *currentTime)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
+    float randomNum;
 //    theHkData.gHdr.code=PACKET_HKD;
 //    theHkData.gHdr.numBytes=sizeof(HkDataStruct_t);
     theHkData.unixTime=currentTime->tv_sec;
@@ -643,14 +647,17 @@ void fakeHkRaw(struct timeval *currentTime)
     theHkData.ip320.code=IP320_RAW;    
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
-	    theHkData.ip320.board[board].data[chan]=0x8fe0 + chan;
+	    theHkData.ip320.board[board].data[chan]=2048 + chan;
+	    randomNum=rand();
+	    randomNum-=0.5;
+	    theHkData.ip320.board[board].data[chan]+=(int)(20*randomNum);
 	}
     }
     theHkData.mag.x=2.3;
     theHkData.mag.y=2.3;
     theHkData.mag.z=2.3;
-    theHkData.sbs.temp[0]=25.5;
-    theHkData.sbs.temp[1]=25.5;   
+    theHkData.sbs.temp[0]=25;
+    theHkData.sbs.temp[1]=27;   
     fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
     retVal=checkPacket(&theHkData);
     if(retVal) 

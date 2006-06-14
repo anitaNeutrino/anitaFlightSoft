@@ -1,5 +1,14 @@
 # Don't forget to update the VERSION file.
 
+2.5n	06 Jun 06	Marty Olevitch
+	los.c - bug in calculating checksum.
+	los.h, demo.c - new macros
+
+2.5m	24 May 06	Marty Olevitch
+	los.c - bug: CHKSUM_OFFSET was not updated after we added the extra
+	3 words at the beginning of the data (back in version 2.5g). Should
+	be 9 instead of 6. Discovered by Ped Miocinovic.
+
 2.5l	10 May 06	Marty Olevitch
 	los.txt.in - updated documentation
 	data.fmt - updated

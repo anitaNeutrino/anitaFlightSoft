@@ -70,8 +70,6 @@ static int write_minimal_buffer();
 #define NO_END_FOUND	0xbeef
 #define SYNC_HDR	0xeb90
 
-static const int CHKSUM_WORD_OFFSET = 9;
-
 int
 los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
 {
@@ -107,7 +105,6 @@ los_init(unsigned char bus, unsigned char slot, int intr, int wr, int ms)
 	    return -2;
 	}
 
-//	fprintf(stderr,"read %04X wanted %04X\n",val,DATA_READY);
 	if (val != DATA_READY) {
 	    set_error_string(
 		"los_init: addr 0 value. Want %04X got %04x. Not LOS board?",
@@ -252,7 +249,7 @@ los_write(unsigned char *buf, short nbytes)
     }
 
     // Add the checksum and enders.
-    startp = Data_buf + CHKSUM_WORD_OFFSET;
+    startp = Data_buf + CHKSUM_FLIGHT_WORD_OFFSET;
     *sp = crc_short(startp, sp - startp);
     sp++;
     *sp++ = SW_END_HDR;
@@ -927,7 +924,7 @@ int fake_los_write(unsigned char *buf, short nbytes, char *outputDir)
     }
 
     // Add the checksum and enders.
-    startp = Data_buf + CHKSUM_WORD_OFFSET;
+    startp = 3+Data_buf + CHKSUM_FLIGHT_WORD_OFFSET;
     *sp = crc_short(startp, sp - startp);
     sp++;
     *sp++ = SW_END_HDR;

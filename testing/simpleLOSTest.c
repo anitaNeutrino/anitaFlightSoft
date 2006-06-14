@@ -17,7 +17,7 @@
 #include "utilLib/utilLib.h"
 
 void handleScience(unsigned char *buffer,unsigned short numBytes);
-
+void printSurfInfo(EncodedSurfPacketHeader_t *surfPtr);
 
 int main (int argc, char ** argv)
 { 
@@ -112,6 +112,8 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 	if(checkVal==0) {
 	    gHdr = (GenericHeader_t*) &buffer[count];	
 	    printf("Got %s\n",packetCodeAsString(gHdr->code));
+	    if(gHdr->code==PACKET_ENC_SURF) 
+		printSurfInfo((EncodedSurfPacketHeader_t*) gHdr);
 	    count+=gHdr->numBytes;
 	}
 	else {
@@ -120,8 +122,12 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 //	    count+=gHdr->numBytes;
 	}
     }
+       
+}
 
-	
-
+void printSurfInfo(EncodedSurfPacketHeader_t *surfPtr) 
+{
+    EncodedSurfChannelHeader_t *chan0= surfPtr + sizeof(EncodedSurfPacketHeader_t);
+    printf("Event %d  Chan 0: numBytes %d crc %d\n",surfPtr->eventNumber,chan0->numBytes,chan0->crc);
 
 }

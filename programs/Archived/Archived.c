@@ -209,6 +209,8 @@ void checkEvents()
 	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
 	retVal=fillBody(&theBody,currentBodyname);
+//	printf("Event %lu, fillBody retVal %d\n",theHead.eventNumber,
+//	       retVal);
 
 	processEvent();
 	removeFile(currentLinkname);
@@ -263,6 +265,11 @@ void processEvent()
 
 int encodeChannel(EncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer) 
 {
+//    printf("Event %lu, ChanId %d\n",theHead.eventNumber,
+//	   chanPtr->header.chanId);
+
+
+
     EncodedSurfChannelHeader_t *chanHdPtr
 	=(EncodedSurfChannelHeader_t*) &buffer[0];
     int count=0;    
