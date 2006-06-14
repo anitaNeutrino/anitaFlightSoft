@@ -220,6 +220,10 @@ int main(int argc, char **argv) {
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
 
+    //Dont' wait for children
+    signal(SIGCLD, SIG_IGN); 
+
+
     makeDirectories(SURFHK_TELEM_LINK_DIR);
     makeDirectories(TURFHK_TELEM_LINK_DIR);
 
