@@ -59,7 +59,6 @@ AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
 
-
 SimpleScalerStruct_t theScalers;
 FullSurfHkStruct_t theSurfHk;
 
@@ -108,6 +107,8 @@ int writeFullHk = FALSE;
 int justWriteHeader = FALSE;
 int doSlowDacCycle = FALSE; /* Do a cycle of the DAC values */
 int doGlobalDacCycle = FALSE;
+int globalCycleStepSize =1;
+int globalCyclePointsPerStep =1;
 int printStatistics = FALSE;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
@@ -462,8 +463,10 @@ int main(int argc, char **argv) {
 //				       timeStruct.tv_sec,
 //				       timeStruct.tv_usec);
 		    
-				if(updateThresholdsUsingPID())
-				    setDACThresholds(surfHandles);
+				if(enableChanServo) {
+				    if(updateThresholdsUsingPID())
+					setDACThresholds(surfHandles);
+				}
 				
 				
 //				gettimeofday(&timeStruct,NULL);
