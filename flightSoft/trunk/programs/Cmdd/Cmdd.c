@@ -86,6 +86,8 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+
+    makeDirectories(CMD_ECHO_TELEM_LINK_DIR);
     
     do {
 	retVal=readConfig();
@@ -99,11 +101,12 @@ int main (int argc, char *argv[])
 		for(count=0;count<numCmds;count++) {
 		    if(checkCommand(theCmds[count])) {
 			retVal=executeCommand(theCmds[count]);
-			
+			writeCommandEcho(theCmds[count],retVal);
 		    }
 		}
 		
 	    }
+	    usleep(100000);
 	}
 	
     } while(currentState==PROG_STATE_INIT);
@@ -238,24 +241,7 @@ int readConfig() {
 	    fprintf(stderr,"Couldn't get sipdPidFile\n");
 	}
 
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(cmdEchoDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error baseHouseTelemDir");
-	    fprintf(stderr,"Error baseHouseTelemDir\n");
-	}
-	tempString=kvpGetString("cmdEchoTelemSubDir");
-	if(tempString) {
-	    sprintf(cmdEchoDir,"%s/%s",cmdEchoDir,tempString);
-	    sprintf(cmdEchoLinkDir,"%s/link",cmdEchoDir);
-	    makeDirectories(cmdEchoLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting cmdEchoTelemSubDir");
-	    fprintf(stderr,"Error getting cmdEchoTelemSubDir\n");
-	}
+
 	tempString=kvpGetString("cmddCommandDir");
 	if(tempString) {
 	    strncpy(cmddCommandDir,tempString,FILENAME_MAX);
@@ -330,62 +316,97 @@ int executeCommand(CommandStruct_t *theCmd)
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnGPSOn");
-	    retVal=system(theCommand);
+	    retVal=system(theCommand);	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_GPS_OFF:
 	    //turnGPSOff
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnGPSOff");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_RFCM_ON:
 	    //turnRFCMOn
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnRFCMOn");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_RFCM_OFF:
 	    //turnRFCMOff
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnRFCMOff");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;	    
 	case CMD_TURN_CALPULSER_ON:
 	    //turnCalPulserOn
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnCalPulserOn");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_CALPULSER_OFF:
 	    //turnCalPulserOff
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnCalPulserOff");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_ND_ON:
 	    //turnNDOn
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnNDOn");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_ND_OFF:
 	    //turnNDOff
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnNDOff");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_ALL_ON:
 	    //turnAllOn
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnAllOn");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case CMD_TURN_ALL_OFF:
 	    //turnAllOff
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnAllOff");
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;	    
 	case SET_CALPULSER_SWITCH:
 	    //setCalPulserSwitch
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; setCalPulserAddr %d",theCmd->cmd[1]);
 	    retVal=system(theCommand);
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;	    
 	case SET_SUNSENSOR_GAIN:
 	    //setSunSensorGain
 	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; setSSGain %d",theCmd->cmd[1]);
 	    retVal=system(theCommand);	   
+	    
+	    time(&rawtime);
+	    return rawtime;
 	    return retVal;
 	case SET_ADU5_PAT_PERIOD:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
@@ -732,19 +753,20 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
 	syslog(LOG_ERR,"Error executing cmd: %s",cmdString);
 	fprintf(stderr,"Error executing cmd: %s\n",cmdString);
     }
-    sprintf(filename,"%s/cmd_%ld.dat",cmdEchoDir,theEcho.unixTime);
+    sprintf(filename,"%s/cmd_%ld.dat",CMD_ECHO_TELEM_DIR,theEcho.unixTime);
     {
 	FILE *pFile;
 	int fileTag=1;
 	pFile = fopen(filename,"rb");
 	while(pFile!=NULL) {
 	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",cmdEchoDir,theEcho.unixTime,fileTag);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
 	}
     }
+    printf("Writring to file %s\n",filename);
     writeCmdEcho(&theEcho,filename);
-    makeLink(filename,cmdEchoLinkDir);
+    makeLink(filename,CMD_ECHO_TELEM_LINK_DIR);
     
     return retVal;
 }

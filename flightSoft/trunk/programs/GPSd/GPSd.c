@@ -240,7 +240,7 @@ int main (int argc, char *argv[])
 
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
-
+    makeDirectories(GPS_TELEM_LINK_DIR);
     
     retVal=readConfigFile();
     if(retVal<0) {
