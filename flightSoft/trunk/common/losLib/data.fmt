@@ -27,5 +27,19 @@ LOS and SIP high-rate data format.
 	bit 1 = 1 Odd number of science bytes. NB must be
 	    decremented and 0x00 pad byte at end of data removed.
 
+    The first three words are inserted by the ground LOS board.
+
     Checksum calculated over the science bytes only; that is bytes
-	18 through (18+NB)-1.
+	18 through (18+NB)-1 using the following function:
+
+	    unsigned short
+	    crc_short(unsigned short *p, unsigned long n)
+	    {
+		unsigned short sum = 0;
+		unsigned long i;
+		for (i=0L; i<n; i++) {
+		    sum += *p++;
+		}
+		return ((0xffff - sum) + 1);
+	    }
+

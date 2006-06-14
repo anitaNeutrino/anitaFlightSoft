@@ -31,6 +31,20 @@ struct buffer_info {
 #define LOS_MAX_WORDS (LOS_MAX_BYTES / sizeof(unsigned short))
 
 /*
+ * Macro: CHKSUM_FLIGHT_WORD_OFFSET
+ *	Offset in 16-bit words from the beginning of the
+ * 	data buffer on the flight end.
+ */
+#define CHKSUM_FLIGHT_WORD_OFFSET 6
+
+/*
+ * Macro: CHKSUM_GSE_WORD_OFFSET
+ *	Offset in 16-bit words from the beginning of the
+ * 	data buffer on the gse end.
+ */
+#define CHKSUM_GSE_WORD_OFFSET 9
+
+/*
  * Macro:    START_HDR    
  *      value 0xF00D
  */
@@ -272,6 +286,6 @@ void los_reset(void);
 unsigned int los_set_delay_factor(unsigned int df);
 
 
+/*RJN hack for testing*/
 int fake_los_write(unsigned char *buf, short nbytes, char *outputDir);
-
 #endif // _LOS_H

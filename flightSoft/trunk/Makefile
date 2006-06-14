@@ -43,9 +43,8 @@ scripts:
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOn
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/triggerCalPulser
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setSSGain
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAddr
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/getLogWindow.sh bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/startProgsInXterms.sh bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/killAllProgs.sh bin
@@ -65,9 +64,8 @@ scripts:
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/triggerCalPulser bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setSSGain bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAddr bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort bi
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/runAcqdStandalone.sh bin
 
 

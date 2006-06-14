@@ -146,7 +146,10 @@ int main (int argc, char *argv[])
 	    //Must determine priority here
 	    priority=1;
 	    theHeader.priority=1;
-	    
+	
+	    //Now Fill Generic Header and calculate checksum
+	    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));
+    
 	    //Write body and header for Archived
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);

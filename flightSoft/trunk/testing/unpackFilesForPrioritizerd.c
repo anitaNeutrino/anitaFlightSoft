@@ -22,8 +22,7 @@ int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBody
 
 int printToScreen=0;
 int verbosity=0;
-char eventdEventDir[FILENAME_MAX];
-char eventdEventLinkDir[FILENAME_MAX];
+
 
 /*Event object*/
 AnitaEventHeader_t theHeader;
@@ -66,29 +65,11 @@ int main(int argc, char** argv) {
 	usleepNum=(int)((float)1000000)/(atof(argv[2]));
     }
 
-    /* Load Config */
-    kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
-
-    if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("eventdEventDir");
-	if(tempString) {
-	    strncpy(eventdEventDir,tempString,FILENAME_MAX-1);
-	    strncpy(eventdEventLinkDir,tempString,FILENAME_MAX-1);
-	    strcat(eventdEventLinkDir,"/link");
-	    makeDirectories(eventdEventLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventdEventDir");
-	}
-
-    }
-
 
     printf("Input Dir: %s\n",dirName);
-    printf("Output Dir: %s\n",eventdEventDir);
-    printf("Link Dir: %s\n",eventdEventLinkDir);
+    printf("Body Output Dir: %s\n",ACQD_EVENT_DIR);
+    printf("Header Output Dir: %s\n",EVENTD_EVENT_DIR);
+    printf("Link Dir: %s\n",EVENTD_EVENT_LINK_DIR);
     
     for(eventNum=0;1;eventNum+=10000) {
 	dirNum=1000000*(int)((eventNum)/1000000);
@@ -113,7 +94,13 @@ int main(int argc, char** argv) {
 		numBytesEvent=gzread(inputEvent,&theBody,sizeof(AnitaEventBody_t));
 		if(numBytesEvent!=sizeof(AnitaEventBody_t) ||
 		   numBytesHead!=sizeof(AnitaEventHeader_t)) break;
-//	    printf("Got Event %lu\n",theHeader.eventNumber);
+		printf("Got Event %lu\n",theHeader.eventNumber);
+		if(0) {
+		    printf("channel[0].header.chanId = %d\n",theBody.channel[0].header.chanId);
+		    printf("channel[1].header.chanId = %d\n",theBody.channel[1].header.chanId);
+		}
+		
+		
 		writeAndMakeLink(&theHeader,&theBody);
 		usleep(usleepNum);
 		
@@ -145,21 +132,21 @@ int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBody
     int retVal;
 //    FILE *testfp;
     
-    /* Move ev_ file first */
-    sprintf(theFilename,"%s/ev_%ld.dat",eventdEventDir,
+    /* Write ev_ file first */
+    sprintf(theFilename,"%s/ev_%ld.dat",ACQD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     retVal=writeBody(theBodyPtr,theFilename);
     
 
     /* Should probably do something with retVal */
        
-    sprintf(theFilename,"%s/hd_%ld.dat",eventdEventDir,
+    sprintf(theFilename,"%s/hd_%ld.dat",EVENTD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
     retVal=writeHeader(theHeaderPtr,theFilename);
 
     /* Make links, not sure what to do with return value here */
-    retVal=makeLink(theFilename,eventdEventLinkDir);
+    retVal=makeLink(theFilename,EVENTD_EVENT_LINK_DIR);
     
     
     return retVal;
