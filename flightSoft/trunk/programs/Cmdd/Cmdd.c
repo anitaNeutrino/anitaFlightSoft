@@ -263,6 +263,8 @@ int readConfig() {
 int executeCommand(CommandStruct_t *theCmd) 
 //Returns 0 if there was a problem and unixTime otherwise
 {
+    printf("Have command %d\n",theCmd->cmd[0]);
+    
     time_t rawtime;
     int retVal=0;
     int ivalue;
@@ -591,6 +593,7 @@ int defaultConfig()
 int getIdMask(ProgramId_t prog) {
     switch(prog) {
 	case ID_ACQD: return ACQD_ID_MASK;
+	case ID_ARCHIVED: return ARCHIVED_ID_MASK;
 	case ID_CALIBD: return CALIBD_ID_MASK;
 	case ID_CMDD: return CMDD_ID_MASK;
 	case ID_EVENTD: return EVENTD_ID_MASK;
@@ -609,6 +612,7 @@ char *getProgName(ProgramId_t prog) {
     char *string;
     switch(prog) {
 	case ID_ACQD: string="Acqd"; break;
+	case ID_ARCHIVED: string="Archived"; break;
 	case ID_CALIBD: string="Calibd"; break;
 	case ID_CMDD: string="Cmdd"; break;
 	case ID_EVENTD: string="Eventd"; break;
@@ -625,6 +629,7 @@ char *getProgName(ProgramId_t prog) {
 char *getPidFile(ProgramId_t prog) {
     switch(prog) {
 	case ID_ACQD: return acqdPidFile;
+	case ID_ARCHIVED: return archivedPidFile;
 	case ID_CALIBD: return calibdPidFile;
 	case ID_CMDD: return cmddPidFile;
 	case ID_EVENTD: return eventdPidFile;
@@ -649,15 +654,22 @@ int killPrograms(int progMask)
     ProgramId_t prog;
     
     int testMask;	
+
+//    printf("Kill programs %d\n",progMask);
     for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
 	testMask=getIdMask(prog);
+//	printf("%d %d\n",progMask,testMask);
 	if(progMask&testMask) {
+	    printf("Killing prog %s\n",getProgName(prog));
 	    sprintf(daemonCommand,"daemon --stop -n %s",getProgName(prog));
 	    retVal=system(daemonCommand);
 	    if(retVal!=0) {
 		errorCount++;
 		syslog(LOG_ERR,"Error killing %s",getProgName(prog));
 		//Maybe do something clever
+	    }
+	    else {
+		syslog(LOG_INFO,"Killed %s\n",getProgName(prog));
 	    }
 	}
     }
