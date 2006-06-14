@@ -72,6 +72,7 @@ unsigned char eventBuffer[MAX_EVENT_SIZE];
 unsigned char losBuffer[LOS_MAX_BYTES];
 int numBytesInBuffer=0;
 
+#define MAX_ATTEMPTS 50
 
 int main(int argc, char *argv[])
 {
@@ -141,8 +142,6 @@ int main(int argc, char *argv[])
 	makeDirectories(fakeOutputDir);
     }
 
-
-
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
     makeDirectories(HEADER_TELEM_LINK_DIR);
     makeDirectories(SURFHK_TELEM_LINK_DIR);
@@ -151,6 +150,7 @@ int main(int argc, char *argv[])
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(GPS_TELEM_LINK_DIR);
     makeDirectories(CMD_ECHO_TELEM_LINK_DIR);
+
     
     //Fill event dir names
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
@@ -267,12 +267,23 @@ int doWrite() {
     }
 
     int retVal;
+    int attempts=0;
     if(!laptopDebug) {
-	retVal=los_write(losBuffer,numBytesInBuffer);
+	while(attempts<MAX_ATTEMPTS) {
+	    retVal=los_write(losBuffer,numBytesInBuffer);
+	    if(retVal==0) break;
+	    attempts++;
+	}
+	if(attempts>30) {
+	    printf("Took %d attempts to write %d bytes\n",attempts,numBytesInBuffer);
+	    syslog(LOG_ERR,"Took %d attempts to write %d bytes\n",attempts,numBytesInBuffer);
+
+	}
     }
     else {
 	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
     }	
+
     dataCounter+=numBytesInBuffer;
 //    printf("%d %d\n",numBytesInBuffer,dataCounter);
     if(dataCounter>1000000) {

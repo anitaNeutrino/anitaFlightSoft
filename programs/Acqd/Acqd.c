@@ -219,6 +219,9 @@ int main(int argc, char **argv) {
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
 
+    makeDirectories(SURFHK_TELEM_LINK_DIR);
+    makeDirectories(TURFHK_TELEM_LINK_DIR);
+
     retVal=readConfigFile();
 #ifdef BAD_DEBUG
     printf("Read config %d\n",retVal);
@@ -519,9 +522,17 @@ int main(int argc, char **argv) {
 #endif    
 
 
-//Is now load event into ram
+//Now load event into ram
 	    if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
 		printf("  failed to send clear event pulse on TURFIO.\n") ;
+	    
+//	    if(sendSoftTrigger) {
+//		//RJN 13/06/06
+//		// Insert sleep to cure weirdness of first few samples
+//		usleep(200);
+//	    }
+
+
 
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
@@ -565,13 +576,27 @@ int main(int argc, char **argv) {
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
 
+
+
+	    //Switched for timing test
+	    status=readSurfHkData(surfHandles);
+
+	    //Will change to SurfClearHk
+	    for(surf=0;surf<numSurfs;++surf)
+		if (setSurfControl(surfHandles[surf], 
+				   SurfClearHk) 
+		    != ApiSuccess)
+		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+
+	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
+
+
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
-	    status=readSurfHkData(surfHandles);
-	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
+
 		
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);

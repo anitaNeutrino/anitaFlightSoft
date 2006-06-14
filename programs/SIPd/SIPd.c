@@ -38,6 +38,8 @@ int readConfig();
 void readAndSendEvent(char *headerFilename);
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
+int writeCommandAndLink(CommandStruct_t *theCmd);
+
 
 // Config Thingies
 char sipdPidFile[FILENAME_MAX];
@@ -50,23 +52,10 @@ char cmddCommandLinkDir[FILENAME_MAX];
 
 //Packet Dirs
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
-char headerTelemDir[FILENAME_MAX];
-char cmdTelemDir[FILENAME_MAX];
-char surfHkTelemDir[FILENAME_MAX];
-char turfHkTelemDir[FILENAME_MAX];
-char hkTelemDir[FILENAME_MAX];
-char gpsTelemDir[FILENAME_MAX];
-char monitorTelemDir[FILENAME_MAX];
 
 //Packet Link Dirs
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
-char headerTelemLinkDir[FILENAME_MAX];
-char cmdTelemLinkDir[FILENAME_MAX];
-char surfHkTelemLinkDir[FILENAME_MAX];
-char turfHkTelemLinkDir[FILENAME_MAX];
-char hkTelemLinkDir[FILENAME_MAX];
-char gpsTelemLinkDir[FILENAME_MAX];
-char monitorTelemLinkDir[FILENAME_MAX];
+
 
 //Output variables
 int verbosity;
@@ -94,7 +83,7 @@ int throttleRate=MAX_WRITE_RATE;
 int main(int argc, char *argv[])
 {
     //Temporary variables
-    int retVal,numCmds=256,count,pk;
+    int retVal,numCmds=256,count,pk,pri;
     char *tempString;
 
     /* Config file thingies */
@@ -154,115 +143,21 @@ int main(int argc, char *argv[])
 	    fprintf(stderr,"Couldn't get cmddCommandDir\n");
 	}
 
-	//Get telemetry packet dirs	
-	tempString=kvpGetString("baseHouseTelemDir");
-	if(tempString) {
-	    strncpy(cmdTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(surfHkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(turfHkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(hkTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(gpsTelemDir,tempString,FILENAME_MAX-1);
-	    strncpy(monitorTelemDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseTelemDir");
-	    fprintf(stderr,"Couldn't get baseHouseTelemDir\n");
-	}
-	
-	tempString=kvpGetString("cmdEchoTelemSubDir");
-	if(tempString) {
-	    sprintf(cmdTelemDir,"%s/%s",cmdTelemDir,tempString);
-	    sprintf(cmdTelemLinkDir,"%s/link",cmdTelemDir);
-	    makeDirectories(cmdTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmdEchoTelemSubDir");
-	    fprintf(stderr,"Couldn't get cmdEchoTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("hkTelemSubDir");
-	if(tempString) {
-	    sprintf(hkTelemDir,"%s/%s",hkTelemDir,tempString);
-	    sprintf(hkTelemLinkDir,"%s/link",hkTelemDir);
-	    makeDirectories(hkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkTelemSubDir");
-	    fprintf(stderr,"Couldn't get hkTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("surfHkTelemSubDir");
-	if(tempString) {
-	    sprintf(surfHkTelemDir,"%s/%s",surfHkTelemDir,tempString);
-	    sprintf(surfHkTelemLinkDir,"%s/link",surfHkTelemDir);
-	    makeDirectories(surfHkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get surfHkTelemSubDir");
-	    fprintf(stderr,"Couldn't get surfHkTelemSubDir\n");
-	}
-		tempString=kvpGetString("turfHkTelemSubDir");
-	if(tempString) {
-	    sprintf(turfHkTelemDir,"%s/%s",turfHkTelemDir,tempString);
-	    sprintf(turfHkTelemLinkDir,"%s/link",turfHkTelemDir);
-	    makeDirectories(turfHkTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get turfHkTelemSubDir");
-	    fprintf(stderr,"Couldn't get turfHkTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("gpsTelemSubDir");
-	if(tempString) {
-	    sprintf(gpsTelemDir,"%s/%s",gpsTelemDir,tempString);
-	    sprintf(gpsTelemLinkDir,"%s/link",gpsTelemDir);
-	    makeDirectories(gpsTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsTelemSubDir");
-	    fprintf(stderr,"Couldn't get gpsTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("monitorTelemSubDir");
-	if(tempString) {
-	    sprintf(monitorTelemDir,"%s/%s",monitorTelemDir,tempString);
-	    sprintf(monitorTelemLinkDir,"%s/link",monitorTelemDir);
-	    makeDirectories(monitorTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitorTelemSubDir");
-	    fprintf(stderr,"Couldn't get monitorTelemSubDir\n");
-	}
-	
-	tempString=kvpGetString("headerTelemDir");
-	if(tempString) {
-	    strncpy(headerTelemDir,tempString,FILENAME_MAX-1);
-	    sprintf(headerTelemLinkDir,"%s/link",headerTelemDir);
-	    makeDirectories(headerTelemLinkDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get headerTelemSubDir");
-	    fprintf(stderr,"Couldn't get headerTelemSubDir\n");
-	}
-
-	tempString=kvpGetString("baseEventTelemDir");
-	if(tempString) {
-	    for(pk=0;pk<NUM_PRIORITIES;pk++) {
-		sprintf(eventTelemDirs[pk],"%s/pk%d",tempString,pk);
-		sprintf(eventTelemLinkDirs[pk],"%s/link",eventTelemDirs[pk]);
-		makeDirectories(eventTelemLinkDirs[pk]);
-	    }
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseEventTelemDir");
-	    fprintf(stderr,"Couldn't get baseEventTelemDir\n");
-	    exit(0);
-	}
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
 	fprintf(stderr,"Error reading config file: %s\n",eString);
     }
+
+    
+    //Fill event dir names
+    for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
+		EVENT_PRI_PREFIX,pri);
+	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
+	makeDirectories(eventTelemLinkDirs[pri]);
+    }
+
 
     retVal=readConfig();
             
@@ -360,28 +255,15 @@ void highrateHandler(int *ignore)
 
 void commandHandler(unsigned char *cmd)
 {
-//    fprintf(stderr, "commandHandler: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
-    char executeCommand[FILENAME_MAX];
+    fprintf(stderr, "commandHandler: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
+    CommandStruct_t theCmd;
     int byteNum=0;
-    int retVal=0;
-    if(cmdLengths[cmd[0]]) {
-	printf("Got cmd: %d (length supposedly) %d\n",cmd[0],cmdLengths[cmd[0]]);
-	sprintf(executeCommand,"Cmdd %d",cmd[0]);
-	if(cmdLengths[cmd[0]]>1) {
-	    for(byteNum=1;byteNum<cmdLengths[cmd[0]];byteNum++) 
-		sprintf(executeCommand,"%s %d",executeCommand,cmd[byteNum]);
-	}	
-	printf("%s\n",executeCommand);
-	syslog(LOG_INFO,"%s\n",executeCommand);
-	retVal=system(executeCommand);
-	if(retVal!=0) {
-	    syslog(LOG_ERR,"Error executing %s\n",executeCommand);
-	    fprintf(stderr,"Error executing %s\n",executeCommand);
-	}
-    }
-    else {
-	printf("Weren't expecting cmd: %d\n",cmd[0]);
-    }
+    theCmd.numCmdBytes=cmdLengths[cmd[0]];
+    for(byteNum=0;byteNum<cmdLengths[cmd[0]];byteNum++) 
+	theCmd.cmd[byteNum]=cmd[byteNum];
+    
+    return writeCommandAndLink(&theCmd);
+
 	       
 
 /*     if (cmd[0] == 129) { */
@@ -683,4 +565,27 @@ void sendWakeUpBuffer()
 	fprintf(stderr,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());	
     }
     
+}
+
+
+int writeCommandAndLink(CommandStruct_t *theCmd) {
+    time_t unixTime;
+    time(&unixTime);
+    int retVal=0;
+    char filename[FILENAME_MAX];
+
+    sprintf(filename,"%s/cmd_%ld.dat",cmddCommandDir,unixTime);
+    {
+	FILE *pFile;
+	int fileTag=1;
+	pFile = fopen(filename,"rb");
+	while(pFile!=NULL) {
+	    fclose(pFile);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",cmddCommandDir,unixTime,fileTag);
+	    pFile=fopen(filename,"rb");
+	}
+    }
+    writeCmd(theCmd,filename);
+    makeLink(filename,cmddCommandLinkDir);    
+    return retVal;
 }
