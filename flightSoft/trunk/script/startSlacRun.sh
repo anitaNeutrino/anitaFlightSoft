@@ -34,7 +34,7 @@ ps x | grep "LOSd"
 ps x | grep "Prioritizerd"
 ps x | grep "SIPd"
 
-
+Acqd 
 
 
 
