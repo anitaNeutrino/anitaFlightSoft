@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
 
-
+    makeDirectories(ACQD_EVENT_LINK_DIR);
     makeDirectories(SURFHK_TELEM_LINK_DIR);
     makeDirectories(TURFHK_TELEM_LINK_DIR);
 
