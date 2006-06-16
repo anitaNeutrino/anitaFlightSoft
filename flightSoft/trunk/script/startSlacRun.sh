@@ -31,8 +31,8 @@ CmdTest 133 246 1
 sleep 2
 
 echo "Checking"
-ps x | grep "Archived{1}"
-qps x | grep "Cmdd"
+ps x | grep "Archived"
+ps x | grep "Cmdd"
 ps x | grep "Eventd"
 ps x | grep "GPSd"
 ps x | grep "Hkd"
