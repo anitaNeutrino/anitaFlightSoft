@@ -237,8 +237,8 @@ int main(int argc, char *argv[])
 	    lastHkData=currentTime;
 	}
 	
-//	fakeEvent(trigType);
-//	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
+	fakeEvent(trigType);
+	if(surfHkPeriod==0) fakeSurfHk(&currentTime);
 	usleep(50000);
 //	evCounter++;
 //	if(evCounter==6) evCounter=0;

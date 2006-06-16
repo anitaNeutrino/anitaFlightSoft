@@ -23,7 +23,7 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 10000
+#define MAX_GPS_TIMES 200
 #define MAX_CALIB_TIMES 1000
 #define EVENT_TIMEOUT 5
 
@@ -187,10 +187,16 @@ int main (int argc, char *argv[])
 				tempNum);
 		    }		    
 		    continue;
-		}		    
+		}	
+	    
 		do {
+//		    printf("Here %lu (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
 		    filledSubTime=setGpsTime(&theAcqdEventHeader);
-		    if(!filledSubTime) sleep(1);
+		    if(!filledSubTime) {
+			if((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT) sleep(1);
+			else break;
+		    }
+		    else break;
 		} while((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT
 			&& !filledSubTime);
 				
@@ -288,8 +294,8 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     qsort(gpsArray,numGpsStored,sizeof(GpsSubTime_t),compareGpsTimes);
 
 
-//    if(printToScreen && verbosity)
-    printf("There are %d gps times stored\n",numGpsStored);
+    if(printToScreen && verbosity)
+	printf("There are %d gps times stored\n",numGpsStored);
     for(count=0;count<numGpsStored;count++) {
 	fracUnix=((float)theHeaderPtr->unixTimeUs)/1e6;
 	fracTurf=((float)theHeaderPtr->turfio.trigTime)/((float)DEFAULT_C3PO);

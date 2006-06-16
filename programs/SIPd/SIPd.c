@@ -233,7 +233,7 @@ void highrateHandler(int *ignore)
 	    //Got an event	    
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 		    linkList[numLinks-1]->d_name);
-	    readAndSendEvent(currentHeader); //Also deletes
+//	    readAndSendEvent(currentHeader); //Also deletes
 
 	    while(numLinks) {
 		free(linkList[numLinks-1]);
