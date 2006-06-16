@@ -10,9 +10,15 @@ done
 echo "Killing old progs"
 CmdTest 131 246 1
 
+sleep 2
+
+rm -rf /tmp/anita
 mkdir ${THE_DIR}
 sudo umount /mnt/data >> /dev/null 2>&1
 sudo mount --bind ${THE_DIR} /mnt/data
+mkdir /mnt/data/log
+mkdir /mnt/data/index
+
 
 mkdir ${THE_DIR}/config
 cp -r ~/flightSoft/config ${THE_DIR}/config
@@ -34,7 +40,13 @@ ps x | grep "LOSd"
 ps x | grep "Prioritizerd"
 ps x | grep "SIPd"
 
-Acqd 
+echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`"
+
+echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`" > ${THE_DIR}/log/startLog.txt
+echo "ps -x gives:" >> ${THE_DIR}/log/startLog.txt
+ps -x >> ${THE_DIR}/log/startLog.txt
+
+#Acqd 
 
 
 
