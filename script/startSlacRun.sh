@@ -14,7 +14,7 @@ sleep 2
 
 rm -rf /tmp/anita
 mkdir ${THE_DIR}
-sudo umount /mnt/data >> /dev/null 2>&1
+sudo umount /mnt/data
 sudo mount --bind ${THE_DIR} /mnt/data
 mkdir /mnt/data/log
 mkdir /mnt/data/index
@@ -46,7 +46,9 @@ echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`" > ${THE_DIR}/lo
 echo "ps -x gives:" >> ${THE_DIR}/log/startLog.txt
 ps -x >> ${THE_DIR}/log/startLog.txt
 
-#Acqd 
+ridiculousRunLog ${THE_DIR}/log/sillyLog.txt
+
+Acqd 
 
 
 
