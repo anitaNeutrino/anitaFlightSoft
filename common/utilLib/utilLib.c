@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <zlib.h>
 #include <fcntl.h>
-#define NO_ZLIB
+//#define NO_ZLIB
 
 #define OPEN_CLOSE_ALL_THE_TIME
 
