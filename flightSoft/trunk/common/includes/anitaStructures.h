@@ -35,6 +35,8 @@
 #define VER_CMD_ECHO 4
 #define VER_MONITOR 5
 #define VER_TURF_RATE 6
+#define VER_LAB_PED 1
+#define VER_FULL_PED 1
 
 
 //Relay Bit Masks
@@ -58,12 +60,14 @@
 
 typedef enum {
     PACKET_HD = 0x100,
-    PACKET_WV = 0x101,
+    PACKET_WV = 0x101, //Too big to telemeter
     PACKET_SURF = 0x102,
     PACKET_SURF_HK = 0x110,
     PACKET_TURF_RATE = 0x111,
     PACKET_ENC_WV = 0x120,
     PACKET_ENC_SURF = 0x121,
+    PACKET_LAB_PED = 0x130,
+    PACKET_FULL_PED = 0x131, //Too big to telemeter
     PACKET_GPS_ADU5_PAT = 0x200,
     PACKET_GPS_ADU5_SAT = 0x201,
     PACKET_GPS_ADU5_VTG = 0x202,
@@ -425,6 +429,37 @@ typedef struct {
     DiskSpaceStruct_t diskInfo;
     QueueStruct_t queueInfo;
 } MonitorStruct_t;
+
+typedef struct {
+    unsigned char chanId;   // chan+9*surf
+    unsigned char chipId; // 0-3
+    unsigned short chipEntries;
+    unsigned short pedMean[MAX_NUMBER_SAMPLES]; //times 10
+    unsigned char pedRMS[MAX_NUMBER_SAMPLES]; //times 10
+} LabChipChannelPedStruct_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTimeStart;
+    unsigned long unixTimeEnd;
+    LabChipChannelPedStruct_t pedChan[CHANNELS_PER_SURF];
+} FullLabChipPedStruct_t;
+
+typedef struct {
+    unsigned long unixTimeStart;
+    unsigned long unixTimeEnd;
+    LabChipChannelPedStruct_t pedChan[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF];
+} FullPedStruct_t;
+
+typedef struct {
+    unsigned long unixTimeStart;
+    unsigned long unixTimeEnd;
+    unsigned short chipEntries[ACTIVE_SURFS][LABRADORS_PER_SURF];
+    float mean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    float meanSq[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    float entries[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+} PedCalcStruct_t;
+
 
 typedef struct {
      unsigned long unixTime; /* when were these taken? */

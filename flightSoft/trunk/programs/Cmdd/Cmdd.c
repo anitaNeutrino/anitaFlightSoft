@@ -30,8 +30,10 @@ int writeCommandEcho(CommandStruct_t *theCommand, int unixTime);
 int sendSignal(ProgramId_t progId, int theSignal); 
 int readConfig();
 int cleanDirs();
-int sendConfig();
-int defaultConfig();
+int sendConfig(int progMask);
+int defaultConfig(int progMask);
+int lastConfig(int progMask);
+int switchConfig(int progMask,unsigned char configId);
 int killPrograms(int progMask);
 int startPrograms(int progMask);
 int respawnPrograms(int progMask);
@@ -362,17 +364,17 @@ int executeCommand(CommandStruct_t *theCmd)
 	    time(&rawtime);
 	    return rawtime;
 	    return retVal;
-	case CMD_TURN_ND_ON:
+	case CMD_TURN_VETO_ON:
 	    //turnNDOn
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnNDOn");
+	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnVetoOn");
 	    retVal=system(theCommand);
 	    
 	    time(&rawtime);
 	    return rawtime;
 	    return retVal;
-	case CMD_TURN_ND_OFF:
+	case CMD_TURN_VETO_OFF:
 	    //turnNDOff
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnNDOff");
+	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnVetoOff");
 	    retVal=system(theCommand);
 	    
 	    time(&rawtime);
@@ -402,9 +404,9 @@ int executeCommand(CommandStruct_t *theCmd)
 	    time(&rawtime);
 	    return rawtime;
 	    return retVal;	    
-	case SET_SUNSENSOR_GAIN:
+	case SET_CALPULSER_ATTEN:
 	    //setSunSensorGain
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; setSSGain %d",theCmd->cmd[1]);
+	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; setCalPulserAtten %d",theCmd->cmd[1]);
 	    retVal=system(theCommand);	   
 	    
 	    time(&rawtime);
@@ -514,9 +516,17 @@ int executeCommand(CommandStruct_t *theCmd)
 	case CLEAN_DIRS: 	    
 	    return cleanDirs();
 	case SEND_CONFIG: 
-	    return sendConfig();	    
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return sendConfig(ivalue);	    
 	case DEFAULT_CONFIG:
-	    return defaultConfig();
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return defaultConfig(ivalue);
+	case SWITCH_CONFIG:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return switchConfig(ivalue,theCmd->cmd[3]);
+	case LAST_CONFIG:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return lastConfig(ivalue);
 	default:
 	    syslog(LOG_WARNING,"Unrecognised command %d\n",theCmd->cmd[0]);
 	    return retVal;
@@ -580,15 +590,26 @@ int cleanDirs()
     return 0;
 }
 
-int sendConfig() 
+int sendConfig(int progMask) 
 {
     return 0;
 }
 
-int defaultConfig()
+int defaultConfig(int progMask)
 {
     return 0;
 }
+
+int switchConfig(int progMask, unsigned char configId) 
+{
+    return 0;
+}
+
+int lastConfig(int progMask)
+{
+    return 0;
+}
+
 
 int getIdMask(ProgramId_t prog) {
     switch(prog) {
