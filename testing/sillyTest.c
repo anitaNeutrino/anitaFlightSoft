@@ -66,6 +66,11 @@ int main (void)
     printf("Size of DiskSpaceStruct_t: %d\n",sizeof(DiskSpaceStruct_t));
     printf("Size of QueueStruct_t: %d\n",sizeof(QueueStruct_t));
     printf("Size of MonitorStruct_t: %d\n",sizeof(MonitorStruct_t));
+    printf("Size of LabChipChannelPedStruct_t: %d\n",sizeof(LabChipChannelPedStruct_t));
+    printf("Size of FullLabChipPedStruct_t: %d\n",sizeof(FullLabChipPedStruct_t));
+    printf("Size of FullPedStruct_t: %d\n",sizeof(FullPedStruct_t));
+
+
 /*     printf("\n\n");   */
 /*     printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n", */
 /* 	   (int)&turfio, */

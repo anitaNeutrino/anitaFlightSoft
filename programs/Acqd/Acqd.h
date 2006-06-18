@@ -139,6 +139,9 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
 void makeSubAltDir();
 //int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
 void prepWriterStructs();
+void addPedestals();
+void writePedestals();
+int getChanIndex(int surf, int chan);
 
 
 typedef struct {

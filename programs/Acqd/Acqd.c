@@ -61,6 +61,15 @@ TurfRateStruct_t turfRates;
 
 SimpleScalerStruct_t theScalers;
 FullSurfHkStruct_t theSurfHk;
+PedCalcStruct_t thePeds;
+
+
+//Pedestal stuff
+int pedestalMode=0;
+int writeDebugData=0;
+int numPedEvents=4000;
+int switchConfigAtEnd=1;
+
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
@@ -78,8 +87,6 @@ char subAltOutputdir[FILENAME_MAX];
 char acqdPidFile[FILENAME_MAX];
 //char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
-char scalerOutputDir[FILENAME_MAX];
-char hkOutputDir[FILENAME_MAX];
 char surfHkArchiveDir[FILENAME_MAX];
 char turfHkArchiveDir[FILENAME_MAX];
 char surfHkUSBArchiveDir[FILENAME_MAX];
@@ -102,21 +109,17 @@ int madeAltDir = FALSE;
 int selftrig = FALSE ;/* self-trigger mode */
 int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
-int writeScalers = FALSE;
 int writeFullHk = FALSE;
 int justWriteHeader = FALSE;
 int doSlowDacCycle = FALSE; /* Do a cycle of the DAC values */
 int doGlobalDacCycle = FALSE;
 int globalCycleStepSize =1;
 int globalCyclePointsPerStep =1;
-int printStatistics = FALSE;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
 int softTrigSleepPeriod = 0;
-int writeOutC3p0Nums = FALSE;
 int reprogramTurf = FALSE;
-int tryToUseBarMap = FALSE;
 
 //Trigger Modes
 TriggerMode_t trigMode=TrigNone;
@@ -223,9 +226,12 @@ int main(int argc, char **argv) {
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
 
+    makeDirectories(HEADER_TELEM_LINK_DIR);
+    makeDirectories(PEDESTAL_DIR);
     makeDirectories(ACQD_EVENT_LINK_DIR);
     makeDirectories(SURFHK_TELEM_LINK_DIR);
     makeDirectories(TURFHK_TELEM_LINK_DIR);
+    makeDirectories(CMDD_COMMAND_LINK_DIR);
 
     retVal=readConfigFile();
 #ifdef BAD_DEBUG
@@ -251,12 +257,12 @@ int main(int argc, char **argv) {
 	return -1 ;
     }
 
-    if(tryToUseBarMap) {	
-	rc = setBarMap(surfHandles,turfioHandle);
-	if(rc!=ApiSuccess) {
-	    printf("Error setting bar map\n");
-	}
+    
+    rc = setBarMap(surfHandles,turfioHandle);
+    if(rc!=ApiSuccess) {
+	printf("Error setting bar map\n");
     }
+
     
     // Initialize interrupt structure.
     memset(&plxIntr, 0, sizeof(PlxIntr_t)) ;
@@ -308,6 +314,26 @@ int main(int argc, char **argv) {
 	writeAntTrigMask(turfioHandle);
 	
 	theSurfHk.globalThreshold=0;
+
+	//Pedestal Mode
+	if(pedestalMode) {
+	    enableChanServo=0;
+	    setGlobalThreshold=1;
+	    globalThreshold=1;
+	    doGlobalDacCycle=0;
+	    writeData=writeDebugData;
+	    numEvents=numPedEvents;
+	    sendSoftTrigger=1;
+	    softTrigSleepPeriod=0;
+	    writeFullHk=0;
+	    
+	    memset(&thePeds,0,sizeof(PedCalcStruct_t));
+	    gettimeofday(&timeStruct,NULL);
+	    thePeds.unixTimeStart=timeStruct.tv_sec;
+
+	}
+
+
 	//Set Thresholds
 	if(setGlobalThreshold) {
 	    setGloablDACThreshold(surfHandles,globalThreshold);
@@ -318,6 +344,7 @@ int main(int argc, char **argv) {
 	else {
 	    setDACThresholds(surfHandles);
 	}
+
 	
 	currentState=PROG_STATE_RUN;
 	while (currentState==PROG_STATE_RUN) {
@@ -335,7 +362,7 @@ int main(int argc, char **argv) {
 	    memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
 	    if(setGlobalThreshold) 
 		theSurfHk.globalThreshold=globalThreshold;
-
+		
 	    if(doGlobalDacCycle) {		
 		enableChanServo=0;
 //		if(dacVal<=500) dacVal=4095;
@@ -561,12 +588,8 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readSurfEventData -- start %ld s, %ld ms\n",timeStruct.tv_sec,timeStruct.tv_usec);
 	    fprintf(timeFile,"4 %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec);  
 #endif
-	    if(firmwareVersion==1) {
-		status+=readSurfEventData(surfHandles);
-	    }
-	    else {
-		status+=readSurfEventDataVer2(surfHandles);
-	    }
+	    status+=readSurfEventDataVer2(surfHandles);
+
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readSurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
@@ -582,58 +605,59 @@ int main(int argc, char **argv) {
 
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
+	    if(pedestalMode) addPedestals();
 
+	    if(!pedestalMode) {
+		//Switched for timing test
+		status=readSurfHkData(surfHandles);
+		
+		//Will change to SurfClearHk
+		for(surf=0;surf<numSurfs;++surf)
+		    if (setSurfControl(surfHandles[surf], 
+				       SurfClearHk) 
+			!= ApiSuccess)
+			printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 
-
-	    //Switched for timing test
-	    status=readSurfHkData(surfHandles);
-
-	    //Will change to SurfClearHk
-	    for(surf=0;surf<numSurfs;++surf)
-		if (setSurfControl(surfHandles[surf], 
-				   SurfClearHk) 
-		    != ApiSuccess)
-		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-
-	    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
-
-
+		if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
+		
+		
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
 
 		
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
+		gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    if(enableChanServo) {
-		if(verbosity && printToScreen) 
-		    printf("Will servo on channel scalers\n");
+		if(enableChanServo) {
+		    if(verbosity && printToScreen) 
+			printf("Will servo on channel scalers\n");
+		    
+		    if(updateThresholdsUsingPID())
+			setDACThresholds(surfHandles);
+		}    
 		
-		if(updateThresholdsUsingPID())
-		    setDACThresholds(surfHandles);
-	    }    
-
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
+		gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-	    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    
-	    if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
-		//Record housekeeping data
-		gotSurfHk=1;
-		lastSurfHk=timeStruct.tv_sec;
-		theSurfHk.unixTime=timeStruct.tv_sec;
-		theSurfHk.unixTimeUs=timeStruct.tv_usec;
 		
+		if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
+		    //Record housekeeping data
+		    gotSurfHk=1;
+		    lastSurfHk=timeStruct.tv_sec;
+		    theSurfHk.unixTime=timeStruct.tv_sec;
+		    theSurfHk.unixTimeUs=timeStruct.tv_usec;
+		    
+		}
 	    }
-
-
+	    
+	    
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -647,7 +671,7 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-
+	    
 	    if(verbosity && printToScreen) printf("Done reading\n");
 	    //Error checking
 	    if(status!=ACQD_E_OK) {
@@ -673,7 +697,7 @@ int main(int argc, char **argv) {
 
 
 		// Save data
-		if(writeData || writeScalers || writeFullHk){
+		if(writeData || writeFullHk){
 		    if(useAltDir) {
 //			if(!madeAltDir || 
 //			   hdPtr->eventNumber%MAX_EVENTS_PER_DIR==0) 
@@ -738,8 +762,7 @@ int main(int argc, char **argv) {
 
 
 		}
-		//Insert stats call here
-		if(printStatistics) calculateStatistics();
+
 	    }
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -763,10 +786,18 @@ int main(int argc, char **argv) {
 #endif	    
 //	if(selftrig) sleep (2) ;
 	}  /* closing master while loop. */
+	if(pedestalMode) {
+	    writePedestals();
+	    if(switchConfigAtEnd) {
+		//Arrrghhh
+	    }
+	}
+
+
     } while(currentState==PROG_STATE_INIT);
 
 
-    if(tryToUseBarMap) unsetBarMap(surfHandles,turfioHandle);
+    unsetBarMap(surfHandles,turfioHandle);
     // Clean up
     for(surf=0;surf<numSurfs;surf++)
 	PlxPciDeviceClose(surfHandles[surf] );
@@ -1141,8 +1172,10 @@ int readConfigFile()
     status += configLoad ("Acqd.config","trigger") ;
     status += configLoad ("Acqd.config","thresholds") ;
     status += configLoad ("Acqd.config","acqd") ;
+    status += configLoad ("Acqd.config","pedestal") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	pedestalMode=kvpGetInt("pedestalMode",0);
 	useInterrupts=kvpGetInt("useInterrupts",0);
 	firmwareVersion=kvpGetInt("firmwareVersion",2);
 	tempString=kvpGetString("acqdPidFile");
@@ -1161,20 +1194,7 @@ int readConfigFile()
 	    strncpy(lastEventNumberFile,tempString,FILENAME_MAX-1);
 	else
 	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
-	tempString=kvpGetString ("scalerOutputDir");
-	if(tempString) {
-	    strncpy(scalerOutputDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(scalerOutputDir);
-	}
-	else
-	    fprintf(stderr,"Coudn't fetch scalerOutputDir\n");
-	tempString=kvpGetString ("hkOutputDir");
-	if(tempString) {
-	    strncpy(hkOutputDir,tempString,FILENAME_MAX-1);
-	    makeDirectories(hkOutputDir);
-	}
-	else
-	    fprintf(stderr,"Coudn't fetch hkOutputDir\n");
+
 //	printf("Debug rc2\n");
 	printToScreen=kvpGetInt("printToScreen",0);
 	if(addedVerbosity && printToScreen==0) {
@@ -1247,23 +1267,19 @@ int readConfigFile()
 //	printf("HK surfPeriod %d\nturfRateTelemEvery %d\nturfRateTelemInterval %d\n",surfHkPeriod,turfRateTelemEvery,turfRateTelemInterval);
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
-	writeOutC3p0Nums=kvpGetInt("writeOutC3p0Nums",0);
 	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
 	softTrigSleepPeriod=kvpGetInt("softTrigSleepPeriod",0);
 	reprogramTurf=kvpGetInt("reprogramTurf",0);
-	tryToUseBarMap=kvpGetInt("tryToUseBarMap",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
 	if(!writeData)
 	    writeData=kvpGetInt("writeData",1);
-	writeScalers=kvpGetInt("writeScalers",1);
 	writeFullHk=kvpGetInt("writeFullHk",1);
 	justWriteHeader=kvpGetInt("justWriteHeader",0);
 	if(!standAloneMode) 
 	    verbosity=kvpGetInt("verbosity",0);
 	else
 	    verbosity=kvpGetInt("verbosity",0)+addedVerbosity;
-	printStatistics=kvpGetInt("printStatistics",0);
 	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
 	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
 	doSlowDacCycle=kvpGetInt("doSlowDacCycle",0);
@@ -1377,7 +1393,11 @@ int readConfigFile()
 	    }
 	}
     	
-
+	//Pedestal things
+	writeDebugData=kvpGetInt("writeDebugData",1);
+	numPedEvents=kvpGetInt("numPedEvents",4000);
+	switchConfigAtEnd=kvpGetInt("switchConfigAtEnd",1);
+	
 	
     }
     else {
@@ -1635,96 +1655,6 @@ PlxReturnCode_t readPlxDataShort(PlxHandle_t handle, unsigned short *dataWord)
 
 
 
-void calculateStatistics() {
-
-//    static float mean_dt=0;
-    static float mean_rms[MAX_SURFS][N_CHIP][N_CHAN];
-    static double chanMean[MAX_SURFS][N_CHIP][N_CHAN];
-    static double chanMeanSqd[MAX_SURFS][N_CHIP][N_CHAN];
-    static unsigned long chanNumReads[MAX_SURFS][N_CHIP][N_CHAN];
-    static int firstTime=1;
-    static unsigned long numChipEvents[N_CHIP];
-
-    int surf,chan,chip,samp;
-
-    if(firstTime) {
-	for(surf=0;surf<numSurfs;++surf)
-	    for(chip=0;chip<N_CHIP;++chip) 
-		for(chan=0;chan<N_CHAN;++chan) {
-		    mean_rms[surf][chip][chan]=0;
-		    chanMean[surf][chip][chan]=0;
-		    chanMeanSqd[surf][chip][chan]=0;
-		    chanNumReads[surf][chip][chan]=0;
-		}
-	firstTime=0;
-    }
-  
-
-
-    // Calculate mean,rms,std dev
-    for(surf=0;surf<numSurfs;++surf) {
-	for(chan=0;chan<N_CHAN;++chan){
-	    double sum[N_CHIP]={0};
-	    double sumSqd[N_CHIP]={0};
-	    int tempNum[N_CHIP]={0};
-	    for(samp=0;samp<N_SAMP;++samp) {
-		int tempChip=theEvent.body.channel[chan+surf*CHANNELS_PER_SURF].data[samp]>>14;
-		int tempData=theEvent.body.channel[chan+surf*CHANNELS_PER_SURF].data[samp] & DATA_MASK;
-		if(tempData) {
-/* 	    printf("%d\t%d\n",tempChip,tempData); */
-		    sum[tempChip]+=tempData;
-		    sumSqd[tempChip]+=tempData*tempData;
-		    tempNum[tempChip]++;
-		}
-	    }
-
-	    for(chip=0;chip<N_CHIP;chip++) {	  
-		if(tempNum[chip]) {
-		    float tempRMS=0;
-		    tempRMS=sqrt(sumSqd[chip]/(float)tempNum[chip]);
-		    float temp1=mean_rms[surf][chip][chan]*((float)(numChipEvents[chip]))/(float)(numChipEvents[chip]+1);
-		    float temp2=tempRMS/(float)(numChipEvents[chip]+1);	  
-		    mean_rms[surf][chip][chan]=temp1+temp2;
-		    numChipEvents[chip]++;
-
-		    /* Ryan's statistics */	    
-		    double tempMean=sum[chip];///(double)tempNum[chip];
-		    double tempMeanSqd=sumSqd[chip];///(double)tempNum[chip];
-/* 	    printf("%f\t%f\n",tempMean,tempMeanSqd); */
-		    chanMean[surf][chip][chan]=(chanMean[surf][chip][chan]*((double)chanNumReads[surf][chip][chan]/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]))) +
-			(tempMean/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]));
-		    chanMeanSqd[surf][chip][chan]=(chanMeanSqd[surf][chip][chan]*((double)chanNumReads[surf][chip][chan]/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]))) +
-			(tempMeanSqd/(double)(tempNum[chip]+chanNumReads[surf][chip][chan]));
-		    chanNumReads[surf][chip][chan]+=tempNum[chip];	    
-		}
-	    }
-	}
-    }
-  
-    // Display Mean
-    if (verbosity && printStatistics) {
-	for(surf=0;surf<numSurfs;++surf){
-	    printf("Board %d Mean, After Event %d (Software)\n",surfIndex[surf],doingEvent);
-	    for(chip=0;chip<N_CHIP;++chip){
-		for(chan=0;chan<N_CHAN;++chan)
-		    printf("%.2f ",chanMean[surf][chip][chan]);
-		printf("\n");
-	    }
-	}
-
-	// Display Std Dev
-	for(surf=0;surf<numSurfs;++surf){
-	    printf("Board %d Std Dev., After Event %d (Software)\n",surfIndex[surf],doingEvent);
-	    for(chip=0;chip<N_CHIP;++chip){
-		for(chan=0;chan<N_CHAN;++chan)
-		    printf("%.2f ",sqrt(chanMeanSqd[surf][chip][chan]-chanMean[surf][chip][chan]*chanMean[surf][chip][chan]));
-		printf("\n");
-	    }
-	}
-    }
-
-}
-
 int getEventNumber() {
     int retVal=0;
     static int firstTime=1;
@@ -1938,28 +1868,12 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 	}
 	
 	//First read to prime pipe
-	if(tryToUseBarMap) {
-	    dataInt=*(barMapAddr[surf]);
-	}
-	else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
-	    status=ACQD_E_PLXBUSREAD;
-	    syslog(LOG_ERR,"Failed to prime pipe SURF %d (rc = %d)",surfIndex[surf],rc);
-	    if(printToScreen) 
-		printf("Failed to prime pipe SURF %d (rc = %d)\n", surfIndex[surf],rc) ;
-	}
-
+	dataInt=*(barMapAddr[surf]);
 	
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (samp=0 ; samp<N_SAMP_EFF ; samp++) {		
-		if(tryToUseBarMap) 
-		    dataInt=*(barMapAddr[surf]);
-		else if(readPlxDataWord(surfHandles[surf],&dataInt)
-			!= ApiSuccess) {
-		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surfIndex[surf],chan,samp);
-		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surfIndex[surf], chan, samp) ;
-		}
+		dataInt=*(barMapAddr[surf]);
+
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surfIndex[surf],((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
 		}
@@ -1968,15 +1882,8 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 	}
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (samp=N_SAMP_EFF ; samp<N_SAMP ; samp++) {		
-		if(tryToUseBarMap) 
-		    dataInt=*(barMapAddr[surf]);
-		else if(readPlxDataWord(surfHandles[surf],&dataInt)
-			!= ApiSuccess) {
-		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surfIndex[surf],chan,samp);
-		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surfIndex[surf], chan, samp) ;
-		}    
+		dataInt=*(barMapAddr[surf]);
+
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surfIndex[surf],((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
 		}
@@ -2106,41 +2013,17 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 	*/
 
 	//First read header word
-	if(tryToUseBarMap) {
-	    headerWord=*(barMapAddr[surf]);
-	}
-	else if ((rc=readPlxDataWord(surfHandles[surf],&headerWord))!= ApiSuccess) {
-	    status=ACQD_E_PLXBUSREAD;
-	    syslog(LOG_ERR,"Failed to read header word SURF %d (rc = %d)",surfIndex[surf],rc);
-	    if(printToScreen) 
-		printf("Failed to read header word %d (rc = %d)\n", surfIndex[surf],rc) ;
-	}
+	headerWord=*(barMapAddr[surf]);
 	
 
 	//Now prime data stream
-	if(tryToUseBarMap) {
-	    dataInt=*(barMapAddr[surf]);
-	}
-	else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
-	    status=ACQD_E_PLXBUSREAD;
-	    syslog(LOG_ERR,"Failed to read header word SURF %d (rc = %d)",surfIndex[surf],rc);
-	    if(printToScreen) 
-		printf("Failed to read header word %d (rc = %d)\n", surfIndex[surf],rc) ;
-	}
-
+	dataInt=*(barMapAddr[surf]);
 	
 	//Now read first 256 samples per SURF
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (readCount=samp=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {		
-		if(tryToUseBarMap) 
-		    dataInt=*(barMapAddr[surf]);
-		else if(readPlxDataWord(surfHandles[surf],&dataInt)
-			!= ApiSuccess) {
-		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, readCount %d",surfIndex[surf],chan,readCount);
-		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d read=%d\n", surfIndex[surf], chan, readCount) ;
-		}
+		dataInt=*(barMapAddr[surf]);
+
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,dataInt);
 		}
@@ -2170,15 +2053,7 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 	for(chan=0;chan<N_CHAN; chan++) {
 	    samp=N_SAMP_EFF;
 	    for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
-		if(tryToUseBarMap) 
-		    dataInt=*(barMapAddr[surf]);
-		else if(readPlxDataWord(surfHandles[surf],&dataInt)
-			!= ApiSuccess) {
-		    status=ACQD_E_PLXBUSREAD;			
-		    syslog(LOG_ERR,"Failed to read data: SURF %d, chan %d, samp %d",surfIndex[surf],chan,samp);
-		    if(printToScreen) 
-			printf("Failed to read IO. surf=%d, chn=%d sca=%d\n", surfIndex[surf], chan, samp) ;
-		} 
+		dataInt=*(barMapAddr[surf]);
 		
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,dataInt);
@@ -2201,15 +2076,8 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 	    }
 	}
 	
-	if(tryToUseBarMap) 
-	    dataInt=*(barMapAddr[surf]);
-	else if(readPlxDataWord(surfHandles[surf],&dataInt)
-		!= ApiSuccess) {
-	    status=ACQD_E_PLXBUSREAD;			
-	    syslog(LOG_ERR,"Failed to read last word: SURF %d",surfIndex[surf]);
-	    if(printToScreen) 
-		printf("Failed to read last word surf=%d\n", surfIndex[surf]) ;
-	} 
+	dataInt=*(barMapAddr[surf]);
+
 	labData[surf][N_CHAN-1][N_SAMP-1]=dataInt&0xffff;
 	labData[surf][N_CHAN-1][N_SAMP-1]|=headerWord&0xffff0000;
 	
@@ -2331,15 +2199,8 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	
 	//First read the scaler data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
-	    if(tryToUseBarMap) {
-		dataInt=*(barMapAddr[surf]);
-	    }	    
-	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
-		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read SURF %d, Scaler %d (rc = %d)",surfIndex[surf],rfChan,rc);
-		if(printToScreen) 
-		    printf("Failed to read SURF %d, Scaler %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
-	    }
+	    dataInt=*(barMapAddr[surf]);
+
 	    theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
 	    if((printToScreen && verbosity>1) || HK_DEBUG) 
 		printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.scaler[surf][rfChan]);
@@ -2359,15 +2220,8 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 
 	//Next comes the threshold (DAC val) data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
-	    if(tryToUseBarMap) {
-		dataInt=*(barMapAddr[surf]);
-	    }	    
-	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
-		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read SURF %d, Threshold %d (rc = %d)",surfIndex[surf],rfChan,rc);
-		if(printToScreen) 
-		    printf("Failed to read SURF %d, Threshold %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
-	    }
+	    dataInt=*(barMapAddr[surf]);
+
 	    theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
 	    if((printToScreen && verbosity>1) || HK_DEBUG) 
 		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theSurfHk.threshold[surf][rfChan]&0xfff);
@@ -2379,22 +2233,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	
 	//Lastly read the RF Power Data
 	for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
-	    if(tryToUseBarMap) {
-		dataInt=*(barMapAddr[surf]);
-	    }	    
-	    else if ((rc=readPlxDataWord(surfHandles[surf],&dataInt))!= ApiSuccess) {
-		status=ACQD_E_PLXBUSREAD;
-		syslog(LOG_ERR,"Failed to read SURF %d, RF Power %d (rc = %d)",surfIndex[surf],rfChan,rc);
-		if(printToScreen) 
-		    printf("Failed to read SURF %d, RF Power %d (rc = %d)\n",surfIndex[surf],rfChan,rc);
-	    }
-	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
-	    if((printToScreen && verbosity>1) || HK_DEBUG) 
-		printf("Surf %d, RF Power %d (%d) == %d\n",surfIndex[surf],rfChan,((dataInt&0xe000)>>13),(theSurfHk.rfPower[surf][rfChan]&0xfff));
-	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
-		theSurfHk.errorFlag|=(1>>surf);
-	    }
-
+	    dataInt=*(barMapAddr[surf]);
 	}
     }
     return status;
@@ -2419,18 +2258,8 @@ AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle)
     TurfioTestPattern_t endPat;
     
     //First read to prime pipe
-//    if(tryToUseBarMap) {
 //	dataWord=*(turfBarMap);
-//    }
-//    else 
 // Do we need prime read (rjn 20/05/06)
-
-//    if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
-//	status=ACQD_E_PLXBUSREAD;
-//	syslog(LOG_ERR,"Failed to prime pipe TURFIO");
-//	if(printToScreen) 
-//	    printf("Failed to prime pipe TURFIO\n") ;
-//  }
     
     //Read out 160 words
     for(wordNum=0;wordNum<160;wordNum++) {
@@ -2806,3 +2635,150 @@ void prepWriterStructs() {
     eventWriter.maxFilesPerDir=EVENT_FILES_PER_DIR;
     eventWriter.maxWritesPerFile=EVENTS_PER_FILE;
 }
+
+
+int getChanIndex(int surf, int chan) {
+    //Assumes chan 0-8 and surf 0-9
+    return chan + CHANNELS_PER_SURF*surf;
+
+}
+
+void addPedestals() {
+
+    int labChip=0,surf,chan,samp;
+    int word;
+	
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chan=0;chan<N_CHAN;chan++) {
+	    int chanIndex=getChanIndex(surf,chan);		
+	    labChip=theEvent.body.channel[chanIndex].header.chipIdFlag&0x3;
+	    if(chan==0) {
+		thePeds.chipEntries[surf][labChip]++;
+	    }
+//		cout << surf << "\t" << chan << "\t" << chanIndex
+//		     << "\t" << theBody.channel[chanIndex].header.chipIdFlag
+//		     << endl;
+
+	    for(samp=0;samp<N_SAMP;samp++) {
+		word=theEvent.body.channel[chanIndex].data[samp];
+		if(word&0x1000) //HITBUS
+		    continue;
+		if(!(word&0xfff)) continue; //Zeros are junk
+		if(samp>0) {
+		    if(theEvent.body.channel[chanIndex].data[samp-1] &0x1000)
+			continue;
+		}
+		if(samp<255) {
+		    if(theEvent.body.channel[chanIndex].data[samp+1] &0x1000)
+			continue;
+		}
+		
+//		    if(surf==0 && chan==0 && samp==0) cout << labChip << endl;
+		
+		thePeds.mean[surf][labChip][chan][samp]+=word&0xfff;
+		thePeds.meanSq[surf][labChip][chan][samp]+=(word&0xfff)*(word&0xfff);
+		thePeds.entries[surf][labChip][chan][samp]++;
+	    }
+	}
+    }
+
+}
+
+void writePedestals() {
+    FullPedStruct_t allPeds;
+    FullLabChipPedStruct_t labPeds;
+    char filename[FILENAME_MAX];
+//    char linkname[FILENAME_MAX];
+    time_t rawtime;
+    int surf,chip,chan,samp;
+    float tempFloat;
+//    unsigned short tempShort;
+//    unsigned char tempChar;
+    
+    time(&rawtime);
+    allPeds.unixTimeStart=thePeds.unixTimeStart;
+    allPeds.unixTimeEnd=rawtime;
+
+
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chip=0;chip<LABRADORS_PER_SURF;chip++) {
+	    memset(&labPeds,0,sizeof(FullLabChipPedStruct_t));	   
+	    labPeds.unixTimeStart=thePeds.unixTimeStart;
+	    labPeds.unixTimeEnd=rawtime;
+	    for(chan=0;chan<N_CHAN;chan++) {
+		labPeds.pedChan[chan].chipId=chip;
+		allPeds.pedChan[surf][chip][chan].chipId=chip;
+		labPeds.pedChan[chan].chanId=getChanIndex(surf,chan);
+		allPeds.pedChan[surf][chip][chan].chanId=getChanIndex(surf,chan);
+		labPeds.pedChan[chan].chipEntries=thePeds.chipEntries[surf][chip];
+		allPeds.pedChan[surf][chip][chan].chipEntries=thePeds.chipEntries[surf][chip];				
+		for(samp=0;samp<N_SAMP;samp++) {
+		    if(thePeds.entries[surf][chip][chan][samp]) {
+			thePeds.mean[surf][chip][chan][samp]/=
+			    thePeds.entries[surf][chip][chan][samp];
+			
+			tempFloat=roundf(10.*thePeds.mean[surf][chip][chan][samp]);
+			if(tempFloat>65535) tempFloat=65535;
+			if(tempFloat<0) tempFloat=0;
+			labPeds.pedChan[chan].pedMean[samp]=
+			    (unsigned short) tempFloat;
+			allPeds.pedChan[surf][chip][chan].pedMean[samp]=
+			    (unsigned short) tempFloat;
+			
+			
+			thePeds.meanSq[surf][chip][chan][samp]/=
+			    thePeds.entries[surf][chip][chan][samp];
+			tempFloat=thePeds.meanSq[surf][chip][chan][samp]-
+			    (thePeds.mean[surf][chip][chan][samp]*
+			     thePeds.mean[surf][chip][chan][samp]);
+			if(tempFloat) {
+			    tempFloat=roundf(10.*tempFloat);
+			    if(tempFloat>255) tempFloat=255;
+			    if(tempFloat<0) tempFloat=0;
+			    labPeds.pedChan[chan].pedRMS[samp]=
+				(unsigned char) tempFloat;
+			    allPeds.pedChan[surf][chip][chan].pedRMS[samp]=
+				(unsigned char) tempFloat;
+			}
+			else {
+			    labPeds.pedChan[chan].pedRMS[samp]=0;
+			    allPeds.pedChan[surf][chip][chan].pedRMS[samp]=0;
+			}
+			    
+		    }
+		    else {
+			labPeds.pedChan[chan].pedMean[samp]=0;
+			allPeds.pedChan[surf][chip][chan].pedMean[samp]=0;
+			labPeds.pedChan[chan].pedRMS[samp]=0;
+			allPeds.pedChan[surf][chip][chan].pedRMS[samp]=0;
+		    }					    
+		}
+	    }
+	    
+	    //Now write lab files
+	    fillGenericHeader(&labPeds,PACKET_LAB_PED,sizeof(FullLabChipPedStruct_t));
+	    sprintf(filename,"%s/labpeds_%lu_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,chip);
+	    writeLabChipPedStruct(&labPeds,filename);
+
+	    //And for telemetery
+	    sprintf(filename,"%s/labpeds_%lu_%d.dat",HEADER_TELEM_DIR,labPeds.unixTimeEnd,chip);
+	    writeLabChipPedStruct(&labPeds,filename);
+
+	    //and link it
+	    makeLink(filename,HEADER_TELEM_LINK_DIR);
+	    
+
+	}
+    }
+
+    //Now write full ped file
+//    fillGenericHeader(&allPeds,PACKET_FULL_PED,sizeof(FullPedStruct_t));
+    sprintf(filename,"%s/allpeds_%lu_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,chip);
+    writeFullPedStruct(&allPeds,filename);
+
+    //and link it
+    symlink(filename,CURRENT_PEDESTALS);
+
+
+}
+	

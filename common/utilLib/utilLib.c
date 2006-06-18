@@ -1202,6 +1202,26 @@ int writeCalibStatus(CalibStruct_t *calibPtr, char *filename)
     return normalSingleWrite((char*)calibPtr,filename,sizeof(CalibStruct_t));
 }
 
+int writeFullPedStruct(FullPedStruct_t *pedPtr, char *filename) 
+{
+#ifdef NO_ZLIB
+    return normalSingleWrite((char*)pedPtr,filename,sizeof(FullPedStruct_t));
+#else
+    return zippedSingleWrite((char*)pedPtr,filename,sizeof(FullPedStruct_t));
+#endif
+
+}
+
+int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename) 
+{
+#ifdef NO_ZLIB
+    return normalSingleWrite((char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
+#else
+    return zippedSingleWrite((char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
+#endif
+
+}
+
 
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
 /* Writes the monitor object pointed to by monitorPtr to filename */
@@ -1302,6 +1322,8 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_SURF: gHdr->verId=VER_SURF_PACKET; break;
 	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;
 	case PACKET_TURF_RATE: gHdr->verId=VER_TURF_RATE; break;
+	case PACKET_LAB_PED: gHdr->verId=VER_LAB_PED; break;
+	case PACKET_FULL_PED: gHdr->verId=VER_FULL_PED; break;
 	case PACKET_ENC_WV: gHdr->verId=VER_ENC_WAVE_PACKET; break;
 	case PACKET_ENC_SURF: gHdr->verId=VER_ENC_SURF_PACKET; break;
 	case PACKET_GPS_ADU5_PAT: gHdr->verId=VER_ADU5_PAT; break;
@@ -1350,6 +1372,8 @@ int checkPacket(void *thePtr)
 	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
 	case PACKET_ENC_WV: break;
 	case PACKET_ENC_SURF: break;
+	case PACKET_LAB_PED: packetSize=sizeof(FullLabChipPedStruct_t); break;
+	case PACKET_FULL_PED: packetSize=sizeof(FullPedStruct_t); break;
 	case PACKET_GPS_ADU5_PAT: packetSize=sizeof(GpsAdu5PatStruct_t); break;
 	case PACKET_GPS_ADU5_SAT: packetSize=sizeof(GpsAdu5SatStruct_t); break;
 	case PACKET_GPS_ADU5_VTG: packetSize=sizeof(GpsAdu5VtgStruct_t); break;
@@ -1383,6 +1407,8 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_SURF: string="RawSurfPacket_t"; break;
 	case PACKET_SURF_HK: string="FullSurfHkStruct_t"; break;
 	case PACKET_TURF_RATE: string="TurfRateStruct_t"; break;
+	case PACKET_LAB_PED: string="FullLabChipPedStruct_t"; break;
+	case PACKET_FULL_PED: string="FullPedStruct_t"; break;
 	case PACKET_ENC_WV: string="EncodedWaveformPacket_t"; break;
 	case PACKET_ENC_SURF: string="EncodedSurfPacketHeader_t"; break;
 	case PACKET_GPS_ADU5_PAT: string="GpsAdu5PatStruct_t"; break;
