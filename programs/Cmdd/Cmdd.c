@@ -62,11 +62,6 @@ char losdPidFile[FILENAME_MAX];
 char prioritizerdPidFile[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
 
-// Directories for commands and command echoes
-char cmddCommandDir[FILENAME_MAX];
-char cmddCommandLinkDir[FILENAME_MAX];
-char cmdEchoDir[FILENAME_MAX];
-char cmdEchoLinkDir[FILENAME_MAX];
 
 //Debugging Output
 int printToScreen=0;
@@ -90,7 +85,8 @@ int main (int argc, char *argv[])
     signal(SIGUSR2, sigUsr2Handler);
 
     makeDirectories(CMD_ECHO_TELEM_LINK_DIR);
-    
+    makeDirectories(CMDD_COMMAND_LINK_DIR);
+
     do {
 	retVal=readConfig();
 	currentState=PROG_STATE_RUN;
@@ -118,16 +114,16 @@ int main (int argc, char *argv[])
 
 int checkForNewCommand() {
     struct dirent **cmdLinkList;
-    int numCmdLinks=getListofLinks(cmddCommandLinkDir,&cmdLinkList);
+    int numCmdLinks=getListofLinks(CMDD_COMMAND_LINK_DIR,&cmdLinkList);
     int uptoCmd;
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     if(numCmdLinks) {
 	for(uptoCmd=0;uptoCmd<numCmdLinks;uptoCmd++) {
 	    if(uptoCmd==MAX_COMMANNDS) break;
-	    sprintf(currentFilename,"%s/%s",cmddCommandDir,
+	    sprintf(currentFilename,"%s/%s",CMDD_COMMAND_DIR,
 		    cmdLinkList[uptoCmd]->d_name);
-	    sprintf(currentLinkname,"%s/%s",cmddCommandLinkDir,
+	    sprintf(currentLinkname,"%s/%s",CMDD_COMMAND_LINK_DIR,
 		    cmdLinkList[uptoCmd]->d_name);
 	    fillCommand(theCmds[uptoCmd],currentFilename);
 	    removeFile(currentFilename);
@@ -244,16 +240,6 @@ int readConfig() {
 	}
 
 
-	tempString=kvpGetString("cmddCommandDir");
-	if(tempString) {
-	    strncpy(cmddCommandDir,tempString,FILENAME_MAX);
-	    sprintf(cmddCommandLinkDir,"%s/link",cmddCommandDir);
-	    makeDirectories(cmddCommandLinkDir);       		
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmddCommandDir");
-	    fprintf(stderr,"Couldn't get cmddCommandDir\n");
-	}
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -597,16 +583,72 @@ int sendConfig(int progMask)
 
 int defaultConfig(int progMask)
 {
-    return 0;
+    return switchConfig(progMask,0);
 }
 
 int switchConfig(int progMask, unsigned char configId) 
 {
-    return 0;
+    time_t rawtime;
+//    time(&rawtime);
+    int retVal;
+    int errorCount=0;
+    ProgramId_t prog;
+    char configFile[FILENAME_MAX];
+    
+    int testMask;	
+
+    printf("switchConfig %d %d\n",progMask,configId);
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+	testMask=getIdMask(prog);
+//	printf("%d %d\n",progMask,testMask);
+	if(progMask&testMask) {
+	    printf("Switching to config %s.config.%d\n",getProgName(prog),configId);
+	    sprintf(configFile,"%s.config",getProgName(prog));
+	    retVal=configSwitch(configFile,configId,&rawtime);
+	    if(retVal!=CONFIG_E_OK) 
+		errorCount++;
+	    else {
+		retVal=sendSignal(prog,SIGUSR1);
+		if(retVal) 
+		    errorCount++;
+	    }
+
+	}
+    }
+    if(errorCount) return 0;
+    return rawtime;
 }
 
 int lastConfig(int progMask)
 {
+    time_t rawtime;
+//    time(&rawtime);
+    int retVal;
+    int errorCount=0;
+    ProgramId_t prog;
+    char configFile[FILENAME_MAX];
+    
+    int testMask;	
+
+    printf("lastConfig %x\n",progMask);
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+	testMask=getIdMask(prog);
+//	printf("%d %d\n",progMask,testMask);
+	if(progMask&testMask) {
+	    printf("Switching to last config %s.config\n",getProgName(prog));
+	    sprintf(configFile,"%s.config",getProgName(prog));
+	    retVal=configSwitchToLast(configFile,&rawtime);
+	    if(retVal!=CONFIG_E_OK) 
+		errorCount++;
+	    else {
+		retVal=sendSignal(prog,SIGUSR1);
+		if(retVal) 
+		    errorCount++;
+	    }
+	    
+	}
+    }
+    if(errorCount) return 0;
     return 0;
 }
 
