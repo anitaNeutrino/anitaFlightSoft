@@ -60,10 +60,137 @@ INCLUDE FILES: <place list of any relevant header files here>
 
 /* forward declarations */
 
-ConfigErrorCode switchToConfig(char *configFile, char whichConfig) {    
-    char tempFile[FILENAME_MAX];
-    char fullTempFile[FILENAME_MAX];
-    sprintf(tempFile,"%s.new",fileName);
+
+ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {    
+    
+//    int retVal=0;
+    //   char* errMessage ;
+    char *configPath = 0 ;
+    struct passwd *myPwent ;
+    int myUid ;
+    struct stat fileStat ;
+    char oldFileSpec[FILENAME_MAX] ;
+    char lastFileSpec[FILENAME_MAX];
+    char archiveFileSpec[FILENAME_MAX] ;
+    char newFileSpec[FILENAME_MAX] ;
+
+    configPath = getenv ("ANITA_CONFIG_DIR") ;
+    if (configPath == NULL) {
+	/* Environment variable not set so use current dir if there's
+	   already a config file here */
+	if (stat (configFile, &fileStat) == 0) {
+	    configPath = "./" ;
+	}
+	else {
+	    /* Finally default to home directory */
+	    myUid = getuid () ;
+	    myPwent = getpwuid (myUid) ;
+	    configPath = myPwent->pw_dir ;
+	}
+    }
+    
+    time ( rawTimePtr );
+    
+    strcpy (oldFileSpec, configPath) ;
+    strcat (oldFileSpec, "/") ;
+    strcat (oldFileSpec, configFile) ;
+    
+    strcpy (lastFileSpec, configPath) ;
+    strcat (lastFileSpec, "/previous/") ;
+    strcat (lastFileSpec, configFile) ;
+
+    sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,configFile,*rawTimePtr);
+    sprintf(newFileSpec,"%s/%s.temp",configPath,configFile);
+
+  
+   if(stat (lastFileSpec, &fileStat) != 0) {
+       syslog(LOG_ERR,"configSwitch couldn't find: %s",lastFileSpec);
+       return CONFIG_E_NOFILE;
+   }
+   if(stat (oldFileSpec, &fileStat) != 0) {
+       syslog(LOG_ERR,"configSwitch couldn't find: %s",oldFileSpec);
+       return CONFIG_E_NOFILE;
+   }
+
+   // mv lastFileSpec newFileSpec
+   // cp oldFileSpec lastFileSpec
+   // mv oldFileSpec archiveFileSpec
+   // mv newFileSpec oldFileSpec
+   rename(lastFileSpec,newFileSpec);
+   link(oldFileSpec,lastFileSpec);
+   rename(oldFileSpec,archiveFileSpec);
+   rename(newFileSpec,oldFileSpec);
+
+   syslog(LOG_INFO,"configSwitch arcvhived: %s", archiveFileSpec);   
+   return CONFIG_E_OK;
+
+}
+
+
+
+ConfigErrorCode configSwitch(char *configFile, char whichConfig, time_t *rawTimePtr) {    
+    
+//    int retVal=0;
+    //   char* errMessage ;
+    char *configPath = 0 ;
+    struct passwd *myPwent ;
+    int myUid ;
+    struct stat fileStat ;
+    char oldFileSpec[FILENAME_MAX] ;
+    char lastFileSpec[FILENAME_MAX];
+    char archiveFileSpec[FILENAME_MAX] ;
+    char newFileSpec[FILENAME_MAX] ;
+
+   configPath = getenv ("ANITA_CONFIG_DIR") ;
+   if (configPath == NULL) {
+      /* Environment variable not set so use current dir if there's
+         already a config file here */
+      if (stat (configFile, &fileStat) == 0) {
+         configPath = "./" ;
+      }
+      else {
+         /* Finally default to home directory */
+         myUid = getuid () ;
+         myPwent = getpwuid (myUid) ;
+         configPath = myPwent->pw_dir ;
+      }
+   }
+
+   time ( rawTimePtr );
+
+   strcpy (oldFileSpec, configPath) ;
+   strcat (oldFileSpec, "/") ;
+   strcat (oldFileSpec, configFile) ;
+
+   strcpy (lastFileSpec, configPath) ;
+   strcat (lastFileSpec, "/previous/") ;
+   strcat (lastFileSpec, configFile) ;
+
+   sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,configFile,*rawTimePtr);
+   if(whichConfig>0) 
+       sprintf(newFileSpec,"%s/defaults/%s.%d",configPath,configFile,whichConfig);
+   else
+       sprintf(newFileSpec,"%s/defaults/%s",configPath,configFile);
+
+  
+   if(stat (newFileSpec, &fileStat) != 0) {
+       syslog(LOG_ERR,"configSwitch couldn't find: %s",newFileSpec);
+       return CONFIG_E_NOFILE;
+   }
+   if(stat (oldFileSpec, &fileStat) != 0) {
+       syslog(LOG_ERR,"configSwitch couldn't find: %s",oldFileSpec);
+       return CONFIG_E_NOFILE;
+   }
+
+   // cp oldFileSpec lastFileSpec
+   // mv oldFileSpec archiveFileSpec
+   // cp newFileSpec oldFileSpec
+   link(oldFileSpec,lastFileSpec);
+   rename(oldFileSpec,archiveFileSpec);
+   link(newFileSpec,oldFileSpec);
+
+   syslog(LOG_INFO,"configSwitch arcvhived: %s", archiveFileSpec);   
+   return CONFIG_E_OK;
 
 }
 
@@ -81,7 +208,7 @@ ConfigErrorCode switchToConfig(char *configFile, char whichConfig) {
 ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawTimePtr)
 {
 /*     printf("configReplace %s %s\n",oldFileName,newFileName); */
-    int retVal=0;
+//    int retVal=0;
    //   char* errMessage ;
    char *configPath = 0 ;
    struct passwd *myPwent ;
@@ -91,7 +218,7 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    char lastFileSpec[FILENAME_MAX];
    char archiveFileSpec[FILENAME_MAX] ;
    char newFileSpec[FILENAME_MAX] ;
-   char mvCommand[2*FILENAME_MAX];
+//   char mvCommand[2*FILENAME_MAX];
 
    configPath = getenv ("ANITA_CONFIG_DIR") ;
    if (configPath == NULL) {
@@ -140,24 +267,31 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
-   sprintf(mvCommand,"cp %s %s\n",oldFileSpec,lastFileSpec);
-   retVal=system(mvCommand);
-   if(retVal<0) {
-       syslog(LOG_ERR,"Problem storing config: %s %s ",archiveFileSpec,strerror(errno));
-       return CONFIG_E_SYSTEM;
-   }
-   sprintf(mvCommand,"mv %s %s\n",oldFileSpec,archiveFileSpec);
-   retVal=system(mvCommand);
-   if(retVal<0) {
-       syslog(LOG_ERR,"Problem archiving config: %s %s ",archiveFileSpec,strerror(errno));
-       return CONFIG_E_SYSTEM;
-   }
-   sprintf(mvCommand,"mv %s %s\n",newFileSpec,oldFileSpec);
-   retVal=system(mvCommand);
-   if(retVal<0) {
-       syslog(LOG_ERR,"Problem replacing config: %s %s ",archiveFileSpec,strerror(errno));
-       return CONFIG_E_SYSTEM;
-   }
+   link(oldFileSpec,lastFileSpec);
+   link(oldFileSpec,archiveFileSpec);
+   unlink(oldFileSpec);
+   link(newFileSpec,oldFileSpec);
+   unlink(newFileSpec);
+
+
+/*    sprintf(mvCommand,"cp %s %s\n",oldFileSpec,lastFileSpec); */
+/*    retVal=system(mvCommand); */
+/*    if(retVal<0) { */
+/*        syslog(LOG_ERR,"Problem storing config: %s %s ",archiveFileSpec,strerror(errno)); */
+/*        return CONFIG_E_SYSTEM; */
+/*    } */
+/*    sprintf(mvCommand,"mv %s %s\n",oldFileSpec,archiveFileSpec); */
+/*    retVal=system(mvCommand); */
+/*    if(retVal<0) { */
+/*        syslog(LOG_ERR,"Problem archiving config: %s %s ",archiveFileSpec,strerror(errno)); */
+/*        return CONFIG_E_SYSTEM; */
+/*    } */
+/*    sprintf(mvCommand,"mv %s %s\n",newFileSpec,oldFileSpec); */
+/*    retVal=system(mvCommand); */
+/*    if(retVal<0) { */
+/*        syslog(LOG_ERR,"Problem replacing config: %s %s ",archiveFileSpec,strerror(errno)); */
+/*        return CONFIG_E_SYSTEM; */
+/*    } */
    syslog(LOG_INFO,"configReplace arcvhived: %s", archiveFileSpec);   
    return CONFIG_E_OK;
 }

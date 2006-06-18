@@ -38,7 +38,6 @@ int readConfig();
 void readAndSendEvent(char *headerFilename);
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
-int writeCommandAndLink(CommandStruct_t *theCmd);
 
 
 // Config Thingies
@@ -46,9 +45,6 @@ char sipdPidFile[FILENAME_MAX];
 char lastTdrssNumberFile[FILENAME_MAX];
 int cmdLengths[256];
 
-//Command Dirs
-char cmddCommandDir[FILENAME_MAX];
-char cmddCommandLinkDir[FILENAME_MAX];
 
 //Packet Dirs
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -83,7 +79,7 @@ int throttleRate=MAX_WRITE_RATE;
 int main(int argc, char *argv[])
 {
     //Temporary variables
-    int retVal,numCmds=256,count,pk,pri;
+    int retVal,numCmds=256,count,pri;
     char *tempString;
 
     /* Config file thingies */
@@ -129,18 +125,6 @@ int main(int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Couldn't get lastLosNumberFile");
 	    fprintf(stderr,"Couldn't get lastLosNumberFile\n");
-	}
-
-	//Get output dir for Cmdd
-	tempString=kvpGetString("cmddCommandDir");
-	if(tempString) {
-	    strncpy(cmddCommandDir,tempString,FILENAME_MAX);
-	    sprintf(cmddCommandLinkDir,"%s/link",cmddCommandDir);
-	    makeDirectories(cmddCommandLinkDir);       		
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmddCommandDir");
-	    fprintf(stderr,"Couldn't get cmddCommandDir\n");
 	}
 
     }
@@ -258,11 +242,12 @@ void commandHandler(unsigned char *cmd)
     fprintf(stderr, "commandHandler: cmd[0] = %02x (%d)\n", cmd[0], cmd[0]);
     CommandStruct_t theCmd;
     int byteNum=0;
+    int retVal=0;
     theCmd.numCmdBytes=cmdLengths[cmd[0]];
     for(byteNum=0;byteNum<cmdLengths[cmd[0]];byteNum++) 
 	theCmd.cmd[byteNum]=cmd[byteNum];
     
-    return writeCommandAndLink(&theCmd);
+    retVal=writeCommandAndLink(&theCmd);
 
 	       
 
@@ -438,7 +423,7 @@ void readAndSendEvent(char *headerFilename) {
     int numBytes,count=0,surf=0,useGzip=0,retVal=0;
     char waveFilename[FILENAME_MAX];
     FILE *eventFile;
-    gzFile gzippedEventFile;
+    gzFile gzippedEventFile=0;
 
     if(printToScreen && verbosity) printf("Trying file %s\n",headerFilename);
 
@@ -568,24 +553,3 @@ void sendWakeUpBuffer()
 }
 
 
-int writeCommandAndLink(CommandStruct_t *theCmd) {
-    time_t unixTime;
-    time(&unixTime);
-    int retVal=0;
-    char filename[FILENAME_MAX];
-
-    sprintf(filename,"%s/cmd_%ld.dat",cmddCommandDir,unixTime);
-    {
-	FILE *pFile;
-	int fileTag=1;
-	pFile = fopen(filename,"rb");
-	while(pFile!=NULL) {
-	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",cmddCommandDir,unixTime,fileTag);
-	    pFile=fopen(filename,"rb");
-	}
-    }
-    writeCmd(theCmd,filename);
-    makeLink(filename,cmddCommandLinkDir);    
-    return retVal;
-}

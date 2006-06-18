@@ -24,9 +24,7 @@
 /* Global variables */
 int cmdLengths[256];
 int numCmds=256;
-char cmddCommandDir[FILENAME_MAX];
-char cmddCommandLinkDir[FILENAME_MAX];
-int writeCommandAndLink(CommandStruct_t *theCmd);
+
 void readConfigFile();
 
 int main(int argc, char **argv) {
@@ -35,6 +33,8 @@ int main(int argc, char **argv) {
     int count;
 
     readConfigFile();
+    makeDirectories(CMDD_COMMAND_LINK_DIR);
+
     theCmd.numCmdBytes=0;
     if(argc>1) {
        for(count=1;count<argc;count++) {
@@ -74,15 +74,6 @@ void readConfigFile() {
 	    fprintf(stderr,"Problem getting cmdLengths -- %s\n",
 		    kvpErrorString(kvpStatus));
 	}
-	tempString=kvpGetString("cmddCommandDir");
-	if(tempString) {
-	    strncpy(cmddCommandDir,tempString,FILENAME_MAX);
-	    sprintf(cmddCommandLinkDir,"%s/link",cmddCommandDir);
-	    makeDirectories(cmddCommandLinkDir);       		
-	}
-	else {
-	    fprintf(stderr,"Couldn't get cmddCommandDir\n");
-	}
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -90,24 +81,3 @@ void readConfigFile() {
 }
 
 
-int writeCommandAndLink(CommandStruct_t *theCmd) {
-    time_t unixTime;
-    time(&unixTime);
-    int retVal=0;
-    char filename[FILENAME_MAX];
-
-    sprintf(filename,"%s/cmd_%ld.dat",cmddCommandDir,unixTime);
-    {
-	FILE *pFile;
-	int fileTag=1;
-	pFile = fopen(filename,"rb");
-	while(pFile!=NULL) {
-	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",cmddCommandDir,unixTime,fileTag);
-	    pFile=fopen(filename,"rb");
-	}
-    }
-    writeCmd(theCmd,filename);
-    makeLink(filename,cmddCommandLinkDir);    
-    return retVal;
-}

@@ -25,7 +25,8 @@
 #include "anitaStructures.h"
 #include "Acqd.h"
 
-//#define TIME_DEBUG 1
+
+#define TIME_DEBUG 1
 //#define BAD_DEBUG 1
 #define HK_DEBUG 0
 
@@ -310,6 +311,10 @@ int main(int argc, char **argv) {
 	// RJN debugging
 //	setTurfControl(turfioHandle,SetTrigMode);
 
+
+	    
+
+
 	//Write RFCM Mask
 	writeAntTrigMask(turfioHandle);
 	
@@ -317,6 +322,7 @@ int main(int argc, char **argv) {
 
 	//Pedestal Mode
 	if(pedestalMode) {
+	    doingEvent=0;
 	    enableChanServo=0;
 	    setGlobalThreshold=1;
 	    globalThreshold=1;
@@ -331,6 +337,21 @@ int main(int argc, char **argv) {
 	    gettimeofday(&timeStruct,NULL);
 	    thePeds.unixTimeStart=timeStruct.tv_sec;
 
+	}
+
+	if(printToScreen) {
+	    if(pps1TrigFlag) 
+		printf("PPS 1 Trig Enabled\n");
+	    else 
+		printf("PPS 1 Trig Disabled\n");
+		
+	    if(pps2TrigFlag) 
+		printf("PPS 2 Trig Enabled\n");
+	    else 
+		printf("PPS 2 Trig Disabled\n");
+		
+	    if(sendSoftTrigger) 
+		printf("Sending software triggers\n");
 	}
 
 
@@ -353,7 +374,7 @@ int main(int argc, char **argv) {
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    if(standAloneMode && (numEvents && numEvents<doingEvent)) {
+	    if((standAloneMode || pedestalMode) && (numEvents && numEvents<doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
 	    }
@@ -789,7 +810,13 @@ int main(int argc, char **argv) {
 	if(pedestalMode) {
 	    writePedestals();
 	    if(switchConfigAtEnd) {
-		//Arrrghhh
+		//Arrrghhh		
+		CommandStruct_t theCmd;
+		theCmd.numCmdBytes=3;
+		theCmd.cmd[0]=211;
+		theCmd.cmd[1]=1;
+		theCmd.cmd[2]=0;
+		writeCommandAndLink(&theCmd);
 	    }
 	}
 
@@ -1410,7 +1437,7 @@ int readConfigFile()
 
     if(printToScreen) {
 	printf("Read Config File\n");
-	printf("useInterrupts %d\n",useInterrupts);
+	printf("pedestalMode %d\n",pedestalMode);
 	printf("writeData %d",writeData);
 	if(writeData) {
 	    if(useAltDir) 
@@ -2685,7 +2712,6 @@ void addPedestals() {
 }
 
 void writePedestals() {
-    FullPedStruct_t allPeds;
     FullLabChipPedStruct_t labPeds;
     char filename[FILENAME_MAX];
 //    char linkname[FILENAME_MAX];
@@ -2696,8 +2722,7 @@ void writePedestals() {
 //    unsigned char tempChar;
     
     time(&rawtime);
-    allPeds.unixTimeStart=thePeds.unixTimeStart;
-    allPeds.unixTimeEnd=rawtime;
+    thePeds.unixTimeEnd=rawtime;
 
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -2707,61 +2732,58 @@ void writePedestals() {
 	    labPeds.unixTimeEnd=rawtime;
 	    for(chan=0;chan<N_CHAN;chan++) {
 		labPeds.pedChan[chan].chipId=chip;
-		allPeds.pedChan[surf][chip][chan].chipId=chip;
 		labPeds.pedChan[chan].chanId=getChanIndex(surf,chan);
-		allPeds.pedChan[surf][chip][chan].chanId=getChanIndex(surf,chan);
 		labPeds.pedChan[chan].chipEntries=thePeds.chipEntries[surf][chip];
-		allPeds.pedChan[surf][chip][chan].chipEntries=thePeds.chipEntries[surf][chip];				
 		for(samp=0;samp<N_SAMP;samp++) {
 		    if(thePeds.entries[surf][chip][chan][samp]) {
-			thePeds.mean[surf][chip][chan][samp]/=
-			    thePeds.entries[surf][chip][chan][samp];
-			
-			tempFloat=roundf(10.*thePeds.mean[surf][chip][chan][samp]);
+			tempFloat=
+			    ((float)thePeds.mean[surf][chip][chan][samp])/
+			    ((float)thePeds.entries[surf][chip][chan][samp]);
+			    
+			thePeds.fmean[surf][chip][chan][samp]=tempFloat;
+			thePeds.mean[surf][chip][chan][samp]=(int)tempFloat;
+						
+			tempFloat=roundf(10.*thePeds.fmean[surf][chip][chan][samp]);
 			if(tempFloat>65535) tempFloat=65535;
 			if(tempFloat<0) tempFloat=0;
 			labPeds.pedChan[chan].pedMean[samp]=
 			    (unsigned short) tempFloat;
-			allPeds.pedChan[surf][chip][chan].pedMean[samp]=
-			    (unsigned short) tempFloat;
 			
-			
-			thePeds.meanSq[surf][chip][chan][samp]/=
-			    thePeds.entries[surf][chip][chan][samp];
-			tempFloat=thePeds.meanSq[surf][chip][chan][samp]-
-			    (thePeds.mean[surf][chip][chan][samp]*
-			     thePeds.mean[surf][chip][chan][samp]);
+			tempFloat=
+			    ((float)thePeds.meanSq[surf][chip][chan][samp])/
+			    ((float)thePeds.entries[surf][chip][chan][samp]);
+			    
+			thePeds.meanSq[surf][chip][chan][samp]=(int)tempFloat;
+			tempFloat=tempFloat-
+			    (thePeds.fmean[surf][chip][chan][samp]*
+			     thePeds.fmean[surf][chip][chan][samp]);
 			if(tempFloat) {
+			    thePeds.frms[surf][chip][chan][samp]=tempFloat;
 			    tempFloat=roundf(10.*tempFloat);
 			    if(tempFloat>255) tempFloat=255;
 			    if(tempFloat<0) tempFloat=0;
 			    labPeds.pedChan[chan].pedRMS[samp]=
 				(unsigned char) tempFloat;
-			    allPeds.pedChan[surf][chip][chan].pedRMS[samp]=
-				(unsigned char) tempFloat;
 			}
 			else {
 			    labPeds.pedChan[chan].pedRMS[samp]=0;
-			    allPeds.pedChan[surf][chip][chan].pedRMS[samp]=0;
 			}
 			    
 		    }
 		    else {
 			labPeds.pedChan[chan].pedMean[samp]=0;
-			allPeds.pedChan[surf][chip][chan].pedMean[samp]=0;
 			labPeds.pedChan[chan].pedRMS[samp]=0;
-			allPeds.pedChan[surf][chip][chan].pedRMS[samp]=0;
 		    }					    
 		}
 	    }
 	    
 	    //Now write lab files
 	    fillGenericHeader(&labPeds,PACKET_LAB_PED,sizeof(FullLabChipPedStruct_t));
-	    sprintf(filename,"%s/labpeds_%lu_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,chip);
+	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
 	    writeLabChipPedStruct(&labPeds,filename);
 
 	    //And for telemetery
-	    sprintf(filename,"%s/labpeds_%lu_%d.dat",HEADER_TELEM_DIR,labPeds.unixTimeEnd,chip);
+	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",HEADER_TELEM_DIR,labPeds.unixTimeEnd,surf,chip);
 	    writeLabChipPedStruct(&labPeds,filename);
 
 	    //and link it
@@ -2772,9 +2794,8 @@ void writePedestals() {
     }
 
     //Now write full ped file
-//    fillGenericHeader(&allPeds,PACKET_FULL_PED,sizeof(FullPedStruct_t));
-    sprintf(filename,"%s/allpeds_%lu_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,chip);
-    writeFullPedStruct(&allPeds,filename);
+    sprintf(filename,"%s/peds_%lu_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,chip);
+    writeUsefulPedStruct(&thePeds,filename);
 
     //and link it
     symlink(filename,CURRENT_PEDESTALS);

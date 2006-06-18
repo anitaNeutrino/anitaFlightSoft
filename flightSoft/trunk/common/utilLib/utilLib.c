@@ -575,8 +575,8 @@ int moveFile(const char *theFile, const char *theDir)
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
     sprintf(newFile,"%s/%s",theDir,justFile);
-    retVal=link(theFile,newFile);
-    retVal+=unlink(theFile);
+    retVal=rename(theFile,newFile);
+//    retVal+=unlink(theFile);
     return retVal;
     
 }
@@ -1212,6 +1212,18 @@ int writeFullPedStruct(FullPedStruct_t *pedPtr, char *filename)
 
 }
 
+
+int writeUsefulPedStruct(PedCalcStruct_t *pedPtr, char *filename)
+{
+#ifdef NO_ZLIB
+    return normalSingleWrite((char*)pedPtr,filename,sizeof(PedCalcStruct_t));
+#else
+    return zippedSingleWrite((char*)pedPtr,filename,sizeof(PedCalcStruct_t));
+#endif
+
+}
+
+
 int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename) 
 {
 #ifdef NO_ZLIB
@@ -1428,4 +1440,27 @@ char *packetCodeAsString(PacketCode_t code) {
 	    string="Unknown Packet Code"; break;
     }
     return string;
+}
+
+
+int writeCommandAndLink(CommandStruct_t *theCmd) {
+    time_t unixTime;
+    time(&unixTime);
+    int retVal=0;
+    char filename[FILENAME_MAX];
+
+    sprintf(filename,"%s/cmd_%ld.dat",CMDD_COMMAND_DIR,unixTime);
+    {
+	FILE *pFile;
+	int fileTag=1;
+	pFile = fopen(filename,"rb");
+	while(pFile!=NULL) {
+	    fclose(pFile);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",CMDD_COMMAND_DIR,unixTime,fileTag);
+	    pFile=fopen(filename,"rb");
+	}
+    }
+    writeCmd(theCmd,filename);
+    makeLink(filename,CMDD_COMMAND_LINK_DIR);    
+    return retVal;
 }

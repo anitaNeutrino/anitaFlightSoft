@@ -78,7 +78,8 @@ extern "C" {
     ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value, time_t *rawTimePtr);
 
     ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawTimePtr);
-
+    ConfigErrorCode configSwitch(char *configFile, char whichConfig, time_t *rawTimePtr);
+    ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr);
 #ifdef __cplusplus 
 } 
 #endif /* __cplusplus */ 

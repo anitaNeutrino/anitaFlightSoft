@@ -99,7 +99,9 @@ int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename);
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);
 int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
 int writeFullPedStruct(FullPedStruct_t *pedPtr, char *filename);
+int writeUsefulPedStruct(PedCalcStruct_t *pedPtr, char *filename);
 int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename);
+int writeCommandAndLink(CommandStruct_t *theCmd);
 
 int genericReadOfFile(char *buffer, char *filename, int maxBytes);
 
