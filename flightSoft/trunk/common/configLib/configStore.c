@@ -60,6 +60,13 @@ INCLUDE FILES: <place list of any relevant header files here>
 
 /* forward declarations */
 
+ConfigErrorCode switchToConfig(char *configFile, char whichConfig) {    
+    char tempFile[FILENAME_MAX];
+    char fullTempFile[FILENAME_MAX];
+    sprintf(tempFile,"%s.new",fileName);
+
+}
+
 
 
 /********************************************************************
@@ -81,6 +88,7 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    int myUid ;
    struct stat fileStat ;
    char oldFileSpec[FILENAME_MAX] ;
+   char lastFileSpec[FILENAME_MAX];
    char archiveFileSpec[FILENAME_MAX] ;
    char newFileSpec[FILENAME_MAX] ;
    char mvCommand[2*FILENAME_MAX];
@@ -105,12 +113,21 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    strcat (oldFileSpec, "/") ;
    strcat (oldFileSpec, oldFileName) ;
 
+   strcpy (lastFileSpec, configPath) ;
+   strcat (lastFileSpec, "/previous/") ;
+   strcat (lastFileSpec, oldFileName) ;
+
+   
+
    sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,oldFileName,*rawTimePtr);
+
 
    strcpy (newFileSpec, configPath) ;
    strcat (newFileSpec, "/") ;
    strcat (newFileSpec, newFileName) ;
 
+   
+   
    if(stat (newFileSpec, &fileStat) != 0) {
        syslog(LOG_ERR,"configReplace couldn't find: %s",newFileSpec);
        return CONFIG_E_NOFILE;
@@ -120,8 +137,15 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
        return CONFIG_E_NOFILE;
    }
 
+   // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
+   sprintf(mvCommand,"cp %s %s\n",oldFileSpec,lastFileSpec);
+   retVal=system(mvCommand);
+   if(retVal<0) {
+       syslog(LOG_ERR,"Problem storing config: %s %s ",archiveFileSpec,strerror(errno));
+       return CONFIG_E_SYSTEM;
+   }
    sprintf(mvCommand,"mv %s %s\n",oldFileSpec,archiveFileSpec);
    retVal=system(mvCommand);
    if(retVal<0) {
