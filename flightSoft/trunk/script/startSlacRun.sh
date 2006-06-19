@@ -1,11 +1,14 @@
 #!/bin/bash
 source ~/flightSoft/script/anitaFlightSoftSetup.sh
-n=1
-THE_DIR=/mnt/blade4/slacData/theRuns/run$n
+START_RUN=1
+CURRENT_DRIVE=/mnt/blade4
+
+n=${START_RUN}
+THE_DIR=${CURRENT_DRIVE}/slacData/theRuns/run$n
 
 while [ -d $THE_DIR ] ; do
   let "n = n + 1"
-  THE_DIR=/mnt/blade4/slacData/theRuns/run$n
+  THE_DIR=${CURRENT_DRIVE}/slacData/theRuns/run$n
 done
 echo "Killing old progs"
 CmdTest 131 246 7
@@ -41,6 +44,11 @@ ps x | grep "Prioritizerd"
 ps x | grep "Monitord"
 ps x | grep "SIPd"
 
+
+echo "Using directory: $THE_DIR"
+echo "Using directory: $THE_DIR"
+
+echo "Using directory: $THE_DIR"
 echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`"
 
 echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`" > ${THE_DIR}/log/startLog.txt
@@ -48,8 +56,8 @@ echo "ps -x gives:" >> ${THE_DIR}/log/startLog.txt
 ps -x >> ${THE_DIR}/log/startLog.txt
 
 ridiculousRunLog ${THE_DIR}/log/sillyLog.txt
+Acqd
 
-Acqd 
 
 
 
