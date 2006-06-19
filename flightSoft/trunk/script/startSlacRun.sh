@@ -8,7 +8,7 @@ while [ -d $THE_DIR ] ; do
   THE_DIR=/mnt/blade4/slacData/theRuns/run$n
 done
 echo "Killing old progs"
-CmdTest 131 246 1
+CmdTest 131 246 7
 
 sleep 2
 
@@ -26,7 +26,7 @@ cp -r ~/flightSoft/config ${THE_DIR}/config
 echo "Using directory: $THE_DIR" 
 
 echo "Starting new progs"
-CmdTest 133 246 1
+CmdTest 133 246 7
 
 sleep 2
 
@@ -38,6 +38,7 @@ ps x | grep "GPSd"
 ps x | grep "Hkd"
 ps x | grep "LOSd"
 ps x | grep "Prioritizerd"
+ps x | grep "Monitord"
 ps x | grep "SIPd"
 
 echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`"

@@ -23,6 +23,7 @@
 #define LOSD_ID_MASK 0x080
 #define PRIORITIZERD_ID_MASK 0x100
 #define SIPD_ID_MASK 0x200
+#define MONITORD_ID_MASK 0x400
 #define ALL_ID_MASK 0xfff
 
 typedef enum {
@@ -37,6 +38,7 @@ typedef enum {
     ID_LOSD,
     ID_PRIORITIZERD,
     ID_SIPD,
+    ID_MONITORD,
     ID_NOT_AN_ID
 } ProgramId_t;
 
