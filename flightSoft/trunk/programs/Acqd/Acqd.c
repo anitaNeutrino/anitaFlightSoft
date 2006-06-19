@@ -492,12 +492,12 @@ int main(int argc, char **argv) {
 //			    //Time out not in self trigger mode
 //			    if(tmo==EVTF_TIMEOUT) break;
 
-			    if(enableChanServo) {
+//			    if(enableChanServo) {
 				tmo=0;
 				//Give us a chance to servo thresholds
 				status=readSurfHkData(surfHandles);
 				
-
+				
 				//Will change to SurfClearHk
 				for(surf=0;surf<numSurfs;++surf)
 				    if (setSurfControl(surfHandles[surf], 
@@ -546,7 +546,7 @@ int main(int argc, char **argv) {
 				}
 
 		    
-			    }
+//			}
 						    
 
 			}		    		    

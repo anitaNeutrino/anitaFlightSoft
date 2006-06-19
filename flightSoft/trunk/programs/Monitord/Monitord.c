@@ -90,7 +90,7 @@ int main (int argc, char *argv[])
 	while(currentState==PROG_STATE_RUN) {
 	    //Something
 //	    checkDiskSpace("/home/rjn/flightSoft/programs/Monitord/");
-	    
+	    memset(&monData,0,sizeof(MonitorStruct_t));
 	    monData.unixTime=(long)time(NULL);
 	    retVal=checkDisks(&(monData.diskInfo));	    
 	    //Do something
@@ -216,9 +216,9 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     int usbNum;
     unsigned short megaBytes=0;
     char usbDir[FILENAME_MAX];
-    megaBytes=getDiskSpace(mainDataDisk);
+    megaBytes=getDiskSpace("/var/log");
     dsPtr->mainDisk=megaBytes;
-    if(printToScreen) printf("%s\t%u\n",mainDataDisk,megaBytes);
+    if(printToScreen) printf("%s\t%u\n","/var/log",megaBytes);
     if(((short)megaBytes)==-1) errFlag--;
     
 
@@ -234,6 +234,9 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     megaBytes=getDiskSpace(OTHER_DISK4);
     dsPtr->otherDisks[3]=megaBytes;
     if(printToScreen) printf("%s\t%u\n",OTHER_DISK4,megaBytes);
+    megaBytes=getDiskSpace("/tmp");
+    dsPtr->otherDisks[4]=megaBytes;
+    if(printToScreen) printf("%s\t%u\n","/tmp",megaBytes);
 
 
     if(useUSBDisks) {

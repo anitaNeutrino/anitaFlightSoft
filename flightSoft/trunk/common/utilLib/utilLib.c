@@ -647,25 +647,25 @@ unsigned short getDiskSpace(char *dirName) {
 //	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
 	return -1;
     }    
-    unsigned long bytesAvailable=(diskStat.f_bfree*diskStat.f_bsize);
-    unsigned short megabytesAvailable=(unsigned short)(bytesAvailable/(1024*1024));
+    unsigned long bytesAvailable=(diskStat.f_bfree/1024)*(diskStat.f_bsize/1024);
+    unsigned short megabytesAvailable=(unsigned short)(bytesAvailable);//(1024*1024));
     return megabytesAvailable;
-/*     printf("%lu %d\n",bytesAvailable,megabytesAvailable); */
-    /*    if(printToScreen) { */
-/* 	printf("Dir: %s\n",dirName); */
-/* 	printf("Ret Val: %d\n",retVal); */
-/* 	printf("Bytes Available: %ld\n",bytesAvailable); */
-/* 	printf("MegaBytes Available: %d\n",megabytesAvailable); */
-/* 	printf("Available Blocks: %ld\n",diskStat.f_bavail); */
-/* 	printf("Free Blocks: %ld\n",diskStat.f_bfree); */
-/* 	printf("Total Blocks: %ld\n",diskStat.f_blocks); */
-/* 	printf("Block Size: %d\n",diskStat.f_bsize); */
-/* //	printf("Free File Nodes: %ld\n",diskStat.f_ffree); */
-/* //	printf("Total File Nodes: %ld\n",diskStat.f_files); */
-/* //	printf("Type Of Info: %d\n",diskStat.f_type); */
-/* //    printf("File System Id: %d\n",diskStat.f_fsid); */
-/*     } */
-//    return megabytesAvailable;
+    printf("%lu %d\n",bytesAvailable,megabytesAvailable);
+//    if(printToScreen) {
+	printf("Dir: %s\n",dirName);
+	printf("Ret Val: %d\n",retVal);
+	printf("Bytes Available: %ld\n",bytesAvailable);
+	printf("MegaBytes Available: %d\n",megabytesAvailable);
+	printf("Available Blocks: %ld\n",diskStat.f_bavail);
+	printf("Free Blocks: %ld\n",diskStat.f_bfree);
+	printf("Total Blocks: %ld\n",diskStat.f_blocks);
+	printf("Block Size: %d\n",diskStat.f_bsize);
+//	printf("Free File Nodes: %ld\n",diskStat.f_ffree);
+//	printf("Total File Nodes: %ld\n",diskStat.f_files);
+//	printf("Type Of Info: %d\n",diskStat.f_type);
+//    printf("File System Id: %d\n",diskStat.f_fsid);
+//    }
+    return megabytesAvailable;
 }
 
 unsigned short countFilesInDir(char *dirName) {
