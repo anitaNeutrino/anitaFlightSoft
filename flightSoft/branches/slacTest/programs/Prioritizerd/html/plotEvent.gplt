@@ -1,0 +1,592 @@
+set term png 
+set autoscale
+set xrange [0:260]
+set data style lines
+#
+#begin horizontal plots
+#
+set output "plots/S01H.png"
+plot "curEvent.txt" index 1 using 1:2 notitle
+set output "plots/S02H.png"
+plot "curEvent.txt" index 2 using 1:2 notitle
+set output "plots/S03H.png"
+plot "curEvent.txt" index 3 using 1:2 notitle
+set output "plots/S04H.png"
+plot "curEvent.txt" index 4 using 1:2 notitle
+set output "plots/S05H.png"
+plot "curEvent.txt" index 5 using 1:2 notitle
+set output "plots/S06H.png"
+plot "curEvent.txt" index 6 using 1:2 notitle
+set output "plots/S07H.png"
+plot "curEvent.txt" index 7 using 1:2 notitle
+set output "plots/S08H.png"
+plot "curEvent.txt" index 8 using 1:2 notitle
+set output "plots/S09H.png"
+plot "curEvent.txt" index 9 using 1:2 notitle
+set output "plots/S10H.png"
+plot "curEvent.txt" index 10 using 1:2 notitle
+set output "plots/S11H.png"
+plot "curEvent.txt" index 11 using 1:2 notitle
+set output "plots/S12H.png"
+plot "curEvent.txt" index 12 using 1:2 notitle
+set output "plots/S13H.png"
+plot "curEvent.txt" index 13 using 1:2 notitle
+set output "plots/S14H.png"
+plot "curEvent.txt" index 14 using 1:2 notitle
+set output "plots/S15H.png"
+plot "curEvent.txt" index 15 using 1:2 notitle
+set output "plots/S16H.png"
+plot "curEvent.txt" index 16 using 1:2 notitle
+set output "plots/S17H.png"
+plot "curEvent.txt" index 17 using 1:2 notitle
+set output "plots/S18H.png"
+plot "curEvent.txt" index 18 using 1:2 notitle
+set output "plots/S19H.png"
+plot "curEvent.txt" index 19 using 1:2 notitle
+set output "plots/S20H.png"
+plot "curEvent.txt" index 20 using 1:2 notitle
+set output "plots/S21H.png"
+plot "curEvent.txt" index 21 using 1:2 notitle
+set output "plots/S22H.png"
+plot "curEvent.txt" index 22 using 1:2 notitle
+set output "plots/S23H.png"
+plot "curEvent.txt" index 23 using 1:2 notitle
+set output "plots/S24H.png"
+plot "curEvent.txt" index 24 using 1:2 notitle
+set output "plots/S25H.png"
+plot "curEvent.txt" index 25 using 1:2 notitle
+set output "plots/S26H.png"
+plot "curEvent.txt" index 26 using 1:2 notitle
+set output "plots/S27H.png"
+plot "curEvent.txt" index 27 using 1:2 notitle
+set output "plots/S28H.png"
+plot "curEvent.txt" index 28 using 1:2 notitle
+set output "plots/S29H.png"
+plot "curEvent.txt" index 29 using 1:2 notitle
+set output "plots/S30H.png"
+plot "curEvent.txt" index 30 using 1:2 notitle
+set output "plots/S31H.png"
+plot "curEvent.txt" index 31 using 1:2 notitle
+set output "plots/S32H.png"
+plot "curEvent.txt" index 32 using 1:2 notitle
+set output "plots/D1.png"
+plot "curEvent.txt" index 33 using 1:2 notitle
+set output "plots/D2.png"
+plot "curEvent.txt" index 34 using 1:2 notitle
+set output "plots/D3.png"
+plot "curEvent.txt" index 35 using 1:2 notitle
+set output "plots/D4.png"
+plot "curEvent.txt" index 36 using 1:2 notitle
+set output "plots/B1.png"
+plot "curEvent.txt" index 37 using 1:2 notitle
+set output "plots/B2.png"
+plot "curEvent.txt" index 38 using 1:2 notitle
+set output "plots/B3.png"
+plot "curEvent.txt" index 39 using 1:2 notitle
+set output "plots/B4.png"
+plot "curEvent.txt" index 40 using 1:2 notitle
+#
+#begin vertical polarization plots
+#
+set output "plots/S01V.png"
+plot "curEvent.txt" index 1 using 1:3 notitle
+set output "plots/S02V.png"
+plot "curEvent.txt" index 2 using 1:3 notitle
+set output "plots/S03V.png"
+plot "curEvent.txt" index 3 using 1:3 notitle
+set output "plots/S04V.png"
+plot "curEvent.txt" index 4 using 1:3 notitle
+set output "plots/S05V.png"
+plot "curEvent.txt" index 5 using 1:3 notitle
+set output "plots/S06V.png"
+plot "curEvent.txt" index 6 using 1:3 notitle
+set output "plots/S07V.png"
+plot "curEvent.txt" index 7 using 1:3 notitle
+set output "plots/S08V.png"
+plot "curEvent.txt" index 8 using 1:3 notitle
+set output "plots/S09V.png"
+plot "curEvent.txt" index 9 using 1:3 notitle
+set output "plots/S10V.png"
+plot "curEvent.txt" index 10 using 1:3 notitle
+set output "plots/S11V.png"
+plot "curEvent.txt" index 11 using 1:3 notitle
+set output "plots/S12V.png"
+plot "curEvent.txt" index 12 using 1:3 notitle
+set output "plots/S13V.png"
+plot "curEvent.txt" index 13 using 1:3 notitle
+set output "plots/S14V.png"
+plot "curEvent.txt" index 14 using 1:3 notitle
+set output "plots/S15V.png"
+plot "curEvent.txt" index 15 using 1:3 notitle
+set output "plots/S16V.png"
+plot "curEvent.txt" index 16 using 1:3 notitle
+set output "plots/S17V.png"
+plot "curEvent.txt" index 17 using 1:3 notitle
+set output "plots/S18V.png"
+plot "curEvent.txt" index 18 using 1:3 notitle
+set output "plots/S19V.png"
+plot "curEvent.txt" index 19 using 1:3 notitle
+set output "plots/S20V.png"
+plot "curEvent.txt" index 20 using 1:3 notitle
+set output "plots/S21V.png"
+plot "curEvent.txt" index 21 using 1:3 notitle
+set output "plots/S22V.png"
+plot "curEvent.txt" index 22 using 1:3 notitle
+set output "plots/S23V.png"
+plot "curEvent.txt" index 23 using 1:3 notitle
+set output "plots/S24V.png"
+plot "curEvent.txt" index 24 using 1:3 notitle
+set output "plots/S25V.png"
+plot "curEvent.txt" index 25 using 1:3 notitle
+set output "plots/S26V.png"
+plot "curEvent.txt" index 26 using 1:3 notitle
+set output "plots/S27V.png"
+plot "curEvent.txt" index 27 using 1:3 notitle
+set output "plots/S28V.png"
+plot "curEvent.txt" index 28 using 1:3 notitle
+set output "plots/S29V.png"
+plot "curEvent.txt" index 29 using 1:3 notitle
+set output "plots/S30V.png"
+plot "curEvent.txt" index 30 using 1:3 notitle
+set output "plots/S31V.png"
+plot "curEvent.txt" index 31 using 1:3 notitle
+set output "plots/S32V.png"
+plot "curEvent.txt" index 32 using 1:3 notitle
+#
+#begin gain matched horizontal plots
+#
+set output "plots/S01Hgm.png"
+plot "curEvent.txt" index 1 using 1:4 notitle
+set output "plots/S02Hgm.png"
+plot "curEvent.txt" index 2 using 1:4 notitle
+set output "plots/S03Hgm.png"
+plot "curEvent.txt" index 3 using 1:4 notitle
+set output "plots/S04Hgm.png"
+plot "curEvent.txt" index 4 using 1:4 notitle
+set output "plots/S05Hgm.png"
+plot "curEvent.txt" index 5 using 1:4 notitle
+set output "plots/S06Hgm.png"
+plot "curEvent.txt" index 6 using 1:4 notitle
+set output "plots/S07Hgm.png"
+plot "curEvent.txt" index 7 using 1:4 notitle
+set output "plots/S08Hgm.png"
+plot "curEvent.txt" index 8 using 1:4 notitle
+set output "plots/S09Hgm.png"
+plot "curEvent.txt" index 9 using 1:4 notitle
+set output "plots/S10Hgm.png"
+plot "curEvent.txt" index 10 using 1:4 notitle
+set output "plots/S11Hgm.png"
+plot "curEvent.txt" index 11 using 1:4 notitle
+set output "plots/S12Hgm.png"
+plot "curEvent.txt" index 12 using 1:4 notitle
+set output "plots/S13Hgm.png"
+plot "curEvent.txt" index 13 using 1:4 notitle
+set output "plots/S14Hgm.png"
+plot "curEvent.txt" index 14 using 1:4 notitle
+set output "plots/S15Hgm.png"
+plot "curEvent.txt" index 15 using 1:4 notitle
+set output "plots/S16Hgm.png"
+plot "curEvent.txt" index 16 using 1:4 notitle
+set output "plots/S17Hgm.png"
+plot "curEvent.txt" index 17 using 1:4 notitle
+set output "plots/S18Hgm.png"
+plot "curEvent.txt" index 18 using 1:4 notitle
+set output "plots/S19Hgm.png"
+plot "curEvent.txt" index 19 using 1:4 notitle
+set output "plots/S20Hgm.png"
+plot "curEvent.txt" index 20 using 1:4 notitle
+set output "plots/S21Hgm.png"
+plot "curEvent.txt" index 21 using 1:4 notitle
+set output "plots/S22Hgm.png"
+plot "curEvent.txt" index 22 using 1:4 notitle
+set output "plots/S23Hgm.png"
+plot "curEvent.txt" index 23 using 1:4 notitle
+set output "plots/S24Hgm.png"
+plot "curEvent.txt" index 24 using 1:4 notitle
+set output "plots/S25Hgm.png"
+plot "curEvent.txt" index 25 using 1:4 notitle
+set output "plots/S26Hgm.png"
+plot "curEvent.txt" index 26 using 1:4 notitle
+set output "plots/S27Hgm.png"
+plot "curEvent.txt" index 27 using 1:4 notitle
+set output "plots/S28Hgm.png"
+plot "curEvent.txt" index 28 using 1:4 notitle
+set output "plots/S29Hgm.png"
+plot "curEvent.txt" index 29 using 1:4 notitle
+set output "plots/S30Hgm.png"
+plot "curEvent.txt" index 30 using 1:4 notitle
+set output "plots/S31Hgm.png"
+plot "curEvent.txt" index 31 using 1:4 notitle
+set output "plots/S32Hgm.png"
+plot "curEvent.txt" index 32 using 1:4 notitle
+set output "plots/D1gm.png"
+plot "curEvent.txt" index 33 using 1:3 notitle
+set output "plots/D2gm.png"
+plot "curEvent.txt" index 34 using 1:3 notitle
+set output "plots/D3gm.png"
+plot "curEvent.txt" index 35 using 1:3 notitle
+set output "plots/D4gm.png"
+plot "curEvent.txt" index 36 using 1:3 notitle
+set output "plots/B1gm.png"
+plot "curEvent.txt" index 37 using 1:3 notitle
+set output "plots/B2gm.png"
+plot "curEvent.txt" index 38 using 1:3 notitle
+set output "plots/B3gm.png"
+plot "curEvent.txt" index 39 using 1:3 notitle
+set output "plots/B4gm.png"
+plot "curEvent.txt" index 40 using 1:3 notitle
+#
+#begin vertical gain matched plots
+#
+set output "plots/S01Vgm.png"
+plot "curEvent.txt" index 1 using 1:5 notitle
+set output "plots/S02Vgm.png"
+plot "curEvent.txt" index 2 using 1:5 notitle
+set output "plots/S03Vgm.png"
+plot "curEvent.txt" index 3 using 1:5 notitle
+set output "plots/S04Vgm.png"
+plot "curEvent.txt" index 4 using 1:5 notitle
+set output "plots/S05Vgm.png"
+plot "curEvent.txt" index 5 using 1:5 notitle
+set output "plots/S06Vgm.png"
+plot "curEvent.txt" index 6 using 1:5 notitle
+set output "plots/S07Vgm.png"
+plot "curEvent.txt" index 7 using 1:5 notitle
+set output "plots/S08Vgm.png"
+plot "curEvent.txt" index 8 using 1:5 notitle
+set output "plots/S09Vgm.png"
+plot "curEvent.txt" index 9 using 1:5 notitle
+set output "plots/S10Vgm.png"
+plot "curEvent.txt" index 10 using 1:5 notitle
+set output "plots/S11Vgm.png"
+plot "curEvent.txt" index 11 using 1:5 notitle
+set output "plots/S12Vgm.png"
+plot "curEvent.txt" index 12 using 1:5 notitle
+set output "plots/S13Vgm.png"
+plot "curEvent.txt" index 13 using 1:5 notitle
+set output "plots/S14Vgm.png"
+plot "curEvent.txt" index 14 using 1:5 notitle
+set output "plots/S15Vgm.png"
+plot "curEvent.txt" index 15 using 1:5 notitle
+set output "plots/S16Vgm.png"
+plot "curEvent.txt" index 16 using 1:5 notitle
+set output "plots/S17Vgm.png"
+plot "curEvent.txt" index 17 using 1:5 notitle
+set output "plots/S18Vgm.png"
+plot "curEvent.txt" index 18 using 1:5 notitle
+set output "plots/S19Vgm.png"
+plot "curEvent.txt" index 19 using 1:5 notitle
+set output "plots/S20Vgm.png"
+plot "curEvent.txt" index 20 using 1:5 notitle
+set output "plots/S21Vgm.png"
+plot "curEvent.txt" index 21 using 1:5 notitle
+set output "plots/S22Vgm.png"
+plot "curEvent.txt" index 22 using 1:5 notitle
+set output "plots/S23Vgm.png"
+plot "curEvent.txt" index 23 using 1:5 notitle
+set output "plots/S24Vgm.png"
+plot "curEvent.txt" index 24 using 1:5 notitle
+set output "plots/S25Vgm.png"
+plot "curEvent.txt" index 25 using 1:5 notitle
+set output "plots/S26Vgm.png"
+plot "curEvent.txt" index 26 using 1:5 notitle
+set output "plots/S27Vgm.png"
+plot "curEvent.txt" index 27 using 1:5 notitle
+set output "plots/S28Vgm.png"
+plot "curEvent.txt" index 28 using 1:5 notitle
+set output "plots/S29Vgm.png"
+plot "curEvent.txt" index 29 using 1:5 notitle
+set output "plots/S30Vgm.png"
+plot "curEvent.txt" index 30 using 1:5 notitle
+set output "plots/S31Vgm.png"
+plot "curEvent.txt" index 31 using 1:5 notitle
+set output "plots/S32Vgm.png"
+plot "curEvent.txt" index 32 using 1:5 notitle
+#
+# begin S0 plots
+#
+set output "plots/S01S0.png"
+plot "curEvent.txt" index 1 using 1:6 notitle
+set output "plots/S02S0.png"
+plot "curEvent.txt" index 2 using 1:6 notitle
+set output "plots/S03S0.png"
+plot "curEvent.txt" index 3 using 1:6 notitle
+set output "plots/S04S0.png"
+plot "curEvent.txt" index 4 using 1:6 notitle
+set output "plots/S05S0.png"
+plot "curEvent.txt" index 5 using 1:6 notitle
+set output "plots/S06S0.png"
+plot "curEvent.txt" index 6 using 1:6 notitle
+set output "plots/S07S0.png"
+plot "curEvent.txt" index 7 using 1:6 notitle
+set output "plots/S08S0.png"
+plot "curEvent.txt" index 8 using 1:6 notitle
+set output "plots/S09S0.png"
+plot "curEvent.txt" index 9 using 1:6 notitle
+set output "plots/S10S0.png"
+plot "curEvent.txt" index 10 using 1:6 notitle
+set output "plots/S11S0.png"
+plot "curEvent.txt" index 11 using 1:6 notitle
+set output "plots/S12S0.png"
+plot "curEvent.txt" index 12 using 1:6 notitle
+set output "plots/S13S0.png"
+plot "curEvent.txt" index 13 using 1:6 notitle
+set output "plots/S14S0.png"
+plot "curEvent.txt" index 14 using 1:6 notitle
+set output "plots/S15S0.png"
+plot "curEvent.txt" index 15 using 1:6 notitle
+set output "plots/S16S0.png"
+plot "curEvent.txt" index 16 using 1:6 notitle
+set output "plots/S17S0.png"
+plot "curEvent.txt" index 17 using 1:6 notitle
+set output "plots/S18S0.png"
+plot "curEvent.txt" index 18 using 1:6 notitle
+set output "plots/S19S0.png"
+plot "curEvent.txt" index 19 using 1:6 notitle
+set output "plots/S20S0.png"
+plot "curEvent.txt" index 20 using 1:6 notitle
+set output "plots/S21S0.png"
+plot "curEvent.txt" index 21 using 1:6 notitle
+set output "plots/S22S0.png"
+plot "curEvent.txt" index 22 using 1:6 notitle
+set output "plots/S23S0.png"
+plot "curEvent.txt" index 23 using 1:6 notitle
+set output "plots/S24S0.png"
+plot "curEvent.txt" index 24 using 1:6 notitle
+set output "plots/S25S0.png"
+plot "curEvent.txt" index 25 using 1:6 notitle
+set output "plots/S26S0.png"
+plot "curEvent.txt" index 26 using 1:6 notitle
+set output "plots/S27S0.png"
+plot "curEvent.txt" index 27 using 1:6 notitle
+set output "plots/S28S0.png"
+plot "curEvent.txt" index 28 using 1:6 notitle
+set output "plots/S29S0.png"
+plot "curEvent.txt" index 29 using 1:6 notitle
+set output "plots/S30S0.png"
+plot "curEvent.txt" index 30 using 1:6 notitle
+set output "plots/S31S0.png"
+plot "curEvent.txt" index 31 using 1:6 notitle
+set output "plots/S32S0.png"
+plot "curEvent.txt" index 32 using 1:6 notitle
+set output "plots/D1pwr.png"
+plot "curEvent.txt" index 33 using 1:4 notitle
+set output "plots/D2pwr.png"
+plot "curEvent.txt" index 34 using 1:4 notitle
+set output "plots/D3pwr.png"
+plot "curEvent.txt" index 35 using 1:4 notitle
+set output "plots/D4pwr.png"
+plot "curEvent.txt" index 36 using 1:4 notitle
+set output "plots/B1pwr.png"
+plot "curEvent.txt" index 37 using 1:4 notitle
+set output "plots/B2pwr.png"
+plot "curEvent.txt" index 38 using 1:4 notitle
+set output "plots/B3pwr.png"
+plot "curEvent.txt" index 39 using 1:4 notitle
+set output "plots/B4pwr.png"
+plot "curEvent.txt" index 40 using 1:4 notitle
+#
+#begin S1 plots
+#
+set output "plots/S01S1.png"
+plot "curEvent.txt" index 1 using 1:7 notitle
+set output "plots/S02S1.png"
+plot "curEvent.txt" index 2 using 1:7 notitle
+set output "plots/S03S1.png"
+plot "curEvent.txt" index 3 using 1:7 notitle
+set output "plots/S04S1.png"
+plot "curEvent.txt" index 4 using 1:7 notitle
+set output "plots/S05S1.png"
+plot "curEvent.txt" index 5 using 1:7 notitle
+set output "plots/S06S1.png"
+plot "curEvent.txt" index 6 using 1:7 notitle
+set output "plots/S07S1.png"
+plot "curEvent.txt" index 7 using 1:7 notitle
+set output "plots/S08S1.png"
+plot "curEvent.txt" index 8 using 1:7 notitle
+set output "plots/S09S1.png"
+plot "curEvent.txt" index 9 using 1:7 notitle
+set output "plots/S10S1.png"
+plot "curEvent.txt" index 10 using 1:7 notitle
+set output "plots/S11S1.png"
+plot "curEvent.txt" index 11 using 1:7 notitle
+set output "plots/S12S1.png"
+plot "curEvent.txt" index 12 using 1:7 notitle
+set output "plots/S13S1.png"
+plot "curEvent.txt" index 13 using 1:7 notitle
+set output "plots/S14S1.png"
+plot "curEvent.txt" index 14 using 1:7 notitle
+set output "plots/S15S1.png"
+plot "curEvent.txt" index 15 using 1:7 notitle
+set output "plots/S16S1.png"
+plot "curEvent.txt" index 16 using 1:7 notitle
+set output "plots/S17S1.png"
+plot "curEvent.txt" index 17 using 1:7 notitle
+set output "plots/S18S1.png"
+plot "curEvent.txt" index 18 using 1:7 notitle
+set output "plots/S19S1.png"
+plot "curEvent.txt" index 19 using 1:7 notitle
+set output "plots/S20S1.png"
+plot "curEvent.txt" index 20 using 1:7 notitle
+set output "plots/S21S1.png"
+plot "curEvent.txt" index 21 using 1:7 notitle
+set output "plots/S22S1.png"
+plot "curEvent.txt" index 22 using 1:7 notitle
+set output "plots/S23S1.png"
+plot "curEvent.txt" index 23 using 1:7 notitle
+set output "plots/S24S1.png"
+plot "curEvent.txt" index 24 using 1:7 notitle
+set output "plots/S25S1.png"
+plot "curEvent.txt" index 25 using 1:7 notitle
+set output "plots/S26S1.png"
+plot "curEvent.txt" index 26 using 1:7 notitle
+set output "plots/S27S1.png"
+plot "curEvent.txt" index 27 using 1:7 notitle
+set output "plots/S28S1.png"
+plot "curEvent.txt" index 28 using 1:7 notitle
+set output "plots/S29S1.png"
+plot "curEvent.txt" index 29 using 1:7 notitle
+set output "plots/S30S1.png"
+plot "curEvent.txt" index 30 using 1:7 notitle
+set output "plots/S31S1.png"
+plot "curEvent.txt" index 31 using 1:7 notitle
+set output "plots/S32S1.png"
+plot "curEvent.txt" index 32 using 1:7 notitle
+#
+#begin S2 plots
+#
+set output "plots/S01S2.png"
+plot "curEvent.txt" index 1 using 1:8 notitle
+set output "plots/S02S2.png"
+plot "curEvent.txt" index 2 using 1:8 notitle
+set output "plots/S03S2.png"
+plot "curEvent.txt" index 3 using 1:8 notitle
+set output "plots/S04S2.png"
+plot "curEvent.txt" index 4 using 1:8 notitle
+set output "plots/S05S2.png"
+plot "curEvent.txt" index 5 using 1:8 notitle
+set output "plots/S06S2.png"
+plot "curEvent.txt" index 6 using 1:8 notitle
+set output "plots/S07S2.png"
+plot "curEvent.txt" index 7 using 1:8 notitle
+set output "plots/S08S2.png"
+plot "curEvent.txt" index 8 using 1:8 notitle
+set output "plots/S09S2.png"
+plot "curEvent.txt" index 9 using 1:8 notitle
+set output "plots/S10S2.png"
+plot "curEvent.txt" index 10 using 1:8 notitle
+set output "plots/S11S2.png"
+plot "curEvent.txt" index 11 using 1:8 notitle
+set output "plots/S12S2.png"
+plot "curEvent.txt" index 12 using 1:8 notitle
+set output "plots/S13S2.png"
+plot "curEvent.txt" index 13 using 1:8 notitle
+set output "plots/S14S2.png"
+plot "curEvent.txt" index 14 using 1:8 notitle
+set output "plots/S15S2.png"
+plot "curEvent.txt" index 15 using 1:8 notitle
+set output "plots/S16S2.png"
+plot "curEvent.txt" index 16 using 1:8 notitle
+set output "plots/S17S2.png"
+plot "curEvent.txt" index 17 using 1:8 notitle
+set output "plots/S18S2.png"
+plot "curEvent.txt" index 18 using 1:8 notitle
+set output "plots/S19S2.png"
+plot "curEvent.txt" index 19 using 1:8 notitle
+set output "plots/S20S2.png"
+plot "curEvent.txt" index 20 using 1:8 notitle
+set output "plots/S21S2.png"
+plot "curEvent.txt" index 21 using 1:8 notitle
+set output "plots/S22S2.png"
+plot "curEvent.txt" index 22 using 1:8 notitle
+set output "plots/S23S2.png"
+plot "curEvent.txt" index 23 using 1:8 notitle
+set output "plots/S24S2.png"
+plot "curEvent.txt" index 24 using 1:8 notitle
+set output "plots/S25S2.png"
+plot "curEvent.txt" index 25 using 1:8 notitle
+set output "plots/S26S2.png"
+plot "curEvent.txt" index 26 using 1:8 notitle
+set output "plots/S27S2.png"
+plot "curEvent.txt" index 27 using 1:8 notitle
+set output "plots/S28S2.png"
+plot "curEvent.txt" index 28 using 1:8 notitle
+set output "plots/S29S2.png"
+plot "curEvent.txt" index 29 using 1:8 notitle
+set output "plots/S30S2.png"
+plot "curEvent.txt" index 30 using 1:8 notitle
+set output "plots/S31S2.png"
+plot "curEvent.txt" index 31 using 1:8 notitle
+set output "plots/S32S2.png"
+plot "curEvent.txt" index 32 using 1:8 notitle
+#
+#begin S3 plots
+#
+set output "plots/S01S3.png"
+plot "curEvent.txt" index 1 using 1:9 notitle
+set output "plots/S02S3.png"
+plot "curEvent.txt" index 2 using 1:9 notitle
+set output "plots/S03S0.png"
+plot "curEvent.txt" index 3 using 1:9 notitle
+set output "plots/S04S0.png"
+plot "curEvent.txt" index 4 using 1:9 notitle
+set output "plots/S05S0.png"
+plot "curEvent.txt" index 5 using 1:9 notitle
+set output "plots/S06S0.png"
+plot "curEvent.txt" index 6 using 1:9 notitle
+set output "plots/S07S0.png"
+plot "curEvent.txt" index 7 using 1:9 notitle
+set output "plots/S08S0.png"
+plot "curEvent.txt" index 8 using 1:9 notitle
+set output "plots/S09S0.png"
+plot "curEvent.txt" index 9 using 1:9 notitle
+set output "plots/S10S0.png"
+plot "curEvent.txt" index 10 using 1:9 notitle
+set output "plots/S11S0.png"
+plot "curEvent.txt" index 11 using 1:9 notitle
+set output "plots/S12S0.png"
+plot "curEvent.txt" index 12 using 1:9 notitle
+set output "plots/S13S0.png"
+plot "curEvent.txt" index 13 using 1:9 notitle
+set output "plots/S14S0.png"
+plot "curEvent.txt" index 14 using 1:9 notitle
+set output "plots/S15S0.png"
+plot "curEvent.txt" index 15 using 1:9 notitle
+set output "plots/S16S0.png"
+plot "curEvent.txt" index 16 using 1:9 notitle
+set output "plots/S17S0.png"
+plot "curEvent.txt" index 17 using 1:9 notitle
+set output "plots/S18S0.png"
+plot "curEvent.txt" index 18 using 1:9 notitle
+set output "plots/S19S0.png"
+plot "curEvent.txt" index 19 using 1:9 notitle
+set output "plots/S20S0.png"
+plot "curEvent.txt" index 20 using 1:9 notitle
+set output "plots/S21S0.png"
+plot "curEvent.txt" index 21 using 1:9 notitle
+set output "plots/S22S0.png"
+plot "curEvent.txt" index 22 using 1:9 notitle
+set output "plots/S23S0.png"
+plot "curEvent.txt" index 23 using 1:9 notitle
+set output "plots/S24S0.png"
+plot "curEvent.txt" index 24 using 1:9 notitle
+set output "plots/S25S0.png"
+plot "curEvent.txt" index 25 using 1:9 notitle
+set output "plots/S26S0.png"
+plot "curEvent.txt" index 26 using 1:9 notitle
+set output "plots/S27S0.png"
+plot "curEvent.txt" index 27 using 1:9 notitle
+set output "plots/S28S0.png"
+plot "curEvent.txt" index 28 using 1:9 notitle
+set output "plots/S29S0.png"
+plot "curEvent.txt" index 29 using 1:9 notitle
+set output "plots/S30S0.png"
+plot "curEvent.txt" index 30 using 1:9 notitle
+set output "plots/S31S0.png"
+plot "curEvent.txt" index 31 using 1:9 notitle
+set output "plots/S32S0.png"
+plot "curEvent.txt" index 32 using 1:9 notitle
+#
+#the end (for now...)
+#
+quit

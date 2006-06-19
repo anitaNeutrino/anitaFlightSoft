@@ -1,0 +1,10 @@
+#!/bin/bash
+
+logic=`getConfigValue Hkd.config relaycontrol turnGPSOnLogic`
+port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
+channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
+
+#echo "RelayControlPSA" $port $channel 0
+RelayControlPSA $port $channel 0
+RelayControlPSA $port $channel 1
+RelayControlPSA $port $channel 0
