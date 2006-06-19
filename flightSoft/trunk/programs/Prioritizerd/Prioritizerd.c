@@ -132,7 +132,7 @@ int main (int argc, char *argv[])
 #endif
 	    
 	    
-	    retVal=fillBody(&theBody,bodyFilename);
+//	    retVal=fillBody(&theBody,bodyFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -149,11 +149,14 @@ int main (int argc, char *argv[])
 	
 	    //Now Fill Generic Header and calculate checksum
 	    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));
-    
+  
+	    
+  
 	    //Write body and header for Archived
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
-	    writeBody(&theBody,archiveBodyFilename);
+	    rename(bodyFilename,archiveBodyFilename);
+//	    writeBody(&theBody,archiveBodyFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -191,7 +194,7 @@ int main (int argc, char *argv[])
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    removeFile(bodyFilename);
+//	    removeFile(bodyFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
