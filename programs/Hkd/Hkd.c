@@ -518,6 +518,8 @@ int outputData(AnalogueCode_t code)
 	    sprintf(theFilename,"hk_%ld_%ld.avz.dat",theHkData.unixTime,
 		    theHkData.unixTimeUs);
 	    theHkData.ip320=autoZeroStruct;
+//	    printf("First two %d %d\n",theHkData.ip320.board[0].data[0]&0xfff,
+//		   theHkData.ip320.board[0].data[0]&0xfff);
 	    wrPtr=&hkCalWriter;
 	    break;
 	default:
