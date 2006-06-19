@@ -551,6 +551,9 @@ int sendSignal(ProgramId_t progId, int theSignal)
 	case ID_SIPD:
 	    sprintf(fileName,"%s",sipdPidFile);
 	    break;    
+//	case ID_MONITORD:
+//	    sprintf(fileName,"%s",monitord);
+//	    break;    
 	default:
 	    fprintf(stderr,"Unknown program id: %d\n",progId);
 	    syslog(LOG_ERR,"Unknown program id: %d\n",progId);
@@ -665,6 +668,7 @@ int getIdMask(ProgramId_t prog) {
 	case ID_LOSD: return LOSD_ID_MASK;
 	case ID_PRIORITIZERD: return PRIORITIZERD_ID_MASK;
 	case ID_SIPD: return SIPD_ID_MASK;
+	case ID_MONITORD: return MONITORD_ID_MASK;
 	default: break;
     }
     return 0;
@@ -684,6 +688,7 @@ char *getProgName(ProgramId_t prog) {
 	case ID_LOSD: string="LOSd"; break;
 	case ID_PRIORITIZERD: string="Prioritizerd"; break;
 	case ID_SIPD: string="SIPd"; break;
+	case ID_MONITORD: string="Monitord"; break;
 	default: string=NULL; break;
     }
     return string;

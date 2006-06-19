@@ -32,7 +32,7 @@ int verbosity=0;
 int monitorPeriod=60; //In seconds
 
 //USB Disk Things
-int useUSBDisks=1;
+int useUSBDisks=0;
 char mainDataDisk[FILENAME_MAX];
 char usbDataDiskLink[FILENAME_MAX];
 char usbDataDiskPrefix[FILENAME_MAX];
@@ -221,14 +221,33 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     if(printToScreen) printf("%s\t%u\n",mainDataDisk,megaBytes);
     if(((short)megaBytes)==-1) errFlag--;
     
-    for(usbNum=1;usbNum<=NUM_USBDISKS;usbNum++) {
-	sprintf(usbDir,"%s%d",usbDataDiskPrefix,usbNum);
-	megaBytes=getDiskSpace(usbDir);
-	dsPtr->usbDisk[usbNum-1]=megaBytes;
-	if(printToScreen) printf("%s\t%d\n",usbDir,megaBytes);
-	if(((short)megaBytes)==-1) errFlag--;
 
+    megaBytes=getDiskSpace(OTHER_DISK1);
+    dsPtr->otherDisks[0]=megaBytes;
+    if(printToScreen) printf("%s\t%u\n",OTHER_DISK1,megaBytes);
+    megaBytes=getDiskSpace(OTHER_DISK2);
+    dsPtr->otherDisks[1]=megaBytes;
+    if(printToScreen) printf("%s\t%u\n",OTHER_DISK2,megaBytes);
+    megaBytes=getDiskSpace(OTHER_DISK3);
+    dsPtr->otherDisks[2]=megaBytes;
+    if(printToScreen) printf("%s\t%u\n",OTHER_DISK3,megaBytes);
+    megaBytes=getDiskSpace(OTHER_DISK4);
+    dsPtr->otherDisks[3]=megaBytes;
+    if(printToScreen) printf("%s\t%u\n",OTHER_DISK4,megaBytes);
+
+
+    if(useUSBDisks) {
+	for(usbNum=1;usbNum<=NUM_USBDISKS;usbNum++) {
+	    sprintf(usbDir,"%s%d",usbDataDiskPrefix,usbNum);
+	    megaBytes=getDiskSpace(usbDir);
+	    dsPtr->usbDisk[usbNum-1]=megaBytes;
+	    if(printToScreen) printf("%s\t%d\n",usbDir,megaBytes);
+	    if(((short)megaBytes)==-1) errFlag--;
+	    
+	}
     }
+    
+
 //    printf("Err Flag %d\n",errFlag);
     return errFlag;
 }
@@ -238,9 +257,9 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 int checkQueues(QueueStruct_t *queuePtr) {
     int retVal=0,count;
     unsigned short numLinks=0;
-    numLinks=countFilesInDir(CMD_ECHO_TELEM_DIR);
+    numLinks=countFilesInDir(CMD_ECHO_TELEM_LINK_DIR);
     queuePtr->cmdLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",CMD_ECHO_TELEM_DIR,numLinks);
+    if(printToScreen) printf("%s\t%u\n",CMD_ECHO_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
 
     numLinks=countFilesInDir(HK_TELEM_LINK_DIR);
