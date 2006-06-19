@@ -44,13 +44,17 @@ ps x | grep "Prioritizerd"
 ps x | grep "Monitord"
 ps x | grep "SIPd"
 
+echo ""
+echo ""
+echo "**************************************************************"
+echo "Using directory: $THE_DIR"
+echo "Using directory: $THE_DIR"
+echo "Using directory: $THE_DIR"
+echo "**************************************************************"
+echo ""
+echo ""
 
-echo "Using directory: $THE_DIR"
-echo "Using directory: $THE_DIR"
-
-echo "Using directory: $THE_DIR"
 echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`"
-
 echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`" > ${THE_DIR}/log/startLog.txt
 echo "ps -x gives:" >> ${THE_DIR}/log/startLog.txt
 ps -x >> ${THE_DIR}/log/startLog.txt

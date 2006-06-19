@@ -486,6 +486,19 @@ int main(int argc, char **argv) {
 			if(tmo) //Might change tmo%2
 			    usleep(1); 
 			tmo++;
+
+
+	    if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
+		//Make rate calculation;
+		if((doingEvent-lastEventCounter)>0) {
+		    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
+//		    if(lastEventCounter<200) 
+//			printf("\n");
+		}
+		else printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
+		lastRateTime=timeStruct.tv_sec;
+		lastEventCounter=doingEvent;
+	    }
 			if(tmo>5) {
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
@@ -592,16 +605,6 @@ int main(int argc, char **argv) {
 	    //Either have a trigger or are going ahead regardless
 	    gettimeofday(&timeStruct,NULL);
 	    
-	    if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
-		//Make rate calculation;
-		if((doingEvent-lastEventCounter)>0) {
-		    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
-//		    if(lastEventCounter<200) 
-//			printf("\n");
-		}
-		lastRateTime=timeStruct.tv_sec;
-		lastEventCounter=doingEvent;
-	    }
 	    
 
 
