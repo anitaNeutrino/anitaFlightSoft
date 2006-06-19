@@ -26,7 +26,7 @@
 #include "Acqd.h"
 
 
-#define TIME_DEBUG 1
+//#define TIME_DEBUG 1
 //#define BAD_DEBUG 1
 #define HK_DEBUG 0
 
