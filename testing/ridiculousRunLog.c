@@ -11,6 +11,10 @@ int main(int argc, char** argv) {
     char testChar;
     char bigBuffer[2048];
     int beamStatus=0,goodFlag=0;
+    char whichBottomAntennaFacingBeam[FILENAME_MAX];
+    char gridLocations[FILENAME_MAX];
+    char beamCurrent[FILENAME_MAX];
+    char bunchesPerSecond[FILENAME_MAX];
     	
     if(argc<2) {
 	fprintf(stderr,"Usage %s <log file>\n",argv[0]);
@@ -42,20 +46,38 @@ int main(int argc, char** argv) {
 	    goodFlag=1;
 	}
     }
-	
     fgets(bigBuffer,2048,stdin);
+    if(beamStatus) {
+	printf("Enter beam current:\n");
+	fgets(beamCurrent,FILENAME_MAX,stdin);
+	printf("Enter bunches per seoond:\n");
+	fgets(bunchesPerSecond,FILENAME_MAX,stdin);
+    }
+    
+    printf("Which Bottom ring antenna is facing the beam?\n");
+    fgets(whichBottomAntennaFacingBeam,FILENAME_MAX,stdin);
+    printf("Enter grid location\n");
+    fgets(gridLocations,FILENAME_MAX,stdin);
+    
+	
+
     printf("Enter Run description (upto 2000 characters):\n");
     fgets(bigBuffer,2048,stdin);
-
+    
 
 
 
     fprintf(fpLog,"User: %s\n",usersName);          
     fprintf(fpLog,"Run: %s\n",runName);   
-    if(beamStatus) 
+    if(beamStatus) {
 	fprintf(fpLog,"Beam is on\n\n");
+	fprintf(fpLog,"Beam current: %s\n",beamCurrent);   
+	fprintf(fpLog,"Bunches per second: %s\n",bunchesPerSecond);   
+    }
     else
 	fprintf(fpLog,"Beam is off\n\n");
+    fprintf(fpLog,"Beam is facing bottom antenna: %s\n",whichBottomAntennaFacingBeam);
+    fprintf(fpLog,"In grid location: %s\n\n",gridLocations);
     fprintf(fpLog,"Description: \n%s",bigBuffer);
     
     fclose(fpLog);
