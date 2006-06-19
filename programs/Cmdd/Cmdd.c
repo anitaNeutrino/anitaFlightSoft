@@ -840,6 +840,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
 	}
     }
     printf("Writring to file %s\n",filename);
+    fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
     writeCmdEcho(&theEcho,filename);
     makeLink(filename,CMD_ECHO_TELEM_LINK_DIR);
     
