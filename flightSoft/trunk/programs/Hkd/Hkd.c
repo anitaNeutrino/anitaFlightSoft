@@ -259,6 +259,8 @@ int main (int argc, char *argv[])
 	}
     } while(currentState==PROG_STATE_INIT);
     closeMagnetometer();
+    closeHkFilesAndTidy(&hkRawWriter);
+    closeHkFilesAndTidy(&hkCalWriter);
     syslog(LOG_INFO,"Hkd Terminating");
     return 0;
 }
