@@ -345,6 +345,7 @@ int readConfig()
     kvpReset();
     status = configLoad ("LOSd.config","losd");
     if(status == CONFIG_E_OK) {
+	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	laptopDebug=kvpGetInt("laptopDebug",0);
 	losBus=kvpGetInt("losBus",1);
 	losSlot=kvpGetInt("losSlot",1);
@@ -357,7 +358,6 @@ int readConfig()
     kvpReset();
     status = configLoad ("LOSd.config","bandwidth") ;
     if(status == CONFIG_E_OK) {
-	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	eventBandwidth=kvpGetInt("eventBandwidth",80);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);

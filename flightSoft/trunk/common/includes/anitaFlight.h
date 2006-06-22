@@ -31,7 +31,7 @@
 #define ANITA_LOG_FACILITY LOG_LOCAL4
 #endif
 
-//#define SPEED_UP_LOSD 1
+#define SPEED_UP_LOSD 1
 
 // Hardware stuff
 

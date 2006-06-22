@@ -145,7 +145,7 @@ int main (int argc, char *argv[])
 	    
 	    //Must determine priority here
 	    priority=1;
-	    theHeader.priority=1;
+	    theHeader.priority=0;
 	
 	    //Now Fill Generic Header and calculate checksum
 	    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));
