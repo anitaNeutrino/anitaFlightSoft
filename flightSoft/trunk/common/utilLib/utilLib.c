@@ -27,6 +27,30 @@
 
 extern  int versionsort(const void *a, const void *b);
 
+
+int closeHkFilesAndTidy(AnitaWriterStruct_t *awsPtr) {
+
+    pid_t childPid;
+    char *gzipArg[] = {"gzip",awsPtr->currentFileName,(char*)0};
+    if(awsPtr->currentFilePtr) {
+	fclose(awsPtr->currentFilePtr);
+	childPid=fork();
+	if(childPid==0) {
+	    //Child
+//	    awsPtr->currentFileName;
+	    execv("/bin/gzip",gzipArg);
+	    exit(0);
+	}
+	else if(childPid<0) {
+	    //Something wrong
+	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName);
+	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName);
+	    return -1;
+	}
+    }
+    return 0;
+}
+
 int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr)
 {
     int retVal=0;
@@ -286,12 +310,49 @@ int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, Anita
 
 }
 
+int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
+
+    pid_t childPid;
+    char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName,(char*)0};
+    char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName,(char*)0};
+    if(awsPtr->currentHeaderFilePtr) {
+	fclose(awsPtr->currentHeaderFilePtr);
+	childPid=fork();
+	if(childPid==0) {
+	    //Child
+	    execv("/bin/gzip",gzipHeadArg);
+	    exit(0);
+	}
+	else if(childPid<0) {
+	    //Something wrong
+	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
+	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
+	}
+    }
+
+    if(awsPtr->currentEventFilePtr) {
+	fclose(awsPtr->currentEventFilePtr);
+	childPid=fork();
+	if(childPid==0) {
+	//Child
+	    execv("/bin/gzip",gzipBodyArg);
+	    exit(0);
+	}
+	else if(childPid<0) {
+	    //Something wrong
+	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
+	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
+	}
+    }
+	
+    return 0;
+}
+
 int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
     int retVal=0;
     static int errorCounter=0;
     int dirNum;
-
     pid_t childPid;
     char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName,(char*)0};
     char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName,(char*)0};
@@ -421,7 +482,8 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	
 	awsPtr->writeCount++;
 	if(errorCounter<100 && awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
-	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
+	    awsPtr->currentHeaderPos=ftell(awsPtr->currentHeaderFilePtr);
+	    retVal=fwrite(awsPtr->currentHeaderFilePtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
 //	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,sizeof(AnitaEventHeader_t));
 	    if(retVal<0) {
 		errorCounter++;
@@ -432,7 +494,8 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	    else 
 		fflush(awsPtr->currentHeaderFilePtr);  
 
-	    retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
+	    awsPtr->currentEventPos=ftell(awsPtr->currentEventFilePtr);
+	    retVal=fwrite(awsPtr->currentEventFilePtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
 
 //	    retVal=gzwrite(awsPtr->currentEventFilePtr,outputBuffer,numBytes);
 	    if(retVal<0) {
