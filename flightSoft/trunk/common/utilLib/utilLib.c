@@ -483,7 +483,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	awsPtr->writeCount++;
 	if(errorCounter<100 && awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
 	    awsPtr->currentHeaderPos=ftell(awsPtr->currentHeaderFilePtr);
-	    retVal=fwrite(awsPtr->currentHeaderFilePtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
+	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
 //	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,sizeof(AnitaEventHeader_t));
 	    if(retVal<0) {
 		errorCounter++;
@@ -495,7 +495,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 		fflush(awsPtr->currentHeaderFilePtr);  
 
 	    awsPtr->currentEventPos=ftell(awsPtr->currentEventFilePtr);
-	    retVal=fwrite(awsPtr->currentEventFilePtr,numBytes,1,awsPtr->currentEventFilePtr);
+	    retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr);
 
 //	    retVal=gzwrite(awsPtr->currentEventFilePtr,outputBuffer,numBytes);
 	    if(retVal<0) {
