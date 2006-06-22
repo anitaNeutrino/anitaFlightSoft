@@ -706,8 +706,10 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	surfHdPtr->gHdr.packetNumber=getLosNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
-	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes)
-		fillBufferWithHk();
+	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+//		fillBufferWithHk();
+		doWrite();
+	    }
 	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
 	    count+=numBytes;
 	    numBytesInBuffer+=numBytes;
