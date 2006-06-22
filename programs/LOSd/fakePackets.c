@@ -286,9 +286,31 @@ void fakeEvent(int trigType)
     theHeader.unixTimeUs=timeStruct.tv_usec;
 //    theHeader.numChannels=16;
     theHeader.eventNumber=evNum;
-    theHeader.priority=thePriority;
     thePriority++;
-    if(thePriority>9) thePriority=0;
+    if(thePriority<12) 
+	theHeader.priority=0;
+    else if(thePriority<22) 
+	theHeader.priority=1;
+    else if(thePriority<30) 
+	theHeader.priority=2;
+    else if(thePriority<37) 
+	theHeader.priority=3;
+    else if(thePriority<43) 
+	theHeader.priority=4;
+    else if(thePriority<48) 
+	theHeader.priority=5;
+    else if(thePriority<52) 
+	theHeader.priority=6;
+    else if(thePriority<55) 
+	theHeader.priority=7;
+    else if(thePriority<57) 
+	theHeader.priority=8;
+    else if(thePriority<60) 
+	theHeader.priority=9;
+    else if(thePriority>=60) {
+	theHeader.priority=0;
+	thePriority=0;
+    }
     evNum++;      
     	    
     /* Write output for SIPd*/	
@@ -308,7 +330,6 @@ void fakeEvent(int trigType)
     writeHeader(&theHeader,archiveFilename);
     makeLink(archiveFilename,PRIORITIZERD_EVENT_LINK_DIR);
     
-
     
     //Move and link header
     sprintf(sipdHdFilename,"%s/hd_%lu.dat",HEADER_TELEM_DIR,

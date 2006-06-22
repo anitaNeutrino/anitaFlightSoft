@@ -34,6 +34,7 @@ int readConfig();
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void fillBufferWithHk();
 void readAndSendEvent(char *headerFilename, unsigned long eventNumber);
+void readAndSendEventRamdisk(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 int getLosNumber();
 
@@ -185,8 +186,10 @@ int main(int argc, char *argv[])
 				   &linkList[currentPri]);
 		
 		//Quick and dirty hack
-		if(numLinks[currentPri]>500) {
+		if(numLinks[currentPri]>200) {
 //		    printf("Here %d %d\n",currentPri,numLinks[currentPri]);
+		    syslog(LOG_INFO,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]);
+		    fprintf(stderr,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]);
 		    for(count=0;count<numLinks[currentPri]-100;
 			count++) {
 			
@@ -199,6 +202,11 @@ int main(int argc, char *argv[])
 			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
 				eventNumber);
 			removeFile(currentHeader);			
+#ifdef SPEED_UP_LOSD
+			sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+				eventNumber);
+			removeFile(currentHeader);			
+#endif
 		    }
 		    for(count=0;count<numLinks[currentPri];
 			count++) 
@@ -220,11 +228,17 @@ int main(int argc, char *argv[])
 	    }
 	    if(numLinks[currentPri]>0) {
 		//Got an event
+#ifdef SPEED_UP_LOSD
+		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+			linkList[currentPri][numLinks[currentPri]-1]->d_name);
+		readAndSendEventRamdisk(currentHeader); //Also deletes
+#else
 		sscanf(linkList[currentPri][numLinks[currentPri]-1]->d_name,
 		       "hd_%lu.dat",&eventNumber);
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 			linkList[currentPri][numLinks[currentPri]-1]->d_name);
 		readAndSendEvent(currentHeader,eventNumber); //Also deletes
+#endif
 		free(linkList[currentPri][numLinks[currentPri]-1]);
 		numLinks[currentPri]--;
 		sillyEvNum++;
@@ -625,6 +639,88 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
 	printf("Removing files %s\t%s\n",headerFilename,waveFilename);
 	        
     removeFile(headerFilename);
+    removeFile(waveFilename);
+
+}
+
+
+void readAndSendEventRamdisk(char *headerLinkFilename) {
+    AnitaEventHeader_t *theHeader;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,retVal;
+    char waveFilename[FILENAME_MAX];
+    char headerFilename[FILENAME_MAX];
+    char crapBuffer[FILENAME_MAX];
+    unsigned long thisEventNumber;
+
+    //First check if there is room for the header
+    if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t))
+	doWrite();
+
+//     Next load header 
+    theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer]; 
+    retVal=fillHeader(theHeader,headerLinkFilename); 
+    theHeader->gHdr.packetNumber=getLosNumber();
+    numBytesInBuffer+=sizeof(AnitaEventHeader_t);
+
+    
+    if(retVal<0) {
+	removeFile(headerLinkFilename);
+	sscanf(headerLinkFilename,"%s/hd_%lu.dat",crapBuffer,
+	       &thisEventNumber);
+	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+	removeFile(headerFilename);
+	sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+	removeFile(waveFilename);
+	
+	//Bollocks
+	return;
+    }
+    
+    thisEventNumber=theHeader->eventNumber;
+    
+
+    //Now get event file
+    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+ 	    thisEventNumber);
+    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+ 	    thisEventNumber);
+
+
+    retVal=genericReadOfFile(eventBuffer,waveFilename,MAX_EVENT_SIZE);
+    if(retVal<0) {
+	fprintf(stderr,"Problem reading %s\n",waveFilename);
+	removeFile(headerLinkFilename);
+	removeFile(headerFilename);
+	removeFile(waveFilename);
+	
+	//Bollocks
+	return;
+    }
+
+    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getLosNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes)
+		fillBufferWithHk();
+	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
+	    count+=numBytes;
+	    numBytesInBuffer+=numBytes;
+	}
+	else break;
+    }
+    
+    if(printToScreen && verbosity>1) 
+	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
+	       headerLinkFilename);
+	        
+    removeFile(headerFilename);
+    removeFile(headerLinkFilename);
     removeFile(waveFilename);
 
 }
