@@ -495,7 +495,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 		fflush(awsPtr->currentHeaderFilePtr);  
 
 	    awsPtr->currentEventPos=ftell(awsPtr->currentEventFilePtr);
-	    retVal=fwrite(awsPtr->currentEventFilePtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
+	    retVal=fwrite(awsPtr->currentEventFilePtr,numBytes,1,awsPtr->currentEventFilePtr);
 
 //	    retVal=gzwrite(awsPtr->currentEventFilePtr,outputBuffer,numBytes);
 	    if(retVal<0) {
