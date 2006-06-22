@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
     //Directory listing tools
     char currentHeader[FILENAME_MAX];
     int numLinks[NUM_PRIORITIES]={0};
+    int totalEventLinks=0;
     struct dirent **linkList[NUM_PRIORITIES];
     int sillyEvNum=0;
     int count=0;
@@ -180,11 +181,12 @@ int main(int argc, char *argv[])
 			count++) 
 			free(linkList[currentPri][count]);		    
 		    free(linkList[currentPri]);
-		}		
+		}
+		totalEventLinks-=numLinks[currentPri];
 		numLinks[currentPri]=
 		    getListofLinks(eventTelemLinkDirs[currentPri],
 				   &linkList[currentPri]);
-		
+		totalEventLinks+=numLinks[currentPri];
 		//Quick and dirty hack
 		if(numLinks[currentPri]>200) {
 //		    printf("Here %d %d\n",currentPri,numLinks[currentPri]);
@@ -212,13 +214,14 @@ int main(int argc, char *argv[])
 			count++) 
 			free(linkList[currentPri][count]);		    
 		    free(linkList[currentPri]);
-			
+		    
+		    totalEventLinks-=numLinks[currentPri];
 		    numLinks[currentPri]=
 			getListofLinks(eventTelemLinkDirs[currentPri],
 				       &linkList[currentPri]);	
+		    totalEventLinks+=numLinks[currentPri];
 		    
 		}
-
 		
 		if(printToScreen && verbosity>1) {
 		    printf("Got %d links in %s\n",numLinks[currentPri],
@@ -241,10 +244,11 @@ int main(int argc, char *argv[])
 #endif
 		free(linkList[currentPri][numLinks[currentPri]-1]);
 		numLinks[currentPri]--;
-		sillyEvNum++;
+		totalEventLinks--;
+		sillyEvNum++;	       
 	    }
 	    fillBufferWithHk();
-	    usleep(1);
+	    if(totalEventLinks<1) usleep(1);
 	    orderIndex++;
 	    if(orderIndex>=numOrders) orderIndex=0;
 	}
