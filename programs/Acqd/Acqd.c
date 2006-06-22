@@ -508,15 +508,15 @@ int main(int argc, char **argv) {
 //			    if(enableChanServo) {
 				tmo=0;
 				//Give us a chance to servo thresholds
-				status=readSurfHkData(surfHandles);
+// GSV disabled				status=readSurfHkData(surfHandles);
 				
 				
 				//Will change to SurfClearHk
-				for(surf=0;surf<numSurfs;++surf)
-				    if (setSurfControl(surfHandles[surf], 
-						       SurfClearHk) 
-					!= ApiSuccess)
-					printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+// GSV disabled				for(surf=0;surf<numSurfs;++surf)
+//				    if (setSurfControl(surfHandles[surf], 
+//						       SurfClearHk) 
+//					!= ApiSuccess)
+//					printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 				if(verbosity && printToScreen) 
 				    printf("Read SURF Housekeeping\n");
 
@@ -673,7 +673,7 @@ int main(int argc, char **argv) {
 		
 		if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
 		    //Record housekeeping data
-		    gotSurfHk=1;
+// disabled by GSV		    gotSurfHk=1;  
 		    lastSurfHk=timeStruct.tv_sec;
 		    theSurfHk.unixTime=timeStruct.tv_sec;
 		    theSurfHk.unixTimeUs=timeStruct.tv_usec;

@@ -129,6 +129,7 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, sigUsr2Handler);
     
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -257,6 +258,8 @@ int main (int argc, char *argv[])
 //	    printf("%d\n",millisecs);
 	}
     } while(currentState==PROG_STATE_INIT);
+    closeMagnetometer();
+    syslog(LOG_INFO,"Hkd Terminating");
     return 0;
 }
 

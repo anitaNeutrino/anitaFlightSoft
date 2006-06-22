@@ -1,6 +1,6 @@
 #!/bin/bash
 source ~/flightSoft/script/anitaFlightSoftSetup.sh
-START_RUN=1
+START_RUN=31
 CURRENT_DRIVE=/mnt/blade4
 
 n=${START_RUN}
