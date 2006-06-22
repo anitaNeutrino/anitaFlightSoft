@@ -228,7 +228,7 @@ void checkEvents()
 void processEvent() 
 // This just fills the buffer with 9 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
 {
-    EncodingType_t encType=(EncodingType_t) (theHead.priority & 0xf);    
+    EncodingType_t encType=(EncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
     int count=0,surfStart=0;
     static unsigned long lastEvNum=0;
     int surf=0;
@@ -301,20 +301,23 @@ int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {
 
 
 void writeOutput(int numBytes) {
+#ifdef SPEED_UP_LOSD
     char headName[FILENAME_MAX];
     char bodyName[FILENAME_MAX];
+#else
+    char linkName[FILENAME_MAX];
+#endif
+    
 //    char realHeadName[FILENAME_MAX];
 //    char realBodyName[FILENAME_MAX];
 //    char realBackupHeadName[FILENAME_MAX];
 //    char realBackupBodyName[FILENAME_MAX];    
-    char linkName[FILENAME_MAX];
     char mainDiskDir[FILENAME_MAX];
     char backupDiskDir[FILENAME_MAX];
     
     int len,retVal;
-    FILE *fpNorm;
+//    FILE *fpNorm;
 //    gzFile fpZip;
-    int numThings=0;
     int pri=theHead.priority&0xf;
    
     if(pri>9) pri=9;
@@ -328,7 +331,7 @@ void writeOutput(int numBytes) {
 //    fprintf(stderr,"%s %s\n",mainDiskDir,backupDiskDir);
 //    fprintf(stderr,"%d %d\n",strlen(MAIN_DATA_DISK_LINK),strlen(BACKUP_DATA_DISK_LINK));
 
-    retVal=cleverEncEventWrite(outputBuffer,numBytes,&theHead,&eventWriter);
+    retVal=cleverEncEventWrite((char*)outputBuffer,numBytes,&theHead,&eventWriter);
     
     if(!fpIndex) {
 //	fprintf(stderr,"%s\n",EVENT_LINK_INDEX);
@@ -347,21 +350,30 @@ void writeOutput(int numBytes) {
 
 
     //Need to think about this maybe we should take a hundred events and then write the file
-
+#ifdef SPEED_UP_LOSD
     sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-    sprintf(headName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-    sprintf(linkName,"%s/ev_%lu.dat",eventTelemLinkDirs[pri],theHead.eventNumber);
+    sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+    retVal=normalSingleWrite((char*)outputBuffer,bodyName,numBytes);
+    if(retVal<0) {
+	printf("Something wrong while writing %s\n",bodyName);
+    }
+    else {
+	writeHeader(&theHead,headName);
+	makeLink(headName,eventTelemLinkDirs[pri]);
+    }
 
-
-
-
+#else
+    
+    sprintf(linkName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
     symlink(eventWriter.currentEventFileName,linkName);
-//    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
-//    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);
+//    printf("%s %s\n",eventWriter.currentEventFileName,linkName);
     sprintf(linkName,"%s/hd_%lu.dat",eventTelemLinkDirs[pri],theHead.eventNumber);
     symlink(eventWriter.currentHeaderFileName,linkName);
-	   
+#endif
 
+
+//    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
+//    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);
 //    makeLink(realBodyName,eventTelemDirs[pri]);
 //    makeLink(realHeadName,eventTelemLinkDirs[pri]);
  

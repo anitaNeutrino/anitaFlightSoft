@@ -110,8 +110,6 @@ char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
 char *getCurrentHkFilename(char *currentDir, char *prefix, 
 			   unsigned long unixTime);
 
-
-
 int zippedSingleWrite(char *buffer, char *filename, int numBytes);
 int normalSingleWrite(char *buffer, char *filename, int numBytes);
 
