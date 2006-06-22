@@ -301,8 +301,8 @@ int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {
 
 
 void writeOutput(int numBytes) {
-//    char headName[FILENAME_MAX];
-//    char bodyName[FILENAME_MAX];
+    char headName[FILENAME_MAX];
+    char bodyName[FILENAME_MAX];
 //    char realHeadName[FILENAME_MAX];
 //    char realBodyName[FILENAME_MAX];
 //    char realBackupHeadName[FILENAME_MAX];
@@ -312,9 +312,9 @@ void writeOutput(int numBytes) {
     char backupDiskDir[FILENAME_MAX];
     
     int len,retVal;
-//    FILE *fpNorm;
+    FILE *fpNorm;
 //    gzFile fpZip;
-//    int numThings=0;
+    int numThings=0;
     int pri=theHead.priority&0xf;
    
     if(pri>9) pri=9;
@@ -347,7 +347,14 @@ void writeOutput(int numBytes) {
 
 
     //Need to think about this maybe we should take a hundred events and then write the file
-    sprintf(linkName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+
+    sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+    sprintf(headName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+    sprintf(linkName,"%s/ev_%lu.dat",eventTelemLinkDirs[pri],theHead.eventNumber);
+
+
+
+
     symlink(eventWriter.currentEventFileName,linkName);
 //    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
 //    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);

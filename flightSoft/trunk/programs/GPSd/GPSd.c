@@ -135,6 +135,7 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, sigUsr2Handler);
     
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -276,6 +277,9 @@ int main (int argc, char *argv[])
     } while(currentState==PROG_STATE_INIT);
 
     if(printToScreen) printf("Terminating GPSd\n");
+    if(fdG12) close(fdG12);
+    if(fdAdu5A) close(fdAdu5A);
+    syslog(LOG_INFO,"GPSd terminating");
     removeFile(gpsdPidFile);
     
 	

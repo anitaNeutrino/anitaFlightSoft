@@ -759,7 +759,7 @@ int startPrograms(int progMask)
 	testMask=getIdMask(prog);
 	if(progMask&testMask) {
 	    //Match
-	    sprintf(daemonCommand,"daemon -r %s -n %s",
+	    sprintf(daemonCommand,"daemon -r %s -n %s ",
 		    getProgName(prog),getProgName(prog));
 	    retVal=system(daemonCommand);
 	    if(retVal!=0) {
