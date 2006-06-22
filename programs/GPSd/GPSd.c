@@ -279,6 +279,15 @@ int main (int argc, char *argv[])
     if(printToScreen) printf("Terminating GPSd\n");
     if(fdG12) close(fdG12);
     if(fdAdu5A) close(fdAdu5A);
+
+    closeHkFilesAndTidy(&adu5PatWriter);
+    closeHkFilesAndTidy(&adu5SatWriter);
+    closeHkFilesAndTidy(&adu5TttWriter);
+    closeHkFilesAndTidy(&adu5VtgWriter);
+    closeHkFilesAndTidy(&g12PosWriter);
+    closeHkFilesAndTidy(&g12SatWriter);
+
+
     syslog(LOG_INFO,"GPSd terminating");
     removeFile(gpsdPidFile);
     

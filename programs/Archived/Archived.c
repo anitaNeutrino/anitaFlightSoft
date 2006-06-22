@@ -78,6 +78,7 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, sigUsr2Handler);
    
     /* Load Config */
     readConfigFile();
@@ -136,6 +137,9 @@ int main (int argc, char *argv[])
 	    usleep(100);
 	}
     } while(currentState==PROG_STATE_INIT);    
+
+    closeEventFilesAndTidy(&eventWriter);
+
     return 0;
 }
 
@@ -345,7 +349,7 @@ void writeOutput(int numBytes) {
 	}
     }
 //    printf("fpIndex: %d\n",(int)fpIndex);
-    fprintf(fpIndex,"%lu\t%s\t%s\n",theHead.eventNumber,mainDiskDir,backupDiskDir);
+    fprintf(fpIndex,"%lu\t%s\t%s\t%d\t%s\t%d\n",theHead.eventNumber,mainDiskDir,eventWriter.currentHeaderFileName,eventWriter.currentHeaderPos,eventWriter.currentEventFileName,eventWriter.currentEventPos);
     fflush(fpIndex);
 
 
