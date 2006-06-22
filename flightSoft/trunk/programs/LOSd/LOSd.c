@@ -304,7 +304,7 @@ int doWrite() {
 
     dataCounter+=numBytesInBuffer;
 //    printf("%d %d\n",numBytesInBuffer,dataCounter);
-    if(dataCounter>1000000) {
+    if(dataCounter>100000) {
 	gettimeofday(&newTime,0);
 	timeDiff=getTimeDiff(lastTime,newTime);
 	printf("Transferred %u bytes in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,timeDiff,((float)dataCounter)/timeDiff);
