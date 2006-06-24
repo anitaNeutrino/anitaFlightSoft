@@ -182,6 +182,14 @@ int readConfig() {
 	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
 	    fprintf(stderr,"Couldn't get acqdPidFile\n");
 	}
+	tempString=kvpGetString("calibdPidFile");
+	if(tempString) {
+	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
+	    fprintf(stderr,"Couldn't get calibdPidFile\n");
+	}
 	tempString=kvpGetString("archivedPidFile");
 	if(tempString) {
 	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
@@ -305,99 +313,109 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnGPSOn");
-	    retVal=system(theCommand);	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
 	case CMD_TURN_GPS_OFF:
 	    //turnGPSOff
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnGPSOff");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateGPS",0,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
 	case CMD_TURN_RFCM_ON:
 	    //turnRFCMOn
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnRFCMOn");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
 	case CMD_TURN_RFCM_OFF:
 	    //turnRFCMOff
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnRFCMOff");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM1",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM2",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM3",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM4",0,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;	    
+	    
 	case CMD_TURN_CALPULSER_ON:
 	    //turnCalPulserOn
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnCalPulserOn");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateCalPulser",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
+	    
 	case CMD_TURN_CALPULSER_OFF:
 	    //turnCalPulserOff
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnCalPulserOff");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateCalPulser",0,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
 	case CMD_TURN_VETO_ON:
 	    //turnNDOn
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnVetoOn");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateVeto",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
 	case CMD_TURN_VETO_OFF:
 	    //turnNDOff
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnVetoOff");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateVeto",0,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
 	    return retVal;
 	case CMD_TURN_ALL_ON:
 	    //turnAllOn
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnAllOn");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateCalPulser",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateVeto",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
+
 	case CMD_TURN_ALL_OFF:
 	    //turnAllOff
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; turnAllOff");
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateCalPulser",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateVeto",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;	    
+	    
 	case SET_CALPULSER_SWITCH:
 	    //setCalPulserSwitch
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; setCalPulserAddr %d",theCmd->cmd[1]);
-	    retVal=system(theCommand);
-	    
-	    time(&rawtime);
+	    if(theCmd->cmd[1]>0 && theCmd->cmd[1]<5)
+		configModifyInt("Calibd.config","rfswitch","steadyState",theCmd->cmd[1],&rawtime);
+	    else //Switch off steady state
+		configModifyInt("Calibd.config","rfswitch","steadyState",0,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;	    
+	    
 	case SET_CALPULSER_ATTEN:
-	    //setSunSensorGain
-	    sprintf(theCommand,"source /home/anita/flightSoft/script/anitaFlightSoftSetup.sh; setCalPulserAtten %d",theCmd->cmd[1]);
-	    retVal=system(theCommand);	   
-	    
-	    time(&rawtime);
+	    //setCalPulserAtten
+	    if(theCmd->cmd[1]>0 && theCmd->cmd[1]<8) {
+		configModifyInt("Calibd.config","attenuator","attenStartState",theCmd->cmd[1],&rawtime);
+		configModifyInt("Calibd.config","attenuator","attenLoop",0,&rawtime);
+	    }
+	    else //Switch on looping
+		configModifyInt("Calibd.config","attenuator","attenLoop",1,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;
-	    return retVal;
+	    
 	case SET_ADU5_PAT_PERIOD:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 //	    printf("ivalue: %d %x\t %x %x\n",ivalue,ivalue,theCmd->cmd[1],theCmd->cmd[2]);
@@ -535,6 +553,9 @@ int sendSignal(ProgramId_t progId, int theSignal)
 	    break;
 	case ID_EVENTD:
 	    sprintf(fileName,"%s",eventdPidFile);
+	    break;
+	case ID_CALIBD:
+	    sprintf(fileName,"%s",calibdPidFile);
 	    break;
 	case ID_GPSD:
 	    sprintf(fileName,"%s",gpsdPidFile);
