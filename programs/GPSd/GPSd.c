@@ -137,6 +137,9 @@ int main (int argc, char *argv[])
     signal(SIGUSR2, sigUsr2Handler);
     signal(SIGTERM, sigUsr2Handler);
     
+    
+    //Dont' wait for children
+    signal(SIGCLD, SIG_IGN); 
 
    
     /* Load Global Config */

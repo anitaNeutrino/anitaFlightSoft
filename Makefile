@@ -64,7 +64,7 @@ scripts:
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOn bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort bi
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/runAcqdStandalone.sh bin
 

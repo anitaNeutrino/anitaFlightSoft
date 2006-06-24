@@ -13,8 +13,9 @@ void writeStatus();
 // Acromag Functions 
 void acromagSetup();
 void ip470Setup();
-int setRelaysAndSSGain();
+int setRelays();
 int setSwitchState();
+int setAttenuatorState();
 int toggleRelay(int port, int chan);
 int setMultipleLevels(int basePort, int baseChan, int nbits, int value);
 
@@ -36,11 +37,18 @@ int readConfigFile();
 #define GPS_OFF_LOGIC 2
 #define CAL_PULSER_ON_LOGIC 1
 #define CAL_PULSER_OFF_LOGIC 0
-#define SUNSENSOR1_GAIN_LSB 13
-#define RFSWITCH_LSB 8
-
+#define ATTENUATOR_LSB 13
+#define RFSWITCH_LSB 9
 
 
 //Acromag
 #define IP470_CARRIER "/dev/apc8620dos"
 #define IP470_SLOT 'A'
+
+
+#define NUM_SWITCH_PORTS 4
+#define NUM_ATTEN_SETTINGS 8
+
+//CalPulser wiring weirdness 
+int rfSwitchPortMap[NUM_SWITCH_PORTS]={8,4,2,1};
+int attenuatorSettingsMap[NUM_ATTEN_SETTINGS]={7,3,5,1,6,2,4,0};
