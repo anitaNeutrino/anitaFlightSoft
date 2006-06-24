@@ -64,8 +64,8 @@ char sipdPidFile[FILENAME_MAX];
 
 
 //Debugging Output
-int printToScreen=0;
-int verbosity=0;
+int printToScreen=1;
+int verbosity=1;
 
 int main (int argc, char *argv[])
 {
