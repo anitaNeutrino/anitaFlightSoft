@@ -13,6 +13,7 @@ done
 echo "Killing old progs"
 CmdTest 131 246 7
 
+killall rsync
 sleep 2
 
 rm -rf /tmp/anita

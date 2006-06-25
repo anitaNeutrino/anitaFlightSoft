@@ -23,7 +23,7 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 200
+#define MAX_GPS_TIMES 20000
 #define MAX_CALIB_TIMES 1000
 #define EVENT_TIMEOUT 5
 
@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
 	    
 		do {
 //		    printf("Here %lu (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
-		    filledSubTime=setGpsTime(&theAcqdEventHeader);
+//		    filledSubTime=setGpsTime(&theAcqdEventHeader);
 		    if(!filledSubTime) {
 			if((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT) sleep(1);
 			else break;
@@ -291,7 +291,8 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     
     // As we are reading out two GPS units there is a chance that the times
     // will come out of time order.
-    qsort(gpsArray,numGpsStored,sizeof(GpsSubTime_t),compareGpsTimes);
+    if(numGpsStored)
+	qsort(gpsArray,numGpsStored,sizeof(GpsSubTime_t),compareGpsTimes);
 
 
     if(printToScreen && verbosity)
