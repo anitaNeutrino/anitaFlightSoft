@@ -354,8 +354,8 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
     static int errorCounter=0;
     int dirNum;
     pid_t childPid;
-    char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName,(char*)0};
-    char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName,(char*)0};
+    char *gzipHeadArg[] = {"nice","/bin/gzip",awsPtr->currentHeaderFileName,(char*)0};
+    char *gzipBodyArg[] = {"nice","/bin/gzip",awsPtr->currentEventFileName,(char*)0};
     
     if(!awsPtr->currentEventFilePtr) {
 	//First time
@@ -409,7 +409,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
-		execv("/bin/gzip",gzipHeadArg);
+		execv("/usr/bin/nice",gzipHeadArg);
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -420,7 +420,7 @@ int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdP
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
-		execv("/bin/gzip",gzipBodyArg);
+		execv("/usr/bin/nice",gzipBodyArg);
 		exit(0);
 	    }
 	    else if(childPid<0) {

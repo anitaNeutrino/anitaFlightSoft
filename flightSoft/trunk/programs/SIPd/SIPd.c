@@ -28,6 +28,7 @@
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
 
+#define SEND_REAL_DATA 1
 
 int getTdrssNumber();
 void commandHandler(unsigned char *cmd);
@@ -35,10 +36,10 @@ void comm1Handler();
 void comm2Handler();
 void highrateHandler(int *ignore);
 int readConfig();
-void readAndSendEvent(char *headerFilename);
-int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
+void readAndSendEventRamdisk(char *headerFilename);
+int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
-
+void sendSomeHk(int maxBytes);
 
 // Config Thingies
 char sipdPidFile[FILENAME_MAX];
@@ -70,11 +71,14 @@ unsigned long hkDataSent=0;
 //Data buffer
 unsigned char theBuffer[MAX_EVENT_SIZE];
 
-
-
 //High rate thread
 pthread_t Hr_thread;
 int throttleRate=MAX_WRITE_RATE;
+
+//Low Rate Struct
+SlowRateType1_t comm1Data;
+SlowRateType1_t comm2Data;
+
 
 int main(int argc, char *argv[])
 {
@@ -96,6 +100,11 @@ int main(int argc, char *argv[])
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
+
+
+    //Zero low rate structs
+    memset(&comm1Data,0,sizeof(SlowRateType1_t));
+    memset(&comm2Data,0,sizeof(SlowRateType1_t));
 
    /* Load Config */
     kvpReset () ;
@@ -179,7 +188,7 @@ int main(int argc, char *argv[])
 	exit(1);
     }
     
-/*     // Start the high rate writer process. */
+     // Start the high rate writer process. 
     pthread_create(&Hr_thread, NULL, (void *)highrateHandler, NULL);
     pthread_detach(Hr_thread);
 
@@ -213,11 +222,12 @@ void highrateHandler(int *ignore)
     while(1) {
 	currentPri=priorityOrder[orderIndex];	
 	numLinks=getListofLinks(eventTelemLinkDirs[currentPri],&linkList);
+
 	if(numLinks) {
 	    //Got an event	    
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 		    linkList[numLinks-1]->d_name);
-//	    readAndSendEvent(currentHeader); //Also deletes
+	    readAndSendEventRamdisk(currentHeader); //Also deletes
 
 	    while(numLinks) {
 		free(linkList[numLinks-1]);
@@ -231,7 +241,7 @@ void highrateHandler(int *ignore)
 	if(orderIndex>=numOrders) orderIndex=0;
 
 	//Need to think about housekeeping and add something here
-
+	sendSomeHk(10000);
     }	
 
 }
@@ -272,11 +282,11 @@ void commandHandler(unsigned char *cmd)
 
 void comm1Handler()
 {
+
     static unsigned char start = 0;
     unsigned char buf[SLBUF_SIZE + 6];
     int i;
     int ret;
-
     static unsigned char count = 0;
 
     buf[0] = 0xbe;
@@ -293,7 +303,11 @@ void comm1Handler()
     ++start;
     fprintf(stderr, "comm1Handler %02x %02x\n", count, start);
 
+#ifdef SEND_REAL_SLOW_DATA
+    ret = sipcom_slowrate_write(COMM1, &comm1Data, sizeof(SlowRateType1_t));
+#else
     ret = sipcom_slowrate_write(COMM1, buf, SLBUF_SIZE+6);
+#endif
     if (ret) {
 	fprintf(stderr, "comm1Handler: %s\n", sipcom_strerror());
     }
@@ -311,8 +325,13 @@ void comm2Handler()
     }
     --start;
     fprintf(stderr, "comm2Handler %02x\n", start);
-
+    
+#ifdef SEND_REAL_SLOW_DATA
+    ret = sipcom_slowrate_write(COMM2, &comm2Data, sizeof(SlowRateType1_t));
+#else
     ret = sipcom_slowrate_write(COMM2, buf, SLBUF_SIZE);
+#endif
+
     if (ret) {
 	fprintf(stderr, "comm2Handler: %s\n", sipcom_strerror());
     }
@@ -491,6 +510,103 @@ void readAndSendEvent(char *headerFilename) {
 
 }
 
+
+void readAndSendEventRamdisk(char *headerLinkFilename) {
+    AnitaEventHeader_t *theHeader;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,retVal;
+    char waveFilename[FILENAME_MAX];
+    char headerFilename[FILENAME_MAX];
+    char crapBuffer[FILENAME_MAX];
+    unsigned long thisEventNumber;
+
+
+//     Next load header 
+    theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
+    retVal=fillHeader(theHeader,headerLinkFilename); 
+        
+    if(retVal<0) {
+	removeFile(headerLinkFilename);
+	sscanf(headerLinkFilename,"%s/hd_%lu.dat",crapBuffer,
+	       &thisEventNumber);
+	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+	removeFile(headerFilename);
+	sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+	removeFile(waveFilename);
+	
+	//Bollocks
+	return;
+    }
+
+
+    theHeader->gHdr.packetNumber=getTdrssNumber();
+    retVal = sipcom_highrate_write(theBuffer,sizeof(AnitaEventHeader_t));
+    if(retVal<0) {
+	//Problem sending data
+	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
+	fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());	
+    }
+    eventDataSent+=sizeof(AnitaEventHeader_t);
+    
+    
+    thisEventNumber=theHeader->eventNumber;
+    
+
+    //Now get event file
+    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+ 	    thisEventNumber);
+    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+ 	    thisEventNumber);
+
+
+    retVal=genericReadOfFile((char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
+    if(retVal<0) {
+	fprintf(stderr,"Problem reading %s\n",waveFilename);
+	removeFile(headerLinkFilename);
+	removeFile(headerFilename);
+	removeFile(waveFilename);	
+	//Bollocks
+	return;
+    }
+
+
+    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
+    count=0;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    retVal = sipcom_highrate_write(&theBuffer[count],
+					   sizeof(AnitaEventHeader_t));
+	    if(retVal<0) {
+		//Problem sending data
+		syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
+		fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());	
+	    }
+	    count+=numBytes;
+	    eventDataSent+=numBytes;
+	}
+	else break;
+    }
+    
+    if(printToScreen && verbosity>1) 
+	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
+	       headerLinkFilename);
+	        
+    removeFile(headerFilename);
+    removeFile(headerLinkFilename);
+    removeFile(waveFilename);
+
+    comm1Data.lastEventNumber=thisEventNumber;
+    comm2Data.lastEventNumber=thisEventNumber;
+
+}
+
+
+
 int getTdrssNumber() {
     int retVal=0;
     static int firstTime=1;
@@ -552,4 +668,136 @@ void sendWakeUpBuffer()
     
 }
 
+void sendSomeHk(int maxBytes) 
+{
+    int hkCount=0;
 
+    if((maxBytes-hkCount)>sizeof(CommandEcho_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,
+		     CMD_ECHO_TELEM_DIR,CMD_ECHO_TELEM_LINK_DIR,
+		     sizeof(CommandEcho_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(MonitorStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,
+		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
+		     sizeof(MonitorStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(GpsAdu5SatStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,GPS_TELEM_DIR,
+		     GPS_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(HkDataStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HK_TELEM_DIR,
+		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(FullSurfHkStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,SURFHK_TELEM_DIR,
+		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(TurfRateStruct_t)) {	
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,TURFHK_TELEM_DIR,
+		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(AnitaEventHeader_t)) {	
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HEADER_TELEM_DIR,
+		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+    }        
+
+    hkDataSent+=hkCount;
+    
+}
+
+
+int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize)
+/* Looks in the specified directroy and TDRSS's up to maxCopy bytes of data */
+/* fileSize is the maximum size of a packet in the directory */
+{
+    char currentFilename[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+    int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
+    GenericHeader_t *gHdr;
+    struct dirent **linkList;
+    
+    GpsAdu5PatStruct_t *patPtr;
+    HkDataStruct_t *hkPtr;
+
+
+    numLinks=getListofLinks(linkDir,&linkList); 
+    if(numLinks<=0) {
+	return 0;
+    }
+        
+    for(count=numLinks-1;count>=0;count--) {
+	sprintf(currentFilename,"%s/%s",telemDir,
+		linkList[count]->d_name);
+	sprintf(currentLinkname,"%s/%s",
+		linkDir,linkList[count]->d_name);
+
+	retVal=genericReadOfFile((char*)theBuffer,
+				 currentFilename,
+				 MAX_EVENT_SIZE);
+	if(retVal<=0) {
+	    syslog(LOG_ERR,"Error opening file, will delete: %s",
+		   currentFilename);
+	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
+	    removeFile(currentFilename);
+
+	    removeFile(currentLinkname);
+	    continue;
+	}
+	numBytes=retVal;
+
+	if(printToScreen && verbosity>1) {
+	    printf("Read File: %s -- (%d bytes)\n",currentFilename,numBytes);
+	}
+	
+
+//	printf("Read %d bytes from file\n",numBytes);
+//	Maybe I'll add a packet check here
+	gHdr = (GenericHeader_t*)theBuffer;
+//	checkVal=checkPacket(gHdr);
+//	if(checkVal!=0 ) {
+//	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
+//	}
+	gHdr->packetNumber=getTdrssNumber();
+	retVal = sipcom_highrate_write(theBuffer, numBytes);
+	if(retVal<0) {
+	    //Problem sending data
+	    syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
+	    fprintf(stderr,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());	
+	}
+	
+	totalBytes+=numBytes;
+	removeFile(currentLinkname);
+	removeFile(currentFilename);
+
+	//Now fill low rate structs
+	switch (gHdr->code) {
+	    case PACKET_GPS_ADU5_PAT:
+		patPtr=(GpsAdu5PatStruct_t*)gHdr;
+		comm1Data.altitude=patPtr->altitude;
+		comm2Data.altitude=patPtr->altitude;
+		comm1Data.longitude=patPtr->longitude;
+		comm2Data.longitude=patPtr->longitude;
+		comm1Data.latitude=patPtr->latitude;
+		comm2Data.latitude=patPtr->latitude;
+		break;
+	    case PACKET_HKD:
+		hkPtr=(HkDataStruct_t*)gHdr;
+		comm1Data.sbsTemp[0]=hkPtr->sbs.temp[0];
+		comm2Data.sbsTemp[0]=hkPtr->sbs.temp[0];
+		comm1Data.sbsTemp[1]=hkPtr->sbs.temp[1];
+		comm2Data.sbsTemp[1]=hkPtr->sbs.temp[1];
+	    default:
+		break;
+	}
+
+	if((totalBytes+fileSize)>maxCopy) break;
+    }
+    
+    for(count=0;count<numLinks;count++)
+	free(linkList[count]);
+    free(linkList);
+    
+    return totalBytes;
+}

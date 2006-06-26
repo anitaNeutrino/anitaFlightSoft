@@ -79,7 +79,9 @@ typedef enum {
     PACKET_WAKEUP_LOS = 0x600,
     PACKET_WAKEUP_HIGHRATE = 0x601,
     PACKET_WAKEUP_COMM1 = 0x602,
-    PACKET_WAKEUP_COMM2 = 0x603
+    PACKET_WAKEUP_COMM2 = 0x603,
+    PACKET_SLOW1 = 0x700,
+    PACKET_SLOW2 = 0x800    
 } PacketCode_t;
 
 typedef enum {
@@ -95,6 +97,17 @@ typedef struct {
     unsigned char verId;
     unsigned long checksum;
 } GenericHeader_t;
+
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime;
+    unsigned long lastEventNumber;
+    float latitude;
+    float longitude;
+    float altitude;
+    unsigned short sbsTemp[2];
+} SlowRateType1_t;
 
 typedef struct {
     unsigned char trigType; //Trig type bit masks
