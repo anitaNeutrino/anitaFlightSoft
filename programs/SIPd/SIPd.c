@@ -313,6 +313,7 @@ void comm1Handler()
 
 #ifdef SEND_REAL_SLOW_DATA
 //    fprintf(stderr,"Last Temp %d\n",comm1Data.sbsTemp[0]);
+    comm1Data.unixTime=time(NULL);
     fillGenericHeader(&comm1Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
     ret = sipcom_slowrate_write(COMM1, (unsigned char*)&comm1Data, sizeof(SlowRateType1_t));
 #else
@@ -337,6 +338,7 @@ void comm2Handler()
     fprintf(stderr, "comm2Handler %02x\n", start);
     
 #ifdef SEND_REAL_SLOW_DATA
+    comm2Data.unixTime=time(NULL);
     fillGenericHeader(&comm2Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
     ret = sipcom_slowrate_write(COMM2,(unsigned char*) &comm2Data, sizeof(SlowRateType1_t));
 #else
