@@ -208,6 +208,7 @@ int readConfigFile()
 	       monitordArchiveDir,
 	       monitordUSBArchiveDir);
 	       
+    makeDirectories(MONITOR_TELEM_LINK_DIR);
     return status;
 }
 

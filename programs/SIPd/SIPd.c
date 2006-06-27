@@ -36,7 +36,8 @@ void comm1Handler();
 void comm2Handler();
 void highrateHandler(int *ignore);
 int readConfig();
-void readAndSendEventRamdisk(char *headerFilename);
+void readAndSendEventRamdisk(char *headerLinkFilename);
+void readAndSendEventRamdiskWavePackets(char *headerLinkFilename);
 int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
 void sendSomeHk(int maxBytes);
@@ -70,10 +71,13 @@ unsigned long hkDataSent=0;
 
 //Data buffer
 unsigned char theBuffer[MAX_EVENT_SIZE];
+unsigned char chanBuffer[MAX_EVENT_SIZE];
+
 
 //High rate thread
 pthread_t Hr_thread;
 int throttleRate=MAX_WRITE_RATE;
+int sendWavePackets=0;
 
 //Low Rate Struct
 SlowRateType1_t comm1Data;
@@ -227,7 +231,11 @@ void highrateHandler(int *ignore)
 	    //Got an event	    
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 		    linkList[numLinks-1]->d_name);
-	    readAndSendEventRamdisk(currentHeader); //Also deletes
+	    if(!sendWavePackets)
+		readAndSendEventRamdisk(currentHeader); //Also deletes
+	    else
+		readAndSendEventRamdiskWavePackets(currentHeader); //Also deletes
+		
 
 	    while(numLinks) {
 		free(linkList[numLinks-1]);
@@ -305,8 +313,8 @@ void comm1Handler()
 
 #ifdef SEND_REAL_SLOW_DATA
 //    fprintf(stderr,"Last Temp %d\n",comm1Data.sbsTemp[0]);
-    fillGenericHeader(&comm1Data,PACKET_S
-    ret = sipcom_slowrate_write(COMM1, &comm1Data, sizeof(SlowRateType1_t));
+    fillGenericHeader(&comm1Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
+    ret = sipcom_slowrate_write(COMM1, (unsigned char*)&comm1Data, sizeof(SlowRateType1_t));
 #else
     ret = sipcom_slowrate_write(COMM1, buf, SLBUF_SIZE+6);
 #endif
@@ -329,7 +337,8 @@ void comm2Handler()
     fprintf(stderr, "comm2Handler %02x\n", start);
     
 #ifdef SEND_REAL_SLOW_DATA
-    ret = sipcom_slowrate_write(COMM2, &comm2Data, sizeof(SlowRateType1_t));
+    fillGenericHeader(&comm2Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
+    ret = sipcom_slowrate_write(COMM2,(unsigned char*) &comm2Data, sizeof(SlowRateType1_t));
 #else
     ret = sipcom_slowrate_write(COMM2, buf, SLBUF_SIZE);
 #endif
@@ -370,6 +379,8 @@ int readConfig()
     status = configLoad ("SIPd.config","sipd");
     if(status == CONFIG_E_OK) {
 	throttleRate=kvpGetInt("throttleRate",680);
+	sendWavePackets=kvpGetInt("sendWavePackets",0);
+	syslog(LOG_INFO,"sendWavePackets %d\n",sendWavePackets);
     }
     else {
 	eString=configErrorString (status) ;
@@ -517,11 +528,22 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     AnitaEventHeader_t *theHeader;
     EncodedSurfPacketHeader_t *surfHdPtr;
     int numBytes,count=0,surf=0,retVal;
+    char currentTouchname[FILENAME_MAX];
+    char currentLOSTouchname[FILENAME_MAX];
     char waveFilename[FILENAME_MAX];
     char headerFilename[FILENAME_MAX];
     char crapBuffer[FILENAME_MAX];
     unsigned long thisEventNumber;
 
+    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+	    thisEventNumber);
+    sprintf(currentTouchname,"%s.sipd",headerFilename);
+    sprintf(currentLOSTouchname,"%s.losd",headerFilename);
+
+
+    if(checkFileExists(currentLOSTouchname)) 
+	return;
+    touchFile(currentTouchname);
 
 //     Next load header 
     theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
@@ -581,8 +603,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
-	    retVal = sipcom_highrate_write(&theBuffer[count],
-					   sizeof(AnitaEventHeader_t));
+	    retVal = sipcom_highrate_write(&theBuffer[count],numBytes);
 	    if(retVal<0) {
 		//Problem sending data
 		syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
@@ -598,9 +619,176 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
 	       headerLinkFilename);
 	        
-    removeFile(headerFilename);
-    removeFile(headerLinkFilename);
-    removeFile(waveFilename);
+    if(!checkFileExists(currentLOSTouchname)) {
+	removeFile(headerFilename);
+	removeFile(headerLinkFilename);
+	removeFile(waveFilename);
+	removeFile(currentTouchname);
+    }
+    else {
+	sleep(1);
+	removeFile(headerFilename);
+	removeFile(headerLinkFilename);
+	removeFile(waveFilename);
+	removeFile(currentTouchname);
+	removeFile(currentLOSTouchname);
+    }
+
+    comm1Data.lastEventNumber=thisEventNumber;
+    comm2Data.lastEventNumber=thisEventNumber;
+
+}
+
+
+void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
+    AnitaEventHeader_t *theHeader;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    EncodedSurfChannelHeader_t *chanHdPtr;    
+    EncodedWaveformPacket_t *wavPtr;
+    int numBytes,count=0,surf=0,retVal,chan;
+    char currentTouchname[FILENAME_MAX];
+    char currentLOSTouchname[FILENAME_MAX];
+    char waveFilename[FILENAME_MAX];
+    char headerFilename[FILENAME_MAX];
+    char crapBuffer[FILENAME_MAX];
+    unsigned long thisEventNumber;
+
+
+
+    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+	    thisEventNumber);
+    sprintf(currentTouchname,"%s.sipd",headerFilename);
+    sprintf(currentLOSTouchname,"%s.losd",headerFilename);
+
+
+    if(checkFileExists(currentLOSTouchname)) 
+	return;
+    touchFile(currentTouchname);
+
+//     Next load header 
+    theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
+    retVal=fillHeader(theHeader,headerLinkFilename); 
+        
+    if(retVal<0) {
+	removeFile(headerLinkFilename);
+	sscanf(headerLinkFilename,"%s/hd_%lu.dat",crapBuffer,
+	       &thisEventNumber);
+	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+	removeFile(headerFilename);
+	sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+	removeFile(waveFilename);
+	
+	//Bollocks
+	return;
+    }
+
+
+    theHeader->gHdr.packetNumber=getTdrssNumber();
+    retVal = sipcom_highrate_write(theBuffer,sizeof(AnitaEventHeader_t));
+    if(retVal<0) {
+	//Problem sending data
+	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
+	fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());	
+    }
+    eventDataSent+=sizeof(AnitaEventHeader_t);
+    
+    
+    thisEventNumber=theHeader->eventNumber;
+    
+
+    //Now get event file
+    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+ 	    thisEventNumber);
+    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+ 	    thisEventNumber);
+
+
+    retVal=genericReadOfFile((char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
+    if(retVal<0) {
+	fprintf(stderr,"Problem reading %s\n",waveFilename);
+	removeFile(headerLinkFilename);
+	removeFile(headerFilename);
+	removeFile(waveFilename);	
+	//Bollocks
+	return;
+    }
+
+
+    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
+
+    count=0;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
+        count+=sizeof(EncodedSurfPacketHeader_t);
+        for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+          //      cout << count << "\t" << numBytes << endl;
+	    wavPtr = (EncodedWaveformPacket_t*) &chanBuffer[0];
+            chanHdPtr = (EncodedSurfChannelHeader_t*) &theBuffer[count];
+            count+=sizeof(EncodedSurfChannelHeader_t);
+	    
+	    wavPtr->eventNumber=surfHdPtr->eventNumber;
+	    if(wavPtr->eventNumber!=thisEventNumber) {
+		printf("Something horribly wrong %lu is not %lu\n",wavPtr->eventNumber,thisEventNumber);
+		syslog(LOG_ERR,"Something horribly wrong %lu is not %lu\n",wavPtr->eventNumber,thisEventNumber);
+
+		removeFile(headerLinkFilename);
+		removeFile(headerFilename);
+		removeFile(waveFilename);	
+		//Bollocks
+		return;
+	    }
+	    wavPtr->chanHead=(*chanHdPtr);
+	    memcpy(&chanBuffer[sizeof(EncodedWaveformPacket_t)],&theBuffer[count],chanHdPtr->numBytes);
+//	    syslog(LOG_INFO,"1st 3 %d %d %d and %d %d %d\n",chanBuffer[sizeof(EncodedWaveformPacket_t)+0],chanBuffer[sizeof(EncodedWaveformPacket_t)+1],
+//		   chanBuffer[sizeof(EncodedWaveformPacket_t)+2],
+//		   theBuffer[count+0],
+//		   theBuffer[count+1],
+//		   theBuffer[count+2]);
+		   
+            count+=chanHdPtr->numBytes;	
+	    numBytes=chanHdPtr->numBytes+sizeof(EncodedWaveformPacket_t);
+	    fillGenericHeader(wavPtr,PACKET_ENC_WV,numBytes);
+//	    syslog(LOG_INFO,"wavPtr info %d %d %d\n",wavPtr->gHdr.code,wavPtr->gHdr.numBytes,wavPtr->gHdr.checksum);
+	    wavPtr->gHdr.packetNumber=getTdrssNumber();
+	    
+	    if(numBytes) {
+		retVal = sipcom_highrate_write(chanBuffer,
+					       numBytes);
+		if(retVal<0) {
+		    //Problem sending data
+		    syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
+		    fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());	
+		}
+//		count+=numBytes;
+		eventDataSent+=numBytes;
+	    }
+	    else break;
+	    
+        }
+    }
+    //    exit(0);
+
+    
+    if(printToScreen && verbosity>1) 
+	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
+	       headerLinkFilename);
+	        
+    if(!checkFileExists(currentLOSTouchname)) {
+	removeFile(headerFilename);
+	removeFile(headerLinkFilename);
+	removeFile(waveFilename);
+	removeFile(currentTouchname);
+    }
+    else {
+	sleep(1);
+	removeFile(headerFilename);
+	removeFile(headerLinkFilename);
+	removeFile(waveFilename);
+	removeFile(currentTouchname);
+	removeFile(currentLOSTouchname);
+    }
 
     comm1Data.lastEventNumber=thisEventNumber;
     comm2Data.lastEventNumber=thisEventNumber;
@@ -716,6 +904,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 {
     char currentFilename[FILENAME_MAX];
     char currentTouchname[FILENAME_MAX];
+    char currentLOSTouchname[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
     GenericHeader_t *gHdr;
@@ -734,8 +923,12 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	sprintf(currentFilename,"%s/%s",telemDir,
 		linkList[count]->d_name);
 	sprintf(currentTouchname,"%s.sipd",currentFilename);
+	sprintf(currentLOSTouchname,"%s.losd",currentFilename);
 	sprintf(currentLinkname,"%s/%s",
 		linkDir,linkList[count]->d_name);
+
+	if(checkFileExists(currentLOSTouchname)) 
+	    continue;
 	touchFile(currentTouchname);
 
 	retVal=genericReadOfFile((char*)theBuffer,
@@ -774,9 +967,19 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	}
 	
 	totalBytes+=numBytes;
-	removeFile(currentLinkname);
-	removeFile(currentFilename);
-	removeFile(currentTouchname);
+
+	if(!checkFileExists(currentLOSTouchname)) {
+	    removeFile(currentLinkname);
+	    removeFile(currentFilename);
+	    removeFile(currentTouchname);
+	}
+	else {
+	    sleep(1);
+	    removeFile(currentLinkname);
+	    removeFile(currentFilename);
+	    removeFile(currentTouchname);
+	    removeFile(currentLOSTouchname);
+	}
 
 	//Now fill low rate structs
 	switch (gHdr->code) {

@@ -88,6 +88,7 @@ int main(int argc, char *argv[])
     char *progName=basename(argv[0]);
 
     //Directory listing tools
+    char currentTouchname[FILENAME_MAX];
     char currentHeader[FILENAME_MAX];
     int numLinks[NUM_PRIORITIES]={0};
     int totalEventLinks=0;
@@ -197,18 +198,27 @@ int main(int argc, char *argv[])
 			
 			sscanf(linkList[currentPri][count]->d_name,
 			       "hd_%lu.dat",&eventNumber);
-									
-			sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
-				linkList[currentPri][count]->d_name);
-			removeFile(currentHeader);
-			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
-				eventNumber);
-			removeFile(currentHeader);			
+
 #ifdef SPEED_UP_LOSD
 			sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
 				eventNumber);
+			sprintf(currentTouchname,"%s.sipd",currentHeader);
+			if(checkFileExists(currentTouchname))
+			    continue;
+
 			removeFile(currentHeader);			
 #endif
+
+									
+			sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+				linkList[currentPri][count]->d_name);
+			
+
+			removeFile(currentHeader);
+
+			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+				eventNumber);
+			removeFile(currentHeader);			
 		    }
 		    for(count=0;count<numLinks[currentPri];
 			count++) 
@@ -424,6 +434,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     char currentTouchname[FILENAME_MAX];
+    char currentLOSTouchname[FILENAME_MAX];
     int retVal,numLinks,count,numBytes,totalBytes=0,checkVal=0;
     GenericHeader_t *gHdr;
     struct dirent **linkList;
@@ -440,8 +451,13 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	sprintf(currentFilename,"%s/%s",telemDir,
 		linkList[count]->d_name);
 	sprintf(currentTouchname,"%s.sipd",currentFilename);
+	sprintf(currentLOSTouchname,"%s.losd",currentFilename);
 	sprintf(currentLinkname,"%s/%s",
 		linkDir,linkList[count]->d_name);
+
+	if(checkFileExists(currentTouchname)) continue;
+	touchFile(currentLOSTouchname);
+
 
 	retVal=genericReadOfFile((char*)&(losBuffer[numBytesInBuffer]),
 				 currentFilename,
@@ -476,6 +492,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	if(!checkFileExists(currentTouchname)) {
 	    removeFile(currentLinkname);
 	    removeFile(currentFilename);
+	    removeFile(currentLOSTouchname);
 	}
 	else {
 	    printf("%s exists\n",currentTouchname);
@@ -662,6 +679,8 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     int numBytes,count=0,surf=0,retVal;
     char waveFilename[FILENAME_MAX];
     char headerFilename[FILENAME_MAX];
+    char currentTouchname[FILENAME_MAX];
+    char currentLOSTouchname[FILENAME_MAX];
     char crapBuffer[FILENAME_MAX];
     unsigned long thisEventNumber;
 
@@ -669,6 +688,17 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t))
 	doWrite();
 
+
+    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+	    thisEventNumber);
+    sprintf(currentTouchname,"%s.sipd",headerFilename);
+    sprintf(currentLOSTouchname,"%s.losd",headerFilename);
+
+    if(checkFileExists(currentTouchname)) 
+	return;
+    touchFile(currentLOSTouchname);
+    
+    
 //     Next load header 
     theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer]; 
     retVal=fillHeader(theHeader,headerLinkFilename); 
@@ -732,10 +762,14 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     if(printToScreen && verbosity>1) 
 	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
 	       headerLinkFilename);
-	        
-    removeFile(headerFilename);
-    removeFile(headerLinkFilename);
-    removeFile(waveFilename);
+
+    if(!checkFileExists(currentTouchname)) {
+	removeFile(headerFilename);
+	removeFile(headerLinkFilename);
+	removeFile(waveFilename);
+	removeFile(currentLOSTouchname);
+    }
+    
 
 }
 
