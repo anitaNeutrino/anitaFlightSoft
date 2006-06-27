@@ -23,7 +23,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "anitaStructures.h"
-
+  
 #define SLBUF_SIZE 240
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
@@ -70,8 +70,8 @@ unsigned long eventDataSent=0;
 unsigned long hkDataSent=0;
 
 //Data buffer
-unsigned char theBuffer[MAX_EVENT_SIZE];
-unsigned char chanBuffer[MAX_EVENT_SIZE];
+unsigned char theBuffer[MAX_EVENT_SIZE*5];
+unsigned char chanBuffer[MAX_EVENT_SIZE*5];
 
 
 //High rate thread
@@ -315,6 +315,7 @@ void comm1Handler()
 //    fprintf(stderr,"Last Temp %d\n",comm1Data.sbsTemp[0]);
     comm1Data.unixTime=time(NULL);
     fillGenericHeader(&comm1Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
+    printf("Comm1 %lu\n",comm1Data.unixTime);
     ret = sipcom_slowrate_write(COMM1, (unsigned char*)&comm1Data, sizeof(SlowRateType1_t));
 #else
     ret = sipcom_slowrate_write(COMM1, buf, SLBUF_SIZE+6);
@@ -503,6 +504,7 @@ void readAndSendEvent(char *headerFilename) {
     
     // Remember what the file contains is actually:
     //   9 EncodedSurfPacketHeader_t's
+    count=0;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
 	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
@@ -654,7 +656,7 @@ void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
     char headerFilename[FILENAME_MAX];
     char crapBuffer[FILENAME_MAX];
     unsigned long thisEventNumber;
-
+    unsigned char *tempBuffer;
 
 
     sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
@@ -743,8 +745,11 @@ void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
 	    }
 	    wavPtr->chanHead=(*chanHdPtr);
 	    memcpy(&chanBuffer[sizeof(EncodedWaveformPacket_t)],&theBuffer[count],chanHdPtr->numBytes);
-//	    syslog(LOG_INFO,"1st 3 %d %d %d and %d %d %d\n",chanBuffer[sizeof(EncodedWaveformPacket_t)+0],chanBuffer[sizeof(EncodedWaveformPacket_t)+1],
-//		   chanBuffer[sizeof(EncodedWaveformPacket_t)+2],
+	    tempBuffer = (unsigned char*) wavPtr;
+//	    syslog(LOG_INFO,"1st 3 %d %d %d and %d %d %d\n",
+//		   tempBuffer[sizeof(EncodedWaveformPacket_t)+0],
+//		   tempBuffer[sizeof(EncodedWaveformPacket_t)+1],
+//		   tempBuffer[sizeof(EncodedWaveformPacket_t)+2],
 //		   theBuffer[count+0],
 //		   theBuffer[count+1],
 //		   theBuffer[count+2]);
@@ -754,9 +759,9 @@ void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
 	    fillGenericHeader(wavPtr,PACKET_ENC_WV,numBytes);
 //	    syslog(LOG_INFO,"wavPtr info %d %d %d\n",wavPtr->gHdr.code,wavPtr->gHdr.numBytes,wavPtr->gHdr.checksum);
 	    wavPtr->gHdr.packetNumber=getTdrssNumber();
-	    
+	     
 	    if(numBytes) {
-		retVal = sipcom_highrate_write(chanBuffer,
+		retVal = sipcom_highrate_write(wavPtr,
 					       numBytes);
 		if(retVal<0) {
 		    //Problem sending data
@@ -900,7 +905,7 @@ void sendSomeHk(int maxBytes)
 }
 
 
-int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize)
+int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize) 
 /* Looks in the specified directroy and TDRSS's up to maxCopy bytes of data */
 /* fileSize is the maximum size of a packet in the directory */
 {

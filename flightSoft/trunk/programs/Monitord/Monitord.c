@@ -240,16 +240,16 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     if(printToScreen) printf("%s\t%u\n","/tmp",megaBytes);
 
 
-    if(useUSBDisks) {
-	for(usbNum=1;usbNum<=NUM_USBDISKS;usbNum++) {
-	    sprintf(usbDir,"%s%d",usbDataDiskPrefix,usbNum);
-	    megaBytes=getDiskSpace(usbDir);
-	    dsPtr->usbDisk[usbNum-1]=megaBytes;
-	    if(printToScreen) printf("%s\t%d\n",usbDir,megaBytes);
-	    if(((short)megaBytes)==-1) errFlag--;
-	    
-	}
+//    if(useUSBDisks) {
+    for(usbNum=1;usbNum<=7;usbNum++) {
+	sprintf(usbDir,"%s%d",usbDataDiskPrefix,usbNum);
+	megaBytes=getDiskSpace(usbDir);
+	dsPtr->usbDisk[usbNum-1]=megaBytes;
+	if(printToScreen) printf("%s\t%d\n",usbDir,megaBytes);
+	if(((short)megaBytes)==-1) errFlag--;
+	
     }
+//    }
     
 
 //    printf("Err Flag %d\n",errFlag);
