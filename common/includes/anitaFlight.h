@@ -86,7 +86,7 @@
 #define BACKUP_DATA_DISK_LINK "/mnt/dataBackup"
 
 #define OTHER_DISK1 "/mnt/blade1"
-#define OTHER_DISK2 "/mnt/blade2"
+#define OTHER_DISK2 "/mnt/data"
 #define OTHER_DISK3 "/mnt/blade3"
 #define OTHER_DISK4 "/mnt/blade4"
 

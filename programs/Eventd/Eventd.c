@@ -23,8 +23,8 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 20000
-#define MAX_CALIB_TIMES 20000
+#define MAX_GPS_TIMES 200
+#define MAX_CALIB_TIMES 200
 #define EVENT_TIMEOUT 5
 
 #define TIME_MATCH 0.05 //seconds
