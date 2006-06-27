@@ -37,7 +37,8 @@
 #define VER_TURF_RATE 6
 #define VER_LAB_PED 1
 #define VER_FULL_PED 1
-
+#define VER_SLOW_1 1
+#define VER_SLOW_2 1
 
 //Relay Bit Masks
 #define RFCM1_MASK 0x1

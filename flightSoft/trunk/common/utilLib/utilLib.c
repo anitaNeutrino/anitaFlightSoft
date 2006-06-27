@@ -1405,6 +1405,8 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_HKD: gHdr->verId=VER_HK_FULL; break;
 	case PACKET_CMD_ECHO: gHdr->verId=VER_CMD_ECHO; break;
 	case PACKET_MONITOR: gHdr->verId=VER_MONITOR; break;
+	case PACKET_SLOW1: gHdr->verId=VER_SLOW_1; break;
+	case PACKET_SLOW2: gHdr->verId=VER_SLOW_2; break;
 	default: 
 	    gHdr->verId=0; break;
     }
@@ -1460,6 +1462,10 @@ int checkPacket(void *thePtr)
 	    break;
 	case PACKET_WAKEUP_COMM2: packetSize=WAKEUP_LOW_RATE_BUFFER_SIZE; 
 	    break;
+	case PACKET_SLOW1: packetSize=sizeof(SlowRateType1_t); 
+	    break;
+	case PACKET_SLOW2: packetSize=sizeof(SlowRateType1_t); 
+	    break;
 	default: 
 	    retVal+=PKT_E_CODE; break;
     }
@@ -1494,6 +1500,8 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_WAKEUP_HIGHRATE: string="TdrssWakeUpPacket"; break;
 	case PACKET_WAKEUP_COMM1: string="Comm1WakeUpPacket"; break;
 	case PACKET_WAKEUP_COMM2: string="Comm2WakeUpPacket"; break;
+	case PACKET_SLOW1: string="SlowRateType1_t"; break;
+	case PACKET_SLOW2: string="SlowRateType1_t"; break;
 
 	default: 
 	    string="Unknown Packet Code"; break;
