@@ -423,6 +423,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 {
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
+    char currentTouchname[FILENAME_MAX];
     int retVal,numLinks,count,numBytes,totalBytes=0,checkVal=0;
     GenericHeader_t *gHdr;
     struct dirent **linkList;
@@ -438,6 +439,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
     for(count=numLinks-1;count>=0;count--) {
 	sprintf(currentFilename,"%s/%s",telemDir,
 		linkList[count]->d_name);
+	sprintf(currentTouchname,"%s.sipd",currentFilename);
 	sprintf(currentLinkname,"%s/%s",
 		linkDir,linkList[count]->d_name);
 
@@ -470,8 +472,14 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	gHdr->packetNumber=getLosNumber();
 	numBytesInBuffer+=numBytes;
 	totalBytes+=numBytes;
-	removeFile(currentLinkname);
-	removeFile(currentFilename);
+
+	if(!checkFileExists(currentTouchname)) {
+	    removeFile(currentLinkname);
+	    removeFile(currentFilename);
+	}
+	else {
+	    printf("%s exists\n",currentTouchname);
+	}
 
 	if((totalBytes+fileSize)>maxCopy ||
 	   (numBytesInBuffer+fileSize)>LOS_MAX_BYTES) break;

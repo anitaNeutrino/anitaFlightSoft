@@ -1523,3 +1523,22 @@ int writeCommandAndLink(CommandStruct_t *theCmd) {
     makeLink(filename,CMDD_COMMAND_LINK_DIR);    
     return retVal;
 }
+
+int touchFile(char *filename) {
+    FILE *fp = fopen(filename,"w");
+    if(!fp) {
+	//Add error checking here
+	return -1;
+    }
+    fclose(fp);
+    return 0;
+}
+
+int checkFileExists(char *filename) {
+    struct stat fileStat ;
+    if(stat (filename, &fileStat) != 0) {
+	//File doesn't exist
+	return 0;
+    }
+    return 1;
+}

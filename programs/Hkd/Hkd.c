@@ -311,6 +311,8 @@ int readConfigFile()
 int readSBSTemps ()
 {
     API_RESULT main_Api_Result;
+
+    static int errorCounter=0;
     int gotError=0;
 
     int localTemp = 0;
@@ -321,8 +323,11 @@ int readSBSTemps ()
     if (main_Api_Result != API_SUCCESS)
     {
 	gotError+=1;
-	syslog(LOG_WARNING,"Couldn't read SBS Local Temp: %d\t%s",
-	       main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
+	if(errorCounter<100) {
+	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Local Temp: %d\t%s",
+		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
+	    errorCounter++;
+	}
     }
 
     main_Api_Result = 
@@ -331,8 +336,11 @@ int readSBSTemps ()
     if (main_Api_Result != API_SUCCESS)
     {
 	gotError+=2;
-	syslog(LOG_WARNING,"Couldn't read SBS Remote Temp: %d\t%s",
-	       main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
+	if(errorCounter<100) {
+	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Remote Temp: %d\t%s",
+		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
+	    errorCounter++;
+	}
     }
     sbsData.temp[0]=(localTemp);
     sbsData.temp[1]=(remoteTemp);

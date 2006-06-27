@@ -28,7 +28,7 @@
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
 
-#define SEND_REAL_DATA 1
+#define SEND_REAL_SLOW_DATA 1
 
 int getTdrssNumber();
 void commandHandler(unsigned char *cmd);
@@ -304,6 +304,8 @@ void comm1Handler()
     fprintf(stderr, "comm1Handler %02x %02x\n", count, start);
 
 #ifdef SEND_REAL_SLOW_DATA
+//    fprintf(stderr,"Last Temp %d\n",comm1Data.sbsTemp[0]);
+    fillGenericHeader(&comm1Data,PACKET_S
     ret = sipcom_slowrate_write(COMM1, &comm1Data, sizeof(SlowRateType1_t));
 #else
     ret = sipcom_slowrate_write(COMM1, buf, SLBUF_SIZE+6);
@@ -713,6 +715,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 /* fileSize is the maximum size of a packet in the directory */
 {
     char currentFilename[FILENAME_MAX];
+    char currentTouchname[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
     GenericHeader_t *gHdr;
@@ -730,8 +733,10 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
     for(count=numLinks-1;count>=0;count--) {
 	sprintf(currentFilename,"%s/%s",telemDir,
 		linkList[count]->d_name);
+	sprintf(currentTouchname,"%s.sipd",currentFilename);
 	sprintf(currentLinkname,"%s/%s",
 		linkDir,linkList[count]->d_name);
+	touchFile(currentTouchname);
 
 	retVal=genericReadOfFile((char*)theBuffer,
 				 currentFilename,
@@ -743,6 +748,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	    removeFile(currentFilename);
 
 	    removeFile(currentLinkname);
+	    removeFile(currentTouchname);
 	    continue;
 	}
 	numBytes=retVal;
@@ -770,6 +776,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	totalBytes+=numBytes;
 	removeFile(currentLinkname);
 	removeFile(currentFilename);
+	removeFile(currentTouchname);
 
 	//Now fill low rate structs
 	switch (gHdr->code) {
@@ -793,6 +800,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	}
 
 	if((totalBytes+fileSize)>maxCopy) break;
+	break;
     }
     
     for(count=0;count<numLinks;count++)

@@ -114,7 +114,8 @@ char *getCurrentHkFilename(char *currentDir, char *prefix,
 
 int zippedSingleWrite(char *buffer, char *filename, int numBytes);
 int normalSingleWrite(char *buffer, char *filename, int numBytes);
-
+int touchFile(char *filename);
+int checkFileExists(char *filename);
 
 int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
