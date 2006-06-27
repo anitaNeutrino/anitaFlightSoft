@@ -403,6 +403,7 @@ void prepWriterStructs() {
 	printf("Preparing Writer Structs\n");
 
     //Event Writer
+    makeDirectories(mainEventArchivePrefix);
     strncpy(eventWriter.baseDirname,mainEventArchivePrefix,FILENAME_MAX-1);
     eventWriter.currentHeaderFilePtr=0;
     eventWriter.currentEventFilePtr=0;
