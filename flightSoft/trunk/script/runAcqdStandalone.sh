@@ -19,10 +19,10 @@ done
 
 mkdir ${HK_DIR}
 
-sudo umount /mnt/data
-sudo mount --bind ${THE_DIR} /mnt/data
+#sudo umount /mnt/data
+#sudo mount --bind ${THE_DIR} /mnt/data
 
-echo "Using Hk directory: $HK_DIR" 
+#echo "Using Hk directory: $HK_DIR" 
 echo "Using Event directory: $EVENT_DIR" 
 echo "Acqd -w -d ${EVENT_DIR} $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}"
 Acqd -w -d ${EVENT_DIR} $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}
