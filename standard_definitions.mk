@@ -9,7 +9,7 @@ ANITA_BIN_DIR=${ANITA_FLIGHT_SOFT_DIR}/bin
 ObjSuf	      = o
 SrcSuf        = c
 ExeSuf        =
-OPT           = -O2 -Wall -g -pg# --debug --pedantic-errors
+OPT           = -O2 -Wall -g# --debug --pedantic-errors
 
 NOOPT         =
 EXCEPTION     = 
@@ -25,7 +25,7 @@ ANITA_HKD_LIBS = -lAcromag
 ANITA_GPS_LIBS = -lSerial
 ANITA_SIP_LIBS = -lSipcom
 ANITA_LOS_LIBS = -lLos
-
+ANITA_COMP_LIBS = -lCompress
 
 all: $(Target)
 
