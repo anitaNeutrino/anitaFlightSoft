@@ -1377,7 +1377,7 @@ unsigned long simpleLongCrc(unsigned long *p, unsigned long n)
 //
 	sum += *p++;
     }
-    printf("%lu %lu\n",*p,sum);
+//    printf("%lu %lu\n",*p,sum);
     return ((0xffffffff - sum) + 1);
 }
 
@@ -1412,7 +1412,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	    gHdr->verId=0; break;
     }
     gHdr->checksum=simpleLongCrc(dataPtr,longBytes);
-    printf("Long bytes %lu\t checksum %lu\n",longBytes,gHdr->checksum);
+//    printf("Long bytes %lu\t checksum %lu\n",longBytes,gHdr->checksum);
 }
 
 #define PKT_E_CHECKSUM 0x1
