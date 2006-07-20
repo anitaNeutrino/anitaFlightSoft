@@ -19,6 +19,8 @@
 #define MAX_CMD_LENGTH 20
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
+#define GetChanIndex(A,B) ((B)+(9*(A)))
+
 
 #define VER_EVENT_HEADER 7
 #define VER_WAVE_PACKET 4
@@ -59,6 +61,8 @@
 #define WAKEUP_TDRSS_BUFFER_SIZE 500
 #define WAKEUP_LOW_RATE_BUFFER_SIZE 100
 
+
+//Enumerations
 typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101, //Too big to telemeter
@@ -86,9 +90,27 @@ typedef enum {
 } PacketCode_t;
 
 typedef enum {
+    kNoEncoding=0
+} EventEncodingScheme_t;
+   
+typedef enum {
     ENCODE_NONE=0,
     ENCODE_SOMETHING=100
-} EncodingType_t;
+} ChannelEncodingType_t;
+
+
+
+
+
+
+
+
+
+//Structures
+typedef struct {
+    unsigned long pedUnixTime;
+    ChannelEncodingType_t encTypes[ACTIVE_SURFS][CHANNELS_PER_SURF];
+} EncodeControlStruct_t;
 
 typedef struct {
     PacketCode_t code;    
@@ -147,10 +169,11 @@ typedef struct {
 
 typedef struct {
     RawSurfChannelHeader_t rawHdr;
-    EncodingType_t encType;
+    ChannelEncodingType_t encType;
     unsigned short numBytes;
     unsigned short crc;
 } EncodedSurfChannelHeader_t;
+
 
 typedef struct {
     RawSurfChannelHeader_t header;

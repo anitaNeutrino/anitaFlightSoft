@@ -1381,6 +1381,9 @@ unsigned long simpleLongCrc(unsigned long *p, unsigned long n)
     return ((0xffffffff - sum) + 1);
 }
 
+
+
+
 void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes) {
     unsigned long longBytes=(numBytes-sizeof(GenericHeader_t))/4;
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;

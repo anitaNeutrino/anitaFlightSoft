@@ -18,6 +18,8 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "compressLib/compressLib.h"
+
 #include "anitaStructures.h"
 #include "anitaFlight.h"
 
@@ -42,7 +44,6 @@ char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 int useBackupDisk=1;
-int useGzip=1;
 
 //Event Structures
 AnitaEventHeader_t theHead;
@@ -162,7 +163,6 @@ int readConfigFile()
     if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
-	useGzip=kvpGetInt("useGzip",1);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priorityEncodingVal",
 				   priorityEncodingVal,&tempNum);	
@@ -235,76 +235,30 @@ void checkEvents()
 void processEvent() 
 // This just fills the buffer with 9 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
 {
-    EncodingType_t encType=(EncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
-    int count=0,surfStart=0;
-    static unsigned long lastEvNum=0;
-    int surf=0;
-    int chan=0;
-//    EncodedEventWrapper_t *evWrap = (EncodedEventWrapper_t*) &outputBuffer[0];
-//    count+=sizeof(EncodedEventWrapper_t);
 
-//    if(lastEvNum && (theHead.eventNumber-lastEvNum)!=1) {
-//	printf("Event %lu followed %lu\n",theHead.eventNumber,lastEvNum);
-//    }
-
-    EncodedSurfPacketHeader_t *surfHdPtr;
+    CompressErrorCode_t retVal;
+    EncodeControlStruct_t encCntl;
+    int surf,chan,numBytes;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	surfHdPtr = (EncodedSurfPacketHeader_t*) &outputBuffer[count];
-	surfStart=count;
-	surfHdPtr->eventNumber=theHead.eventNumber;
-	count+=sizeof(EncodedSurfPacketHeader_t);
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-	    count+=encodeChannel(encType,
-				 &theBody.channel[chan+CHANNELS_PER_SURF*surf],
-				 &outputBuffer[count]);
+	    encCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
 	}
-	//Fill Generic Header_t;
-	fillGenericHeader(surfHdPtr,PACKET_ENC_SURF,(count-surfStart));
-							 
     }
 
-    //evWrap.numBytes=count;
-    lastEvNum=theHead.eventNumber;
-    writeOutput(count);
+    //Which Ped file??
+
+    retVal=packEvent(&theBody,&encCntl,outputBuffer,&numBytes);
+    if(retVal==COMPRESS_E_OK)
+	writeOutput(numBytes);
+    else {
+	syslog(LOG_ERR,"Error compressing event %lu\n",theBody.eventNumber);
+	fprintf(stderr,"Error compressing event %lu\n",theBody.eventNumber);
+    }
+
     
 
 }
 
-int encodeChannel(EncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer) 
-{
-//    printf("Event %lu, ChanId %d\n",theHead.eventNumber,
-//	   chanPtr->header.chanId);
-
-
-
-    EncodedSurfChannelHeader_t *chanHdPtr
-	=(EncodedSurfChannelHeader_t*) &buffer[0];
-    int count=0;    
-    int encSize=0;
-    chanHdPtr->rawHdr=chanPtr->header;
-    count+=sizeof(EncodedSurfChannelHeader_t);
-    
-    switch(encType) {
-	case ENCODE_NONE:
-	    encSize=encodeWaveNone(&buffer[count],chanPtr);
-	    break;
-	default:
-	    encType=ENCODE_NONE;
-	    encSize=encodeWaveNone(&buffer[count],chanPtr);
-	    break;	    
-    }    
-    chanHdPtr->numBytes=encSize;
-    chanHdPtr->crc=simpleCrcShort((unsigned short*)&buffer[count],
-				  encSize/2);
-    return (count+encSize);        
-}
-
-int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {    
-    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
-    memcpy(buffer,chanPtr->data,encSize);
-    return encSize;
-}
-    
 
 
 void writeOutput(int numBytes) {
@@ -386,16 +340,6 @@ void writeOutput(int numBytes) {
  
 }
 
-unsigned short simpleCrcShort(unsigned short *p, unsigned long n)
-{
-
-    unsigned short sum = 0;
-    unsigned long i;
-    for (i=0L; i<n; i++) {
-	sum += *p++;
-    }
-    return ((0xffff - sum) + 1);
-}
 
 
 void prepWriterStructs() {
