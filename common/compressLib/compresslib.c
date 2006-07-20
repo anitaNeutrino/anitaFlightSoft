@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "compresslib.h"
+#include "compressLib/compressLib.h"
+#include "utilLib/utilLib.h"
+
 
 unsigned int fn[24]={1,2,3,5,8,13,21,34,55,89,
 		     144,233,377,610,987,1597,2584,4181,6765,10946,
@@ -81,6 +83,7 @@ short unbifurcate(unsigned short input)
      else{ //even => negative
 	  output=-(input/2);
      }
+     return output;
 }
 	  
 	  
@@ -115,7 +118,7 @@ unsigned short bitpack(unsigned short nbits, unsigned short nwords,
 		    mask2 = ~((0xffff)<<(8-bit));
 		    out[byte] |= (scratch & mask2) << bit;
 		    mask2 = ~mask2;
-		    scratch = (scratch & mask2) >> 8-bit;
+		    scratch = ((scratch & mask2) >> (8-bit));
 		    nbitsleft -= (8-bit);
 		    byte++; bit=0; out[byte]=0;
 	       }
@@ -238,7 +241,7 @@ unsigned short packwave(unsigned short nwords,
 			unsigned short npack, unsigned short *in,
 			unsigned char *out)
 {
-     unsigned short packbytes, codebytes, median;
+     unsigned short packbytes, codebytes=0, median=0;
      unsigned short i;
      unsigned int scratch[65536];
      if (nstrip!=0) bitstrip(nstrip,nwords,in);
@@ -291,3 +294,93 @@ unsigned short unpackwave(unsigned short nbytes,
      return nwords;
 }
 
+
+CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
+			      EncodeControlStruct_t *cntlPtr,
+			      unsigned char *output,
+			      int *numBytes) 
+{
+    int count=0,surfStart=0;
+    int surf=0;
+    int chan=0;  
+    EncodedSurfPacketHeader_t *surfHdPtr;
+
+
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &output[count];
+	surfStart=count;
+	surfHdPtr->eventNumber=bdPtr->eventNumber;
+	count+=sizeof(EncodedSurfPacketHeader_t);
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    count+=encodeChannel(cntlPtr->encTypes[surf][chan],
+				 &(bdPtr->channel[GetChanIndex(surf,chan)]),
+				 &output[count]);
+	    if(count>MAX_WAVE_BUFFER)
+		return COMPRESS_E_TOO_BIG;
+	}
+	//Fill Generic Header_t;
+	fillGenericHeader(surfHdPtr,PACKET_ENC_SURF,(count-surfStart));
+							 
+    }
+    *numBytes=count;
+    return COMPRESS_E_OK;
+}
+
+
+CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
+				unsigned char *input,
+				int numBytes)
+{
+
+    return COMPRESS_E_OK;
+    
+
+}
+
+
+int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer) 
+{
+//    printf("Event %lu, ChanId %d\n",theHead.eventNumber,
+//	   chanPtr->header.chanId);
+
+
+
+    EncodedSurfChannelHeader_t *chanHdPtr
+	=(EncodedSurfChannelHeader_t*) &buffer[0];
+    int count=0;    
+    int encSize=0;
+    chanHdPtr->rawHdr=chanPtr->header;
+    count+=sizeof(EncodedSurfChannelHeader_t);
+    
+    switch(encType) {
+	case ENCODE_NONE:
+	    encSize=encodeWaveNone(&buffer[count],chanPtr);
+	    break;
+	default:
+	    encType=ENCODE_NONE;
+	    encSize=encodeWaveNone(&buffer[count],chanPtr);
+	    break;	    
+    }    
+    chanHdPtr->numBytes=encSize;
+    chanHdPtr->crc=simpleCrcShort((unsigned short*)&buffer[count],
+				  encSize/2);
+    return (count+encSize);        
+}
+
+int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {    
+    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
+    memcpy(buffer,chanPtr->data,encSize);
+    return encSize;
+}
+    
+
+unsigned short simpleCrcShort(unsigned short *p, unsigned long n)
+{
+
+    unsigned short sum = 0;
+    unsigned long i;
+    for (i=0L; i<n; i++) {
+	sum += *p++;
+    }
+    return ((0xffff - sum) + 1);
+}
