@@ -18,11 +18,23 @@
 extern  int versionsort(const void *a, const void *b);
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist);
 int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBodyPtr);
+int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile);
+char *getFirstHeaderFilename(const char *theBaseDir);
+int decodeChannel(char *buffer,EncodedSurfChannelHeader_t *encHdr, 
+		  SurfChannelFull_t *chanPtr);
 #define EVENT_RATE 5 //Hz
+
+
+int getChanIndex(int surf, int chan) {
+    //Assumes chan 0-8 and surf 0-9
+    return chan + 9*surf;
+
+}
 
 int printToScreen=0;
 int verbosity=0;
 
+char bigBuffer[100000];
 
 /*Event object*/
 AnitaEventHeader_t theHeader;
@@ -32,7 +44,7 @@ int main(int argc, char** argv) {
     char dirName[FILENAME_MAX];
     char realName[FILENAME_MAX];
     int numBytesEvent=0,count=0,eventNum=0,doingEvent=0;
-    int numBytesHead=0,count2;
+    int numBytesHead=0,count2,retVal=0;
     int dirNum=0,subDirNum;
     int usleepNum=(int)((float)1000000)/((float)EVENT_RATE);
 //    GenericHeader_t *gHdr;
@@ -91,8 +103,9 @@ int main(int argc, char** argv) {
 	    
 	    for(count2=0;count2<EVENTS_PER_FILE;count2++) {
 		numBytesHead=gzread(inputHead,&theHeader,sizeof(AnitaEventHeader_t));
-		numBytesEvent=gzread(inputEvent,&theBody,sizeof(AnitaEventBody_t));
-		if(numBytesEvent!=sizeof(AnitaEventBody_t) ||
+//		numBytesEvent=gzread(inputEvent,&theBody,sizeof(AnitaEventBody_t));
+		retVal=fillBodyFromFile(&theBody,inputEvent);
+		if(retVal!=0 ||
 		   numBytesHead!=sizeof(AnitaEventHeader_t)) break;
 		printf("Got Event %lu\n",theHeader.eventNumber);
 		if(0) {
@@ -111,6 +124,19 @@ int main(int argc, char** argv) {
 	}
     }
     return 0;
+}
+
+
+char *getFirstHeaderFilename(const char *theBaseDir) 
+{
+    struct dirent ***dirlist;
+    struct dirent ***subdirlist;
+    int n=scandir(theBaseDir,dirlist,0,versionsort);
+    if(n<=0) {
+	fprintf(stderr,"Error reading dir %s (%d)\n",theBaseDir,n);
+    }
+    
+
 }
 
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist)
@@ -150,4 +176,58 @@ int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBody
     
     
     return retVal;
+}
+
+
+int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile) {
+    EncodedSurfChannelHeader_t *chanHdPtr;
+    EncodedSurfPacketHeader_t surfHeader;
+    int count=0,numBytesToRead,numBytesRead;
+    int surf,chan;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	
+	//Need to read next header
+	numBytesRead=gzread(openFile,&surfHeader,sizeof(EncodedSurfPacketHeader_t));
+	if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+	    gzclose(openFile);
+	    fprintf(stderr,"Only read %d (of %d)  bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
+	    return -7;
+	}
+//	cout << "Event " << surfHeader.eventNumber << endl;
+
+	numBytesToRead=surfHeader.gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
+	numBytesRead=gzread(openFile,bigBuffer,numBytesToRead);
+	if(numBytesRead!=numBytesToRead) {
+	    gzclose(openFile);
+	    fprintf(stderr,"Only read %d (of %d) bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
+	    return -6;
+	}
+	
+	count=0;
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    //	  cout << count << "\t" << numBytes << endl;
+	    chanHdPtr = (EncodedSurfChannelHeader_t*) &bigBuffer[count];
+	    count+=sizeof(EncodedSurfChannelHeader_t);
+	    decodeChannel(&bigBuffer[count],chanHdPtr,
+			  &(bodyPtr->channel[getChanIndex(surf,chan)]));
+	    count+=chanHdPtr->numBytes;	    	    
+	}	    	    	        	
+    }
+    return 0;
+}
+
+int decodeChannel(char *buffer,EncodedSurfChannelHeader_t *encHdr, 
+		  SurfChannelFull_t *chanPtr) {
+    chanPtr->header=encHdr->rawHdr;
+    switch(encHdr->encType) {
+	case ENCODE_SOMETHING:
+	    break;	    
+	case ENCODE_NONE:
+	default:
+	  memcpy(&(chanPtr->data[0]),buffer,encHdr->numBytes);
+	    break;   	   
+    }
+    return 0;
+
+    //Need to add checksum check
 }
