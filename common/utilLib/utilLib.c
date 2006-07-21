@@ -790,6 +790,13 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 
 }
 
+int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
+{
+    int numBytes=genericReadOfFile((char*)pedPtr,filename,sizeof(PedestalStruct_t));
+    if(numBytes==sizeof(PedestalStruct_t)) return 0;
+    return numBytes;
+}
+
 
 int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 {
@@ -1261,23 +1268,23 @@ int writeCalibStatus(CalibStruct_t *calibPtr, char *filename)
     return normalSingleWrite((char*)calibPtr,filename,sizeof(CalibStruct_t));
 }
 
-int writeFullPedStruct(FullPedStruct_t *pedPtr, char *filename) 
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((char*)pedPtr,filename,sizeof(FullPedStruct_t));
-#else
-    return zippedSingleWrite((char*)pedPtr,filename,sizeof(FullPedStruct_t));
-#endif
-
-}
-
-
-int writeUsefulPedStruct(PedCalcStruct_t *pedPtr, char *filename)
+int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename) 
 {
 #ifdef NO_ZLIB
     return normalSingleWrite((char*)pedPtr,filename,sizeof(PedCalcStruct_t));
 #else
     return zippedSingleWrite((char*)pedPtr,filename,sizeof(PedCalcStruct_t));
+#endif
+
+}
+
+
+int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
+{
+#ifdef NO_ZLIB
+    return normalSingleWrite((char*)pedPtr,filename,sizeof(PedestalStruct_t));
+#else
+    return zippedSingleWrite((char*)pedPtr,filename,sizeof(PedestalStruct_t));
 #endif
 
 }

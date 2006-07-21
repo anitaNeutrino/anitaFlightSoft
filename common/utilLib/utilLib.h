@@ -79,6 +79,7 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename);
 int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 int fillCommand(CommandStruct_t *theStruct, char *filename);
+int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
 int readEncodedEventFromFile(char *buffer, char *filename,
 			     unsigned long eventNumber);
 
@@ -100,8 +101,8 @@ int writeCmd(CommandStruct_t *cmdPtr, char *filename);
 int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename);
 int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);
 int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
-int writeFullPedStruct(FullPedStruct_t *pedPtr, char *filename);
-int writeUsefulPedStruct(PedCalcStruct_t *pedPtr, char *filename);
+int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename);
+int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
 int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename);
 int writeCommandAndLink(CommandStruct_t *theCmd);
 

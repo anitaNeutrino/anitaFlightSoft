@@ -9,7 +9,7 @@ ANITA_BIN_DIR=${ANITA_FLIGHT_SOFT_DIR}/bin
 ObjSuf	      = o
 SrcSuf        = c
 ExeSuf        =
-OPT           = -O2 -Wall -g# --debug --pedantic-errors
+OPT           = -O2 -Wall -g -std=c99 # --debug --pedantic-errors
 
 NOOPT         =
 EXCEPTION     = 
@@ -20,7 +20,7 @@ INCLUDES      = -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
 CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE 
 LD            = gcc
 LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR) 
-ANITA_LIBS    =  -lkvp -lConfig -lUtil -lcr7 -lm -lz #-lSocket
+ANITA_LIBS    =  -lkvp -lConfig -lUtil -lcr7 -lPedestal -lm -lz #-lSocket
 ANITA_HKD_LIBS = -lAcromag
 ANITA_GPS_LIBS = -lSerial
 ANITA_SIP_LIBS = -lSipcom

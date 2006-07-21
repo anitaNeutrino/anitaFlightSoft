@@ -19,6 +19,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "pedestalLib/pedestalLib.h"
 #include "anitaStructures.h"
 
 //Definitions
@@ -139,8 +140,6 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
 void makeSubAltDir();
 //int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
 void prepWriterStructs();
-void addPedestals();
-void writePedestals();
 int getChanIndex(int surf, int chan);
 
 
