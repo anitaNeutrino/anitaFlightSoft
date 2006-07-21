@@ -57,12 +57,12 @@ int useInterrupts=0;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
+AnitaEventBody_t *bdPtr;//=&(theEvent.header);
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
 
 SimpleScalerStruct_t theScalers;
 FullSurfHkStruct_t theSurfHk;
-PedCalcStruct_t thePeds;
 
 
 //Pedestal stuff
@@ -211,6 +211,7 @@ int main(int argc, char **argv) {
 #endif
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
+    bdPtr=&(theEvent.body);
     turfioPtr=&(hdPtr->turfio);
 
     //Initialize dacPid stuff
@@ -332,10 +333,12 @@ int main(int argc, char **argv) {
 	    sendSoftTrigger=1;
 	    softTrigSleepPeriod=0;
 	    writeFullHk=0;
-	    
-	    memset(&thePeds,0,sizeof(PedCalcStruct_t));
-	    gettimeofday(&timeStruct,NULL);
-	    thePeds.unixTimeStart=timeStruct.tv_sec;
+	
+
+	    resetPedCalc();
+//	    memset(&thePeds,0,sizeof(PedCalcStruct_t));
+//	    gettimeofday(&timeStruct,NULL);
+//	    thePeds.unixTimeStart=timeStruct.tv_sec;
 
 	}
 
@@ -629,7 +632,7 @@ int main(int argc, char **argv) {
 
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
-	    if(pedestalMode) addPedestals();
+	    if(pedestalMode) addEventToPedestals(bdPtr);
 
 	    if(!pedestalMode) {
 		//Switched for timing test
@@ -2670,139 +2673,6 @@ void prepWriterStructs() {
 int getChanIndex(int surf, int chan) {
     //Assumes chan 0-8 and surf 0-9
     return chan + CHANNELS_PER_SURF*surf;
-
-}
-
-void addPedestals() {
-
-    int labChip=0,surf,chan,samp;
-    int word;
-	
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	for(chan=0;chan<N_CHAN;chan++) {
-	    int chanIndex=getChanIndex(surf,chan);		
-	    labChip=theEvent.body.channel[chanIndex].header.chipIdFlag&0x3;
-	    if(chan==0) {
-		thePeds.chipEntries[surf][labChip]++;
-	    }
-//		cout << surf << "\t" << chan << "\t" << chanIndex
-//		     << "\t" << theBody.channel[chanIndex].header.chipIdFlag
-//		     << endl;
-
-	    for(samp=0;samp<N_SAMP;samp++) {
-		word=theEvent.body.channel[chanIndex].data[samp];
-		if(word&0x1000) //HITBUS
-		    continue;
-		if(!(word&0xfff)) continue; //Zeros are junk
-		if(samp>0) {
-		    if(theEvent.body.channel[chanIndex].data[samp-1] &0x1000)
-			continue;
-		}
-		if(samp<255) {
-		    if(theEvent.body.channel[chanIndex].data[samp+1] &0x1000)
-			continue;
-		}
-		
-//		    if(surf==0 && chan==0 && samp==0) cout << labChip << endl;
-		
-		thePeds.mean[surf][labChip][chan][samp]+=word&0xfff;
-		thePeds.meanSq[surf][labChip][chan][samp]+=(word&0xfff)*(word&0xfff);
-		thePeds.entries[surf][labChip][chan][samp]++;
-	    }
-	}
-    }
-
-}
-
-void writePedestals() {
-    FullLabChipPedStruct_t labPeds;
-    char filename[FILENAME_MAX];
-//    char linkname[FILENAME_MAX];
-    time_t rawtime;
-    int surf,chip,chan,samp;
-    float tempFloat;
-//    unsigned short tempShort;
-//    unsigned char tempChar;
-    
-    time(&rawtime);
-    thePeds.unixTimeEnd=rawtime;
-
-
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	for(chip=0;chip<LABRADORS_PER_SURF;chip++) {
-	    memset(&labPeds,0,sizeof(FullLabChipPedStruct_t));	   
-	    labPeds.unixTimeStart=thePeds.unixTimeStart;
-	    labPeds.unixTimeEnd=rawtime;
-	    for(chan=0;chan<N_CHAN;chan++) {
-		labPeds.pedChan[chan].chipId=chip;
-		labPeds.pedChan[chan].chanId=getChanIndex(surf,chan);
-		labPeds.pedChan[chan].chipEntries=thePeds.chipEntries[surf][chip];
-		for(samp=0;samp<N_SAMP;samp++) {
-		    if(thePeds.entries[surf][chip][chan][samp]) {
-			tempFloat=
-			    ((float)thePeds.mean[surf][chip][chan][samp])/
-			    ((float)thePeds.entries[surf][chip][chan][samp]);
-			    
-			thePeds.fmean[surf][chip][chan][samp]=tempFloat;
-			thePeds.mean[surf][chip][chan][samp]=(int)tempFloat;
-						
-			tempFloat=roundf(10.*thePeds.fmean[surf][chip][chan][samp]);
-			if(tempFloat>65535) tempFloat=65535;
-			if(tempFloat<0) tempFloat=0;
-			labPeds.pedChan[chan].pedMean[samp]=
-			    (unsigned short) tempFloat;
-			
-			tempFloat=
-			    ((float)thePeds.meanSq[surf][chip][chan][samp])/
-			    ((float)thePeds.entries[surf][chip][chan][samp]);
-			    
-			thePeds.meanSq[surf][chip][chan][samp]=(int)tempFloat;
-			tempFloat=tempFloat-
-			    (thePeds.fmean[surf][chip][chan][samp]*
-			     thePeds.fmean[surf][chip][chan][samp]);
-			if(tempFloat) {
-			    thePeds.frms[surf][chip][chan][samp]=tempFloat;
-			    tempFloat=roundf(10.*tempFloat);
-			    if(tempFloat>255) tempFloat=255;
-			    if(tempFloat<0) tempFloat=0;
-			    labPeds.pedChan[chan].pedRMS[samp]=
-				(unsigned char) tempFloat;
-			}
-			else {
-			    labPeds.pedChan[chan].pedRMS[samp]=0;
-			}
-			    
-		    }
-		    else {
-			labPeds.pedChan[chan].pedMean[samp]=0;
-			labPeds.pedChan[chan].pedRMS[samp]=0;
-		    }					    
-		}
-	    }
-	    
-	    //Now write lab files
-	    fillGenericHeader(&labPeds,PACKET_LAB_PED,sizeof(FullLabChipPedStruct_t));
-	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
-	    writeLabChipPedStruct(&labPeds,filename);
-
-	    //And for telemetery
-	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",HEADER_TELEM_DIR,labPeds.unixTimeEnd,surf,chip);
-	    writeLabChipPedStruct(&labPeds,filename);
-
-	    //and link it
-	    makeLink(filename,HEADER_TELEM_LINK_DIR);
-	    
-
-	}
-    }
-
-    //Now write full ped file
-    sprintf(filename,"%s/peds_%lu_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,chip);
-    writeUsefulPedStruct(&thePeds,filename);
-
-    //and link it
-    symlink(filename,CURRENT_PEDESTALS);
-
 
 }
 	

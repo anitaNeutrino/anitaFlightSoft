@@ -686,6 +686,7 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
 
 	if (bytes_avail == 0) {
 	    // No room yet.
+	    usleep(1000);
 	    continue;
 
 	} else if (bytes_avail > 0) {

@@ -59,6 +59,8 @@
 
 //Prioritizer Stuff
 #define SURF_BITMASK 0x0ffc  /* masks off the two wired-or bits for analysis */
+#define ELEVEN_BITMASK 0x0ffe  /* masks off the last wired-or bit for analysis */
+#define HITBUS_MASK 0x1000 //Hitbus mask for pedestals
 #define HILBERT_ORDER 5 /*order used for Hilbert transforms in Stokes S3 */
 
 //Whiteheat things
@@ -101,6 +103,7 @@
 //Pedestal Dirs
 #define PEDESTAL_DIR "/mnt/data/anita/acqd/pedestal"
 #define CURRENT_PEDESTALS "/mnt/data/anita/acqd/pedestal/current"
+
 
 
 //Housekeeping Telem Dirs

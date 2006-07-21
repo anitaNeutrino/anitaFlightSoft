@@ -181,6 +181,11 @@ typedef struct {
 } SurfChannelFull_t;
 
 typedef struct {
+    RawSurfChannelHeader_t header;
+    short data[MAX_NUMBER_SAMPLES];
+} SurfChannelPedSubbed_t;
+
+typedef struct {
     GenericHeader_t gHdr;
     unsigned long unixTime;       /* unix UTC sec*/
     unsigned long unixTimeUs;     /* unix UTC microsec */
@@ -198,11 +203,19 @@ typedef struct {
     TurfioStruct_t turfio; /*The X byte TURFIO data*/
 } AnitaEventHeader_t;
 
+
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long eventNumber;    /* Global event number */
     SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
 } AnitaEventBody_t;
+
+typedef struct {
+    unsigned long eventNumber;    /* Global event number */
+    SurfChannelPedSubbed_t channel[NUM_DIGITZED_CHANNELS];
+} PedSubbedEventBody_t;
+
+
 
 /* these are syntactic sugar to help us keep track of bit shifts */
 typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
@@ -471,7 +484,7 @@ typedef struct {
     unsigned char chanId;   // chan+9*surf
     unsigned char chipId; // 0-3
     unsigned short chipEntries;
-    unsigned short pedMean[MAX_NUMBER_SAMPLES]; //times 10
+    unsigned short pedMean[MAX_NUMBER_SAMPLES]; // actual value
     unsigned char pedRMS[MAX_NUMBER_SAMPLES]; //times 10
 } LabChipChannelPedStruct_t;
 
@@ -495,17 +508,17 @@ typedef struct {
     int mean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
     int meanSq[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
     int entries[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-    int fmean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-    int frms[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    float fmean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    float frms[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 } PedCalcStruct_t;
 
 
 typedef struct {
-     unsigned long unixTime; /* when were these taken? */
-     unsigned long nsamples; /* how many samples in the average? */
-     float thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
-     float pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
-               /* RMS of the samples (not of mean */
+    unsigned long unixTime; // Corresponds to unixTimeEnd above
+    unsigned long nsamples; // What was the mean occupancy
+    unsigned short thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
+    unsigned short pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
+    /* 10 x RMS of the samples (not of mean)*/
 } PedestalStruct_t;
 
 #endif /* ANITA_STRUCTURES_H */
