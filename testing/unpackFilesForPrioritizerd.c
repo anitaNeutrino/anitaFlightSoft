@@ -131,10 +131,15 @@ char *getFirstHeaderFilename(const char *theBaseDir)
 {
     struct dirent ***dirlist;
     struct dirent ***subdirlist;
-    int n=scandir(theBaseDir,dirlist,0,versionsort);
-    if(n<=0) {
-	fprintf(stderr,"Error reading dir %s (%d)\n",theBaseDir,n);
+    struct dirent ***filelist;
+    char nextDir[FILENAME_MAX];
+    char fileName[FILENAME_MAX];
+    int nDir,nSub,nFile;
+    nDir=scandir(theBaseDir,dirlist,0,versionsort);
+    if(nDir<=0) {
+	fprintf(stderr,"Error reading dir %s (%d)\n",theBaseDir,nDir);
     }
+
     
 
 }
