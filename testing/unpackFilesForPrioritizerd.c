@@ -19,7 +19,7 @@ extern  int versionsort(const void *a, const void *b);
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist);
 int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBodyPtr);
 int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile);
-char *getFirstHeaderFilename(const char *theBaseDir);
+int getFirstHeaderNumber(const char *theBaseDir);
 int decodeChannel(char *buffer,EncodedSurfChannelHeader_t *encHdr, 
 		  SurfChannelFull_t *chanPtr);
 #define EVENT_RATE 5 //Hz
@@ -83,18 +83,22 @@ int main(int argc, char** argv) {
     printf("Header Output Dir: %s\n",EVENTD_EVENT_DIR);
     printf("Link Dir: %s\n",EVENTD_EVENT_LINK_DIR);
     
-    for(eventNum=0;1;eventNum+=10000) {
+//    for(eventNum=0;1;eventNum+=10000) {
+    while(1) {
+
+	eventNum=getFirstHeaderNumber(dirName);
 	dirNum=1000000*(int)((eventNum)/1000000);
 	subDirNum=10000*(int)((eventNum)/10000);
-	
+
 	sprintf(realName,"%s/ev%d/ev%d/",dirName,dirNum,subDirNum);
-//    printf("Dir: %s\n",realName);
+	printf("Dir: %s\n",realName);
 	//insert while loop here
+//	exit(0);
 	numLinks=getListofHeaders(realName,&headerList);
 	if(numLinks<=0) break;
 	for(count=0;count<numLinks;count++) {
 	    sscanf(headerList[count]->d_name,"hd_%d.dat.gz",&doingEvent);
-	    sprintf(bigEventFileName,"%s/ev_%d.dat.gz",realName,doingEvent);
+	    sprintf(bigEventFileName,"%s/encev_%d.dat.gz",realName,doingEvent);
 	    sprintf(bigHeaderFileName,"%s/hd_%d.dat.gz",realName,doingEvent);
 //	printf("%s\n",bigHeaderFileName);
 //	printf("%s\n",bigEventFileName); 
@@ -116,32 +120,56 @@ int main(int argc, char** argv) {
 		
 		writeAndMakeLink(&theHeader,&theBody);
 		usleep(usleepNum);
+		if(theHeader.eventNumber%100==99) break;
 		
 	    }
 	    gzclose(inputEvent);
 	    gzclose(inputHead);
-	    if(count2!=EVENTS_PER_FILE) break;       
+//	    if(count2!=EVENTS_PER_FILE) break;       
 	}
     }
     return 0;
 }
 
 
-char *getFirstHeaderFilename(const char *theBaseDir) 
+int getFirstHeaderNumber(const char *theBaseDir) 
 {
-    struct dirent ***dirlist;
-    struct dirent ***subdirlist;
-    struct dirent ***filelist;
+    struct dirent **dirlist;
+    struct dirent **subdirlist;
+    struct dirent **filelist;
     char nextDir[FILENAME_MAX];
     char fileName[FILENAME_MAX];
-    int nDir,nSub,nFile;
-    nDir=scandir(theBaseDir,dirlist,0,versionsort);
+    int nDir,nSub,nFile,firstNumber;
+    nDir=scandir(theBaseDir,&dirlist,0,versionsort);
     if(nDir<=0) {
 	fprintf(stderr,"Error reading dir %s (%d)\n",theBaseDir,nDir);
+	return 0;
     }
+    sprintf(nextDir,"%s/%s",theBaseDir,dirlist[2]->d_name);
+    printf("Next Dir is %s\n",nextDir);
 
+    nSub=scandir(nextDir,&subdirlist,0,versionsort);
+    if(nSub<=0) {
+	fprintf(stderr,"Error reading dir %s (%d)\n",theBaseDir,nSub);
+	return 0;
+    }
+    sprintf(nextDir,"%s/%s",nextDir,subdirlist[2]->d_name);
+    printf("Next Dir is %s\n",nextDir);
+
+    nFile=getListofHeaders(nextDir,&filelist);
+    if(nFile<=0) {
+	fprintf(stderr,"Error reading dir %s (%d)\n",theBaseDir,nFile);
+	return 0;
+    }
+    sprintf(fileName,"%s/%s",nextDir,filelist[0]->d_name);
+    printf("File is %s\n",fileName);
+
+    sscanf(filelist[0]->d_name,"hd_%d.dat.gz",&firstNumber);
     
 
+    //Need to add free's here
+    return firstNumber;
+    
 }
 
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist)
