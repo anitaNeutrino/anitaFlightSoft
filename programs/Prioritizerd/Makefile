@@ -9,6 +9,8 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 Targets = Prioritizerd
 Objs= 
 
+CFLAGS= -I ../../common/
+
 all: $(Targets) Pdebug
 
 $(Targets): % : %.o ${Objs}

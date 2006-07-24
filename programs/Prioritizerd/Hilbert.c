@@ -2,10 +2,12 @@
    see JJB Mathematica notebook Hilbert.nb for tests.
 */
 
+#include "Hilbert.h"
+
 double HilbertCoefficient[10][10];
 int IntHilbertCoefficient[10][10]; /*these are in 12-bit scale */
 
-int makeHilbertCoefficients()
+void makeHilbertCoefficients()
 {
      int kmax,i;
      for (kmax=1;kmax<=10;kmax++){
@@ -48,7 +50,7 @@ double hilbertSymFilter(int k,double *a)
      double result, sign;
      if (k>10) k=10;
      result=0;
-     sign=1.
+     sign=1.;
      for (i=0; i<k; i++){
 	  result+=HilbertCoefficient[i][k]* (*(a+i) + *(a-(i+1)))*sign;
 	  sign *=-1.;
@@ -94,7 +96,7 @@ int intHilbertSymFilter(int k,int *a)
      int result, sign;
      if (k>10) k=10;
      result=0;
-     sign=1
+     sign=1;
      for (i=0; i<k; i++){
 	  result+=IntHilbertCoefficient[i][k]* (*(a+i) + *(a-(i+1)))*sign;
 	  sign *=-1;
