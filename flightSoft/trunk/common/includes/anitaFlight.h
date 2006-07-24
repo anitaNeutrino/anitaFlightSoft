@@ -46,6 +46,7 @@
 #define MAX_NUMBER_SAMPLES 260
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
+#define PED_DEFAULT_VALUE 1100
 
 
 //Acromag stuff
