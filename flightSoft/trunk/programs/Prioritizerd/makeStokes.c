@@ -1,4 +1,7 @@
-int makeStokes(TransientChannel3_t *Hor, TransientChannel3_t *Ver, 
+#include "makeStokes.h"
+
+
+void makeStokes(TransientChannel3_t *Hor, TransientChannel3_t *Ver, 
 	       AnitaStokes6_t *Stokes)
 {
      int samp,order;
@@ -30,7 +33,7 @@ int makeStokes(TransientChannel3_t *Hor, TransientChannel3_t *Ver,
      else{
 	  valid_samples=Ver->valid_samples;
      }
-     do (samp=0; samp<valid_samples; samp++){
+     for (samp=0; samp<valid_samples; samp++){
 	  (Stokes->S0).data[samp]=((Hor->data[samp])*(Hor->data[samp])/2)
 	       +((Ver->data[samp])*(Ver->data[samp])/2);
 	  (Stokes->S1).data[samp]=((Hor->data[samp])*(Hor->data[samp])/2)
@@ -47,7 +50,7 @@ int makeStokes(TransientChannel3_t *Hor, TransientChannel3_t *Ver,
 	  }
 	  else if(samp<HILBERT_ORDER+1){
 	       order=samp-1;
-	       (Stokes->S3)data[samp]=intHilbertFilter(order,(Ver->data)+samp)
+	       (Stokes->S3).data[samp]=intHilbertFilter(order,(Ver->data)+samp)
 		    *intHilbertSymFilter(order,(Hor->data)+samp);
 	       /* keep the filter order within the array; 
 		  a zero order transform goes back one sample
@@ -55,12 +58,12 @@ int makeStokes(TransientChannel3_t *Hor, TransientChannel3_t *Ver,
 	  }
 	  else if ((valid_samples-samp)<HILBERT_ORDER+1){
 	       order=(valid_samples-samp)-1;
-	       (Stokes->S3)data[samp]=intHilbertFilter(order,(Ver->data)+samp)
+	       (Stokes->S3).data[samp]=intHilbertFilter(order,(Ver->data)+samp)
 		    *intHilbertSymFilter(order,(Hor->data)+samp);
 	  }
 	  else{
 	       order=HILBERT_ORDER;
-	       (Stokes->S3)data[samp]=intHilbertFilter(order,(Ver->data)+samp)
+	       (Stokes->S3).data[samp]=intHilbertFilter(order,(Ver->data)+samp)
 		    *intHilbertSymFilter(order,(Hor->data)+samp);
 	  }
 

@@ -67,8 +67,7 @@ int subtractPedestals(AnitaEventBody_t *rawSurfEvent,
 		    ((rawSurfEvent->channel[digCh]).data[samp]&SURF_BITMASK)
 		    - scaledPed[surf][chip][chan][samp];
 	  }
-	  (surfTransientPS->ch[digCh]).valid_samples=-1;
-	  /* -1 indicates this has not been unwrapped yet */
+	  (surfTransientPS->ch[digCh]).valid_samples=MAX_NUMBER_SAMPLES;
      }
      return 0;
 }
