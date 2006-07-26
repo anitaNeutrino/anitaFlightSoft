@@ -21,7 +21,8 @@
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 #define GetChanIndex(A,B) ((B)+(9*(A)))
 
-
+#ifdef SLAC_DATA06
+//SLAC data definitions
 #define VER_EVENT_HEADER 7
 #define VER_WAVE_PACKET 4
 #define VER_SURF_PACKET 4
@@ -41,6 +42,28 @@
 #define VER_FULL_PED 1
 #define VER_SLOW_1 1
 #define VER_SLOW_2 1
+#else
+//Current ones
+#define VER_EVENT_HEADER 7
+#define VER_WAVE_PACKET 6
+#define VER_SURF_PACKET 6
+#define VER_ENC_WAVE_PACKET 6
+#define VER_ENC_SURF_PACKET 6
+#define VER_SURF_HK 5
+#define VER_ADU5_PAT 4
+#define VER_ADU5_SAT 4
+#define VER_ADU5_VTG 4
+#define VER_G12_POS 4
+#define VER_G12_SAT 4
+#define VER_HK_FULL 6
+#define VER_CMD_ECHO 4
+#define VER_MONITOR 5
+#define VER_TURF_RATE 6
+#define VER_LAB_PED 1
+#define VER_FULL_PED 1
+#define VER_SLOW_1 1
+#define VER_SLOW_2 1
+#endif
 
 //Relay Bit Masks
 #define RFCM1_MASK 0x1
@@ -71,6 +94,8 @@ typedef enum {
     PACKET_TURF_RATE = 0x111,
     PACKET_ENC_WV = 0x120,
     PACKET_ENC_SURF = 0x121,
+    PACKET_ENC_SURF_PEDSUB = 0x122,
+    PACKET_ENC_EVENT_WRAPPER = 0x123,
     PACKET_LAB_PED = 0x130,
     PACKET_FULL_PED = 0x131, //Too big to telemeter
     PACKET_GPS_ADU5_PAT = 0x200,
@@ -95,14 +120,35 @@ typedef enum {
    
 typedef enum {
     ENCODE_NONE=0,
-    ENCODE_SOMETHING=100
+    ENOCDE_LOSSLESS_12BIT=0x100,
+    ENCODE_LOSSLESS_BINARY,
+    ENCODE_LOSSLESS_FIBONACCI,
+    ENCODE_LOSSLESS_BINFIB_COMBO,
+    ENCODE_LOSSY_BINARY=0x200,
+    ENCODE_LOSSY_MULAW
 } ChannelEncodingType_t;
 
 
+typedef enum {
+    PRI_FORCED = 0,
+    PRI_CALIB = 1,
+    PRI_1 = 1,
+    PRI_2,
+    PRI_3,
+    PRI_4,
+    PRI_TIMEOUT,
+    PRI_6, 
+    PRI_7,
+    PRI_8,
+    PRI_PAYLOAD
+} PriorityCode;
 
 
-
-
+typedef enum {
+    IP320_RAW=0x100,
+    IP320_AVZ=0x200,
+    IP320_CAL=0x300
+} AnalogueCode_t;
 
 
 
@@ -157,7 +203,7 @@ typedef struct {
     unsigned char l3Rates[PHI_SECTORS];
 } TurfRateStruct_t;
     
-    
+#ifdef SLAC_DATA06
 typedef struct {
     unsigned char chanId;   // chan+9*surf
     unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
@@ -165,7 +211,16 @@ typedef struct {
     unsigned char lastHitbus;
     float mean; //Filled by Prioritizerd
     float rms; //Filled by Prioritizerd
+
 } RawSurfChannelHeader_t;
+#else
+typedef struct {
+    unsigned char chanId;   // chan+9*surf
+    unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
+    unsigned char firstHitbus;
+    unsigned char lastHitbus;
+} RawSurfChannelHeader_t;
+#endif
 
 typedef struct {
     RawSurfChannelHeader_t rawHdr;
@@ -182,6 +237,10 @@ typedef struct {
 
 typedef struct {
     RawSurfChannelHeader_t header;
+    short xMax;
+    short xMin;
+    float mean; //Filled by pedestalLib
+    float rms; //Filled by pedestalLib
     short data[MAX_NUMBER_SAMPLES];
 } SurfChannelPedSubbed_t;
 
@@ -211,7 +270,9 @@ typedef struct {
 } AnitaEventBody_t;
 
 typedef struct {
+    GenericHeader_t gHdr;
     unsigned long eventNumber;    /* Global event number */
+    unsigned long whichPeds; //whichPedestals did we subtract
     SurfChannelPedSubbed_t channel[NUM_DIGITZED_CHANNELS];
 } PedSubbedEventBody_t;
 
@@ -282,6 +343,7 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long eventNumber;
+    unsigned long whichPeds;
     EncodedSurfChannelHeader_t chanHead;
 } EncodedWaveformPacket_t;
 
@@ -291,6 +353,14 @@ typedef struct {
 } EncodedSurfPacketHeader_t;
 
 typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long whichPeds;
+    unsigned long eventNumber;
+} EncodedPedSubbedSurfPacketHeader_t;
+
+
+typedef struct {
+    GenericHeader_t gHdr;
     unsigned long eventNumber;
     unsigned long numBytes;
 } EncodedEventWrapper_t;
@@ -367,12 +437,6 @@ typedef struct {
     float tdop;
 } GpsG12PosStruct_t;
 
-typedef enum {
-    IP320_RAW=0x100,
-    IP320_AVZ=0x200,
-    IP320_CAL=0x300
-} AnalogueCode_t;
-
 typedef struct {
     unsigned long unixTime;
     unsigned long status;
@@ -440,20 +504,6 @@ typedef struct {
     unsigned short numCmdBytes; // number of cmd bytes (upto 10)
     unsigned char cmd[MAX_CMD_LENGTH]; // the cmd bytes
 } CommandEcho_t;
-
-typedef enum {
-    PRI_FORCED = 0,
-    PRI_CALIB = 1,
-    PRI_1 = 1,
-    PRI_2,
-    PRI_3,
-    PRI_4,
-    PRI_TIMEOUT,
-    PRI_6, 
-    PRI_7,
-    PRI_8,
-    PRI_PAYLOAD
-} PriorityCode;
 
 typedef struct {
     unsigned short mainDisk; //In MegaBytes

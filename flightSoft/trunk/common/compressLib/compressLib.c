@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "compressLib/compressLib.h"
 #include "utilLib/utilLib.h"
@@ -13,6 +14,11 @@ unsigned int fn[24]={1,2,3,5,8,13,21,34,55,89,
 
 //convert a short to its fibonacci representation with a 11 prefix
 unsigned int fibonacci(unsigned short input){
+    int numBits;
+    return encodeFibonacci(input,&numBits);
+}
+
+unsigned int encodeFibonacci(unsigned short input,int *numBits){
      unsigned int output;
      int i;
      i=0;
@@ -21,6 +27,7 @@ unsigned int fibonacci(unsigned short input){
 	  i++;
      }
      // set the prefix bit
+     (*numBits)=i+1;
      output=1<<(i);
      i--; // we are now at the largest fibonacci number less than input
      //now set the bits for the minimal fibonacci representation
@@ -327,6 +334,41 @@ CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
 }
 
 
+CompressErrorCode_t packPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
+				       EncodeControlStruct_t *cntlPtr,
+				       unsigned char *output,
+				       int *numBytes)
+{
+
+    int count=0,surfStart=0;
+    int surf=0;
+    int chan=0;  
+    EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
+
+
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &output[count];
+	surfStart=count;
+	surfHdPtr->whichPeds=bdPtr->whichPeds;
+	surfHdPtr->eventNumber=bdPtr->eventNumber;
+	count+=sizeof(EncodedPedSubbedSurfPacketHeader_t);
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    count+=encodePSChannel(cntlPtr->encTypes[surf][chan],
+				   &(bdPtr->channel[GetChanIndex(surf,chan)]),
+				   &output[count]);
+	    if(count>MAX_WAVE_BUFFER)
+		return COMPRESS_E_TOO_BIG;
+	}
+	//Fill Generic Header_t;
+	fillGenericHeader(surfHdPtr,PACKET_ENC_SURF_PEDSUB,(count-surfStart));
+							 
+    }
+    *numBytes=count;
+    return COMPRESS_E_OK;
+}
+
+
+
 CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
 				unsigned char *input,
 				int numBytes)
@@ -371,6 +413,252 @@ int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {
     int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
     memcpy(buffer,chanPtr->data,encSize);
     return encSize;
+}
+
+
+int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanPtr, unsigned char *buffer) 
+{
+//    printf("Event %lu, ChanId %d\n",theHead.eventNumber,
+//	   chanPtr->header.chanId);
+
+
+
+    EncodedSurfChannelHeader_t *chanHdPtr
+	=(EncodedSurfChannelHeader_t*) &buffer[0];
+    int count=0;    
+    int encSize=0;
+    chanHdPtr->rawHdr=chanPtr->header;
+    count+=sizeof(EncodedSurfChannelHeader_t);
+    
+    switch(encType) {
+	case ENCODE_NONE:
+	    encSize=encodePSWaveNone(&buffer[count],chanPtr);
+	    break;
+	default:
+	    encType=ENCODE_NONE;
+	    encSize=encodePSWaveNone(&buffer[count],chanPtr);
+	    break;	    
+    }    
+    chanHdPtr->numBytes=encSize;
+    chanHdPtr->crc=simpleCrcShort((unsigned short*)&buffer[count],
+				  encSize/2);
+    return (count+encSize);        
+}
+
+int encodePSWaveNone(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
+    memcpy(buffer,chanPtr->data,encSize);
+    return encSize;
+}
+
+int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+    //Remember this function works an array of pedestal subtracted shorts
+    //Which is what SurfChannelPedSubbed_t contains
+    int wordNum=0;
+    int numBitsLeft;
+    int bitMask;
+    int bitNum;
+    unsigned char *currentChar=buffer;
+    int currentBit=0;
+    unsigned short newVal=0;
+    int mean=0;
+    short xMax=chanPtr->xMax; //Filled by pedestalLib
+    short xMin=chanPtr->xMin; //Filled by pedestalLib   
+    short *input = chanPtr->data;
+
+    //Find min and max
+//    for(wordNum=0;wordNum<numInputs;wordNum++) {
+//	mean+=input[wordNum];
+//	if(input[wordNum]>xMax) xMax=input[wordNum];
+//	if(input[wordNum]<xMin) xMin=input[wordNum];
+//    }
+//    mean/=numInputs;
+    //Don't actual use min we just use the median value
+
+    int rangeTotal=xMax-xMin;
+    int bitSize=ceil(log2f((float)rangeTotal));
+    mean=xMin+rangeTotal/2;
+    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
+    
+    char *meanPtr=(char*)currentChar;
+    *meanPtr=(mean);
+    currentChar++;
+    *currentChar = (unsigned char) bitSize;
+    currentChar++;
+
+    for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
+	if(input[wordNum]>=mean) {
+	    newVal=((input[wordNum]-mean)<<1)+1;
+	}
+	else {
+	    newVal=((mean-input[wordNum])<<1);
+	}
+ 	numBitsLeft=bitSize;		
+	while(numBitsLeft) {
+//	    if(wordNum<5) cout << wordNum << "\t" << numBitsLeft << endl;
+	    if(numBitsLeft>(8-currentBit)) {			
+		bitMask=0;
+		for(bitNum=0;bitNum<(8-currentBit);bitNum++)
+		    bitMask|=(1<<bitNum);	   
+		(*currentChar)|= (newVal&bitMask)<<currentBit;
+		newVal=(newVal>>(8-currentBit));
+		numBitsLeft-=(8-currentBit);
+		currentChar++;
+		currentBit=0;
+	    }
+	    else {			
+		bitMask=0;
+		for(bitNum=0;bitNum<numBitsLeft;bitNum++)
+		    bitMask|=(1<<bitNum);
+		(*currentChar)|= (newVal&bitMask)<<currentBit;
+		currentBit+=numBitsLeft;
+		if(currentBit==8) {
+		    currentBit=0;
+		    currentChar++;
+		}
+		numBitsLeft=0;
+	    }
+	}
+    }
+//    for(int i=0;i<int(currentChar-buffer);i++) {
+//	cout << i << "\t"  << (int)buffer[i] << endl;
+//    }
+    if(currentBit) currentChar++;
+    return (int)(currentChar-buffer);
+}
+
+
+int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+    //Remember this function works an array of pedestal subtracted shorts
+    //Which is what SurfChannelPedSubbed_t contains
+    float numSigma=3; //Will hard code for now
+    int wordNum=0;
+    int numBitsLeft;
+    int bitMask;
+    int bitNum;
+    unsigned short fibVal=0;
+    int asFib=0;
+    int fibBits;
+    unsigned char *currentChar=buffer;
+    int currentBit=0;
+    unsigned char *overflowChar;
+    int overflowBit=0;
+    unsigned short newVal=0;
+    int mean=(int)chanPtr->mean;
+    float sigma=chanPtr->rms;
+    short xMax=chanPtr->xMax; //Filled by pedestalLib
+    short xMin=chanPtr->xMin; //Filled by pedestalLib   
+    short *input = chanPtr->data;
+    int rangeTotal=(int)(numSigma*sigma);
+    int bitSize=ceil(log2f((float)rangeTotal));
+
+    //Reset xMin and xMax to be the binary/fibonacci cut off point
+    xMin=mean-(1<<(bitSize-1));
+    xMax=mean+(1<<(bitSize-1));
+    xMax-=1;
+    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
+    
+    char *meanPtr=(char*)currentChar;
+    *meanPtr=(mean);
+    currentChar++;
+    *currentChar = (unsigned char) bitSize;
+    currentChar++;
+
+
+    overflowChar=currentChar+(MAX_NUMBER_SAMPLES*bitSize)/8;
+    overflowBit=(MAX_NUMBER_SAMPLES*bitSize)%8;
+
+    unsigned short flagVal=(1<<bitSize)-1;
+    int countOverflows=0;
+
+    for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
+	//Check if value is in the range xMin to xMax
+	if(input[wordNum]>xMin && input[wordNum]<xMax) {
+	    if(input[wordNum]>=mean) {
+		newVal=((input[wordNum]-mean)<<1)+1;
+	    }
+	    else {
+		newVal=((mean-input[wordNum])<<1);
+	    }
+	}
+	else {
+	    //If not encode number as fibonacci in the overflow
+	    countOverflows++;
+	    newVal=flagVal;
+	    if(input[wordNum]>=xMax) {
+		fibVal=((input[wordNum]-xMax)<<1)+1; //Odd numbers
+	    }
+	    else {
+		fibVal=((xMin-input[wordNum])<<1)+2; //Even numbers
+	    }
+	    asFib=encodeFibonacci(fibVal,&fibBits);
+
+	    
+//	    cout << "Fib:\t" << fibVal << "\t" << asFib << "\t" << fibBits << endl;
+//	    bin_prnt_int(asFib);
+//	    cout <<
+
+	    numBitsLeft=fibBits;		
+	    while(numBitsLeft) {
+//	    if(wordNum<3) cout << wordNum << "\t" << numBitsLeft << endl;
+		if(numBitsLeft>(8-overflowBit)) {			
+		    bitMask=0;
+		    for(bitNum=0;bitNum<(8-overflowBit);bitNum++)
+			bitMask|=(1<<bitNum);	   
+		    (*overflowChar)|= (asFib&bitMask)<<overflowBit;
+		    asFib=(asFib>>(8-overflowBit));
+		    numBitsLeft-=(8-overflowBit);
+		    overflowChar++;
+		    overflowBit=0;
+		}
+		else {			
+		    bitMask=0;
+		    for(bitNum=0;bitNum<numBitsLeft;bitNum++)
+			bitMask|=(1<<bitNum);
+		    (*overflowChar)|= (asFib&bitMask)<<overflowBit;
+		    overflowBit+=numBitsLeft;
+		    if(overflowBit==8) {
+			overflowBit=0;
+			overflowChar++;
+		    }
+		    numBitsLeft=0;
+		}
+	    }
+	    
+	}
+//	cout << wordNum << "\t" << newVal << endl;
+ 	numBitsLeft=bitSize;		
+	while(numBitsLeft) {
+//	    if(wordNum<3) cout << wordNum << "\t" << numBitsLeft << endl;
+	    if(numBitsLeft>(8-currentBit)) {			
+		bitMask=0;
+		for(bitNum=0;bitNum<(8-currentBit);bitNum++)
+		    bitMask|=(1<<bitNum);	   
+		(*currentChar)|= (newVal&bitMask)<<currentBit;
+		newVal=(newVal>>(8-currentBit));
+		numBitsLeft-=(8-currentBit);
+		currentChar++;
+		currentBit=0;
+	    }
+	    else {			
+		bitMask=0;
+		for(bitNum=0;bitNum<numBitsLeft;bitNum++)
+		    bitMask|=(1<<bitNum);
+		(*currentChar)|= (newVal&bitMask)<<currentBit;
+		currentBit+=numBitsLeft;
+		if(currentBit==8) {
+		    currentBit=0;
+		    currentChar++;
+		}
+		numBitsLeft=0;
+	    }
+	}
+    }
+//    cout << "countOverflows: " << countOverflows << endl;
+    if(overflowBit) overflowChar++;
+//    cout << int(overflowChar-buffer) << "\t" << overflowBit << endl;
+    return (int)(overflowChar-buffer);
+
 }
     
 

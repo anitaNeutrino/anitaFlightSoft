@@ -272,8 +272,8 @@ void fakeEvent(int trigType)
 	    }
 	    meanSq/=(float)MAX_NUMBER_SAMPLES;
 	    mean/=(float)MAX_NUMBER_SAMPLES;
-	    theBody.channel[chan].header.mean=mean;
-	    theBody.channel[chan].header.rms=sqrt(meanSq-mean*mean);
+//	    theBody.channel[chan].header.mean=mean;
+//	    theBody.channel[chan].header.rms=sqrt(meanSq-mean*mean);
 	}
     }
     gettimeofday(&timeStruct,NULL);
