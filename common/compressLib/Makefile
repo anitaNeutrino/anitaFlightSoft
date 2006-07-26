@@ -22,13 +22,13 @@ $(Library): $(LIB_OBJS)
 #	@chmod 555 $(Library)
 
 
-$(TestProgs): % : %.o
+$(TestProgs): % : %.o $(Library)
 	@echo "<**Linking**> $@ ..."
-	@$(LD) $@.o $(LDFLAGS) -pg $(ANITA_LIBS) $(ANITA_HKD_LIBS) $(ANITA_GPS_LIBS) $(ANITA_COMP_LIBS) -o $@
+	$(LD) $@.o $(LDFLAGS) $(ANITA_COMP_LIBS)  $(ANITA_LIBS) -o $@
 	@chmod 555 $@
 
 clean: objclean
-	@/bin/rm -f $(Library)
+	@/bin/rm -f $(Library) $(TestProgs)
 
 
 

@@ -7,6 +7,9 @@
 
 #ifndef ANITA_MAPPING_H
 #define ANITA_MAPPING_H
+#include "anitaFlight.h"
+
+#define NUM_PHI PHI_SECTORS
 
 //Positive is horizontal
 //Negative is vetical

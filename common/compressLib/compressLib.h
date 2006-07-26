@@ -30,6 +30,8 @@ typedef enum {
     int codepack(int n, unsigned int *in, unsigned char *out);
     int codeunpack(int m, unsigned char *in, unsigned int *out);
     unsigned int fibonacci(unsigned short input);
+    unsigned int encodeFibonacci(unsigned short input,int *numBits);
+    
     unsigned short unfibonacci(unsigned int input);
     unsigned short findmedian(unsigned short nwords, unsigned short *in);
     unsigned short packwave(unsigned short nwords, 
@@ -46,6 +48,10 @@ typedef enum {
 				  EncodeControlStruct_t *cntlPtr,
 				  unsigned char *output,
 				  int *numBytes);
+    CompressErrorCode_t packPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
+					   EncodeControlStruct_t *cntlPtr,
+					   unsigned char *output,
+					   int *numBytes);
     CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
 				    unsigned char *input,
 				    int numBytes);
@@ -55,6 +61,10 @@ typedef enum {
     unsigned short simpleCrcShort(unsigned short *p, unsigned long n);
     int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer);
     int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr);
+
+    int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanPtr, unsigned char *buffer) ;
+    int encodePSWaveNone(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
+    int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
 
 
 #ifdef __cplusplus

@@ -20,12 +20,13 @@ INCLUDES      = -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
 CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE 
 LD            = gcc
 LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR) 
-ANITA_LIBS    =  -lkvp -lConfig -lUtil -lcr7 -lPedestal -lm -lz #-lSocket
+ANITA_LIBS    =  -lkvp -lConfig  -lcr7 -lPedestal -lUtil  -lm -lz#-lSocket
 ANITA_HKD_LIBS = -lAcromag
 ANITA_GPS_LIBS = -lSerial
 ANITA_SIP_LIBS = -lSipcom
 ANITA_LOS_LIBS = -lLos
 ANITA_COMP_LIBS = -lCompress
+ANITA_MAP_LIBS = -lAnitaMap
 
 all: $(Target)
 

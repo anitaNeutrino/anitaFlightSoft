@@ -186,9 +186,6 @@ void writePedestals() {
 int subtractCurrentPeds(AnitaEventBody_t *rawBdPtr,
 			PedSubbedEventBody_t *pedSubBdPtr) {
     static int pedsLoaded=0;
-    int surf,chan,samp,chip;
-    
-    int chanIndex=0;
     if(pedsLoaded) {
 	if(!checkCurrentPedLink()) pedsLoaded=0;
     }
@@ -197,28 +194,133 @@ int subtractCurrentPeds(AnitaEventBody_t *rawBdPtr,
 	loadCurrentPeds();
 	pedsLoaded=1;
     }
+    return doPedSubtraction(rawBdPtr,pedSubBdPtr);
+}
 
+
+int subtractThesePeds(AnitaEventBody_t *rawBdPtr,
+		      PedSubbedEventBody_t *pedSubBdPtr,
+		      unsigned long whichPeds) 
+{
+    loadThesePeds(whichPeds);
+    return doPedSubtraction(rawBdPtr,pedSubBdPtr);
+    
+}
+
+
+int subtractPedsFromFile(AnitaEventBody_t *rawBdPtr,
+			 PedSubbedEventBody_t *pedSubBdPtr,
+			 char *filename) {
+    loadPedsFromFile(filename);
+    return doPedSubtraction(rawBdPtr,pedSubBdPtr);
+}
+
+
+int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
+		     PedSubbedEventBody_t *pedSubBdPtr) {
+    pedSubBdPtr->whichPeds=currentPeds.unixTime;
+    int surf,chan,samp,chip;   
+    int chanIndex=0;
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<ACTIVE_SURFS;chan++) {
 	    chanIndex=GetChanIndex(surf,chan);
+	    pedSubBdPtr->channel[chanIndex].xMax=-4095;
+	    pedSubBdPtr->channel[chanIndex].xMin=4095;
+
 	    pedSubBdPtr->channel[chanIndex].header=
 		rawBdPtr->channel[chanIndex].header;
 	    chip=rawBdPtr->channel[chanIndex].header.chipIdFlag&0x3;
+	    float nsamps=0;
+	    float meanSq=0;
+	    float mean=0;
+	    short dataVal=0;
+	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {	
+		if(rawBdPtr->channel[chanIndex].data[samp]&HITBUS_MASK) {
+		    //HITBUS is on
+		    pedSubBdPtr->channel[chanIndex].data[samp]=0;
+		}
+		else {
+		    dataVal=((short)(rawBdPtr->channel[chanIndex].data[samp]&ELEVEN_BITMASK))-
+			((short)currentPeds.thePeds[surf][chip][chan][samp]);
+		    pedSubBdPtr->channel[chanIndex].data[samp]=dataVal;
+			
+		    if(dataVal>pedSubBdPtr->channel[chanIndex].xMax) {
+			pedSubBdPtr->channel[chanIndex].xMax=dataVal;
+		    }
+		    if(dataVal<pedSubBdPtr->channel[chanIndex].xMin) {
+			pedSubBdPtr->channel[chanIndex].xMin=dataVal;
+		    }
+		    mean+=dataVal;
+		    meanSq+=(dataVal*dataVal);
+		    nsamps++;		    
+		}
+	    }
+	    pedSubBdPtr->channel[chanIndex].mean=0;
+	    pedSubBdPtr->channel[chanIndex].rms=0;
+	    if(nsamps) {
+		mean/=nsamps;
+		meanSq/=nsamps;
+		pedSubBdPtr->channel[chanIndex].mean=mean;
+		if(meanSq>mean*mean)
+		    pedSubBdPtr->channel[chanIndex].rms=sqrt(meanSq-mean*mean);
+	    }
+	    
+	}
+    }		
+    return 0;    
+}
+
+int addPeds(PedSubbedEventBody_t *pedSubBdPtr,
+	    AnitaEventBody_t *rawBdPtr)
+{
+
+    loadThesePeds(pedSubBdPtr->whichPeds);
+    return doPedAddition(pedSubBdPtr,rawBdPtr);
+}
+
+int addThesePeds(PedSubbedEventBody_t *pedSubBdPtr,
+		 AnitaEventBody_t *rawBdPtr,
+		 unsigned long whichPeds)
+{
+
+    loadThesePeds(whichPeds);
+    return doPedAddition(pedSubBdPtr,rawBdPtr);
+}
+
+int addPedsFromFile(PedSubbedEventBody_t *pedSubBdPtr,
+		    AnitaEventBody_t *rawBdPtr,
+		    char *filename)
+{
+
+    loadPedsFromFile(filename);
+    return doPedAddition(pedSubBdPtr,rawBdPtr);
+}
+
+int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
+		  AnitaEventBody_t *rawBdPtr)
+{
+    
+    int surf,chan,samp,chip;    
+    int chanIndex=0;
+
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chan=0;chan<ACTIVE_SURFS;chan++) {
+	    chanIndex=GetChanIndex(surf,chan);
+	    rawBdPtr->channel[chanIndex].header=
+		pedSubBdPtr->channel[chanIndex].header;
+	    chip=rawBdPtr->channel[chanIndex].header.chipIdFlag&0x3;
 	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {		
-	    pedSubBdPtr->channel[chanIndex].data[samp]=
-		((short)rawBdPtr->channel[chanIndex].data[samp])-
-		((short)currentPeds.thePeds[surf][chip][chan][samp]);
+		rawBdPtr->channel[chanIndex].data[samp]=(unsigned short) 
+		    (((short)pedSubBdPtr->channel[chanIndex].data[samp])+
+		    ((short)currentPeds.thePeds[surf][chip][chan][samp]));
 	    }
 	}
     }
 		
     return 0;
-    
-}
 
-int addCurrentPeds(PedSubbedEventBody_t *pedSubBdPtr,
-		   AnitaEventBody_t *rawBdPtr);
+}
 
 
 int checkCurrentPedLink() {
@@ -238,16 +340,55 @@ int checkCurrentPedLink() {
     return 1;
 }
 
+
 int loadCurrentPeds()
 {
+    int retVal;
+    static int pedsLoaded=0;
+
+    if(pedsLoaded) {
+	if(!checkCurrentPedLink()) pedsLoaded=0;
+    }
+    if(pedsLoaded) return 0;           
+    retVal=loadPedsFromFile(CURRENT_PEDESTALS);
+    if(retVal==0) pedsLoaded=1;
+    return retVal;
+}
+
+
+int loadThesePeds(unsigned long whichPeds)
+{
+    static int pedsLoaded=0;
+    int retVal;
+    char filename[180];
+
+    if(pedsLoaded) {
+	if(currentPeds.unixTime!=whichPeds) pedsLoaded=0;
+    }
+    if(pedsLoaded) return 0;           
+    sprintf(filename,"%s/peds_%lu.dat",PEDESTAL_DIR,whichPeds);
+    retVal=loadPedsFromFile(filename);
+    if(retVal==0) pedsLoaded=1;
+    return retVal;
+}
+
+
+
+int loadPedsFromFile(char *filename) {
+    static int errorCounter=0;
     int surf,chip,chan,samp;
-    int retVal=fillUsefulPedStruct(&currentPeds,CURRENT_PEDESTALS);
+    int retVal;
+
+    retVal=fillUsefulPedStruct(&currentPeds,filename);
     if(!retVal) {
 	//Can't load pedestals
-	syslog(LOG_ERR,"Can't load current pedestals defaulting to %d\n",
-	       PED_DEFAULT_VALUE);
-	fprintf(stderr,"Can't load current pedestals defaulting to %d\n",
-	       PED_DEFAULT_VALUE);
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Can't load current pedestals defaulting to %d\n",
+		   PED_DEFAULT_VALUE);
+	    fprintf(stderr,"Can't load current pedestals defaulting to %d\n",
+		    PED_DEFAULT_VALUE);
+	    errorCounter++;
+	}
 	currentPeds.unixTime=PED_DEFAULT_VALUE;
 	currentPeds.nsamples=0;
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -265,5 +406,6 @@ int loadCurrentPeds()
     return 0;
        
 }
+
 
 
