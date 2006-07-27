@@ -7,7 +7,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 #SOFLAGS       = -shared
 
 
-LIB_OBJS         =  compressLib.o 
+LIB_OBJS         =  compressLib.o pack12bit.o fibonacci.o compUtils.o
 Library       = $(ANITA_LIB_DIR)/libCompress.a
 TestProgs     =  ftest btest packtest unpacktest testmedian packwavetest unpackwavetest
 

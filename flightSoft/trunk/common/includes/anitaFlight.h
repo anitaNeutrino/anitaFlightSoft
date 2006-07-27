@@ -59,6 +59,7 @@
 #define PHI_SECTORS 16
 
 //Prioritizer Stuff
+#define WRAPPED_HITBUS 0x8 //Bit 3 is the wrapped hitbus bit
 #define SURF_BITMASK 0x0ffc  /* masks off the two wired-or bits for analysis */
 #define ELEVEN_BITMASK 0x0ffe  /* masks off the last wired-or bit for analysis */
 #define HITBUS_MASK 0x1000 //Hitbus mask for pedestals

@@ -1,306 +1,20 @@
+/*! \file compressLib.c
+    \brief Compression library, full of (hopefully) useful stuff
+    
+    Some functions that compress and uncompress ANITA data
+    June 2006  rjn@mps.ohio-state.edu
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
 #include "compressLib/compressLib.h"
+#include "pedestalLib/pedestalLib.h"
+#include "compressLib/pack12bit.h"
 #include "utilLib/utilLib.h"
-
-
-unsigned int fn[24]={1,2,3,5,8,13,21,34,55,89,
-		     144,233,377,610,987,1597,2584,4181,6765,10946,
-		     17711,28657,46368,75025}; 
-//these are enough to encode unsigned short
-
-//convert a short to its fibonacci representation with a 11 prefix
-unsigned int fibonacci(unsigned short input){
-    int numBits;
-    return encodeFibonacci(input,&numBits);
-}
-
-unsigned int encodeFibonacci(unsigned short input,int *numBits){
-     unsigned int output;
-     int i;
-     i=0;
-     // find the first fibonacci number greater than input
-     while(input>=fn[i]){
-	  i++;
-     }
-     // set the prefix bit
-     (*numBits)=i+1;
-     output=1<<(i);
-     i--; // we are now at the largest fibonacci number less than input
-     //now set the bits for the minimal fibonacci representation
-     while(i>=0){
-	  if (input>=fn[i]){
-	       output += (1<<i);
-	       input -= fn[i];
-	  }
-	  i--;
-     }  
-     return output;
-}
-
-// reverse the above operation
-unsigned short unfibonacci(unsigned int input)
-{
-     unsigned int i;
-     unsigned short output;
-     unsigned int curbit, lastbit;
-     output=0;
-     lastbit=0;
-     for (i=0; i<23; i++){
-	  curbit=(input>>i) & 0x0001;
-	  if (curbit==1 && lastbit==1) break;  // done--found the prefix bit
-	  else if (curbit==1) output+=fn[i]; 
-	  lastbit=curbit;
-     }
-     return output;
-}
-
 	  
-// perform the bifurcation mapping from integers to the positive
-// integers as a prelude to applying prefix codes (e.g. fibonacci)
-//
-// chosen mapping is 0,-1,1,-2,2... => 1,2,3,4,5
-// 
-// posi integers map to 2*n+1
-// negative integers map 2*abs(n)
-//
-
-unsigned short bifurcate(short input)
-{
-     unsigned short output;
-     if (input>=0){
-	  output=(2*(unsigned short) input + 1);
-     }
-     else{
-	  output=(2* (unsigned short)abs(input));
-     }
-     return output;
-}
-
-short unbifurcate(unsigned short input)
-{
-     // note zero is not a valid input
-     short output;
-     if ((input % 2) == 1){//odd => non-negative
-	  output=((input-1)/2);
-     }
-     else{ //even => negative
-	  output=-(input/2);
-     }
-     return output;
-}
-	  
-	  
-// discard (in place) the last nbits bits of the data, shifting right
-// number of words is nwords
-void bitstrip(unsigned short nbits, unsigned short nwords, unsigned short *data)
-{
-     unsigned short i;
-     for (i=0; i<nwords; i++){
-	  data[i]=data[i]>>nbits;
-     }
-}
-
-
-// pack the nbits least-significant bits of the data
-// into a byte stream.  Returns number of bytes of buffer used.
-// The input data are left unchanged.
-unsigned short bitpack(unsigned short nbits, unsigned short nwords,
-	     unsigned short *in, unsigned char *out)
-{
-     unsigned short i;
-     unsigned short scratch, mask1,mask2, byte, bit, nbitsleft;
-     byte=0; //current output byte
-     bit=0; //current output bit
-     out[0]=0;
-     mask1= ~(0xffff << (unsigned short) nbits); //mask to yield nbits lsbs
-     for (i=0; i<nwords; i++){
-	  scratch= in[i] & mask1;
-	  nbitsleft=nbits;
-	  while (nbitsleft>0){
-	       if (nbitsleft>(8-bit)){ //won't all fit
-		    mask2 = ~((0xffff)<<(8-bit));
-		    out[byte] |= (scratch & mask2) << bit;
-		    mask2 = ~mask2;
-		    scratch = ((scratch & mask2) >> (8-bit));
-		    nbitsleft -= (8-bit);
-		    byte++; bit=0; out[byte]=0;
-	       }
-	       else { //everything fits in current byte
-		    out[byte] |= scratch << bit;
-		    bit = bit + nbitsleft;
-		    if (bit==8){ byte++; bit=0; out[byte]=0;}
-		    nbitsleft=0;
-	       }
-	  }
-     }
-     if (bit==0) return byte;
-     else return byte+1;
-}
-
-//pack fibonacci code into bytes
-
-int codepack(int n, unsigned int *in, unsigned char *out)
-{
-     //need to add checks on m!!!
-     int byte,i;
-     unsigned char bit, nbits;
-     unsigned int sbit,scratch,mask;
-     // in[n] is packed into out with leading zeros removed.
-     // it must be filled with nonzero data in a prefix code
-     byte=0;//current output byte
-     bit=0;//next bit to be written
-     out[0]=0;
-     for (i=0; i<n; i++){ //i indexes input array
-	  //how many bits in in[i]?
-	  nbits=0;sbit=0x1;
-	  while (sbit<=in[i]) {sbit=sbit<<1; nbits++;}
-	  //there are nbit bits before there are leading zeros
-	  //last 1 is in bit (nbit-1)
-	  scratch=in[i];
-	  while (nbits>0){
-	       if (nbits>((unsigned char)8-bit)){
-               //pack the least significant bits into the current byte
-		    mask= ~((unsigned int)(0xffffffff)<<(8-bit));
-		    out[byte] |= (scratch & mask) << bit;
-		    mask = ~mask;
-		    scratch=(scratch & mask) >> (8-bit);
-		    nbits -= (8-bit);
-		    byte++; bit=0; out[byte]=0;
-	       }
-	       else{//everything fits
-		    out[byte] |= scratch << bit;
-		    bit= bit + nbits;
-		    if (bit==8){ byte++; bit=0; out[byte]=0;}
-		    nbits=0;
-	       }
-	  }
-     }
-     if (bit==0) return byte; 
-     else return byte+1;
-}
-
-//unpack fibonacci code 
-
-int codeunpack(int m, unsigned char *in, unsigned int *out)
-{
-     int inbyte, inbit;
-     int outword, outbit;
-     unsigned int curbit, lastbit;
-/* proceed one bit at a time.  When two ones are seen, advance
-	to the next output word */
-     inbyte=0; inbit=0;
-     outword=0,outbit=0;
-     lastbit=0;
-     out[outword]=0;
-     while (inbyte<m){
-	  curbit=(in[inbyte]>>inbit) & 0x1;
-	  out[outword] |= curbit << outbit;
-	  inbit++; outbit++; 
-	  if (inbit==8){ inbyte++; inbit=0;}
-	  if ((curbit==1 && lastbit==1)|| outbit==32){
-	       outword++; outbit=0; out[outword]=0;
-	       //printf("%i %hx\n",outword,out[outword-1]);
-	  }
-	  if (outbit!=0) lastbit=curbit;
-	  else lastbit=0;
-     }
-     return outword;
-}
-
-// utilty routing needed for sorting data in median finder
-
-int uscompare(const void * e1, const void * e2)
-{
-     int result;
-     if (*(unsigned short *)e1 < *(unsigned short *)e2) result=-1;
-     else if (*(unsigned short*)e1 > *(unsigned short *)e2) result=1;
-     else result=0;
-     return result;
-}
-
-// find the median of an array of unsigned shorts     
-
-unsigned short findmedian(unsigned short nwords, unsigned short *in)
-{
-     unsigned short scratch[nwords];
-     memcpy(scratch,in,nwords*(sizeof(unsigned short)));
-     qsort(scratch,nwords,sizeof(unsigned short),uscompare);
-     return scratch[nwords/2];
-}
-     
-
-// function packwave
-//
-//pack an array of nwords unsigned shorts
-//width is the number of bits of data (12 for ANITA SURFs)
-//(the caller is responsible for masking off the bits above width)
-//nstrip is the number of bits that are stripped and thrown away
-//npack is the number of bits that are packed verbatim, after stripping
-//the input array will have the width-(npack+nstrip) bits remaining.
-//the return value is the number of bytes in the output array. 
-
-unsigned short packwave(unsigned short nwords, 
-			unsigned short width, unsigned short nstrip, 
-			unsigned short npack, unsigned short *in,
-			unsigned char *out)
-{
-     unsigned short packbytes, codebytes=0, median=0;
-     unsigned short i;
-     unsigned int scratch[65536];
-     if (nstrip!=0) bitstrip(nstrip,nwords,in);
-     if (npack!=0) {
-	  packbytes=bitpack(npack,nwords,in,out+6);
-	  bitstrip(npack,nwords,in);
-     }
-     else{
-	  packbytes=0;
-     }
-     if ((width-(nstrip+npack))!=0){
-	  for (i=0; i<nwords; i++){
-	       median=findmedian(nwords,in);
-	       scratch[i]=fibonacci(bifurcate((int) in[i]- (int)median));
-	       codebytes=codepack(nwords,scratch,out+6+packbytes);
-	  }
-     }
-     else
-     {
-	  codebytes=0;
-     }
-     out[0]=(unsigned char) (packbytes>>8);
-     out[1]=(unsigned char) (packbytes & 0xff);
-     out[2]=(unsigned char) (codebytes>>8);
-     out[3]=(unsigned char) (codebytes & 0xff);
-     out[4]=(unsigned char) (median>>8);
-     out[5]=(unsigned char) (median & 0xff);
-     return (packbytes+codebytes+6);
-}
-	
-unsigned short unpackwave(unsigned short nbytes, 
-			  unsigned short width, unsigned short nstrip, 
-			  unsigned short npack, unsigned char *in,
-			  unsigned short *out)
-{
-     unsigned short median,codebytes,packbytes;
-     unsigned int scratch[65536];
-     unsigned short nwords;
-     int i;
-     median=in[4]*256+in[5];
-     codebytes=in[2]*256+in[3];
-     packbytes=in[0]*256+in[2];
-     //data length only known from the fibonacci code part
-     nwords=codeunpack(codebytes,&(in[6+packbytes]),scratch);
-     for (i=0;i<nwords;i++){
-	  out[i]=median+
-	       (unbifurcate(unfibonacci(scratch[i]))<<(nstrip+npack));
-     }
-//handle packed bits here NEEDS WORK !!!
-     return nwords;
-}
-
 
 CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
 			      EncodeControlStruct_t *cntlPtr,
@@ -345,7 +59,6 @@ CompressErrorCode_t packPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
     int chan=0;  
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
 
-
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &output[count];
 	surfStart=count;
@@ -373,8 +86,88 @@ CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
 				unsigned char *input,
 				int numBytes)
 {
+    PedSubbedEventBody_t pedSubBd;
+    CompressErrorCode_t retVal=
+	unpackToPedSubbedEvent(&pedSubBd,input,numBytes);
+    if(retVal!=COMPRESS_E_OK) return retVal;
+    addPeds(&pedSubBd,bdPtr);
+    return retVal;
 
+}
+
+CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
+					   unsigned char *input,
+					   int numBytes)
+{
+
+    int count=0;
+    int surf=0;
+    int chan=0;  
+    CompressErrorCode_t retVal=0;
+    EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
+    EncodedSurfChannelHeader_t *chanHdPtr;
+
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &input[count];
+	bdPtr->whichPeds=surfHdPtr->whichPeds;
+	bdPtr->eventNumber=surfHdPtr->eventNumber;
+	count+=sizeof(EncodedPedSubbedSurfPacketHeader_t);
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    chanHdPtr = (EncodedSurfChannelHeader_t*)&input[count];
+	    count+=sizeof(EncodedSurfChannelHeader_t);
+	    retVal=decodePSChannel(chanHdPtr,
+				   &input[count],
+				   &(bdPtr->channel[GetChanIndex(surf,chan)]));
+	    if(retVal!=COMPRESS_E_OK) return retVal;
+	    count+=chanHdPtr->numBytes;	    
+	    if(count>numBytes)
+		return COMPRESS_E_BADSIZE;
+	}
+	//Fill Generic Header_t;
+    }
+    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
     return COMPRESS_E_OK;
+
+}
+
+
+void fillMinMaxMeanRMS(SurfChannelPedSubbed_t *chanPtr) {
+    int samp;
+    int wrappedHitbus=chanPtr->header.chipIdFlag&WRAPPED_HITBUS;
+    int firstSamp=0,lastSamp=MAX_NUMBER_SAMPLES;
+    int index=0;
+    float mean=0,meanSq=0,nsamps=0;
+    chanPtr->xMax=-4095;
+    chanPtr->xMin=4095;
+	
+    if(wrappedHitbus) {
+	firstSamp=chanPtr->header.firstHitbus+1;
+	lastSamp=chanPtr->header.lastHitbus;
+    }
+    else {
+	firstSamp=chanPtr->header.lastHitbus+1;
+	lastSamp=MAX_NUMBER_SAMPLES+chanPtr->header.firstHitbus;
+    }    
+    for(samp=firstSamp;samp<lastSamp;samp++) {
+	index=samp;
+	if(index>=MAX_NUMBER_SAMPLES) index-=MAX_NUMBER_SAMPLES;
+	mean+=chanPtr->data[index];
+	meanSq+=(chanPtr->data[index]*chanPtr->data[index]);
+	nsamps++;
+
+	if(chanPtr->data[index]>chanPtr->xMax)
+	    chanPtr->xMax=chanPtr->data[index];
+	if(chanPtr->data[index]<chanPtr->xMin)
+	    chanPtr->xMin=chanPtr->data[index];
+
+    }
+    if(nsamps>0) {
+	mean/=nsamps;
+	meanSq/=nsamps;
+	chanPtr->mean=mean;
+	if(meanSq>mean*mean)
+	    chanPtr->rms=sqrt(meanSq-mean*mean);
+    }
     
 
 }
@@ -415,19 +208,26 @@ int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {
     return encSize;
 }
 
+CompressErrorCode_t decodeWaveNone(unsigned char *input,int numBytes,SurfChannelFull_t *chanPtr){    
+    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
+    //Check that numBytes is correct
+    if(numBytes!=encSize) return COMPRESS_E_BADSIZE;
+    memcpy(chanPtr->data,input,encSize);
+    return COMPRESS_E_OK;
+}
+
 
 int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanPtr, unsigned char *buffer) 
 {
 //    printf("Event %lu, ChanId %d\n",theHead.eventNumber,
 //	   chanPtr->header.chanId);
 
-
-
     EncodedSurfChannelHeader_t *chanHdPtr
 	=(EncodedSurfChannelHeader_t*) &buffer[0];
     int count=0;    
     int encSize=0;
     chanHdPtr->rawHdr=chanPtr->header;
+    chanHdPtr->encType=encType;
     count+=sizeof(EncodedSurfChannelHeader_t);
     
     switch(encType) {
@@ -445,10 +245,63 @@ int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanP
     return (count+encSize);        
 }
 
+CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,unsigned char *input, SurfChannelPedSubbed_t *chanPtr)
+{
+    CompressErrorCode_t retVal;
+    int numBytes=encChanHdPtr->numBytes;
+    int newCrc=simpleCrcShort((unsigned short*)input,numBytes/2);
+    if(encChanHdPtr->crc!=newCrc) return COMPRESS_E_BAD_CRC;
+    
+    chanPtr->header=encChanHdPtr->rawHdr;
+    switch(encChanHdPtr->encType) {
+	case ENCODE_NONE:
+	    retVal=decodePSWaveNone(input,numBytes,chanPtr);
+	    break;
+	default:
+	    //Try ENCODE_NONE
+	    retVal=decodePSWaveNone(input,numBytes,chanPtr);
+	    break;
+    }
+    if(retVal==COMPRESS_E_OK) fillMinMaxMeanRMS(chanPtr);
+    return retVal;
+}
+
+
 int encodePSWaveNone(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
-    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
+    int encSize=MAX_NUMBER_SAMPLES*sizeof(short);
     memcpy(buffer,chanPtr->data,encSize);
     return encSize;
+}
+
+CompressErrorCode_t decodePSWaveNone(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr){    
+    int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
+    //Check that numBytes is correct
+    if(numBytes!=encSize) return COMPRESS_E_BADSIZE;
+    memcpy(chanPtr->data,input,encSize);
+    return COMPRESS_E_OK;
+}
+
+
+int encodePSWave12bitBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+    int encSize=3*(MAX_NUMBER_SAMPLES/4)*sizeof(unsigned short);
+    int samp=0,charNum=0;
+    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp+=4) {
+	charNum=(samp*3)/2;
+	pack12bit((unsigned short*)&(chanPtr->data[samp]),&buffer[charNum]);
+    }
+    return encSize;
+}
+
+CompressErrorCode_t decodePSWave12bitBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr){    
+    int encSize=3*(MAX_NUMBER_SAMPLES/4)*sizeof(unsigned short);
+    if(numBytes!=encSize) return COMPRESS_E_BADSIZE;
+
+    int samp=0,charNum=0;
+    for(charNum=0;charNum<3*(MAX_NUMBER_SAMPLES/4);charNum+=6) {
+	samp=2*(charNum/3);
+	unpack12bit((unsigned short*)&(chanPtr->data[samp]),&input[charNum]);
+    }
+    return COMPRESS_E_OK;
 }
 
 int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
@@ -481,18 +334,13 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
     printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
     
     char *meanPtr=(char*)currentChar;
-    *meanPtr=(mean);
+    (*meanPtr)=(char)(mean);
     currentChar++;
     *currentChar = (unsigned char) bitSize;
     currentChar++;
 
     for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
-	if(input[wordNum]>=mean) {
-	    newVal=((input[wordNum]-mean)<<1)+1;
-	}
-	else {
-	    newVal=((mean-input[wordNum])<<1);
-	}
+	newVal=bifurcate(input[wordNum]-mean);
  	numBitsLeft=bitSize;		
 	while(numBitsLeft) {
 //	    if(wordNum<5) cout << wordNum << "\t" << numBitsLeft << endl;
@@ -527,6 +375,44 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
     return (int)(currentChar-buffer);
 }
 
+CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr)
+{
+    int sampNum=0;
+    char *meanPtr=(char*)input;
+    short mean=(short)(*meanPtr);
+    unsigned char flag =  input[1];
+    int bitSize=(int) flag;
+    int bitNum;
+
+    unsigned char *currentChar=&input[2];
+    int currentBit=0;
+    unsigned short tempNum;
+    while(sampNum<MAX_NUMBER_SAMPLES) {
+	int fred = *( (int*) currentChar);
+//	bin_prnt_int(fred);
+	tempNum=0;	    
+	for(bitNum=currentBit;bitNum<currentBit+bitSize;bitNum++) {
+	    tempNum|= (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+//	    bin_prnt_short(tempNum);
+//	    cout << (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+	}
+//	cout << endl;
+//	bin_prnt_short(tempNum);
+//	cout << sampNum << "\t" << tempNum << endl;
+
+	chanPtr->data[sampNum]=mean+unbifurcate(tempNum);
+	
+	sampNum++;
+	currentBit+=bitSize;
+	while(currentBit>=8) {
+	    currentBit-=8;
+	    currentChar++;
+	}
+	if(((int)(currentChar-input))>numBytes) return COMPRESS_E_BADSIZE;
+    }
+    return COMPRESS_E_OK;
+
+}
 
 int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
     //Remember this function works an array of pedestal subtracted shorts
@@ -559,7 +445,7 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
     
     char *meanPtr=(char*)currentChar;
-    *meanPtr=(mean);
+    (*meanPtr)=(char)(mean);
     currentChar++;
     *currentChar = (unsigned char) bitSize;
     currentChar++;
@@ -574,12 +460,7 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
 	//Check if value is in the range xMin to xMax
 	if(input[wordNum]>xMin && input[wordNum]<xMax) {
-	    if(input[wordNum]>=mean) {
-		newVal=((input[wordNum]-mean)<<1)+1;
-	    }
-	    else {
-		newVal=((mean-input[wordNum])<<1);
-	    }
+	    newVal=bifurcate(input[wordNum]-mean);
 	}
 	else {
 	    //If not encode number as fibonacci in the overflow
@@ -660,7 +541,113 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     return (int)(overflowChar-buffer);
 
 }
-    
+ 
+CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr) {
+
+    char *meanPtr=(char*)input;
+    short mean=(*meanPtr);
+    unsigned char flag =  input[1];
+    int bitSize=(int) flag&0xf;   
+    short overFlowVals[256];
+    short xMin=mean-(1<<(bitSize-1));
+    short xMax=mean+(1<<(bitSize-1));
+    xMax-=1;
+    unsigned short flagVal=(1<<bitSize)-1;
+
+    unsigned char *currentChar=&input[2];
+    int currentBit=0;
+    unsigned char *overflowChar;
+    int overflowBit=0;
+    overflowChar=currentChar+(MAX_NUMBER_SAMPLES*bitSize)/8;
+    overflowBit=(MAX_NUMBER_SAMPLES*bitSize)%8;
+    int numOverflows=numBytes-(int)(overflowChar-input);
+//    cout << "numOverflows:  " << numOverflows << endl;
+
+    int overflowNum=0;
+    unsigned short tempNum;
+    int fibNum=0;
+    int sampNum=0;
+    int tempBit,bitNum;
+
+   //Loop through overflow
+    while(overflowNum<260) {
+	tempBit=overflowBit;
+	int fred = *( (int*) overflowChar);	
+//	bin_prnt_int(fred);
+	while(tempBit<32) {
+	    //    bin_prnt_int((fred>>tempBit));
+	    if( ((fred>>tempBit)&0x1) && ((fred>>(tempBit+1))&0x1)) {
+		//Got two ones;
+		fibNum=0;
+		for(bitNum=overflowBit;bitNum<=tempBit+1;bitNum++) {
+		    fibNum|= (((fred>>bitNum)&0x1)<<(bitNum-overflowBit));
+		}
+//		bin_prnt_int(fibNum);
+//		cout << fibNum << endl;
+//		tempNum=decodeFibonacci(fibNum,tempBit+2-overflowBit);
+		tempNum=unfibonacci(fibNum);
+//		cout << fibNum << "\t" << tempBit+2-overflowBit 
+//		     <<"\t" << tempNum << endl;
+		if(tempNum&0x1) {
+		    //Positive
+//		    tempNum-=1;
+		    overFlowVals[overflowNum]=xMax+((tempNum-1)>>1);
+		}
+		else {
+		    //Negative
+		    overFlowVals[overflowNum]=xMin-((tempNum-2)>>1);
+		}
+//		if(overflowNum<2) cout << buffer[overflowNum] << "\t" << tempNum << endl;
+//		cout << overflowNum << "\t" <<   overFlowVals[overflowNum] << endl;
+		tempBit+=2;
+		overflowChar+=(tempBit/8);
+		overflowBit=(tempBit%8);
+//		cout << tempBit << "\t" << overflowChar << "\t" << overflowBit << endl;
+
+		break;
+	    }
+//	    cout << ((fred>>tempBit)&0x1) << " ";
+	    tempBit++;
+	}
+	if(tempBit==32) break;
+//	cout << endl;
+//	cout << overflowNum << "\t" << buffer[overflowNum] << endl;
+	overflowNum++;
+//	if(overflowNum>4) break;
+    }
+    numOverflows=overflowNum;
+//    cout << "numOverflows:  " << numOverflows << endl;
+    overflowNum=0;
+    //Loop through binary
+
+    while(sampNum<MAX_NUMBER_SAMPLES) {
+	int fred = *( (int*) currentChar);
+//	bin_prnt_int(fred);
+	tempNum=0;	    
+	for(bitNum=currentBit;bitNum<currentBit+bitSize;bitNum++) {
+	    tempNum|= (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+//	    bin_prnt_short(tempNum);
+//	    cout << (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+	}
+//	cout << endl;
+//	bin_prnt_short(tempNum);
+//	cout << sampNum << "\t" << tempNum << endl;
+	if(tempNum==flagVal) {
+	    chanPtr->data[sampNum]=overFlowVals[overflowNum];
+	    overflowNum++;
+	}
+	else {
+	    chanPtr->data[sampNum]=mean+unbifurcate(tempNum);
+	}
+	sampNum++;
+	currentBit+=bitSize;
+	while(currentBit>=8) {
+	    currentBit-=8;
+	    currentChar++;
+	}
+    }
+    return COMPRESS_E_OK;
+}   
 
 unsigned short simpleCrcShort(unsigned short *p, unsigned long n)
 {

@@ -1,3 +1,10 @@
+/*! \file compressLib.h
+    \brief Compression library, full of (hopefully) useful stuff
+    
+    Some functions that compress and uncompress ANITA data
+    June 2006  rjn@mps.ohio-state.edu
+*/
+
 #ifndef COMPRESSLIB_H
 #define COMPRESSLIB_H
 
@@ -16,10 +23,12 @@ extern "C" {
 typedef enum {
     COMPRESS_E_OK = 0,
     COMPRESS_E_PACK = 0x100,
+    COMPRESS_E_BADSIZE,
     COMPRESS_E_UNPACK,
     COMPRESS_E_NO_PEDS,
     COMPRESS_E_BAD_PEDS,
-    COMPRESS_E_TOO_BIG
+    COMPRESS_E_TOO_BIG,
+    COMPRESS_E_BAD_CRC
 } CompressErrorCode_t ;
 
     unsigned short bifurcate(short input);
@@ -55,16 +64,34 @@ typedef enum {
     CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
 				    unsigned char *input,
 				    int numBytes);
+    CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
+					       unsigned char *input,
+					       int numBytes);
 				  
 	
 //And here are it's worker routines
+    void fillMinMaxMeanRMS(SurfChannelPedSubbed_t *chanPtr);
     unsigned short simpleCrcShort(unsigned short *p, unsigned long n);
     int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer);
+    CompressErrorCode_t decodeChannel(unsigned char *input, int numBytes,SurfChannelFull_t *chanPtr);
     int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr);
+    CompressErrorCode_t decodeWaveNone(unsigned char *input,int numBytes,SurfChannelFull_t *chanPtr);
 
     int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanPtr, unsigned char *buffer) ;
+    CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,unsigned char *input, SurfChannelPedSubbed_t *chanPtr);
+
+
     int encodePSWaveNone(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
+    CompressErrorCode_t decodePSWaveNone(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
+
+    int encodePSWave12bitBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
+    CompressErrorCode_t decodePSWave12bitBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
+
     int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
+    CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
+
+    int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
+    CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
 
 
 #ifdef __cplusplus

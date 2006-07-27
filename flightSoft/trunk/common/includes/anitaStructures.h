@@ -96,6 +96,7 @@ typedef enum {
     PACKET_ENC_SURF = 0x121,
     PACKET_ENC_SURF_PEDSUB = 0x122,
     PACKET_ENC_EVENT_WRAPPER = 0x123,
+    PACKET_PED_SUBBED_EVENT = 0x124,
     PACKET_LAB_PED = 0x130,
     PACKET_FULL_PED = 0x131, //Too big to telemeter
     PACKET_GPS_ADU5_PAT = 0x200,
@@ -119,11 +120,11 @@ typedef enum {
 } EventEncodingScheme_t;
    
 typedef enum {
-    ENCODE_NONE=0,
+    ENCODE_NONE=0, //Done
     ENOCDE_LOSSLESS_12BIT=0x100,
-    ENCODE_LOSSLESS_BINARY,
-    ENCODE_LOSSLESS_FIBONACCI,
-    ENCODE_LOSSLESS_BINFIB_COMBO,
+    ENCODE_LOSSLESS_BINARY, //Done
+    ENCODE_LOSSLESS_FIBONACCI, 
+    ENCODE_LOSSLESS_BINFIB_COMBO, //Done
     ENCODE_LOSSY_BINARY=0x200,
     ENCODE_LOSSY_MULAW
 } ChannelEncodingType_t;
@@ -217,8 +218,9 @@ typedef struct {
 typedef struct {
     unsigned char chanId;   // chan+9*surf
     unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
-    unsigned char firstHitbus;
-    unsigned char lastHitbus;
+    unsigned char firstHitbus; // If wrappedHitbus=0 data runs, lastHitbus+1
+    unsigned char lastHitbus; //to firstHitbus-1 inclusive
+    //Otherwise it runs from firstHitbus+1 to lastHitbus-1 inclusive
 } RawSurfChannelHeader_t;
 #endif
 
