@@ -118,17 +118,23 @@ typedef enum {
 typedef enum {
     kNoEncoding=0
 } EventEncodingScheme_t;
-   
+
+#ifdef SLAC_DATA06   
 typedef enum {
     ENCODE_NONE=0, //Done
-    ENOCDE_LOSSLESS_12BIT=0x100,
+    ENCODE_SOMETHING=0x100 //Done
+} ChannelEncodingType_t; 
+#else
+typedef enum {
+    ENCODE_NONE=0, //Done
+    ENCODE_LOSSLESS_12BIT=0x100, //Done
     ENCODE_LOSSLESS_BINARY, //Done
-    ENCODE_LOSSLESS_FIBONACCI, 
+    ENCODE_LOSSLESS_FIBONACCI, //Done
     ENCODE_LOSSLESS_BINFIB_COMBO, //Done
     ENCODE_LOSSY_BINARY=0x200,
     ENCODE_LOSSY_MULAW
 } ChannelEncodingType_t;
-
+#endif
 
 typedef enum {
     PRI_FORCED = 0,

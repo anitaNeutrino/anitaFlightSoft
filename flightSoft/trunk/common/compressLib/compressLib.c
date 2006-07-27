@@ -234,6 +234,18 @@ int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanP
 	case ENCODE_NONE:
 	    encSize=encodePSWaveNone(&buffer[count],chanPtr);
 	    break;
+	case ENCODE_LOSSLESS_12BIT:
+	    encSize=encodePSWave12bitBinary(&buffer[count],chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_BINARY:
+	    encSize=encodePSWaveLosslessBinary(&buffer[count],chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_FIBONACCI:
+	    encSize=encodePSWaveLosslessFibonacci(&buffer[count],chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_BINFIB_COMBO:
+	    encSize=encodePSWaveLosslessBinFibCombo(&buffer[count],chanPtr);
+	    break;
 	default:
 	    encType=ENCODE_NONE;
 	    encSize=encodePSWaveNone(&buffer[count],chanPtr);
@@ -256,6 +268,18 @@ CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,uns
     switch(encChanHdPtr->encType) {
 	case ENCODE_NONE:
 	    retVal=decodePSWaveNone(input,numBytes,chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_12BIT:
+	    retVal=decodePSWave12bitBinary(input,numBytes,chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_BINARY:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_FIBONACCI:
+	    retVal=decodePSWaveLosslessFibonacci(input,numBytes,chanPtr);
+	    break;
+	case ENCODE_LOSSLESS_BINFIB_COMBO:
+	    retVal=decodePSWaveLosslessBinFibCombo(input,numBytes,chanPtr);
 	    break;
 	default:
 	    //Try ENCODE_NONE
@@ -414,6 +438,109 @@ CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes
 
 }
 
+int encodePSWaveLosslessFibonacci(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+    //Remember this function works an array of pedestal subtracted shorts
+    //Which is what SurfChannelPedSubbed_t contains
+    int wordNum=0;
+    int numBitsLeft;
+    int bitMask;
+    int bitNum;
+    unsigned char *currentChar=buffer;
+    int currentBit=0;
+    unsigned short newVal=0;
+    int mean=chanPtr->mean;
+    if(mean>127) mean=127;
+    if(mean<-127) mean=-127;
+    short xMax=chanPtr->xMax; //Filled by pedestalLib
+    short xMin=chanPtr->xMin; //Filled by pedestalLib   
+    short *input = chanPtr->data;
+
+//    int rangeTotal=xMax-xMin;
+    printf("mean %d\txMin %d\txMax %d\n",mean,xMin,xMax);
+    
+    char *meanPtr=(char*)currentChar;
+    (*meanPtr)=(char)(mean);
+    currentChar++;
+
+
+    for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
+	newVal=bifurcate(input[wordNum]-mean);
+	newVal=encodeFibonacci(newVal,&numBitsLeft);
+	while(numBitsLeft) {
+//	    if(wordNum<5) cout << wordNum << "\t" << numBitsLeft << endl;
+	    if(numBitsLeft>(8-currentBit)) {			
+		bitMask=0;
+		for(bitNum=0;bitNum<(8-currentBit);bitNum++)
+		    bitMask|=(1<<bitNum);	   
+		(*currentChar)|= (newVal&bitMask)<<currentBit;
+		newVal=(newVal>>(8-currentBit));
+		numBitsLeft-=(8-currentBit);
+		currentChar++;
+		currentBit=0;
+	    }
+	    else {			
+		bitMask=0;
+		for(bitNum=0;bitNum<numBitsLeft;bitNum++)
+		    bitMask|=(1<<bitNum);
+		(*currentChar)|= (newVal&bitMask)<<currentBit;
+		currentBit+=numBitsLeft;
+		if(currentBit==8) {
+		    currentBit=0;
+		    currentChar++;
+		}
+		numBitsLeft=0;
+	    }
+	}
+    }
+//    for(int i=0;i<int(currentChar-buffer);i++) {
+//	cout << i << "\t"  << (int)buffer[i] << endl;
+//    }
+    if(currentBit) currentChar++;
+    return (int)(currentChar-buffer);
+}
+
+CompressErrorCode_t decodePSWaveLosslessFibonacci(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr)
+{
+    int sampNum=0;
+    char *meanPtr=(char*)input;
+    short mean=(short)(*meanPtr);
+
+    unsigned char *currentChar=&input[1];
+    int currentBit=0;
+    unsigned short fibNum;
+    unsigned short unfibNum;
+    int tempBit,bitNum;
+    while(sampNum<MAX_NUMBER_SAMPLES) {
+	tempBit=currentBit;
+	int fred = *( (int*) currentChar);
+	while(tempBit<32) {
+	    if( ((fred>>tempBit)&0x1) && ((fred>>(tempBit+1))&0x1)) {
+		//Got two ones;
+		fibNum=0;
+		for(bitNum=currentBit;bitNum<=tempBit+1;bitNum++) {
+		    fibNum|= (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+		}
+		unfibNum=unfibonacci(fibNum);
+		chanPtr->data[sampNum]=mean+unbifurcate(unfibNum);
+		sampNum++;
+	
+		
+
+		tempBit+=2;
+		currentChar+=(tempBit/8);
+		currentBit=(tempBit%8);
+//		cout << tempBit << "\t" << currentChar << "\t" << currentBit << endl;
+		break;
+	    }
+//	    cout << ((fred>>tempBit)&0x1) << " ";
+	    tempBit++;
+	}
+	if(((int)(currentChar-input))>numBytes) return COMPRESS_E_BADSIZE;
+    }
+    return COMPRESS_E_OK;
+
+}
+
 int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
     //Remember this function works an array of pedestal subtracted shorts
     //Which is what SurfChannelPedSubbed_t contains
@@ -431,6 +558,8 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     int overflowBit=0;
     unsigned short newVal=0;
     int mean=(int)chanPtr->mean;
+    if(mean>127) mean=127;
+    if(mean<-127) mean=-127;
     float sigma=chanPtr->rms;
     short xMax=chanPtr->xMax; //Filled by pedestalLib
     short xMin=chanPtr->xMin; //Filled by pedestalLib   
