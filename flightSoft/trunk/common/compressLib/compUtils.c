@@ -44,6 +44,33 @@ short unbifurcate(unsigned short input)
      }
      return output;
 }
+
+unsigned char charbifurcate(char input)
+{
+     unsigned char output;
+     if (input>=0){
+	  output=(2*(unsigned char) input + 1);
+     }
+     else{
+	 input*=-1;
+	 output=(2* (unsigned char)input);
+     }
+     return output;
+}
+
+char charunbifurcate(unsigned char input)
+{
+     // note zero is not a valid input
+     char output;
+     if ((input % 2) == 1){//odd => non-negative
+	  output=((input-1)/2);
+     }
+     else{ //even => negative
+	  output=-(input/2);
+     }
+     return output;
+}
+	  
 	  
 	  
 // discard (in place) the last nbits bits of the data, shifting right

@@ -33,6 +33,8 @@ typedef enum {
 
     unsigned short bifurcate(short input);
     short unbifurcate(unsigned short input);
+    unsigned char charbifurcate(char input);
+    char charunbifurcate(unsigned char input);
     unsigned short bitpack(unsigned short bits,unsigned short nwords, 
 			   unsigned short *in, unsigned char *out);
     void bitstrip(unsigned short nbits,unsigned short nwords,unsigned short *data);
