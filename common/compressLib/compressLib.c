@@ -14,7 +14,7 @@
 #include "pedestalLib/pedestalLib.h"
 #include "compressLib/pack12bit.h"
 #include "utilLib/utilLib.h"
-	  
+#include "compressLib/mulaw.h"	  
 
 CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
 			      EncodeControlStruct_t *cntlPtr,
@@ -777,6 +777,361 @@ CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int num
     }
     return COMPRESS_E_OK;
 }   
+
+
+
+int encodePSWaveLossyMulawOptimally(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr,int mulawBits, ChannelEncodingType_t *encTypePtr) {
+  short xMax=chanPtr->xMax; //Filled by pedestalLib
+  short xMin=chanPtr->xMin; //Filled by pedestalLib
+  short rangeTotal=xMax-xMin;
+  chanPtr->mean=rangeTotal/2; //Just to be safe
+  int numBits=1;
+  while(rangeTotal>(1<<numBits)) numBits++;
+  int inputBits=numBits+1;
+  if(inputBits<6) inputBits=6;
+  if(mulawBits+2>inputBits) mulawBits=inputBits-2;
+  *encTypePtr=getEncodingTypeFromInputAndMuLawBits(inputBits,mulawBits);
+  return encodePSWaveLossyMuLaw(buffer,chanPtr,*encTypePtr);
+}
+
+int encodePSWaveLossyMuLaw(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr,ChannelEncodingType_t encType)
+{
+    //Remember this function works an array of pedestal subtracted shorts
+    //Which is what SurfChannelPedSubbed_t contains
+    int wordNum=0;
+    int numBitsLeft;
+    int bitMask;
+    int bitNum;
+    unsigned char *currentChar=buffer;
+    int currentBit=0;
+    unsigned char newVal=0;
+    int mean=(int)chanPtr->mean;
+    int inputBits=0,mulawBits=0;
+    getInputAndMuLawBits(encType,&inputBits,&mulawBits);
+    short maxVal=(1<<(inputBits-1));
+    short minVal=-1*maxVal;
+
+    //    short xMax=chanPtr->xMax; //Filled by pedestalLib
+    //    short xMin=chanPtr->xMin; //Filled by pedestalLib   
+    short *input = chanPtr->data;
+    short testVal;
+    int bitSize=mulawBits;
+
+    //    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
+    
+    char *meanPtr=(char*)currentChar;
+    (*meanPtr)=(char)(mean);
+    currentChar++;
+
+    for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
+      testVal=input[wordNum]-mean;
+      if(testVal>maxVal) testVal=maxVal;
+      if(testVal<minVal) testVal=minVal;
+      newVal=convertToMuLawUC(testVal,inputBits,mulawBits);
+      numBitsLeft=bitSize;		
+      while(numBitsLeft) {
+	if(numBitsLeft>(8-currentBit)) {			
+	  bitMask=0;
+	  for(bitNum=0;bitNum<(8-currentBit);bitNum++)
+	    bitMask|=(1<<bitNum);	   
+	  (*currentChar)|= (newVal&bitMask)<<currentBit;
+	  newVal=(newVal>>(8-currentBit));
+	  numBitsLeft-=(8-currentBit);
+	  currentChar++;
+	  currentBit=0;
+	    }
+	else {			
+	  bitMask=0;
+	  for(bitNum=0;bitNum<numBitsLeft;bitNum++)
+	    bitMask|=(1<<bitNum);
+	  (*currentChar)|= (newVal&bitMask)<<currentBit;
+	  currentBit+=numBitsLeft;
+	  if(currentBit==8) {
+	    currentBit=0;
+	    currentChar++;
+	  }
+	  numBitsLeft=0;
+	}
+      }
+    }
+    //    for(int i=0;i<int(currentChar-buffer);i++) {
+    //	cout << i << "\t"  << (int)buffer[i] << endl;
+    //    }
+    if(currentBit) currentChar++;
+    return (int)(currentChar-buffer);
+    
+    
+}
+
+
+
+CompressErrorCode_t decodePSWaveLossyMuLaw(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr,ChannelEncodingType_t encType)
+{
+    int sampNum=0;
+    char *meanPtr=(char*)input;
+    short mean=(short)(*meanPtr);
+    int inputBits=0,mulawBits=0;
+    getInputAndMuLawBits(encType,&inputBits,&mulawBits);
+    int bitSize=mulawBits;
+    int bitNum;
+
+    unsigned char *currentChar=&input[1];
+    int currentBit=0;
+    unsigned char tempNum;
+    while(sampNum<MAX_NUMBER_SAMPLES) {
+	int fred = *( (int*) currentChar);
+//	bin_prnt_int(fred);
+	tempNum=0;	    
+	for(bitNum=currentBit;bitNum<currentBit+bitSize;bitNum++) {
+	    tempNum|= (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+//	    bin_prnt_short(tempNum);
+//	    cout << (((fred>>bitNum)&0x1)<<(bitNum-currentBit));
+	}
+//	cout << endl;
+//	bin_prnt_short(tempNum);
+//	cout << sampNum << "\t" << tempNum << endl;
+
+	chanPtr->data[sampNum]=mean+convertFromMuLawUC(tempNum,inputBits,mulawBits);	
+	sampNum++;
+	currentBit+=bitSize;
+	while(currentBit>=8) {
+	    currentBit-=8;
+	    currentChar++;
+	}
+	if(((int)(currentChar-input))>numBytes) return COMPRESS_E_BADSIZE;
+    }
+    return COMPRESS_E_OK;
+
+
+}
+
+void getInputAndMuLawBits(ChannelEncodingType_t encType, int *inputPtr,
+			  int *mulawPtr) 
+{
+  switch(encType) {    
+    case ENCODE_LOSSY_MULAW_11_8:
+      *inputPtr=11;
+      *mulawPtr=8;
+      return;
+    case ENCODE_LOSSY_MULAW_11_7:
+      *inputPtr=11;
+      *mulawPtr=7;
+      return;
+    case ENCODE_LOSSY_MULAW_11_6:
+      *inputPtr=11;
+      *mulawPtr=6;
+      return;
+    case ENCODE_LOSSY_MULAW_11_5:
+      *inputPtr=11;
+      *mulawPtr=5;
+      return;
+    case ENCODE_LOSSY_MULAW_11_4:
+      *inputPtr=11;
+      *mulawPtr=4;
+      return;
+    case ENCODE_LOSSY_MULAW_11_3:
+      *inputPtr=11;
+      *mulawPtr=3;
+      return;
+    case ENCODE_LOSSY_MULAW_10_8:
+      *inputPtr=10;
+      *mulawPtr=8;
+      return;
+    case ENCODE_LOSSY_MULAW_10_7:
+      *inputPtr=10;
+      *mulawPtr=7;
+      return;
+    case ENCODE_LOSSY_MULAW_10_6:
+      *inputPtr=10;
+      *mulawPtr=6;
+      return;
+    case ENCODE_LOSSY_MULAW_10_5:
+      *inputPtr=10;
+      *mulawPtr=5;
+      return;
+    case ENCODE_LOSSY_MULAW_10_4:
+      *inputPtr=10;
+      *mulawPtr=4;
+      return;
+    case ENCODE_LOSSY_MULAW_10_3:
+      *inputPtr=10;
+      *mulawPtr=3;
+      return;
+    case ENCODE_LOSSY_MULAW_9_7:
+      *inputPtr=9;
+      *mulawPtr=7;
+      return;
+    case ENCODE_LOSSY_MULAW_9_6:
+      *inputPtr=9;
+      *mulawPtr=6;
+      return;
+    case ENCODE_LOSSY_MULAW_9_5:
+      *inputPtr=9;
+      *mulawPtr=5;
+      return;
+    case ENCODE_LOSSY_MULAW_9_4:
+      *inputPtr=9;
+      *mulawPtr=4;
+      return;
+    case ENCODE_LOSSY_MULAW_9_3:
+      *inputPtr=9;
+      *mulawPtr=3;
+      return;
+    case ENCODE_LOSSY_MULAW_8_6:
+      *inputPtr=8;
+      *mulawPtr=6;
+      return;
+    case ENCODE_LOSSY_MULAW_8_5:
+      *inputPtr=8;
+      *mulawPtr=5;
+      return;
+    case ENCODE_LOSSY_MULAW_8_4:
+      *inputPtr=8;
+      *mulawPtr=4;
+      return;
+    case ENCODE_LOSSY_MULAW_8_3:
+      *inputPtr=8;
+      *mulawPtr=3;
+      return;
+    case ENCODE_LOSSY_MULAW_7_5:
+      *inputPtr=7;
+      *mulawPtr=5;
+      return;
+    case ENCODE_LOSSY_MULAW_7_4:
+      *inputPtr=7;
+      *mulawPtr=4;
+      return;
+    case ENCODE_LOSSY_MULAW_7_3:
+      *inputPtr=7;
+      *mulawPtr=3;
+      return;
+    case ENCODE_LOSSY_MULAW_6_4:
+      *inputPtr=6;
+      *mulawPtr=4;
+      return;
+  case ENCODE_LOSSY_MULAW_6_3:
+      *inputPtr=6;
+      *mulawPtr=3;
+      return;
+  default:
+      *inputPtr=11;
+      *mulawPtr=8;
+      return;
+  }
+  *inputPtr=11;
+  *mulawPtr=11;
+  return;
+      
+}
+
+ChannelEncodingType_t getEncodingTypeFromInputAndMuLawBits(int inputBits,
+							     int mulawBits)
+{
+  switch (inputBits) {
+  case 11:
+    switch (mulawBits) {
+    case 8:
+      return ENCODE_LOSSY_MULAW_11_8;
+    case 7:
+      return ENCODE_LOSSY_MULAW_11_7;
+    case 6:
+      return ENCODE_LOSSY_MULAW_11_6;
+    case 5:
+      return ENCODE_LOSSY_MULAW_11_5;
+    case 4:
+      return ENCODE_LOSSY_MULAW_11_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_11_3;
+    default:
+      return ENCODE_LOSSY_MULAW_11_8;
+    }
+  case 10:
+    switch (mulawBits) {
+    case 8:
+      return ENCODE_LOSSY_MULAW_10_8;
+    case 7:
+      return ENCODE_LOSSY_MULAW_10_7;
+    case 6:
+      return ENCODE_LOSSY_MULAW_10_6;
+    case 5:
+      return ENCODE_LOSSY_MULAW_10_5;
+    case 4:
+      return ENCODE_LOSSY_MULAW_10_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_10_3;
+    default:
+      return ENCODE_LOSSY_MULAW_10_8;
+    }
+  case 9:
+    switch (mulawBits) {
+    case 7:
+      return ENCODE_LOSSY_MULAW_9_7;
+    case 6:
+      return ENCODE_LOSSY_MULAW_9_6;
+    case 5:
+      return ENCODE_LOSSY_MULAW_9_5;
+    case 4:
+      return ENCODE_LOSSY_MULAW_9_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_9_3;
+    default:
+      return ENCODE_LOSSY_MULAW_9_7;
+    }
+  case 8:
+    switch (mulawBits) {
+    case 6:
+      return ENCODE_LOSSY_MULAW_8_6;
+    case 5:
+      return ENCODE_LOSSY_MULAW_8_5;
+    case 4:
+      return ENCODE_LOSSY_MULAW_8_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_8_3;
+    default:
+      return ENCODE_LOSSY_MULAW_8_6;
+    }
+  case 7:
+    switch (mulawBits) {
+    case 5:
+      return ENCODE_LOSSY_MULAW_7_5;
+    case 4:
+      return ENCODE_LOSSY_MULAW_7_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_7_3;
+    default:
+      return ENCODE_LOSSY_MULAW_7_5;
+    }
+  case 6:
+    switch (mulawBits) {
+    case 4:
+      return ENCODE_LOSSY_MULAW_6_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_6_3;
+    default:
+      return ENCODE_LOSSY_MULAW_6_4;
+    }
+  default:
+    switch (mulawBits) {
+    case 8:
+      return ENCODE_LOSSY_MULAW_11_8;
+    case 7:
+      return ENCODE_LOSSY_MULAW_11_7;
+    case 6:
+      return ENCODE_LOSSY_MULAW_11_6;
+    case 5:
+      return ENCODE_LOSSY_MULAW_11_5;
+    case 4:
+      return ENCODE_LOSSY_MULAW_11_4;
+    case 3:
+      return ENCODE_LOSSY_MULAW_11_3;
+    default:
+      return ENCODE_LOSSY_MULAW_11_8;
+    }
+  }
+  return ENCODE_NONE;
+}
+
+
 
 unsigned short simpleCrcShort(unsigned short *p, unsigned long n)
 {
