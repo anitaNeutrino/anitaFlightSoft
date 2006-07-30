@@ -99,6 +99,18 @@ typedef enum {
     CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
 
 
+  int encodePSWaveLossyMulawOptimally(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr,int mulawBits, ChannelEncodingType_t *encTypePtr);
+  int encodePSWaveLossyMuLaw(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr,ChannelEncodingType_t encType);
+  CompressErrorCode_t decodePSWaveLossyMuLaw(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr,ChannelEncodingType_t encType);
+
+
+
+  void getInputAndMuLawBits(ChannelEncodingType_t encType, int *inputPtr,
+			    int *mulawPtr) ;
+  
+  
+  ChannelEncodingType_t getEncodingTypeFromInputAndMuLawBits(int inputBits,
+							     int mulawBits);
 #ifdef __cplusplus
 }
 #endif
