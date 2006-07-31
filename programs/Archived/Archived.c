@@ -19,6 +19,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "compressLib/compressLib.h"
+#include "pedestalLib/pedestalLib.h"
 
 #include "anitaStructures.h"
 #include "anitaFlight.h"
@@ -48,6 +49,7 @@ int useBackupDisk=1;
 //Event Structures
 AnitaEventHeader_t theHead;
 AnitaEventBody_t theBody;
+PedSubbedEventBody_t pedSubBody;
 
 //Encoding Buffer
 unsigned char outputBuffer[MAX_WAVE_BUFFER];
@@ -72,8 +74,6 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
  
-    fibonacci(10);
-   	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
@@ -239,51 +239,57 @@ void processEvent()
 {
 
     CompressErrorCode_t retVal;
-    EncodeControlStruct_t encCntl;
+    EncodeControlStruct_t diskEncCntl;
+    EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-	    encCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
+	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
+	    telemEncCntl.encTypes[surf][chan]= ENCODE_NONE;
 	}
     }
 
-    //Which Ped file??
+//Steps
+    //1) PedestalSubtract (and shift to 11bits)
+    //2) Pack Event For On Board Storage
+    //3) Pack Event For Telemetry
 
-    retVal=packEvent(&theBody,&encCntl,outputBuffer,&numBytes);
+    //1) PedestalSubtract (and shift to 11bits)
+    subtractCurrentPeds(&theBody,&pedSubBody);
+
+    //2) Pack Event For On Board Storage
+    //Now depending on which option is selected we may either write out pedSubbed or not pedSubbed events to the hard disk (or just AnitaEventBody_t structs)
+    retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
     if(retVal==COMPRESS_E_OK)
-	writeOutput(numBytes);
+	writeOutputToDisk(numBytes);
     else {
 	syslog(LOG_ERR,"Error compressing event %lu\n",theBody.eventNumber);
 	fprintf(stderr,"Error compressing event %lu\n",theBody.eventNumber);
     }
 
+    //3) Pack Event For Telemetry
+    //Again we have a range of options for event telemetry
+    //For now we'll just hard code it to something and see how that goes
+    retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
+    if(retVal==COMPRESS_E_OK)
+	writeOutputForTelem(numBytes);
+    else {
+	syslog(LOG_ERR,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
+	fprintf(stderr,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
+    }
+    
     
 
 }
 
 
 
-void writeOutput(int numBytes) {
-#ifdef SPEED_UP_LOSD
-    char headName[FILENAME_MAX];
-    char bodyName[FILENAME_MAX];
-#else
-    char linkName[FILENAME_MAX];
-#endif
-    
-//    char realHeadName[FILENAME_MAX];
-//    char realBodyName[FILENAME_MAX];
-//    char realBackupHeadName[FILENAME_MAX];
-//    char realBackupBodyName[FILENAME_MAX];    
+void writeOutputToDisk(int numBytes) {
+   
     char mainDiskDir[FILENAME_MAX];
     char backupDiskDir[FILENAME_MAX];
     
     int len,retVal;
-//    FILE *fpNorm;
-//    gzFile fpZip;
-    int pri=theHead.priority&0xf;
-   
-    if(pri>9) pri=9;
 
     //Get real disk names for index and telem
     if ((len = readlink(MAIN_DATA_DISK_LINK, mainDiskDir, FILENAME_MAX-1)) != -1)
@@ -295,6 +301,11 @@ void writeOutput(int numBytes) {
 //    fprintf(stderr,"%d %d\n",strlen(MAIN_DATA_DISK_LINK),strlen(BACKUP_DATA_DISK_LINK));
 
     retVal=cleverEncEventWrite((char*)outputBuffer,numBytes,&theHead,&eventWriter);
+    if(printToScreen && verbosity>1) {
+	printf("Event %lu, (%d bytes)  %s \t%s\n",theHead.eventNumber,
+	       numBytes,eventWriter.currentEventFileName,
+	       eventWriter.currentHeaderFileName);
+    }
     
     if(!fpIndex) {
 //	fprintf(stderr,"%s\n",EVENT_LINK_INDEX);
@@ -312,8 +323,16 @@ void writeOutput(int numBytes) {
     fflush(fpIndex);
 
 
-    //Need to think about this maybe we should take a hundred events and then write the file
-#ifdef SPEED_UP_LOSD
+}
+
+void writeOutputForTelem(int numBytes) {
+    int retVal;
+    char headName[FILENAME_MAX];
+    char bodyName[FILENAME_MAX];
+    int pri=theHead.priority&0xf;
+   
+    if(pri>9) pri=9;
+
     sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
     sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
     retVal=normalSingleWrite((char*)outputBuffer,bodyName,numBytes);
@@ -325,20 +344,6 @@ void writeOutput(int numBytes) {
 	makeLink(headName,eventTelemLinkDirs[pri]);
     }
 
-#else
-    
-    sprintf(linkName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-    symlink(eventWriter.currentEventFileName,linkName);
-//    printf("%s %s\n",eventWriter.currentEventFileName,linkName);
-    sprintf(linkName,"%s/hd_%lu.dat",eventTelemLinkDirs[pri],theHead.eventNumber);
-    symlink(eventWriter.currentHeaderFileName,linkName);
-#endif
-
-
-//    makeLink(eventWriter.currentEventFileName,eventTelemDirs[pri]);
-//    makeLink(eventWriter.currentHeaderFileName,eventTelemLinkDirs[pri]);
-//    makeLink(realBodyName,eventTelemDirs[pri]);
-//    makeLink(realHeadName,eventTelemLinkDirs[pri]);
  
 }
 
