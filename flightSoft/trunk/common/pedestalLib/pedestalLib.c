@@ -72,32 +72,39 @@ void addEventToPedestals(AnitaEventBody_t *bdPtr)
 }
 
 void resetPedCalc() {
+    resetPedCalcWithTime(time(NULL));
+}
+
+
+void resetPedCalcWithTime(unsigned long unixTime) {
     memset(&thePeds,0,sizeof(PedCalcStruct_t));
-    thePeds.unixTimeStart=time(NULL);
+    thePeds.unixTimeStart=unixTime;
 }
 
 
 void writePedestals() {
+    writePedestalsWithTime(time(NULL));
+}
+
+void writePedestalsWithTime(unsigned long unixTime) {
     PedestalStruct_t usefulPeds;
     FullLabChipPedStruct_t labPeds;
     char filename[FILENAME_MAX];
 //    char linkname[FILENAME_MAX];
-    time_t rawtime;
     int surf,chip,chan,samp;
     float tempFloat;
     unsigned long avgSamples=0;
 //    unsigned short tempShort;
 //    unsigned char tempChar;
     
-    time(&rawtime);
-    thePeds.unixTimeEnd=rawtime;
-    usefulPeds.unixTime=rawtime;
+    thePeds.unixTimeEnd=unixTime;
+    usefulPeds.unixTime=unixTime;
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chip=0;chip<LABRADORS_PER_SURF;chip++) {
 	    memset(&labPeds,0,sizeof(FullLabChipPedStruct_t));	   
 	    labPeds.unixTimeStart=thePeds.unixTimeStart;
-	    labPeds.unixTimeEnd=rawtime;
+	    labPeds.unixTimeEnd=unixTime;
 	    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 		labPeds.pedChan[chan].chipId=chip;
 		labPeds.pedChan[chan].chanId=GetChanIndex(surf,chan);

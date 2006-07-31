@@ -14,7 +14,9 @@
 //Pedestal calculation routines
 void addEventToPedestals(AnitaEventBody_t *bdPtr);
 void resetPedCalc();
+void resetPedCalcWithTime(unsigned long unixTime);
 void writePedestals();
+void writePedestalsWithTime(unsigned long unixTime);
 
 //Pedestal subtraction routines
 int subtractCurrentPeds(AnitaEventBody_t *rawBdPtr,

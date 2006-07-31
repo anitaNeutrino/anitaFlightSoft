@@ -14,6 +14,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "pedestalLib/pedestalLib.h"
 
 extern  int versionsort(const void *a, const void *b);
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist);
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
     int usleepNum=(int)((float)1000000)/((float)EVENT_RATE);
 //    GenericHeader_t *gHdr;
     char *tempString;
-
+    int eventCount=0;
 
     /* Config file thingies */
     int status=0;
@@ -118,8 +119,12 @@ int main(int argc, char** argv) {
 		}
 		
 		
-		writeAndMakeLink(&theHeader,&theBody);
-		usleep(usleepNum);
+//		writeAndMakeLink(&theHeader,&theBody);
+//		usleep(usleepNum);
+		if(eventCount==0)
+		    resetPedCalc(theHeader.unixTime);
+		addEventToPedestals(&theBody);
+		eventCount++;
 		if(theHeader.eventNumber%100==99) break;
 		
 	    }
@@ -128,6 +133,9 @@ int main(int argc, char** argv) {
 //	    if(count2!=EVENTS_PER_FILE) break;       
 	}
     }
+    if(eventCount);
+    writePedestalsWithTime(theHeader.unixTime);
+    
     return 0;
 }
 
@@ -182,33 +190,6 @@ int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist)
 //     for(count=0;count<n;count++)  
 // 	printf("%s\n",(*namelist)[count]->d_name); 
     return n;	    
-}
-
-
-int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBodyPtr)
-{
-    char theFilename[FILENAME_MAX];
-    int retVal;
-//    FILE *testfp;
-    
-    /* Write ev_ file first */
-    sprintf(theFilename,"%s/ev_%ld.dat",ACQD_EVENT_DIR,
-	    theHeaderPtr->eventNumber);
-    retVal=writeBody(theBodyPtr,theFilename);
-    
-
-    /* Should probably do something with retVal */
-       
-    sprintf(theFilename,"%s/hd_%ld.dat",EVENTD_EVENT_DIR,
-	    theHeaderPtr->eventNumber);
-    if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
-    retVal=writeHeader(theHeaderPtr,theFilename);
-
-    /* Make links, not sure what to do with return value here */
-    retVal=makeLink(theFilename,EVENTD_EVENT_LINK_DIR);
-    
-    
-    return retVal;
 }
 
 
