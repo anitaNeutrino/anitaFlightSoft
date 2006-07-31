@@ -353,9 +353,12 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
     //Don't actual use min we just use the median value
 
     int rangeTotal=xMax-xMin;
-    int bitSize=ceil(log2f((float)rangeTotal));
+    float logValue=(float)(log(rangeTotal)/log(2));
+    int bitSize=(int)logValue;
+    if((logValue-bitSize)>0.5) bitSize++;
+    
     mean=xMin+rangeTotal/2;
-    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
+//    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
     
     char *meanPtr=(char*)currentChar;
     (*meanPtr)=(char)(mean);
@@ -565,7 +568,9 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     short xMin=chanPtr->xMin; //Filled by pedestalLib   
     short *input = chanPtr->data;
     int rangeTotal=(int)(numSigma*sigma);
-    int bitSize=ceil(log2f((float)rangeTotal));
+    float logValue=(float)(log(rangeTotal)/log(2));
+    int bitSize=(int)logValue;
+    if((logValue-bitSize)>0.5) bitSize++;
 
     //Reset xMin and xMax to be the binary/fibonacci cut off point
     xMin=mean-(1<<(bitSize-1));
