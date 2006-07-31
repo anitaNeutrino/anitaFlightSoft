@@ -11,7 +11,8 @@
 
 #define MAX_EVENTS_PER_DIR 1000
 
-void writeOutput(int numBytes);
+void writeOutputToDisk(int numBytes);
+void writeOutputForTelem(int numBytes);
 void processEvent();
 void checkEvents();
 int readConfigFile();
