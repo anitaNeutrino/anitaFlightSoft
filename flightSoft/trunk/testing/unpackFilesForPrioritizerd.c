@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
 		retVal=fillBodyFromFile(&theBody,inputEvent);
 		if(retVal!=0 ||
 		   numBytesHead!=sizeof(AnitaEventHeader_t)) break;
-		printf("Got Event %lu\n",theHeader.eventNumber);
+		printf("Got Event %lu\t%lu\n",theHeader.eventNumber,theBody.eventNumber);
 		if(0) {
 		    printf("channel[0].header.chanId = %d\n",theBody.channel[0].header.chanId);
 		    printf("channel[1].header.chanId = %d\n",theBody.channel[1].header.chanId);
