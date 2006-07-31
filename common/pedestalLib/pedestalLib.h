@@ -52,6 +52,7 @@ int loadCurrentPeds();
 int loadThesePeds(unsigned long whichPeds);
 int loadPedsFromFile(char *filename);
 
-
+void dumpPeds();
+void dumpThesePeds(PedestalStruct_t *pedStruct);
 
 #endif //PEDESTALLIB_H

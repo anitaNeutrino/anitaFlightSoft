@@ -103,9 +103,8 @@
 #define EVENT_FILES_PER_DIR 100
 
 //Pedestal Dirs
-#define PEDESTAL_DIR "/mnt/data/anita/acqd/pedestal"
-#define CURRENT_PEDESTALS "/mnt/data/anita/acqd/pedestal/current"
-
+#define PEDESTAL_DIR "/tmp/mnt/data/anita/pedestal"
+#define CURRENT_PEDESTALS "/tmp/mnt/data/anita/pedestal/current"
 
 
 //Housekeeping Telem Dirs
