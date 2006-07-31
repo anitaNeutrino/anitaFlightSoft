@@ -194,7 +194,7 @@ int readConfigFile()
     
     return status;
 }
-
+ 
 void checkEvents() 
 {
     int count,retVal;
@@ -245,7 +245,7 @@ void processEvent()
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
-	    telemEncCntl.encTypes[surf][chan]= ENCODE_NONE;
+	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_BINFIB_COMBO;
 	}
     }
 
@@ -254,7 +254,7 @@ void processEvent()
     //2) Pack Event For On Board Storage
     //3) Pack Event For Telemetry
 
-    //1) PedestalSubtract (and shift to 11bits)
+    //1) PedestalSubtract (and shift to 11bits) 
     subtractCurrentPeds(&theBody,&pedSubBody);
 
     //2) Pack Event For On Board Storage
