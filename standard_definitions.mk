@@ -9,7 +9,7 @@ ANITA_BIN_DIR=${ANITA_FLIGHT_SOFT_DIR}/bin
 ObjSuf	      = o
 SrcSuf        = c
 ExeSuf        =
-OPT           = -O2 -Wall -g -std=c99 # --debug --pedantic-errors
+OPT           = -O2 -Wall -g # --debug --pedantic-errors
 
 NOOPT         =
 EXCEPTION     = 
