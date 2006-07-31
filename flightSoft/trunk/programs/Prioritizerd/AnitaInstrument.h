@@ -1,0 +1,57 @@
+#ifndef ANITAINSTRUMENT_H
+#define ANITAINSTRUMENT_H
+#include <anitaStructures.h>
+#include <anitaFlight.h>
+
+typedef struct{
+     TransientChannel3_t* topRing[16][2];
+     TransientChannel3_t* botRing[16][2];
+     TransientChannel3_t* bicone[4];
+     TransientChannel3_t* discone[4];
+} AnitaInstrument3_t; //use pointers to contents of an anita transient body;
+
+typedef struct{
+     LogicChannel_t topRing[16][2];
+     LogicChannel_t botRing[16][2];
+     LogicChannel_t bicone[4];
+     LogicChannel_t discone[4];
+} AnitaChannelDiscriminator_t;
+
+typedef struct{
+     LogicChannel_t topRing[16];
+     LogicChannel_t botRing[16];
+     LogicChannel_t bicone;
+     LogicChannel_t discone;
+} AnitaSectorLogic_t;
+
+extern int topRingIndex[16][2];
+extern int botRingIndex[16][2];
+extern int biconeIndex[4];
+extern int disconeIndex[4];
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+     void BuildInstrument3(AnitaTransientBody3_t  *surfData,
+			   AnitaInstrument3_t  *antennaData);
+
+     void DiscriminateChannels(AnitaInstrument3_t *theData,
+			       AnitaChannelDiscriminator_t *theDisc,
+			       int ringthresh,int ringwidth,
+			       int conethresh,int conewidth);
+
+     int RMS(TransientChannel3_t *in);
+
+     void Discriminate(TransientChannel3_t *in,LogicChannel_t *out,
+		       int threshold, int width);
+
+     void FormSectorMajority(AnitaChannelDiscriminator_t *in,
+			     AnitaSectorLogic_t *out,
+			     int sectorWidth);
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* ANITAINSTRUMENT_H */
