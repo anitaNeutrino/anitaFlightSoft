@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <zlib.h>
 #include <fcntl.h>
-//#define NO_ZLIB
+#define NO_ZLIB
 
 //#define OPEN_CLOSE_ALL_THE_TIME
 
@@ -575,7 +575,7 @@ int zippedSingleWrite(char *buffer, char *filename, int numBytes)
 {
     static int errorCounter=0;
    int numObjs;    
-   gzFile outfile = gzopen (filename, "wb5");  
+   gzFile outfile = gzopen (filename, "wb");  
    if(outfile == NULL) { 
        if(errorCounter<100) {
 	   syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);

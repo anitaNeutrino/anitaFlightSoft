@@ -264,6 +264,25 @@ typedef struct {
     unsigned short crc;
 } EncodedSurfChannelHeader_t;
 
+typedef struct {
+    unsigned char chanId;   // chan+9*surf
+    unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
+    unsigned char firstHitbus;
+    unsigned char lastHitbus;
+    float mean; //Filled by Prioritizerd
+    float rms; //Filled by Prioritizerd
+
+} SlacRawSurfChannelHeader_t;
+
+typedef struct {
+    SlacRawSurfChannelHeader_t rawHdr;
+    ChannelEncodingType_t encType;
+    unsigned short numBytes;
+    unsigned short crc;
+} SlacEncodedSurfChannelHeader_t;
+
+
+
 
 typedef struct {
     RawSurfChannelHeader_t header;
@@ -595,9 +614,9 @@ typedef struct {
     unsigned long unixTimeStart;
     unsigned long unixTimeEnd;
     unsigned short chipEntries[ACTIVE_SURFS][LABRADORS_PER_SURF];
-    int mean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-    int meanSq[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-    int entries[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    unsigned long mean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    unsigned long meanSq[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    unsigned long entries[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
     float fmean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
     float frms[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 } PedCalcStruct_t;

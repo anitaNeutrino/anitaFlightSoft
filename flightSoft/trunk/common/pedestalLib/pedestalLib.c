@@ -34,7 +34,7 @@ void addEventToPedestals(AnitaEventBody_t *bdPtr)
 {
     int labChip=0,surf,chan,samp;
     int word;
-	
+//    printf("RJN -- Event %lu\n",bdPtr->eventNumber);
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    int chanIndex=GetChanIndex(surf,chan);		
@@ -42,9 +42,12 @@ void addEventToPedestals(AnitaEventBody_t *bdPtr)
 	    if(chan==0) {
 		thePeds.chipEntries[surf][labChip]++;
 	    }
-//		cout << surf << "\t" << chan << "\t" << chanIndex
-//		     << "\t" << theBody.channel[chanIndex].header.chipIdFlag
-//		     << endl;
+//	    fprintf(stderr,"RJN -- %d %d %d --- %d %d %d %d\n",surf, chan,chanIndex,
+//		    bdPtr->channel[chanIndex].header.chanId,
+//		    bdPtr->channel[chanIndex].header.chipIdFlag,
+//		    bdPtr->channel[chanIndex].header.firstHitbus,
+//		    bdPtr->channel[chanIndex].header.lastHitbus
+//		    );
 
 	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
 		word=bdPtr->channel[chanIndex].data[samp];
@@ -77,6 +80,8 @@ void resetPedCalc() {
 
 
 void resetPedCalcWithTime(unsigned long unixTime) {
+    makeDirectories(HEADER_TELEM_LINK_DIR);
+    makeDirectories(PEDESTAL_DIR);
     memset(&thePeds,0,sizeof(PedCalcStruct_t));
     thePeds.unixTimeStart=unixTime;
 }
@@ -111,15 +116,23 @@ void writePedestalsWithTime(unsigned long unixTime) {
 		labPeds.pedChan[chan].chipEntries=thePeds.chipEntries[surf][chip];
 		for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
 		    avgSamples+=thePeds.entries[surf][chip][chan][samp];
-		    if(thePeds.entries[surf][chip][chan][samp]) {
+/* 		    printf("%d %d %d %d -- %lu %lu %lu\n",surf,chip,chan,samp, */
+/* 			   thePeds.entries[surf][chip][chan][samp], */
+/* 			   thePeds.mean[surf][chip][chan][samp], */
+/* 			   thePeds.meanSq[surf][chip][chan][samp]); */
+			   
+		    if(thePeds.entries[surf][chip][chan][samp]>1) {
 			tempFloat=
 			    ((float)thePeds.mean[surf][chip][chan][samp])/
 			    ((float)thePeds.entries[surf][chip][chan][samp]);
 			    
 			thePeds.fmean[surf][chip][chan][samp]=tempFloat;
 						
-			tempFloat=roundf(thePeds.fmean[surf][chip][chan][samp]);
-
+			tempFloat=(int)(thePeds.fmean[surf][chip][chan][samp]);
+			if((thePeds.fmean[surf][chip][chan][samp]-tempFloat)>=
+			   0.5) tempFloat++;
+			
+			
 			//Set pedestals
 			if(tempFloat>65535) tempFloat=65535;
 			if(tempFloat<0) tempFloat=0;
@@ -127,7 +140,13 @@ void writePedestalsWithTime(unsigned long unixTime) {
 			    (unsigned short) tempFloat;
 			usefulPeds.thePeds[surf][chip][chan][samp]=
 			    (unsigned short) tempFloat;
-			    
+			
+/* 			printf("%lu\t%f\t%d\t%d\n", */
+/* 			       thePeds.mean[surf][chip][chan][samp], */
+/* 			       thePeds.fmean[surf][chip][chan][samp], */
+/* 			       labPeds.pedChan[chan].pedMean[samp], */
+/* 			       usefulPeds.thePeds[surf][chip][chan][samp]); */
+			       
 			
 			//Calculate RMS
 			tempFloat=
@@ -139,13 +158,15 @@ void writePedestalsWithTime(unsigned long unixTime) {
 			     thePeds.fmean[surf][chip][chan][samp]);
 			if(tempFloat) {
 			    thePeds.frms[surf][chip][chan][samp]=tempFloat;
-			    tempFloat=roundf(10.*tempFloat);
-			    if(tempFloat>255) tempFloat=255;
-			    if(tempFloat<0) tempFloat=0;
+			    tempFloat*=10;
+			    int tempNum=(int)tempFloat;
+			    if((tempFloat-tempNum)>=0.5)tempNum++;
+			    if(tempNum>255) tempNum=255;
+			    if(tempNum<0) tempNum=0;
 			    labPeds.pedChan[chan].pedRMS[samp]=
-				(unsigned char) tempFloat;
+				(unsigned char) tempNum;
 			    usefulPeds.pedsRMS[surf][chip][chan][samp]=
-				(unsigned char) tempFloat;
+				(unsigned char) tempNum;
 			}
 			else {
 			    labPeds.pedChan[chan].pedRMS[samp]=0;
@@ -162,6 +183,7 @@ void writePedestalsWithTime(unsigned long unixTime) {
 	    //Now write lab files
 	    fillGenericHeader(&labPeds,PACKET_LAB_PED,sizeof(FullLabChipPedStruct_t));
 	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
+//	    printf("Writing lab pedestalFile: %s\n",filename);
 	    writeLabChipPedStruct(&labPeds,filename);
 
 	    //And for telemetery
@@ -181,6 +203,7 @@ void writePedestalsWithTime(unsigned long unixTime) {
     writePedCalcStruct(&thePeds,filename);
 
     //Now write full ped file
+//    dumpThesePeds(&usefulPeds);
     sprintf(filename,"%s/peds_%lu.dat",PEDESTAL_DIR,usefulPeds.unixTime);
     writeUsefulPedStruct(&usefulPeds,filename);
 
@@ -230,7 +253,7 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
     int chanIndex=0;
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	for(chan=0;chan<ACTIVE_SURFS;chan++) {
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    chanIndex=GetChanIndex(surf,chan);
 	    pedSubBdPtr->channel[chanIndex].xMax=-4095;
 	    pedSubBdPtr->channel[chanIndex].xMin=4095;
@@ -312,7 +335,7 @@ int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
     int chanIndex=0;
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	for(chan=0;chan<ACTIVE_SURFS;chan++) {
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    chanIndex=GetChanIndex(surf,chan);
 	    rawBdPtr->channel[chanIndex].header=
 		pedSubBdPtr->channel[chanIndex].header;
@@ -387,20 +410,22 @@ int loadPedsFromFile(char *filename) {
     int retVal;
 
     retVal=fillUsefulPedStruct(&currentPeds,filename);
-    if(!retVal) {
+    if(retVal) {
 	//Can't load pedestals
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Can't load current pedestals defaulting to %d\n",
+	    syslog(LOG_ERR,"Can't load (retVal %d) pedestals from %s defaulting to %d\n",
+		   retVal,filename,
 		   PED_DEFAULT_VALUE);
-	    fprintf(stderr,"Can't load current pedestals defaulting to %d\n",
+	    fprintf(stderr,"Can't load (retVal %d) pedestals from %s defaulting to %d\n",
+		    retVal,filename,
 		    PED_DEFAULT_VALUE);
 	    errorCounter++;
 	}
 	currentPeds.unixTime=PED_DEFAULT_VALUE;
 	currentPeds.nsamples=0;
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	    for(chip=0;chip<ACTIVE_SURFS;chip++) {
-		for(chan=0;chan<ACTIVE_SURFS;chan++) {
+	    for(chip=0;chip<LABRADORS_PER_SURF;chip++) {
+		for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 		    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
 			currentPeds.thePeds[surf][chip][chan][samp]=PED_DEFAULT_VALUE;
 			currentPeds.pedsRMS[surf][chip][chan][samp]=0;
@@ -414,5 +439,38 @@ int loadPedsFromFile(char *filename) {
        
 }
 
+void dumpPeds() {
+    if(!currentPeds.unixTime) 
+	loadCurrentPeds();
+    int surf,chip,chan,samp;
+    printf("SURF\tCHIP\tCHAN\tSAMP:\t\tPed\tRMS(x10)\n");
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chip=0;chip<LABRADORS_PER_SURF;chip++) {
+	    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+		for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
+		        printf("%d\t%d\t%d\t%d:\t\t%d\t%d\n",
+			       surf,chip,chan,samp,
+			       currentPeds.thePeds[surf][chip][chan][samp],
+			       currentPeds.pedsRMS[surf][chip][chan][samp]);
+		}
+	    }
+	}
+    }
+}
 
-
+void dumpThesePeds(PedestalStruct_t *pedStruct) {
+    int surf,chip,chan,samp;
+    printf("SURF\tCHIP\tCHAN\tSAMP:\t\tPed\tRMS(x10)\n");
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chip=0;chip<LABRADORS_PER_SURF;chip++) {
+	    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+		for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
+		        printf("%d\t%d\t%d\t%d:\t\t%d\t%d\n",
+			       surf,chip,chan,samp,
+			       pedStruct->thePeds[surf][chip][chan][samp],
+			       pedStruct->pedsRMS[surf][chip][chan][samp]);
+		}
+	    }
+	}
+    }
+}
