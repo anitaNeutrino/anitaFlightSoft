@@ -15,8 +15,8 @@ channel.
 There is another file for antenna level. The order is:
 
 Seaveys in antenna number order
-discones in phi order
-bicones in phi order
+discones in numerical order
+bicones in numerical order
 
 the columns are as follows:
 
