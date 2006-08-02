@@ -9,6 +9,9 @@
 #ifndef PEDESTALLIB_H
 #define PEDESTALLIB_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "anitaStructures.h"
 
 //Pedestal calculation routines
@@ -55,4 +58,7 @@ int loadPedsFromFile(char *filename);
 void dumpPeds();
 void dumpThesePeds(PedestalStruct_t *pedStruct);
 
+#ifdef __cplusplus
+}
+#endif
 #endif //PEDESTALLIB_H
