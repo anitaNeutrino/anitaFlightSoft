@@ -297,6 +297,7 @@ static int kvpGetBase (
 
    valString = kvpGetString (key) ;
    if (valString != NULL) {
+//       printf("valString %s\n",valString);
       kValue = strtol (valString, &endPtr, radix) ;
       if (valString != endPtr) {
          value = kValue ;
@@ -1059,6 +1060,45 @@ double kvpGetDouble (
    valString = kvpGetString (key) ;
    if (valString != NULL) {
       kValue = strtod (valString, &endPtr) ;
+      if (valString != endPtr) {
+         value = kValue ;
+         lastError = KVP_E_OK ;
+      }
+      else {
+         lastError = KVP_E_BADVALUE ;
+      }
+   }
+   else {
+      lastError = KVP_E_NOTFOUND ;
+   }
+   return (value) ;
+}
+
+
+/********************************************************************
+*
+* kvpGetUnsignedInt - Get value associated with key as an unsigned int
+*
+* <Insert longer description here>
+*
+* RETURNS: value if found else the defauly value given.
+*
+*/
+unsigned int kvpGetUnsignedInt (
+    const char* key,
+    unsigned int defaultValue
+    )
+{
+   unsigned int value ;
+   unsigned int kValue ;
+   char* valString ;
+   char* endPtr ;
+
+   value = defaultValue ;
+
+   valString = kvpGetString (key) ;
+   if (valString != NULL) {
+      kValue = strtoul (valString, &endPtr,0) ;
       if (valString != endPtr) {
          value = kValue ;
          lastError = KVP_E_OK ;

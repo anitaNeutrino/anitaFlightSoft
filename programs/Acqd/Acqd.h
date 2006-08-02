@@ -38,6 +38,9 @@
 
 #define GetUpper16(A) (((A)&UPPER16)>>16)
 #define GetLower16(A) ((A)&LOWER16)
+#define GetHitBus(A) (((A)&HITBUS)>>12)
+#define GetStartBit(A) (((A)&START_B)>>14)
+#define GetStopBit(A) (((A)&STOP_B)>>15)
 
 //Constants
 #define N_SAMP 260
@@ -124,6 +127,8 @@ void calculateStatistics();
 int getEventNumber();
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles);
+AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
+AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles);
 AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles);
 AcqdErrorCode_t readTurfEventData(PlxHandle_t turfioHandle);
 //PlxReturnCode_t setTurfTriggerMode(PlxHandle_t turfioHandle, TriggerMode_t trigMode);
@@ -136,7 +141,6 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles, unsigned short threshold);
 int updateThresholdsUsingPID();
 int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);
-AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles);
 void makeSubAltDir();
 //int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
 void prepWriterStructs();
