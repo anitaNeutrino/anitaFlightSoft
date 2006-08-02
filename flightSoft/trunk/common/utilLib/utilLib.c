@@ -902,8 +902,6 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 }
 
 
-
-
 int readEncodedEventFromFile(char *buffer, char *filename,
 			     unsigned long eventNumber) 
 {

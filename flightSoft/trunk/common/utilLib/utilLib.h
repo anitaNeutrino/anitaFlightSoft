@@ -9,6 +9,11 @@
 #ifndef UTILLIB_H
 #define UTILLIB_H
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Includes */
 #include <dirent.h>
 #include "anitaStructures.h"
@@ -82,6 +87,8 @@ int fillCommand(CommandStruct_t *theStruct, char *filename);
 int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
 int readEncodedEventFromFile(char *buffer, char *filename,
 			     unsigned long eventNumber);
+int readSingleEncodedEvent(char *buffer, char *filename);
+
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
@@ -142,5 +149,7 @@ unsigned long simpleLongCrc(unsigned long *p, unsigned long n);
 
 char *packetCodeAsString(PacketCode_t code);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* UTILLIB_H */
