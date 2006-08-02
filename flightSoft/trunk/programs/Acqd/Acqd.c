@@ -152,7 +152,7 @@ int calculateRateAfter=5;
 //bit 8 in second word is 48th antenna
 //We load in reverse order starting with the missing SURF 10 
 //and working backwards to SURF 1
-int antTrigMask=0;
+unsigned int antTrigMask=0;
 
 
 //Test of BarMap
@@ -491,64 +491,55 @@ int main(int argc, char **argv) {
 			tmo++;
 
 
-	    if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
-		//Make rate calculation;
-		if((doingEvent-lastEventCounter)>0) {
-		    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
+			if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
+			    //Make rate calculation;
+			    if((doingEvent-lastEventCounter)>0) {
+				printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
 //		    if(lastEventCounter<200) 
 //			printf("\n");
-		}
-		else printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
-		lastRateTime=timeStruct.tv_sec;
-		lastEventCounter=doingEvent;
-	    }
+			    }
+			    else printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
+			    lastRateTime=timeStruct.tv_sec;
+			    lastEventCounter=doingEvent;
+			}
 			if(tmo>5) {
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
 //			    //Time out not in self trigger mode
 //			    if(tmo==EVTF_TIMEOUT) break;
-
+		
 //			    if(enableChanServo) {
-				tmo=0;
-				//Give us a chance to servo thresholds
-// GSV disabled				status=readSurfHkData(surfHandles);
-				
-				
-				//Will change to SurfClearHk
-// GSV disabled				for(surf=0;surf<numSurfs;++surf)
-//				    if (setSurfControl(surfHandles[surf], 
-//						       SurfClearHk) 
-//					!= ApiSuccess)
-//					printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+			    tmo=0;
+			    //Give us a chance to servo thresholds
+			    if(firmwareVersion>=3) {
+				status=readSurfHkData(surfHandles);
+				for(surf=0;surf<numSurfs;++surf)
+				    if (setSurfControl(surfHandles[surf], 
+						       SurfClearHk) 
+					!= ApiSuccess)
+					printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+				    
 				if(verbosity && printToScreen) 
 				    printf("Read SURF Housekeeping\n");
-
-				if(verbosity && printToScreen) 
+				    
+				if(verbosity && printToScreen && enableChanServo) 
 				    printf("Will servo on channel scalers\n");
 				gettimeofday(&timeStruct,NULL);
-
-//				printf("Pre Read Time %lu secs, %lu microsecs\n",
-//				       timeStruct.tv_sec,
-//				       timeStruct.tv_usec);
-		    
+				    
 				if(enableChanServo) {
 				    if(updateThresholdsUsingPID())
 					setDACThresholds(surfHandles);
 				}
 				
 				
-//				gettimeofday(&timeStruct,NULL);
-
-//				printf("Post Read Time %lu secs, %lu microsecs\n",
-//				       timeStruct.tv_sec,
-//				       timeStruct.tv_usec);
+				    
 				if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
 				    //Record housekeeping data
 				    lastSurfHk=timeStruct.tv_sec;
 				    theSurfHk.unixTime=timeStruct.tv_sec;
 				    theSurfHk.unixTimeUs=timeStruct.tv_usec;
-				    
-
+					
+					
 				    surfHkCounter++;
 				    if(surfHkCounter>=surfHkTelemEvery) {
 					writeSurfHousekeeping(3);
@@ -558,11 +549,12 @@ int main(int argc, char **argv) {
 					writeSurfHousekeeping(1);
 				    }
 
-
+					
 				}
 
 		    
-//			}
+			    }
+			
 						    
 
 			}		    		    
@@ -615,7 +607,12 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readSurfEventData -- start %ld s, %ld ms\n",timeStruct.tv_sec,timeStruct.tv_usec);
 	    fprintf(timeFile,"4 %ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec);  
 #endif
-	    status+=readSurfEventDataVer2(surfHandles);
+	    if(firmwareVersion==1) 
+		status+=readSurfEventData(surfHandles);
+	    else if(firmwareVersion==2)
+		status+=readSurfEventDataVer2(surfHandles);
+	    else if(firmwareVersion>=3)
+		status+=readSurfEventDataVer3(surfHandles);
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -1339,7 +1336,7 @@ int readConfigFile()
 	    standAloneMode=0;	    
 	}
 	tempNum=2;
-	antTrigMask=kvpGetInt("antTrigMask",0);
+	antTrigMask=kvpGetUnsignedInt("antTrigMask",0);
 	
 	if(printToScreen) printf("Print to screen flag is %d\n",printToScreen);
 
@@ -1814,7 +1811,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 		    theEventPtr->header.eventNumber);
 	    if(!oldStyleFiles) {
 //		if(!compressWavefile) 
-		    retVal=writeBody(theBody,theFilename);  
+		retVal=writeBody(theBody,theFilename);  
 //		else {
 //		    strcat(theFilename,".gz");
 //		    retVal=writeZippedBody(theBody,theFilename);
@@ -2193,6 +2190,216 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 } 
 
 
+AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles) 
+/*! Updated to the latest SURF firmware verison, which I am calling 3 for now */
+{
+
+    PlxReturnCode_t rc;
+    AcqdErrorCode_t status=ACQD_E_OK;
+    unsigned int  dataInt=0;
+
+    unsigned char tempVal;
+    int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
+    unsigned int headerWord,samp=0;
+    unsigned short upperWord=0;
+    
+    doingEvent++;
+    if(verbosity && printToScreen) 
+	printf("Triggered, event %d (by software counter).\n",doingEvent);
+
+  	
+    //Loop over SURFs and read out data
+    for(surf=0;surf<numSurfs;surf++){  
+//	sleep(1);
+	if(printToScreen &&verbosity>1) {
+	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
+		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
+	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
+		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
+	}
+
+	//Set to read mode
+	rc=setSurfControl(surfHandles[surf],RDMode);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
+	}
+	rc=setSurfControl(surfHandles[surf],DTRead);
+	if(rc!=ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
+	    if(printToScreen)
+		fprintf(stderr,"Failed to set DTRead on SURF %d (rc = %d)\n",surfIndex[surf],rc);
+	}
+	
+	//In version 3 data is read as 32 bit words:
+	/* 0 -- Header Word
+	   1 -- Prime Word
+	   2:129 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read)
+	   130:1153 -- Chans 1 through 8 128 reads per chan as above
+	   1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
+	   1156:1169 -- Chans 1 through 8 2 reads per chan as above
+	*/
+
+	//First read header word
+	headerWord=*(barMapAddr[surf]);
+	if(printToScreen && verbosity>2) {
+	    printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord);
+	}
+	//Now prime data stream
+	dataInt=*(barMapAddr[surf]);
+	if(printToScreen && verbosity>2) {
+	    printf("SURF %d (%d), CHIP %d, CHN %d, Prime: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt);
+	}
+
+	//Now read first 256 samples per SURF
+	for(chan=0;chan<N_CHAN; chan++) {
+	    for (readCount=samp=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {		
+		dataInt=*(barMapAddr[surf]);
+
+		if(printToScreen && verbosity>2) {
+		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
+			   GetUpper16(dataInt),
+			   GetLower16(dataInt),
+			   GetStartBit(GetUpper16(dataInt)),
+			   GetStartBit(GetLower16(dataInt)),
+			   GetStopBit(GetUpper16(dataInt)),
+			   GetStopBit(GetLower16(dataInt)),
+			   GetHitBus(GetUpper16(dataInt)),
+			   GetHitBus(GetLower16(dataInt)),
+			   GetUpper16(dataInt)&0x1,
+			   GetLower16(dataInt)&0x1
+			);
+		}
+
+		//Upper word
+		labData[surf][chan][samp]=dataInt&0xffff;
+		labData[surf][chan][samp++]|=headerWord&0xffff0000;
+
+		//Lower word
+		labData[surf][chan][samp]=(dataInt>>16);
+		labData[surf][chan][samp++]|=headerWord&0xffff0000;
+		
+	    }
+	}
+
+	//Now read last 4 samples
+	for(chan=0;chan<N_CHAN; chan++) {
+	    samp=N_SAMP_EFF;
+	    for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
+		dataInt=*(barMapAddr[surf]);
+		
+		if(printToScreen && verbosity>2) {
+		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
+			   GetUpper16(dataInt),
+			   GetLower16(dataInt),
+			   GetStartBit(GetUpper16(dataInt)),
+			   GetStartBit(GetLower16(dataInt)),
+			   GetStopBit(GetUpper16(dataInt)),
+			   GetStopBit(GetLower16(dataInt)),
+			   GetHitBus(GetUpper16(dataInt)),
+			   GetHitBus(GetLower16(dataInt)),
+			   GetUpper16(dataInt)&0x1,
+			   GetLower16(dataInt)&0x1
+			);
+
+		}
+		//Store in array (will move to 16bit array when bothered
+		
+		labData[surf][chan][samp]=dataInt&0xffff;
+		labData[surf][chan][samp++]|=headerWord&0xffff0000;
+//		}
+		labData[surf][chan][samp]=(dataInt>>16);
+		labData[surf][chan][samp++]|=headerWord&0xffff0000;
+
+	    }
+	}
+	
+//	dataInt=*(barMapAddr[surf]);
+
+//	labData[surf][N_CHAN-1][N_SAMP-1]=dataInt&0xffff;
+//	labData[surf][N_CHAN-1][N_SAMP-1]|=headerWord&0xffff0000;
+	
+    }
+    //Read out SURFs
+
+    if(!oldStyleFiles) {
+	for(surf=0;surf<numSurfs;surf++){  
+	    for (chan=0 ; chan<N_CHAN ; chan++) {
+		chanId=chan+surf*CHANNELS_PER_SURF;
+		firstHitbus=-1;
+		lastHitbus=-1;
+		wrappedHitbus=0;
+		for (samp=0 ; samp<N_SAMP ; samp++) {		
+		    dataInt=labData[surf][chan][samp];
+		    if(samp==0) upperWord=GetUpper16(dataInt);
+/* 		    if(upperWord!=GetUpper16(dataInt)) { */
+/* 			//Will add an error flag to the channel header */
+/* 			syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt)); */
+/* 			if(printToScreen) */
+/* 			    fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));			 */
+/* 		    } */
+		    
+		    theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt);
+		    
+		    //Now check for HITBUS
+		    if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS))
+			firstHitbus=samp;
+		    if(GetLower16(dataInt)&HITBUS) {
+			if(!wrappedHitbus) {
+			    if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) {
+				//Wrapped hitbus
+				wrappedHitbus=1;
+				firstHitbus=lastHitbus;
+			    }
+			    lastHitbus=samp;
+			}		    
+		    }				
+		}
+		//End of sample loop
+		tempVal=chan+N_CHAN*surf;
+		theEvent.body.channel[chanId].header.chanId=tempVal;
+		theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
+		tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
+		if(lastHitbus>255) {
+		    tempVal+=((lastHitbus-255)<<4);
+		    lastHitbus=255;
+		}
+		theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
+		theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
+		
+
+		if(printToScreen && verbosity>1) {
+		    printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %x\n\tLabchip %d\n\tchipIdFlag %d\n",
+			   surfIndex[surf],chan,
+			   theEvent.body.channel[chanId].header.chanId,
+			   theEvent.body.channel[chanId].header.firstHitbus,
+			   theEvent.body.channel[chanId].header.lastHitbus,
+			   wrappedHitbus,upperWord,((upperWord&0xc0)>>6),
+			   theEvent.body.channel[chanId].header.chipIdFlag);
+		}
+			   
+			   
+	    }
+	}
+    }   
+    if(printToScreen && verbosity>1) {
+	
+	for(surf=0;surf<numSurfs;surf++){  
+	    for(chan=0;chan<N_CHAN;chan++) {
+		for(samp=0;samp<5;samp++) {
+		    printf("SURF %d, chan %d, samp %d, data %d\n",surf,chan,samp,labData[surf][chan][samp]&0xfff);
+		}
+	    }
+	}
+
+
+    }
+    return status;
+} 
+
+
+
 AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles) 
 // Reads the scaler and RF power data from the SURF board
 {
@@ -2210,12 +2417,12 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 
 	//Set to read house keeping
 	//Send DTRead first to have a transition on DT/HK line
-	rc=setSurfControl(surfHandles[surf],DTRead);
-	if(rc!=ApiSuccess) {
-	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
-	    if(printToScreen)
-		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
-	}
+//	rc=setSurfControl(surfHandles[surf],DTRead);
+//	if(rc!=ApiSuccess) {
+//	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
+//	    if(printToScreen)
+//		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
+//	}
 	rc=setSurfControl(surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);

@@ -34,7 +34,6 @@
 // Acromag constants 
 #define INTERRUPT_LEVEL 10
 
-
 // Global variables for acromag control
 int carrierHandle;
 struct conf_blk_470 cblk_470;
@@ -52,28 +51,42 @@ int stateRFCM4=0;
 int stateVeto=0;
 int stateGPS=0;
 int stateCalPulser=0;
-// SS Gain
-int ss1Gain=5;
+
 // RF Switch
 int steadyState=0;
 int switchPeriod=60;
 int offPeriod=60;
 int switchState=1;
+int currentPort=1;
+
+//Attenuator
+int attenLoop=1;
+int attenState=1;
+int attenPeriod=10;
+int currentAtten=1;
+int attenLoopMap[8]={1,1,1,1,1,1,1,1};
 
 //Debug
 int printToScreen=1;
 
 //Output Dirs
-char calibdStatusDir[FILENAME_MAX];
-char calibdLinkDir[FILENAME_MAX];
 char calibArchiveDir[FILENAME_MAX];
 char calibArchiveLinkDir[FILENAME_MAX];
+char calibdPidFile[FILENAME_MAX];
 
+int writePeriod=60;
 
 int main (int argc, char *argv[])
 {
-    int secs=0,retVal=0;
+    int retVal=0;
     int relaysChanged=0;
+    int switchChanged=0;
+    int attenChanged=0;
+    int firstTime=1;
+    int switchSec=0;
+    int attenSec=0;
+    int writeSec=0;
+       
     // Config file thingies 
     int status=0;
     char* eString;
@@ -97,17 +110,6 @@ int main (int argc, char *argv[])
 
     // Get Calibd output dirs
     if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("calibdStatusDir");
-	if(tempString) {
-	    strncpy(calibdStatusDir,tempString,FILENAME_MAX-1);
-	    strncpy(calibdLinkDir,calibdStatusDir,FILENAME_MAX-1);
-	    strcat(calibdLinkDir,"/link");
-	    makeDirectories(calibdLinkDir);
-	}
-	else {	    
-	    syslog(LOG_ERR,"Error getting calibdStatusDir");
-	    fprintf(stderr,"Error getting calibdStatusDir\n");
-	}
 	
 	tempString=kvpGetString("mainDataDisk");
 	if(tempString) {
@@ -116,6 +118,15 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Error getting mainDataDisk");
 	    fprintf(stderr,"Error getting mainDataDisk\n");
+	}
+	tempString=kvpGetString("calibdPidFile");
+	if(tempString) {
+	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
+	    writePidFile(calibdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
+	    fprintf(stderr,"Couldn't get calibdPidFile\n");
 	}	    
 	tempString=kvpGetString("baseHouseArchiveDir");
 	if(tempString) {
@@ -136,6 +147,8 @@ int main (int argc, char *argv[])
 	}
     }
 
+    makeDirectories(CALIBD_STATUS_LINK_DIR);
+
     //Setup acromag
 //    acromagSetup();
 //    ip470Setup();
@@ -145,39 +158,67 @@ int main (int argc, char *argv[])
 	retVal=readConfigFile();
 	relaysChanged=1;
 	currentState=PROG_STATE_RUN;
-	secs=0;
+	writeSec=0;
+	attenSec=0;
+	switchSec=0;
 	while(currentState==PROG_STATE_RUN) {	  
-	    if(printToScreen)
-		printf("Secs %d\tswitchState %d\tsteadyState %d\tstateCalPulse %d\trelaysChanged %d\n",secs,switchState,steadyState,stateCalPulser,relaysChanged);
-	    if(secs==0) {		
-		//Set Relays to correct state
-		if(relaysChanged) retVal=setRelaysAndSSGain();
-		setSwitchState();
+	    if(printToScreen) {
+		printf("RFCM1 (%d)  RFCM2 (%d)  RFCM3 (%d)  RFCM4 (%d)  VETO (%d)\tCP (%d)  GPS (%d)\n",stateRFCM1,stateRFCM2,stateRFCM3,stateRFCM4,stateVeto,stateCalPulser,stateGPS);
+		printf("   Switch %d (%d) Atten %d (%d)\n",switchState,currentPort,attenState,currentAtten);
+//		printf("switchState %d\tsteadyState %d\tstateCalPulse %d\trelaysChanged %d\n",switchState,steadyState,stateCalPulser,relaysChanged);
+	    }
+	    //Set Relays to correct state
+	    if(relaysChanged || firstTime) retVal=setRelays();
+	    if(switchChanged || firstTime) setSwitchState();
+	    if(attenChanged || firstTime) setAttenuatorState();
+
+	    if(relaysChanged || switchChanged || 
+	       attenChanged || writeSec==writePeriod) {
 		writeStatus();
 		relaysChanged=0;
+		switchChanged=0;
+		attenChanged=0;
+		writeSec=0;
 	    }
-	    else if(stateCalPulser && secs==switchPeriod) {
+	    
+
+	    if(firstTime) firstTime=0;
+	    if(stateCalPulser && attenSec>=attenPeriod) {
+		currentAtten++;
+		while(!attenLoopMap[currentAtten-1] && currentAtten<9) {
+		    currentAtten++;
+		}
+		if(currentAtten>8) 
+		    currentAtten=1;
+		attenChanged=1;
+		attenSec=0;
+	    }
+
+	    if(stateCalPulser && switchSec>=switchPeriod) {
 		if(steadyState==0) {
-		    switchState++;
-		    if(switchState>4) {
-			switchState=1;
+		    currentPort++;
+		    if(currentPort>4) {
+			currentPort=1;
 			stateCalPulser=0;
 			relaysChanged=1;
 		    }
+		    switchChanged=1;
 		}
 		else {
 		    stateCalPulser=0;
 		    relaysChanged=1;
 		}
-		secs=-1;
+		switchSec=-1;
 	    }
-	    else if(!stateCalPulser && secs==offPeriod && offPeriod) {
+	    else if(!stateCalPulser && switchSec>=offPeriod && offPeriod) {
 		stateCalPulser=1;
 		relaysChanged=1;
-		secs=-1;
+		switchSec=-1;
 	    }
 	    sleep(1);
-	    secs++;		
+	    writeSec++;		
+	    switchSec++;
+	    attenSec++;
 	}
     } while(currentState==PROG_STATE_INIT);
     return 0;
@@ -216,11 +257,11 @@ void writeStatus()
     theStatus.status |= (((switchState)&0xf)<<RFSWITCH_SHIFT); 
     
     //Might change the below when we have any idea what it is doing
-    theStatus.status |= (((ss1Gain)&0xf)<<SS1_SHIFT); 
+    theStatus.status |= (((attenState)&0xf)<<SS1_SHIFT); 
     
-    sprintf(filename,"%s/calib_%ld.dat",calibdStatusDir,theStatus.unixTime);
+    sprintf(filename,"%s/calib_%ld.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);
-    makeLink(filename,calibdLinkDir);
+    makeLink(filename,CALIBD_STATUS_LINK_DIR);
     sprintf(filename,"%s/calib_%ld.dat",calibArchiveDir,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);
     makeLink(filename,calibArchiveLinkDir);
@@ -233,19 +274,23 @@ int readConfigFile()
 {
     /* Config file thingies */
     int status=0;
+    int tempNum=12;
 //    int tempNum=3,count=0;
-//    KvpErrorCode kvpStatus=0;
+    KvpErrorCode kvpStatus=0;
     char* eString ;
     kvpReset();
     status = configLoad ("Calibd.config","output") ;
+    status = configLoad ("Calibd.config","calibd") ;
     status |= configLoad ("Calibd.config","relays") ;
-    status |= configLoad ("Calibd.config","sunsensor") ;
     status |= configLoad ("Calibd.config","rfSwitch") ;
 
     if(status == CONFIG_E_OK) {       
 	//Debug
 	printToScreen=kvpGetInt("printToScreen",-1);
 	
+	//Heartbeat
+	writePeriod=kvpGetInt("writePeriod",60);
+
 	//Relay States
 	stateRFCM1=kvpGetInt("stateRFCM1",0);
 	stateRFCM2=kvpGetInt("stateRFCM2",0);
@@ -254,19 +299,47 @@ int readConfigFile()
 	stateVeto=kvpGetInt("stateVeto",0);
 	stateGPS=kvpGetInt("stateGPS",0);
 	stateCalPulser=kvpGetInt("stateCalPulser",0);
-	
-	//Sunsensor Gain
-	ss1Gain=kvpGetInt("ss1Gain",0);
-	
+		
 	//RF Switch
 	steadyState=kvpGetInt("steadyState",0);
 	switchPeriod=kvpGetInt("switchPeriod",60);
 	offPeriod=kvpGetInt("offPeriod",60);
+
+
+
     }
     else {
 	eString=configErrorString (status) ;
-	syslog(LOG_ERR,"Error reading Calib.config: %s\n",eString);
+	syslog(LOG_ERR,"Error reading Calibd.config: %s\n",eString);
     }
+
+    kvpReset();
+    status = configLoad ("Calibd.config","attenuator") ;
+    if(status == CONFIG_E_OK) {  
+	attenLoop=kvpGetInt("attenLoop",0);
+	attenPeriod=kvpGetInt("attenPeriod",0);
+	currentAtten=kvpGetInt("attenStartState",0);
+
+	if(currentAtten<0 || currentAtten>7) {
+	    syslog(LOG_ERR,"Unphysical attneuator state %d, are defaulting to zero\n",currentAtten);
+	    currentAtten=0;
+	}
+
+	kvpStatus=kvpGetIntArray("attenLoopMap",&attenLoopMap[0],&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(attenLoopMap): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(attenLoopMap): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Calibd.config: %s\n",eString);
+    }
+
+
     return status;
    
 }
@@ -365,7 +438,7 @@ void ip470Setup()
 }
 
 
-int setRelaysAndSSGain() 
+int setRelays() 
 // Sets the relays to the state specified in Calibd.config
 {
     int retVal=0;
@@ -404,8 +477,6 @@ int setRelaysAndSSGain()
     else
 	retVal+=toggleRelay(CAL_PULSER_OFF_LOGIC/8,CAL_PULSER_OFF_LOGIC%8);
 
-    //Sun Sensor
-    retVal+=setMultipleLevels(SUNSENSOR1_GAIN_LSB/8,SUNSENSOR1_GAIN_LSB%8,3,ss1Gain);
     return retVal;
 
 }
@@ -424,9 +495,6 @@ int toggleRelay(int port, int chan)
 }
 
 int setMultipleLevels(int basePort, int baseChan, int nbits, int value) {
-    if(printToScreen) 
-	printf("basePort %d, baseChan %d, nbits %d, value %d\n",
-	       basePort,baseChan,nbits,value);
     unsigned int current;
     unsigned int toWrite;
     unsigned int i;
@@ -447,6 +515,16 @@ int setMultipleLevels(int basePort, int baseChan, int nbits, int value) {
 int setSwitchState() 
 //Sets RF Switch state
 {
+    switchState=rfSwitchPortMap[currentPort-1];
     return setMultipleLevels(RFSWITCH_LSB/8,RFSWITCH_LSB%8,4,switchState);
+
+}
+
+
+int setAttenuatorState() 
+//Sets Cal Pulser Attenuator state
+{
+    attenState=attenuatorSettingsMap[currentAtten-1];
+    return setMultipleLevels(ATTENUATOR_LSB/8,ATTENUATOR_LSB%8,3,attenState);
 
 }

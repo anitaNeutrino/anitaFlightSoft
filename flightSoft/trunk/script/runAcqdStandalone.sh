@@ -7,22 +7,20 @@ then
 fi
 
 
-n=0
-HK_DIR=/mnt/blade4/slacData/hkData/$1
-EVENT_DIR=/mnt/blade4/slacData/acqdData/$1
+n=0 
+HK_DIR=/mnt/data/slacData/hkData/$1
+EVENT_DIR=/mnt/data/slacData/acqdData/$1
 
 while [ -d $HK_DIR ] ; do
   let "n = n + 1"
-  HK_DIR=/mnt/blade4/slacData/hkData/$1_$n
-  EVENT_DIR=/mnt/blade4/slacData/acqdData/$1_$n
+  HK_DIR=/mnt/data/slacData/hkData/$1_$n
+  EVENT_DIR=/mnt/data/slacData/acqdData/$1_$n
 done
 
 mkdir ${HK_DIR}
-
-#sudo umount /mnt/data
-#sudo mount --bind ${THE_DIR} /mnt/data
-
-#echo "Using Hk directory: $HK_DIR" 
+rm /mnt/data/anita
+ln -sf ${HK_DIR} /mnt/data/anita
+echo "Using Hk directory: $HK_DIR" 
 echo "Using Event directory: $EVENT_DIR" 
 echo "Acqd -w -d ${EVENT_DIR} $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}"
 Acqd -w -d ${EVENT_DIR} $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}

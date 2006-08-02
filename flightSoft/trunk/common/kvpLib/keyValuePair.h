@@ -113,10 +113,12 @@ typedef enum {
                              int*size, char** value) ;
 
    char* kvpGetString (const char* key) ;
+    
+    int kvpGetInt (const char* key, int defaultValue) ;
+    int kvpGetDec (const char* key, int defaultValue) ;
+    int kvpGetHex (const char* key, int defaultValue) ;
+    unsigned int kvpGetUnsignedInt (const char* key,unsigned int defaultValue);
 
-   int kvpGetInt (const char* key, int defaultValue) ;
-   int kvpGetDec (const char* key, int defaultValue) ;
-   int kvpGetHex (const char* key, int defaultValue) ;
 
    float kvpGetFloat (const char* key, float defaultValue) ;
    double kvpGetDouble (const char* key, double defaultValue) ;
