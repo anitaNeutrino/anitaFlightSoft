@@ -115,7 +115,7 @@ int writeFileAndLink(MonitorStruct_t *monitorPtr) {
     retVal=writeMonitor(monitorPtr,theFilename);
     retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
 
-    retVal=cleverHkWrite((char*)monitorPtr,sizeof(MonitorStruct_t),
+    retVal=cleverHkWrite((unsigned char*)monitorPtr,sizeof(MonitorStruct_t),
 			 monitorPtr->unixTime,&monWriter);
     if(retVal<0) {
 	//Had an error

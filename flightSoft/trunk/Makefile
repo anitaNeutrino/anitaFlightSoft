@@ -45,6 +45,7 @@ scripts:
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort
 	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten
+	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/startNtp.sh
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/getLogWindow.sh bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/startProgsInXterms.sh bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/killAllProgs.sh bin
@@ -67,6 +68,7 @@ scripts:
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten bin
 	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/runAcqdStandalone.sh bin
+	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/startNtp.sh bin
 
 
 

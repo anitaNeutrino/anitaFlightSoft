@@ -61,7 +61,7 @@ int evNum=1;
 int main(int argc, char *argv[])
 {
 //    int pk;//,retVal;
-    char *tempString;
+//    char *tempString;
 //    char tempDir[FILENAME_MAX];
 
     /* Config file thingies */
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 
 
 
-    int evCounter=0;
+//    int evCounter=0;
     int trigType=34;
     
     struct timeval lastAdu5Pat;

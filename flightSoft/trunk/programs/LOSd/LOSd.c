@@ -435,7 +435,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
     char currentLinkname[FILENAME_MAX];
     char currentTouchname[FILENAME_MAX];
     char currentLOSTouchname[FILENAME_MAX];
-    int retVal,numLinks,count,numBytes,totalBytes=0,checkVal=0;
+    int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
     GenericHeader_t *gHdr;
     struct dirent **linkList;
 
@@ -459,7 +459,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 	touchFile(currentLOSTouchname);
 
 
-	retVal=genericReadOfFile((char*)&(losBuffer[numBytesInBuffer]),
+	retVal=genericReadOfFile((unsigned char*)&(losBuffer[numBytesInBuffer]),
 				 currentFilename,
 				 LOS_MAX_BYTES-numBytesInBuffer);
 	if(retVal<=0) {

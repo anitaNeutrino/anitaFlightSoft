@@ -60,7 +60,7 @@ void readConfigFile() {
     int status=0;
     KvpErrorCode kvpStatus=0;
     char* eString ;
-    char *tempString;
+//    char *tempString;
 
     /* Load Config */
     kvpReset () ;

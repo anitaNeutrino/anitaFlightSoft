@@ -15,7 +15,9 @@ extern "C" {
 #endif
 
 /* Includes */
+#ifndef __CINT__
 #include <dirent.h>
+#endif
 #include "anitaStructures.h"
 #include <time.h>
 #include <zlib.h>
@@ -67,9 +69,12 @@ int makeLink(const char *theFile, const char *theLinkDir);
 int moveFile(const char *theFile, const char *theDir);
 int copyFile(const char *theFile, const char *theDir);
 int removeFile(const char *theFile);
+
+#ifndef __CINT__
 int filterHeaders(const struct dirent *dir);
 int filterOnDats(const struct dirent *dir);
 int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
+#endif
 unsigned short getDiskSpace(char *dirName);
 unsigned short countFilesInDir(char *dirName);
 
@@ -85,9 +90,9 @@ int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 int fillCommand(CommandStruct_t *theStruct, char *filename);
 int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
-int readEncodedEventFromFile(char *buffer, char *filename,
+int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 			     unsigned long eventNumber);
-int readSingleEncodedEvent(char *buffer, char *filename);
+int readSingleEncodedEvent(unsigned char *buffer, char *filename);
 
 
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
@@ -113,21 +118,21 @@ int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
 int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename);
 int writeCommandAndLink(CommandStruct_t *theCmd);
 
-int genericReadOfFile(char *buffer, char *filename, int maxBytes);
+int genericReadOfFile(unsigned char *buffer, char *filename, int maxBytes);
 
 
 char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
 char *getCurrentHkFilename(char *currentDir, char *prefix, 
 			   unsigned long unixTime);
 
-int zippedSingleWrite(char *buffer, char *filename, int numBytes);
-int normalSingleWrite(char *buffer, char *filename, int numBytes);
+int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes);
+int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes);
 int touchFile(char *filename);
 int checkFileExists(char *filename);
 
-int cleverHkWrite(char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
+int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
-int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
+int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);
 int closeHkFilesAndTidy(AnitaWriterStruct_t *awsPtr);
 

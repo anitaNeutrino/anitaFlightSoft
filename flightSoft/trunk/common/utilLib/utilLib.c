@@ -51,7 +51,7 @@ int closeHkFilesAndTidy(AnitaWriterStruct_t *awsPtr) {
     return 0;
 }
 
-int cleverHkWrite(char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr)
+int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr)
 {
     int retVal=0;
     static int errorCounter=0;
@@ -348,7 +348,7 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
     return 0;
 }
 
-int cleverEncEventWrite(char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
+int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
     int retVal=0;
     static int errorCounter=0;
@@ -552,7 +552,7 @@ char *getCurrentHkFilename(char *currentDir, char *prefix,
 }
     
 
-int normalSingleWrite(char *buffer, char *filename, int numBytes)
+int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
 {
     static int errorCounter=0;
    int numObjs;    
@@ -571,7 +571,7 @@ int normalSingleWrite(char *buffer, char *filename, int numBytes)
    
 }
 
-int zippedSingleWrite(char *buffer, char *filename, int numBytes) 
+int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes) 
 {
     static int errorCounter=0;
    int numObjs;    
@@ -784,7 +784,7 @@ int filterOnDats(const struct dirent *dir)
 
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 {
-    int numBytes=genericReadOfFile((char*)theStruct,filename,sizeof(CalibStruct_t));
+    int numBytes=genericReadOfFile((unsigned char*)theStruct,filename,sizeof(CalibStruct_t));
     if(numBytes==sizeof(CalibStruct_t)) return 0;
     return numBytes;
 
@@ -792,7 +792,7 @@ int fillCalibStruct(CalibStruct_t *theStruct, char *filename)
 
 int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
 {
-    int numBytes=genericReadOfFile((char*)pedPtr,filename,sizeof(PedestalStruct_t));
+    int numBytes=genericReadOfFile((unsigned char*)pedPtr,filename,sizeof(PedestalStruct_t));
     if(numBytes==sizeof(PedestalStruct_t)) return 0;
     return numBytes;
 }
@@ -800,7 +800,7 @@ int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
 
 int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 {
-    int numBytes=genericReadOfFile((char*)cmdPtr,filename,sizeof(CommandStruct_t));
+    int numBytes=genericReadOfFile((unsigned char*)cmdPtr,filename,sizeof(CommandStruct_t));
     if(numBytes==sizeof(CommandStruct_t)) return 0;
     return numBytes;
 }
@@ -808,7 +808,7 @@ int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 
 int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 {
-    int numBytes=genericReadOfFile((char*)theEventHdPtr,filename,
+    int numBytes=genericReadOfFile((unsigned char*)theEventHdPtr,filename,
 				   sizeof(AnitaEventHeader_t));
     if(numBytes==sizeof(AnitaEventHeader_t)) return 0;
     return numBytes;  
@@ -902,7 +902,7 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 }
 
 
-int readSingleEncodedEvent(char *buffer, char *filename) 
+int readSingleEncodedEvent(unsigned char *buffer, char *filename) 
 {
     EncodedSurfPacketHeader_t *surfHeader = (EncodedSurfPacketHeader_t*) &buffer[0];
     static int errorCounter=0;
@@ -975,7 +975,7 @@ int readSingleEncodedEvent(char *buffer, char *filename)
 
 }
 
-int readEncodedEventFromFile(char *buffer, char *filename,
+int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 			     unsigned long eventNumber) 
 {
     EncodedSurfPacketHeader_t *surfHeader = (EncodedSurfPacketHeader_t*) &buffer[0];
@@ -1098,7 +1098,7 @@ int readEncodedEventFromFile(char *buffer, char *filename,
 
 int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 { 
-    int numBytes=genericReadOfFile((char*)theEventBodyPtr,filename,
+    int numBytes=genericReadOfFile((unsigned char*)theEventBodyPtr,filename,
 				   sizeof(AnitaEventBody_t));
     if(numBytes==sizeof(AnitaEventBody_t)) return 0;
     return numBytes;  
@@ -1107,13 +1107,13 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 
 int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
 {
-    int numBytes=genericReadOfFile((char*)tttPtr,filename,
+    int numBytes=genericReadOfFile((unsigned char*)tttPtr,filename,
 				   sizeof(GpsSubTime_t));
     if(numBytes==sizeof(GpsSubTime_t)) return 0;
     return numBytes;  
 }
 
-int genericReadOfFile(char *buffer, char *filename, int maxBytes) 
+int genericReadOfFile(unsigned char * buffer, char *filename, int maxBytes) 
 /*!
   Reads all the bytes in a file and returns the number of bytes read
 */
@@ -1180,16 +1180,16 @@ int genericReadOfFile(char *buffer, char *filename, int maxBytes)
 int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
 /* Writes the header pointed to by hdPtr to filename */
 {
-    return normalSingleWrite((char*)hdPtr,filename,sizeof(AnitaEventHeader_t));
+    return normalSingleWrite((unsigned char*)hdPtr,filename,sizeof(AnitaEventHeader_t));
 }
 
 int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
+    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 #else
-    return zippedSingleWrite((char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
+    return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 #endif
 }
 
@@ -1197,7 +1197,7 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename)
 /* Writes the body pointed to by bodyPtr to filename */
 {
-    return zippedSingleWrite((char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
+    return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 }
 
 int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename)
@@ -1205,9 +1205,9 @@ int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename)
 {
     
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
+    return normalSingleWrite((unsigned char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
 #else
-    return zippedSingleWrite((char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
+    return zippedSingleWrite((unsigned char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
 #endif
 }
 
@@ -1217,9 +1217,9 @@ int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename)
 {
   
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)surfPtr,filename,sizeof(RawSurfPacket_t));
+    return normalSingleWrite((unsigned char*)surfPtr,filename,sizeof(RawSurfPacket_t));
 #else
-    return zippedSingleWrite((char*)surfPtr,filename,sizeof(RawSurfPacket_t));
+    return zippedSingleWrite((unsigned char*)surfPtr,filename,sizeof(RawSurfPacket_t));
 #endif
 }
 
@@ -1229,9 +1229,9 @@ int writeSurfHk(FullSurfHkStruct_t *surfPtr, char *filename)
 {
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
+    return normalSingleWrite((unsigned char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
 #else
-    return zippedSingleWrite((char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
+    return zippedSingleWrite((unsigned char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
 #endif
 
 }
@@ -1241,9 +1241,9 @@ int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename)
 {
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
+    return normalSingleWrite((unsigned char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
 #else
-    return zippedSingleWrite((char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
+    return zippedSingleWrite((unsigned char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
 #endif
 
 }
@@ -1254,9 +1254,9 @@ int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename)
 {
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
+    return normalSingleWrite((unsigned char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
 #else
-    return zippedSingleWrite((char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
+    return zippedSingleWrite((unsigned char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
 #endif
 
 }
@@ -1267,9 +1267,9 @@ int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename)
 
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
+    return normalSingleWrite((unsigned char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
 #else
-    return zippedSingleWrite((char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
+    return zippedSingleWrite((unsigned char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
 #endif
 
 }
@@ -1279,9 +1279,9 @@ int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename)
 {   
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
+    return normalSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
 #else
-    return zippedSingleWrite((char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
+    return zippedSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
 #endif
 
 }
@@ -1292,9 +1292,9 @@ int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename)
 {   
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
+    return normalSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
 #else
-    return zippedSingleWrite((char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
+    return zippedSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
 #endif
 
 }
@@ -1303,16 +1303,16 @@ int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename)
 int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename)
 /* Writes the ttt pointed to by tttPtr to filename */
 {     
-    return normalSingleWrite((char*)tttPtr,filename,sizeof(GpsSubTime_t));
+    return normalSingleWrite((unsigned char*)tttPtr,filename,sizeof(GpsSubTime_t));
 }
 
 int writeHk(HkDataStruct_t *hkPtr, char *filename)
 /* Writes the hk pointed to by hkPtr to filename */
 {     
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)hkPtr,filename,sizeof(HkDataStruct_t));
+    return normalSingleWrite((unsigned char*)hkPtr,filename,sizeof(HkDataStruct_t));
 #else
-    return zippedSingleWrite((char*)hkPtr,filename,sizeof(HkDataStruct_t));
+    return zippedSingleWrite((unsigned char*)hkPtr,filename,sizeof(HkDataStruct_t));
 #endif
 
 }
@@ -1322,9 +1322,9 @@ int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 /* Writes the echo pointed to by echoPtr to filename */
 {
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)echoPtr,filename,sizeof(CommandEcho_t));
+    return normalSingleWrite((unsigned char*)echoPtr,filename,sizeof(CommandEcho_t));
 #else
-    return zippedSingleWrite((char*)echoPtr,filename,sizeof(CommandEcho_t));
+    return zippedSingleWrite((unsigned char*)echoPtr,filename,sizeof(CommandEcho_t));
 #endif
 }
 
@@ -1332,21 +1332,21 @@ int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
 int writeCmd(CommandStruct_t *cmdPtr, char *filename)
 /* Writes the cmd pointed to by cmdPtr to filename */
 {   
-    return normalSingleWrite((char*)cmdPtr,filename,sizeof(CommandStruct_t));
+    return normalSingleWrite((unsigned char*)cmdPtr,filename,sizeof(CommandStruct_t));
 }
 
 int writeCalibStatus(CalibStruct_t *calibPtr, char *filename)
 /* Writes the cmd pointed to by cmdPtr to filename */
 {   
-    return normalSingleWrite((char*)calibPtr,filename,sizeof(CalibStruct_t));
+    return normalSingleWrite((unsigned char*)calibPtr,filename,sizeof(CalibStruct_t));
 }
 
 int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename) 
 {
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)pedPtr,filename,sizeof(PedCalcStruct_t));
+    return normalSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedCalcStruct_t));
 #else
-    return zippedSingleWrite((char*)pedPtr,filename,sizeof(PedCalcStruct_t));
+    return zippedSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedCalcStruct_t));
 #endif
 
 }
@@ -1355,9 +1355,9 @@ int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename)
 int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
 {
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)pedPtr,filename,sizeof(PedestalStruct_t));
+    return normalSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedestalStruct_t));
 #else
-    return zippedSingleWrite((char*)pedPtr,filename,sizeof(PedestalStruct_t));
+    return zippedSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedestalStruct_t));
 #endif
 
 }
@@ -1366,9 +1366,9 @@ int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
 int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename) 
 {
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
+    return normalSingleWrite((unsigned char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
 #else
-    return zippedSingleWrite((char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
+    return zippedSingleWrite((unsigned char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
 #endif
 
 }
@@ -1378,9 +1378,9 @@ int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
 /* Writes the monitor object pointed to by monitorPtr to filename */
 {   
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)monitorPtr,filename,sizeof(MonitorStruct_t));
+    return normalSingleWrite((unsigned char*)monitorPtr,filename,sizeof(MonitorStruct_t));
 #else
-    return zippedSingleWrite((char*)monitorPtr,filename,sizeof(MonitorStruct_t));
+    return zippedSingleWrite((unsigned char*)monitorPtr,filename,sizeof(MonitorStruct_t));
 #endif
 
 }
@@ -1392,9 +1392,9 @@ int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename)
 {
 
 #ifdef NO_ZLIB
-    return normalSingleWrite((char*)turfPtr,filename,sizeof(TurfRateStruct_t));
+    return normalSingleWrite((unsigned char*)turfPtr,filename,sizeof(TurfRateStruct_t));
 #else
-    return zippedSingleWrite((char*)turfPtr,filename,sizeof(TurfRateStruct_t));
+    return zippedSingleWrite((unsigned char*)turfPtr,filename,sizeof(TurfRateStruct_t));
 #endif
 
 }

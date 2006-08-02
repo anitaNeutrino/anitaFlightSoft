@@ -692,7 +692,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
 			 theVtg.unixTime,&adu5VtgWriter);
     if(retVal<0) {
 	//Had an error
@@ -784,7 +784,7 @@ void processPosString(char *gpsString, int gpsLength) {
     //Write file to main disk
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&thePos,sizeof(GpsG12PosStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&thePos,sizeof(GpsG12PosStruct_t),
 			 thePos.unixTime,&g12PosWriter);
     if(retVal<0) {
 	//Had an error
@@ -900,7 +900,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theTTT,sizeof(GpsSubTime_t),
+    retVal=cleverHkWrite((unsigned char*)&theTTT,sizeof(GpsSubTime_t),
 			 theTTT.unixTime,&adu5TttWriter);
     if(retVal<0) {
 	//Had an error
@@ -983,7 +983,7 @@ void processG12SatString(char *gpsString, int gpsLength) {
     retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theSat,sizeof(GpsG12SatStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsG12SatStruct_t),
 			 theSat.unixTime,&g12SatWriter);
     if(retVal<0) {
 	//Had an error
@@ -1072,7 +1072,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
 
 	    //Write file to main disk
-	    retVal=cleverHkWrite((char*)&theSat,sizeof(GpsAdu5SatStruct_t),
+	    retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsAdu5SatStruct_t),
 				 theSat.unixTime,&adu5SatWriter);
 	    if(retVal<0) {
 		//Had an error
@@ -1165,7 +1165,7 @@ void processGppatString(char *gpsString, int gpsLength) {
 
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&thePat,sizeof(GpsAdu5PatStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&thePat,sizeof(GpsAdu5PatStruct_t),
 			 thePat.unixTime,&adu5PatWriter);
     if(retVal<0) {
 	//Had an error
@@ -1307,8 +1307,9 @@ int tryToStartNtpd()
 {
     static int donePort=0;
     int retVal=0;
+    pid_t childPid;    
     time_t theTime=time(NULL);
-    char ntpdCommand[]="sudo /etc/init.d/ntpd restart";
+    char *startNtpArg[]={"/home/anita/flightSoft/bin/startNtp.sh",(char*)0};
     if(!donePort) {
 	retVal=openGpsDevice(G12B_DEV_NAME);
 	//May put something here to read message
@@ -1317,18 +1318,22 @@ int tryToStartNtpd()
 	donePort=1;
     }
     if(theTime>1e9) {
-//	printf("Need to start ntpd here %ld\n",theTime);
-	retVal=system(ntpdCommand);
-	if(retVal<0) {
+	childPid=fork();
+	if(childPid==0) {
+	    //Child
+//	    awsPtr->currentFileName;
+	    execv("/home/anita/flightSoft/bin/startNtp.sh",startNtpArg);
+	    exit(0);
+	}
+	else if(childPid<0) {
+	    //Something wrong
 	    syslog(LOG_ERR,"Problem starting ntpd");
 	    fprintf(stderr,"Problem starting ntpd\n");
 	    return 0;
 	}
-	else {
-	    syslog(LOG_INFO,"Restarted ntpd");
-	    fprintf(stderr,"Restarted ntpd\n");
-	    return 1;
-	}
+	syslog(LOG_INFO,"Restarted ntpd");
+	fprintf(stderr,"Restarted ntpd\n");
+	return 1;
     }
     return 0;
 }
