@@ -1742,7 +1742,7 @@ int writeSurfHousekeeping(int dataOrTelem)
 //	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
 //		theSurfHk.unixTime,theSurfHk.unixTimeUs);
 //	retVal+=writeSurfHk(&theSurfHk,theFilename);
-	retVal=cleverHkWrite((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
+	retVal=cleverHkWrite((unsigned char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 			     theSurfHk.unixTime,&surfHkWriter);
 //	if(useUSBDisks) {
 //	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkUSBArchiveDir,
@@ -1776,7 +1776,7 @@ int writeTurfHousekeeping(int dataOrTelem)
     fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
     //Write data to disk
     if(dataOrTelem!=2) {
-	retVal=cleverHkWrite((char*)&turfRates,sizeof(TurfRateStruct_t),
+	retVal=cleverHkWrite((unsigned char*)&turfRates,sizeof(TurfRateStruct_t),
 			     turfRates.unixTime,&turfHkWriter);
     }
     if(dataOrTelem!=1) {

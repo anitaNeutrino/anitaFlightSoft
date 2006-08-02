@@ -589,7 +589,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
  	    thisEventNumber);
 
 
-    retVal=genericReadOfFile((char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
+    retVal=genericReadOfFile((unsigned char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
     if(retVal<0) {
 	fprintf(stderr,"Problem reading %s\n",waveFilename);
 	removeFile(headerLinkFilename);
@@ -709,7 +709,7 @@ void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
  	    thisEventNumber);
 
 
-    retVal=genericReadOfFile((char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
+    retVal=genericReadOfFile((unsigned char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
     if(retVal<0) {
 	fprintf(stderr,"Problem reading %s\n",waveFilename);
 	removeFile(headerLinkFilename);
@@ -761,7 +761,7 @@ void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
 	    wavPtr->gHdr.packetNumber=getTdrssNumber();
 	     
 	    if(numBytes) {
-		retVal = sipcom_highrate_write(wavPtr,
+		retVal = sipcom_highrate_write((unsigned char*) wavPtr,
 					       numBytes);
 		if(retVal<0) {
 		    //Problem sending data
@@ -938,7 +938,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	    continue;
 	touchFile(currentTouchname);
 
-	retVal=genericReadOfFile((char*)theBuffer,
+	retVal=genericReadOfFile((unsigned char*)theBuffer,
 				 currentFilename,
 				 MAX_EVENT_SIZE);
 	if(retVal<=0) {

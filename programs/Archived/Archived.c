@@ -301,7 +301,7 @@ void writeOutputToDisk(int numBytes) {
 //    fprintf(stderr,"%s %s\n",mainDiskDir,backupDiskDir);
 //    fprintf(stderr,"%d %d\n",strlen(MAIN_DATA_DISK_LINK),strlen(BACKUP_DATA_DISK_LINK));
 
-    retVal=cleverEncEventWrite((char*)outputBuffer,numBytes,&theHead,&eventWriter);
+    retVal=cleverEncEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
     if(printToScreen && verbosity>1) {
 	printf("Event %lu, (%d bytes)  %s \t%s\n",theHead.eventNumber,
 	       numBytes,eventWriter.currentEventFileName,
@@ -336,7 +336,7 @@ void writeOutputForTelem(int numBytes) {
 
     sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
     sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-    retVal=normalSingleWrite((char*)outputBuffer,bodyName,numBytes);
+    retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
     if(retVal<0) {
 	printf("Something wrong while writing %s\n",bodyName);
     }

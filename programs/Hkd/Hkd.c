@@ -557,7 +557,7 @@ int outputData(AnalogueCode_t code)
     retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
     
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theHkData,sizeof(HkDataStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&theHkData,sizeof(HkDataStruct_t),
 			 theHkData.unixTime,wrPtr);
     if(retVal<0) {
 	//Had an error
