@@ -4,25 +4,32 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-#SOFLAGS       = -shared
+SOFLAGS       = -shared
 
 
 LIB_OBJS         =  mapLib.o
 
-Target       = $(ANITA_LIB_DIR)/libAnitaMap.a
 
 
-all: $(Target)
+Name = libAnitaMap
+Library  = $(ANITA_LIB_DIR)/$(Name).a
+DynLib  = $(ANITA_LIB_DIR)/$(Name).so
 
-$(Target): $(LIB_OBJS)
-	@/bin/rm -f $(Target)	
-#	@echo "Creating $(Target) ..."
+
+all: $(Library) $(DynLib)
+
+$(Library): $(LIB_OBJS)
+	@/bin/rm -f $(Library)	
 	@ar -r $@ $^
-#	@$(LD) $(LDFLAGS) $(LIBS) $(SOFLAGS) $(Objects) -o $(Target)
-#	@chmod 555 $(Target)
+
+$(DynLib): $(LIB_OBJS)
+	@/bin/rm -f $(DynLib)	
+	@echo "Creating $(DynLib) ..."
+	@$(LD) $(LDFLAGS) $(LIBS) $(SOFLAGS) $(LIB_OBJS) -o $(DynLib)
+	@chmod 555 $(DynLib)
 
 clean: objclean
-	@/bin/rm -f $(Target)
+	@/bin/rm -f $(Library) $(DynLib)
 
 
 
