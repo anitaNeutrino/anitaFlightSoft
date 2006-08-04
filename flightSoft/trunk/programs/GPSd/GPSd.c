@@ -49,7 +49,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength);
 int tryToStartNtpd();
 
 // Definitions
-#define LEAP_SECONDS 13 //Need to check
+#define LEAP_SECONDS 14 //Need to check
 #define G12_DATA_SIZE 1024
 #define ADU5_DATA_SIZE 1024
 
@@ -1247,7 +1247,7 @@ int setupAdu5()
     strcat(adu5Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,SA4,A,ON,%d\r\n",adu5SatPeriod);
     strcat(adu5Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\n",adu5VtgPeriod);
+    sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\r\n",adu5VtgPeriod);
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHQ,PRT\r\n");
     if(adu5EnableTtt) strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");

@@ -26,11 +26,11 @@ int main(int argc, char** argv) {
 	printf("Couldn't open %s\n",logFile);
 	exit(0);
     }
-
+    printf("\n\nYou can use the up arrow key to retrieve previous input to the logger (if you don't want to retype your name, etc.\n\n");
     usersName=readline("Enter User's name:\n");
     if(usersName && *usersName)
 	add_history(usersName);
-    runDescription=readline("Enter Run Description:\n");
+    runDescription=readline("Enter Run Description (ends with Enter):\n");
     if(runDescription && *runDescription)
 	add_history(runDescription);
 

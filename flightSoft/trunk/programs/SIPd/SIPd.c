@@ -58,6 +58,7 @@ char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 //Output variables
 int verbosity;
 int printToScreen;
+int sendData;
 
 // Bandwidth variables
 int eventBandwidth=80;
@@ -224,6 +225,10 @@ void highrateHandler(int *ignore)
     sendWakeUpBuffer();
 
     while(1) {
+	if(!sendData) {
+	    sleep(1);
+	    continue;
+	}
 	currentPri=priorityOrder[orderIndex];	
 	numLinks=getListofLinks(eventTelemLinkDirs[currentPri],&linkList);
 
@@ -381,6 +386,7 @@ int readConfig()
     kvpReset();
     status = configLoad ("SIPd.config","sipd");
     if(status == CONFIG_E_OK) {
+	sendData=kvpGetInt("sendData",0);
 	throttleRate=kvpGetInt("throttleRate",680);
 	sendWavePackets=kvpGetInt("sendWavePackets",0);
 	syslog(LOG_INFO,"sendWavePackets %d\n",sendWavePackets);

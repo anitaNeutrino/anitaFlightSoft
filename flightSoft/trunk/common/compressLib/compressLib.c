@@ -31,6 +31,7 @@ CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &output[count];
 	surfStart=count;
 	surfHdPtr->eventNumber=bdPtr->eventNumber;
+	printf("Doing event %lu %lu, surf (%d)\n",surfHdPtr->eventNumber,bdPtr->eventNumber,surf);
 	count+=sizeof(EncodedSurfPacketHeader_t);
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    count+=encodeChannel(cntlPtr->encTypes[surf][chan],
@@ -185,6 +186,7 @@ int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, uns
     int count=0;    
     int encSize=0;
     chanHdPtr->rawHdr=chanPtr->header;
+    chanHdPtr->encType=encType;
     count+=sizeof(EncodedSurfChannelHeader_t);
     
     switch(encType) {
@@ -192,7 +194,7 @@ int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, uns
 	    encSize=encodeWaveNone(&buffer[count],chanPtr);
 	    break;
 	default:
-	    encType=ENCODE_NONE;
+	    chanHdPtr->encType=ENCODE_NONE;
 	    encSize=encodeWaveNone(&buffer[count],chanPtr);
 	    break;	    
     }    
@@ -247,7 +249,7 @@ int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanP
 	    encSize=encodePSWaveLosslessBinFibCombo(&buffer[count],chanPtr);
 	    break;
 	default:
-	    encType=ENCODE_NONE;
+	    chanHdPtr->encType=ENCODE_NONE;
 	    encSize=encodePSWaveNone(&buffer[count],chanPtr);
 	    break;	    
     }    
@@ -576,7 +578,7 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     xMin=mean-(1<<(bitSize-1));
     xMax=mean+(1<<(bitSize-1));
     xMax-=1;
-    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
+//    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
     
     char *meanPtr=(char*)currentChar;
     (*meanPtr)=(char)(mean);

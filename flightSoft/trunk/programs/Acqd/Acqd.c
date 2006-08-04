@@ -486,7 +486,7 @@ int main(int argc, char **argv) {
 			if(verbosity>3 && printToScreen) 
 			    printf("SURF %d GPIO: 0x%o %d\n",
 				   surfIndex[0],tmpGPIO,tmpGPIO);
-			if(tmo) //Might change tmo%2
+			if(tmo && (tmo%5==0)) //Might change tmo%2
 			    usleep(1); 
 			tmo++;
 
@@ -502,7 +502,7 @@ int main(int argc, char **argv) {
 			    lastRateTime=timeStruct.tv_sec;
 			    lastEventCounter=doingEvent;
 			}
-			if(tmo>5) {
+			if(tmo>20) {
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
 //			    //Time out not in self trigger mode
@@ -673,7 +673,8 @@ int main(int argc, char **argv) {
 		
 		if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
 		    //Record housekeeping data
-// disabled by GSV		    gotSurfHk=1;  
+// disabled by GSV
+		    gotSurfHk=1;  
 		    lastSurfHk=timeStruct.tv_sec;
 		    theSurfHk.unixTime=timeStruct.tv_sec;
 		    theSurfHk.unixTimeUs=timeStruct.tv_usec;
@@ -706,6 +707,7 @@ int main(int argc, char **argv) {
 	    }
 	    else if(doingEvent>1) {
 		hdPtr->eventNumber=getEventNumber();
+		bdPtr->eventNumber=hdPtr->eventNumber;
 		hdPtr->surfMask=surfMask;
 		hdPtr->antTrigMask=(unsigned int)antTrigMask;
 		
@@ -2474,6 +2476,14 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	//Lastly read the RF Power Data
 	for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
 	    dataInt=*(barMapAddr[surf]);
+	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
+            if((printToScreen && verbosity>1) || HK_DEBUG)
+                printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]&0xfff);
+            //Should check if it is the same or not
+            if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
+                theSurfHk.errorFlag|=(1>>surf);
+            }
+
 	}
     }
     return status;
