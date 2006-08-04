@@ -23,8 +23,8 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 200
-#define MAX_CALIB_TIMES 200
+#define MAX_GPS_TIMES 2000
+#define MAX_CALIB_TIMES 2000
 #define EVENT_TIMEOUT 5
 
 #define TIME_MATCH 0.05 //seconds
@@ -209,13 +209,13 @@ int main (int argc, char *argv[])
 //		    syslog (LOG_WARNING,"No GPS sub time for event %d",
 //			    theAcqdEventHeader.eventNumber);
 		    if(printToScreen)
-			fprintf(stderr,"No GPS sub time for event %lu\t%ld\t%ld\n",
+			fprintf(stdout,"No GPS sub time for event %lu\t%ld\t%ld\n",
 			       theAcqdEventHeader.eventNumber,
 			       theAcqdEventHeader.unixTime,
 			       theAcqdEventHeader.unixTimeUs);
 		}
 		else if(printToScreen) 
-		    fprintf(stderr,"Match: Event %lu\t Time:\t%ld\t%ld\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
+		    fprintf(stdout,"Match: Event %lu\t Time:\t%ld\t%ld\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
 		
 		    theAcqdEventHeader.calibStatus
 			=getCalibStatus(theAcqdEventHeader.unixTime);
@@ -254,9 +254,19 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 /*     static float avgDiff=0; */
 /*     static int numDiffs=0; */
 /*     static float lastDiff=0; */ 
-
+    int haveMatch=0;
 //May implement a dynamic monitoring of the tim offset
     
+    static int lastPPSNum=-1;
+    static unsigned long turfPPSOffset=0;
+
+
+    if(lastPPSNum>theHeaderPtr->turfio.ppsNum) {
+	turfPPSOffset=0;
+    }
+    lastPPSNum=theHeaderPtr->turfio.ppsNum;
+	
+
 // GPS subTime stuff
     static int numGpsStored=0;
     int numGpsTimeLinks;
@@ -302,20 +312,46 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     for(count=0;count<numGpsStored;count++) {
 	fracUnix=((float)theHeaderPtr->unixTimeUs)/1e6;
 	fracTurf=((float)theHeaderPtr->turfio.trigTime)/((float)DEFAULT_C3PO);
+	if(turfPPSOffset) {
+	    fracTurf+=(((float)(turfPPSOffset+theHeaderPtr->turfio.ppsNum))-
+		       ((float)theHeaderPtr->unixTime));
+	}
 	fracGps=((float)gpsArray[count].subTime)/1e7;
-	fracGps+=(gpsArray[count].unixTime-theHeaderPtr->unixTime);
-// 	printf("Event %lu\t%ld.%ld\t%lu\n\tGPS %ld.%lu\n", 
-// 	       theHeaderPtr->eventNumber,theHeaderPtr->unixTime, 
-// 	       theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.trigTime, 
-//		       gpsArray[count].unixTime,gpsArray[count].subTime); 
-	if(printToScreen && verbosity >1)
-	    fprintf(stderr,"Event %ld\t%f\t%f\t%f\n",theHeaderPtr->eventNumber,
+	fracGps+=(((float)gpsArray[count].unixTime)
+		  -((float)theHeaderPtr->unixTime));
+	if(printToScreen&&verbosity>=0) {
+	    printf("Event %lu\tUnix: %ld.%ld\tTURF:%lu (%lu) %lu\n\tGPS %ld.%lu\n", 
+		   theHeaderPtr->eventNumber,theHeaderPtr->unixTime, 
+		   theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.ppsNum,
+		   theHeaderPtr->turfio.ppsNum+turfPPSOffset,
+		   theHeaderPtr->turfio.trigTime, 
+		   gpsArray[count].unixTime,gpsArray[count].subTime); 
+	}
+	if(printToScreen && verbosity>=0)
+	    printf("Event %ld\tUnix: %f\tTurf: %f\tGps: %f\n",theHeaderPtr->eventNumber,
 		   fracUnix,fracTurf,fracGps);
 
-	if(fabsf(fracUnix-fracGps)<TIME_MATCH) {
+	if(fabsf(fracTurf-fracGps)<TIME_MATCH) {
+	    haveMatch=1;
+	}
+	else if(turfPPSOffset==0) {
+	    //Maybe we are offset by a second
+	    if(fabsf((fracTurf+1)-fracGps)<TIME_MATCH) {
+		haveMatch=1;
+	    }
+	    else if(fabsf((fracTurf-1)-fracGps)<TIME_MATCH) {
+		haveMatch=1;
+	    }
+	}
+
+	
+	if(haveMatch==1) {
 	    //We have a match
 	    //Need to set gpsSubTime and delete all previous GPS times
-	    
+	    if(turfPPSOffset==0)
+		turfPPSOffset=gpsArray[count].unixTime-theHeaderPtr->turfio.ppsNum;	    
+
+	    theHeaderPtr->unixTime=gpsArray[count].unixTime;    
 	    theHeaderPtr->gpsSubTime=gpsArray[count].subTime;
 	    bzero(gpsArray,(count+1)*sizeof(GpsSubTime_t));
 	    numGpsStored-=(count+1);
@@ -323,6 +359,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 		memmove(&gpsArray[0],&gpsArray[count+1],numGpsStored*sizeof(GpsSubTime_t));
 	    return 1;
 	}
+
 	
     }
 /*     for(count=0;count<numGpsStored;count++) { */
@@ -609,7 +646,7 @@ int readConfigFile()
 int compareGpsTimes(const void *ptr1, const void *ptr2) {
     GpsSubTime_t *gps1 = (GpsSubTime_t*) ptr1;
     GpsSubTime_t *gps2 = (GpsSubTime_t*) ptr2;
-    printf("gps1 %lu \t gps 2 %lu\n",gps1->unixTime,gps2->unixTime);
+//    printf("gps1 %lu \t gps 2 %lu\n",gps1->unixTime,gps2->unixTime);
 
     if(gps1->unixTime<gps2->unixTime) return -1;
     else if(gps1->unixTime>gps2->unixTime) return 1;

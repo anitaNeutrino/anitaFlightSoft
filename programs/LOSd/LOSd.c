@@ -72,6 +72,7 @@ int currentPri=0;
 unsigned char eventBuffer[MAX_EVENT_SIZE];
 unsigned char losBuffer[LOS_MAX_BYTES];
 int numBytesInBuffer=0;
+int sendData=0;
 
 #define MAX_ATTEMPTS 50
 
@@ -173,6 +174,10 @@ int main(int argc, char *argv[])
 	    	
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
+	    if(!sendData) {
+		sleep(1);
+		continue;
+	    }
 	    currentPri=priorityOrder[orderIndex];	    
 	    if(numLinks[currentPri]==0 || 
 	       (sillyEvNum)>maxEventsBetweenLists) {
@@ -359,6 +364,7 @@ int readConfig()
     kvpReset();
     status = configLoad ("LOSd.config","losd");
     if(status == CONFIG_E_OK) {
+	sendData=kvpGetInt("sendData",0);
 	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	laptopDebug=kvpGetInt("laptopDebug",0);
 	losBus=kvpGetInt("losBus",1);
