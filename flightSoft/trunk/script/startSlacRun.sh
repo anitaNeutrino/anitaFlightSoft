@@ -1,19 +1,19 @@
 #!/bin/bash
 source ~/flightSoft/script/anitaFlightSoftSetup.sh
-START_RUN=31
-CURRENT_DRIVE=/mnt/blade4
+START_RUN=1
+CURRENT_DRIVE=/mnt/zeus
 
 n=${START_RUN}
-THE_DIR=${CURRENT_DRIVE}/slacData/theRuns/run$n
+THE_DIR=${CURRENT_DRIVE}/uhData/run$n
 
 while [ -d $THE_DIR ] ; do
   let "n = n + 1"
-  THE_DIR=${CURRENT_DRIVE}/slacData/theRuns/run$n
+  THE_DIR=${CURRENT_DRIVE}/uhData/run$n
 done
 echo "Killing old progs"
-CmdTest 131 246 7
+#CmdTest 131 246 7
+CmdTest 131 18 1
 
-killall rsync
 sleep 2
 
 rm -rf /tmp/anita
@@ -22,7 +22,8 @@ sudo umount /mnt/data
 sudo mount --bind ${THE_DIR} /mnt/data
 mkdir /mnt/data/log
 mkdir /mnt/data/index
-
+mkdir /mnt/data/anita
+ln -sf /mnt/zeus/pedestal /mnt/data/anita/
 
 mkdir ${THE_DIR}/config
 cp -r ~/flightSoft/config ${THE_DIR}/config
@@ -30,7 +31,8 @@ cp -r ~/flightSoft/config ${THE_DIR}/config
 echo "Using directory: $THE_DIR" 
 
 echo "Starting new progs"
-CmdTest 133 246 7
+#CmdTest 133 246 7
+CmdTest 133 18 1
 
 sleep 2
 
@@ -60,7 +62,7 @@ echo "Starting Event number: `cat ~/flightSoft/lastEventNumber`" > ${THE_DIR}/lo
 echo "ps -x gives:" >> ${THE_DIR}/log/startLog.txt
 ps -x >> ${THE_DIR}/log/startLog.txt
 
-ridiculousRunLog ${THE_DIR}/log/sillyLog.txt
+#ridiculousRunLog ${THE_DIR}/log/sillyLog.txt
 Acqd
 
 
