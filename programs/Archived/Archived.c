@@ -56,7 +56,7 @@ unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
 int printToScreen=0;
 int verbosity=0;
-
+int writeTelem=0;
 
 AnitaEventWriterStruct_t eventWriter;
 FILE *fpIndex;
@@ -163,6 +163,7 @@ int readConfigFile()
     status += configLoad ("Archived.config","output") ;
 
     if(status == CONFIG_E_OK) {
+	writeTelem=kvpGetInt("writeTelem",0);
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	tempNum=10;
@@ -275,11 +276,13 @@ void processEvent()
     //For now we'll just hard code it to something and see how that goes
     memset(outputBuffer,0,MAX_WAVE_BUFFER);
     retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
-    if(retVal==COMPRESS_E_OK)
-	writeOutputForTelem(numBytes);
-    else {
-	syslog(LOG_ERR,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
-	fprintf(stderr,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
+    if(writeTelem) {
+	if(retVal==COMPRESS_E_OK)
+	    writeOutputForTelem(numBytes);
+	else {
+	    syslog(LOG_ERR,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
+	    fprintf(stderr,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
+	}
     }
     
     

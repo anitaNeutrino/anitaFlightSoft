@@ -54,6 +54,7 @@ int surfMask;
 int useUSBDisks=0;
 int compressWavefile=1;
 int useInterrupts=0;
+int niceValue=-20;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -173,6 +174,7 @@ FILE *timeFile;
 
 
 int main(int argc, char **argv) {
+    char reniceCommand[FILENAME_MAX];
     PlxHandle_t surfHandles[MAX_SURFS];
     PlxHandle_t turfioHandle;
     PlxHandle_t lint1Handle;
@@ -301,6 +303,11 @@ int main(int argc, char **argv) {
 	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	    return -1;
 	}
+	//renice process
+	sprintf(reniceCommand,"sudo renice %d -p `cat %s`",niceValue,
+		acqdPidFile);
+	retVal=system(reniceCommand);
+
 	if(doingEvent==0) prepWriterStructs();
 
 
@@ -486,8 +493,8 @@ int main(int argc, char **argv) {
 			if(verbosity>3 && printToScreen) 
 			    printf("SURF %d GPIO: 0x%o %d\n",
 				   surfIndex[0],tmpGPIO,tmpGPIO);
-			if(tmo && (tmo%5==0)) //Might change tmo%2
-			    usleep(1); 
+			if(tmo && (tmo%100)==0) //Might change tmo%2
+			    myUsleep(1); 
 			tmo++;
 
 
@@ -502,7 +509,7 @@ int main(int argc, char **argv) {
 			    lastRateTime=timeStruct.tv_sec;
 			    lastEventCounter=doingEvent;
 			}
-			if(tmo>20) {
+			if(tmo>500) {
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
 //			    //Time out not in self trigger mode
@@ -1207,6 +1214,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","pedestal") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+        niceValue=kvpGetInt("niceValue",-20);
 	pedestalMode=kvpGetInt("pedestalMode",0);
 	useInterrupts=kvpGetInt("useInterrupts",0);
 	firmwareVersion=kvpGetInt("firmwareVersion",2);
@@ -2893,3 +2901,13 @@ int getChanIndex(int surf, int chan) {
 
 }
 	
+
+void myUsleep(int usec)
+{
+    struct timespec waitTime;
+    struct timespec retTime;
+    waitTime.tv_sec=0;
+    waitTime.tv_nsec=usec*1000;
+    
+    nanosleep(&waitTime,&retTime);
+}
