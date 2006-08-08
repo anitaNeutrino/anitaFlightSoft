@@ -257,7 +257,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     int haveMatch=0;
 //May implement a dynamic monitoring of the tim offset
     
-    static int lastPPSNum=-1;
+    static unsigned short lastPPSNum=0;
     static unsigned long turfPPSOffset=0;
 
 
@@ -320,10 +320,10 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	fracGps+=(((float)gpsArray[count].unixTime)
 		  -((float)theHeaderPtr->unixTime));
 	if(printToScreen&&verbosity>=0) {
-	    printf("Event %lu\tUnix: %ld.%ld\tTURF:%lu (%lu) %lu\n\tGPS %ld.%lu\n", 
+	    printf("Event %lu\tUnix: %ld.%ld\tTURF:%u (%lu) %lu\n\tGPS %ld.%lu\n", 
 		   theHeaderPtr->eventNumber,theHeaderPtr->unixTime, 
 		   theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.ppsNum,
-		   theHeaderPtr->turfio.ppsNum+turfPPSOffset,
+		   (unsigned long)(theHeaderPtr->turfio.ppsNum)+turfPPSOffset,
 		   theHeaderPtr->turfio.trigTime, 
 		   gpsArray[count].unixTime,gpsArray[count].subTime); 
 	}
@@ -583,7 +583,7 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
     double diff=computerTime-gpsTime;
     if(verbosity>2 && printToScreen) { 
 	printf("Old:\t%lu\t%lu\t%lu\n",lastUnixTime,lastTrigTime,lastPPSNum);
-	printf("New:\t%ld\t%lu\t%lu\n",theHeaderPtr->unixTime,
+	printf("New:\t%ld\t%lu\t%u\n",theHeaderPtr->unixTime,
 	       theHeaderPtr->turfio.trigTime,theHeaderPtr->turfio.ppsNum);
 	
 	printf("Raw:\t%ld\t%ld\n",theHeaderPtr->unixTime,theGpsPtr->unixTime);
