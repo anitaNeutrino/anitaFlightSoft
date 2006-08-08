@@ -38,7 +38,8 @@ int main (void)
 
  
     printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t)); 
-    printf("Size of TurfioStruct_t: %d\n",sizeof(TurfioStruct_t)); 
+    printf("Size of TurfioStruct_t: %d\n",sizeof(TurfioStruct_t));  
+    printf("Size of SlacTurfioStruct_t: %d\n",sizeof(SlacTurfioStruct_t)); 
     printf("Size of SurfChannelFull_t: %d\n",sizeof(SurfChannelFull_t));
     printf("Size of RawSurfChannelHeader_t: %d\n",
 	   sizeof(RawSurfChannelHeader_t));

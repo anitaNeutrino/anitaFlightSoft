@@ -1473,6 +1473,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
     gHdr->feByte=0xfe;
     switch(code) {
 	case PACKET_HD: gHdr->verId=VER_EVENT_HEADER; break;
+	case PACKET_HD_SLAC: gHdr->verId=SLAC_VER_EVENT_HEADER; break;
 	case PACKET_WV: gHdr->verId=VER_WAVE_PACKET; break;
 	case PACKET_SURF: gHdr->verId=VER_SURF_PACKET; break;
 	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;

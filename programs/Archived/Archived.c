@@ -264,7 +264,7 @@ void processEvent()
     memset(outputBuffer,0,MAX_WAVE_BUFFER);
     retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
     if(retVal==COMPRESS_E_OK) {
-//	writeOutputToDisk(numBytes);
+	writeOutputToDisk(numBytes);
     }
     else {
 	syslog(LOG_ERR,"Error compressing event %lu\n",theBody.eventNumber);

@@ -44,7 +44,8 @@
 #define VER_SLOW_2 1
 #else
 //Current ones
-#define VER_EVENT_HEADER 7
+#define VER_EVENT_HEADER 8
+#define SLAC_VER_EVENT_HEADER 8
 #define VER_WAVE_PACKET 6
 #define VER_SURF_PACKET 6
 #define VER_ENC_WAVE_PACKET 6
@@ -84,12 +85,25 @@
 #define WAKEUP_TDRSS_BUFFER_SIZE 500
 #define WAKEUP_LOW_RATE_BUFFER_SIZE 100
 
+//Turf Bit Masks
+#define CUR_BUF_MASK_READ 0x30
+#define CUR_BUF_SHIFT_READ 4
+#define CUR_BUF_MASK_FINAL 0xc
+#define CUR_BUF_SHIFT_FINAL 2
+#define TRIG_BUF_MASK_READ 0x60
+#define TRIG_BUF_SHIFT_READ 5
+#define TRIG_BUF_MASK_FINAL 0x3
+#define TRIG_BUF_SHIFT_FINAL 0
+
+
+
 
 //Enumerations
 typedef enum {
     PACKET_HD = 0x100,
     PACKET_WV = 0x101, //Too big to telemeter
     PACKET_SURF = 0x102,
+    PACKET_HD_SLAC = 0x103,
     PACKET_SURF_HK = 0x110,
     PACKET_TURF_RATE = 0x111,
     PACKET_ENC_WV = 0x120,
@@ -222,6 +236,8 @@ typedef struct {
     unsigned short sbsTemp[2];
 } SlowRateType1_t;
 
+
+
 typedef struct {
     unsigned char trigType; //Trig type bit masks
     unsigned char l3Type1Count; //L3 counter
@@ -235,7 +251,32 @@ typedef struct {
     unsigned short lowerL2TrigPattern;
     unsigned short l3TrigPattern;
     unsigned short l3TrigPattern2;
+} SlacTurfioStruct_t;
+
+
+#ifdef SLAC_DATA06
+typedef SlacTurfioStruct_t TurfioStruct_t;
+#else
+typedef struct {
+    unsigned char trigType; //Trig type bit masks
+    // 0=RF, 1=PPS1, 2=PPS2, 3=Soft/Ext, 4=L3Type1, 5,6 buffer depth at trig
+    unsigned char l3Type1Count; //L3 counter
+    unsigned short trigNum; //turf trigger counter
+    unsigned long trigTime;
+    unsigned short ppsNum;     // 1PPS
+    unsigned short deadTime; // fraction = deadTime/64400
+    unsigned long c3poNum;     // 1 number of trigger time ticks per PPS
+    unsigned short upperL1TrigPattern;
+    unsigned short lowerL1TrigPattern;
+    unsigned short upperL2TrigPattern;
+    unsigned short lowerL2TrigPattern;
+    unsigned short l3TrigPattern;
+    unsigned char bufferDepth; //bits 0,1 trigTime depth 2,3 current depth
+    unsigned char reserved;
 } TurfioStruct_t;
+#endif
+
+
 
 typedef struct {
     GenericHeader_t gHdr;
