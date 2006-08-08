@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <math.h>
 #include <libgen.h>
 #include <string.h>
 
@@ -16,13 +17,25 @@
 #include "utilLib/utilLib.h"
 #include "pedestalLib/pedestalLib.h"
 
+
+//#define READ_NEW_DATA
+//#define GAUSS_RMS
+
+
 extern  int versionsort(const void *a, const void *b);
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist);
 int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBodyPtr);
 int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile);
+int fillBodyFromFileSlac(AnitaEventBody_t *bodyPtr, gzFile openFile);
 int getFirstHeaderNumber(const char *theBaseDir);
-int decodeChannel(char *buffer,SlacEncodedSurfChannelHeader_t *encHdr, 
+int decodeChannel(char *buffer,EncodedSurfChannelHeader_t *encHdr, 
 		  SurfChannelFull_t *chanPtr);
+int decodeChannelSlac(char *buffer,SlacEncodedSurfChannelHeader_t *encHdr, 
+		      SurfChannelFull_t *chanPtr);
+void addGaussianNoise(AnitaEventBody_t *bdPtr, float rms);
+float gaussianRand(float mean, float stdev);
+float myRand();
+
 #define EVENT_RATE 5 //Hz
 
 
@@ -107,7 +120,12 @@ int main(int argc, char** argv) {
 	    for(count2=0;count2<EVENTS_PER_FILE;count2++) {
 		numBytesHead=gzread(inputHead,&theHeader,sizeof(AnitaEventHeader_t));
 //		numBytesEvent=gzread(inputEvent,&theBody,sizeof(AnitaEventBody_t));
+		
+#ifdef READ_NEW_DATA
 		retVal=fillBodyFromFile(&theBody,inputEvent);
+#else
+		retVal=fillBodyFromFileSlac(&theBody,inputEvent);
+#endif
 //		exit(0);
 		if(retVal!=0 ||
 		   numBytesHead!=sizeof(AnitaEventHeader_t)) {
@@ -122,8 +140,12 @@ int main(int argc, char** argv) {
 		}
 		
 		theHeader.priority=2;
+#ifdef GAUSS_RMS
+		addGaussianNoise(&theBody,GAUSS_RMS);
+#endif
+
 		writeAndMakeLink(&theHeader,&theBody);
-		usleep(usleepNum);
+//		usleep(usleepNum);
 //		if(eventCount==0)
 //		    resetPedCalc(theHeader.unixTime);
 //		addEventToPedestals(&theBody);
@@ -200,7 +222,7 @@ int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist)
 }
 
 
-int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile) {
+int fillBodyFromFileSlac(AnitaEventBody_t *bodyPtr, gzFile openFile) {
     SlacEncodedSurfChannelHeader_t *chanHdPtr;
     EncodedSurfPacketHeader_t surfHeader;
     int count=0,numBytesToRead,numBytesRead;
@@ -229,6 +251,44 @@ int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile) {
 //	    printf("RJN -- %d %d\n",chan,count);
 	    chanHdPtr = (SlacEncodedSurfChannelHeader_t*) &bigBuffer[count];
 	    count+=sizeof(SlacEncodedSurfChannelHeader_t);
+	    decodeChannelSlac(&bigBuffer[count],chanHdPtr,
+			  &(bodyPtr->channel[getChanIndex(surf,chan)]));
+	    count+=chanHdPtr->numBytes;	    	    
+	}	    	    	        	
+    }
+    return 0;
+}
+
+
+int fillBodyFromFileNew(AnitaEventBody_t *bodyPtr, gzFile openFile) {
+    EncodedSurfChannelHeader_t *chanHdPtr;
+    EncodedSurfPacketHeader_t surfHeader;
+    int count=0,numBytesToRead,numBytesRead;
+    int surf,chan;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	
+	//Need to read next header
+	numBytesRead=gzread(openFile,&surfHeader,sizeof(EncodedSurfPacketHeader_t));
+	if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+	    gzclose(openFile);
+	    fprintf(stderr,"Only read %d (of %d)  bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
+	    return -7;
+	}
+//	printf("Event %lu\n",surfHeader.eventNumber);
+	bodyPtr->eventNumber=surfHeader.eventNumber;
+	numBytesToRead=surfHeader.gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
+	numBytesRead=gzread(openFile,bigBuffer,numBytesToRead);
+	if(numBytesRead!=numBytesToRead) {
+	    gzclose(openFile);
+	    fprintf(stderr,"Only read %d (of %d) bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
+	    return -6; 
+	}
+	
+	count=0;
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+//	    printf("RJN -- %d %d\n",chan,count);
+	    chanHdPtr = (EncodedSurfChannelHeader_t*) &bigBuffer[count];
+	    count+=sizeof(EncodedSurfChannelHeader_t);
 	    decodeChannel(&bigBuffer[count],chanHdPtr,
 			  &(bodyPtr->channel[getChanIndex(surf,chan)]));
 	    count+=chanHdPtr->numBytes;	    	    
@@ -237,7 +297,28 @@ int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile) {
     return 0;
 }
 
-int decodeChannel(char *buffer,SlacEncodedSurfChannelHeader_t *encHdr, 
+
+int decodeChannelSlac(char *buffer,SlacEncodedSurfChannelHeader_t *encHdr, 
+		  SurfChannelFull_t *chanPtr) {
+    chanPtr->header.chanId=encHdr->rawHdr.chanId;
+    chanPtr->header.chipIdFlag=encHdr->rawHdr.chipIdFlag;
+    chanPtr->header.firstHitbus=encHdr->rawHdr.firstHitbus;
+    chanPtr->header.lastHitbus=encHdr->rawHdr.lastHitbus;
+    switch(encHdr->encType) {
+//	case ENCODE_SOMETHING:
+//	    break;	    
+	case ENCODE_NONE:
+	default:
+	  memcpy(&(chanPtr->data[0]),buffer,encHdr->numBytes);
+	    break;   	   
+    }
+    return 0;
+
+    //Need to add checksum check
+}
+
+
+int decodeChannel(char *buffer,EncodedSurfChannelHeader_t *encHdr, 
 		  SurfChannelFull_t *chanPtr) {
     chanPtr->header.chanId=encHdr->rawHdr.chanId;
     chanPtr->header.chipIdFlag=encHdr->rawHdr.chipIdFlag;
@@ -281,4 +362,55 @@ int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBody
     
     
     return retVal;
+}
+
+void addGaussianNoise(AnitaEventBody_t *bdPtr, float rms)
+{
+    int chan,samp;
+    for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
+	if((chan+1)%9==0) {
+	    ///Something
+	}
+	else {
+	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
+		short value=(short) 
+		    gaussianRand((float)(bdPtr->channel[chan].data[samp]&0xfff),
+				 rms);
+//	    printf("%d %d\n",bdPtr->channel[chan].data[samp],value);
+		bdPtr->channel[chan].data[samp]=value&0xfff;
+	    }
+	}
+    }
+}
+
+float myRand() {
+    float a =  (float)rand() / (float)(RAND_MAX);
+    return a;
+}
+
+float gaussianRand(float mean, float stdev)
+{
+  static int cached = 0;
+  static float extra;  	// the extra number from a 0 mean unit stdev gaussian
+
+  if (cached) {
+    cached = 0;
+    return extra*stdev + mean;
+  }
+  else {
+    // pick a random point in the unit circle (excluding the origin)
+    float a,b,c;
+    do {
+      a = 2*myRand()-1.0;
+      b = 2*myRand()-1.0;
+      c = a*a + b*b;
+//      printf("%f %f %f\n",a,b,c);
+    }
+    while (c >= 1.0 || c == 0.0);
+    // transform it into two values drawn from a gaussian
+    float t = sqrt(-2*log(c)/c);
+    extra = t*a;
+    cached = 1;
+    return t*b*stdev + mean;
+  }
 }
