@@ -246,7 +246,7 @@ void processEvent()
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 //	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
 	    diskEncCntl.encTypes[surf][chan]= ENCODE_NONE;
-	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_BINFIB_COMBO;
+	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_BINARY;
 	}
     }
 
@@ -260,9 +260,11 @@ void processEvent()
 
     //2) Pack Event For On Board Storage
     //Now depending on which option is selected we may either write out pedSubbed or not pedSubbed events to the hard disk (or just AnitaEventBody_t structs)
+    memset(outputBuffer,0,MAX_WAVE_BUFFER);
     retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
-    if(retVal==COMPRESS_E_OK)
-	writeOutputToDisk(numBytes);
+    if(retVal==COMPRESS_E_OK) {
+//	writeOutputToDisk(numBytes);
+    }
     else {
 	syslog(LOG_ERR,"Error compressing event %lu\n",theBody.eventNumber);
 	fprintf(stderr,"Error compressing event %lu\n",theBody.eventNumber);
@@ -271,6 +273,7 @@ void processEvent()
     //3) Pack Event For Telemetry
     //Again we have a range of options for event telemetry
     //For now we'll just hard code it to something and see how that goes
+    memset(outputBuffer,0,MAX_WAVE_BUFFER);
     retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
     if(retVal==COMPRESS_E_OK)
 	writeOutputForTelem(numBytes);

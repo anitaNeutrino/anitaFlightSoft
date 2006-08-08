@@ -69,6 +69,12 @@ typedef enum {
     CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 					       unsigned char *input,
 					       int numBytes);
+    CompressErrorCode_t 
+    unpackToPedSubbedEventWithStats(PedSubbedEventBody_t *bdPtr,
+				    unsigned char *input,
+				    int numBytes,
+				    EncodeControlStruct_t *cntlPtr,
+				    int *sizeArray);
 				  
 	
 //And here are it's worker routines
@@ -89,8 +95,8 @@ typedef enum {
     int encodePSWave12bitBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
     CompressErrorCode_t decodePSWave12bitBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
 
-    int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
-    CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
+    int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr,ChannelEncodingType_t *encTypePtr );
+    CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr, int bitSize);
 
     int encodePSWaveLosslessFibonacci(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr);
     CompressErrorCode_t decodePSWaveLosslessFibonacci(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr);
@@ -111,6 +117,11 @@ typedef enum {
   
   ChannelEncodingType_t getEncodingTypeFromInputAndMuLawBits(int inputBits,
 							     int mulawBits);
+
+
+    ChannelEncodingType_t getBinaryEncType(int bitSize);
+    int getBinaryBitSize(ChannelEncodingType_t encType);
+
 #ifdef __cplusplus
 }
 #endif

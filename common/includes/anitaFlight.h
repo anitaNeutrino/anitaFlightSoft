@@ -77,6 +77,23 @@
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
+#ifdef USE_FAKE_DATA_DIR
+#define ANITA_INDEX_DIR "/tmp/mnt/data/anita/index"
+#define EVENT_LINK_INDEX "/tmp/mnt/data/anita/index/event.ind"
+#define GPS_INDEX "/tmp/mnt/data/anita/index/gps.ind"
+#define HK_INDEX "/tmp/mnt/data/anita/index/hk.ind"
+#define SURF_HK_INDEX "/tmp/mnt/data/anita/index/surfHk.ind"
+#define TURF_HK_INDEX "/tmp/mnt/data/anita/index/turfHk.ind"
+#define MONITOR_INDEX "/tmp/mnt/data/anita/index/monitor.ind"
+#define CMD_INDEX "/tmp/mnt/data/anita/index/cmd.ind"
+
+#define MAIN_DATA_DISK_LINK "/tmp/mnt/dataCurrent"
+#define BACKUP_DATA_DISK_LINK "/tmp/mnt/dataBackup"
+
+//Pedestal Dirs
+#define PEDESTAL_DIR "/tmp/mnt/data/anita/pedestal"
+#define CURRENT_PEDESTALS "/tmp/mnt/data/anita/pedestal/current"
+#else
 #define ANITA_INDEX_DIR "/mnt/data/anita/index"
 #define EVENT_LINK_INDEX "/mnt/data/anita/index/event.ind"
 #define GPS_INDEX "/mnt/data/anita/index/gps.ind"
@@ -88,6 +105,12 @@
 
 #define MAIN_DATA_DISK_LINK "/mnt/dataCurrent"
 #define BACKUP_DATA_DISK_LINK "/mnt/dataBackup"
+
+//Pedestal Dirs
+#define PEDESTAL_DIR "/mnt/data/anita/pedestal"
+#define CURRENT_PEDESTALS "/mnt/data/anita/pedestal/current"
+#endif
+
 
 #define OTHER_DISK1 "/mnt/blade1"
 #define OTHER_DISK2 "/mnt/data"
@@ -102,9 +125,6 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 
-//Pedestal Dirs
-#define PEDESTAL_DIR "/mnt/data/anita/pedestal"
-#define CURRENT_PEDESTALS "/mnt/data/anita/pedestal/current"
 
 
 //Housekeeping Telem Dirs

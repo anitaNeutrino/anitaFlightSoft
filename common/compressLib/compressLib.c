@@ -25,13 +25,13 @@ CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
     int surf=0;
     int chan=0;  
     EncodedSurfPacketHeader_t *surfHdPtr;
-
+    printf("%lu\n",bdPtr->eventNumber);
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &output[count];
 	surfStart=count;
 	surfHdPtr->eventNumber=bdPtr->eventNumber;
-	printf("Doing event %lu %lu, surf (%d)\n",surfHdPtr->eventNumber,bdPtr->eventNumber,surf);
+//	printf("Doing event %lu %lu, surf (%d)\n",surfHdPtr->eventNumber,bdPtr->eventNumber,surf);
 	count+=sizeof(EncodedSurfPacketHeader_t);
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    count+=encodeChannel(cntlPtr->encTypes[surf][chan],
@@ -96,9 +96,22 @@ CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
 
 }
 
+
 CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 					   unsigned char *input,
 					   int numBytes)
+{
+
+    return unpackToPedSubbedEventWithStats(bdPtr,input,numBytes,0,0);
+    
+}
+
+
+CompressErrorCode_t unpackToPedSubbedEventWithStats(PedSubbedEventBody_t *bdPtr,
+					   unsigned char *input,
+					   int numBytes,
+					   EncodeControlStruct_t *cntlPtr,
+					   int *sizeArray)
 {
 
     int count=0;
@@ -108,6 +121,7 @@ CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
     EncodedSurfChannelHeader_t *chanHdPtr;
 
+//    printf("unpackToPedSubbedEvent\n");
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &input[count];
 	bdPtr->whichPeds=surfHdPtr->whichPeds;
@@ -120,13 +134,19 @@ CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 				   &input[count],
 				   &(bdPtr->channel[GetChanIndex(surf,chan)]));
 	    if(retVal!=COMPRESS_E_OK) return retVal;
-	    count+=chanHdPtr->numBytes;	    
+	    count+=chanHdPtr->numBytes;	
+	    if(cntlPtr) {
+		cntlPtr->encTypes[surf][chan]=chanHdPtr->encType;;
+	    }
+	    if(sizeArray) {
+		sizeArray[GetChanIndex(surf,chan)]=chanHdPtr->numBytes;
+	    }
 	    if(count>numBytes)
 		return COMPRESS_E_BADSIZE;
 	}
 	//Fill Generic Header_t;
     }
-    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
+//    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
     return COMPRESS_E_OK;
 
 }
@@ -240,7 +260,8 @@ int encodePSChannel(ChannelEncodingType_t encType, SurfChannelPedSubbed_t *chanP
 	    encSize=encodePSWave12bitBinary(&buffer[count],chanPtr);
 	    break;
 	case ENCODE_LOSSLESS_BINARY:
-	    encSize=encodePSWaveLosslessBinary(&buffer[count],chanPtr);
+	    encSize=encodePSWaveLosslessBinary(&buffer[count],chanPtr,
+					       &(chanHdPtr->encType));
 	    break;
 	case ENCODE_LOSSLESS_FIBONACCI:
 	    encSize=encodePSWaveLosslessFibonacci(&buffer[count],chanPtr);
@@ -266,6 +287,8 @@ CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,uns
     int newCrc=simpleCrcShort((unsigned short*)input,numBytes/2);
     if(encChanHdPtr->crc!=newCrc) return COMPRESS_E_BAD_CRC;
     
+
+//    printf("decodePSChannel encType==%d\n",encChanHdPtr->encType);
     chanPtr->header=encChanHdPtr->rawHdr;
     switch(encChanHdPtr->encType) {
 	case ENCODE_NONE:
@@ -274,8 +297,38 @@ CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,uns
 	case ENCODE_LOSSLESS_12BIT:
 	    retVal=decodePSWave12bitBinary(input,numBytes,chanPtr);
 	    break;
-	case ENCODE_LOSSLESS_BINARY:
-	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr);
+	case ENCODE_LOSSLESS_11BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,11);
+	    break;
+	case ENCODE_LOSSLESS_10BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,10);
+	    break;
+	case ENCODE_LOSSLESS_9BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,9);
+	    break;
+	case ENCODE_LOSSLESS_8BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,8);
+	    break;
+	case ENCODE_LOSSLESS_7BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,7);
+	    break;
+	case ENCODE_LOSSLESS_6BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,6);
+	    break;
+	case ENCODE_LOSSLESS_5BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,5);
+	    break;
+	case ENCODE_LOSSLESS_4BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,4);
+	    break;
+	case ENCODE_LOSSLESS_3BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,3);
+	    break;
+	case ENCODE_LOSSLESS_2BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,2);
+	    break;
+	case ENCODE_LOSSLESS_1BIT:
+	    retVal=decodePSWaveLosslessBinary(input,numBytes,chanPtr,1);
 	    break;
 	case ENCODE_LOSSLESS_FIBONACCI:
 	    retVal=decodePSWaveLosslessFibonacci(input,numBytes,chanPtr);
@@ -294,26 +347,40 @@ CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,uns
 
 
 int encodePSWaveNone(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+//    int samp;
     int encSize=MAX_NUMBER_SAMPLES*sizeof(short);
     memcpy(buffer,chanPtr->data,encSize);
+//    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp+=4) {
+//	printf("samp %d: value %d\n",samp,chanPtr->data[samp]);
+//    }
     return encSize;
 }
 
 CompressErrorCode_t decodePSWaveNone(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr){    
+//    int samp;
     int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
     //Check that numBytes is correct
     if(numBytes!=encSize) return COMPRESS_E_BADSIZE;
+//    printf("Here\n");
     memcpy(chanPtr->data,input,encSize);
+//    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
+//	printf("samp %d: value %d\n",samp,chanPtr->data[samp]);
+//    }
     return COMPRESS_E_OK;
 }
 
+#define OFFSET_VALUE 2048
 
 int encodePSWave12bitBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
     int encSize=3*(MAX_NUMBER_SAMPLES/4)*sizeof(unsigned short);
-    int samp=0,charNum=0;
+    int samp=0,charNum=0,valNum=0;
+    unsigned short value[4];
     for(samp=0;samp<MAX_NUMBER_SAMPLES;samp+=4) {
 	charNum=(samp*3)/2;
-	pack12bit((unsigned short*)&(chanPtr->data[samp]),&buffer[charNum]);
+	for(valNum=0;valNum<4;valNum++)
+	    value[valNum]=chanPtr->data[samp+valNum]+OFFSET_VALUE;
+    
+	pack12bit(value,&buffer[charNum]);
     }
     return encSize;
 }
@@ -321,16 +388,18 @@ int encodePSWave12bitBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPt
 CompressErrorCode_t decodePSWave12bitBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr){    
     int encSize=3*(MAX_NUMBER_SAMPLES/4)*sizeof(unsigned short);
     if(numBytes!=encSize) return COMPRESS_E_BADSIZE;
-
-    int samp=0,charNum=0;
-    for(charNum=0;charNum<3*(MAX_NUMBER_SAMPLES/4);charNum+=6) {
-	samp=2*(charNum/3);
-	unpack12bit((unsigned short*)&(chanPtr->data[samp]),&input[charNum]);
+    unsigned short value[4];
+    int samp=0,charNum=0,valNum=0;
+    for(charNum=0;charNum<6*(MAX_NUMBER_SAMPLES/4);charNum+=6) {
+	samp=2*(charNum/3);	
+	unpack12bit(value,&input[charNum]);
+	for(valNum=0;valNum<4;valNum++)
+	    chanPtr->data[samp+valNum]=((short)value[valNum])-OFFSET_VALUE;
     }
     return COMPRESS_E_OK;
 }
 
-int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr) {    
+int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *chanPtr, ChannelEncodingType_t *encTypePtr) {    
     //Remember this function works an array of pedestal subtracted shorts
     //Which is what SurfChannelPedSubbed_t contains
     int wordNum=0;
@@ -355,22 +424,27 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
     //Don't actual use min we just use the median value
 
     int rangeTotal=xMax-xMin;
-    float logValue=(float)(log(rangeTotal)/log(2));
+    float logValue=(float)(log(rangeTotal+1)/log(2));
     int bitSize=(int)logValue;
-    if((logValue-bitSize)>0.5) bitSize++;
+    if((logValue-bitSize)>0) bitSize++;
     
+    *encTypePtr=getBinaryEncType(bitSize);
+
     mean=xMin+rangeTotal/2;
 //    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
     
     char *meanPtr=(char*)currentChar;
     (*meanPtr)=(char)(mean);
     currentChar++;
-    *currentChar = (unsigned char) bitSize;
-    currentChar++;
+/*     *currentChar = (unsigned char) bitSize; */
+/*     currentChar++; */
 
     for(wordNum=0;wordNum<MAX_NUMBER_SAMPLES;wordNum++) {
 	newVal=bifurcate(input[wordNum]-mean);
- 	numBitsLeft=bitSize;		
+ 	numBitsLeft=bitSize;
+//	printf("input: %d (%d)\t newVal: %#x\t: bitsize %d\n",input[wordNum],
+//	       input[wordNum]-mean,newVal,bitSize);
+//	printf("cc %u cbit %d:\n",(int)(currentChar-buffer),currentBit);
 	while(numBitsLeft) {
 //	    if(wordNum<5) cout << wordNum << "\t" << numBitsLeft << endl;
 	    if(numBitsLeft>(8-currentBit)) {			
@@ -404,20 +478,23 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
     return (int)(currentChar-buffer);
 }
 
-CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr)
+CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr, int bitSize)
 {
     int sampNum=0;
     char *meanPtr=(char*)input;
     short mean=(short)(*meanPtr);
-    unsigned char flag =  input[1];
-    int bitSize=(int) flag;
+//    unsigned char flag =  input[1];
+//    int bitSize=(int) flag;
     int bitNum;
 
-    unsigned char *currentChar=&input[2];
+//    printf("mean %d\tbitSize %d\n",mean,bitSize);
+
+    unsigned char *currentChar=&input[1];
     int currentBit=0;
     unsigned short tempNum;
     while(sampNum<MAX_NUMBER_SAMPLES) {
 	int fred = *( (int*) currentChar);
+//	printf("cc %u cbit %d: \t %#x\n",(int)(currentChar-input),currentBit,fred);
 //	bin_prnt_int(fred);
 	tempNum=0;	    
 	for(bitNum=currentBit;bitNum<currentBit+bitSize;bitNum++) {
@@ -427,9 +504,11 @@ CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes
 	}
 //	cout << endl;
 //	bin_prnt_short(tempNum);
+
 //	cout << sampNum << "\t" << tempNum << endl;
 
 	chanPtr->data[sampNum]=mean+unbifurcate(tempNum);
+//	printf("samp %d:\t %#x \t %d\n",sampNum,tempNum,chanPtr->data[sampNum]);
 	
 	sampNum++;
 	currentBit+=bitSize;
@@ -570,9 +649,9 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     short xMin=chanPtr->xMin; //Filled by pedestalLib   
     short *input = chanPtr->data;
     int rangeTotal=(int)(numSigma*sigma);
-    float logValue=(float)(log(rangeTotal)/log(2));
+    float logValue=(float)(log(rangeTotal+1)/log(2));
     int bitSize=(int)logValue;
-    if((logValue-bitSize)>0.5) bitSize++;
+    if((logValue-bitSize)>0) bitSize++;
 
     //Reset xMin and xMax to be the binary/fibonacci cut off point
     xMin=mean-(1<<(bitSize-1));
@@ -1137,6 +1216,50 @@ ChannelEncodingType_t getEncodingTypeFromInputAndMuLawBits(int inputBits,
   }
   return ENCODE_NONE;
 }
+
+ChannelEncodingType_t getBinaryEncType(int bitSize) {
+    switch(bitSize) {
+	case 12: return ENCODE_LOSSLESS_12BIT;
+	case 11: return ENCODE_LOSSLESS_11BIT;
+	case 10: return ENCODE_LOSSLESS_10BIT;
+	case 9: return ENCODE_LOSSLESS_9BIT;
+	case 8: return ENCODE_LOSSLESS_8BIT;
+	case 7: return ENCODE_LOSSLESS_7BIT;
+	case 6: return ENCODE_LOSSLESS_6BIT;
+	case 5: return ENCODE_LOSSLESS_5BIT;
+	case 4: return ENCODE_LOSSLESS_4BIT;
+	case 3: return ENCODE_LOSSLESS_3BIT;
+	case 2: return ENCODE_LOSSLESS_2BIT;
+	case 1: return ENCODE_LOSSLESS_1BIT;
+	default:
+	    return ENCODE_LOSSLESS_12BIT;
+    }
+    return ENCODE_LOSSLESS_12BIT;
+}
+	    
+    
+int getBinaryBitSize(ChannelEncodingType_t encType) {
+    switch(encType) {
+	case ENCODE_LOSSLESS_12BIT: return 12;
+	case ENCODE_LOSSLESS_11BIT: return 11;
+	case ENCODE_LOSSLESS_10BIT: return 10;	   
+	case ENCODE_LOSSLESS_9BIT: return 9;
+	case ENCODE_LOSSLESS_8BIT: return 8;
+	case ENCODE_LOSSLESS_7BIT: return 7;
+	case ENCODE_LOSSLESS_6BIT: return 6;
+	case ENCODE_LOSSLESS_5BIT: return 5;
+	case ENCODE_LOSSLESS_4BIT: return 4;
+	case ENCODE_LOSSLESS_3BIT: return 3;
+	case ENCODE_LOSSLESS_2BIT: return 2;
+	case ENCODE_LOSSLESS_1BIT: return 1;
+	default:
+	    return 12;
+    }
+    return 12;
+}
+    
+
+
 
 
 
