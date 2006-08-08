@@ -145,7 +145,7 @@ void makeSubAltDir();
 //int bufferedTurfHkWrite(TurfRateStruct_t *turfPtr, char *baseDir);
 void prepWriterStructs();
 int getChanIndex(int surf, int chan);
-
+void myUsleep(int usec);
 
 typedef struct {
     unsigned char test[8];
