@@ -143,6 +143,7 @@ int dacIMax;  // maximum intergrator state
 int dacIMin; // minimum integrator state
 int enableChanServo = FALSE; //Turn on the individual chanel servo
 int pidGoal;
+int pidPanicVal;
 int pidAverage;
 int lastRateTime=0;
 int lastEventCounter=0;
@@ -1339,6 +1340,7 @@ int readConfigFile()
 	if(doGlobalDacCycle || doSlowDacCycle)
 	    enableChanServo=0;
 	pidGoal=kvpGetInt("pidGoal",2000);
+	pidPanicVal=kvpGetInt("pidPanicVal",200);
 	pidAverage=kvpGetInt("pidAverage",1);
 	if(pidAverage<1) pidAverage=1;
 	if(printToScreen<0) {
@@ -3017,14 +3019,24 @@ PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle)
 
 int updateThresholdsUsingPID() {
     static int avgCount=0;
+    int wayOffCount=0;
     int surf,dac,error,value,change;
     float pTerm, dTerm, iTerm;
     avgCount++;
     for(surf=0;surf<numSurfs;surf++) {
 	if(dacSurfs[surf]==1) {
 	    for(dac=0;dac<N_RFTRIG;dac++) {
+		if(abs(theSurfHk.scaler[surf][dac]-pidGoal)>pidPanicVal)
+		    wayOffCount++;
 		avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
-		if(avgCount==pidAverage) {
+	    }
+	}
+    }
+    
+    if(avgCount==pidAverage || wayOffCount>100) {
+	for(surf=0;surf<numSurfs;surf++) {
+	    for(dac=0;dac<N_RFTRIG;dac++) {		
+		if(dacSurfs[surf]==1) {
 		    value=avgScalerData[surf][dac]/avgCount;
 		    avgScalerData[surf][dac]=0;
 		    error=pidGoal-value;
@@ -3064,10 +3076,8 @@ int updateThresholdsUsingPID() {
 //		       thresholdArray[surfIndex[surf]-1][dac],
 //		       pTerm,iTerm,dTerm);
 		}
-	    }
+	    }   
 	}
-    }
-    if(avgCount==10) {
 	avgCount=0;
 	return 1;
     }
