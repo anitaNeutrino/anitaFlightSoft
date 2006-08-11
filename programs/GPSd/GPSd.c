@@ -111,10 +111,12 @@ AnitaWriterStruct_t adu5VtgWriter;
 AnitaWriterStruct_t g12PosWriter;
 AnitaWriterStruct_t g12SatWriter;
 
+int startedNtpd=0;
+
 
 int main (int argc, char *argv[])
 {
-    int retVal,startedNtpd=0;
+    int retVal;
 
 // GPSd config stuff
     char gpsdPidFile[FILENAME_MAX];
@@ -270,12 +272,15 @@ int main (int argc, char *argv[])
 	
 //	printf("Here\n");
 	currentState=PROG_STATE_RUN;
+//	currentState=PROG_STATE_TERMINATE;
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
 	    checkAdu5A();
 	    if(!startedNtpd && g12StartNtp) startedNtpd=tryToStartNtpd();
 	    usleep(1);
 	}
+	printf("currentState == %d\n",currentState);
+
     } while(currentState==PROG_STATE_INIT);
 
     if(printToScreen) printf("Terminating GPSd\n");
@@ -655,7 +660,8 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData)
     strncpy(unixString,ctime(&rawtime),179);
 //	printf("%s%s\n",unixString,otherString);
     if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock &&latestData) {
-	updateClockFromG12(gpsRawTime);
+	if(!g12StartNtp || (g12StartNtp && !startedNtpd))
+	    updateClockFromG12(gpsRawTime);
     }
 
     //Need to output data to file somehow
@@ -1179,16 +1185,34 @@ void processGppatString(char *gpsString, int gpsLength) {
 int updateClockFromG12(time_t gpsRawTime)
 /*!Just updates the clock, using sudo date */
 {
-    int retVal;
-    char writeString[180];
+    int retVal=0;//,len;
+    pid_t childPid;
+//    char writeString[180];
     char dateCommand[180];
+    struct tm *ptm;
     gpsRawTime++; /*Silly*/	
-    strncpy(writeString,ctime(&gpsRawTime),179);
-    sprintf(dateCommand,"sudo date -s \"%s\"",writeString);
-    retVal=system(dateCommand);
-    if(retVal<0) {
-	syslog(LOG_ERR,"Problem updating clock, %ld: %s ",gpsRawTime,strerror(errno));
+    ptm = gmtime(&gpsRawTime);
+    sprintf(dateCommand,"%02d%02d%02d%02d%04d.%02d",
+	    ptm->tm_mon+1,ptm->tm_mday,ptm->tm_hour,ptm->tm_min,
+	    ptm->tm_year+1900,ptm->tm_sec);
+
+    char *setDateArg[]={"/usr/bin/sudo","/bin/date",dateCommand,(char*)0};
+//    retVal=system(dateCommand);
+    printf("Trying to set clock using date to %s\n",dateCommand);
+    childPid=fork();
+    if(childPid==0) {
+	//Child
+//          awsPtr->currentFileName;
+	execv("/usr/bin/sudo",setDateArg);
+	exit(0);
     }
+    else if(childPid<0) {
+	//Something wrong
+	syslog(LOG_ERR,"Problem updating clock, %ld: %s ",gpsRawTime,strerror(errno));
+	fprintf(stderr,"Problem updating clock, %ld: %s ",gpsRawTime,strerror(errno));
+	return 0;
+    }
+
     return retVal;
     
 }
@@ -1309,7 +1333,7 @@ int tryToStartNtpd()
     int retVal=0;
     pid_t childPid;    
     time_t theTime=time(NULL);
-    char *startNtpArg[]={"/home/anita/flightSoft/bin/startNtp.sh",(char*)0};
+    char *startNtpArg[]={"/bin/bash","/home/anita/flightSoft/bin/startNtp.sh",(char*)0};
     if(!donePort) {
 	retVal=openGpsDevice(G12B_DEV_NAME);
 	//May put something here to read message
@@ -1322,7 +1346,7 @@ int tryToStartNtpd()
 	if(childPid==0) {
 	    //Child
 //	    awsPtr->currentFileName;
-	    execv("/home/anita/flightSoft/bin/startNtp.sh",startNtpArg);
+	    execv("/bin/bash",startNtpArg);
 	    exit(0);
 	}
 	else if(childPid<0) {

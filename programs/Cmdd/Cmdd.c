@@ -750,6 +750,7 @@ int killPrograms(int progMask)
 //	printf("%d %d\n",progMask,testMask);
 	if(progMask&testMask) {
 	    printf("Killing prog %s\n",getProgName(prog));
+	    sendSignal(progMask,SIGUSR2);
 	    sprintf(daemonCommand,"daemon --stop -n %s",getProgName(prog));
 	    retVal=system(daemonCommand);
 	    if(retVal!=0) {

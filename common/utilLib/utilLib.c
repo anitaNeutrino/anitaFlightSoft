@@ -1105,6 +1105,16 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename)
 }
 
 
+int fillPedSubbedBody(PedSubbedEventBody_t *theEventBodyPtr, char *filename)
+{ 
+    int numBytes=genericReadOfFile((unsigned char*)theEventBodyPtr,filename,
+				   sizeof(PedSubbedEventBody_t));
+    if(numBytes==sizeof(PedSubbedEventBody_t)) return 0;
+    return numBytes;  
+}
+
+
+
 int fillGpsStruct(GpsSubTime_t *tttPtr, char *filename)
 {
     int numBytes=genericReadOfFile((unsigned char*)tttPtr,filename,
@@ -1189,9 +1199,22 @@ int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
 #ifdef NO_ZLIB
     return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 #else
+    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
     return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
 #endif
 }
+
+int writePedSubbedBody(PedSubbedEventBody_t *bodyPtr, char *filename)
+/* Writes the body pointed to by bodyPtr to filename */
+{
+#ifdef NO_ZLIB
+    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(PedSubbedEventBody_t));
+#else
+    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(PedSubbedEventBody_t));
+    return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(PedSubbedEventBody_t));
+#endif
+}
+
 
 
 int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename)

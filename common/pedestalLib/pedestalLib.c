@@ -251,6 +251,9 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
     pedSubBdPtr->whichPeds=currentPeds.unixTime;
     int surf,chan,samp,chip;   
     int chanIndex=0;
+    float fmean,fmeanSq;
+    int mean,nsamps,meanSq;
+    short dataVal;
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
@@ -261,10 +264,10 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 	    pedSubBdPtr->channel[chanIndex].header=
 		rawBdPtr->channel[chanIndex].header;
 	    chip=rawBdPtr->channel[chanIndex].header.chipIdFlag&0x3;
-	    float nsamps=0;
-	    float meanSq=0;
-	    float mean=0;
-	    short dataVal=0;
+	    nsamps=0;
+	    meanSq=0;
+	    mean=0;
+	    dataVal=0;
 	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {	
 		if(rawBdPtr->channel[chanIndex].data[samp]&HITBUS_MASK) {
 		    //HITBUS is on
@@ -289,11 +292,14 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 	    pedSubBdPtr->channel[chanIndex].mean=0;
 	    pedSubBdPtr->channel[chanIndex].rms=0;
 	    if(nsamps) {
-		mean/=nsamps;
-		meanSq/=nsamps;
-		pedSubBdPtr->channel[chanIndex].mean=mean;
-		if(meanSq>mean*mean)
-		    pedSubBdPtr->channel[chanIndex].rms=sqrt(meanSq-mean*mean);
+		fmean=mean;
+		fmeanSq=meanSq;
+
+		fmean/=nsamps;
+		fmeanSq/=nsamps;
+		pedSubBdPtr->channel[chanIndex].mean=fmean;
+		if(fmeanSq>fmean*fmean)
+		    pedSubBdPtr->channel[chanIndex].rms=sqrt(fmeanSq-fmean*fmean);
 	    }
 	    
 	}

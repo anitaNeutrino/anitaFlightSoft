@@ -206,6 +206,7 @@ void checkEvents()
     char currentHeadname[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     char currentBodyname[FILENAME_MAX];
+    char currentPSBodyname[FILENAME_MAX];
 
     numLinks=getListofLinks(PRIORITIZERD_EVENT_LINK_DIR,&linkList);
     if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
@@ -219,12 +220,16 @@ void checkEvents()
 	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
 	retVal=fillBody(&theBody,currentBodyname);
+	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+		theHead.eventNumber);
+	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
 //	printf("Event %lu, fillBody retVal %d\n",theHead.eventNumber,
 //	       retVal);
 
 	processEvent();
 	removeFile(currentLinkname);
 	removeFile(currentBodyname);
+	removeFile(currentPSBodyname);
 	removeFile(currentHeadname);
     }
 	
@@ -256,8 +261,8 @@ void processEvent()
     //2) Pack Event For On Board Storage
     //3) Pack Event For Telemetry
 
-    //1) PedestalSubtract (and shift to 11bits) 
-    subtractCurrentPeds(&theBody,&pedSubBody);
+//    //1) PedestalSubtract (and shift to 11bits) 
+//    subtractCurrentPeds(&theBody,&pedSubBody);
 
     //2) Pack Event For On Board Storage
     //Now depending on which option is selected we may either write out pedSubbed or not pedSubbed events to the hard disk (or just AnitaEventBody_t structs)

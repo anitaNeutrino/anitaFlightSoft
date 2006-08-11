@@ -5,6 +5,9 @@
     March 2005 rjn@mps.ohio-state.edu
 */
 #include "Prioritizerd.h"
+#include "pedestalLib/pedestalLib.h"
+#include <sys/time.h>
+
 //#define TIME_DEBUG 1
 
 int useUsbDisks=0;
@@ -18,9 +21,14 @@ int maxEventsPerDir=1000;
 
 char prioritizerdPidFile[FILENAME_MAX];
 
+void wasteTime(AnitaEventBody_t *bdPtr);
+
+
+
 #ifdef TIME_DEBUG
 FILE *timeFile;
 #endif    
+
 int main (int argc, char *argv[])
 {
     int retVal,count;
@@ -50,6 +58,7 @@ int main (int argc, char *argv[])
    /*Event object*/
     AnitaEventHeader_t theHeader;
     AnitaEventBody_t theBody;
+    PedSubbedEventBody_t pedSubBody;
 
 
 #ifdef TIME_DEBUG
@@ -132,17 +141,26 @@ int main (int argc, char *argv[])
 #endif
 	    
 	    
-//	    retVal=fillBody(&theBody,bodyFilename);
+	    retVal=fillBody(&theBody,bodyFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    retVal=fillHeader(&theHeader,hdFilename);
+
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    
+	    //Subtract Pedestals
+	    subtractCurrentPeds(&theBody,&pedSubBody);
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+
+
 	    //Must determine priority here
 	    priority=1;
 	    theHeader.priority=0;
@@ -156,22 +174,29 @@ int main (int argc, char *argv[])
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
 	    rename(bodyFilename,archiveBodyFilename);
+
+	    sprintf(archiveBodyFilename,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+                    theHeader.eventNumber);
+	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
+
+
 //	    writeBody(&theBody,archiveBodyFilename);
+//	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    sprintf(archiveHdFilename,"%s/hd_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
 	    writeHeader(&theHeader,archiveHdFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
     
 	    //Write Header and make Link for telemetry 	    
@@ -180,30 +205,39 @@ int main (int argc, char *argv[])
 	    retVal=writeHeader(&theHeader,telemHdFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    
 	    /* Delete input */
 	    removeFile(linkFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 //	    removeFile(bodyFilename);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
-	    removeFile(hdFilename);
-#ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+	    removeFile(hdFilename);
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+
+	    wasteTime(&theBody);
+
+#ifdef TIME_DEBUG
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"14 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+#endif
+
 	}
 	
 	/* Free up the space used by dir queries */
@@ -214,3 +248,13 @@ int main (int argc, char *argv[])
     }	
 }
 
+void wasteTime(AnitaEventBody_t *bdPtr) {
+    int chan,samp,loop;
+    for(loop=0;loop<10;loop++) {       
+	for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
+	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
+		bdPtr->channel[chan].data[samp]+=10*(-1+2*(loop%1));
+	    }
+	}	
+    }
+}
