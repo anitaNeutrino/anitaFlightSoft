@@ -1,2 +1,3 @@
 #/bin/bash
-sudo /etc/init.d/ntpd restart
+date > /tmp/didIDoThis
+sudo /etc/init.d/ntpd restart > /tmp/yesIDid 2>&1

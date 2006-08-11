@@ -114,10 +114,9 @@ int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
 int writeFullHk = FALSE;
 int justWriteHeader = FALSE;
-int doSlowDacCycle = FALSE; /* Do a cycle of the DAC values */
-int doGlobalDacCycle = FALSE;
-int globalCycleStepSize =1;
-int globalCyclePointsPerStep =1;
+int doThresholdScan = FALSE;
+int thresholdScanStepSize =1;
+int thresholdScanPointsPerStep =1;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
@@ -145,7 +144,7 @@ int enableChanServo = FALSE; //Turn on the individual chanel servo
 int pidGoal;
 int pidPanicVal;
 int pidAverage;
-int lastRateTime=0;
+//time_t lastRateTime;
 int lastEventCounter=0;
 int calculateRateAfter=5;
 
@@ -174,6 +173,12 @@ AnitaEventWriterStruct_t eventWriter;
 FILE *timeFile;
 #endif    
 
+//Deadtime monitoring
+float totalDeadtime; //In Secs
+float totalTime; //In Secs
+float intervalDeadtime; //In secs
+
+
 
 int main(int argc, char **argv) {
     char reniceCommand[FILENAME_MAX];
@@ -195,10 +200,15 @@ int main(int argc, char **argv) {
     unsigned short dacVal=2200;
     int surf;
     int gotSurfHk=0;
-    
+    int threshScanCounter=0;
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
-    
+    struct timeval lastRateCalc;
+    lastRateCalc.tv_sec=0;
+    float rateCalcPeriod;
+    totalDeadtime=0;
+    intervalDeadtime=0;
+
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
     timeFile = fopen("/tmp/testTimeLog.txt","w");
@@ -336,7 +346,7 @@ int main(int argc, char **argv) {
 	    enableChanServo=0;
 	    setGlobalThreshold=1;
 	    globalThreshold=1;
-	    doGlobalDacCycle=0;
+	    doThresholdScan=0;
 	    writeData=writeDebugData;
 	    numEvents=numPedEvents;
 	    sendSoftTrigger=1;
@@ -396,18 +406,22 @@ int main(int argc, char **argv) {
 	    if(setGlobalThreshold) 
 		theSurfHk.globalThreshold=globalThreshold;
 		
-	    if(doGlobalDacCycle) {		
+	    if(doThresholdScan) {		
 		enableChanServo=0;
 //		if(dacVal<=500) dacVal=4095;
 //		else if(dacVal>=4000) dacVal=0;
 		dacVal=doingDacVal;
+		threshScanCounter++;
 		theScalers.threshold=dacVal;
 		if(printToScreen) 
 		    printf("Setting Local Threshold %d\r",dacVal);
 		setGloablDACThreshold(surfHandles,dacVal);	
 		theSurfHk.globalThreshold=dacVal;
 		if(doingDacVal>4095) exit(0);//doingDacVal=0;
-		doingDacVal++;
+		if(threshScanCounter>=thresholdScanPointsPerStep) {
+		    doingDacVal+=thresholdScanStepSize;
+		    threshScanCounter=0;
+		}
 	    }
 
 	    //Send software trigger if we want to
@@ -500,15 +514,41 @@ int main(int argc, char **argv) {
 			tmo++;
 
 
-			if((timeStruct.tv_sec-lastRateTime)>calculateRateAfter) {
+			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
+			    rateCalcPeriod=0;
 			    //Make rate calculation;
-			    if((doingEvent-lastEventCounter)>0) {
-				printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,(float)(doingEvent-lastEventCounter)/((float)(timeStruct.tv_sec-lastRateTime)));
+			    if(lastRateCalc.tv_sec>0) {
+				rateCalcPeriod=
+				    timeStruct.tv_sec-lastRateCalc.tv_sec;
+				rateCalcPeriod+=((float)timeStruct.tv_usec-
+						 lastRateCalc.tv_usec)/1e6;
+				totalTime+=rateCalcPeriod;
+
+				//Deadtime Monitoring
+				totalDeadtime+=intervalDeadtime;
+			    }			   
+
+			    if(rateCalcPeriod) {
+				if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
+				    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 //		    if(lastEventCounter<200) 
 //			printf("\n");
+				}
+				else {
+				    printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
+				}
+			    
+
+				printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime));
+				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
+				intervalDeadtime=0;
 			    }
-			    else printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
-			    lastRateTime=timeStruct.tv_sec;
+
+
+
+
+
+			    lastRateCalc=timeStruct;
 			    lastEventCounter=doingEvent;
 			}
 			if(tmo>500) {
@@ -1327,8 +1367,9 @@ int readConfigFile()
 	    verbosity=kvpGetInt("verbosity",0)+addedVerbosity;
 	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
 	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
-	doSlowDacCycle=kvpGetInt("doSlowDacCycle",0);
-	doGlobalDacCycle=kvpGetInt("doGlobalDacCycle",0);
+	doThresholdScan=kvpGetInt("doThresholdScan",0);
+	thresholdScanStepSize=kvpGetInt("thresholdScanStepSize",0);
+	thresholdScanPointsPerStep=kvpGetInt("thresholdScanPointsPerStep",0);
 	setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
 	globalThreshold=kvpGetInt("globalThreshold",0);
 	dacPGain=kvpGetFloat("dacPGain",0);
@@ -1337,7 +1378,7 @@ int readConfigFile()
 	dacIMin=kvpGetInt("dacIMin",0);
 	dacIMax=kvpGetInt("dacIMax",0);
 	enableChanServo=kvpGetInt("enableChanServo",1);
-	if(doGlobalDacCycle || doSlowDacCycle)
+	if(doThresholdScan)
 	    enableChanServo=0;
 	pidGoal=kvpGetInt("pidGoal",2000);
 	pidPanicVal=kvpGetInt("pidPanicVal",200);
@@ -1573,7 +1614,6 @@ int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
 		case 'o': oldStyleFiles=TRUE ; break ;
 		case 'v': addedVerbosity++ ; break ;
 		case 'w': writeData = TRUE; break;
-		case 'c': doSlowDacCycle = TRUE; break;
 		case 'a': *dacVal=(unsigned short)atoi(*(++argv)) ; --argn ; break ;
 		case 'r': reprogramTurf = TRUE ; break ;
 		case 'd': 
@@ -2723,6 +2763,7 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
     unsigned char dataChar;
     unsigned short dataShort;
     unsigned long dataLong;
+    static unsigned short lastPPSNum=0;
 
     int wordNum,surf,ant,errCount=0;
     TurfioTestPattern_t startPat;
@@ -2905,6 +2946,14 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
 		   endPat.test[wordNum]);
 	}
     }
+
+    if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {
+	intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
+	if(printToScreen && verbosity>1)
+	    printf("Deadtime %d counts %f fraction\n",turfioPtr->deadTime,
+		   ((float)turfioPtr->deadTime)/64400.);
+    }
+
     
     if(verbosity && printToScreen) {
 	printf("TURF Data\n\tEvent (software):\t%lu\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%u\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\n",
@@ -2916,7 +2965,7 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
 	       turfioPtr->lowerL2TrigPattern,
 	       turfioPtr->l3TrigPattern);
     }
-	
+    lastPPSNum=turfioPtr->ppsNum;
     return status;	
 }
 
@@ -3032,7 +3081,9 @@ int updateThresholdsUsingPID() {
 	    }
 	}
     }
-    
+//    if(wayOffCount>100) {
+//	printf("Way off count %d (avgCount %d)\n",wayOffCount,avgCount);
+//    }
     if(avgCount==pidAverage || wayOffCount>100) {
 	for(surf=0;surf<numSurfs;surf++) {
 	    for(dac=0;dac<N_RFTRIG;dac++) {		
