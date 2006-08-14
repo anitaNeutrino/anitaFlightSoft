@@ -54,6 +54,43 @@ void BuildInstrument3(AnitaTransientBody3_t *surfData,
      }
 }
 
+void Instrument3toF(AnitaInstrument3_t *intData,
+		     AnitaInstrumentF_t  *floatData)
+{			 
+     int i,j,k;
+     for (i=0;i<16;i++){
+	  for (j=0; j<2; j++){
+	       for (k=0; k<(intData->topRing[i][j])->valid_samples;k++){
+		    (floatData->topRing[i][j]).data[k]= 
+			 (intData->topRing[i][j])->data[k]/8.;
+	       }
+	       (floatData->topRing[i][j]).valid_samples
+		    =(intData->topRing[i][j])->valid_samples;
+	  
+	       for (k=0; k<(intData->botRing[i][j])->valid_samples;k++){
+		    (floatData->botRing[i][j]).data[k]= 
+			 (intData->botRing[i][j])->data[k]/8.;
+	       }
+	       (floatData->botRing[i][j]).valid_samples
+		    =(intData->botRing[i][j])->valid_samples;
+	  }
+     }
+     for (i=0;i<4;i++){
+       for (k=0; k<(intData->bicone[i])->valid_samples;k++){
+		    (floatData->bicone[i]).data[k]= 
+			 (intData->bicone[i])->data[k]/8.;
+	       }
+	       (floatData->bicone[i]).valid_samples
+		    =(intData->bicone[i])->valid_samples;
+       for (k=0; k<(intData->discone[i])->valid_samples;k++){
+		    (floatData->discone[i]).data[k]= 
+			 (intData->discone[i])->data[k]/8.;
+	       }
+	       (floatData->discone[i]).valid_samples
+		    =(intData->discone[i])->valid_samples;
+     }
+}
+
 
 int RMS(TransientChannel3_t *in)
 {
@@ -71,6 +108,19 @@ int RMS(TransientChannel3_t *in)
      return result;           // or we get zero threshold!
 }
 
+float RMSF(TransientChannelF_t *in)
+{
+     int i;
+     float accum=0;
+     float result;
+     for (i=0;i<(in->valid_samples); i++){
+	  accum += (in->data[i])*(in->data[i]);
+     }
+     accum /= (in->valid_samples);
+     result= sqrtf(accum);
+     return result;
+}
+
 void Discriminate(TransientChannel3_t *in,LogicChannel_t *out,
 		  int threshold, int width)
 {
@@ -79,6 +129,26 @@ void Discriminate(TransientChannel3_t *in,LogicChannel_t *out,
      k=0;
      for (i=0;i<(in->valid_samples); i++){
 	  if (abs(in->data[i])>threshold){
+	       k=width;
+	  }
+	  if (k>0){
+	       out->data[i]=1;
+	       k--;
+	  }
+	  else{
+	       out->data[i]=0;
+	  }
+     }
+}
+
+void DiscriminateF(TransientChannelF_t *in,LogicChannel_t *out,
+		 float threshold, int width)
+{
+     int i,k;
+     out->valid_samples=in->valid_samples;
+     k=0;
+     for (i=0;i<(in->valid_samples); i++){
+	  if (fabsf(in->data[i])>threshold){
 	       k=width;
 	  }
 	  if (k>0){
@@ -118,6 +188,40 @@ void DiscriminateChannels(AnitaInstrument3_t *in,
 	  thresh= (int)(RMS(in->discone[i]) 
 			     * (double) conethresh/100.);
 	       Discriminate(in->discone[i],&(out->discone[i]),
+			    thresh,conewidth);
+     }
+	  
+}
+
+void DiscriminateFChannels(AnitaInstrumentF_t *in,
+			  AnitaChannelDiscriminator_t *out,
+			  int hornthresh,int hornwidth,
+			  int conethresh,int conewidth)
+{
+     int phi,pol,i; 
+     float thresh, fhornthresh;
+     fhornthresh= ((float) hornthresh)/100.;
+     for (phi=0;phi<16; phi++){
+	  for (pol=0;pol<2;pol++){
+	       thresh = (RMSF(&(in->topRing[phi][pol]))*fhornthresh); 
+	       DiscriminateF(&(in->topRing[phi][pol]),
+			     &(out->topRing[phi][pol]),
+			     thresh,hornwidth);
+	       thresh = (RMSF(&(in->botRing[phi][pol]))*fhornthresh); 
+	       DiscriminateF(&(in->botRing[phi][pol]),
+			     &(out->botRing[phi][pol]),
+			     thresh,hornwidth);
+	  }
+     }
+	  
+     for (i=0; i<4; i++){	       
+	  thresh= (RMSF(&(in->bicone[i])) 
+			     * (float) conethresh/100.);
+	       DiscriminateF(&(in->bicone[i]),&(out->bicone[i]),
+			    thresh,conewidth);
+	  thresh= (RMSF(&(in->discone[i])) 
+			     * (float) conethresh/100.);
+	       DiscriminateF(&(in->discone[i]),&(out->discone[i]),
 			    thresh,conewidth);
      }
 	  

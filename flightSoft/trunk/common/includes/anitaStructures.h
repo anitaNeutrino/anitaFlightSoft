@@ -432,6 +432,11 @@ typedef struct {
 } TransientChannel8_t;
 
 typedef struct {
+     float data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+} TransientChannelF_t;
+
+typedef struct {
      TransientChannel3_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBody3_t; /* final corrected transient type 
 			    used to calculate power */
@@ -444,6 +449,11 @@ typedef struct {
      TransientChannel8_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
 			    averaging, and gain correction */
+
+typedef struct {
+     TransientChannelF_t ch[NUM_DIGITZED_CHANNELS]; 
+} AnitaTransientBodyF_t;
+
 typedef struct {
      TransientChannel6_t S0,S1,S2,S3;
 } AnitaStokes6_t;
