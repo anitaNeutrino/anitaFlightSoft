@@ -252,7 +252,7 @@ void processEvent()
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 //	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
 	    diskEncCntl.encTypes[surf][chan]= ENCODE_NONE;
-	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_BINARY;
+	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_FIBONACCI;
 	}
     }
 

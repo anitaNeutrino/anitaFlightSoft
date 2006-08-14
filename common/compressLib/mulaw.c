@@ -7,12 +7,15 @@
 #include "compressLib/compressLib.h"
 #include "mulawTables.h"
 #include "mulaw.h"
+#include <stdio.h>
 
 
 unsigned char convertToMuLawUC(short input, int inputBits,
 			       int mulawBits) 
 {
-    return charbifurcate(convertToMuLaw(input,inputBits,mulawBits));
+    char val=convertToMuLaw(input,inputBits,mulawBits);
+//    printf("c %d, uc %d\n",val,charbifurcate(val));
+    return charbifurcate(val);
 }
 
 char convertToMuLaw(short input, int inputBits, int mulawBits) 
@@ -126,6 +129,7 @@ char convertToMuLaw(short input, int inputBits, int mulawBits)
 
 short convertFromMuLawUC(unsigned char input, int outputBits, int mulawBits) 
 {
+//    printf("uc %d, c %d\n",input,charunbifurcate(input));
     return convertFromMuLaw(charunbifurcate(input),outputBits,mulawBits);
 }
 
@@ -155,15 +159,15 @@ short convertFromMuLaw(char input, int outputBits, int mulawBits)
 		case 8:
 		    return mulaw8toLinear10[index];
 		case 7:
-		    return mulaw8toLinear10[index];
+		    return mulaw7toLinear10[index];
 		case 6:
-		    return mulaw8toLinear10[index];
+		    return mulaw6toLinear10[index];
 		case 5:
-		    return mulaw8toLinear10[index];
+		    return mulaw5toLinear10[index];
 		case 4:
-		    return mulaw8toLinear10[index];
+		    return mulaw4toLinear10[index];
 		case 3:
-		    return mulaw8toLinear10[index];
+		    return mulaw3toLinear10[index];
 		default:
 		    return mulaw8toLinear10[index];
 	    }

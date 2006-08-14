@@ -32,7 +32,7 @@ int decodeChannel(char *buffer,EncodedSurfChannelHeader_t *encHdr,
 		  SurfChannelFull_t *chanPtr);
 int decodeChannelSlac(char *buffer,SlacEncodedSurfChannelHeader_t *encHdr, 
 		      SurfChannelFull_t *chanPtr);
-void addGaussianNoise(AnitaEventBody_t *bdPtr, float rms);
+void addGaussianNoiseAndAtten(AnitaEventBody_t *bdPtr, float rms, float atten);
 float gaussianRand(float mean, float stdev);
 float myRand();
 
@@ -53,14 +53,16 @@ char bigBuffer[100000];
 /*Event object*/
 AnitaEventHeader_t theHeader;
 AnitaEventBody_t theBody;
+PedSubbedEventBody_t pedSubBody;
 
 int main(int argc, char** argv) {
     char dirName[FILENAME_MAX];
     char realName[FILENAME_MAX];
     int count=0,eventNum=0,doingEvent=0;
     int numBytesHead=0,count2,retVal=0;
+    float signalAtten=0,gaussRms=0;
     int dirNum=0,subDirNum;
-    int usleepNum=(int)((float)1000000)/((float)EVENT_RATE);
+//    int usleepNum=(int)((float)1000000)/((float)EVENT_RATE);
 //    GenericHeader_t *gHdr;
     int eventCount=0;
 
@@ -81,12 +83,13 @@ int main(int argc, char** argv) {
 
 
     if(argc<2) {
-	printf("Usage:\t%s <packetDir> <optional event rate>\n",basename(argv[0]));
+	printf("Usage:\t%s <packetDir> <optional signal atten factor> <optional gaussian noise rms>\n",basename(argv[0]));
 	return 0;
     }
     strncpy(dirName,argv[1],FILENAME_MAX-1);
-    if(argc==3) {
-	usleepNum=(int)((float)1000000)/(atof(argv[2]));
+    if(argc==4) {
+	signalAtten=atof(argv[2]);
+	gaussRms=atof(argv[3]);
     }
 
 
@@ -140,9 +143,10 @@ int main(int argc, char** argv) {
 		}
 		
 		theHeader.priority=2;
-#ifdef GAUSS_RMS
-		addGaussianNoise(&theBody,GAUSS_RMS);
-#endif
+
+		if(gaussRms>0 || signalAtten>0) 
+		    addGaussianNoiseAndAtten(&theBody,gaussRms,signalAtten);
+
 
 		writeAndMakeLink(&theHeader,&theBody);
 //		usleep(usleepNum);
@@ -364,8 +368,10 @@ int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBody
     return retVal;
 }
 
-void addGaussianNoise(AnitaEventBody_t *bdPtr, float rms)
+void addGaussianNoiseAndAtten(AnitaEventBody_t *bdPtr, float rms, float atten)
 {
+    
+    subtractCurrentPeds(&theBody,&pedSubBody);
     int chan,samp;
     for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
 	if((chan+1)%9==0) {
@@ -373,11 +379,16 @@ void addGaussianNoise(AnitaEventBody_t *bdPtr, float rms)
 	}
 	else {
 	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
-		short value=(short) 
-		    gaussianRand((float)(bdPtr->channel[chan].data[samp]&0xfff),
-				 rms);
+		float tempVal=pedSubBody.channel[chan].data[samp];
+		float tempVal2=tempVal;
+		if(atten>0) tempVal2/=atten;
+		if(rms>0) tempVal2=gaussianRand(tempVal2,rms/2);
+		short diff=(short) 2.*(tempVal2-tempVal);
+
+//		    gaussianRand((float)(pedSubBody.channel[chan].data[samp]&0xfff),
+//				 rms);
 //	    printf("%d %d\n",bdPtr->channel[chan].data[samp],value);
-		bdPtr->channel[chan].data[samp]=value&0xfff;
+		bdPtr->channel[chan].data[samp]+=diff;
 	    }
 	}
     }

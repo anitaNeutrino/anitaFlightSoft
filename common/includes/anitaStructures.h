@@ -142,7 +142,7 @@ typedef enum {
 typedef enum {
     ENCODE_NONE=0, //Done
     ENCODE_LOSSLESS_12BIT=0x100, //Done
-    ENCODE_LOSSLESS_BINARY, //Done //is just a marker for below
+    ENCODE_LOSSLESS_BINARY, //Done is just a marker for below
     ENCODE_LOSSLESS_11BIT,
     ENCODE_LOSSLESS_10BIT,
     ENCODE_LOSSLESS_9BIT,
@@ -155,8 +155,24 @@ typedef enum {
     ENCODE_LOSSLESS_2BIT,
     ENCODE_LOSSLESS_1BIT,
     ENCODE_LOSSLESS_FIBONACCI, //Done
-    ENCODE_LOSSLESS_BINFIB_COMBO=0x200, //Done
-    ENCODE_LOSSY_MULAW=0x300,
+    ENCODE_LOSSLESS_BINFIB_COMBO=0x200, //Done is just a marker for below
+    ENCODE_LOSSLESS_BINFIB_10BIT,
+    ENCODE_LOSSLESS_BINFIB_9BIT,
+    ENCODE_LOSSLESS_BINFIB_8BIT,
+    ENCODE_LOSSLESS_BINFIB_7BIT,
+    ENCODE_LOSSLESS_BINFIB_6BIT,
+    ENCODE_LOSSLESS_BINFIB_5BIT,
+    ENCODE_LOSSLESS_BINFIB_4BIT,
+    ENCODE_LOSSLESS_BINFIB_3BIT,
+    ENCODE_LOSSLESS_BINFIB_2BIT,
+    ENCODE_LOSSLESS_BINFIB_1BIT,
+    ENCODE_LOSSY_MULAW=0x300, //Done is just a marker for below
+    ENCODE_LOSSY_MULAW_8BIT,
+    ENCODE_LOSSY_MULAW_7BIT,
+    ENCODE_LOSSY_MULAW_6BIT,
+    ENCODE_LOSSY_MULAW_5BIT,
+    ENCODE_LOSSY_MULAW_4BIT,
+    ENCODE_LOSSY_MULAW_3BIT,
     ENCODE_LOSSY_MULAW_11_8,
     ENCODE_LOSSY_MULAW_11_7,
     ENCODE_LOSSY_MULAW_11_6,
@@ -346,7 +362,7 @@ typedef struct {
     short xMin;
     float mean; //Filled by pedestalLib
     float rms; //Filled by pedestalLib
-    short data[MAX_NUMBER_SAMPLES];
+    short data[MAX_NUMBER_SAMPLES]; //Pedestal subtracted and 11bit data
 } SurfChannelPedSubbed_t;
 
 typedef struct {

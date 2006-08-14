@@ -34,6 +34,7 @@ void addEventToPedestals(AnitaEventBody_t *bdPtr)
 {
     int labChip=0,surf,chan,samp;
     int word;
+    int pedWord; //11-bits right shifted
 //    printf("RJN -- Event %lu\n",bdPtr->eventNumber);
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
@@ -62,11 +63,12 @@ void addEventToPedestals(AnitaEventBody_t *bdPtr)
 		    if(bdPtr->channel[chanIndex].data[samp+1] &0x1000)
 			continue;
 		}
-		
+		pedWord=(word&SURF_BITMASK)>>1;
+
 //		    if(surf==0 && chan==0 && samp==0) cout << labChip << endl;
 		
-		thePeds.mean[surf][labChip][chan][samp]+=word&SURF_BITMASK;
-		thePeds.meanSq[surf][labChip][chan][samp]+=(word&SURF_BITMASK)*(word&SURF_BITMASK);
+		thePeds.mean[surf][labChip][chan][samp]+=pedWord;
+		thePeds.meanSq[surf][labChip][chan][samp]+=pedWord*pedWord;
 		thePeds.entries[surf][labChip][chan][samp]++;
 	    }
 	}
@@ -251,9 +253,10 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
     pedSubBdPtr->whichPeds=currentPeds.unixTime;
     int surf,chan,samp,chip;   
     int chanIndex=0;
-    float fmean,fmeanSq;
-    int mean,nsamps,meanSq;
+    int mean,meanSq,nsamps;
     short dataVal;
+    float fmean,fmeanSq;
+
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
@@ -274,8 +277,15 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 		    pedSubBdPtr->channel[chanIndex].data[samp]=0;
 		}
 		else {
-		    dataVal=((short)(rawBdPtr->channel[chanIndex].data[samp]&ELEVEN_BITMASK))-
-			((short)currentPeds.thePeds[surf][chip][chan][samp]);
+		    dataVal=(rawBdPtr->channel[chanIndex].data[samp]&SURF_BITMASK)>>1;
+		    dataVal-=currentPeds.thePeds[surf][chip][chan][samp];
+		    
+
+//		    dataVal=((short)((rawBdPtr->channel[chanIndex].data[samp]&ELEVEN_BITMASK)))-
+//			((short)(currentPeds.thePeds[surf][chip][chan][samp]));
+		    
+//		    dataVal=dataVal>>1;
+
 		    pedSubBdPtr->channel[chanIndex].data[samp]=dataVal;
 			
 		    if(dataVal>pedSubBdPtr->channel[chanIndex].xMax) {
@@ -294,7 +304,6 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 	    if(nsamps) {
 		fmean=mean;
 		fmeanSq=meanSq;
-
 		fmean/=nsamps;
 		fmeanSq/=nsamps;
 		pedSubBdPtr->channel[chanIndex].mean=fmean;
@@ -339,7 +348,7 @@ int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
     
     int surf,chan,samp,chip;    
     int chanIndex=0;
-
+    unsigned short dataVal;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    chanIndex=GetChanIndex(surf,chan);
@@ -347,9 +356,11 @@ int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
 		pedSubBdPtr->channel[chanIndex].header;
 	    chip=rawBdPtr->channel[chanIndex].header.chipIdFlag&0x3;
 	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {		
-		rawBdPtr->channel[chanIndex].data[samp]=(unsigned short) 
+		dataVal=(unsigned short) 
 		    (((short)pedSubBdPtr->channel[chanIndex].data[samp])+
-		    ((short)currentPeds.thePeds[surf][chip][chan][samp]));
+		    ((short)(currentPeds.thePeds[surf][chip][chan][samp])));
+		dataVal=(dataVal<<1);
+		rawBdPtr->channel[chanIndex].data[samp]=dataVal;
 	    }
 	}
     }

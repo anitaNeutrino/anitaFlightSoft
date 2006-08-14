@@ -14,10 +14,17 @@ OPT           = -O2 -Wall -g # --debug --pedantic-errors
 NOOPT         =
 EXCEPTION     = 
 
+
+ifdef USE_FAKE_DATA_DIR
+FAKEFLAG = -DUSE_FAKE_DATA_DIR
+else
+FAKEFLAG =
+endif
+
 CC           = gcc
 INCLUDES      = -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
 -I$(ANITA_FLIGHT_SOFT_DIR)/common/includes -I$(ANITA_FLIGHT_SOFT_DIR)/outside/cr7/include -I$(ANITA_FLIGHT_SOFT_DIR)/outside/acromag -I$(ANITA_FLIGHT_SOFT_DIR)/common/sipcomLib
-CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE 
+CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE $(FAKEFLAG)
 LD            = gcc
 LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR) 
 ANITA_LIBS    =  -lkvp -lConfig  -lcr7 -lPedestal -lUtil  -lm -lz#-lSocket

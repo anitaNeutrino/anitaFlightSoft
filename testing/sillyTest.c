@@ -33,8 +33,8 @@ int main (void)
 /*     } */
 /*     printf("\nThe port is: %d\n\n",thePort); */
 
-    TurfioStruct_t turfio;
-    AnitaEventHeader_t header;
+//    TurfioStruct_t turfio;
+//    AnitaEventHeader_t header;
 
  
     printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t)); 
@@ -47,12 +47,17 @@ int main (void)
 	   sizeof(EncodedSurfChannelHeader_t));
     printf("Size of EncodedSurfPacketHeader_t: %d\n",
 	   sizeof(EncodedSurfPacketHeader_t));
+    printf("Size of EncodedPedSubbedSurfPacketHeader_t: %d\n",
+	   sizeof(EncodedPedSubbedSurfPacketHeader_t));
+    printf("Size of EncodedWaveformPacket_t: %d\n",
+	   sizeof(EncodedWaveformPacket_t));
     printf("Size of RawWaveformPacket_t: %d\n",sizeof(RawWaveformPacket_t));
     printf("Size of RawSurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
     printf("Size of TurfRateStruct_t: %d\n",sizeof(TurfRateStruct_t));
     printf("Size of FullSurfHkStruct_t: %d\n",sizeof(FullSurfHkStruct_t));
     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
+    printf("Size of PedSubbedEventBody_t: %d\n",sizeof(PedSubbedEventBody_t));
     printf("Size of SurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
     printf("Size of GpsSatInfo_t: %d\n",sizeof(GpsSatInfo_t));    
     printf("Size of GpsG12PosStruct_t: %d\n",sizeof(GpsG12PosStruct_t));
