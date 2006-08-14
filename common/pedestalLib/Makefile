@@ -26,6 +26,8 @@ $(DynLib): $(LIB_OBJS)
 	@$(LD) $(LDFLAGS) $(LIBS) $(SOFLAGS) $(LIB_OBJS) -o $(DynLib)
 	@chmod 555 $(DynLib)
 
+pedestalLibMin.o: pedestalLibMin.c pedestalLib.h
+
 clean: objclean
 	@/bin/rm -f $(Library) $(DynLib)
 
