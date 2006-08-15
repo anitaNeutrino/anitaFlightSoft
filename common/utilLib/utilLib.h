@@ -90,7 +90,8 @@ int fillPedSubbedBody(PedSubbedEventBody_t *theEventBodyPtr, char *filename);
 int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
 int fillCommand(CommandStruct_t *theStruct, char *filename);
-int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
+    int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
+    int fillLabChipPedstruct(FullLabChipPedStruct_t *pedPtr, char *filename);
 int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 			     unsigned long eventNumber);
 int readSingleEncodedEvent(unsigned char *buffer, char *filename);

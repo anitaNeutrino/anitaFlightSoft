@@ -798,6 +798,14 @@ int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
 }
 
 
+int fillLabChipPedstruct(FullLabChipPedStruct_t *pedPtr, char *filename)
+{
+    int numBytes=genericReadOfFile((unsigned char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
+    if(numBytes==sizeof(FullLabChipPedStruct_t)) return 0;
+    return numBytes;
+}
+
+
 int fillCommand(CommandStruct_t *cmdPtr, char *filename)
 {
     int numBytes=genericReadOfFile((unsigned char*)cmdPtr,filename,sizeof(CommandStruct_t));
