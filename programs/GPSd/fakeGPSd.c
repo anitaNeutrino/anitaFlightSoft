@@ -17,13 +17,13 @@
 
 
 /* Flight soft includes */
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "serialLib/serialLib.h"
 #include "utilLib/utilLib.h"
 #include "socketLib/socketLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
 // Forward declarations
 int readConfigFile();

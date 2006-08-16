@@ -20,11 +20,11 @@
 
 // Flight Software includes
 #include "Calibd.h"
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
 /* Vendor includes */
 #include "cr7.h"

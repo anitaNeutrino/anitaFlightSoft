@@ -21,8 +21,8 @@
 #include "compressLib/compressLib.h"
 #include "pedestalLib/pedestalLib.h"
 
-#include "anitaStructures.h"
-#include "anitaFlight.h"
+#include "includes/anitaStructures.h"
+#include "includes/anitaFlight.h"
 
 
 

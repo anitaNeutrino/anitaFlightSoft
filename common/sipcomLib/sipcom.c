@@ -13,8 +13,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <stdlib.h>	// malloc
-
+#include <stdlib.h>	// malloC
+#include <string.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -647,18 +647,18 @@ sipcom_highrate_write(unsigned char *buf, unsigned short nbytes)
     ender_buf[4] = AUX_HDR;
 
     // Write header.
-    if (retval = highrate_write_bytes(
-	    (unsigned char *)header_buf, HBUFSIZE * sizeof(short))) {
+    if ((retval = highrate_write_bytes(
+	    (unsigned char *)header_buf, HBUFSIZE * sizeof(short)))) {
 	return retval;
     }
 
     // Write data.
-    if (retval = highrate_write_bytes(buf, nbytes)) {
+    if ((retval = highrate_write_bytes(buf, nbytes))) {
 	return retval;
     }
 
     // Write ender.
-    if (retval = highrate_write_bytes(enderp, endersize)) {
+    if ((retval = highrate_write_bytes(enderp, endersize))) {
 	return retval;
     }
 

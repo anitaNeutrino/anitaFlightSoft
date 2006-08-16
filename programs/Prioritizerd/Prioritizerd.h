@@ -11,11 +11,11 @@
 #include <unistd.h>
 
 
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
 /* Structure defininitions */
 

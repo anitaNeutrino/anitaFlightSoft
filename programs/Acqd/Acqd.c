@@ -6,6 +6,10 @@
 
 // Standard Includes
 #define _GNU_SOURCE
+
+#include "Acqd.h"
+
+
 #include <stdio.h>
 #include <memory.h>
 #include <math.h>
@@ -17,13 +21,15 @@
 //#include <iostream>
 
 
+
 // Anita includes
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
-#include "Acqd.h"
+#include "pedestalLib/pedestalLib.h"
+#include "includes/anitaStructures.h"
+
 
 
 //#define TIME_DEBUG 1
@@ -205,6 +211,7 @@ int main(int argc, char **argv) {
     struct timeval timeStruct;
     struct timeval lastRateCalc;
     lastRateCalc.tv_sec=0;
+    lastRateCalc.tv_usec=0;
     float rateCalcPeriod;
     totalDeadtime=0;
     intervalDeadtime=0;

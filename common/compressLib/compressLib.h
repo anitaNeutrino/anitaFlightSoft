@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
 #define MAX_WAVE_BUFFER NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
 

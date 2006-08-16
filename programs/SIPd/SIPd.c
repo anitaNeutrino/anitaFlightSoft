@@ -18,11 +18,11 @@
 
 /* Flight soft includes */
 #include "sipcomLib/sipcom.h"
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
   
 #define SLBUF_SIZE 240
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP

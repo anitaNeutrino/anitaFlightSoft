@@ -6,7 +6,7 @@
 */
 #define SLAC_DATA06
 #include "pedestalLib/pedestalLib.h"
-#include "anitaStructures.h"
+
 
 // Standard Includes
 #include <stdio.h>
@@ -21,11 +21,11 @@
 
 
 // Anita includes
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
 PedCalcStruct_t thePeds;
 PedestalStruct_t currentPeds;
