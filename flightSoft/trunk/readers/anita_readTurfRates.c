@@ -11,7 +11,7 @@
 
 // anitaStructures.h assumes a subdirectory "./includes"
 // with a couple of other include files in it.
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
   gzFile TRfile;
 

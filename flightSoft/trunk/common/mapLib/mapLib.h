@@ -13,7 +13,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "anitaMapping.h"
+#include "includes/anitaMapping.h"
 
 void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr);
 void fillSurfFromAntAndPol(SurfAntMapStruct_t *mapPtr);

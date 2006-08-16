@@ -17,8 +17,8 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
-#include "anitaFlight.h"
+#include "includes/anitaStructures.h"
+#include "includes/anitaFlight.h"
 
 int readConfigFile();
 int checkDisks(DiskSpaceStruct_t *dsPtr);

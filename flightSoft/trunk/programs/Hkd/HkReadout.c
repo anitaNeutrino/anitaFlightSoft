@@ -5,10 +5,10 @@
 #include <string.h>
 
 /* Flight soft includes */
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 /* Vendor includes */
 #include "cr7.h"
 #include "carrier/apc8620.h"

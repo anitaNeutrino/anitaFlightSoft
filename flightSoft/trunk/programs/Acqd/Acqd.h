@@ -15,12 +15,8 @@
 #include "Reg9030.h"
 
 // Anita includes
-#include "anitaFlight.h"
-#include "configLib/configLib.h"
-#include "kvpLib/keyValuePair.h"
-#include "utilLib/utilLib.h"
-#include "pedestalLib/pedestalLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaFlight.h"
+#include "includes/anitaStructures.h"
 
 //Definitions
 #define EVT_RDY  0004

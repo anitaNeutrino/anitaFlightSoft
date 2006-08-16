@@ -19,9 +19,9 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
-#include "anitaFlight.h"
-#include "anitaCommand.h"
+#include "includes/anitaStructures.h"
+#include "includes/anitaFlight.h"
+#include "includes/anitaCommand.h"
 
 int checkCommand(CommandStruct_t *theCmd);
 int checkForNewCommand();

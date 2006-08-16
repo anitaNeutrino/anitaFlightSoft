@@ -1,8 +1,8 @@
 /* Debugging driver for the prioritizer routines */
 #include <stdlib.h>
 #include <stdio.h>
-#include "anitaFlight.h"
-#include "anitaStructures.h"
+#include "includes/anitaFlight.h"
+#include "includes/anitaStructures.h"
 #include "utilLib/utilLib.h"
 
 #include "SubtractPedestals.h"

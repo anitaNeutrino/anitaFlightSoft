@@ -12,7 +12,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 
 //Pedestal calculation routines
 void addEventToPedestals(AnitaEventBody_t *bdPtr);

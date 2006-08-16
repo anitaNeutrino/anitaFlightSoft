@@ -17,11 +17,11 @@
 #include <sys/time.h>
 
 /* Flight soft includes */
-#include "anitaFlight.h"
+#include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 #include "losLib/los.h"
 
 int initDevice();

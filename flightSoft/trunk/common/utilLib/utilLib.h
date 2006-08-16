@@ -18,7 +18,7 @@ extern "C" {
 #ifndef __CINT__
 #include <dirent.h>
 #endif
-#include "anitaStructures.h"
+#include "includes/anitaStructures.h"
 #include <time.h>
 #include <zlib.h>
 #include <stdio.h>

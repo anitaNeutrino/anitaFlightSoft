@@ -2,8 +2,8 @@
 #ifndef SUBTRACTPEDESTALS_H
 #define SUBTRACTPEDESTALS_H
 
-#include "anitaFlight.h"
-#include "anitaStructures.h"
+#include "includes/anitaFlight.h"
+#include "includes/anitaStructures.h"
 
 typedef enum {
     kZeroPed,
