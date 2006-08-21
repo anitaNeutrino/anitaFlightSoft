@@ -54,6 +54,25 @@ void BuildInstrument3(AnitaTransientBody3_t *surfData,
      }
 }
 
+
+void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
+		      AnitaInstrumentF_t  *antennaData)
+{			 
+     int i,j;
+     for (i=0;i<16;i++){
+	  for (j=0; j<2; j++){
+	       antennaData->topRing[i][j]=(surfData->ch[topRingIndex[i][j]]);
+	       antennaData->botRing[i][j]=(surfData->ch[botRingIndex[i][j]]);
+	  }
+     }
+     for (i=0;i<4;i++){
+	  antennaData->bicone[i]=(surfData->ch[biconeIndex[i]]);
+	  antennaData->discone[i]=(surfData->ch[disconeIndex[i]]);
+     }
+}
+
+
+
 void Instrument3toF(AnitaInstrument3_t *intData,
 		     AnitaInstrumentF_t  *floatData)
 {			 

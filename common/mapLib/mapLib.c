@@ -6,6 +6,10 @@
 */
 
 #include "mapLib/mapLib.h"
+#include "includes/anitaStructures.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 
 void fillPhiFromSurf(SurfAntMapStruct_t *mapPtr) {
     mapPtr->phi=-1;
@@ -77,3 +81,38 @@ void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr) {
 	mapPtr->channel=vAntToChan[mapPtr->antenna];
     
 }
+
+int getLogicalIndexFromAnt(int ant,  AntennaPol_t pol) 
+{
+    switch(pol) {
+	case kHorizontal:
+	    return GetChanIndex(antToSurfMap[ant],hAntToChan[ant]);
+	case kVertical:
+	    return GetChanIndex(antToSurfMap[ant],vAntToChan[ant]);
+	default:	    
+	    fprintf(stderr,"Unknown polarisation %d\n",pol);
+	    return -1;
+    }
+    return -1;	       
+
+}
+
+int getLogicalIndexFromPhi(int phi,  AntennaTier_t tier, AntennaPol_t pol)
+{
+    switch(tier) {
+	case kUpperTier:
+	case kMiddleTier:
+	    return getLogicalIndexFromAnt(upperAntNums[phi],pol);
+	case kLowerTier:
+	    return getLogicalIndexFromAnt(lowerAntNums[phi],pol);
+	case kDisconeTier:
+	    return disconeIndexArray[phi/4];
+	case kBiconeTier:
+	    return biconeIndexArray[phi/4];
+	default:
+	    fprintf(stderr,"Unknown tier %d\n",tier);
+	    return -1;
+    }
+    return -1;	       
+}
+

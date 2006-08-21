@@ -58,6 +58,11 @@ int loadPedsFromFile(char *filename);
 void dumpPeds();
 void dumpThesePeds(PedestalStruct_t *pedStruct);
 
+//Unwrapping code
+    int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
+					AnitaTransientBodyF_t *uwTransPtr);
+
+
 #ifdef __cplusplus
 }
 #endif

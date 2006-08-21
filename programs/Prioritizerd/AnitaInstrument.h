@@ -45,6 +45,9 @@ extern "C"
      void BuildInstrument3(AnitaTransientBody3_t  *surfData,
 			   AnitaInstrument3_t  *antennaData);
 
+     void BuildInstrumentF(AnitaTransientBodyF_t  *surfData,
+			   AnitaInstrumentF_t  *antennaData);
+
      void Instrument3toF(AnitaInstrument3_t  *antennaData,
 			    AnitaInstrumentF_t  *floatData);
 
