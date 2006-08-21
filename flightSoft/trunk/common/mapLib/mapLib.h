@@ -14,13 +14,16 @@
 extern "C" {
 #endif
 #include "includes/anitaMapping.h"
+#include "includes/anitaStructures.h"
 
-void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr);
-void fillSurfFromAntAndPol(SurfAntMapStruct_t *mapPtr);
-void fillPhiFromSurf(SurfAntMapStruct_t *mapPtr);
-int getLogicalIndexFromAnt(int ant,  AntennaPol_t pol);
-int getLogicalIndexFromPhi(int phi,  AntennaTier_t tier, AntennaPol_t pol);
-int getLogicalIndexFromSurf(int surf, int chan);
+    void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr);
+    void fillSurfFromAntAndPol(SurfAntMapStruct_t *mapPtr);
+    void fillPhiFromSurf(SurfAntMapStruct_t *mapPtr);
+    int getLogicalIndexFromAnt(int ant,  AntennaPol_t pol);
+    int getLogicalIndexFromPhi(int phi,  AntennaTier_t tier, AntennaPol_t pol);
+
+    inline int getLogicalIndexFromSurf(int surf, int chan) 
+    {return GetChanIndex(surf,chan);}
 
 #ifdef __cplusplus
 }

@@ -44,6 +44,7 @@
 #define RFCHAN_PER_SURF 8
 #define NUM_DIGITZED_CHANNELS ACTIVE_SURFS*CHANNELS_PER_SURF
 #define MAX_NUMBER_SAMPLES 260
+#define EFFECTIVE_SAMPLES 256
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
 #define PED_DEFAULT_VALUE 1100

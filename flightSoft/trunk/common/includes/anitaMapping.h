@@ -20,7 +20,6 @@ int hAntToChan[32]={4,4,4,4,5,5,5,5,4,4,4,4,5,5,5,5,
 int vAntToChan[32]={0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,
 		    2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3};
 
-
 // Note that this array uses antenna number 1-32 as it needs
 // the negative sign to indicate polarization
 int surfToAntMap[9][8]={{-9,-13,-17,-25,9,13,17,25},
@@ -33,6 +32,8 @@ int surfToAntMap[9][8]={{-9,-13,-17,-25,9,13,17,25},
 			{-4,-8,-24,-32,4,8,24,32},
 			{37,38,39,40,33,34,35,36}};
 
+int biconeIndexArray[4]={72,73,74,75}; //phi=2,6,10,14
+int disconeIndexArray[4]={77,78,79,76}; //phi=4,8,12,16
 
 //Map from phi to antenna both start counting at zero
 //int upperAntNums[NUM_PHI]={9,1,10,2,11,3,12,4,13,5,14,6,15,7,16,8};

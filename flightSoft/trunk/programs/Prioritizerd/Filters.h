@@ -9,6 +9,8 @@ extern "C"
 
      void NullFilterAll(AnitaTransientBody8_t *in,AnitaTransientBody3_t *out);
      void NullFilter(TransientChannel8_t *inch,TransientChannel3_t *outch);
+
+
      void HornMatchedFilter(TransientChannelF_t *inch,
 			    TransientChannelF_t *outch);
      void HornMatchedFilterAll(AnitaInstrumentF_t *in, 

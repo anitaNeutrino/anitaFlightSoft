@@ -490,3 +490,49 @@ void dumpThesePeds(PedestalStruct_t *pedStruct) {
 	}
     }
 }
+
+int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
+				    AnitaTransientBodyF_t *uwTransPtr)
+{
+    int chan,samp,index;    
+    int firstHitbus,lastHitbus,wrappedHitbus;
+    int numHitBus,firstSamp,lastSamp;
+    float tempVal;
+    memset(uwTransPtr,0,sizeof(AnitaTransientBodyF_t));
+    
+    for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
+	firstHitbus=pedSubBdPtr->channel[chan].header.firstHitbus;
+	lastHitbus=pedSubBdPtr->channel[chan].header.lastHitbus;
+	wrappedHitbus=
+	    (pedSubBdPtr->channel[chan].header.chipIdFlag&0x4)>>2;
+    
+	
+	
+	if(!wrappedHitbus) {
+	    numHitBus=1+lastHitbus-firstHitbus;
+	    uwTransPtr->ch[chan].valid_samples=EFFECTIVE_SAMPLES-numHitBus;
+	}
+	else {
+	    uwTransPtr->ch[chan].valid_samples=lastHitbus-(firstHitbus+1);
+	}
+
+	if(!wrappedHitbus) {
+	    firstSamp=lastHitbus+1;
+	    lastSamp=(EFFECTIVE_SAMPLES)+firstHitbus;
+	}
+	else {
+	    firstSamp=firstHitbus+1;
+	    lastSamp=lastHitbus;
+	}
+
+	for(samp=firstSamp;samp<lastSamp;samp++) {
+	    index=samp;
+	    if(index>=EFFECTIVE_SAMPLES) index-=EFFECTIVE_SAMPLES;
+	    tempVal=pedSubBdPtr->channel[chan].data[index];
+	    tempVal-=pedSubBdPtr->channel[chan].mean;
+	    uwTransPtr->ch[chan].data[samp-firstSamp]=tempVal;
+	}
+    }
+    return 0;
+
+}

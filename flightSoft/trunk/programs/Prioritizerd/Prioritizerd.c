@@ -5,29 +5,33 @@
     March 2005 rjn@mps.ohio-state.edu
 */
 #include "Prioritizerd.h"
+#include "AnitaInstrument.h"
+#include "Filters.h"
 #include "pedestalLib/pedestalLib.h"
 #include <sys/time.h>
 
 //#define TIME_DEBUG 1
 
-int useUsbDisks=0;
-int maxEventsPerDir=1000;
-//char acqdEventDir[FILENAME_MAX];
-//char eventdEventDir[FILENAME_MAX];
-//char eventdEventLinkDir[FILENAME_MAX];
-
-//char prioritizerdEventDir[FILENAME_MAX];
-//char prioritizerdEventLinkDir[FILENAME_MAX];
-
 char prioritizerdPidFile[FILENAME_MAX];
 
 void wasteTime(AnitaEventBody_t *bdPtr);
-
+int readConfig();
 
 
 #ifdef TIME_DEBUG
 FILE *timeFile;
 #endif    
+
+//Global Variables
+int printToScreen=0;
+int verbosity=0;
+float hornThresh=0;
+int hornDiscWidth=0;
+int hornSectorWidth=0;
+float coneThresh=0;
+int coneDiscWidth=0;
+
+
 
 int main (int argc, char *argv[])
 {
@@ -59,6 +63,11 @@ int main (int argc, char *argv[])
     AnitaEventHeader_t theHeader;
     AnitaEventBody_t theBody;
     PedSubbedEventBody_t pedSubBody;
+    AnitaTransientBodyF_t unwrappedBody;
+    AnitaInstrumentF_t theInstrument;
+    AnitaInstrumentF_t theXcorr;
+    AnitaChannelDiscriminator_t theDiscriminator;
+    AnitaSectorLogic_t theMajority;
 
 
 #ifdef TIME_DEBUG
@@ -80,8 +89,6 @@ int main (int argc, char *argv[])
 /*     eString = configErrorString (status) ; */
 
     if (status == CONFIG_E_OK) {
-	useUsbDisks=kvpGetInt("useUsbDisks",0);
-	maxEventsPerDir=kvpGetInt("maxEventsPerDir",1000);
 	tempString=kvpGetString("prioritizerdPidFile");
 	if(tempString) {
 	    strncpy(prioritizerdPidFile,tempString,FILENAME_MAX-1);
@@ -159,6 +166,16 @@ int main (int argc, char *argv[])
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+	    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
+	    BuildInstrumentF(&unwrappedBody,&theInstrument);
+	    HornMatchedFilterAll(&theInstrument,&theXcorr);
+	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
+				  hornThresh,hornDiscWidth,
+				  coneThresh,coneDiscWidth);
+	    FormSectorMajority(&theDiscriminator,&theMajority,
+			       hornSectorWidth);
+
+
 
 
 	    //Must determine priority here
@@ -168,8 +185,7 @@ int main (int argc, char *argv[])
 	    //Now Fill Generic Header and calculate checksum
 	    fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
   
-	    
-  
+	     
 	    //Write body and header for Archived
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
@@ -257,4 +273,45 @@ void wasteTime(AnitaEventBody_t *bdPtr) {
 	    }
 	}	
     }
+}
+
+
+int readConfig()
+// Load Prioritizerd config stuff
+{
+    // Config file thingies
+//    KvpErrorCode kvpStatus=0;
+    int status=0;
+    char* eString ;
+    kvpReset();
+    status = configLoad ("Prioritizerd.config","output") ;
+    if(status == CONFIG_E_OK) {
+	printToScreen=kvpGetInt("printToScreen",-1);
+	verbosity=kvpGetInt("verbosity",-1);
+	if(printToScreen<0) {
+	    syslog(LOG_WARNING,
+		   "Couldn't fetch printToScreen, defaulting to zero");
+	    printToScreen=0;
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
+	fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
+    }
+    kvpReset();
+    status = configLoad ("Prioritizerd.config","prioritizerd");
+    if(status == CONFIG_E_OK) {
+	hornThresh=kvpGetFloat("hornThresh",250);
+	coneThresh=kvpGetFloat("coneThresh",250);
+	hornThresh=kvpGetInt("hornDiscWidth",13);
+	coneThresh=kvpGetInt("coneDiscWidth",13);
+	hornSectorWidth=kvpGetInt("hornSectorWidth",5);
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
+	fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString);
+    }
+    return status;
 }

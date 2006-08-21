@@ -23,7 +23,7 @@ endif
 
 CC           = gcc
 INCLUDES      = -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
--I$(ANITA_FLIGHT_SOFT_DIR)/common/includes -I$(ANITA_FLIGHT_SOFT_DIR)/outside/cr7/include -I$(ANITA_FLIGHT_SOFT_DIR)/outside/acromag -I$(ANITA_FLIGHT_SOFT_DIR)/common/sipcomLib -I$(ANITA_FLIGHT_SOFT_DIR)/outside/bzip2-1.0.3/
+-I$(ANITA_FLIGHT_SOFT_DIR)/common/includes -I$(ANITA_FLIGHT_SOFT_DIR)/outside/cr7/include -I$(ANITA_FLIGHT_SOFT_DIR)/outside/acromag -I$(ANITA_FLIGHT_SOFT_DIR)/common/sipcomLib -I$(ANITA_FLIGHT_SOFT_DIR)/outside/bzip2-1.0.3/ -I$(ANITA_FLIGHT_SOFT_DIR)/outside/fftw/include
 CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE $(FAKEFLAG)
 LD            = gcc
 LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR) 
@@ -35,6 +35,7 @@ ANITA_LOS_LIBS = -lLos
 ANITA_COMP_LIBS = -lCompress
 ANITA_MAP_LIBS = -lAnitaMap
 BZ_LIB = -L$(ANITA_FLIGHT_SOFT_DIR)/outside/bzip2-1.0.3/ -lbz2
+FFTW_LIB = -L$(ANITA_FLIGHT_SOFT_DIR)/outside/fftw/lib -lfftw3
 
 all: $(Target)
 
