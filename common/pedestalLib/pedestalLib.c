@@ -209,6 +209,7 @@ void writePedestalsWithTime(unsigned long unixTime) {
     writeUsefulPedStruct(&usefulPeds,filename);
 
     //and link it
+    unlink(CURRENT_PEDESTALS);
     symlink(filename,CURRENT_PEDESTALS);
 
 }

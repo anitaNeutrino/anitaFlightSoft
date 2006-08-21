@@ -1,5 +1,5 @@
 #include "AnitaInstrument.h"
-
+#include <stdlib.h>
 //indices have surf channel counting from zero.
 int topRingIndex[16][2]={{4,0},//phi=1
 			 {13,9},//phi=2

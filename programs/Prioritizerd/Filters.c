@@ -3,6 +3,7 @@
 #include "AnitaInstrument.h"
 #include "fftwxcor.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 void NullFilterAll(AnitaTransientBody8_t *in, AnitaTransientBody3_t *out)
 {
@@ -31,14 +32,20 @@ void NullFilter(TransientChannel8_t *inch,TransientChannel3_t *outch)
 
 void HornMatchedFilter(TransientChannelF_t *inch,TransientChannelF_t *outch)
 {
-     int status,i;
+//     int status,i;
+    int i;
      static int first=1;
      static float template[256];
      float corr_out[512];
      FILE *fptmpl;
      if (first){
 	  //read in template
-	  fptmpl=fopen("horn_template.dat","r");
+#ifdef USING_PVIEW	
+	  fptmpl=fopen("horn_template.dat","r";)
+#else
+	  fptmpl=fopen("/home/anita/flightSoft/programs/Prioritizerd/horn_template.dat","r");
+#endif
+
 	  if (fptmpl==NULL){
 	       fprintf(stderr,"Unable to open horn template.\n");
 	       exit(-1);
