@@ -44,8 +44,8 @@
 #define VER_SLOW_2 1
 #else
 //Current ones
-#define VER_EVENT_HEADER 8
-#define SLAC_VER_EVENT_HEADER 8
+#define VER_EVENT_HEADER 9
+#define SLAC_VER_EVENT_HEADER 7
 #define VER_WAVE_PACKET 6
 #define VER_SURF_PACKET 6
 #define VER_ENC_WAVE_PACKET 6
@@ -369,9 +369,10 @@ typedef struct {
     GenericHeader_t gHdr;
     unsigned long unixTime;       /* unix UTC sec*/
     unsigned long unixTimeUs;     /* unix UTC microsec */
-    unsigned long gpsSubTime;     /* the GPS fraction of second (in ns) 
+    long gpsSubTime;     /* the GPS fraction of second (in ns) 
 			   (for the X events per second that get 
-			   tagged with it */
+			   tagged with it, note it now includes
+			   second offset from unixTime)*/
     unsigned long eventNumber;    /* Global event number */
     unsigned short surfMask;
     unsigned short calibStatus;   /* Were we flashing the pulser? */

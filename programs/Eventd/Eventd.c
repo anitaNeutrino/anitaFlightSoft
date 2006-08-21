@@ -27,7 +27,7 @@
 #define MAX_CALIB_TIMES 2000
 #define EVENT_TIMEOUT 5
 
-#define TIME_MATCH 0.05 //seconds
+#define TIME_MATCH 0.005 //seconds
 #define DEFAULT_C3PO 133000000
 
 int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr);
@@ -256,7 +256,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 /*     static float lastDiff=0; */ 
     int haveMatch=0;
 //May implement a dynamic monitoring of the tim offset
-    
+    long newGpsSubTime;
     static unsigned short lastPPSNum=0;
     static unsigned long turfPPSOffset=0;
 
@@ -350,9 +350,16 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	    //Need to set gpsSubTime and delete all previous GPS times
 	    if(turfPPSOffset==0)
 		turfPPSOffset=gpsArray[count].unixTime-theHeaderPtr->turfio.ppsNum;	    
+	    newGpsSubTime=gpsArray[count].subTime;
+	    if(theHeaderPtr->unixTime>gpsArray[count].unixTime)
+		newGpsSubTime-=(long)(theHeaderPtr->unixTime-gpsArray[count].unixTime);
+	    else if(theHeaderPtr->unixTime<gpsArray[count].unixTime)
+		newGpsSubTime+=(long)(gpsArray[count].unixTime-theHeaderPtr->unixTime);
+				      
 
-	    theHeaderPtr->unixTime=gpsArray[count].unixTime;    
-	    theHeaderPtr->gpsSubTime=gpsArray[count].subTime;
+//	    theHeaderPtr->unixTime=gpsArray[count].unixTime;    
+//	    theHeaderPtr->gpsSubTime=gpsArray[count].subTime;
+	    theHeaderPtr->gpsSubTime=newGpsSubTime;
 	    bzero(gpsArray,(count+1)*sizeof(GpsSubTime_t));
 	    numGpsStored-=(count+1);
 	    if(numGpsStored) 

@@ -121,6 +121,9 @@ int writeData = FALSE; /* Default is not to write data to a disk */
 int writeFullHk = FALSE;
 int justWriteHeader = FALSE;
 int doThresholdScan = FALSE;
+int doSingleChannelScan = FALSE;
+int surfForSingle=0;
+int dacForSingle=0;
 int thresholdScanStepSize =1;
 int thresholdScanPointsPerStep =1;
 int dontWaitForEvtF = FALSE;
@@ -210,11 +213,16 @@ int main(int argc, char **argv) {
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
     struct timeval lastRateCalc;
+    struct timeval lastSurfHkRead;
+    int timeDiff=0;
     lastRateCalc.tv_sec=0;
     lastRateCalc.tv_usec=0;
+    lastSurfHkRead.tv_sec=0;
+    lastSurfHkRead.tv_usec=0;
     float rateCalcPeriod;
     totalDeadtime=0;
     intervalDeadtime=0;
+    int firstLoop=1;
 
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
@@ -315,7 +323,7 @@ int main(int argc, char **argv) {
 
     // Clear devices 
     clearDevices(surfHandles,turfioHandle);
-    
+    if(sendSoftTrigger) sleep(2);
     do {
 	retVal=readConfigFile();
 	if(retVal!=CONFIG_E_OK) {
@@ -412,8 +420,10 @@ int main(int argc, char **argv) {
 	    memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
 	    if(setGlobalThreshold) 
 		theSurfHk.globalThreshold=globalThreshold;
-		
-	    if(doThresholdScan) {		
+
+	THRESH_SCAN:
+	    if(doThresholdScan || doSingleChannelScan) {		
+		sendSoftTrigger=0;
 		enableChanServo=0;
 //		if(dacVal<=500) dacVal=4095;
 //		else if(dacVal>=4000) dacVal=0;
@@ -421,9 +431,26 @@ int main(int argc, char **argv) {
 		threshScanCounter++;
 		theScalers.threshold=dacVal;
 		if(printToScreen) 
-		    printf("Setting Local Threshold %d\r",dacVal);
-		setGloablDACThreshold(surfHandles,dacVal);	
-		theSurfHk.globalThreshold=dacVal;
+		    printf("Setting Threshold -- %d\r",dacVal);
+		if(!doSingleChannelScan) {
+		    setGloablDACThreshold(surfHandles,dacVal);	
+		    theSurfHk.globalThreshold=dacVal;
+		}
+		else {
+		    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*N_RFTRIG);
+		    if(surfForSingle==100) {
+			for(surf=0;surf<numSurfs;surf++)
+			    thresholdArray[surf][dacForSingle]=doingDacVal;
+		    }
+		    else  
+			thresholdArray[surfForSingle][dacForSingle]=doingDacVal;
+		    setDACThresholds(surfHandles);
+		}
+		if(firstLoop) {
+		    usleep(30000);
+		    firstLoop=0;
+		}
+
 		if(doingDacVal>4095) exit(0);//doingDacVal=0;
 		if(threshScanCounter>=thresholdScanPointsPerStep) {
 		    doingDacVal+=thresholdScanStepSize;
@@ -568,44 +595,54 @@ int main(int argc, char **argv) {
 			    tmo=0;
 			    //Give us a chance to servo thresholds
 			    if(firmwareVersion>=3) {
-				status=readSurfHkData(surfHandles);
-				for(surf=0;surf<numSurfs;++surf)
-				    if (setSurfControl(surfHandles[surf], 
-						       SurfClearHk) 
-					!= ApiSuccess)
-					printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-				    
-				if(verbosity && printToScreen) 
-				    printf("Read SURF Housekeeping\n");
-				    
-				if(verbosity && printToScreen && enableChanServo) 
-				    printf("Will servo on channel scalers\n");
 				gettimeofday(&timeStruct,NULL);
+				timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
+				timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec);
+
+
+				if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
+//				    printf("Time Diff %d, %d.%d and %d.%d\n",
+//					   timeDiff,timeStruct.tv_sec,timeStruct.tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
+				    lastSurfHkRead=timeStruct;
+				    status=readSurfHkData(surfHandles);
+				    for(surf=0;surf<numSurfs;++surf)
+					if (setSurfControl(surfHandles[surf], 
+							   SurfClearHk) 
+					    != ApiSuccess)
+					    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 				    
-				if(enableChanServo) {
-				    if(updateThresholdsUsingPID())
-					setDACThresholds(surfHandles);
-				}
+				    if(verbosity && printToScreen) 
+					printf("Read SURF Housekeeping\n");
+				    
+				    if(verbosity && printToScreen && enableChanServo) 
+					printf("Will servo on channel scalers\n");
+				    if(enableChanServo) {
+					if(updateThresholdsUsingPID())
+					    setDACThresholds(surfHandles);
+				    }
 				
 				
 				    
-				if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
-				    //Record housekeeping data
-				    lastSurfHk=timeStruct.tv_sec;
-				    theSurfHk.unixTime=timeStruct.tv_sec;
-				    theSurfHk.unixTimeUs=timeStruct.tv_usec;
+				    if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
+					//Record housekeeping data
+					lastSurfHk=timeStruct.tv_sec;
+					theSurfHk.unixTime=timeStruct.tv_sec;
+					theSurfHk.unixTimeUs=timeStruct.tv_usec;
 					
 					
-				    surfHkCounter++;
-				    if(surfHkCounter>=surfHkTelemEvery) {
-					writeSurfHousekeeping(3);
-					surfHkCounter=0;
-				    }
-				    else {
-					writeSurfHousekeeping(1);
-				    }
+					surfHkCounter++;
+					if(surfHkCounter>=surfHkTelemEvery) {
+					    writeSurfHousekeeping(3);
+					    surfHkCounter=0;
+					}
+					else {
+					    writeSurfHousekeeping(1);
+					}
 
 					
+				    }
+				    if(doThresholdScan || doSingleChannelScan)
+					goto THRESH_SCAN;
 				}
 
 		    
@@ -686,58 +723,64 @@ int main(int argc, char **argv) {
 	    //For now I'll just read the HK data with the events.
 	    //Later we will change this to do something more cleverer
 	    if(pedestalMode) addEventToPedestals(bdPtr);
-
 	    if(!pedestalMode) {
 		//Switched for timing test
-		status=readSurfHkData(surfHandles);
+		gettimeofday(&timeStruct,NULL);
+		timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
+		timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec);
 		
-		//Will change to SurfClearHk
-		for(surf=0;surf<numSurfs;++surf)
-		    if (setSurfControl(surfHandles[surf], 
-				       SurfClearHk) 
-			!= ApiSuccess)
-			printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-
-		if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
-		
+		if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
+//		    printf("Time Diff %d, %d.%d and %d.%d\n",
+//			   timeDiff,timeStruct.tv_sec,timeStruct.tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
+		    lastSurfHkRead=timeStruct;
+		    status=readSurfHkData(surfHandles);
 		
 #ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
-		fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		    gettimeofday(&timeStruct2,NULL);
+		    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 //	    fprintf(stderr,"readSurfHkData -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 #endif
-
 		
+		    //Will change to SurfClearHk
+		    for(surf=0;surf<numSurfs;++surf)
+			if (setSurfControl(surfHandles[surf], 
+					   SurfClearHk) 
+			    != ApiSuccess)
+			    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+		    
+		    if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
+		    
+		    
 #ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
+		    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readSurfHkData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-		fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-		if(enableChanServo) {
-		    if(verbosity && printToScreen) 
-			printf("Will servo on channel scalers\n");
+		    if(enableChanServo) {
+			if(verbosity && printToScreen) 
+			    printf("Will servo on channel scalers\n");
+			
+			if(updateThresholdsUsingPID())
+			    setDACThresholds(surfHandles);
+		    }    
 		    
-		    if(updateThresholdsUsingPID())
-			setDACThresholds(surfHandles);
-		}    
-		
 #ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
+		    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"Done channel servo -- start %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
-		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-		
-		if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
-		    //Record housekeeping data
-// disabled by GSV
-		    gotSurfHk=1;  
-		    lastSurfHk=timeStruct.tv_sec;
-		    theSurfHk.unixTime=timeStruct.tv_sec;
-		    theSurfHk.unixTimeUs=timeStruct.tv_usec;
 		    
+		    if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
+			//Record housekeeping data
+// disabled by GSV
+			gotSurfHk=1;  
+			lastSurfHk=timeStruct.tv_sec;
+			theSurfHk.unixTime=timeStruct.tv_sec;
+			theSurfHk.unixTimeUs=timeStruct.tv_usec;
+			
+		    }
 		}
 	    }
-	    
 	    
 
 #ifdef TIME_DEBUG
@@ -1375,6 +1418,9 @@ int readConfigFile()
 	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
 	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
 	doThresholdScan=kvpGetInt("doThresholdScan",0);
+	doSingleChannelScan=kvpGetInt("doSingleChannelScan",0);
+	surfForSingle=kvpGetInt("surfForSingle",0);
+	dacForSingle=kvpGetInt("dacForSingle",0);
 	thresholdScanStepSize=kvpGetInt("thresholdScanStepSize",0);
 	thresholdScanPointsPerStep=kvpGetInt("thresholdScanPointsPerStep",0);
 	setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
@@ -1664,6 +1710,21 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
 
 
 	//Insert SURF trigger channel masking here
+	for (dac=N_RFTRIG ; dac<N_RFTRIG+2 ; dac++) {
+	    buf = (dac<<16) + 
+		surfTrigBandMasks[surfIndex[surf]-1][dac-N_RFTRIG];	    
+	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
+			      &buf, 4, BitSize32);
+	    if(rc!=ApiSuccess) {
+		syslog(LOG_ERR,"Error writing Surf Ant Trig Mask, SURF %d - DAC %d (%d)",
+		       surfIndex[surf],dac,rc);
+		if(printToScreen)
+		    fprintf(stderr,
+			    "Error writing Surf Ant Trig Mask, SURF %d - DAC %d (%d)\n",
+			    surfIndex[surf],dac,rc);
+	    }
+
+	}
 	
 
 	rc=setSurfControl(surfHandles[surf],DACLoad);
@@ -1689,7 +1750,11 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 
     for(surf=0;surf<numSurfs;surf++) {
 	for (dac=0 ; dac<N_RFTRIG ; dac++) {
-	    buf = (dac<<16) + thresholdArray[surfIndex[surf]-1][dac] ;
+//	    if(surf==0 && dac==16) {
+//		printf("Trying to set threshold of %d\n",
+//		       thresholdArray[surfIndex[surf]-1][dac]);
+//	    }
+	    buf = (dac<<16) + (thresholdArray[surfIndex[surf]-1][dac]&0xfff) ;
 	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
 			      &buf, 4, BitSize32);
 	    if(rc!=ApiSuccess) {
@@ -2530,10 +2595,16 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 
 	    theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
 	    if((printToScreen && verbosity>1) || HK_DEBUG) 
-		printf("Surf %d, Threshold %d == %d\n",surfIndex[surf],rfChan,theSurfHk.threshold[surf][rfChan]&0xfff);
+		printf("Surf %d, Threshold %d (Top bits %d) == %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff);
 	    //Should check if it is the same or not
 	    if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theSurfHk.errorFlag|=(1>>surf);
+	    }
+	    if(!doThresholdScan) {
+		if((theSurfHk.threshold[surf][rfChan]&0xfff)!=thresholdArray[surf][rfChan])
+		{
+		    printf("Surf %d, Threshold %d (Top bits %d) -- Is %d Should be %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff,thresholdArray[surf][rfChan]);
+		}
 	    }
 	}
 	
@@ -3119,9 +3190,9 @@ int updateThresholdsUsingPID() {
 		    
 		    //Put them together		   
 		    change = (int) (pTerm + iTerm - dTerm);
-//		    if(surf==0 && dac==10) {
-//			printf("thresh %d, change %d (scaler %d)\n",
-//			       thresholdArray[surfIndex[surf]-1][dac],change,value);
+//		    if(surf==0 && dac==16) {
+//			printf("thresh %d, change %d (scaler %d) (surf %d, dac %d)\n",
+//			       thresholdArray[surfIndex[surf]-1][dac],change,value,surfIndex[surf]-1,dac);
 //		    }
 		    thresholdArray[surfIndex[surf]-1][dac]+=change;
 		    if(thresholdArray[surfIndex[surf]-1][dac]>4095)
