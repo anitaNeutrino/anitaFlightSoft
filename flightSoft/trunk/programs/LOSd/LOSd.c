@@ -263,7 +263,8 @@ int main(int argc, char *argv[])
 		sillyEvNum++;	       
 	    }
 	    fillBufferWithHk();
-	    if(totalEventLinks<1) usleep(1);
+	    if(totalEventLinks<1) usleep(100);
+//	    printf("totalEventLinks %d\n",totalEventLinks);
 	    orderIndex++;
 	    if(orderIndex>=numOrders) orderIndex=0;
 	}
