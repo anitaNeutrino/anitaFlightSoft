@@ -17,16 +17,16 @@
 
 #define AH  hin
 
-main(int argc,char *argv[])
+int main(int argc,char *argv[])
 {
 
-	AnitaEventHeader_t hin;
-	int i, jhd, jstart;
-	char hdname[80];
+    AnitaEventHeader_t hin;
+    int i, jhd, jstart;
+    char hdname[80];
 
 	if(argc<2){
-		fprintf(stderr,"usage: anita_readheader [starting file number ]\n");
-		fprintf(stderr,"\tassumes files contain 100 events, gzipped format; reads whole directory.\n");
+	    fprintf(stderr,"usage: anita_readheader [starting file number ]\n");
+	    fprintf(stderr,"\tassumes files contain 100 events, gzipped format; reads whole directory.\n");
 		exit(0);
 		}
 
