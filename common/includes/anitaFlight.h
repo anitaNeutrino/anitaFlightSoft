@@ -67,7 +67,6 @@
 #define HILBERT_ORDER 5 /*order used for Hilbert transforms in Stokes S3 */
 
 //Whiteheat things
-
 #define G12A_DEV_NAME "/dev/ttyUSB0"
 #define G12B_DEV_NAME "/dev/ttyUSB3"
 #define ADU5A_DEV_NAME "/dev/ttyUSB2"
@@ -78,68 +77,65 @@
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
+
+//File writing things
+#define HK_PER_FILE 1000
+#define HK_FILES_PER_DIR 100
+#define EVENTS_PER_FILE 100
+#define EVENT_FILES_PER_DIR 100
+#define EVENTS_PER_INDEX 10000
+
+
+
+
+#define DISK_TYPES 5
+
+//Mount points and fake mount points
 #ifdef USE_FAKE_DATA_DIR
-#define ANITA_INDEX_DIR "/tmp/mnt/data/anita/index"
-#define EVENT_LINK_INDEX "/tmp/mnt/data/anita/index/event.ind"
-#define GPS_INDEX "/tmp/mnt/data/anita/index/gps.ind"
-#define HK_INDEX "/tmp/mnt/data/anita/index/hk.ind"
-#define SURF_HK_INDEX "/tmp/mnt/data/anita/index/surfHk.ind"
-#define TURF_HK_INDEX "/tmp/mnt/data/anita/index/turfHk.ind"
-#define MONITOR_INDEX "/tmp/mnt/data/anita/index/monitor.ind"
-#define CMD_INDEX "/tmp/mnt/data/anita/index/cmd.ind"
-
-#define MAIN_DATA_DISK_LINK "/tmp/mnt/dataCurrent"
-#define BACKUP_DATA_DISK_LINK "/tmp/mnt/dataBackup"
-
-//Pedestal Dirs
-#define PEDESTAL_DIR "/tmp/mnt/data/anita/pedestal"
-#define CURRENT_PEDESTALS "/tmp/mnt/data/anita/pedestal/current"
+#define DATA_LINK "/tmp/mnt/data" //Where the index and peds are written
+#define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
+#define SAFE_DATA_MOUNT "/tmp/mnt/bitmicro"
+#define PUCK_DATA_MOUNT "/tmp/mnt/puck"
+#define BLADE_DATA_MOUNT "/tmp/mnt/blade"
+#define USBINT_DATA_MOUNT "/tmp/mnt/usbint"
+#define USBEXT_DATA_MOUNT "/tmp/mnt/usbext"
 #else
-#define ANITA_INDEX_DIR "/mnt/data/anita/index"
-#define EVENT_LINK_INDEX "/mnt/data/anita/index/event.ind"
-#define GPS_INDEX "/mnt/data/anita/index/gps.ind"
-#define HK_INDEX "/mnt/data/anita/index/hk.ind"
-#define SURF_HK_INDEX "/mnt/data/anita/index/surfHk.ind"
-#define TURF_HK_INDEX "/mnt/data/anita/index/turfHk.ind"
-#define MONITOR_INDEX "/mnt/data/anita/index/monitor.ind"
-#define CMD_INDEX "/mnt/data/anita/index/cmd.ind"
-
-#define MAIN_DATA_DISK_LINK "/mnt/dataCurrent"
-#define BACKUP_DATA_DISK_LINK "/mnt/dataBackup"
-
-//Pedestal Dirs
-#define PEDESTAL_DIR "/mnt/data/anita/pedestal"
-#define CURRENT_PEDESTALS "/mnt/data/anita/pedestal/current"
+#define DATA_LINK "/mnt/data" //Where the index and peds are written
+#define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
+#define SAFE_DATA_MOUNT "/mnt/bitmicro"
+#define PUCK_DATA_MOUNT "/mnt/puck"
+#define BLADE_DATA_MOUNT "/mnt/blade"
+#define USBINT_DATA_MOUNT "/mnt/usbint"
+#define USBEXT_DATA_MOUNT "/mnt/usbext"
 #endif
 
 
-#define OTHER_DISK1 "/mnt/blade1"
-#define OTHER_DISK2 "/mnt/data"
-#define OTHER_DISK3 "/mnt/blade3"
-#define OTHER_DISK4 "/mnt/blade4"
+//Index and pedestal dirs
+#define ANITA_INDEX_DIR "anita/index"
+#define PEDESTAL_DIR "anita/pedestal"
+#define CURRENT_PEDESTALS "anita/pedestal/current"
+
 
 #define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
 
-#define HK_PER_FILE 1000
-#define HK_FILES_PER_DIR 100
 
-#define EVENTS_PER_FILE 100
-#define EVENT_FILES_PER_DIR 100
-
-
-
+//Inter process and telem dirs.
 //Housekeeping Telem Dirs
-#define CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmd"
+#define LOSD_CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmdlosd"
+#define SIPD_CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmdsipd"
 #define HK_TELEM_DIR "/tmp/anita/telem/house/hk"
 #define SURFHK_TELEM_DIR "/tmp/anita/telem/house/surfhk"
+#define PEDESTAL_TELEM_DIR "/tmp/anita/telem/house/pedestal"
 #define TURFHK_TELEM_DIR "/tmp/anita/telem/house/turfhk"
 #define GPS_TELEM_DIR "/tmp/anita/telem/house/gps"
 #define MONITOR_TELEM_DIR "/tmp/anita/telem/house/monitor"
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 
-#define CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmd/link"
+#define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
+#define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
 #define HK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
 #define SURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/surfhk/link"
+#define PEDESTAL_TELEM_LINK_DIR "/tmp/anita/telem/house/pedestal/link"
 #define TURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/turfhk/link"
 #define GPS_TELEM_LINK_DIR "/tmp/anita/telem/house/gps/link"
 #define MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/monitor/link"
@@ -163,7 +159,16 @@
 #define GPSD_SUBTIME_DIR "/tmp/anita/gpsd/ttt"
 #define GPSD_SUBTIME_LINK_DIR "/tmp/anita/gpsd/ttt/link"
 
+//Archiving Directories
+#define CMD_ARCHIVE_DIR "/anita/house/cmd"
+#define CALIB_ARCHIVE_DIR "/anita/house/calib"
+#define HK_ARCHIVE_DIR "/anita/house/hk"
+#define GPS_ARCHIVE_DIR "/anita/house/gps"
+#define SURFHK_ARCHIVE_DIR "/anita/house/surfhk"
+#define TURFHK_ARCHIVE_DIR "/anita/house/turfhk"
+#define MONITOR_ARCHIVE_DIR "/anita/house/monitor"
 
+#define EVENT_ARCHIVE_DIR "/anita/event/"
 
 #endif /* ANITA_FLIGHT_H */
 

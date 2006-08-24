@@ -21,500 +21,631 @@
 #include <unistd.h>
 #include <zlib.h>
 #include <fcntl.h>
-//#define NO_ZLIB
+#define NO_ZLIB
 
 //#define OPEN_CLOSE_ALL_THE_TIME
 
 extern  int versionsort(const void *a, const void *b);
 
+int diskBitMasks[DISK_TYPES]={0x1,0x2,0x4,0x8,0x10};
+char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
 
-int closeHkFilesAndTidy(AnitaWriterStruct_t *awsPtr) {
 
+int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
+    int diskInd;
     pid_t childPid;
-    char *gzipArg[] = {"gzip",awsPtr->currentFileName,(char*)0};
-    if(awsPtr->currentFilePtr) {
-	fclose(awsPtr->currentFilePtr);
-	childPid=fork();
-	if(childPid==0) {
-	    //Child
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
+	char *gzipArg[] = {"gzip",awsPtr->currentFileName[diskInd],(char*)0};
+	if(awsPtr->currentFilePtr[diskInd]) {
+	    fclose(awsPtr->currentFilePtr[diskInd]);
+	    childPid=fork();
+	    if(childPid==0) {
+		//Child
 //	    awsPtr->currentFileName;
-	    execv("/bin/gzip",gzipArg);
-	    exit(0);
-	}
-	else if(childPid<0) {
-	    //Something wrong
-	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName);
-	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName);
-	    return -1;
+		execv("/bin/gzip",gzipArg);
+		exit(0);
+	    }
+	    else if(childPid<0) {
+		//Something wrong
+		syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName[diskInd]);
+		fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName[diskInd]);
+//		return -1;
+	    }
 	}
     }
     return 0;
 }
 
-int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, AnitaWriterStruct_t *awsPtr)
+
+int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, AnitaHkWriterStruct_t *awsPtr)
 {
+    int diskInd;
     int retVal=0;
     static int errorCounter=0;
     char *tempDir;
     pid_t childPid;
-    char *gzipArg[] = {"gzip",awsPtr->currentFileName,(char*)0};
-    
-    if(!awsPtr->currentFilePtr) {
-	//First time
-	tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime);
-	strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1);
-	awsPtr->dirCount=0;
-	free(tempDir);
-	tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime);
-	strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1);
-	awsPtr->fileCount=0;
-	free(tempDir);
-	
-	tempDir=getCurrentHkFilename(awsPtr->currentSubDirName,
-				     awsPtr->filePrefix,unixTime);
-	strncpy(awsPtr->currentFileName,tempDir,FILENAME_MAX-1);
-	free(tempDir);
-	awsPtr->currentFilePtr=fopen(awsPtr->currentFileName,"wb");	    
-	awsPtr->writeCount=0;						      
-    }
-    
-    //Check if we need a new file or directory
-    if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
-	//Need a new file
-	fclose(awsPtr->currentFilePtr);
-	childPid=fork();
-	if(childPid==0) {
-	    //Child
-//	    awsPtr->currentFileName;
-	    execv("/bin/gzip",gzipArg);
-	    exit(0);
-	}
-	else if(childPid<0) {
-	    //Something wrong
-	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName);
-	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName);
-	}
-	
-	
+    char fullBasename[FILENAME_MAX];
 
-	awsPtr->fileCount++;
-	if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
-	    awsPtr->dirCount++;
-	    if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
-		tempDir=getCurrentHkDir(awsPtr->baseDirname,unixTime);
-		strncpy(awsPtr->currentDirName,tempDir,FILENAME_MAX-1);
-		awsPtr->dirCount=0;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
+	if(!awsPtr->currentFilePtr[diskInd]) {
+	    //First time
+	    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);
+	    tempDir=getCurrentHkDir(fullBasename,unixTime);
+	    strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
+	    awsPtr->dirCount[diskInd]=0;
+	    free(tempDir);
+	    tempDir=getCurrentHkDir(awsPtr->currentDirName[diskInd],unixTime);
+	    strncpy(awsPtr->currentSubDirName[diskInd],tempDir,FILENAME_MAX-1);
+	    awsPtr->fileCount[diskInd]=0;
+	    free(tempDir);
+	
+	    tempDir=getCurrentHkFilename(awsPtr->currentSubDirName[diskInd],
+					 awsPtr->filePrefix,unixTime);
+	    strncpy(awsPtr->currentFileName[diskInd],tempDir,FILENAME_MAX-1);
+	    free(tempDir);
+	    awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");	    
+	    awsPtr->writeCount[diskInd]=0;						      
+	}
+    
+	//Check if we need a new file or directory
+	if(awsPtr->writeCount[diskInd]>=HK_PER_FILE) {
+	    //Need a new file
+	    char *gzipArg[] = {"gzip",awsPtr->currentFileName[diskInd],(char*)0};
+	    fclose(awsPtr->currentFilePtr[diskInd]);
+	    childPid=fork();
+	    if(childPid==0) {
+		//Child
+//	    awsPtr->currentFileName;
+		execv("/bin/gzip",gzipArg);
+		exit(0);
+	    }
+	    else if(childPid<0) {
+		//Something wrong
+		syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName[diskInd]);
+		fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName[diskInd]);
+	    }
+	    
+	    awsPtr->fileCount[diskInd]++;
+	    if(awsPtr->fileCount[diskInd]>=HK_FILES_PER_DIR) {
+		awsPtr->dirCount[diskInd]++;
+		if(awsPtr->dirCount[diskInd]>=HK_FILES_PER_DIR) {
+		    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);
+		    tempDir=getCurrentHkDir(fullBasename,unixTime);
+		    strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
+		    awsPtr->dirCount[diskInd]=0;
+		    free(tempDir);
+		}
+		
+		tempDir=getCurrentHkDir(awsPtr->currentDirName[diskInd],unixTime);
+		strncpy(awsPtr->currentSubDirName[diskInd],tempDir,FILENAME_MAX-1);
+		awsPtr->fileCount[diskInd]=0;
 		free(tempDir);
 	    }
 	    
-	    tempDir=getCurrentHkDir(awsPtr->currentDirName,unixTime);
-	    strncpy(awsPtr->currentSubDirName,tempDir,FILENAME_MAX-1);
-	    awsPtr->fileCount=0;
+	    tempDir=getCurrentHkFilename(awsPtr->currentSubDirName[diskInd],
+					 awsPtr->filePrefix,unixTime);
+	    strncpy(awsPtr->currentFileName[diskInd],tempDir,FILENAME_MAX-1);
 	    free(tempDir);
+	    awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");  
+	    
+	    awsPtr->writeCount[diskInd]=0;
 	}
 	
-	tempDir=getCurrentHkFilename(awsPtr->currentSubDirName,
-				     awsPtr->filePrefix,unixTime);
-	strncpy(awsPtr->currentFileName,tempDir,FILENAME_MAX-1);
-	free(tempDir);
-	awsPtr->currentFilePtr=fopen(awsPtr->currentFileName,"wb");	    
-
-	awsPtr->writeCount=0;						      
-    }
-
-    awsPtr->writeCount++;
-    if(errorCounter<100) {
-	retVal=fwrite(buffer,numBytes,1,awsPtr->currentFilePtr);
-	if(retVal<0) {
-	    errorCounter++;
-	    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-		   errorCounter,awsPtr->writeCount,
-		   strerror(errno),retVal);
-	}
-	retVal=fflush(awsPtr->currentFilePtr);  
-//	printf("Here %d -- fflush RetVal %d \n",awsPtr->writeCount,
+	awsPtr->writeCount[diskInd]++;
+	if(errorCounter<100) {
+	    retVal=fwrite(buffer,numBytes,1,awsPtr->currentFilePtr[diskInd]);
+	    if(retVal<0) {
+		errorCounter++;
+		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+		       errorCounter,awsPtr->writeCount[diskInd],
+		       strerror(errno),retVal);
+	    }
+	    retVal=fflush(awsPtr->currentFilePtr[diskInd]);  
+//	printf("Here %d -- fflush RetVal %d \n",awsPtr->writeCount[diskInd],
 //	       retVal);
-    }
-    else return -1;
-	        	       
+	}
+    }	        	       
     return retVal;
 
     
 }
 
+
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
+    int diskInd;
     int retVal=0;
     static int errorCounter=0;
     int dirNum;
-//    int numberOfBytes;
-//    char *bufferToZip;
-//    char zippedFilename[FILENAME_MAX];
+    pid_t childPid;
     
-    if(!awsPtr->currentEventFilePtr) {
-	//First time
+    char fullBasename[FILENAME_MAX];
 
-	//Make base dir
-	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
-	sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
-	makeDirectories(awsPtr->currentDirName);
-	
-	awsPtr->fileCount=0;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 
-	//Make sub dir
-	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
-	sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
-	makeDirectories(awsPtr->currentSubDirName);
+	if(!awsPtr->currentEventFilePtr[diskInd]) {
+	    //First time
+	    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);	    	    
+	    //Make base dir
+	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+	    sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
+	    makeDirectories(awsPtr->currentDirName[diskInd]);
+	    awsPtr->fileCount[diskInd]=0;
 
-	awsPtr->dirCount=0;
+	    //Make sub dir
+	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+	    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
+	    makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
+	    awsPtr->dirCount[diskInd]=0;
 
-	//Make files
-	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
-	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
-		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");
+	    //Make files
+	    dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
+	    sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
+		    awsPtr->currentSubDirName[diskInd],dirNum);
+	    awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+	    awsPtr->writeCount[diskInd]=0;
+	    
+	    if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentHeaderFileName[diskInd]);
+		}
+	    }
 
-	awsPtr->writeCount=0;
-	if(awsPtr->currentHeaderFilePtr<0) {	    
-	    if(errorCounter<100) {
-		errorCounter++;
-		printf("Error (%d of 100) trying to open file %s\n",
-		       errorCounter,awsPtr->currentHeaderFileName);
+	    sprintf(awsPtr->currentEventFileName[diskInd],"%s/ev_%d.dat",
+		    awsPtr->currentSubDirName[diskInd],dirNum);
+	    awsPtr->currentEventFilePtr[diskInd]=
+		fopen(awsPtr->currentEventFileName[diskInd],"ab");
+	    if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentEventFileName[diskInd]);
+		}
 	    }
 	}
-
-	sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
-		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentEventFilePtr=
-	    gzopen(awsPtr->currentEventFileName,"ab5");
-	if(awsPtr->currentEventFilePtr<0) {	    
-	    if(errorCounter<100) {
-		errorCounter++;
-		printf("Error (%d of 100) trying to open file %s\n",
-		       errorCounter,awsPtr->currentEventFileName);
-	    }
-	}
-    }
-    if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
-	if(awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
-#ifndef OPEN_CLOSE_ALL_THE_TIME // In NOT defined
-	    gzclose(awsPtr->currentEventFilePtr);
-	    gzclose(awsPtr->currentHeaderFilePtr);
-#endif
-
-	    awsPtr->fileCount++;
-	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir) {
-		awsPtr->dirCount++;
-		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir) {
-		    //Make base dir
-		    dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
-		    sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
-		    makeDirectories(awsPtr->currentDirName);
-		    awsPtr->dirCount=0;
+	if(awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
+	    if(hdPtr->eventNumber%EVENTS_PER_FILE==0 ||
+	       awsPtr->writeCount[diskInd]>=EVENTS_PER_FILE) {
+		fclose(awsPtr->currentEventFilePtr[diskInd]);
+		fclose(awsPtr->currentHeaderFilePtr[diskInd]);
+		
+		char *gzipHeadArg[] = {"nice","/bin/gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
+		char *gzipBodyArg[] = {"nice","/bin/gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
+		childPid=fork();
+		if(childPid==0) {
+		    //Child
+		    execv("/usr/bin/nice",gzipHeadArg);
+		    exit(0);
+		}
+		else if(childPid<0) {
+		    //Something wrong
+		    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		}
+		childPid=fork();
+		if(childPid==0) {
+		    //Child
+		    execv("/usr/bin/nice",gzipBodyArg);
+		    exit(0);
+		}
+		else if(childPid<0) {
+		    //Something wrong
+		    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		}
+	    
+		
+		
+		awsPtr->fileCount[diskInd]++;
+		if(awsPtr->fileCount[diskInd]>=EVENT_FILES_PER_DIR ||
+		   hdPtr->eventNumber%(EVENT_FILES_PER_DIR*EVENTS_PER_FILE)==0) {
+		    awsPtr->dirCount[diskInd]++;
+		    if(awsPtr->dirCount[diskInd]>=EVENT_FILES_PER_DIR || 
+		       
+		       hdPtr->eventNumber%(EVENT_FILES_PER_DIR*EVENTS_PER_FILE*EVENT_FILES_PER_DIR)==0)  {
+			//Make base dir
+			dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+			sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
+			makeDirectories(awsPtr->currentDirName[diskInd]);
+			awsPtr->dirCount[diskInd]=0;
+		    }
+		    
+		    //Make sub dir
+		    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+		    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
+		    makeDirectories(awsPtr->currentSubDirName[diskInd]);
+		    awsPtr->fileCount[diskInd]=0;
 		}
 		
-		//Make sub dir
-		dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
-		sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
-		makeDirectories(awsPtr->currentSubDirName);
-		awsPtr->fileCount=0;
-	    }
-	
 	    //Make files
-	    dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
-	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat.gz",
-		    awsPtr->currentSubDirName,dirNum);
+		dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
+		sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
+			awsPtr->currentSubDirName[diskInd],dirNum);
 //	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
-	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");
-	    if(awsPtr->currentHeaderFilePtr<0) {	    
-		if(errorCounter<100) {
-		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentHeaderFileName);
+		awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+		if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
+		    if(errorCounter<100) {
+			errorCounter++;
+			printf("Error (%d of 100) trying to open file %s\n",
+			       errorCounter,awsPtr->currentHeaderFileName[diskInd]);
+		    }
 		}
+		
+		sprintf(awsPtr->currentEventFileName[diskInd],"%s/ev_%d.dat",
+			awsPtr->currentSubDirName[diskInd],dirNum);
+		awsPtr->currentEventFilePtr[diskInd]=fopen(awsPtr->currentEventFileName[diskInd],"ab");
+		if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
+		    if(errorCounter<100) {
+			errorCounter++;
+			printf("Error (%d of 100) trying to open file %s\n",
+			       errorCounter,awsPtr->currentEventFileName[diskInd]);
+		    }
+		}
+		awsPtr->writeCount[diskInd]=0;
 	    }
+
 	    
-	    sprintf(awsPtr->currentEventFileName,"%s/ev_%d.dat.gz",
-		    awsPtr->currentSubDirName,dirNum);
-	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"ab5");
-	    if(awsPtr->currentEventFilePtr<0) {	    
-		if(errorCounter<100) {
+	    awsPtr->writeCount[diskInd]++;
+	    if(errorCounter<100 && awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
+		retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
+		if(retVal<0) {
 		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentEventFileName);
+		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+			   errorCounter,awsPtr->writeCount[diskInd],
+			   strerror(errno),retVal);
 		}
-	    }
-	    awsPtr->writeCount=0;
-	}
-#ifdef OPEN_CLOSE_ALL_THE_TIME
-	else {
-	    awsPtr->currentEventFilePtr=gzopen(awsPtr->currentEventFileName,"ab5");	    
-	    if(awsPtr->currentHeaderFilePtr<0) {	    
-		if(errorCounter<100) {
+		else 
+		    fflush(awsPtr->currentHeaderFilePtr[diskInd]);  
+
+		retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr[diskInd]);
+		if(retVal<0) {
 		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentHeaderFileName);
+		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+			   errorCounter,awsPtr->writeCount[diskInd],
+			   strerror(errno),retVal);
 		}
+		else 
+		    fflush(awsPtr->currentEventFilePtr[diskInd]);  
+		
 	    }
-	    awsPtr->currentHeaderFilePtr=gzopen(awsPtr->currentHeaderFileName,"ab5");	    
-	    if(awsPtr->currentEventFilePtr<0) {	    
-		if(errorCounter<100) {
-		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentEventFileName);
-		}
-	    }
+	    else continue;       	
 	}
-#endif
-
-	awsPtr->writeCount++;
-	if(errorCounter<100 && awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
-//	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
-	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,sizeof(AnitaEventHeader_t));
-	    if(retVal<0) {
-		errorCounter++;
-		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-		       errorCounter,awsPtr->writeCount,
-		       gzerror(awsPtr->currentHeaderFilePtr,&retVal),retVal);
-	    }
-//	    else {
-//		fflush(awsPtr->currentHeaderFilePtr);  
-#ifdef OPEN_CLOSE_ALL_THE_TIME
-	    gzclose(awsPtr->currentHeaderFilePtr);
-#endif
-//	    }
-
-//	    retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr);
-	    retVal=gzwrite(awsPtr->currentEventFilePtr,bdPtr,sizeof(AnitaEventBody_t));
-	    if(retVal<0) {
-		errorCounter++;
-		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-		       errorCounter,awsPtr->writeCount,
-		       gzerror(awsPtr->currentEventFilePtr,&retVal),retVal);
-	    }
-//	    else {
-//		fflush(awsPtr->currentEventFilePtr);  
-#ifdef OPEN_CLOSE_ALL_THE_TIME	   
-	    gzclose(awsPtr->currentEventFilePtr);
-#endif
-//	    }
-	    
-
-	}
-	else return -1;
-	
-	
     }
-    return -1;
-
+    return 0;
 
 }
 
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 
-    pid_t childPid;
-    char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName,(char*)0};
-    char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName,(char*)0};
-    if(awsPtr->currentHeaderFilePtr) {
-	fclose(awsPtr->currentHeaderFilePtr);
-	childPid=fork();
-	if(childPid==0) {
-	    //Child
-	    execv("/bin/gzip",gzipHeadArg);
-	    exit(0);
+    int diskInd;
+    pid_t childPid;    
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
+	char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
+	char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
+	if(awsPtr->currentHeaderFilePtr[diskInd]) {
+	    fclose(awsPtr->currentHeaderFilePtr[diskInd]);
+	    childPid=fork();
+	    if(childPid==0) {
+		//Child
+		execv("/bin/gzip",gzipHeadArg);
+		exit(0);
+	    }
+	    else if(childPid<0) {
+		//Something wrong
+		syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+	    }
 	}
-	else if(childPid<0) {
-	    //Something wrong
-	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-	}
-    }
-
-    if(awsPtr->currentEventFilePtr) {
-	fclose(awsPtr->currentEventFilePtr);
-	childPid=fork();
-	if(childPid==0) {
-	//Child
-	    execv("/bin/gzip",gzipBodyArg);
-	    exit(0);
-	}
-	else if(childPid<0) {
-	    //Something wrong
-	    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-	    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-	}
-    }
 	
+	if(awsPtr->currentEventFilePtr[diskInd]) {
+	    fclose(awsPtr->currentEventFilePtr[diskInd]);
+	    childPid=fork();
+	    if(childPid==0) {
+		//Child
+		execv("/bin/gzip",gzipBodyArg);
+		exit(0);
+	    }
+	    else if(childPid<0) {
+		//Something wrong
+		syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+	    }
+	}
+	
+    }
     return 0;
 }
 
+
 int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
+    int diskInd;
     int retVal=0;
     static int errorCounter=0;
     int dirNum;
     pid_t childPid;
-    char *gzipHeadArg[] = {"nice","/bin/gzip",awsPtr->currentHeaderFileName,(char*)0};
-    char *gzipBodyArg[] = {"nice","/bin/gzip",awsPtr->currentEventFileName,(char*)0};
     
-    if(!awsPtr->currentEventFilePtr) {
-	//First time
+    char fullBasename[FILENAME_MAX];
 
-	//Make base dir
-	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
-	sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
-	makeDirectories(awsPtr->currentDirName);
-	
-	awsPtr->fileCount=0;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 
-	//Make sub dir
-	dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
-	sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
-	makeDirectories(awsPtr->currentSubDirName);
+	if(!awsPtr->currentEventFilePtr[diskInd]) {
+	    //First time
+	    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);	    	    
+	    //Make base dir
+	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+	    sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
+	    makeDirectories(awsPtr->currentDirName[diskInd]);
+	    awsPtr->fileCount[diskInd]=0;
 
-	awsPtr->dirCount=0;
+	    //Make sub dir
+	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+	    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
+	    makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
+	    awsPtr->dirCount[diskInd]=0;
 
-	//Make files
-	dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
-	sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat",
-		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentHeaderFilePtr=fopen(awsPtr->currentHeaderFileName,"ab5");
-
-	awsPtr->writeCount=0;
-	if(awsPtr->currentHeaderFilePtr<0) {	    
-	    if(errorCounter<100) {
-		errorCounter++;
-		printf("Error (%d of 100) trying to open file %s\n",
-		       errorCounter,awsPtr->currentHeaderFileName);
-	    }
-	}
-
-	sprintf(awsPtr->currentEventFileName,"%s/encev_%d.dat",
-		awsPtr->currentSubDirName,dirNum);
-	awsPtr->currentEventFilePtr=
-	    fopen(awsPtr->currentEventFileName,"ab5");
-	if(awsPtr->currentEventFilePtr<0) {	    
-	    if(errorCounter<100) {
-		errorCounter++;
-		printf("Error (%d of 100) trying to open file %s\n",
-		       errorCounter,awsPtr->currentEventFileName);
-	    }
-	}
-    }
-    if(awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
-	if(hdPtr->eventNumber%awsPtr->maxWritesPerFile==0 ||
-	    awsPtr->writeCount>=awsPtr->maxWritesPerFile) {
-	    fclose(awsPtr->currentEventFilePtr);
-	    fclose(awsPtr->currentHeaderFilePtr);
-	    childPid=fork();
-	    if(childPid==0) {
-		//Child
-		execv("/usr/bin/nice",gzipHeadArg);
-		exit(0);
-	    }
-	    else if(childPid<0) {
-		//Something wrong
-		syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-		fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-	    }
-	    childPid=fork();
-	    if(childPid==0) {
-		//Child
-		execv("/usr/bin/nice",gzipBodyArg);
-		exit(0);
-	    }
-	    else if(childPid<0) {
-		//Something wrong
-		syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-		fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName);
-	    }
+	    //Make files
+	    dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
+	    sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
+		    awsPtr->currentSubDirName[diskInd],dirNum);
+	    awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+	    awsPtr->writeCount[diskInd]=0;
 	    
+	    if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentHeaderFileName[diskInd]);
+		}
+	    }
 
-
-	    awsPtr->fileCount++;
-	    if(awsPtr->fileCount>=awsPtr->maxFilesPerDir ||
-		hdPtr->eventNumber%(awsPtr->maxFilesPerDir*awsPtr->maxWritesPerFile)==0) {
-		awsPtr->dirCount++;
-		if(awsPtr->dirCount>=awsPtr->maxSubDirsPerDir || 
+	    sprintf(awsPtr->currentEventFileName[diskInd],"%s/encev_%d.dat",
+		    awsPtr->currentSubDirName[diskInd],dirNum);
+	    awsPtr->currentEventFilePtr[diskInd]=
+		fopen(awsPtr->currentEventFileName[diskInd],"ab");
+	    if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
+		if(errorCounter<100) {
+		    errorCounter++;
+		    printf("Error (%d of 100) trying to open file %s\n",
+			   errorCounter,awsPtr->currentEventFileName[diskInd]);
+		}
+	    }
+	}
+	if(awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
+	    if(hdPtr->eventNumber%EVENTS_PER_FILE==0 ||
+	       awsPtr->writeCount[diskInd]>=EVENTS_PER_FILE) {
+		fclose(awsPtr->currentEventFilePtr[diskInd]);
+		fclose(awsPtr->currentHeaderFilePtr[diskInd]);
+		
+		char *gzipHeadArg[] = {"nice","/bin/gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
+		char *gzipBodyArg[] = {"nice","/bin/gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
+		childPid=fork();
+		if(childPid==0) {
+		    //Child
+		    execv("/usr/bin/nice",gzipHeadArg);
+		    exit(0);
+		}
+		else if(childPid<0) {
+		    //Something wrong
+		    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		}
+		childPid=fork();
+		if(childPid==0) {
+		    //Child
+		    execv("/usr/bin/nice",gzipBodyArg);
+		    exit(0);
+		}
+		else if(childPid<0) {
+		    //Something wrong
+		    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentHeaderFileName[diskInd]);
+		}
+	    
+		
+		
+		awsPtr->fileCount[diskInd]++;
+		if(awsPtr->fileCount[diskInd]>=EVENT_FILES_PER_DIR ||
+		   hdPtr->eventNumber%(EVENT_FILES_PER_DIR*EVENTS_PER_FILE)==0) {
+		    awsPtr->dirCount[diskInd]++;
+		    if(awsPtr->dirCount[diskInd]>=EVENT_FILES_PER_DIR || 
+		       
+		       hdPtr->eventNumber%(EVENT_FILES_PER_DIR*EVENTS_PER_FILE*EVENT_FILES_PER_DIR)==0)  {
+			//Make base dir
+			dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+			sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
+			makeDirectories(awsPtr->currentDirName[diskInd]);
+			awsPtr->dirCount[diskInd]=0;
+		    }
 		    
-		hdPtr->eventNumber%(awsPtr->maxFilesPerDir*awsPtr->maxWritesPerFile*awsPtr->maxSubDirsPerDir)==0)  {
-		    //Make base dir
-		    dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir*awsPtr->maxSubDirsPerDir));
-		    sprintf(awsPtr->currentDirName,"%s/ev%d",awsPtr->baseDirname,dirNum);
-		    makeDirectories(awsPtr->currentDirName);
-		    awsPtr->dirCount=0;
+		    //Make sub dir
+		    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+		    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
+		    makeDirectories(awsPtr->currentSubDirName[diskInd]);
+		    awsPtr->fileCount[diskInd]=0;
 		}
 		
-		//Make sub dir
-		dirNum=(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir)*(hdPtr->eventNumber/(awsPtr->maxWritesPerFile*awsPtr->maxFilesPerDir));
-		sprintf(awsPtr->currentSubDirName,"%s/ev%d",awsPtr->currentDirName,dirNum);
-		makeDirectories(awsPtr->currentSubDirName);
-		awsPtr->fileCount=0;
-	    }
-	
 	    //Make files
-	    dirNum=(awsPtr->maxWritesPerFile)*(hdPtr->eventNumber/awsPtr->maxWritesPerFile);
-	    sprintf(awsPtr->currentHeaderFileName,"%s/hd_%d.dat",
-		    awsPtr->currentSubDirName,dirNum);
+		dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
+		sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
+			awsPtr->currentSubDirName[diskInd],dirNum);
 //	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
-	    awsPtr->currentHeaderFilePtr=fopen(awsPtr->currentHeaderFileName,"ab");
-	    if(awsPtr->currentHeaderFilePtr<0) {	    
-		if(errorCounter<100) {
-		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentHeaderFileName);
+		awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+		if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
+		    if(errorCounter<100) {
+			errorCounter++;
+			printf("Error (%d of 100) trying to open file %s\n",
+			       errorCounter,awsPtr->currentHeaderFileName[diskInd]);
+		    }
 		}
+		
+		sprintf(awsPtr->currentEventFileName[diskInd],"%s/encev_%d.dat",
+			awsPtr->currentSubDirName[diskInd],dirNum);
+		awsPtr->currentEventFilePtr[diskInd]=fopen(awsPtr->currentEventFileName[diskInd],"ab");
+		if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
+		    if(errorCounter<100) {
+			errorCounter++;
+			printf("Error (%d of 100) trying to open file %s\n",
+			       errorCounter,awsPtr->currentEventFileName[diskInd]);
+		    }
+		}
+		awsPtr->writeCount[diskInd]=0;
 	    }
+
 	    
-	    sprintf(awsPtr->currentEventFileName,"%s/encev_%d.dat",
-		    awsPtr->currentSubDirName,dirNum);
-	    awsPtr->currentEventFilePtr=fopen(awsPtr->currentEventFileName,"ab");
-	    if(awsPtr->currentEventFilePtr<0) {	    
+	    awsPtr->writeCount[diskInd]++;
+	    if(errorCounter<100 && awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
+		retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
+		if(retVal<0) {
+		    errorCounter++;
+		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+			   errorCounter,awsPtr->writeCount[diskInd],
+			   strerror(errno),retVal);
+		}
+		else 
+		    fflush(awsPtr->currentHeaderFilePtr[diskInd]);  
+
+		retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr[diskInd]);
+		if(retVal<0) {
+		    errorCounter++;
+		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+			   errorCounter,awsPtr->writeCount[diskInd],
+			   strerror(errno),retVal);
+		}
+		else 
+		    fflush(awsPtr->currentEventFilePtr[diskInd]);  
+		
+	    }
+	    else continue;       	
+	}
+    }
+    return 0;
+}
+
+
+
+int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
+{
+    int diskInd;
+    int retVal=0;
+    static int errorCounter=0;
+    int dirNum;
+    pid_t childPid;
+    
+    char fullBasename[FILENAME_MAX];
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
+
+	if(!awsPtr->currentFilePtr[diskInd]) {
+	    //First time
+	    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);	    	    
+	    //Make base dir
+	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(indPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+	    sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
+	    makeDirectories(awsPtr->currentDirName[diskInd]);
+	    awsPtr->fileCount[diskInd]=0;
+
+	    //Make sub dir
+	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(indPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+	    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
+	    makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
+	    awsPtr->dirCount[diskInd]=0;
+
+	    //Make files
+	    dirNum=(EVENTS_PER_FILE)*(indPtr->eventNumber/EVENTS_PER_FILE);
+	    sprintf(awsPtr->currentFileName[diskInd],"%s/hd_%d.dat",
+		    awsPtr->currentSubDirName[diskInd],dirNum);
+	    awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"ab");
+	    awsPtr->writeCount[diskInd]=0;
+	    
+	    if(awsPtr->currentFilePtr[diskInd]<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
 		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentEventFileName);
+			   errorCounter,awsPtr->currentFileName[diskInd]);
 		}
 	    }
-	    awsPtr->writeCount=0;
 	}
+	if(awsPtr->currentFilePtr[diskInd]) {
+	    if(indPtr->eventNumber%EVENTS_PER_FILE==0 ||
+	       awsPtr->writeCount[diskInd]>=EVENTS_PER_FILE) {
+		fclose(awsPtr->currentFilePtr[diskInd]);
+		
+		char *gzipArg[] = {"nice","/bin/gzip",awsPtr->currentFileName[diskInd],(char*)0};
+		childPid=fork();
+		if(childPid==0) {
+		    //Child
+		    execv("/usr/bin/nice",gzipArg);
+		    exit(0);
+		}
+		else if(childPid<0) {
+		    //Something wrong
+		    syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->currentFileName[diskInd]);
+		    fprintf(stderr,"Couldn't zip file %s\n",awsPtr->currentFileName[diskInd]);
+		}
 
-	
-	awsPtr->writeCount++;
-	if(errorCounter<100 && awsPtr->currentEventFilePtr && awsPtr->currentHeaderFilePtr) {
-	    awsPtr->currentHeaderPos=ftell(awsPtr->currentHeaderFilePtr);
-	    retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr);
-//	    retVal=gzwrite(awsPtr->currentHeaderFilePtr,hdPtr,sizeof(AnitaEventHeader_t));
-	    if(retVal<0) {
-		errorCounter++;
-		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-		       errorCounter,awsPtr->writeCount,
-		       strerror(errno),retVal);
+		awsPtr->fileCount[diskInd]++;
+		if(awsPtr->fileCount[diskInd]>=EVENT_FILES_PER_DIR ||
+		   indPtr->eventNumber%(EVENT_FILES_PER_DIR*EVENTS_PER_FILE)==0) {
+		    awsPtr->dirCount[diskInd]++;
+		    if(awsPtr->dirCount[diskInd]>=EVENT_FILES_PER_DIR || 
+		       
+		       indPtr->eventNumber%(EVENT_FILES_PER_DIR*EVENTS_PER_FILE*EVENT_FILES_PER_DIR)==0)  {
+			//Make base dir
+			dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(indPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+			sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
+			makeDirectories(awsPtr->currentDirName[diskInd]);
+			awsPtr->dirCount[diskInd]=0;
+		    }
+		    
+		    //Make sub dir
+		    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(indPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+		    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
+		    makeDirectories(awsPtr->currentSubDirName[diskInd]);
+		    awsPtr->fileCount[diskInd]=0;
+		}
+		
+	    //Make files
+		dirNum=(EVENTS_PER_FILE)*(indPtr->eventNumber/EVENTS_PER_FILE);
+		sprintf(awsPtr->currentFileName[diskInd],"%s/hd_%d.dat",
+			awsPtr->currentSubDirName[diskInd],dirNum);
+//	    printf("Trying to open %s\n",awsPtr->currentFileName);
+		awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"ab");
+		if(awsPtr->currentFilePtr[diskInd]<0) {	    
+		    if(errorCounter<100) {
+			errorCounter++;
+			printf("Error (%d of 100) trying to open file %s\n",
+			       errorCounter,awsPtr->currentFileName[diskInd]);
+		    }
+		}
+		awsPtr->writeCount[diskInd]=0;
 	    }
-	    else 
-		fflush(awsPtr->currentHeaderFilePtr);  
 
-	    awsPtr->currentEventPos=ftell(awsPtr->currentEventFilePtr);
-	    retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr);
+	    
+	    awsPtr->writeCount[diskInd]++;
+	    if(errorCounter<100 && awsPtr->currentFilePtr[diskInd]) {
+		retVal=fwrite(indPtr,sizeof(IndexEntry_t),1,awsPtr->currentFilePtr[diskInd]);
+		if(retVal<0) {
+		    errorCounter++;
+		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+			   errorCounter,awsPtr->writeCount[diskInd],
+			   strerror(errno),retVal);
+		}
+		else 
+		    fflush(awsPtr->currentFilePtr[diskInd]);  
 
-//	    retVal=gzwrite(awsPtr->currentEventFilePtr,outputBuffer,numBytes);
-	    if(retVal<0) {
-		errorCounter++;
-		printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-		       errorCounter,awsPtr->writeCount,
-		       strerror(errno),retVal);
 	    }
-	    else 
-		fflush(awsPtr->currentEventFilePtr);  
-
+	    else continue;       	
 	}
-	else return -1;
-	
-	
     }
-    return -1;
-
-
+    return 0;
 }
 
 
@@ -1561,6 +1692,8 @@ int checkPacket(void *thePtr)
 	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
 	case PACKET_ENC_WV: break;
 	case PACKET_ENC_SURF: break;
+	case PACKET_ENC_SURF_PEDSUB: break;
+	case PACKET_PED_SUBBED_EVENT: break;
 	case PACKET_LAB_PED: packetSize=sizeof(FullLabChipPedStruct_t); break;
 	case PACKET_FULL_PED: packetSize=sizeof(FullPedStruct_t); break;
 	case PACKET_GPS_ADU5_PAT: packetSize=sizeof(GpsAdu5PatStruct_t); break;
@@ -1582,6 +1715,8 @@ int checkPacket(void *thePtr)
 	    break;
 	case PACKET_SLOW2: packetSize=sizeof(SlowRateType1_t); 
 	    break;
+	case PACKET_ZIPPED_PACKET: break;
+	case PACKET_ZIPPED_FILE: break;
 	default: 
 	    retVal+=PKT_E_CODE; break;
     }
@@ -1604,6 +1739,7 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_FULL_PED: string="FullPedStruct_t"; break;
 	case PACKET_ENC_WV: string="EncodedWaveformPacket_t"; break;
 	case PACKET_ENC_SURF: string="EncodedSurfPacketHeader_t"; break;
+	case PACKET_ENC_SURF_PEDSUB: string="EncodedPedSubbedSurfPacketHeader_t"; break;
 	case PACKET_GPS_ADU5_PAT: string="GpsAdu5PatStruct_t"; break;
 	case PACKET_GPS_ADU5_SAT: string="GpsAdu5SatStruct_t"; break;
 	case PACKET_GPS_ADU5_VTG: string="GpsAdu5VtgStruct_t"; break;
@@ -1618,6 +1754,8 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_WAKEUP_COMM2: string="Comm2WakeUpPacket"; break;
 	case PACKET_SLOW1: string="SlowRateType1_t"; break;
 	case PACKET_SLOW2: string="SlowRateType1_t"; break;
+	case PACKET_ZIPPED_PACKET: string="ZippedPacket_t"; break;
+	case PACKET_ZIPPED_FILE: string="ZippedFile_t"; break;
 
 	default: 
 	    string="Unknown Packet Code"; break;

@@ -29,38 +29,33 @@ typedef enum {
     PROG_STATE_RUN=1,
     PROG_STATE_TERMINATE
 } ProgramStateCode;
+          
 
 typedef struct {
-    FILE *currentFilePtr;
-    int writeCount;
-    int fileCount;
-    int dirCount;
-    int maxSubDirsPerDir;
-    int maxFilesPerDir;
-    int maxWritesPerFile;
-    char baseDirname[FILENAME_MAX];
+    FILE *currentFilePtr[DISK_TYPES]; //For the 5 disk types
+    unsigned int writeBitMask; //1-blade, 2-puck,3-usbint,4-usbext,5-pmc
+    int writeCount[DISK_TYPES];
+    int fileCount[DISK_TYPES];
+    int dirCount[DISK_TYPES];
+    char relBaseName[FILENAME_MAX];
     char filePrefix[FILENAME_MAX];
-    char currentFileName[FILENAME_MAX];
-    char currentDirName[FILENAME_MAX];
-    char currentSubDirName[FILENAME_MAX];
-} AnitaWriterStruct_t;
+    char currentDirName[DISK_TYPES][FILENAME_MAX];
+    char currentSubDirName[DISK_TYPES][FILENAME_MAX];
+    char currentFileName[DISK_TYPES][FILENAME_MAX];
+} AnitaHkWriterStruct_t;
 
 typedef struct {
-    FILE* currentEventFilePtr;
-    FILE* currentHeaderFilePtr;
-    int writeCount;
-    int fileCount;
-    int dirCount;
-    int maxSubDirsPerDir;
-    int maxFilesPerDir;
-    int maxWritesPerFile;
-    int currentEventPos;
-    int currentHeaderPos;
-    char baseDirname[FILENAME_MAX];
-    char currentEventFileName[FILENAME_MAX];
-    char currentHeaderFileName[FILENAME_MAX];
-    char currentDirName[FILENAME_MAX];
-    char currentSubDirName[FILENAME_MAX];
+    FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
+    FILE* currentHeaderFilePtr[DISK_TYPES];
+    unsigned int writeBitMask; //1-blade, 2-puck,3-usbint,4-usbext,5-pmc
+    int writeCount[DISK_TYPES];
+    int fileCount[DISK_TYPES];
+    int dirCount[DISK_TYPES];
+    char relBaseName[FILENAME_MAX];
+    char currentEventFileName[DISK_TYPES][FILENAME_MAX];
+    char currentHeaderFileName[DISK_TYPES][FILENAME_MAX];
+    char currentDirName[DISK_TYPES][FILENAME_MAX];
+    char currentSubDirName[DISK_TYPES][FILENAME_MAX];
 } AnitaEventWriterStruct_t;
 
 void makeDirectories(char *theTmpDir);
@@ -89,7 +84,7 @@ int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename);
 int fillPedSubbedBody(PedSubbedEventBody_t *theEventBodyPtr, char *filename);
 int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
-int fillCommand(CommandStruct_t *theStruct, char *filename);
+    int fillCommand(CommandStruct_t *theStruct, char *filename);
     int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
     int fillLabChipPedstruct(FullLabChipPedStruct_t *pedPtr, char *filename);
 int readEncodedEventFromFile(unsigned char *buffer, char *filename,
@@ -133,12 +128,12 @@ int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes);
 int touchFile(char *filename);
 int checkFileExists(char *filename);
 
-int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned long unixTime, AnitaWriterStruct_t *awsPtr);
+int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned long unixTime, AnitaHkWriterStruct_t *awsPtr);
 int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);
-int closeHkFilesAndTidy(AnitaWriterStruct_t *awsPtr);
-
+    int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr);
+    int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr);
 
 // Signal handling routines
 

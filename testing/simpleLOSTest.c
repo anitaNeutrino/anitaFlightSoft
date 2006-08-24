@@ -18,6 +18,7 @@
 
 void handleScience(unsigned char *buffer,unsigned short numBytes);
 void printSurfInfo(EncodedSurfPacketHeader_t *surfPtr);
+void printPedSubSurfInfo(EncodedPedSubbedSurfPacketHeader_t *surfPtr);
 
 int main (int argc, char ** argv)
 { 
@@ -94,7 +95,7 @@ int main (int argc, char ** argv)
 
         
     free(bigBuffer);
-
+    return 0;
 }
 
 void handleScience(unsigned char *buffer,unsigned short numBytes) {
@@ -111,9 +112,12 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 	checkVal=checkPacket(&buffer[count]);
 	if(checkVal==0) {
 	    gHdr = (GenericHeader_t*) &buffer[count];	
-	    printf("Got %s\n",packetCodeAsString(gHdr->code));
+	    printf("Got %s (%d) -- (%d bytes)\n",packetCodeAsString(gHdr->code),
+		   gHdr->code,gHdr->numBytes);
 	    if(gHdr->code==PACKET_ENC_SURF) 
 		printSurfInfo((EncodedSurfPacketHeader_t*) gHdr);
+	    if(gHdr->code==PACKET_ENC_SURF_PEDSUB) 
+		printPedSubSurfInfo((EncodedPedSubbedSurfPacketHeader_t*) gHdr);
 	    count+=gHdr->numBytes;
 	}
 	else {
@@ -127,7 +131,16 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 
 void printSurfInfo(EncodedSurfPacketHeader_t *surfPtr) 
 {
-    EncodedSurfChannelHeader_t *chan0= surfPtr + sizeof(EncodedSurfPacketHeader_t);
-    printf("Event %d  Chan 0: numBytes %d crc %d\n",surfPtr->eventNumber,chan0->numBytes,chan0->crc);
+    EncodedSurfChannelHeader_t *chan0= (EncodedSurfChannelHeader_t*)(surfPtr + sizeof(EncodedSurfPacketHeader_t));
+    printf("Event %lu  Chan 0: numBytes %d crc %d\n",surfPtr->eventNumber,chan0->numBytes,chan0->crc);
+
+}
+
+
+
+void printPedSubSurfInfo(EncodedPedSubbedSurfPacketHeader_t *surfPtr) 
+{
+    EncodedSurfChannelHeader_t *chan0= (EncodedSurfChannelHeader_t*)(surfPtr + sizeof(EncodedPedSubbedSurfPacketHeader_t));
+    printf("Event %lu  Chan 0: numBytes %d crc %d\n",surfPtr->eventNumber,chan0->numBytes,chan0->crc);
 
 }

@@ -425,11 +425,10 @@ void fakeMonitor(struct timeval *currentTime) {
 //    theMon.gHdr.feByte=0xfe;
 //    theMon.gHdr.verId=VER_MONITOR;
     theMon.unixTime=currentTime->tv_sec;
-    theMon.diskInfo.mainDisk=10;
-    for(i=0;i<64;i++) {
-	theMon.diskInfo.usbDisk[i]=100-i;
+    for(i=0;i<8;i++) {
+	theMon.diskInfo.diskSpace[i]=100-i;
     }
-    theMon.queueInfo.cmdLinks=0;
+    theMon.queueInfo.cmdLinksLOS=0;
     theMon.queueInfo.hkLinks=10;
     theMon.queueInfo.gpsLinks=30;
     theMon.queueInfo.monitorLinks=20;

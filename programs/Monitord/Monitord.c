@@ -25,26 +25,28 @@ int checkDisks(DiskSpaceStruct_t *dsPtr);
 int checkQueues(QueueStruct_t *queuePtr);
 int writeFileAndLink(MonitorStruct_t *monitorPtr);
 void prepWriterStructs();
+void readDiskNames();
+
 
 // Global Variables
 int printToScreen=0;
 int verbosity=0;
 int monitorPeriod=60; //In seconds
 
-//USB Disk Things
-int useUSBDisks=0;
-char mainDataDisk[FILENAME_MAX];
-char usbDataDiskLink[FILENAME_MAX];
-char usbDataDiskPrefix[FILENAME_MAX];
 
 //Link Directories
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 
+char bladeName[FILENAME_MAX];
+char usbIntName[FILENAME_MAX];
+char usbExtName[FILENAME_MAX];
 
-char monitordArchiveDir[FILENAME_MAX];
-char monitordUSBArchiveDir[FILENAME_MAX];
 
-AnitaWriterStruct_t monWriter;
+int hkDiskBitMask;
+AnitaHkWriterStruct_t monWriter;
+
+char *diskLocations[8]={"/tmp","/static","/home",SAFE_DATA_MOUNT,PUCK_DATA_MOUNT,BLADE_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT};
+
 
 int main (int argc, char *argv[])
 {
@@ -86,6 +88,7 @@ int main (int argc, char *argv[])
 	    printf("Problem reading Monitord.config\n");
 	    exit(1);
 	}
+	readDiskNames();
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	    //Something
@@ -129,7 +132,7 @@ int readConfigFile()
 /* Load Monitord config stuff */
 {
     /* Config file thingies */
-    char *tempString;
+//    char *tempString;
     int status=0;
     char* eString ;
     kvpReset();
@@ -140,61 +143,8 @@ int readConfigFile()
     if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
-	useUSBDisks=kvpGetInt("useUSBDisks",0);
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
-	//Disk locations
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(mainDataDisk,tempString,FILENAME_MAX-1);	    
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get mainDataDisk");
-	    fprintf(stderr,"Couldn't get mainDataDisk\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("usbDataDiskLink");
-	if(tempString) {
-	    strncpy(usbDataDiskLink,tempString,FILENAME_MAX-1);	    
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get usbDataDiskLink");
-	    fprintf(stderr,"Couldn't get usbDataDiskLink\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("usbDataDiskPrefix");
-	if(tempString) {
-	    strncpy(usbDataDiskPrefix,tempString,FILENAME_MAX-1);	    
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get usbDataDiskPrefix");
-	    fprintf(stderr,"Couldn't get usbDataDiskPrefix\n");
-	    exit(0);
-	}
-
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    sprintf(monitordArchiveDir,"%s/%s/",mainDataDisk,tempString);
-	    sprintf(monitordUSBArchiveDir,"%s/%s/",
-		    usbDataDiskLink,tempString);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");
-	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
-	    exit(0);
-	}
-	tempString=kvpGetString("monitorArchiveSubDir");
-	if(tempString) {
-	    strcat(monitordArchiveDir,tempString);
-	    strcat(monitordUSBArchiveDir,tempString);	    
-	    makeDirectories(monitordArchiveDir);	    
-	    makeDirectories(monitordUSBArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitorArchiveSubDir");
-	    fprintf(stderr,"Couldn't get monitorArchiveSubDir\n");
-	    exit(0);
-	}	       	
-	
     }
     else {
 	eString=configErrorString (status) ;
@@ -202,11 +152,11 @@ int readConfigFile()
     }
     
     if(printToScreen && verbosity>1)
-	printf("Dirs:\n\t%s\n\t%s\n\t%s\n\t%s\n",
+	printf("Dirs:\n\t%s\n\t%s\n\t%s\n",
 	       MONITOR_TELEM_DIR,
 	       MONITOR_TELEM_LINK_DIR,
-	       monitordArchiveDir,
-	       monitordUSBArchiveDir);
+	       MONITOR_ARCHIVE_DIR
+	       );
 	       
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     return status;
@@ -214,43 +164,18 @@ int readConfigFile()
 
 int checkDisks(DiskSpaceStruct_t *dsPtr) {
     int errFlag=0;
-    int usbNum;
+    int diskNum;
     unsigned short megaBytes=0;
-    char usbDir[FILENAME_MAX];
-    megaBytes=getDiskSpace("/var/log");
-    dsPtr->mainDisk=megaBytes;
-    if(printToScreen) printf("%s\t%u\n","/var/log",megaBytes);
-    if(((short)megaBytes)==-1) errFlag--;
-    
-
-    megaBytes=getDiskSpace(OTHER_DISK1);
-    dsPtr->otherDisks[0]=megaBytes;
-    if(printToScreen) printf("%s\t%u\n",OTHER_DISK1,megaBytes);
-    megaBytes=getDiskSpace(OTHER_DISK2);
-    dsPtr->otherDisks[1]=megaBytes;
-    if(printToScreen) printf("%s\t%u\n",OTHER_DISK2,megaBytes);
-    megaBytes=getDiskSpace(OTHER_DISK3);
-    dsPtr->otherDisks[2]=megaBytes;
-    if(printToScreen) printf("%s\t%u\n",OTHER_DISK3,megaBytes);
-    megaBytes=getDiskSpace(OTHER_DISK4);
-    dsPtr->otherDisks[3]=megaBytes;
-    if(printToScreen) printf("%s\t%u\n",OTHER_DISK4,megaBytes);
-    megaBytes=getDiskSpace("/tmp");
-    dsPtr->otherDisks[4]=megaBytes;
-    if(printToScreen) printf("%s\t%u\n","/tmp",megaBytes);
-
-
-//    if(useUSBDisks) {
-    for(usbNum=1;usbNum<=7;usbNum++) {
-	sprintf(usbDir,"%s%d",usbDataDiskPrefix,usbNum);
-	megaBytes=getDiskSpace(usbDir);
-	dsPtr->usbDisk[usbNum-1]=megaBytes;
-	if(printToScreen) printf("%s\t%d\n",usbDir,megaBytes);
+    for(diskNum=0;diskNum<8;diskNum++) {
+	megaBytes=getDiskSpace(diskLocations[diskNum]);
+	dsPtr->diskSpace[diskNum]=megaBytes;
+	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes);
 	if(((short)megaBytes)==-1) errFlag--;
-	
-    }
-//    }
-    
+    }    
+    strncpy(dsPtr->bladeLabel,bladeName,9);
+    strncpy(dsPtr->usbIntLabel,usbIntName,9);
+    strncpy(dsPtr->usbExtLabel,usbExtName,9);
+
 
 //    printf("Err Flag %d\n",errFlag);
     return errFlag;
@@ -261,9 +186,14 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 int checkQueues(QueueStruct_t *queuePtr) {
     int retVal=0,count;
     unsigned short numLinks=0;
-    numLinks=countFilesInDir(CMD_ECHO_TELEM_LINK_DIR);
-    queuePtr->cmdLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",CMD_ECHO_TELEM_LINK_DIR,numLinks);
+    numLinks=countFilesInDir(LOSD_CMD_ECHO_TELEM_LINK_DIR);
+    queuePtr->cmdLinksLOS=numLinks;
+    if(printToScreen) printf("%s\t%u\n",LOSD_CMD_ECHO_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+
+    numLinks=countFilesInDir(SIPD_CMD_ECHO_TELEM_LINK_DIR);
+    queuePtr->cmdLinksSIP=numLinks;
+    if(printToScreen) printf("%s\t%u\n",SIPD_CMD_ECHO_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
 
     numLinks=countFilesInDir(HK_TELEM_LINK_DIR);
@@ -295,6 +225,11 @@ int checkQueues(QueueStruct_t *queuePtr) {
     queuePtr->headLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",HEADER_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+
+    numLinks=countFilesInDir(PEDESTAL_TELEM_LINK_DIR);
+    queuePtr->pedestalLinks=numLinks;
+    if(printToScreen) printf("%s\t%u\n",PEDESTAL_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
     
     for(count=0;count<NUM_PRIORITIES;count++) {
 	numLinks=countFilesInDir(eventTelemLinkDirs[count]);
@@ -309,13 +244,27 @@ int checkQueues(QueueStruct_t *queuePtr) {
 
 
 void prepWriterStructs() {
+    int diskInd;
     if(printToScreen) 
-	printf("Preparing Writer Struct\n");
+	printf("Preparing Writer Structs\n");
+    //Hk Writer
 
-    strncpy(monWriter.baseDirname,monitordArchiveDir,FILENAME_MAX-1);
+    sprintf(monWriter.relBaseName,"%s/",MONITOR_ARCHIVE_DIR);
     sprintf(monWriter.filePrefix,"mon");
-    monWriter.currentFilePtr=0;
-    monWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    monWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    monWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	monWriter.currentFilePtr[diskInd]=0;
+    monWriter.writeBitMask=hkDiskBitMask;
+}
+
+
+void readDiskNames() {
+    FILE *fp = fopen("bladeName.txt","rt");
+    fscanf(fp,"%s",bladeName);
+    fclose(fp);
+    fp = fopen("usbIntName.txt","rt");
+    fscanf(fp,"%s",usbIntName);
+    fclose(fp);
+    fp = fopen("usbExtName.txt","rt");
+    fscanf(fp,"%s",usbExtName);
+    fclose(fp);
 }

@@ -86,30 +86,14 @@ float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
 
 //Output stuff
-int useUsbDisks=0;
-char mainDataDisk[FILENAME_MAX];
-char usbDataDiskLink[FILENAME_MAX];
-char baseHouseArchiveDir[FILENAME_MAX];
+int hkDiskBitMask;
 
-char gpsAdu5PatArchiveDir[FILENAME_MAX];
-char gpsAdu5SatArchiveDir[FILENAME_MAX];
-char gpsAdu5TttArchiveDir[FILENAME_MAX];
-char gpsAdu5VtgArchiveDir[FILENAME_MAX];
-char gpsG12PosArchiveDir[FILENAME_MAX];
-char gpsG12SatArchiveDir[FILENAME_MAX];
-char gpsAdu5PatUsbArchiveDir[FILENAME_MAX];
-char gpsAdu5SatUsbArchiveDir[FILENAME_MAX];
-char gpsAdu5TttUsbArchiveDir[FILENAME_MAX];
-char gpsAdu5VtgUsbArchiveDir[FILENAME_MAX];
-char gpsG12PosUsbArchiveDir[FILENAME_MAX];
-char gpsG12SatUsbArchiveDir[FILENAME_MAX];
-
-AnitaWriterStruct_t adu5PatWriter;
-AnitaWriterStruct_t adu5SatWriter;
-AnitaWriterStruct_t adu5TttWriter;
-AnitaWriterStruct_t adu5VtgWriter;
-AnitaWriterStruct_t g12PosWriter;
-AnitaWriterStruct_t g12SatWriter;
+AnitaHkWriterStruct_t adu5PatWriter;
+AnitaHkWriterStruct_t adu5SatWriter;
+AnitaHkWriterStruct_t adu5TttWriter;
+AnitaHkWriterStruct_t adu5VtgWriter;
+AnitaHkWriterStruct_t g12PosWriter;
+AnitaHkWriterStruct_t g12SatWriter;
 
 int startedNtpd=0;
 
@@ -151,7 +135,7 @@ int main (int argc, char *argv[])
 
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
-	useUsbDisks=kvpGetInt("useUsbDisks",0);
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
 	tempString=kvpGetString("gpsdPidFile");
 	if(tempString) {
 	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
@@ -160,87 +144,6 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
 	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
-	}
-
-	
-	//Disk locations
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(mainDataDisk,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get mainDataDisk");
-	    fprintf(stderr,"Couldn't get mainDataDisk\n");
-	}	
-	tempString=kvpGetString("usbDataDiskLink");
-	if(tempString) {
-	    strncpy(usbDataDiskLink,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get usbDataDiskLink");
-	    fprintf(stderr,"Couldn't get usbDataDiskLink\n");
-	}	
-
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    strncpy(baseHouseArchiveDir,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");
-	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
-	}	
-
-
-
-	tempString=kvpGetString("gpsArchiveSubDir");
-	if(tempString) {
-	    sprintf(gpsAdu5PatArchiveDir,"%s/%s/%s/adu5/pat",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsAdu5SatArchiveDir,"%s/%s/%s/adu5/sat",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsAdu5TttArchiveDir,"%s/%s/%s/adu5/ttt",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsAdu5VtgArchiveDir,"%s/%s/%s/adu5/vtg",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsG12PosArchiveDir,"%s/%s/%s/g12/pos",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsG12SatArchiveDir,"%s/%s/%s/g12/sat",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-
-	    makeDirectories(gpsAdu5PatArchiveDir);
-	    makeDirectories(gpsAdu5SatArchiveDir);
-	    makeDirectories(gpsAdu5TttArchiveDir);
-	    makeDirectories(gpsAdu5VtgArchiveDir);
-	    makeDirectories(gpsG12PosArchiveDir);
-	    makeDirectories(gpsG12SatArchiveDir);
-
-	    if(useUsbDisks) {
-		sprintf(gpsAdu5PatUsbArchiveDir,"%s/%s/%s/adu5/pat/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsAdu5SatUsbArchiveDir,"%s/%s/%s/adu5/sat/link",
-		    usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsAdu5TttUsbArchiveDir,"%s/%s/%s/adu5/ttt/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsAdu5VtgUsbArchiveDir,"%s/%s/%s/adu5/vtg/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsG12PosUsbArchiveDir,"%s/%s/%s/g12/pos/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsG12SatUsbArchiveDir,"%s/%s/%s/g12/sat/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		
-		
-		makeDirectories(gpsAdu5PatUsbArchiveDir);
-		makeDirectories(gpsAdu5SatUsbArchiveDir);
-		makeDirectories(gpsAdu5TttUsbArchiveDir);
-		makeDirectories(gpsAdu5VtgUsbArchiveDir);
-		makeDirectories(gpsG12PosUsbArchiveDir);
-		makeDirectories(gpsG12SatUsbArchiveDir);
-	    }
-
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsArchiveSubDir");
-	    fprintf(stderr,"Couldn't get gpsArchiveSubDir\n");
 	}
 
     }
@@ -1363,57 +1266,46 @@ int tryToStartNtpd()
 }
 
 void prepWriterStructs() {
+    int diskInd;
     if(printToScreen) 
 	printf("Preparing Writer Structs\n");
 
     //Adu5 Pat
-    strncpy(adu5PatWriter.baseDirname,gpsAdu5PatArchiveDir,FILENAME_MAX-1);
+    sprintf(adu5PatWriter.relBaseName,"%s/adu5/pat/",GPS_ARCHIVE_DIR);
     sprintf(adu5PatWriter.filePrefix,"pat");
-    adu5PatWriter.currentFilePtr=0;
-    adu5PatWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5PatWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5PatWriter.maxWritesPerFile=HK_PER_FILE;
-//    printf("Adu5 Pat Archive %s\n%s\n",adu5PatWriter.baseDirname,gpsAdu5PatArchiveDir);
-//    exit(0);
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5PatWriter.currentFilePtr[diskInd]=0;
 
     //Adu5 Sat
-    strncpy(adu5SatWriter.baseDirname,gpsAdu5SatArchiveDir,FILENAME_MAX-1);
+    sprintf(adu5SatWriter.relBaseName,"%s/adu5/sat/",GPS_ARCHIVE_DIR);
     sprintf(adu5SatWriter.filePrefix,"sat_adu5");
-    adu5SatWriter.currentFilePtr=0;
-    adu5SatWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5SatWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5SatWriter.maxWritesPerFile=HK_PER_FILE;
-
-    //Adu5 Ttt
-    strncpy(adu5TttWriter.baseDirname,gpsAdu5TttArchiveDir,FILENAME_MAX-1);
-    sprintf(adu5TttWriter.filePrefix,"ttt");
-    adu5TttWriter.currentFilePtr=0;
-    adu5TttWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5TttWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5TttWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5SatWriter.currentFilePtr[diskInd]=0;
 
     //Adu5 Vtg
-    strncpy(adu5VtgWriter.baseDirname,gpsAdu5VtgArchiveDir,FILENAME_MAX-1);
+    sprintf(adu5VtgWriter.relBaseName,"%s/adu5/vtg/",GPS_ARCHIVE_DIR);
     sprintf(adu5VtgWriter.filePrefix,"vtg");
-    adu5VtgWriter.currentFilePtr=0;
-    adu5VtgWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5VtgWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5VtgWriter.maxWritesPerFile=HK_PER_FILE;
-        
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5VtgWriter.currentFilePtr[diskInd]=0;
+
+    //Adu5 Ttt
+    sprintf(adu5TttWriter.relBaseName,"%s/adu5/ttt/",GPS_ARCHIVE_DIR);
+    sprintf(adu5TttWriter.filePrefix,"ttt");
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5TttWriter.currentFilePtr[diskInd]=0;
+
+
     //G12 Pos
-    strncpy(g12PosWriter.baseDirname,gpsG12PosArchiveDir,FILENAME_MAX-1);
+    sprintf(g12PosWriter.relBaseName,"%s/g12/pos/",GPS_ARCHIVE_DIR);
     sprintf(g12PosWriter.filePrefix,"pos");
-    g12PosWriter.currentFilePtr=0;
-    g12PosWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    g12PosWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    g12PosWriter.maxWritesPerFile=HK_PER_FILE;   
- 
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	g12PosWriter.currentFilePtr[diskInd]=0;
+
     //G12 Sat
-    strncpy(g12SatWriter.baseDirname,gpsG12SatArchiveDir,FILENAME_MAX-1);
+    sprintf(g12SatWriter.relBaseName,"%s/g12/sat/",GPS_ARCHIVE_DIR);
     sprintf(g12SatWriter.filePrefix,"sat");
-    g12SatWriter.currentFilePtr=0;
-    g12SatWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    g12SatWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    g12SatWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	g12SatWriter.currentFilePtr[diskInd]=0;
+    
 
 }    

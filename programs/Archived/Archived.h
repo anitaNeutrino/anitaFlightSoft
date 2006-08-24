@@ -17,5 +17,6 @@ void processEvent();
 void checkEvents();
 int readConfigFile();
 void prepWriterStructs();
+void readDiskNames();
 
 #endif //ARCHIVED_H

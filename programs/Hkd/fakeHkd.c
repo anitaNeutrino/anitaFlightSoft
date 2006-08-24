@@ -97,8 +97,9 @@ int readoutPeriod;
 int calibrationPeriod;
 
 
-AnitaWriterStruct_t hkRawWriter;
-AnitaWriterStruct_t hkCalWriter;
+int hkDiskBitMask;
+AnitaHkWriterStruct_t hkRawWriter;
+AnitaHkWriterStruct_t hkCalWriter;
 
 
 int main (int argc, char *argv[])
@@ -143,7 +144,7 @@ int main (int argc, char *argv[])
 
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
-	useUSBDisks=kvpGetInt("useUSBDisks",0);
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
 	tempString=kvpGetString("hkdPidFile");
 	if(tempString) {
 	    strncpy(hkdPidFile,tempString,FILENAME_MAX-1);
@@ -152,45 +153,6 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Error getting hkdPidFile");
 	    fprintf(stderr,"Error getting hkdPidFile\n");
-	}
-       
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(hkdArchiveDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting mainDataDisk");
-	    fprintf(stderr,"Error getting mainDataDisk\n");
-	}
-	tempString=kvpGetString("usbDataDiskLink");
-	if(tempString) {
-	    strncpy(hkdUSBArchiveDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting usbDataDiskLink");
-	    fprintf(stderr,"Error getting usbDataDiskLink\n");
-	}
-	    
-	    
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    sprintf(hkdArchiveDir,"%s/%s/",hkdArchiveDir,tempString);
-	    sprintf(hkdUSBArchiveDir,"%s/%s/",hkdUSBArchiveDir,tempString);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
-	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
-	}	    
-	tempString=kvpGetString("hkArchiveSubDir");
-	if(tempString) {
-	    strcat(hkdArchiveDir,tempString);
-	    strcat(hkdUSBArchiveDir,tempString);
-	    makeDirectories(hkdArchiveDir);
-	    if(useUSBDisks) makeDirectories(hkdUSBArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting hkArchiveSubDir");
-	    fprintf(stderr,"Error getting hkArchiveSubDir\n");
 	}
 	    
     }
@@ -364,7 +326,7 @@ int outputData(AnalogueCode_t code)
     char theFilename[FILENAME_MAX];
     char fullFilename[FILENAME_MAX];
     HkDataStruct_t theHkData;
-    AnitaWriterStruct_t *wrPtr;
+    AnitaHkWriterStruct_t *wrPtr;
 
 
     struct timeval timeStruct;
@@ -432,27 +394,25 @@ int fakeMagnetometer()
 }
 
 
-
 void prepWriterStructs() {
+    int diskInd;
     if(printToScreen) 
 	printf("Preparing Writer Structs\n");
     //Hk Writer
     
-    sprintf(hkRawWriter.baseDirname,"%s/raw",hkdArchiveDir);
+    sprintf(hkRawWriter.relBaseName,"%s/raw",HK_ARCHIVE_DIR);
     sprintf(hkRawWriter.filePrefix,"hk_raw");
-    hkRawWriter.currentFilePtr=0;
-    hkRawWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    hkRawWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-//    hkRawWriter.maxWritesPerFile=10;
-    hkRawWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	hkRawWriter.currentFilePtr[diskInd]=0;
+    hkRawWriter.writeBitMask=hkDiskBitMask;
 
     //Hk Cal Writer
-    sprintf(hkCalWriter.baseDirname,"%s/cal",hkdArchiveDir);
+    sprintf(hkCalWriter.relBaseName,"%s/cal",HK_ARCHIVE_DIR);
     sprintf(hkCalWriter.filePrefix,"hk_cal_avz");
-    hkCalWriter.currentFilePtr=0;
-    hkCalWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    hkCalWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    hkCalWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	hkCalWriter.currentFilePtr[diskInd]=0;
+    hkCalWriter.writeBitMask=hkDiskBitMask;
+
 
 
 }

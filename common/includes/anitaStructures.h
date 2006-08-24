@@ -58,7 +58,7 @@
 #define VER_G12_SAT 4
 #define VER_HK_FULL 6
 #define VER_CMD_ECHO 4
-#define VER_MONITOR 5
+#define VER_MONITOR 7
 #define VER_TURF_RATE 6
 #define VER_LAB_PED 1
 #define VER_FULL_PED 1
@@ -126,7 +126,9 @@ typedef enum {
     PACKET_WAKEUP_COMM1 = 0x602,
     PACKET_WAKEUP_COMM2 = 0x603,
     PACKET_SLOW1 = 0x700,
-    PACKET_SLOW2 = 0x800    
+    PACKET_SLOW2 = 0x800,
+    PACKET_ZIPPED_PACKET = 0x900, // Is just a zipped version of another packet
+    PACKET_ZIPPED_FILE = 0xa00 // Is a zipped file
 } PacketCode_t;
 
 typedef enum {
@@ -643,21 +645,23 @@ typedef struct {
 } CommandEcho_t;
 
 typedef struct {
-    unsigned short mainDisk; //In MegaBytes
-    unsigned short otherDisks[5]; //In MegaBytes
-    unsigned short usbDisk[NUM_USBDISKS]; //In MegaBytes
+    unsigned short diskSpace[8]; //In MegaBytes
+    char bladeLabel[10];
+    char usbIntLabel[10];
+    char usbExtLabel[10];
 } DiskSpaceStruct_t;
 
 typedef struct {
     unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
-    unsigned short cmdLinks;
+    unsigned short cmdLinksLOS;
+    unsigned short cmdLinksSIP;
     unsigned short headLinks;
     unsigned short gpsLinks;
     unsigned short hkLinks;
     unsigned short monitorLinks;
     unsigned short surfHkLinks;
     unsigned short turfHkLinks;
-    unsigned short forcedLinks;
+    unsigned short pedestalLinks;
 } QueueStruct_t;
 
 typedef struct {
@@ -707,5 +711,22 @@ typedef struct {
     unsigned short pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
     /* 10 x RMS of the samples (not of mean)*/
 } PedestalStruct_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+} ZippedPacket_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    char filename[60];
+} ZippedFile_t;
+
+typedef struct {
+    unsigned long eventNumber;
+    int eventDiskBitMask; //Which disks was it written to?
+    char bladeLabel[10];
+    char usbIntLabel[10];
+    char usbExtLabel[10];
+} IndexEntry_t;
 
 #endif /* ANITA_STRUCTURES_H */

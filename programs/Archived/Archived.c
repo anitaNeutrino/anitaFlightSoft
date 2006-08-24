@@ -28,12 +28,6 @@
 
 // Directories and gubbins 
 char archivedPidFile[FILENAME_MAX];
-//char prioritizerdEventDir[FILENAME_MAX];
-//char prioritizerdEventLinkDir[FILENAME_MAX];
-
-char mainEventArchivePrefix[FILENAME_MAX];
-char backupEventArchivePrefix[FILENAME_MAX];
-
 
 //char currentEventIndex[FILENAME_MAX];
 //char currentEventDir[FILENAME_MAX];
@@ -44,7 +38,6 @@ float priorityFractionRaw[NUM_PRIORITIES];
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 
-int useBackupDisk=1;
 
 //Event Structures
 AnitaEventHeader_t theHead;
@@ -58,9 +51,14 @@ int printToScreen=0;
 int verbosity=0;
 int writeTelem=0;
 
+int eventDiskBitMask;
 AnitaEventWriterStruct_t eventWriter;
-FILE *fpIndex;
+AnitaHkWriterStruct_t indexWriter;
 
+
+char bladeName[FILENAME_MAX];
+char usbIntName[FILENAME_MAX];
+char usbExtName[FILENAME_MAX];
 
 int main (int argc, char *argv[])
 {
@@ -92,6 +90,7 @@ int main (int argc, char *argv[])
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
+	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 	tempString=kvpGetString("archivedPidFile");
 	if(tempString) {
 	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
@@ -101,21 +100,6 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
 	    fprintf(stderr,"Couldn't get archivedPidFile\n");
 	}
-
-	tempString=kvpGetString("baseEventArchivePrefix");
-	if(tempString) {
-	    sprintf(mainEventArchivePrefix,"%s/%s",MAIN_DATA_DISK_LINK,
-		    tempString);
-	    sprintf(backupEventArchivePrefix,"%s/%s",BACKUP_DATA_DISK_LINK,
-		    tempString);	    
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseEventArchivePrefix");
-	    fprintf(stderr,"Couldn't get baseEventArchivePrefix\n");
-	}
-
-	useBackupDisk=kvpGetInt("useUsbDisks",1);
-				
     }
     
     //Fill event dir names
@@ -133,6 +117,7 @@ int main (int argc, char *argv[])
     do {
 	if(printToScreen) printf("Initalizing Archived\n");
 	retVal=readConfigFile();
+	readDiskNames();
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading Archived.config");
 	    printf("Problem reading Archived.config\n");
@@ -145,6 +130,7 @@ int main (int argc, char *argv[])
     } while(currentState==PROG_STATE_INIT);    
 
     closeEventFilesAndTidy(&eventWriter);
+    closeHkFilesAndTidy(&indexWriter);
 
     return 0;
 }
@@ -297,42 +283,23 @@ void processEvent()
 
 
 void writeOutputToDisk(int numBytes) {
-   
-    char mainDiskDir[FILENAME_MAX];
-    char backupDiskDir[FILENAME_MAX];
-    
-    int len,retVal;
-
-    //Get real disk names for index and telem
-    if ((len = readlink(MAIN_DATA_DISK_LINK, mainDiskDir, FILENAME_MAX-1)) != -1)
-	mainDiskDir[len] = '\0';
-    if ((len = readlink(BACKUP_DATA_DISK_LINK,backupDiskDir, FILENAME_MAX-1)) != -1)
-	backupDiskDir[len] = '\0';	
-
-//    fprintf(stderr,"%s %s\n",mainDiskDir,backupDiskDir);
-//    fprintf(stderr,"%d %d\n",strlen(MAIN_DATA_DISK_LINK),strlen(BACKUP_DATA_DISK_LINK));
+    IndexEntry_t indEnt;
+    int retVal;
 
     retVal=cleverEncEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
     if(printToScreen && verbosity>1) {
 	printf("Event %lu, (%d bytes)  %s \t%s\n",theHead.eventNumber,
-	       numBytes,eventWriter.currentEventFileName,
-	       eventWriter.currentHeaderFileName);
+	       numBytes,eventWriter.currentEventFileName[0],
+	       eventWriter.currentHeaderFileName[0]);
     }
-    
-    if(!fpIndex) {
-//	fprintf(stderr,"%s\n",EVENT_LINK_INDEX);
-	fpIndex = fopen(EVENT_LINK_INDEX,"aw");
-	if(!fpIndex) {
-	    fprintf(stderr,"Error opening file %s (%s)\n",EVENT_LINK_INDEX,
-		    strerror(errno));
-	}
-	if(theHead.eventNumber%10000==0) {
-	    //Do some archiving
-	}
-    }
-//    printf("fpIndex: %d\n",(int)fpIndex);
-    fprintf(fpIndex,"%lu\t%s\t%s\t%d\t%s\t%d\n",theHead.eventNumber,mainDiskDir,eventWriter.currentHeaderFileName,eventWriter.currentHeaderPos,eventWriter.currentEventFileName,eventWriter.currentEventPos);
-    fflush(fpIndex);
+
+    //Now write the index
+    indEnt.eventNumber=theHead.eventNumber;
+    indEnt.eventDiskBitMask=eventWriter.writeBitMask;
+    strncpy(indEnt.bladeLabel,bladeName,9);
+    strncpy(indEnt.usbIntLabel,usbIntName,9);
+    strncpy(indEnt.usbExtLabel,usbExtName,9);
+    cleverIndexWriter(&indEnt,&indexWriter);
 
 
 }
@@ -362,15 +329,34 @@ void writeOutputForTelem(int numBytes) {
 
 
 void prepWriterStructs() {
+    int diskInd;
     if(printToScreen) 
 	printf("Preparing Writer Structs\n");
 
     //Event Writer
-    makeDirectories(mainEventArchivePrefix);
-    strncpy(eventWriter.baseDirname,mainEventArchivePrefix,FILENAME_MAX-1);
-    eventWriter.currentHeaderFilePtr=0;
-    eventWriter.currentEventFilePtr=0;
-    eventWriter.maxSubDirsPerDir=EVENT_FILES_PER_DIR;
-    eventWriter.maxFilesPerDir=EVENT_FILES_PER_DIR;
-    eventWriter.maxWritesPerFile=EVENTS_PER_FILE;
+    strncpy(eventWriter.relBaseName,EVENT_ARCHIVE_DIR,FILENAME_MAX-1);
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	eventWriter.currentHeaderFilePtr[diskInd]=0;
+	eventWriter.currentEventFilePtr[diskInd]=0;
+    }
+    eventWriter.writeBitMask=eventDiskBitMask;
+
+    //Index Writer
+    strncpy(indexWriter.relBaseName,ANITA_INDEX_DIR,FILENAME_MAX-1);
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	indexWriter.currentFilePtr[diskInd]=0;
+    }
+    indexWriter.writeBitMask=0x12;
+}
+
+void readDiskNames() {
+    FILE *fp = fopen("bladeName.txt","rt");
+    fscanf(fp,"%s",bladeName);
+    fclose(fp);
+    fp = fopen("usbIntName.txt","rt");
+    fscanf(fp,"%s",usbIntName);
+    fclose(fp);
+    fp = fopen("usbExtName.txt","rt");
+    fscanf(fp,"%s",usbExtName);
+    fclose(fp);
 }

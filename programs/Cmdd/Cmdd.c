@@ -67,6 +67,10 @@ char sipdPidFile[FILENAME_MAX];
 int printToScreen=1;
 int verbosity=1;
 
+
+int hkDiskBitMask;
+AnitaHkWriterStruct_t cmdWriter;
+
 int main (int argc, char *argv[])
 {
     int retVal;
@@ -84,7 +88,8 @@ int main (int argc, char *argv[])
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
 
-    makeDirectories(CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(CMDD_COMMAND_LINK_DIR);
 
     do {
@@ -165,6 +170,7 @@ int readConfig() {
     eString = configErrorString (status) ;
     
     if (status == CONFIG_E_OK) {
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
@@ -855,22 +861,67 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
 	syslog(LOG_ERR,"Error executing cmd: %s",cmdString);
 	fprintf(stderr,"Error executing cmd: %s\n",cmdString);
     }
-    sprintf(filename,"%s/cmd_%ld.dat",CMD_ECHO_TELEM_DIR,theEcho.unixTime);
+
+
+    //Write cmd echo for losd
+    sprintf(filename,"%s/cmd_%ld.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
     {
 	FILE *pFile;
 	int fileTag=1;
 	pFile = fopen(filename,"rb");
 	while(pFile!=NULL) {
 	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
 	}
     }
     printf("Writing to file %s\n",filename);
     fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
     writeCmdEcho(&theEcho,filename);
-    makeLink(filename,CMD_ECHO_TELEM_LINK_DIR);
+    makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
+
+
+    //Write cmd echo for sipd
+    sprintf(filename,"%s/cmd_%ld.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
+    {
+	FILE *pFile;
+	int fileTag=1;
+	pFile = fopen(filename,"rb");
+	while(pFile!=NULL) {
+	    fclose(pFile);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
+	    pFile=fopen(filename,"rb");
+	}
+    }
+    printf("Writing to file %s\n",filename);
+    fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
+    writeCmdEcho(&theEcho,filename);
+    makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
     
+
+    //Write Archive
+    cleverHkWrite((unsigned char*)&theEcho,sizeof(CommandEcho_t),
+		  theEcho.unixTime,&cmdWriter);
+
     return retVal;
 }
+
+
+void prepWriterStructs() {
+    int diskInd;
+    if(printToScreen) 
+	printf("Preparing Writer Structs\n");
+    //Hk Writer
+
+    sprintf(cmdWriter.relBaseName,"%s/",CMD_ARCHIVE_DIR);
+    sprintf(cmdWriter.filePrefix,"cmd");
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	cmdWriter.currentFilePtr[diskInd]=0;
+    cmdWriter.writeBitMask=hkDiskBitMask;
+
+
+
+
+}
+
 

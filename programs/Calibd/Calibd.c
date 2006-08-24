@@ -40,6 +40,7 @@ struct conf_blk_470 cblk_470;
 // Acromag constants 
 #define INTERRUPT_LEVEL 10
 
+void prepWriterStructs();
 
 // Global (config) variables
 // Relay states
@@ -68,12 +69,12 @@ int attenLoopMap[8]={1,1,1,1,1,1,1,1};
 //Debug
 int printToScreen=1;
 
-//Output Dirs
-char calibArchiveDir[FILENAME_MAX];
-char calibArchiveLinkDir[FILENAME_MAX];
 char calibdPidFile[FILENAME_MAX];
 
 int writePeriod=60;
+
+int hkDiskBitMask;
+AnitaHkWriterStruct_t calibWriter;
 
 int main (int argc, char *argv[])
 {
@@ -109,15 +110,7 @@ int main (int argc, char *argv[])
 
     // Get Calibd output dirs
     if (status == CONFIG_E_OK) {
-	
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(calibArchiveDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting mainDataDisk");
-	    fprintf(stderr,"Error getting mainDataDisk\n");
-	}
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
 	tempString=kvpGetString("calibdPidFile");
 	if(tempString) {
 	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
@@ -126,23 +119,6 @@ int main (int argc, char *argv[])
 	else {
 	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
 	    fprintf(stderr,"Couldn't get calibdPidFile\n");
-	}	    
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    sprintf(calibArchiveDir,"%s/%s/",calibArchiveDir,tempString);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
-	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
-	}	    
-	tempString=kvpGetString("calibArchiveSubDir");
-	if(tempString) {
-	    strcat(calibArchiveDir,tempString);
-	    makeDirectories(calibArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting calibArchiveSubDir");
-	    fprintf(stderr,"Error getting calibArchiveSubDir\n");
 	}
     }
 
@@ -261,9 +237,9 @@ void writeStatus()
     sprintf(filename,"%s/calib_%ld.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);
     makeLink(filename,CALIBD_STATUS_LINK_DIR);
-    sprintf(filename,"%s/calib_%ld.dat",calibArchiveDir,theStatus.unixTime);
-    writeCalibStatus(&theStatus,filename);
-    makeLink(filename,calibArchiveLinkDir);
+
+    cleverHkWrite((unsigned char*)&theStatus,sizeof(CalibStruct_t),
+		  theStatus.unixTime,&calibWriter);
     
 }
 
@@ -522,5 +498,22 @@ int setAttenuatorState()
 {
     attenState=attenuatorSettingsMap[currentAtten-1];
     return setMultipleLevels(ATTENUATOR_LSB/8,ATTENUATOR_LSB%8,3,attenState);
+
+}
+
+void prepWriterStructs() {
+    int diskInd;
+    if(printToScreen) 
+	printf("Preparing Writer Structs\n");
+    //Hk Writer
+
+    sprintf(calibWriter.relBaseName,"%s/",CALIB_ARCHIVE_DIR);
+    sprintf(calibWriter.filePrefix,"calib");
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	calibWriter.currentFilePtr[diskInd]=0;
+    calibWriter.writeBitMask=hkDiskBitMask;
+
+
+
 
 }
