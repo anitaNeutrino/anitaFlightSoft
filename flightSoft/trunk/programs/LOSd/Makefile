@@ -27,7 +27,7 @@ PLX_LIBS = $(PLX_SDK_DIR)/linux/api/Library/PlxApi$(DBG).a \
 PLX_CFLAGS=$(PLX_OPT) $(PLX_INCLUDES)
 CCFLAGS:= ${CCFLAGS} ${PLX_CFLAGS}
 
-Targets =fakePackets LOSd 
+Targets =LOSd  fakePackets 
 
 all: $(Targets)
 

@@ -37,7 +37,8 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber);
 void readAndSendEventRamdisk(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 int getLosNumber();
-
+int sendEncodedPedSubbedSurfPackets(int bufSize);
+int sendEncodedSurfPackets(int bufSize);
 
 
 char fakeOutputDir[]="/tmp/fake/los";
@@ -150,10 +151,11 @@ int main(int argc, char *argv[])
     makeDirectories(HEADER_TELEM_LINK_DIR);
     makeDirectories(SURFHK_TELEM_LINK_DIR);
     makeDirectories(TURFHK_TELEM_LINK_DIR);
+    makeDirectories(PEDESTAL_TELEM_LINK_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(GPS_TELEM_LINK_DIR);
-    makeDirectories(CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
 
     
     //Fill event dir names
@@ -536,8 +538,13 @@ void fillBufferWithHk()
 
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(CommandEcho_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
-		     CMD_ECHO_TELEM_DIR,CMD_ECHO_TELEM_LINK_DIR,
+		     LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR,
 		     sizeof(CommandEcho_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullLabChipPedStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
+		     sizeof(FullLabChipPedStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(MonitorStruct_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
@@ -681,9 +688,10 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
 
 
 void readAndSendEventRamdisk(char *headerLinkFilename) {
+    static int errorCounter=0;
     AnitaEventHeader_t *theHeader;
-    EncodedSurfPacketHeader_t *surfHdPtr;
-    int numBytes,count=0,surf=0,retVal;
+    GenericHeader_t *gHdr;
+    int retVal;
     char waveFilename[FILENAME_MAX];
     char headerFilename[FILENAME_MAX];
     char currentTouchname[FILENAME_MAX];
@@ -749,6 +757,46 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	return;
     }
 
+
+    //Okay so now the buffer either contains EncodedSurfPacketHeader_t or
+    // it contains EncodedPedSubbedSurfPacketHeader_t
+    gHdr = (GenericHeader_t*) &eventBuffer[0];
+    switch(gHdr->code) {
+	case PACKET_ENC_SURF:
+	    retVal=sendEncodedSurfPackets(retVal);
+	    break;
+	case PACKET_ENC_SURF_PEDSUB:
+	    retVal=sendEncodedPedSubbedSurfPackets(retVal);
+	    break;
+	default:
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Don't know what to do with packet %d -- %s (Message %d of 100)\n",gHdr->code,packetCodeAsString(gHdr->code),errorCounter);
+		errorCounter++;
+	    }
+	    fprintf(stderr,"Don't know what to do with packet %d -- %s\n",gHdr->code,packetCodeAsString(gHdr->code));
+    }
+	
+    
+    
+    if(printToScreen && verbosity>1) 
+	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
+	       headerLinkFilename);
+
+    if(!checkFileExists(currentTouchname)) {
+	removeFile(headerFilename);
+	removeFile(headerLinkFilename);
+	removeFile(waveFilename);
+	removeFile(currentLOSTouchname);
+    }
+    
+}
+
+
+int sendEncodedSurfPackets(int bufSize)
+{
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0;
+
     // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
@@ -764,21 +812,38 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	    numBytesInBuffer+=numBytes;
 	}
 	else break;
+	if(count>bufSize) return -1;
     }
-    
-    if(printToScreen && verbosity>1) 
-	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
-	       headerLinkFilename);
-
-    if(!checkFileExists(currentTouchname)) {
-	removeFile(headerFilename);
-	removeFile(headerLinkFilename);
-	removeFile(waveFilename);
-	removeFile(currentLOSTouchname);
-    }
-    
-
+    return 0;
 }
+
+
+int sendEncodedPedSubbedSurfPackets(int bufSize)
+{
+    EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0;
+
+    // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &eventBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getLosNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+//		fillBufferWithHk();
+		doWrite();
+	    }
+	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
+	    count+=numBytes;
+	    numBytesInBuffer+=numBytes;
+	}
+	else break;
+	if(count>bufSize) return -1;
+    }
+    return 0;
+}
+
+
 
 
 int getLosNumber() {

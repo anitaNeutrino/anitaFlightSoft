@@ -41,6 +41,8 @@ void readAndSendEventRamdiskWavePackets(char *headerLinkFilename);
 int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
 void sendSomeHk(int maxBytes);
+int sendEncodedPedSubbedSurfPackets(int bufSize);
+int sendEncodedSurfPackets(int bufSize);
 
 // Config Thingies
 char sipdPidFile[FILENAME_MAX];
@@ -535,9 +537,10 @@ void readAndSendEvent(char *headerFilename) {
 
 
 void readAndSendEventRamdisk(char *headerLinkFilename) {
+    static int errorCounter=0;
     AnitaEventHeader_t *theHeader;
-    EncodedSurfPacketHeader_t *surfHdPtr;
-    int numBytes,count=0,surf=0,retVal;
+    GenericHeader_t *gHdr;
+    int retVal;
     char currentTouchname[FILENAME_MAX];
     char currentLOSTouchname[FILENAME_MAX];
     char waveFilename[FILENAME_MAX];
@@ -606,24 +609,26 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     }
 
 
-    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
-    count=0;
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
-	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
-	numBytes = surfHdPtr->gHdr.numBytes;
-	if(numBytes) {
-	    retVal = sipcom_highrate_write(&theBuffer[count],numBytes);
-	    if(retVal<0) {
-		//Problem sending data
-		syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
-		fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());	
+    //Okay so now the buffer either contains EncodedSurfPacketHeader_t or
+    // it contains EncodedPedSubbedSurfPacketHeader_t
+    gHdr = (GenericHeader_t*) &theBuffer[0];
+    switch(gHdr->code) {
+	case PACKET_ENC_SURF:
+	    retVal=sendEncodedSurfPackets(retVal);
+	    break;
+	case PACKET_ENC_SURF_PEDSUB:
+	    retVal=sendEncodedPedSubbedSurfPackets(retVal);
+	    break;
+	default:
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Don't know what to do with packet %d -- %s (Message %d of 100)\n",gHdr->code,packetCodeAsString(gHdr->code),errorCounter);
+		errorCounter++;
 	    }
-	    count+=numBytes;
-	    eventDataSent+=numBytes;
-	}
-	else break;
+	    fprintf(stderr,"Don't know what to do with packet %d -- %s\n",gHdr->code,packetCodeAsString(gHdr->code));
     }
+    
+
+
     
     if(printToScreen && verbosity>1) 
 	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
@@ -647,6 +652,69 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     comm1Data.lastEventNumber=thisEventNumber;
     comm2Data.lastEventNumber=thisEventNumber;
 
+}
+
+int sendEncodedSurfPackets(int bufSize) 
+{
+    static int errorCounter=0;
+    EncodedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,retVal;
+
+    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
+    count=0;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    retVal = sipcom_highrate_write(&theBuffer[count],numBytes);
+	    if(retVal<0) {
+		//Problem sending data
+		if(errorCounter<100) {
+		    syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+		    errorCounter++;
+		}
+		fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());	
+	    }
+	    count+=numBytes;
+	    eventDataSent+=numBytes;
+	}
+	else break;
+	if(count>bufSize) return -1;
+    }
+    return 0;
+}
+
+
+int sendEncodedPedSubbedSurfPackets(int bufSize) 
+{
+    static int errorCounter=0;
+    EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,retVal;
+
+    // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
+    count=0;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &theBuffer[count];
+	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	if(numBytes) {
+	    retVal = sipcom_highrate_write(&theBuffer[count],numBytes);
+	    if(retVal<0) {
+		//Problem sending data
+		if(errorCounter<100) {
+		    syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+		    errorCounter++;
+		}
+		fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+	    }
+	    count+=numBytes;
+	    eventDataSent+=numBytes;
+	}
+	else break;
+	if(count>bufSize) return -1;
+    }
+    return 0;
 }
 
 
@@ -877,8 +945,13 @@ void sendSomeHk(int maxBytes)
 
     if((maxBytes-hkCount)>sizeof(CommandEcho_t)) {
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,
-		     CMD_ECHO_TELEM_DIR,CMD_ECHO_TELEM_LINK_DIR,
+		     SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR,
 		     sizeof(CommandEcho_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(FullLabChipPedStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,PEDESTAL_TELEM_DIR,
+				      PEDESTAL_TELEM_LINK_DIR,
+				      sizeof(FullLabChipPedStruct_t)); 
     }
     if((maxBytes-hkCount)>sizeof(MonitorStruct_t)) {
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,

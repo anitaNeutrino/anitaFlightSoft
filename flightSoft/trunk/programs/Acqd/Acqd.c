@@ -57,7 +57,7 @@ int lastTurfHk=0;
 int turfHkCounter=0;
 int surfHkCounter=0;
 int surfMask;
-int useUSBDisks=0;
+int hkDiskBitMask=0;
 int compressWavefile=1;
 int useInterrupts=0;
 int niceValue=-20;
@@ -95,11 +95,6 @@ char subAltOutputdir[FILENAME_MAX];
 char acqdPidFile[FILENAME_MAX];
 //char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
-char surfHkArchiveDir[FILENAME_MAX];
-char turfHkArchiveDir[FILENAME_MAX];
-char surfHkUSBArchiveDir[FILENAME_MAX];
-char turfHkUSBArchiveDir[FILENAME_MAX];
-
 
 #define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
 #define N_TMO_INT 10000 //Millisec to wait for interrupt
@@ -173,8 +168,8 @@ __volatile__ int *turfBarMap;
 
 
 //File writing structures
-AnitaWriterStruct_t turfHkWriter;
-AnitaWriterStruct_t surfHkWriter;
+AnitaHkWriterStruct_t turfHkWriter;
+AnitaHkWriterStruct_t surfHkWriter;
 AnitaEventWriterStruct_t eventWriter;
 
 
@@ -1308,6 +1303,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","pedestal") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
         niceValue=kvpGetInt("niceValue",-20);
 	pedestalMode=kvpGetInt("pedestalMode",0);
 	useInterrupts=kvpGetInt("useInterrupts",0);
@@ -1335,64 +1331,6 @@ int readConfigFile()
 	if(addedVerbosity && printToScreen==0) {
 	    printToScreen=1;
 	    addedVerbosity--;
-	}
-
-
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(surfHkArchiveDir,tempString,FILENAME_MAX-1);
-	    strncpy(turfHkArchiveDir,tempString,FILENAME_MAX-1);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting mainDataDisk");
-	    fprintf(stderr,"Error getting mainDataDisk\n");
-	}
-	tempString=kvpGetString("usbDataDiskLink");
-	if(tempString) {
-	    strncpy(surfHkUSBArchiveDir,tempString,FILENAME_MAX-1);
-	    strncpy(turfHkUSBArchiveDir,tempString,FILENAME_MAX-1);
-
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting usbDataDiskLink");
-	    fprintf(stderr,"Error getting usbDataDiskLink\n");
-	}
-	    
-	 
-	useUSBDisks=kvpGetInt("useUSBDisks",0);
-   
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    sprintf(surfHkArchiveDir,"%s/%s/",surfHkArchiveDir,tempString);
-	    sprintf(turfHkArchiveDir,"%s/%s/",turfHkArchiveDir,tempString);
-	    sprintf(surfHkUSBArchiveDir,"%s/%s/",surfHkUSBArchiveDir,tempString);
-	    sprintf(turfHkUSBArchiveDir,"%s/%s/",turfHkUSBArchiveDir,tempString);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting baseHouseArchiveDir");
-	    fprintf(stderr,"Error getting baseHouseArchiveDir\n");
-	}	    
-	tempString=kvpGetString("surfHkArchiveSubDir");
-	if(tempString) {
-	    strcat(surfHkArchiveDir,tempString);
-	    strcat(surfHkUSBArchiveDir,tempString);
-	    makeDirectories(surfHkArchiveDir);
-	    if(useUSBDisks) makeDirectories(surfHkUSBArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting surfHkArchiveSubDir");
-	    fprintf(stderr,"Error getting surfHkArchiveSubDir");
-	}	    
-	tempString=kvpGetString("turfHkArchiveSubDir");
-	if(tempString) {
-	    strcat(turfHkArchiveDir,tempString);
-//	    strcat(turfHkUSBArchiveDir,tempString);
-	    makeDirectories(turfHkArchiveDir);
-//	    if(useUSBDisks) makeDirectories(turfHkUSBArchiveDir);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting turfHkArchiveSubDir");
-	    fprintf(stderr,"Error getting turfHkArchiveSubDir");
 	}
 
 	surfHkPeriod=kvpGetInt("surfHkPeriod",1);
@@ -1560,10 +1498,7 @@ int readConfigFile()
 	}
 	printf("\n");
 	printf("writeFullHk %d\n",writeFullHk);
-	if(writeFullHk) {
-	    printf("\t surfHkArchiveDir -- %s\n",surfHkArchiveDir);
-	    printf("\t turfHkArchiveDir -- %s\n",turfHkArchiveDir);
-	}
+
     }   
 	    
 	    
@@ -1872,11 +1807,6 @@ int writeSurfHousekeeping(int dataOrTelem)
 //	retVal+=writeSurfHk(&theSurfHk,theFilename);
 	retVal=cleverHkWrite((unsigned char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 			     theSurfHk.unixTime,&surfHkWriter);
-//	if(useUSBDisks) {
-//	    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkUSBArchiveDir,
-//		    theSurfHk.unixTime,theSurfHk.unixTimeUs);
-//	    retVal+=writeSurfHk(&theSurfHk,theFilename);
-//	}
     }
     if(dataOrTelem!=1) {
 	// Write data for Telem
@@ -3223,33 +3153,30 @@ void makeSubAltDir() {
 }
 
 void prepWriterStructs() {
+    int diskInd=0;
     if(printToScreen) 
 	printf("Preparing Writer Structs\n");
 
     //Turf Hk Writer
-    strncpy(turfHkWriter.baseDirname,turfHkArchiveDir,FILENAME_MAX-1);
+    strncpy(turfHkWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
     sprintf(turfHkWriter.filePrefix,"turfhk");
-    turfHkWriter.currentFilePtr=0;
-    turfHkWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    turfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    turfHkWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	turfHkWriter.currentFilePtr[diskInd]=0;
+    turfHkWriter.writeBitMask=hkDiskBitMask;
 
     //Surf Hk Writer
-    strncpy(surfHkWriter.baseDirname,surfHkArchiveDir,FILENAME_MAX-1);
+    strncpy(surfHkWriter.relBaseName,SURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
     sprintf(surfHkWriter.filePrefix,"surfhk");
-    surfHkWriter.currentFilePtr=0;
-    surfHkWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    surfHkWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    surfHkWriter.maxWritesPerFile=HK_PER_FILE;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	surfHkWriter.currentFilePtr[diskInd]=0;
+    surfHkWriter.writeBitMask=hkDiskBitMask;
 
     //Event Writer
     if(useAltDir) 
-	strncpy(eventWriter.baseDirname,altOutputdir,FILENAME_MAX-1);
-    eventWriter.currentHeaderFilePtr=0;
-    eventWriter.currentEventFilePtr=0;
-    eventWriter.maxSubDirsPerDir=EVENT_FILES_PER_DIR;
-    eventWriter.maxFilesPerDir=EVENT_FILES_PER_DIR;
-    eventWriter.maxWritesPerFile=EVENTS_PER_FILE;
+	strncpy(eventWriter.relBaseName,altOutputdir,FILENAME_MAX-1);
+    eventWriter.currentHeaderFilePtr[0]=0;
+    eventWriter.currentEventFilePtr[0]=0;
+    eventWriter.writeBitMask=1;
 }
 
 

@@ -81,8 +81,12 @@ void resetPedCalc() {
 
 
 void resetPedCalcWithTime(unsigned long unixTime) {
-    makeDirectories(HEADER_TELEM_LINK_DIR);
-    makeDirectories(PEDESTAL_DIR);
+    char pedDir[FILENAME_MAX];
+    makeDirectories(PEDESTAL_TELEM_LINK_DIR);
+    sprintf(pedDir,"%s/%s",DATA_LINK,PEDESTAL_DIR);
+    makeDirectories(pedDir);
+    sprintf(pedDir,"%s/%s",DATABACKUP_LINK,PEDESTAL_DIR);
+    makeDirectories(pedDir);
     memset(&thePeds,0,sizeof(PedCalcStruct_t));
     thePeds.unixTimeStart=unixTime;
 }
@@ -96,9 +100,9 @@ void writePedestalsWithTime(unsigned long unixTime) {
     PedestalStruct_t usefulPeds;
     FullLabChipPedStruct_t labPeds;
     char filename[FILENAME_MAX];
-//    char linkname[FILENAME_MAX];
+    char linkname[FILENAME_MAX];
     int surf,chip,chan,samp;
-    float tempFloat;
+    float tempFloat,tempFloat2;
     unsigned long avgSamples=0;
 //    unsigned short tempShort;
 //    unsigned char tempChar;
@@ -128,7 +132,12 @@ void writePedestalsWithTime(unsigned long unixTime) {
 			    ((float)thePeds.entries[surf][chip][chan][samp]);
 			    
 			thePeds.fmean[surf][chip][chan][samp]=tempFloat;
-						
+				
+			tempFloat2=(int)(10*thePeds.fmean[surf][chip][chan][samp]);
+			if(((10*thePeds.fmean[surf][chip][chan][samp])-
+			    tempFloat2)>=0.5) tempFloat2++;
+
+		
 			tempFloat=(int)(thePeds.fmean[surf][chip][chan][samp]);
 			if((thePeds.fmean[surf][chip][chan][samp]-tempFloat)>=
 			   0.5) tempFloat++;
@@ -137,10 +146,13 @@ void writePedestalsWithTime(unsigned long unixTime) {
 			//Set pedestals
 			if(tempFloat>65535) tempFloat=65535;
 			if(tempFloat<0) tempFloat=0;
-			labPeds.pedChan[chan].pedMean[samp]=
-			    (unsigned short) tempFloat;
 			usefulPeds.thePeds[surf][chip][chan][samp]=
 			    (unsigned short) tempFloat;
+
+			if(tempFloat2>65535) tempFloat2=65535;
+			if(tempFloat2<0) tempFloat2=0;			
+			labPeds.pedChan[chan].pedMean[samp]=
+			    (unsigned short) tempFloat2;
 			
 /* 			printf("%lu\t%f\t%d\t%d\n", */
 /* 			       thePeds.mean[surf][chip][chan][samp], */
@@ -183,16 +195,19 @@ void writePedestalsWithTime(unsigned long unixTime) {
 	    
 	    //Now write lab files
 	    fillGenericHeader(&labPeds,PACKET_LAB_PED,sizeof(FullLabChipPedStruct_t));
-	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
+	    sprintf(filename,"%s/%s/labpeds_%lu_%d_%d.dat",DATA_LINK,PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
+//	    printf("Writing lab pedestalFile: %s\n",filename);
+	    writeLabChipPedStruct(&labPeds,filename);
+	    sprintf(filename,"%s/%s/labpeds_%lu_%d_%d.dat",DATABACKUP_LINK,PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
 //	    printf("Writing lab pedestalFile: %s\n",filename);
 	    writeLabChipPedStruct(&labPeds,filename);
 
 	    //And for telemetery
-	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",HEADER_TELEM_DIR,labPeds.unixTimeEnd,surf,chip);
+	    sprintf(filename,"%s/labpeds_%lu_%d_%d.dat",PEDESTAL_TELEM_DIR,labPeds.unixTimeEnd,surf,chip);
 	    writeLabChipPedStruct(&labPeds,filename);
 
 	    //and link it
-	    makeLink(filename,HEADER_TELEM_LINK_DIR);
+	    makeLink(filename,PEDESTAL_TELEM_LINK_DIR);
 	    
 
 	}
@@ -200,14 +215,22 @@ void writePedestalsWithTime(unsigned long unixTime) {
     avgSamples/=(ACTIVE_SURFS*LABRADORS_PER_SURF*CHANNELS_PER_SURF*MAX_NUMBER_SAMPLES);
     usefulPeds.nsamples=avgSamples;
     //Now write ped calc file
-    sprintf(filename,"%s/calcpeds_%lu.dat",PEDESTAL_DIR,thePeds.unixTimeEnd);
+    sprintf(filename,"%s/%s/calcpeds_%lu.dat",DATA_LINK,PEDESTAL_DIR,thePeds.unixTimeEnd);
     writePedCalcStruct(&thePeds,filename);
+
 
     //Now write full ped file
 //    dumpThesePeds(&usefulPeds);
-    sprintf(filename,"%s/peds_%lu.dat",PEDESTAL_DIR,usefulPeds.unixTime);
+    sprintf(filename,"%s/%s/peds_%lu.dat",DATA_LINK,PEDESTAL_DIR,usefulPeds.unixTime);
+    sprintf(linkname,"%s/%s",DATA_LINK,CURRENT_PEDESTALS);
     writeUsefulPedStruct(&usefulPeds,filename);
+    //and link it
+    symlink(filename,linkname);
 
+
+    sprintf(filename,"%s/%s/peds_%lu.dat",DATABACKUP_LINK,PEDESTAL_DIR,usefulPeds.unixTime);
+    sprintf(linkname,"%s/%s",DATABACKUP_LINK,CURRENT_PEDESTALS);
+    writeUsefulPedStruct(&usefulPeds,filename);
     //and link it
     unlink(CURRENT_PEDESTALS);
     symlink(filename,CURRENT_PEDESTALS);
@@ -371,10 +394,12 @@ int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
 
 
 int checkCurrentPedLink() {
+    char linkname[FILENAME_MAX];
     char pedname[FILENAME_MAX];
     char crapBuf[FILENAME_MAX];
     unsigned long pedUnixTime;
-    int retVal=readlink(CURRENT_PEDESTALS,pedname,FILENAME_MAX);
+    sprintf(linkname,"%s/%s",DATA_LINK,CURRENT_PEDESTALS);
+    int retVal=readlink(linkname,pedname,FILENAME_MAX);
     if(retVal==-1) {
 	syslog(LOG_ERR,"Error reading current pedestals link: %s\n",
 	       strerror(errno));
@@ -391,13 +416,15 @@ int checkCurrentPedLink() {
 int loadCurrentPeds()
 {
     int retVal;
+    char linkname[FILENAME_MAX];
     static int pedsLoaded=0;
+    sprintf(linkname,"%s/%s",DATA_LINK,CURRENT_PEDESTALS);
 
     if(pedsLoaded) {
 	if(!checkCurrentPedLink()) pedsLoaded=0;
     }
     if(pedsLoaded) return 0;           
-    retVal=loadPedsFromFile(CURRENT_PEDESTALS);
+    retVal=loadPedsFromFile(linkname);
     if(retVal==0) pedsLoaded=1;
     return retVal;
 }
@@ -413,7 +440,7 @@ int loadThesePeds(unsigned long whichPeds)
 	if(currentPeds.unixTime!=whichPeds) pedsLoaded=0;
     }
     if(pedsLoaded) return 0;           
-    sprintf(filename,"%s/peds_%lu.dat",PEDESTAL_DIR,whichPeds);
+    sprintf(filename,"%s/%s/peds_%lu.dat",DATA_LINK,PEDESTAL_DIR,whichPeds);
     retVal=loadPedsFromFile(filename);
     if(retVal==0) pedsLoaded=1;
     return retVal;
