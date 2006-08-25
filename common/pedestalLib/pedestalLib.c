@@ -20,8 +20,6 @@
 
 // Anita includes
 #include "includes/anitaFlight.h"
-#include "configLib/configLib.h"
-#include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "includes/anitaStructures.h"
 
@@ -90,6 +88,7 @@ void resetPedCalcWithTime(unsigned long unixTime) {
     memset(&thePeds,0,sizeof(PedCalcStruct_t));
     thePeds.unixTimeStart=unixTime;
 }
+
 
 
 void writePedestals() {
@@ -532,7 +531,7 @@ int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
 	firstHitbus=pedSubBdPtr->channel[chan].header.firstHitbus;
 	lastHitbus=pedSubBdPtr->channel[chan].header.lastHitbus;
 	wrappedHitbus=
-	    (pedSubBdPtr->channel[chan].header.chipIdFlag&0x4)>>2;
+	    (pedSubBdPtr->channel[chan].header.chipIdFlag&0x8)>>3;
     
 	
 	

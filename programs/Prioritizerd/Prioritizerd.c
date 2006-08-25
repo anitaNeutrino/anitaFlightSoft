@@ -11,6 +11,7 @@
 #include <sys/time.h>
 
 //#define TIME_DEBUG 1
+#define WRITE_DEBUG_FILE
 
 char prioritizerdPidFile[FILENAME_MAX];
 
@@ -68,13 +69,23 @@ int main (int argc, char *argv[])
     AnitaInstrumentF_t theXcorr;
     AnitaChannelDiscriminator_t theDiscriminator;
     AnitaSectorLogic_t theMajority;
+    AnitaSectorAnalysis_t sectorAna;
 
+    int phi,ring;
 
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
     timeFile = fopen("/tmp/priTimeLog.txt","w");
     if(!timeFile) {
 	fprintf(stderr,"Couldn't open time file\n");
+	exit(0);
+    }
+#endif
+
+#ifdef WRITE_DEBUG_FILE
+    FILE *debugFile = fopen("/tmp/priDebugFile.txt","w");
+    if(!debugFile) {
+	fprintf(stderr,"Couldn't open debug file\n");
 	exit(0);
     }
 #endif
@@ -114,7 +125,7 @@ int main (int argc, char *argv[])
     retVal=0;
     /* Main event getting loop. */
     while(1) {
-
+	retVal=readConfig();
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
 	fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -166,15 +177,37 @@ int main (int argc, char *argv[])
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+
+
 	    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
 	    BuildInstrumentF(&unwrappedBody,&theInstrument);
 	    HornMatchedFilterAll(&theInstrument,&theXcorr);
+
+//	    printf("%lu %d %d %f %f %f\n",theBody.eventNumber,theBody.channel[0].data[160],pedSubBody.channel[0].data[160],unwrappedBody.ch[0].data[160],theInstrument.topRing[0][0].data[160],theXcorr.topRing[0][0].data[160]);
+
+	    
+	    //Now we get to dick around for a while
+//	    printf("400 %d %f %d\n",hornDiscWidth,coneThresh,coneDiscWidth);
 	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
-				  hornThresh,hornDiscWidth,
+				  400,hornDiscWidth,
 				  coneThresh,coneDiscWidth);
 	    FormSectorMajority(&theDiscriminator,&theMajority,
 			       hornSectorWidth);
-
+	    AnalyseSectorLogic(&theMajority,&sectorAna);
+#ifdef WRITE_DEBUG_FILE
+	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+#endif
+	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
+				  300,hornDiscWidth,
+				  coneThresh,coneDiscWidth);
+	    FormSectorMajority(&theDiscriminator,&theMajority,
+			       hornSectorWidth);
+	    AnalyseSectorLogic(&theMajority,&sectorAna);
+#ifdef WRITE_DEBUG_FILE
+	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+#endif
+	      
+	    
 
 
 
@@ -189,15 +222,13 @@ int main (int argc, char *argv[])
 	    //Write body and header for Archived
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
-	    rename(bodyFilename,archiveBodyFilename);
+//	    rename(bodyFilename,archiveBodyFilename);
+	    unlink(bodyFilename);
 
 	    sprintf(archiveBodyFilename,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
                     theHeader.eventNumber);
-	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
-
-
-//	    writeBody(&theBody,archiveBodyFilename);
 //	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
+
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
@@ -247,7 +278,7 @@ int main (int argc, char *argv[])
 	    fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
-	    wasteTime(&theBody);
+//	    wasteTime(&theBody);
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
@@ -304,8 +335,8 @@ int readConfig()
     if(status == CONFIG_E_OK) {
 	hornThresh=kvpGetFloat("hornThresh",250);
 	coneThresh=kvpGetFloat("coneThresh",250);
-	hornThresh=kvpGetInt("hornDiscWidth",13);
-	coneThresh=kvpGetInt("coneDiscWidth",13);
+	hornDiscWidth=kvpGetInt("hornDiscWidth",13);
+	coneDiscWidth=kvpGetInt("coneDiscWidth",13);
 	hornSectorWidth=kvpGetInt("hornSectorWidth",5);
     }
     else {

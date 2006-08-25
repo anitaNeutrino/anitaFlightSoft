@@ -1,5 +1,6 @@
 #include "AnitaInstrument.h"
 #include <stdlib.h>
+#include <string.h>
 //indices have surf channel counting from zero.
 int topRingIndex[16][2]={{4,0},//phi=1
 			 {13,9},//phi=2
@@ -169,6 +170,7 @@ void DiscriminateF(TransientChannelF_t *in,LogicChannel_t *out,
      for (i=0;i<(in->valid_samples); i++){
 	  if (fabsf(in->data[i])>threshold){
 	       k=width;
+//	       printf("Here %f\n",in->data[i]);
 	  }
 	  if (k>0){
 	       out->data[i]=1;
@@ -223,6 +225,7 @@ void DiscriminateFChannels(AnitaInstrumentF_t *in,
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
 	       thresh = (RMSF(&(in->topRing[phi][pol]))*fhornthresh); 
+//	       printf("thresh %f\n",thresh);
 	       DiscriminateF(&(in->topRing[phi][pol]),
 			     &(out->topRing[phi][pol]),
 			     thresh,hornwidth);
@@ -263,8 +266,13 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	  for(pol=0;pol<2;pol++){
 	       for (i=0;i<sectorWidth;i++){
 		    phi=(sector_phi+i)%16;
+		    
+		   
 		    for (j=0;j<(in->topRing[phi][pol]).valid_samples; j++){
-			 (out->topRing[sector_phi]).data[j] += (in->topRing[phi][pol]).data[j];
+			if((in->topRing[phi][pol]).data[j]>0) {
+//			    printf("Wahyyy\n");
+			}
+			(out->topRing[sector_phi]).data[j] += (in->topRing[phi][pol]).data[j];
 		    }
 		    if (minvalid > (in->topRing[phi][pol]).valid_samples) 
 			 minvalid=(in->topRing[phi][pol]).valid_samples;
@@ -316,4 +324,236 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	       minvalid=(in->discone[i]).valid_samples;
      }
      (out->discone).valid_samples = minvalid;
+}
+
+
+void AnalyseSectorLogic(AnitaSectorLogic_t *secLogPtr,
+			AnitaSectorAnalysis_t *secAnaPtr)
+{
+    int phi,samp,index;
+    int contigCount=0;
+    int peakContig[3]={0};
+    int value,summedValue;
+    int top=0;
+    int bot=1;
+    memset(secAnaPtr,0,sizeof(AnitaSectorAnalysis_t));
+    for(phi=0;phi<PHI_SECTORS;phi++) {
+
+	//Do top Ring first
+	contigCount=0;
+	peakContig[0]=peakContig[1]=peakContig[2]=0;
+	for(samp=2;samp<secLogPtr->topRing[phi].valid_samples-2;samp++) {
+	    summedValue=0;
+	    for(index=samp-2;index<=samp+2;index++)
+		summedValue+=secLogPtr->topRing[phi].data[index];
+	    value=secLogPtr->topRing[phi].data[samp];
+	    if(summedValue>0) {
+		if(summedValue>secAnaPtr->overallPeakSize[0]) {
+		    secAnaPtr->overallPeakSize[2]=secAnaPtr->overallPeakSize[1];
+		    secAnaPtr->overallPeakPhi[2]=secAnaPtr->overallPeakPhi[1];
+		    secAnaPtr->overallPeakRing[2]=secAnaPtr->overallPeakRing[1];
+		    secAnaPtr->overallPeakLoc[2]=secAnaPtr->overallPeakLoc[1];
+		    secAnaPtr->overallPeakSize[1]=secAnaPtr->overallPeakSize[0];
+		    secAnaPtr->overallPeakPhi[1]=secAnaPtr->overallPeakPhi[0];
+		    secAnaPtr->overallPeakRing[1]=secAnaPtr->overallPeakRing[0];
+		    secAnaPtr->overallPeakLoc[1]=secAnaPtr->overallPeakLoc[0];
+		    secAnaPtr->overallPeakSize[0]=summedValue;
+		    secAnaPtr->overallPeakPhi[0]=phi;
+		    secAnaPtr->overallPeakRing[0]=top;
+		    secAnaPtr->overallPeakLoc[0]=samp;
+		}
+		else if(summedValue>secAnaPtr->overallPeakSize[1]) {
+		    secAnaPtr->overallPeakSize[2]=secAnaPtr->overallPeakSize[1];
+		    secAnaPtr->overallPeakPhi[2]=secAnaPtr->overallPeakPhi[1];
+		    secAnaPtr->overallPeakRing[2]=secAnaPtr->overallPeakRing[1];
+		    secAnaPtr->overallPeakLoc[2]=secAnaPtr->overallPeakLoc[1];
+
+		    secAnaPtr->overallPeakSize[1]=summedValue;
+		    secAnaPtr->overallPeakPhi[1]=phi;
+		    secAnaPtr->overallPeakRing[1]=top;
+		    secAnaPtr->overallPeakLoc[1]=samp;
+		}
+		else if(summedValue>secAnaPtr->overallPeakSize[2]) {
+		    secAnaPtr->overallPeakSize[2]=summedValue;
+		    secAnaPtr->overallPeakPhi[2]=phi;
+		    secAnaPtr->overallPeakRing[2]=top;
+		    secAnaPtr->overallPeakLoc[2]=samp;
+		}
+
+		contigCount+=value;		
+		secAnaPtr->totalOccupancy[phi][top]+=value;
+		if(summedValue>secAnaPtr->peakSize[0][phi][top]) {
+		    secAnaPtr->numPeaks[phi][top]=1;
+		    if(secAnaPtr->peakSize[0][phi][top]>0) {
+			secAnaPtr->numPeaks[phi][top]=2;
+			if(secAnaPtr->peakSize[1][phi][top]>0) {
+			    secAnaPtr->numPeaks[phi][top]=3;
+			    secAnaPtr->peakSize[2][phi][top]=
+				secAnaPtr->peakSize[1][phi][top];
+			    secAnaPtr->peakLocation[2][phi][top]=
+				secAnaPtr->peakLocation[1][phi][top];
+			    secAnaPtr->peakOccupancy[2][phi][top]=
+				secAnaPtr->peakOccupancy[1][phi][top];
+			}
+			secAnaPtr->peakSize[1][phi][top]=
+			    secAnaPtr->peakSize[0][phi][top];
+			secAnaPtr->peakLocation[1][phi][top]=
+			    secAnaPtr->peakLocation[0][phi][top];
+			secAnaPtr->peakOccupancy[1][phi][top]=
+			    secAnaPtr->peakOccupancy[0][phi][top];
+		    }
+		    secAnaPtr->peakSize[0][phi][top]=summedValue;
+		    secAnaPtr->peakLocation[0][phi][top]=samp;
+		    peakContig[0]=1;	
+
+		}
+		else if(summedValue>secAnaPtr->peakSize[1][phi][top]) {
+		    secAnaPtr->numPeaks[phi][top]=2;
+		    if(secAnaPtr->peakSize[1][phi][top]>0) {
+			secAnaPtr->numPeaks[phi][top]=3;
+			secAnaPtr->peakSize[2][phi][top]=
+			    secAnaPtr->peakSize[1][phi][top];
+			secAnaPtr->peakLocation[2][phi][top]=
+			    secAnaPtr->peakLocation[1][phi][top];
+			secAnaPtr->peakOccupancy[2][phi][top]=
+			    secAnaPtr->peakOccupancy[1][phi][top];
+		    }
+		    secAnaPtr->peakSize[1][phi][top]=summedValue;
+		    secAnaPtr->peakLocation[1][phi][top]=samp;
+		    peakContig[1]=1;		     		    
+		}
+		else if(summedValue>secAnaPtr->peakSize[2][phi][top]) {
+		    secAnaPtr->numPeaks[phi][top]=3;
+		    secAnaPtr->peakSize[2][phi][top]=summedValue;
+		    secAnaPtr->peakLocation[2][phi][top]=samp;
+		    peakContig[2]=1;
+		}
+	    }
+	    else {
+		if(peakContig[0]) {
+		    secAnaPtr->peakOccupancy[0][phi][top]=contigCount;
+		}
+		if(peakContig[1]) {
+		    secAnaPtr->peakOccupancy[1][phi][top]=contigCount;
+		}
+		if(peakContig[2]) {
+		    secAnaPtr->peakOccupancy[2][phi][top]=contigCount;
+		}
+		contigCount=0;
+		peakContig[0]=peakContig[1]=peakContig[2]=0;
+	    }
+
+	}
+
+	//Now do bottom rind
+	contigCount=0;
+	peakContig[0]=peakContig[1]=peakContig[2]=0;
+	for(samp=2;samp<secLogPtr->botRing[phi].valid_samples-2;samp++) {
+	    summedValue=0;
+	    for(index=samp-2;index<=samp+2;index++)
+		summedValue+=secLogPtr->botRing[phi].data[index];
+	    value=secLogPtr->botRing[phi].data[samp];
+	    if(summedValue>0) {
+		if(summedValue>secAnaPtr->overallPeakSize[0]) {
+		    secAnaPtr->overallPeakSize[2]=secAnaPtr->overallPeakSize[1];
+		    secAnaPtr->overallPeakPhi[2]=secAnaPtr->overallPeakPhi[1];
+		    secAnaPtr->overallPeakRing[2]=secAnaPtr->overallPeakRing[1];
+		    secAnaPtr->overallPeakLoc[2]=secAnaPtr->overallPeakLoc[1];
+
+		    secAnaPtr->overallPeakSize[1]=secAnaPtr->overallPeakSize[0];
+
+		    secAnaPtr->overallPeakPhi[1]=secAnaPtr->overallPeakPhi[0];
+		    secAnaPtr->overallPeakRing[1]=secAnaPtr->overallPeakRing[0];
+		    secAnaPtr->overallPeakLoc[1]=secAnaPtr->overallPeakLoc[0];
+
+		    secAnaPtr->overallPeakSize[0]=summedValue;
+		    secAnaPtr->overallPeakPhi[0]=phi;
+		    secAnaPtr->overallPeakRing[0]=bot;
+		    secAnaPtr->overallPeakLoc[0]=samp;
+		}
+		else if(summedValue>secAnaPtr->overallPeakSize[1]) {
+		    secAnaPtr->overallPeakSize[2]=secAnaPtr->overallPeakSize[1];
+		    secAnaPtr->overallPeakPhi[2]=secAnaPtr->overallPeakPhi[1];
+		    secAnaPtr->overallPeakRing[2]=secAnaPtr->overallPeakRing[1];
+		    secAnaPtr->overallPeakLoc[2]=secAnaPtr->overallPeakLoc[1];
+
+		    secAnaPtr->overallPeakSize[1]=summedValue;
+		    secAnaPtr->overallPeakPhi[1]=phi;
+		    secAnaPtr->overallPeakRing[1]=bot;
+		    secAnaPtr->overallPeakLoc[1]=samp;
+		}
+		else if(summedValue>secAnaPtr->overallPeakSize[2]) {
+		    secAnaPtr->overallPeakSize[2]=summedValue;
+		    secAnaPtr->overallPeakPhi[2]=phi;
+		    secAnaPtr->overallPeakRing[2]=bot;
+		    secAnaPtr->overallPeakLoc[2]=samp;
+		}
+		contigCount+=value;		
+		secAnaPtr->totalOccupancy[phi][bot]+=value;
+		if(summedValue>secAnaPtr->peakSize[0][phi][bot]) {
+		    secAnaPtr->numPeaks[phi][bot]=1;
+		    if(secAnaPtr->peakSize[0][phi][bot]>0) {
+			secAnaPtr->numPeaks[phi][bot]=2;
+			if(secAnaPtr->peakSize[1][phi][bot]>0) {
+			    secAnaPtr->numPeaks[phi][bot]=3;
+			    secAnaPtr->peakSize[2][phi][bot]=
+				secAnaPtr->peakSize[1][phi][bot];
+			    secAnaPtr->peakLocation[2][phi][bot]=
+				secAnaPtr->peakLocation[1][phi][bot];
+			    secAnaPtr->peakOccupancy[2][phi][bot]=
+				secAnaPtr->peakOccupancy[1][phi][bot];
+			}
+			secAnaPtr->peakSize[1][phi][bot]=
+			    secAnaPtr->peakSize[0][phi][bot];
+			secAnaPtr->peakLocation[1][phi][bot]=
+			    secAnaPtr->peakLocation[0][phi][bot];
+			secAnaPtr->peakOccupancy[1][phi][bot]=
+			    secAnaPtr->peakOccupancy[0][phi][bot];
+		    }
+		    secAnaPtr->peakSize[0][phi][bot]=summedValue;
+		    secAnaPtr->peakLocation[0][phi][bot]=samp;
+		    peakContig[0]=1;		       
+		}
+		else if(summedValue>secAnaPtr->peakSize[1][phi][bot]) {
+		    secAnaPtr->numPeaks[phi][bot]=2;
+		    if(secAnaPtr->peakSize[1][phi][bot]>0) {
+			secAnaPtr->numPeaks[phi][bot]=3;
+			secAnaPtr->peakSize[2][phi][bot]=
+			    secAnaPtr->peakSize[1][phi][bot];
+			secAnaPtr->peakLocation[2][phi][bot]=
+			    secAnaPtr->peakLocation[1][phi][bot];
+			secAnaPtr->peakOccupancy[2][phi][bot]=
+			    secAnaPtr->peakOccupancy[1][phi][bot];
+		    }
+		    secAnaPtr->peakSize[1][phi][bot]=summedValue;
+		    secAnaPtr->peakLocation[1][phi][bot]=samp;
+		    peakContig[1]=1;		     		    
+		}
+		else if(summedValue>secAnaPtr->peakSize[2][phi][bot]) {
+		    secAnaPtr->numPeaks[phi][bot]=3;
+		    secAnaPtr->peakSize[2][phi][bot]=summedValue;
+		    secAnaPtr->peakLocation[2][phi][bot]=samp;
+		    peakContig[2]=1;
+		}
+	    }
+	    else {
+		if(peakContig[0]) {
+		    secAnaPtr->peakOccupancy[0][phi][bot]=contigCount;
+		}
+		if(peakContig[1]) {
+		    secAnaPtr->peakOccupancy[1][phi][bot]=contigCount;
+		}
+		if(peakContig[2]) {
+		    secAnaPtr->peakOccupancy[2][phi][bot]=contigCount;
+		}
+		contigCount=0;
+		peakContig[0]=peakContig[1]=peakContig[2]=0;
+	    }
+
+	}
+
+    }
+
+
+
 }

@@ -5,35 +5,48 @@
 #include <math.h>
 
 typedef struct{
-     TransientChannel3_t* topRing[16][2];
-     TransientChannel3_t* botRing[16][2];
+     TransientChannel3_t* topRing[PHI_SECTORS][2];
+     TransientChannel3_t* botRing[PHI_SECTORS][2];
      TransientChannel3_t* bicone[4];
      TransientChannel3_t* discone[4];
 } AnitaInstrument3_t; //use pointers to contents of an anita transient body;
 
 typedef struct{
-     TransientChannelF_t topRing[16][2];
-     TransientChannelF_t botRing[16][2];
+     TransientChannelF_t topRing[PHI_SECTORS][2];
+     TransientChannelF_t botRing[PHI_SECTORS][2];
      TransientChannelF_t bicone[4];
      TransientChannelF_t discone[4];
 } AnitaInstrumentF_t; 
 
 typedef struct{
-     LogicChannel_t topRing[16][2];
-     LogicChannel_t botRing[16][2];
+     LogicChannel_t topRing[PHI_SECTORS][2];
+     LogicChannel_t botRing[PHI_SECTORS][2];
      LogicChannel_t bicone[4];
      LogicChannel_t discone[4];
 } AnitaChannelDiscriminator_t;
 
 typedef struct{
-     LogicChannel_t topRing[16];
-     LogicChannel_t botRing[16];
+     LogicChannel_t topRing[PHI_SECTORS];
+     LogicChannel_t botRing[PHI_SECTORS];
      LogicChannel_t bicone;
      LogicChannel_t discone;
 } AnitaSectorLogic_t;
 
-extern int topRingIndex[16][2];
-extern int botRingIndex[16][2];
+typedef struct {
+    int overallPeakSize[3];
+    int overallPeakLoc[3];
+    int overallPeakPhi[3];
+    int overallPeakRing[3];
+    int numPeaks[PHI_SECTORS][2];
+    int peakSize[3][PHI_SECTORS][2]; // 0 is upper, 1 is lower
+    int peakLocation[3][PHI_SECTORS][2];
+    int peakOccupancy[3][PHI_SECTORS][2];
+    int totalOccupancy[PHI_SECTORS][2];
+} AnitaSectorAnalysis_t;
+    
+
+extern int topRingIndex[PHI_SECTORS][2];
+extern int botRingIndex[PHI_SECTORS][2];
 extern int biconeIndex[4];
 extern int disconeIndex[4];
 
@@ -74,6 +87,9 @@ extern "C"
      void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 			     AnitaSectorLogic_t *out,
 			     int sectorWidth);
+    void AnalyseSectorLogic(AnitaSectorLogic_t *secLogPtr,
+			    AnitaSectorAnalysis_t *secAnaPtr);
+			    
 
 #ifdef __cplusplus
 }
