@@ -23,7 +23,6 @@
 #include <fcntl.h>
 #define NO_ZLIB
 
-//#define OPEN_CLOSE_ALL_THE_TIME
 
 extern  int versionsort(const void *a, const void *b);
 
@@ -1269,34 +1268,34 @@ int genericReadOfFile(unsigned char * buffer, char *filename, int maxBytes)
 {
     static int errorCounter=0;
     int numBytes;
-#ifdef NO_ZLIB
-    int fd;
-    fd = open(filename,O_RDONLY);
-    if(fd == 0) {
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Error (%d of 100) opening file %s -- %s\n",
-		   errorCounter,filename,strerror(errno));
-	    fprintf(stderr,"Error (%d of 100) opening file %s -- %s\n",
-		   errorCounter,filename,strerror(errno));
-	    errorCounter++;
-	}
-	return -1;
-    }
-    numBytes=read(fd,buffer,maxBytes);
-    if(numBytes<=0) {
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Error (%d of 100) reading file %s -- %s\n",
-		   errorCounter,filename,strerror(errno));
-	    fprintf(stderr,"Error (%d of 100) reading file %s -- %s\n",
-		   errorCounter,filename,strerror(errno));
-	    errorCounter++;
-	}
-	close (fd);
-	return -2;
-    }
-    close(fd);
-    return numBytes;
-#else
+/* #ifdef NO_ZLIB */
+/*     int fd; */
+/*     fd = open(filename,O_RDONLY); */
+/*     if(fd == 0) { */
+/* 	if(errorCounter<100) { */
+/* 	    syslog(LOG_ERR,"Error (%d of 100) opening file %s -- %s\n", */
+/* 		   errorCounter,filename,strerror(errno)); */
+/* 	    fprintf(stderr,"Error (%d of 100) opening file %s -- %s\n", */
+/* 		   errorCounter,filename,strerror(errno)); */
+/* 	    errorCounter++; */
+/* 	} */
+/* 	return -1; */
+/*     } */
+/*     numBytes=read(fd,buffer,maxBytes); */
+/*     if(numBytes<=0) { */
+/* 	if(errorCounter<100) { */
+/* 	    syslog(LOG_ERR,"Error (%d of 100) reading file %s -- %s\n", */
+/* 		   errorCounter,filename,strerror(errno)); */
+/* 	    fprintf(stderr,"Error (%d of 100) reading file %s -- %s\n", */
+/* 		   errorCounter,filename,strerror(errno)); */
+/* 	    errorCounter++; */
+/* 	} */
+/* 	close (fd); */
+/* 	return -2; */
+/*     } */
+/*     close(fd); */
+/*     return numBytes; */
+/* #else */
     gzFile infile = gzopen(filename,"rb");
     if(infile == NULL) {
 	if(errorCounter<100) {
@@ -1322,7 +1321,7 @@ int genericReadOfFile(unsigned char * buffer, char *filename, int maxBytes)
     }
     gzclose(infile);
     return numBytes;
-#endif
+/* #endif */
 }
 
 

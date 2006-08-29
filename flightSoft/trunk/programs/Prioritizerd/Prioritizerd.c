@@ -6,6 +6,7 @@
 */
 #include "Prioritizerd.h"
 #include "AnitaInstrument.h"
+#include "GenerateScore.h"
 #include "Filters.h"
 #include "pedestalLib/pedestalLib.h"
 #include <sys/time.h>
@@ -45,7 +46,7 @@ int main (int argc, char *argv[])
     char archiveBodyFilename[FILENAME_MAX];
 
     char *tempString;
-    int priority;
+    int priority,score;
 //    float probWriteOut9=0.03; /* Will become a config file thingy */
 
     /* Config file thingies */
@@ -194,8 +195,10 @@ int main (int argc, char *argv[])
 	    FormSectorMajority(&theDiscriminator,&theMajority,
 			       hornSectorWidth);
 	    AnalyseSectorLogic(&theMajority,&sectorAna);
+	    score=GetSecAnaScore(&sectorAna);
 #ifdef WRITE_DEBUG_FILE
-	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+	    fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
 #endif
 	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
 				  300,hornDiscWidth,
@@ -203,8 +206,10 @@ int main (int argc, char *argv[])
 	    FormSectorMajority(&theDiscriminator,&theMajority,
 			       hornSectorWidth);
 	    AnalyseSectorLogic(&theMajority,&sectorAna);
+	    score=GetSecAnaScore(&sectorAna);
 #ifdef WRITE_DEBUG_FILE
-	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+	    fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
 #endif
 	      
 	    
@@ -222,12 +227,12 @@ int main (int argc, char *argv[])
 	    //Write body and header for Archived
 	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		    theHeader.eventNumber);
-//	    rename(bodyFilename,archiveBodyFilename);
-	    unlink(bodyFilename);
+	    rename(bodyFilename,archiveBodyFilename);
+//	    unlink(bodyFilename);
 
 	    sprintf(archiveBodyFilename,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
                     theHeader.eventNumber);
-//	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
+	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);

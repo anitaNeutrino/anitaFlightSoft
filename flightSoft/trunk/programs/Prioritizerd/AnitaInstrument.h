@@ -32,17 +32,6 @@ typedef struct{
      LogicChannel_t discone;
 } AnitaSectorLogic_t;
 
-typedef struct {
-    int overallPeakSize[3];
-    int overallPeakLoc[3];
-    int overallPeakPhi[3];
-    int overallPeakRing[3];
-    int numPeaks[PHI_SECTORS][2];
-    int peakSize[3][PHI_SECTORS][2]; // 0 is upper, 1 is lower
-    int peakLocation[3][PHI_SECTORS][2];
-    int peakOccupancy[3][PHI_SECTORS][2];
-    int totalOccupancy[PHI_SECTORS][2];
-} AnitaSectorAnalysis_t;
     
 
 extern int topRingIndex[PHI_SECTORS][2];
@@ -87,10 +76,7 @@ extern "C"
      void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 			     AnitaSectorLogic_t *out,
 			     int sectorWidth);
-    void AnalyseSectorLogic(AnitaSectorLogic_t *secLogPtr,
-			    AnitaSectorAnalysis_t *secAnaPtr);
 			    
-
 #ifdef __cplusplus
 }
 #endif
