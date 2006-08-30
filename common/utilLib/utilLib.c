@@ -559,7 +559,7 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
 
 	    //Make files
 	    dirNum=(EVENTS_PER_FILE)*(indPtr->eventNumber/EVENTS_PER_FILE);
-	    sprintf(awsPtr->currentFileName[diskInd],"%s/hd_%d.dat",
+	    sprintf(awsPtr->currentFileName[diskInd],"%s/index_%d.dat",
 		    awsPtr->currentSubDirName[diskInd],dirNum);
 	    awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"ab");
 	    awsPtr->writeCount[diskInd]=0;
@@ -613,7 +613,7 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
 		
 	    //Make files
 		dirNum=(EVENTS_PER_FILE)*(indPtr->eventNumber/EVENTS_PER_FILE);
-		sprintf(awsPtr->currentFileName[diskInd],"%s/hd_%d.dat",
+		sprintf(awsPtr->currentFileName[diskInd],"%s/index_%d.dat",
 			awsPtr->currentSubDirName[diskInd],dirNum);
 //	    printf("Trying to open %s\n",awsPtr->currentFileName);
 		awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"ab");
