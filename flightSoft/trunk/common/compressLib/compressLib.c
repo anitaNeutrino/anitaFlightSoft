@@ -25,7 +25,7 @@ CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
     int surf=0;
     int chan=0;  
     EncodedSurfPacketHeader_t *surfHdPtr;
-    printf("%lu\n",bdPtr->eventNumber);
+//    printf("%lu\n",bdPtr->eventNumber);
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &output[count];
@@ -59,7 +59,7 @@ CompressErrorCode_t packPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
     int surf=0;
     int chan=0;  
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
-
+//    printf("Event %lu\n",bdPtr->eventNumber);
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &output[count];
 	surfStart=count;

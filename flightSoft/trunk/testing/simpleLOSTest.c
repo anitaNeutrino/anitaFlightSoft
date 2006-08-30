@@ -76,7 +76,7 @@ int main (int argc, char ** argv)
 		ulPtr = (unsigned long*) &bigBuffer[count+6];
 		bufferCount=*ulPtr;
 		numSciBytes=bigBuffer[count+8];
-//		printf("Buffer %lu -- %d bytes\n",bufferCount,numSciBytes);
+		printf("Buffer %lu -- %d bytes\n",bufferCount,numSciBytes);
 		handleScience((unsigned char*)&bigBuffer[count+9],numSciBytes);
 		checksum=bigBuffer[count+9+(numSciBytes/2)];		
 		swEndHdr=bigBuffer[count+10+(numSciBytes/2)];
@@ -103,12 +103,12 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
     GenericHeader_t *gHdr;
     int checkVal;
     
-    while(count<numBytes) {
+    while(count<numBytes-1) {
 	if(buffer[count]==0xfe && buffer[count+1]==0xfe && buffer[numBytes-1]==0xfe) {	    
 	    printf("Got 0xfe Wake Up Buffer\n");
 	    return;
 	}
-
+	printf("count %d\n",count);
 	checkVal=checkPacket(&buffer[count]);
 	if(checkVal==0) {
 	    gHdr = (GenericHeader_t*) &buffer[count];	
@@ -140,7 +140,19 @@ void printSurfInfo(EncodedSurfPacketHeader_t *surfPtr)
 
 void printPedSubSurfInfo(EncodedPedSubbedSurfPacketHeader_t *surfPtr) 
 {
-    EncodedSurfChannelHeader_t *chan0= (EncodedSurfChannelHeader_t*)(surfPtr + sizeof(EncodedPedSubbedSurfPacketHeader_t));
-    printf("Event %lu  Chan 0: numBytes %d crc %d\n",surfPtr->eventNumber,chan0->numBytes,chan0->crc);
+    unsigned char *eventBuffer;
+    int count=0,chan;
+    EncodedSurfChannelHeader_t *chanHdPtr;
+    printf("event %lu, numBytes %d\n",surfPtr->eventNumber,surfPtr->gHdr.numBytes);
+    eventBuffer = (unsigned char*) surfPtr;
+    count=sizeof(EncodedPedSubbedSurfPacketHeader_t);
+    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	
+	chanHdPtr = (EncodedSurfChannelHeader_t*)&eventBuffer[count];
+	    
+	printf("Event %lu  Chan %d: encType %d, numBytes %d crc %d\n",surfPtr->eventNumber,chan,chanHdPtr->encType,chanHdPtr->numBytes,chanHdPtr->crc);
+	count+=chanHdPtr->numBytes;
+	count+=sizeof(EncodedSurfChannelHeader_t);
+    }
 
 }

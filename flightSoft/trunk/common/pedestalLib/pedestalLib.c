@@ -273,6 +273,7 @@ int subtractPedsFromFile(AnitaEventBody_t *rawBdPtr,
 int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 		     PedSubbedEventBody_t *pedSubBdPtr) {
     pedSubBdPtr->whichPeds=currentPeds.unixTime;
+    pedSubBdPtr->eventNumber=rawBdPtr->eventNumber;
     int surf,chan,samp,chip;   
     int chanIndex=0;
     int mean,meanSq,nsamps;

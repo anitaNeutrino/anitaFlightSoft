@@ -301,7 +301,8 @@ int doWrite() {
 	gettimeofday(&lastTime,0);
 	first=0;
     }
-
+//    if(numBytesInBuffer%2==1) numBytesInBuffer++;
+//    printf("Trying to write %d bytes\n",numBytesInBuffer);
     int retVal;
     int attempts=0;
     if(!laptopDebug) {
@@ -821,13 +822,26 @@ int sendEncodedSurfPackets(int bufSize)
 int sendEncodedPedSubbedSurfPackets(int bufSize)
 {
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
-    int numBytes,count=0,surf=0;
+    int numBytes,count=0,surf=0,chan,count2;;
+    EncodedSurfChannelHeader_t *chanHdPtr;
 
     // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &eventBuffer[count];
 	surfHdPtr->gHdr.packetNumber=getLosNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
+//	printf("surfHdPtr.eventNumber %lu, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
+	count2=count+sizeof(EncodedPedSubbedSurfPacketHeader_t);
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    chanHdPtr = (EncodedSurfChannelHeader_t*)&eventBuffer[count2];
+		    
+//	    printf("surf %d, chan %d, encType %d, numBytes %d\n",
+//		   surf,chan,chanHdPtr->encType,chanHdPtr->numBytes);
+	    count2+=chanHdPtr->numBytes;
+	    count2+=sizeof(EncodedSurfChannelHeader_t);
+	}
+
+
 	if(numBytes) {
 	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
 //		fillBufferWithHk();

@@ -209,8 +209,9 @@ void checkEvents()
 	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
 	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
-//	printf("Event %lu, fillBody retVal %d\n",theHead.eventNumber,
-//	       retVal);
+//	printf("Event %lu, Body %lu, PS Body %lu\n",theHead.eventNumber,
+//	       theBody.eventNumber,pedSubBody.eventNumber);
+
 
 	processEvent();
 	removeFile(currentLinkname);
@@ -238,10 +239,10 @@ void processEvent()
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 //	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
 	    diskEncCntl.encTypes[surf][chan]= ENCODE_NONE;
-	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_FIBONACCI;
+	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_BINARY;
 	}
     }
-
+ 
 //Steps
     //1) PedestalSubtract (and shift to 11bits)
     //2) Pack Event For On Board Storage
@@ -301,7 +302,7 @@ void writeOutputToDisk(int numBytes) {
     strncpy(indEnt.usbExtLabel,usbExtName,9);
     cleverIndexWriter(&indEnt,&indexWriter);
 
-
+ 
 }
 
 void writeOutputForTelem(int numBytes) {

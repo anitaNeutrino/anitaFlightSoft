@@ -174,11 +174,14 @@ int main (int argc, char *argv[])
 	    //Subtract Pedestals
 	    subtractCurrentPeds(&theBody,&pedSubBody);
 
+	    
+//	    printf("Event %lu, Body %lu, PS Body %lu\n",theHeader.eventNumber,
+//	       theBody.eventNumber,pedSubBody.eventNumber);
+
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-
 
 	    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
 	    BuildInstrumentF(&unwrappedBody,&theInstrument);
