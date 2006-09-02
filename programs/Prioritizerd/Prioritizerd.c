@@ -46,7 +46,7 @@ int main (int argc, char *argv[])
     char archiveBodyFilename[FILENAME_MAX];
 
     char *tempString;
-    int priority,score;
+    int priority,score,score3,score4;
 //    float probWriteOut9=0.03; /* Will become a config file thingy */
 
     /* Config file thingies */
@@ -71,8 +71,6 @@ int main (int argc, char *argv[])
     AnitaChannelDiscriminator_t theDiscriminator;
     AnitaSectorLogic_t theMajority;
     AnitaSectorAnalysis_t sectorAna;
-
-    int phi,ring;
 
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
@@ -102,7 +100,7 @@ int main (int argc, char *argv[])
 
     if (status == CONFIG_E_OK) {
 	tempString=kvpGetString("prioritizerdPidFile");
-	if(tempString) {
+	if(tempString) {\
 	    strncpy(prioritizerdPidFile,tempString,FILENAME_MAX-1);
 	    writePidFile(prioritizerdPidFile);
 	}
@@ -199,6 +197,7 @@ int main (int argc, char *argv[])
 			       hornSectorWidth);
 	    AnalyseSectorLogic(&theMajority,&sectorAna);
 	    score=GetSecAnaScore(&sectorAna);
+	    score4=score;
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
 	    fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
@@ -210,18 +209,25 @@ int main (int argc, char *argv[])
 			       hornSectorWidth);
 	    AnalyseSectorLogic(&theMajority,&sectorAna);
 	    score=GetSecAnaScore(&sectorAna);
+	    score3=score;
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
 	    fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
 #endif
 	      
 	    
-
-
-
+	    //Sillyness for now
 	    //Must determine priority here
-	    priority=1;
-	    theHeader.priority=0;
+//	    priority=1;
+	    priority=9;
+	    if(score4>=600)
+		priority=1;
+	    else if(score3>1900) priority=2;
+	    else if(score3>1500) priority=3;
+	    else if(score3>1000) priority=4;
+	    else if(score3>600) priority=5;
+
+	    theHeader.priority=priority;
 	
 	    //Now Fill Generic Header and calculate checksum
 	    fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
