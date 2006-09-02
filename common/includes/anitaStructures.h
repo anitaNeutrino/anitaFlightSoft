@@ -645,7 +645,7 @@ typedef struct {
 } CommandEcho_t;
 
 typedef struct {
-    unsigned short diskSpace[8]; //In MegaBytes
+    unsigned short diskSpace[8]; //In units of 10 MegaBytes
     char bladeLabel[10];
     char usbIntLabel[10];
     char usbExtLabel[10];

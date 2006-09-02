@@ -25,14 +25,13 @@ int checkDisks(DiskSpaceStruct_t *dsPtr);
 int checkQueues(QueueStruct_t *queuePtr);
 int writeFileAndLink(MonitorStruct_t *monitorPtr);
 void prepWriterStructs();
-void readDiskNames();
 
 
 // Global Variables
 int printToScreen=0;
 int verbosity=0;
 int monitorPeriod=60; //In seconds
-
+char monitordPidFile[FILENAME_MAX];
 
 //Link Directories
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -88,7 +87,6 @@ int main (int argc, char *argv[])
 	    printf("Problem reading Monitord.config\n");
 	    exit(1);
 	}
-	readDiskNames();
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	    //Something
@@ -132,7 +130,7 @@ int readConfigFile()
 /* Load Monitord config stuff */
 {
     /* Config file thingies */
-//    char *tempString;
+    char *tempString;
     int status=0;
     char* eString ;
     kvpReset();
@@ -141,6 +139,52 @@ int readConfigFile()
     status += configLoad ("Monitord.config","output") ;
 
     if(status == CONFIG_E_OK) {
+	tempString=kvpGetString("monitordPidFile");
+	if(tempString) {
+	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
+	    writePidFile(monitordPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
+	    fprintf(stderr,"Couldn't get monitordPidFile\n");
+	}
+
+
+	tempString=kvpGetString("bladeName");
+	if(tempString) {
+	    strncpy(bladeName,tempString,FILENAME_MAX);
+	    writePidFile(bladeName);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get bladeName");
+	    fprintf(stderr,"Couldn't get bladeName\n");
+	}
+
+
+	tempString=kvpGetString("usbIntName");
+	if(tempString) {
+	    strncpy(usbIntName,tempString,FILENAME_MAX);
+	    writePidFile(usbIntName);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbIntName");
+	    fprintf(stderr,"Couldn't get usbIntName\n");
+	}
+
+
+
+	tempString=kvpGetString("usbExtName");
+	if(tempString) {
+	    strncpy(usbExtName,tempString,FILENAME_MAX);
+	    writePidFile(usbExtName);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbExtName");
+	    fprintf(stderr,"Couldn't get usbExtName\n");
+	}
+
+
+
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
@@ -163,19 +207,31 @@ int readConfigFile()
 }
 
 int checkDisks(DiskSpaceStruct_t *dsPtr) {
-    int errFlag=0;
-    int diskNum;
-    unsigned short megaBytes=0;
+    int errFlag=0; 
+    int diskNum;   
+    unsigned long megaBytes=0;
+    unsigned short megaBytes_short=0;
     for(diskNum=0;diskNum<8;diskNum++) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
-	dsPtr->diskSpace[diskNum]=megaBytes;
-	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes);
+//	printf("%lu\n",megaBytes);
+	if(megaBytes>0) {
+	    megaBytes/=10;
+	    if(megaBytes<65535) megaBytes_short=megaBytes;
+	    else megaBytes_short=65535;
+	}
+	else megaBytes_short=0;
+	dsPtr->diskSpace[diskNum]=megaBytes_short;
+	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes_short);
 	if(((short)megaBytes)==-1) errFlag--;
     }    
     strncpy(dsPtr->bladeLabel,bladeName,9);
     strncpy(dsPtr->usbIntLabel,usbIntName,9);
     strncpy(dsPtr->usbExtLabel,usbExtName,9);
-
+    if(printToScreen) {
+	printf("usbInt -- %s\nusbExt -- %s\nblade -- %s\n",
+	       usbIntName,usbExtName,bladeName);
+    }
+	       
 
 //    printf("Err Flag %d\n",errFlag);
     return errFlag;
@@ -256,15 +312,3 @@ void prepWriterStructs() {
     monWriter.writeBitMask=hkDiskBitMask;
 }
 
-
-void readDiskNames() {
-    FILE *fp = fopen("bladeName.txt","rt");
-    fscanf(fp,"%s",bladeName);
-    fclose(fp);
-    fp = fopen("usbIntName.txt","rt");
-    fscanf(fp,"%s",usbIntName);
-    fclose(fp);
-    fp = fopen("usbExtName.txt","rt");
-    fscanf(fp,"%s",usbExtName);
-    fclose(fp);
-}

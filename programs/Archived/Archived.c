@@ -100,6 +100,42 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
 	    fprintf(stderr,"Couldn't get archivedPidFile\n");
 	}
+
+	tempString=kvpGetString("bladeName");
+	if(tempString) {
+	    strncpy(bladeName,tempString,FILENAME_MAX);
+	    writePidFile(bladeName);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get bladeName");
+	    fprintf(stderr,"Couldn't get bladeName\n");
+	}
+
+
+	tempString=kvpGetString("usbIntName");
+	if(tempString) {
+	    strncpy(usbIntName,tempString,FILENAME_MAX);
+	    writePidFile(usbIntName);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbIntName");
+	    fprintf(stderr,"Couldn't get usbIntName\n");
+	}
+
+
+
+	tempString=kvpGetString("usbExtName");
+	if(tempString) {
+	    strncpy(usbExtName,tempString,FILENAME_MAX);
+	    writePidFile(usbExtName);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbExtName");
+	    fprintf(stderr,"Couldn't get usbExtName\n");
+	}
+
+
+
     }
     
     //Fill event dir names
@@ -117,7 +153,6 @@ int main (int argc, char *argv[])
     do {
 	if(printToScreen) printf("Initalizing Archived\n");
 	retVal=readConfigFile();
-	readDiskNames();
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading Archived.config");
 	    printf("Problem reading Archived.config\n");
@@ -350,14 +385,4 @@ void prepWriterStructs() {
     indexWriter.writeBitMask=0x12;
 }
 
-void readDiskNames() {
-    FILE *fp = fopen("bladeName.txt","rt");
-    fscanf(fp,"%s",bladeName);
-    fclose(fp);
-    fp = fopen("usbIntName.txt","rt");
-    fscanf(fp,"%s",usbIntName);
-    fclose(fp);
-    fp = fopen("usbExtName.txt","rt");
-    fscanf(fp,"%s",usbExtName);
-    fclose(fp);
-}
+
