@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <syslog.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <string.h>
 #include <sys/dir.h>
 #include <errno.h>
@@ -773,11 +774,49 @@ int moveFile(const char *theFile, const char *theDir)
 
 int copyFile(const char *theFile, const char *theDir)
 {
-
+    static int errorCounter=0;
+    //Only works on relative small files (will write a better version)
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
+    char *buffer;
+
+    //Open the input file
+    FILE *fin = fopen(theFile,"r");
+    if(!fin) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"No file %s to copy -- Error %s\n",
+		   theFile,strerror(errno));
+	    fprintf(stderr,"No file %s to copy -- Error %s\n",
+		    theFile,strerror(errno));
+	    errorCounter++;
+	}
+	return -1;
+    }
+		   
+    fseek(fin,SEEK_END,0);
+    int numBytes=ftell(fin);
+    fseek(fin,SEEK_SET,0);
+    buffer=malloc(numBytes);
+    fread(buffer,1,numBytes,fin);
+    fclose(fin);
+
+    //Open the output file
     sprintf(newFile,"%s/%s",theDir,justFile);
-    return link(theFile,newFile);
+    FILE *fout = fopen(newFile,"w");
+    if(!fout) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Couldn't open %s for copy of %s -- Error %s\n",
+		   newFile,theFile,strerror(errno));
+	    fprintf(stderr,"Couldn't open %s for copy of %s -- Error %s\n",
+		    newFile,theFile,strerror(errno));
+	    errorCounter++;
+	}
+	return -1;
+    }
+    fwrite(buffer,1,numBytes,fout);
+    fclose(fout);
+    free(buffer);
+    return 0;
 }
 
 
@@ -824,31 +863,29 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
 }
 
 
-unsigned short getDiskSpace(char *dirName) {
-    struct statfs diskStat;
+unsigned long getDiskSpace(char *dirName) {
+    struct statvfs diskStat;
     static int errorCounter=0;
-    int retVal=statfs(dirName,&diskStat); 
+    int retVal=statvfs(dirName,&diskStat); 
     if(retVal<0) {
 	if(errorCounter<100) {
 	    syslog(LOG_ERR,"Unable to get disk space %s: %s",dirName,strerror(errno));  
 	    fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));            
 	}
 //	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
-	return -1;
+	return 0;
     }    
-    unsigned long bytesAvailable=(diskStat.f_bfree/1024)*(diskStat.f_bsize/1024);
-    unsigned short megabytesAvailable=(unsigned short)(bytesAvailable);//(1024*1024));
+    unsigned long megabytesAvailable=(diskStat.f_bfree/1024)*(diskStat.f_bsize/1024);
     return megabytesAvailable;
-    printf("%lu %d\n",bytesAvailable,megabytesAvailable);
+//    printf("%lu\n",megabytesAvailable);
 //    if(printToScreen) {
 	printf("Dir: %s\n",dirName);
 	printf("Ret Val: %d\n",retVal);
-	printf("Bytes Available: %ld\n",bytesAvailable);
-	printf("MegaBytes Available: %d\n",megabytesAvailable);
+	printf("MegaBytes Available: %lu\n",megabytesAvailable);
 	printf("Available Blocks: %ld\n",diskStat.f_bavail);
 	printf("Free Blocks: %ld\n",diskStat.f_bfree);
 	printf("Total Blocks: %ld\n",diskStat.f_blocks);
-	printf("Block Size: %d\n",diskStat.f_bsize);
+	printf("Block Size: %lu\n",diskStat.f_bsize);
 //	printf("Free File Nodes: %ld\n",diskStat.f_ffree);
 //	printf("Total File Nodes: %ld\n",diskStat.f_files);
 //	printf("Type Of Info: %d\n",diskStat.f_type);

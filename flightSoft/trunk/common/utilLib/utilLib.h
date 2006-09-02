@@ -70,7 +70,7 @@ int filterHeaders(const struct dirent *dir);
 int filterOnDats(const struct dirent *dir);
 int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
 #endif
-unsigned short getDiskSpace(char *dirName);
+unsigned long getDiskSpace(char *dirName);
 unsigned short countFilesInDir(char *dirName);
 
 /* Time stuff */
