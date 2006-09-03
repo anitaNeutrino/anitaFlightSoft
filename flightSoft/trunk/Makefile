@@ -26,49 +26,10 @@ clean:
 
 
 scripts:
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/getLogWindow.sh 
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/startProgsInXterms.sh 
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/killAllProgs.sh 
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1Off
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1On 
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2Off
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2On 
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3Off
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3On
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4Off
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4On
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOff
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOn
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOff
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOn
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten
-	@chmod u+x ${ANITA_FLIGHT_SOFT_DIR}/script/startNtp.sh
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/getLogWindow.sh bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/startProgsInXterms.sh bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/killAllProgs.sh bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1Off bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM1On bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2Off bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM2On bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3Off bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM3On bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4Off bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnRFCM4On bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOff bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnVetoOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOff bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnGPSOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOff bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnAllOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOff bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/turnCalPulserOn bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserPort bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/setCalPulserAtten bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/runAcqdStandalone.sh bin
-	@ln -sf ${ANITA_FLIGHT_SOFT_DIR}/script/startNtp.sh bin
+	for file in ${ANITA_FLIGHT_SOFT_DIR}/script/*[^~]; do \
+	( chmod a+x $$file; ln -sf $$file bin; ) ; \
+	done	
+
 
 
 
