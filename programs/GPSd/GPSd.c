@@ -150,6 +150,8 @@ int main (int argc, char *argv[])
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
     makeDirectories(GPS_TELEM_LINK_DIR);
     
+    printf("hkDiskBitMask %d\n",hkDiskBitMask);
+
     retVal=readConfigFile();
     if(retVal<0) {
 	syslog(LOG_ERR,"Problem reading GPSd.config");
@@ -1273,24 +1275,29 @@ void prepWriterStructs() {
     //Adu5 Pat
     sprintf(adu5PatWriter.relBaseName,"%s/adu5/pat/",GPS_ARCHIVE_DIR);
     sprintf(adu5PatWriter.filePrefix,"pat");
+    adu5PatWriter.writeBitMask=hkDiskBitMask;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	adu5PatWriter.currentFilePtr[diskInd]=0;
+
 
     //Adu5 Sat
     sprintf(adu5SatWriter.relBaseName,"%s/adu5/sat/",GPS_ARCHIVE_DIR);
     sprintf(adu5SatWriter.filePrefix,"sat_adu5");
+    adu5SatWriter.writeBitMask=hkDiskBitMask;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	adu5SatWriter.currentFilePtr[diskInd]=0;
 
     //Adu5 Vtg
     sprintf(adu5VtgWriter.relBaseName,"%s/adu5/vtg/",GPS_ARCHIVE_DIR);
     sprintf(adu5VtgWriter.filePrefix,"vtg");
+    adu5VtgWriter.writeBitMask=hkDiskBitMask;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	adu5VtgWriter.currentFilePtr[diskInd]=0;
 
     //Adu5 Ttt
     sprintf(adu5TttWriter.relBaseName,"%s/adu5/ttt/",GPS_ARCHIVE_DIR);
     sprintf(adu5TttWriter.filePrefix,"ttt");
+    adu5TttWriter.writeBitMask=hkDiskBitMask;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	adu5TttWriter.currentFilePtr[diskInd]=0;
 
@@ -1298,12 +1305,14 @@ void prepWriterStructs() {
     //G12 Pos
     sprintf(g12PosWriter.relBaseName,"%s/g12/pos/",GPS_ARCHIVE_DIR);
     sprintf(g12PosWriter.filePrefix,"pos");
+    g12PosWriter.writeBitMask=hkDiskBitMask;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	g12PosWriter.currentFilePtr[diskInd]=0;
 
     //G12 Sat
     sprintf(g12SatWriter.relBaseName,"%s/g12/sat/",GPS_ARCHIVE_DIR);
     sprintf(g12SatWriter.filePrefix,"sat");
+    g12SatWriter.writeBitMask=hkDiskBitMask;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	g12SatWriter.currentFilePtr[diskInd]=0;
     
