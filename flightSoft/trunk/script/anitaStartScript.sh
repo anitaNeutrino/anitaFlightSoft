@@ -1,5 +1,17 @@
 #!/bin/sh
 
+###First up try to mount drives
+sleep 5
+removeAllScsiDevices.sh
+sleep 5
+mountCurrentBlade.sh
+sleep 2
+mountCurrentUsbExt.sh
+sleep 4
+mountCurrentUsbInt.sh
+sleep 4
+
+
 #daemon -u anita -r Archived -n Archived
 #daemon -u anita -r Acqd -n Acqd
 #daemon -u anita -r Eventd -n Eventd

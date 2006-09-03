@@ -26,7 +26,7 @@ clean:
 
 
 scripts:
-	for file in ${ANITA_FLIGHT_SOFT_DIR}/script/*[^~]; do \
+	@for file in ${ANITA_FLIGHT_SOFT_DIR}/script/*[^~]; do \
 	( chmod a+x $$file; ln -sf $$file bin; ) ; \
 	done	
 
