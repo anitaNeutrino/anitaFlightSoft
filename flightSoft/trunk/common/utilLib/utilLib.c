@@ -875,7 +875,7 @@ unsigned long getDiskSpace(char *dirName) {
 //	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
 	return 0;
     }    
-    unsigned long megabytesAvailable=(diskStat.f_bfree/1024)*(diskStat.f_bsize/1024);
+    unsigned long megabytesAvailable=(diskStat.f_bavail/1024)*(diskStat.f_bsize/1024);
     return megabytesAvailable;
 //    printf("%lu\n",megabytesAvailable);
 //    if(printToScreen) {
