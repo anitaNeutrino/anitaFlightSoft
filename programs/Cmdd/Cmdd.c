@@ -40,6 +40,10 @@ int respawnPrograms(int progMask);
 char *getProgName(ProgramId_t prog);
 int getIdMask(ProgramId_t prog);
 char *getPidFile(ProgramId_t prog);
+int mountNextBlade();
+int mountNextUsb(int intExtFlag);
+void prepWriterStructs();
+
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -61,11 +65,20 @@ char hkdPidFile[FILENAME_MAX];
 char losdPidFile[FILENAME_MAX];
 char prioritizerdPidFile[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
+char monitordPidFile[FILENAME_MAX];
 
 
 //Debugging Output
 int printToScreen=1;
 int verbosity=1;
+
+int disableBlade;
+int disableUsbInt;
+int disableUsbExt;
+char bladeName[FILENAME_MAX];
+char usbIntName[FILENAME_MAX];
+char usbExtName[FILENAME_MAX];
+
 
 
 int hkDiskBitMask;
@@ -170,6 +183,38 @@ int readConfig() {
     eString = configErrorString (status) ;
     
     if (status == CONFIG_E_OK) {
+
+	tempString=kvpGetString("bladeName");
+	if(tempString) {
+	    strncpy(bladeName,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get bladeName");
+	    fprintf(stderr,"Couldn't get bladeName\n");
+	}
+
+	tempString=kvpGetString("usbIntName");
+	if(tempString) {
+	    strncpy(usbIntName,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbIntName");
+	    fprintf(stderr,"Couldn't get usbIntName\n");
+	}
+
+	tempString=kvpGetString("usbExtName");
+	if(tempString) {
+	    strncpy(usbExtName,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbExtName");
+	    fprintf(stderr,"Couldn't get usbExtName\n");
+	}
+
+	disableBlade=kvpGetInt("disableBlade",0);
+	disableUsbInt=kvpGetInt("disableUsbInt",0);
+	disableUsbExt=kvpGetInt("disableUsbExt",0);
+
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
@@ -252,6 +297,14 @@ int readConfig() {
 	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
 	    fprintf(stderr,"Couldn't get sipdPidFile\n");
 	}
+	tempString=kvpGetString("monitordPidFile");
+	if(tempString) {
+	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
+	    fprintf(stderr,"Couldn't get monitordPidFile\n");
+	}
 
 
     }
@@ -304,19 +357,30 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return retVal;
 	case CMD_MOUNT:
 	    //Mount -a
-	    killPrograms(ID_HKD);
-	    killPrograms(ID_GPSD);
-	    killPrograms(ID_ARCHIVED);
+	    killPrograms(HKD_ID_MASK);
+	    killPrograms(GPSD_ID_MASK);
+	    killPrograms(ARCHIVED_ID_MASK);
+	    killPrograms(ACQD_ID_MASK);
+	    killPrograms(CALIBD_ID_MASK);
+	    killPrograms(MONITORD_ID_MASK);
 	    retVal=system("sudo /sbin/rmmod usb-uhci");
 	    retVal=system("sudo /sbin/insmod usb-uhci");
 	    sleep(10);
 	    retVal=system("sudo mount -a");
-	    startPrograms(ID_HKD);
-	    startPrograms(ID_GPSD);
-	    startPrograms(ID_ARCHIVED);
+	    startPrograms(HKD_ID_MASK);
+	    startPrograms(GPSD_ID_MASK);
+	    startPrograms(ARCHIVED_ID_MASK);
+	    startPrograms(ACQD_ID_MASK);
+	    startPrograms(CALIBD_ID_MASK);
+	    startPrograms(MONITORD_ID_MASK);
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
 	    return rawtime;
+	case CMD_MOUNT_NEXT_BLADE:
+	    return mountNextBlade();
+	case CMD_MOUNT_NEXT_USB:
+	    ivalue=theCmd->cmd[1];
+	    return mountNextUsb(ivalue);
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
 	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
@@ -575,6 +639,9 @@ int sendSignal(ProgramId_t progId, int theSignal)
 	case ID_PRIORITIZERD:
 	    sprintf(fileName,"%s",prioritizerdPidFile);
 	    break;
+	case ID_MONITORD:
+	    sprintf(fileName,"%s",monitordPidFile);
+	    break;
 	case ID_SIPD:
 	    sprintf(fileName,"%s",sipdPidFile);
 	    break;    
@@ -702,6 +769,7 @@ int getIdMask(ProgramId_t prog) {
 }
 
 
+
 char *getProgName(ProgramId_t prog) {
     char *string;
     switch(prog) {
@@ -733,6 +801,7 @@ char *getPidFile(ProgramId_t prog) {
 	case ID_LOSD: return losdPidFile;
 	case ID_PRIORITIZERD: return prioritizerdPidFile;
 	case ID_SIPD: return sipdPidFile;
+	case ID_MONITORD: return monitordPidFile;
 	default: break;
     }
     return NULL;
@@ -755,8 +824,8 @@ int killPrograms(int progMask)
 	testMask=getIdMask(prog);
 //	printf("%d %d\n",progMask,testMask);
 	if(progMask&testMask) {
-	    printf("Killing prog %s\n",getProgName(prog));
-	    sendSignal(progMask,SIGUSR2);
+//	    printf("Killing prog %s\n",getProgName(prog));
+	    sendSignal(prog,SIGUSR2);
 	    sprintf(daemonCommand,"daemon --stop -n %s",getProgName(prog));
 	    retVal=system(daemonCommand);
 	    if(retVal!=0) {
@@ -832,6 +901,107 @@ int respawnPrograms(int progMask)
     return rawtime;
 	
 }
+
+int mountNextBlade() {
+    int retVal;
+    time_t rawtime;
+    int currentNum=0;
+    readConfig(); // Get latest names and status
+    if(disableBlade) return -1;
+    sscanf(bladeName,"zeus%02d",&currentNum);
+    currentNum++;
+    if(currentNum>NUM_BLADES) return -1;
+
+    //Kill all programs that write to disk
+    killPrograms(HKD_ID_MASK);
+    killPrograms(GPSD_ID_MASK);
+    killPrograms(ARCHIVED_ID_MASK);
+    killPrograms(ACQD_ID_MASK);
+    killPrograms(CALIBD_ID_MASK);
+    killPrograms(MONITORD_ID_MASK);
+    closeHkFilesAndTidy(&cmdWriter);    
+    sleep(5); //Let them gzip their data
+
+
+//    exit(0);
+    
+    //Change to new drive
+    sprintf(bladeName,"zeus%02d",currentNum);
+    configModifyString("anitaSoft.config","global","bladeName",bladeName,&rawtime);
+    retVal=system("/home/anita/flightSoft/bin/mountCurrentBlade.sh");
+    sleep(5);
+
+    prepWriterStructs();
+    startPrograms(HKD_ID_MASK);
+    startPrograms(GPSD_ID_MASK);
+    startPrograms(ARCHIVED_ID_MASK);
+    startPrograms(ACQD_ID_MASK);
+    startPrograms(CALIBD_ID_MASK);
+    startPrograms(MONITORD_ID_MASK);
+    return rawtime;
+
+}
+
+int mountNextUsb(int intExtFlag) {
+    int retVal;
+    time_t rawtime;
+    int currentNum[2]={0};
+    if(intExtFlag<1 || intExtFlag>3) return 0;
+
+    readConfig(); // Get latest names and status
+    if(intExtFlag==1 && disableUsbInt) return 0;
+    else if(intExtFlag==2 && disableUsbExt) return 0;
+    else if(intExtFlag==3 && disableUsbExt && disableUsbInt) return 0;
+    else if(intExtFlag==3 && disableUsbInt) intExtFlag=2;
+    else if(intExtFlag==3 && disableUsbExt) intExtFlag=1;
+
+    sscanf(usbIntName,"usbint%02d",&currentNum[0]);
+    currentNum[0]++;
+    if(currentNum[0]>NUM_USBINTS) {
+	if(intExtFlag==1) return 0;
+	else intExtFlag=2;
+    }
+
+    sscanf(usbExtName,"usbext%02d",&currentNum[1]);
+    currentNum[1]++;
+    if(currentNum[1]>NUM_USBEXTS && intExtFlag>1) return 0;
+
+    //Kill all programs that write to disk
+    killPrograms(HKD_ID_MASK);
+    killPrograms(GPSD_ID_MASK);
+    killPrograms(ARCHIVED_ID_MASK);
+    killPrograms(ACQD_ID_MASK);
+    killPrograms(CALIBD_ID_MASK);
+    killPrograms(MONITORD_ID_MASK);
+    closeHkFilesAndTidy(&cmdWriter);    
+    sleep(5); //Let them gzip their data
+
+//    exit(0);
+    //Change to new drive
+    if(intExtFlag&0x1) {
+	sprintf(usbIntName,"usbint%02d",currentNum[0]);
+	configModifyString("anitaSoft.config","global","usbIntName",usbIntName,&rawtime);
+	retVal=system("/home/anita/flightSoft/bin/mountCurrentUsbInt.sh");
+    }
+    sleep(2);
+    if(intExtFlag&0x2) {
+	sprintf(usbExtName,"usbext%02d",currentNum[1]);
+	configModifyString("anitaSoft.config","global","usbExtName",usbExtName,&rawtime);
+	retVal=system("/home/anita/flightSoft/bin/mountCurrentUsbExt.sh");
+    }
+    sleep(5);
+
+    prepWriterStructs();
+    startPrograms(HKD_ID_MASK);
+    startPrograms(GPSD_ID_MASK);
+    startPrograms(ARCHIVED_ID_MASK);
+    startPrograms(ACQD_ID_MASK);
+    startPrograms(CALIBD_ID_MASK);
+    startPrograms(MONITORD_ID_MASK);
+    return rawtime;
+
+}
+
 
 
 int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
@@ -918,9 +1088,6 @@ void prepWriterStructs() {
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	cmdWriter.currentFilePtr[diskInd]=0;
     cmdWriter.writeBitMask=hkDiskBitMask;
-
-
-
 
 }
 

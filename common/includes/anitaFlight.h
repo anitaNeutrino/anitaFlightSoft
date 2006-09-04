@@ -73,7 +73,9 @@
 #define MAGNETOMETER_DEV_NAME "/dev/ttyUSB1"
 
 #define NUM_PRIORITIES 10
-#define NUM_USBDISKS 64
+#define NUM_BLADES 8
+#define NUM_USBINTS 30
+#define NUM_USBEXTS 31
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
@@ -84,8 +86,6 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 #define EVENTS_PER_INDEX 10000
-
-
 
 
 #define DISK_TYPES 5

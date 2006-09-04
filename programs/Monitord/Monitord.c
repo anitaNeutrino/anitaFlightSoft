@@ -153,30 +153,24 @@ int readConfigFile()
 	tempString=kvpGetString("bladeName");
 	if(tempString) {
 	    strncpy(bladeName,tempString,FILENAME_MAX);
-	    writePidFile(bladeName);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get bladeName");
 	    fprintf(stderr,"Couldn't get bladeName\n");
 	}
 
-
 	tempString=kvpGetString("usbIntName");
 	if(tempString) {
 	    strncpy(usbIntName,tempString,FILENAME_MAX);
-	    writePidFile(usbIntName);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get usbIntName");
 	    fprintf(stderr,"Couldn't get usbIntName\n");
 	}
 
-
-
 	tempString=kvpGetString("usbExtName");
 	if(tempString) {
 	    strncpy(usbExtName,tempString,FILENAME_MAX);
-	    writePidFile(usbExtName);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get usbExtName");
@@ -215,7 +209,8 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
 //	printf("%lu\n",megaBytes);
 	if(megaBytes>0) {
-	    megaBytes/=10;
+	    if(diskNum>3)
+		megaBytes/=10;
 	    if(megaBytes<65535) megaBytes_short=megaBytes;
 	    else megaBytes_short=65535;
 	}

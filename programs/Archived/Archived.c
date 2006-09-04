@@ -104,7 +104,6 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("bladeName");
 	if(tempString) {
 	    strncpy(bladeName,tempString,FILENAME_MAX);
-	    writePidFile(bladeName);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get bladeName");
@@ -115,7 +114,6 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("usbIntName");
 	if(tempString) {
 	    strncpy(usbIntName,tempString,FILENAME_MAX);
-	    writePidFile(usbIntName);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get usbIntName");
@@ -127,7 +125,6 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("usbExtName");
 	if(tempString) {
 	    strncpy(usbExtName,tempString,FILENAME_MAX);
-	    writePidFile(usbExtName);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get usbExtName");
