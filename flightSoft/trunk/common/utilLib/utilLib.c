@@ -29,7 +29,7 @@ extern  int versionsort(const void *a, const void *b);
 
 int diskBitMasks[DISK_TYPES]={0x1,0x2,0x4,0x8,0x10};
 char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
-
+int bufferDisk[DISK_TYPES]={0,0,1,1,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
     int diskInd;
@@ -37,13 +37,17 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 	char *gzipArg[] = {"gzip",awsPtr->currentFileName[diskInd],(char*)0};
+	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFile.sh",awsPtr->currentFileName[diskInd],(char*)0};
 	if(awsPtr->currentFilePtr[diskInd]) {
 	    fclose(awsPtr->currentFilePtr[diskInd]);
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
 //	    awsPtr->currentFileName;
-		execv("/bin/gzip",gzipArg);
+		if(!bufferDisk[diskInd])
+		    execv("/bin/gzip",gzipArg);
+		else
+		    execv("/bin/bash",zipAndMoveArg);
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -66,7 +70,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
     char *tempDir;
     pid_t childPid;
     char fullBasename[FILENAME_MAX];
-
+    char bufferName[FILENAME_MAX];
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 	if(!awsPtr->currentFilePtr[diskInd]) {
@@ -74,10 +78,20 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 	    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);
 	    tempDir=getCurrentHkDir(fullBasename,unixTime);
 	    strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
+
+	    if(bufferDisk[diskInd]) {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+		makeDirectories(bufferName);
+
+	    }
 	    awsPtr->dirCount[diskInd]=0;
 	    free(tempDir);
 	    tempDir=getCurrentHkDir(awsPtr->currentDirName[diskInd],unixTime);
 	    strncpy(awsPtr->currentSubDirName[diskInd],tempDir,FILENAME_MAX-1);
+	    if(bufferDisk[diskInd]) {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+		makeDirectories(bufferName);
+	    }
 	    awsPtr->fileCount[diskInd]=0;
 	    free(tempDir);
 	
@@ -85,7 +99,13 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 					 awsPtr->filePrefix,unixTime);
 	    strncpy(awsPtr->currentFileName[diskInd],tempDir,FILENAME_MAX-1);
 	    free(tempDir);
-	    awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");	    
+	    if(!bufferDisk[diskInd]) {
+		awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");	    
+	    }
+	    else {		
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentFileName[diskInd]);
+		awsPtr->currentFilePtr[diskInd]=fopen(bufferName,"ab");
+	    }
 	    awsPtr->writeCount[diskInd]=0;						      
 	}
     
@@ -93,12 +113,16 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 	if(awsPtr->writeCount[diskInd]>=HK_PER_FILE) {
 	    //Need a new file
 	    char *gzipArg[] = {"gzip",awsPtr->currentFileName[diskInd],(char*)0};
+	    char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFile.sh",awsPtr->currentFileName[diskInd],(char*)0};
 	    fclose(awsPtr->currentFilePtr[diskInd]);
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
 //	    awsPtr->currentFileName;
-		execv("/bin/gzip",gzipArg);
+		if(!bufferDisk[diskInd])
+		    execv("/bin/gzip",gzipArg);
+		else
+		    execv("/bin/bash",zipAndMoveArg);
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -114,12 +138,23 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 		    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);
 		    tempDir=getCurrentHkDir(fullBasename,unixTime);
 		    strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
+		    makeDirectories(awsPtr->currentDirName[diskInd]);
+		    if(bufferDisk[diskInd]) {
+			sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+			makeDirectories(bufferName);
+			
+		    }
 		    awsPtr->dirCount[diskInd]=0;
 		    free(tempDir);
 		}
 		
 		tempDir=getCurrentHkDir(awsPtr->currentDirName[diskInd],unixTime);
 		strncpy(awsPtr->currentSubDirName[diskInd],tempDir,FILENAME_MAX-1);
+		makeDirectories(awsPtr->currentSubDirName[diskInd]);
+		if(bufferDisk[diskInd]) {
+		    sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+		    makeDirectories(bufferName);
+		}
 		awsPtr->fileCount[diskInd]=0;
 		free(tempDir);
 	    }
@@ -128,7 +163,13 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 					 awsPtr->filePrefix,unixTime);
 	    strncpy(awsPtr->currentFileName[diskInd],tempDir,FILENAME_MAX-1);
 	    free(tempDir);
-	    awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");  
+	    if(!bufferDisk[diskInd]) {
+		awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");  
+	    }
+	    else {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentFileName[diskInd]);
+		awsPtr->currentFilePtr[diskInd]=fopen(bufferName,"wb");
+	    }
 	    
 	    awsPtr->writeCount[diskInd]=0;
 	}
@@ -328,12 +369,17 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 	char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
 	char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
+	
+	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFiles.sh",awsPtr->currentHeaderFileName[diskInd],awsPtr->currentEventFileName[diskInd],(char*)0};
 	if(awsPtr->currentHeaderFilePtr[diskInd]) {
 	    fclose(awsPtr->currentHeaderFilePtr[diskInd]);
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
-		execv("/bin/gzip",gzipHeadArg);
+		if(!bufferDisk[diskInd])
+		    execv("/bin/gzip",gzipHeadArg);
+		else
+		    execv("/bin/bash",zipAndMoveArg);
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -348,7 +394,8 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
-		execv("/bin/gzip",gzipBodyArg);
+		if(!bufferDisk[diskInd]) 
+		    execv("/bin/gzip",gzipBodyArg);
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -372,6 +419,7 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
     pid_t childPid;
     
     char fullBasename[FILENAME_MAX];
+    char bufferName[FILENAME_MAX];
 
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
@@ -383,21 +431,39 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
 	    sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
 	    makeDirectories(awsPtr->currentDirName[diskInd]);
+
+	    if(bufferDisk[diskInd]) {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+		makeDirectories(bufferName);
+
+	    }
 	    awsPtr->fileCount[diskInd]=0;
 
 	    //Make sub dir
 	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
 	    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
 	    makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
+
+	    if(bufferDisk[diskInd]) {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+		makeDirectories(bufferName);
+	    }
 	    awsPtr->dirCount[diskInd]=0;
 
 	    //Make files
 	    dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
+
 	    sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
 		    awsPtr->currentSubDirName[diskInd],dirNum);
-	    awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+	    if(!bufferDisk[diskInd]) {
+		awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+	    }
+	    else {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentHeaderFileName[diskInd]);
+		awsPtr->currentHeaderFilePtr[diskInd]=fopen(bufferName,"ab");
+	    }
 	    awsPtr->writeCount[diskInd]=0;
-	    
+		    
 	    if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -408,8 +474,15 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 
 	    sprintf(awsPtr->currentEventFileName[diskInd],"%s/encev_%d.dat",
 		    awsPtr->currentSubDirName[diskInd],dirNum);
-	    awsPtr->currentEventFilePtr[diskInd]=
-		fopen(awsPtr->currentEventFileName[diskInd],"ab");
+	    if(!bufferDisk[diskInd]) {
+		awsPtr->currentEventFilePtr[diskInd]=
+		    fopen(awsPtr->currentEventFileName[diskInd],"ab");
+	    }
+	    else {
+		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentEventFileName[diskInd]);
+		awsPtr->currentEventFilePtr[diskInd]=fopen(bufferName,"ab");
+	    }
+
 	    if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
 		if(errorCounter<100) {
 		    errorCounter++;
@@ -426,10 +499,14 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		
 		char *gzipHeadArg[] = {"nice","/bin/gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
 		char *gzipBodyArg[] = {"nice","/bin/gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
+		char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFiles.sh",awsPtr->currentHeaderFileName[diskInd],awsPtr->currentEventFileName[diskInd],(char*)0};
 		childPid=fork();
 		if(childPid==0) {
 		    //Child
-		    execv("/usr/bin/nice",gzipHeadArg);
+		    if(!bufferDisk[diskInd])
+			execv("/usr/bin/nice",gzipHeadArg);
+		    else 
+			execv("/bin/bash",zipAndMoveArg);
 		    exit(0);
 		}
 		else if(childPid<0) {
@@ -440,7 +517,8 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		childPid=fork();
 		if(childPid==0) {
 		    //Child
-		    execv("/usr/bin/nice",gzipBodyArg);
+		    if(!bufferDisk[diskInd])
+			execv("/usr/bin/nice",gzipBodyArg);
 		    exit(0);
 		}
 		else if(childPid<0) {
@@ -462,6 +540,12 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 			dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
 			sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
 			makeDirectories(awsPtr->currentDirName[diskInd]);
+
+			if(bufferDisk[diskInd]) {
+			    sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+			    makeDirectories(bufferName);
+
+			}
 			awsPtr->dirCount[diskInd]=0;
 		    }
 		    
@@ -469,6 +553,11 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
 		    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
 		    makeDirectories(awsPtr->currentSubDirName[diskInd]);
+		    
+		    if(bufferDisk[diskInd]) {
+			sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+			makeDirectories(bufferName);
+		    }
 		    awsPtr->fileCount[diskInd]=0;
 		}
 		
@@ -477,7 +566,13 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
 			awsPtr->currentSubDirName[diskInd],dirNum);
 //	    printf("Trying to open %s\n",awsPtr->currentHeaderFileName);
-		awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+		if(!bufferDisk[diskInd]) {
+		    awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
+		}
+		else {
+		    sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentHeaderFileName[diskInd]);
+		    awsPtr->currentHeaderFilePtr[diskInd]=fopen(bufferName,"ab");
+		}
 		if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
 		    if(errorCounter<100) {
 			errorCounter++;
@@ -488,7 +583,13 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		
 		sprintf(awsPtr->currentEventFileName[diskInd],"%s/encev_%d.dat",
 			awsPtr->currentSubDirName[diskInd],dirNum);
-		awsPtr->currentEventFilePtr[diskInd]=fopen(awsPtr->currentEventFileName[diskInd],"ab");
+		if(!bufferDisk[diskInd]) {
+		    awsPtr->currentEventFilePtr[diskInd]=fopen(awsPtr->currentEventFileName[diskInd],"ab");
+		}
+		else {
+		    sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentEventFileName[diskInd]);
+		    awsPtr->currentEventFilePtr[diskInd]=fopen(bufferName,"ab");
+		}
 		if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
 		    if(errorCounter<100) {
 			errorCounter++;
