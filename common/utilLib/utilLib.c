@@ -1876,7 +1876,7 @@ int zipBufferedFileAndMove(char *filename) {
     char outputFilename[FILENAME_MAX];
     unsigned long numBytesIn=0;
     sprintf(bufferFilename,"/tmp/buffer/%s",filename);
-    char *buffer=readFile(filename,&numBytesIn);
+    char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
 	free(buffer);
 	return -1;
