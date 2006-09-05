@@ -12,6 +12,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <libgen.h>
 #include <errno.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -396,7 +397,6 @@ int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
 int checkCurrentPedLink() {
     char linkname[FILENAME_MAX];
     char pedname[FILENAME_MAX];
-    char crapBuf[FILENAME_MAX];
     unsigned long pedUnixTime;
     sprintf(linkname,"%s/%s",DATA_LINK,CURRENT_PEDESTALS);
     int retVal=readlink(linkname,pedname,FILENAME_MAX);
@@ -407,7 +407,10 @@ int checkCurrentPedLink() {
 	       strerror(errno));
 	return 0;
     }
-    sscanf(pedname,"%s/peds_%lu.dat",crapBuf,&pedUnixTime);
+    pedname[retVal]='\0';
+    char *justFile=basename((char *)pedname);
+    sscanf(justFile,"peds_%lu.dat",&pedUnixTime);
+//    printf("%s -- %lu %lu\n",pedname,pedUnixTime,currentPeds.unixTime);
     if(pedUnixTime!=currentPeds.unixTime) return 0;
     return 1;
 }
@@ -449,6 +452,7 @@ int loadThesePeds(unsigned long whichPeds)
 
 
 int loadPedsFromFile(char *filename) {
+    printf("Loading peds from %s\n",filename);
     static int errorCounter=0;
     int surf,chip,chan,samp;
     int retVal;
