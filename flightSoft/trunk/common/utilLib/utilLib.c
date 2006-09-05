@@ -360,13 +360,13 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
     char fullBasename[FILENAME_MAX];
     char bufferName[FILENAME_MAX];
 
-
+    
     if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {
 	closeEventFilesAndTidy(awsPtr);
 	awsPtr->gotData=0;
     }
 
-
+//    printf("cleverEncEventWrite %lu -- %#x %d %lu\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 
@@ -437,6 +437,8 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		}
 	    }
 	    awsPtr->fileEpoch=dirNum+EVENTS_PER_FILE;
+//	    printf("%s %s %d\n",awsPtr->currentHeaderFileName[diskInd],
+//		   awsPtr->currentEventFileName[diskInd],awsPtr->fileEpoch);
 	}
 	if(awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
 	    
@@ -462,7 +464,7 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		else 
 		    fflush(awsPtr->currentEventFilePtr[diskInd]);  
 		
-		awsPtr->gotData=0;
+		awsPtr->gotData=1;
 	    }
 	    else continue;       	
 	}
@@ -1836,6 +1838,7 @@ int zipFileInPlace(char *filename) {
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
     free(buffer);
+    unlink(filename);
     return retVal;
 }
 
