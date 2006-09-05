@@ -9,7 +9,7 @@ bodyFile=$2
 bufferBodyFile=/tmp/buffer/${2}
 
 #echo "Here $bufferHeadFile $bufferBodyFile"
-nice gzip $bufferHeadFile
-nice gzip $bufferBodyFile
-nice mv ${bufferHeadFile}.gz ${headFile}.gz
-nice mv ${bufferBodyFile}.gz ${bodyFile}.gz
+bzip2 -c $bufferHeadFile > ${headFile}.bz2
+bzip2 -c $bufferBodyFile > ${bodyFile}.bz2
+rm $bufferHeadFile
+rm $bufferBodyFile
