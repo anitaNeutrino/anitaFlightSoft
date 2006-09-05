@@ -953,7 +953,10 @@ void sendWakeUpBuffer()
 void sendSomeHk(int maxBytes) 
 {
     int hkCount=0;
-
+    if((maxBytes-hkCount)>2000) {	
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,REQUEST_TELEM_DIR,
+		     REQUEST_TELEM_LINK_DIR,2000);
+    }        
     if((maxBytes-hkCount)>sizeof(CommandEcho_t)) {
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,
 		     SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR,
@@ -989,6 +992,7 @@ void sendSomeHk(int maxBytes)
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HEADER_TELEM_DIR,
 		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
     }        
+
 
     hkDataSent+=hkCount;
     

@@ -575,6 +575,13 @@ void fillBufferWithHk()
     }        
     if(numBytesInBuffer>0)
 	doWrite();
+    if((LOS_MAX_BYTES-numBytesInBuffer)>4000) {	
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,REQUEST_TELEM_DIR,
+		     REQUEST_TELEM_LINK_DIR,4000);
+    }      
+    if(numBytesInBuffer>0)
+	doWrite();
+    
     if(numBytesInBuffer<0) {
 	printf("What the heck does %d bytes mean\n",numBytesInBuffer);
     }

@@ -1649,6 +1649,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_MONITOR: gHdr->verId=VER_MONITOR; break;
 	case PACKET_SLOW1: gHdr->verId=VER_SLOW_1; break;
 	case PACKET_SLOW2: gHdr->verId=VER_SLOW_2; break;
+	case PACKET_ZIPPED_FILE: gHdr->verId=VER_ZIPPED_FILE; break;
 	default: 
 	    gHdr->verId=0; break;
     }

@@ -104,6 +104,7 @@ int main (int argc, char *argv[])
     makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(CMDD_COMMAND_LINK_DIR);
+    makeDirectories(REQUEST_TELEM_LINK_DIR);
 
     do {
 	retVal=readConfig();
@@ -678,7 +679,52 @@ int cleanDirs()
 
 int sendConfig(int progMask) 
 {
-    return 0;
+    ZippedFile_t *zipFilePtr;
+    time_t rawtime;
+    time(&rawtime);
+    int retVal;
+    int errorCount=0;
+    ProgramId_t prog;
+    char configFile[FILENAME_MAX];
+    char outputName[FILENAME_MAX];
+    char *fullFilename;
+    char *inputBuffer;
+    char *outputBuffer;
+    unsigned long numBytesIn=0,numBytesOut=0;
+    int testMask;	
+
+    printf("sendConfig %d\n",progMask);
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+	testMask=getIdMask(prog);
+//	printf("%d %d\n",progMask,testMask);
+	if(progMask&testMask) {
+	    sprintf(configFile,"%s.config",getProgName(prog));
+	    printf("Trying to send config file -- %s\n",configFile);
+	    fullFilename=configFileSpec(configFile);
+	    inputBuffer=readFile(fullFilename,&numBytesIn);
+	    if(!inputBuffer || !numBytesIn) return 0;
+	    numBytesOut=numBytesIn+1000 +sizeof(ZippedFile_t);
+	    outputBuffer=malloc(numBytesOut);
+	    zipFilePtr = (ZippedFile_t*) outputBuffer;
+	    zipFilePtr->unixTime=rawtime;
+	    zipFilePtr->numUncompressedBytes=numBytesIn;
+	    strncpy(zipFilePtr->filename,configFile,60);
+	    retVal=zipBuffer(inputBuffer,&outputBuffer[sizeof(ZippedFile_t)],numBytesIn,&numBytesOut);
+	    if(retVal==0) {		
+		fillGenericHeader(zipFilePtr,PACKET_ZIPPED_FILE,numBytesOut+sizeof(ZippedFile_t));
+		sprintf(outputName,"%s/zipFile_%d_%lu.dat",REQUEST_TELEM_DIR,
+			prog,zipFilePtr->unixTime);
+		normalSingleWrite((unsigned char*)outputBuffer,
+				  outputName,numBytesOut+sizeof(ZippedFile_t));
+		makeLink(outputName,REQUEST_TELEM_LINK_DIR);		
+	    }
+	    free(inputBuffer);
+	    free(outputBuffer);
+	}
+    }
+    if(errorCount) return 0;
+    return rawtime;
+
 }
 
 int defaultConfig(int progMask)

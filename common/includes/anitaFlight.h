@@ -130,6 +130,7 @@
 #define GPS_TELEM_DIR "/tmp/anita/telem/house/gps"
 #define MONITOR_TELEM_DIR "/tmp/anita/telem/house/monitor"
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
+#define REQUEST_TELEM_DIR "/tmp/anita/telem/request"
 
 #define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
@@ -140,6 +141,7 @@
 #define GPS_TELEM_LINK_DIR "/tmp/anita/telem/house/gps/link"
 #define MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/monitor/link"
 #define HEADER_TELEM_LINK_DIR "/tmp/anita/telem/head/link"
+#define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
 
 //Event telemetry dirs
 #define BASE_EVENT_TELEM_DIR "/tmp/anita/telem/event"
