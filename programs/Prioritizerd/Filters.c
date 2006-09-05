@@ -38,15 +38,21 @@ void HornMatchedFilter(TransientChannelF_t *inch,TransientChannelF_t *outch)
      static float template[256];
      float corr_out[512];
      FILE *fptmpl;
+     char templateName[FILENAME_MAX];
      if (first){
 	  //read in template
 #ifdef USING_PVIEW	
-	  fptmpl=fopen("horn_template.dat","r";)
+	 sprintf(templateName,"horn_template.dat");
 #else
-	  fptmpl=fopen("/home/anita/flightSoft/programs/Prioritizerd/horn_template.dat","r");
+	 char *anitaDir=getenv("ANITA_FLIGHT_SOFT_DIR");
+	 if(anitaDir) 
+	     sprintf(templateName,"%s/programs/Prioritizerd/horn_template.dat",anitaDir);
+	 else
+	     sprintf(templateName,"horn_template.dat");
 #endif
-
-	  if (fptmpl==NULL){
+//	 printf("%s\n",templateName);
+	 fptmpl=fopen(templateName,"r");
+	     if (fptmpl==NULL){
 	       fprintf(stderr,"Unable to open horn template.\n");
 	       exit(-1);
 	  }
