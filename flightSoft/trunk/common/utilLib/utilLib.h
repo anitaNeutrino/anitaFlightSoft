@@ -48,6 +48,11 @@ typedef struct {
     FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
     FILE* currentHeaderFilePtr[DISK_TYPES];
     unsigned int writeBitMask; //1-blade, 2-puck,3-usbint,4-usbext,5-pmc
+    unsigned int bladeCloneMask;
+    unsigned int puckCloneMask;
+    unsigned int usbintCloneMask;
+    unsigned long fileEpoch;
+    unsigned long gotData;
     int writeCount[DISK_TYPES];
     int fileCount[DISK_TYPES];
     int dirCount[DISK_TYPES];
@@ -63,6 +68,7 @@ int is_dir(const char *path);
 int makeLink(const char *theFile, const char *theLinkDir);
 int moveFile(const char *theFile, const char *theDir);
 int copyFile(const char *theFile, const char *theDir);
+char *readFile(const char *theFile, unsigned long *numBytes);
 int removeFile(const char *theFile);
 
 #ifndef __CINT__
@@ -135,6 +141,9 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);
     int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr);
     int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr);
 
+//Zipping packets and files
+    int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
+    int zipFileInPlace(char *filename);
 // Signal handling routines
 
 // Signal handling stuff

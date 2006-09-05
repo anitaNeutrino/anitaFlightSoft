@@ -44,8 +44,10 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 	    if(childPid==0) {
 		//Child
 //	    awsPtr->currentFileName;
-		if(!bufferDisk[diskInd])
-		    execv("/bin/gzip",gzipArg);
+		if(!bufferDisk[diskInd]) {
+		    zipFileInPlace(awsPtr->currentFileName[diskInd]);
+//		    execv("/bin/gzip",gzipArg);
+		}
 		else
 		    execv("/bin/bash",zipAndMoveArg);
 		exit(0);
@@ -119,8 +121,10 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 	    if(childPid==0) {
 		//Child
 //	    awsPtr->currentFileName;
-		if(!bufferDisk[diskInd])
-		    execv("/bin/gzip",gzipArg);
+		if(!bufferDisk[diskInd]) {
+		    zipFileInPlace(awsPtr->currentFileName[diskInd]);
+//		    execv("/bin/gzip",gzipArg);
+		}
 		else
 		    execv("/bin/bash",zipAndMoveArg);
 		exit(0);
@@ -377,7 +381,8 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    if(childPid==0) {
 		//Child
 		if(!bufferDisk[diskInd]) {
-		    execv("/bin/gzip",gzipHeadArg);
+		    zipFileInPlace(awsPtr->currentHeaderFileName[diskInd]);
+//		    execv("/bin/gzip",gzipHeadArg);
 		}
 		else {
 		    execv("/bin/bash",zipAndMoveArg);
@@ -397,7 +402,8 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    if(childPid==0) {
 		//Child
 		if(!bufferDisk[diskInd]) {
-		    execv("/bin/gzip",gzipBodyArg);
+		    zipFileInPlace(awsPtr->currentEventFileName[diskInd]);
+//		    execv("/bin/gzip",gzipBodyArg);
 		}
 		exit(0);
 	    }
@@ -507,7 +513,8 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		if(childPid==0) {
 		    //Child
 		    if(!bufferDisk[diskInd]) {
-			execv("/usr/bin/nice",gzipHeadArg);
+//			execv("/usr/bin/nice",gzipHeadArg);
+			zipFileInPlace(awsPtr->currentHeaderFileName[diskInd]);
 		    }
 		    else {
 			execv("/bin/bash",zipAndMoveArg);
@@ -523,7 +530,8 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		if(childPid==0) {
 		    //Child
 		    if(!bufferDisk[diskInd]) {
-			execv("/usr/bin/nice",gzipBodyArg);
+			zipFileInPlace(awsPtr->currentEventFileName[diskInd]);
+//			execv("/usr/bin/nice",gzipBodyArg);
 		    }
 		    exit(0);
 		}
@@ -879,33 +887,40 @@ int moveFile(const char *theFile, const char *theDir)
 }
 
 
+char *readFile(const char *theFile, unsigned long *numBytes)
+{
+    static int errorCounter=0;
+    char *buffer;
+    //Open the input file
+    FILE *fin = fopen(theFile,"r");
+    if(!fin) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error reading file %s -- Error %s\n",
+		   theFile,strerror(errno));
+	    fprintf(stderr,"Error reading file %s-- Error %s\n",
+		    theFile,strerror(errno));
+	    errorCounter++;
+	}
+	return NULL;
+    }
+		   
+    fseek(fin,0,SEEK_END);
+    (*numBytes)=ftell(fin);
+    fseek(fin,SEEK_SET,0);
+    buffer=malloc((*numBytes));
+    fread(buffer,1,(*numBytes),fin);
+    fclose(fin);
+    return buffer;
+}
+
 int copyFile(const char *theFile, const char *theDir)
 {
     static int errorCounter=0;
     //Only works on relative small files (will write a better version)
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
-    char *buffer;
-
-    //Open the input file
-    FILE *fin = fopen(theFile,"r");
-    if(!fin) {
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"No file %s to copy -- Error %s\n",
-		   theFile,strerror(errno));
-	    fprintf(stderr,"No file %s to copy -- Error %s\n",
-		    theFile,strerror(errno));
-	    errorCounter++;
-	}
-	return -1;
-    }
-		   
-    fseek(fin,SEEK_END,0);
-    int numBytes=ftell(fin);
-    fseek(fin,SEEK_SET,0);
-    buffer=malloc(numBytes);
-    fread(buffer,1,numBytes,fin);
-    fclose(fin);
+    unsigned long numBytes=0;
+    char *buffer=readFile(theFile,&numBytes);
 
     //Open the output file
     sprintf(newFile,"%s/%s",theDir,justFile);
@@ -1949,8 +1964,52 @@ int checkFileExists(char *filename) {
     return 1;
 }
 
-int gzipFile(char *filename) {
-
-
-
+int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes)
+{
+    static int errorCounter=0;
+    int retVal=compress((unsigned char*)output,outputBytes,(unsigned char*)input,inputBytes);
+    if(retVal==Z_OK)
+	return 0;
+    else {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"zlib compress returned %d  (%d of 100)\n",retVal,errorCounter);
+	    fprintf(stderr,"zlib compress returned %d  (%d of 100)\n",retVal,errorCounter);
+	    errorCounter++;
+	}
+	return -1;
+    }	
 }
+
+
+int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes)
+{
+    static int errorCounter=0;
+    int retVal=uncompress((unsigned char*)output,outputBytes,(unsigned char*)input,inputBytes);
+    if(retVal==Z_OK)
+	return 0;
+    else {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"zlib compress returned %d  (%d of 100)\n",retVal,errorCounter);
+	    fprintf(stderr,"zlib compress returned %d  (%d of 100)\n",retVal,errorCounter);
+	    errorCounter++;
+	}
+	return -1;
+    }	
+}
+
+
+int zipFileInPlace(char *filename) {
+    int retVal;
+    char outputFilename[FILENAME_MAX];
+    unsigned long numBytesIn=0;
+    char *buffer=readFile(filename,&numBytesIn);
+    if(!buffer || !numBytesIn) {
+	free(buffer);
+	return -1;
+    }    
+    sprintf(outputFilename,"%s.gz",filename);
+    retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
+    free(buffer);
+    return retVal;
+}
+
