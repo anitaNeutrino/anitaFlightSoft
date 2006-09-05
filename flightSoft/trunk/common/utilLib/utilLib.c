@@ -37,7 +37,7 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 //	char *gzipArg[] = {"gzip",awsPtr->currentFileName[diskInd],(char*)0};
-	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFile.sh",awsPtr->currentFileName[diskInd],(char*)0};
+//	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFile.sh",awsPtr->currentFileName[diskInd],(char*)0};
 	if(awsPtr->currentFilePtr[diskInd]) {
 	    fclose(awsPtr->currentFilePtr[diskInd]);
 	    childPid=fork();
@@ -48,8 +48,10 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 		    zipFileInPlace(awsPtr->currentFileName[diskInd]);
 //		    execv("/bin/gzip",gzipArg);
 		}
-		else
-		    execv("/bin/bash",zipAndMoveArg);
+		else {
+		    zipBufferedFileAndMove(awsPtr->currentFileName[diskInd]);
+//		    execv("/bin/bash",zipAndMoveArg);
+		}
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -115,7 +117,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 	if(awsPtr->writeCount[diskInd]>=HK_PER_FILE) {
 	    //Need a new file
 //	    char *gzipArg[] = {"gzip",awsPtr->currentFileName[diskInd],(char*)0};
-	    char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFile.sh",awsPtr->currentFileName[diskInd],(char*)0};
+//	    char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFile.sh",awsPtr->currentFileName[diskInd],(char*)0};
 	    fclose(awsPtr->currentFilePtr[diskInd]);
 	    childPid=fork();
 	    if(childPid==0) {
@@ -125,8 +127,10 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 		    zipFileInPlace(awsPtr->currentFileName[diskInd]);
 //		    execv("/bin/gzip",gzipArg);
 		}
-		else
-		    execv("/bin/bash",zipAndMoveArg);
+		else {
+		    zipBufferedFileAndMove(awsPtr->currentFileName[diskInd]);
+//		    execv("/bin/bash",zipAndMoveArg);
+		}
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -302,7 +306,7 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 //	char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
 //	char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
 	
-	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFiles.sh",awsPtr->currentHeaderFileName[diskInd],awsPtr->currentEventFileName[diskInd],(char*)0};
+//	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFiles.sh",awsPtr->currentHeaderFileName[diskInd],awsPtr->currentEventFileName[diskInd],(char*)0};
 	if(awsPtr->currentHeaderFilePtr[diskInd]) {
 	    fclose(awsPtr->currentHeaderFilePtr[diskInd]);
 	    awsPtr->currentHeaderFilePtr[diskInd]=0;
@@ -314,7 +318,8 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 //		    execv("/bin/gzip",gzipHeadArg);
 		}
 		else {
-		    execv("/bin/bash",zipAndMoveArg);
+		    zipBufferedFileAndMove(awsPtr->currentHeaderFileName[diskInd]);
+//		    execv("/bin/bash",zipAndMoveArg);
 		}
 		exit(0);
 	    }
@@ -334,6 +339,9 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 		if(!bufferDisk[diskInd]) {
 		    zipFileInPlace(awsPtr->currentEventFileName[diskInd]);
 //		    execv("/bin/gzip",gzipBodyArg);
+		}
+		else {
+		    zipBufferedFileAndMove(awsPtr->currentEventFileName[diskInd]);
 		}
 		exit(0);
 	    }
@@ -1839,6 +1847,70 @@ int zipFileInPlace(char *filename) {
     retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
     free(buffer);
     unlink(filename);
+    return retVal;
+}
+
+
+int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask) {
+    //Doesn't clone yet
+    int retVal;
+    char outputFilename[FILENAME_MAX];
+    unsigned long numBytesIn=0;
+    char *buffer=readFile(filename,&numBytesIn);
+    if(!buffer || !numBytesIn) {
+	free(buffer);
+	return -1;
+    }    
+    sprintf(outputFilename,"%s.gz",filename);
+    retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
+    free(buffer);
+    unlink(filename);
+    return retVal;
+}
+
+
+int zipBufferedFileAndMove(char *filename) {
+    int retVal;
+    char bufferFilename[FILENAME_MAX];
+    char bufferZippedFilename[FILENAME_MAX];
+    char outputFilename[FILENAME_MAX];
+    unsigned long numBytesIn=0;
+    sprintf(bufferFilename,"/tmp/buffer/%s",filename);
+    char *buffer=readFile(filename,&numBytesIn);
+    if(!buffer || !numBytesIn) {
+	free(buffer);
+	return -1;
+    }    
+    sprintf(bufferZippedFilename,"%s.gz",bufferFilename);
+    sprintf(outputFilename,"%s.gz",filename);
+    retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
+    moveFile(bufferZippedFilename,outputFilename);
+    free(buffer);
+    unlink(bufferZippedFilename);
+    unlink(bufferFilename);
+    return retVal;
+}
+
+int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask) {
+    //Doesn't actually clone yet
+    int retVal;
+    char bufferFilename[FILENAME_MAX];
+    char bufferZippedFilename[FILENAME_MAX];
+    char outputFilename[FILENAME_MAX];
+    unsigned long numBytesIn=0;
+    sprintf(bufferFilename,"/tmp/buffer/%s",filename);
+    char *buffer=readFile(filename,&numBytesIn);
+    if(!buffer || !numBytesIn) {
+	free(buffer);
+	return -1;
+    }    
+    sprintf(bufferZippedFilename,"%s.gz",bufferFilename);
+    sprintf(outputFilename,"%s.gz",filename);
+    retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
+    moveFile(bufferZippedFilename,outputFilename);
+    free(buffer);
+    unlink(bufferZippedFilename);
+    unlink(bufferFilename);
     return retVal;
 }
 
