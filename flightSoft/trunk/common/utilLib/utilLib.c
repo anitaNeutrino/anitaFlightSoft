@@ -854,6 +854,7 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
 	if(errorCounter<100) {
 	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
 	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
+	    errorCounter++;
 	}
 	    
     }	

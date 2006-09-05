@@ -126,6 +126,9 @@ int main (int argc, char *argv[])
 	}
 	
     } while(currentState==PROG_STATE_INIT);
+    closeHkFilesAndTidy(&cmdWriter);
+    unlink(cmddPidFile);
+    syslog(LOG_INFO,"Cmdd terminating");
     return 0;
 }
 

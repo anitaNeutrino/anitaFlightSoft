@@ -196,6 +196,9 @@ int main (int argc, char *argv[])
 	    attenSec++;
 	}
     } while(currentState==PROG_STATE_INIT);
+    closeHkFilesAndTidy(&calibWriter);
+    unlink(calibdPidFile);
+    syslog(LOG_INFO,"Calibd Terminating");
     return 0;
     
 }

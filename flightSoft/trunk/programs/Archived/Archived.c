@@ -163,7 +163,8 @@ int main (int argc, char *argv[])
 
     closeEventFilesAndTidy(&eventWriter);
     closeHkFilesAndTidy(&indexWriter);
-
+    unlink(archivedPidFile);
+    syslog(LOG_INFO,"Archived terminating");
     return 0;
 }
 
