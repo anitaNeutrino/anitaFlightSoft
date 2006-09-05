@@ -157,6 +157,15 @@ int main(int argc, char *argv[])
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
+    makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(HEADER_TELEM_LINK_DIR);
+    makeDirectories(GPS_TELEM_LINK_DIR);
+    makeDirectories(PEDESTAL_TELEM_LINK_DIR);
+    makeDirectories(SURFHK_TELEM_LINK_DIR);
+    makeDirectories(TURFHK_TELEM_LINK_DIR);
+    makeDirectories(HK_TELEM_LINK_DIR);
+    makeDirectories(MONITOR_TELEM_LINK_DIR);
+
 
 
     retVal=readConfig();
@@ -203,6 +212,8 @@ int main(int argc, char *argv[])
     sipcom_wait();
     pthread_cancel(Hr_thread);
     fprintf(stderr, "Bye bye\n");
+    unlink(sipdPidFile);
+    syslog(LOG_INFO,"SIPd terminating");
     return 0;
 }
 

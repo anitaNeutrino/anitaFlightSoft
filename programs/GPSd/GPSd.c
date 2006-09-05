@@ -198,7 +198,7 @@ int main (int argc, char *argv[])
     closeHkFilesAndTidy(&adu5VtgWriter);
     closeHkFilesAndTidy(&g12PosWriter);
     closeHkFilesAndTidy(&g12SatWriter);
-
+    unlink(gpsdPidFile);
 
     syslog(LOG_INFO,"GPSd terminating");
     removeFile(gpsdPidFile);

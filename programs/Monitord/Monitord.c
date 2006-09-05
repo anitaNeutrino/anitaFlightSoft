@@ -102,6 +102,8 @@ int main (int argc, char *argv[])
 	    sleep(monitorPeriod);
 	}
     } while(currentState==PROG_STATE_INIT);    
+    closeHkFilesAndTidy(&monWriter);
+    unlink(monitordPidFile);
     return 0;
 }
 

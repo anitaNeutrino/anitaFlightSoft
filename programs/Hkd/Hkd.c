@@ -220,6 +220,7 @@ int main (int argc, char *argv[])
     closeMagnetometer();
     closeHkFilesAndTidy(&hkRawWriter);
     closeHkFilesAndTidy(&hkCalWriter);
+    unlink(hkdPidFile);
     syslog(LOG_INFO,"Hkd Terminating");
     return 0;
 }

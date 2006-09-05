@@ -929,7 +929,11 @@ int main(int argc, char **argv) {
     // Clean up
     for(surf=0;surf<numSurfs;surf++)
 	PlxPciDeviceClose(surfHandles[surf] );
-    
+
+    closeHkFilesAndTidy(&surfHkWriter);
+    closeHkFilesAndTidy(&turfHkWriter);
+    unlink(acqdPidFile);
+    syslog(LOG_INFO,"Acqd terminating");
     return 1 ;
 }
 

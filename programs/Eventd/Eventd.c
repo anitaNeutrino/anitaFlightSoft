@@ -243,6 +243,8 @@ int main (int argc, char *argv[])
 	    
 	}
     } while(currentState==PROG_STATE_INIT); 
+    unlink(eventdPidFile);
+    syslog(LOG_INFO,"Eventd terminating");
     return 0;
 }
 

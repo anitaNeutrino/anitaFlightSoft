@@ -271,7 +271,8 @@ int main(int argc, char *argv[])
 	    if(orderIndex>=numOrders) orderIndex=0;
 	}
     } while(currentState==PROG_STATE_INIT);
-
+    unlink(losdPidFile);
+    syslog(LOG_INFO,"LOSd terminating");
 //    fprintf(stderr, "Bye bye\n");
     return 0;
 } 
