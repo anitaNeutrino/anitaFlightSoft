@@ -29,7 +29,7 @@ extern  int versionsort(const void *a, const void *b);
 
 int diskBitMasks[DISK_TYPES]={0x1,0x2,0x4,0x8,0x10};
 char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
-int bufferDisk[DISK_TYPES]={0,0,1,1,0};
+int bufferDisk[DISK_TYPES]={1,0,1,1,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
     int diskInd;
@@ -376,10 +376,12 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
-		if(!bufferDisk[diskInd])
+		if(!bufferDisk[diskInd]) {
 		    execv("/bin/gzip",gzipHeadArg);
-		else
+		}
+		else {
 		    execv("/bin/bash",zipAndMoveArg);
+		}
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -394,8 +396,9 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
-		if(!bufferDisk[diskInd]) 
+		if(!bufferDisk[diskInd]) {
 		    execv("/bin/gzip",gzipBodyArg);
+		}
 		exit(0);
 	    }
 	    else if(childPid<0) {
@@ -503,10 +506,12 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		childPid=fork();
 		if(childPid==0) {
 		    //Child
-		    if(!bufferDisk[diskInd])
+		    if(!bufferDisk[diskInd]) {
 			execv("/usr/bin/nice",gzipHeadArg);
-		    else 
+		    }
+		    else {
 			execv("/bin/bash",zipAndMoveArg);
+		    }
 		    exit(0);
 		}
 		else if(childPid<0) {
@@ -517,8 +522,9 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		childPid=fork();
 		if(childPid==0) {
 		    //Child
-		    if(!bufferDisk[diskInd])
+		    if(!bufferDisk[diskInd]) {
 			execv("/usr/bin/nice",gzipBodyArg);
+		    }
 		    exit(0);
 		}
 		else if(childPid<0) {
@@ -1941,4 +1947,10 @@ int checkFileExists(char *filename) {
 	return 0;
     }
     return 1;
+}
+
+int gzipFile(char *filename) {
+
+
+
 }
