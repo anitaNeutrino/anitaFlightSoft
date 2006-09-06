@@ -15,9 +15,6 @@
 #define ANITA_STRUCTURES_H
 #include "includes/anitaFlight.h"
 
-#define MAX_SATS 12
-#define MAX_CMD_LENGTH 20
-
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
 #define GetChanIndex(A,B) ((B)+(9*(A)))
 
@@ -67,37 +64,6 @@
 #define VER_ZIPPED_FILE 1
 #define VER_ZIPPED_PACKET 1
 #endif
-
-//Relay Bit Masks
-#define RFCM1_MASK 0x1
-#define RFCM2_MASK 0x2
-#define RFCM3_MASK 0x4
-#define RFCM4_MASK 0x8
-#define VETO_MASK 0x10
-#define GPS_MASK 0x20
-#define CAL_PULSER_MASK 0x40
-
-#define RFSWITCH_MASK 0xf00
-#define RFSWITCH_SHIFT 8
-
-#define SS1_MASK 0xf000
-#define SS1_SHIFT 12
-
-#define WAKEUP_LOS_BUFFER_SIZE 4000
-#define WAKEUP_TDRSS_BUFFER_SIZE 500
-#define WAKEUP_LOW_RATE_BUFFER_SIZE 100
-
-//Turf Bit Masks
-#define CUR_BUF_MASK_READ 0x30
-#define CUR_BUF_SHIFT_READ 4
-#define CUR_BUF_MASK_FINAL 0xc
-#define CUR_BUF_SHIFT_FINAL 2
-#define TRIG_BUF_MASK_READ 0x60
-#define TRIG_BUF_SHIFT_READ 5
-#define TRIG_BUF_MASK_FINAL 0x3
-#define TRIG_BUF_SHIFT_FINAL 0
-
-
 
 
 //Enumerations
@@ -202,8 +168,7 @@ typedef enum {
     ENCODE_LOSSY_MULAW_7_4,
     ENCODE_LOSSY_MULAW_7_3,
     ENCODE_LOSSY_MULAW_6_4,
-    ENCODE_LOSSY_MULAW_6_3
-    
+    ENCODE_LOSSY_MULAW_6_3    
 } ChannelEncodingType_t;
 #endif
 
@@ -228,14 +193,11 @@ typedef enum {
     IP320_CAL=0x300
 } AnalogueCode_t;
 
-
-
+///////////////////////////////////////////////////////////////////////////
 //Structures
-typedef struct {
-    unsigned long pedUnixTime;
-    ChannelEncodingType_t encTypes[ACTIVE_SURFS][CHANNELS_PER_SURF];
-} EncodeControlStruct_t;
+///////////////////////////////////////////////////////////////////////////
 
+//Low level structs
 typedef struct {
     PacketCode_t code;    
     unsigned long packetNumber; //Especially for Ped
@@ -244,18 +206,6 @@ typedef struct {
     unsigned char verId;
     unsigned long checksum;
 } GenericHeader_t;
-
-
-typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long lastEventNumber;
-    float latitude;
-    float longitude;
-    float altitude;
-    unsigned short sbsTemp[2];
-} SlowRateType1_t;
-
 
 
 typedef struct {
@@ -272,7 +222,6 @@ typedef struct {
     unsigned short l3TrigPattern;
     unsigned short l3TrigPattern2;
 } SlacTurfioStruct_t;
-
 
 #ifdef SLAC_DATA06
 typedef SlacTurfioStruct_t TurfioStruct_t;
@@ -297,44 +246,6 @@ typedef struct {
 #endif
 
 
-
-typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;    
-    unsigned short l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
-    unsigned char upperL2Rates[PHI_SECTORS];
-    unsigned char lowerL2Rates[PHI_SECTORS];
-    unsigned char l3Rates[PHI_SECTORS];
-} TurfRateStruct_t;
-    
-#ifdef SLAC_DATA06
-typedef struct {
-    unsigned char chanId;   // chan+9*surf
-    unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
-    unsigned char firstHitbus;
-    unsigned char lastHitbus;
-    float mean; //Filled by Prioritizerd
-    float rms; //Filled by Prioritizerd
-
-} RawSurfChannelHeader_t;
-#else
-typedef struct {
-    unsigned char chanId;   // chan+9*surf
-    unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
-    unsigned char firstHitbus; // If wrappedHitbus=0 data runs, lastHitbus+1
-    unsigned char lastHitbus; //to firstHitbus-1 inclusive
-    //Otherwise it runs from firstHitbus+1 to lastHitbus-1 inclusive
-} RawSurfChannelHeader_t;
-#endif
-
-typedef struct {
-    RawSurfChannelHeader_t rawHdr;
-    ChannelEncodingType_t encType;
-    unsigned short numBytes;
-    unsigned short crc;
-} EncodedSurfChannelHeader_t;
-
 typedef struct {
     unsigned char chanId;   // chan+9*surf
     unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
@@ -352,7 +263,24 @@ typedef struct {
     unsigned short crc;
 } SlacEncodedSurfChannelHeader_t;
 
+#ifdef SLAC_DATA06
+typedef SlacRawSurfChannelHeader_t RawSurfChannelHeader_t;
+#else
+typedef struct {
+    unsigned char chanId;   // chan+9*surf
+    unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
+    unsigned char firstHitbus; // If wrappedHitbus=0 data runs, lastHitbus+1
+    unsigned char lastHitbus; //to firstHitbus-1 inclusive
+    //Otherwise it runs from firstHitbus+1 to lastHitbus-1 inclusive
+} RawSurfChannelHeader_t;
+#endif
 
+typedef struct {
+    RawSurfChannelHeader_t rawHdr;
+    ChannelEncodingType_t encType;
+    unsigned short numBytes;
+    unsigned short crc;
+} EncodedSurfChannelHeader_t;
 
 
 typedef struct {
@@ -368,6 +296,109 @@ typedef struct {
     float rms; //Filled by pedestalLib
     short data[MAX_NUMBER_SAMPLES]; //Pedestal subtracted and 11bit data
 } SurfChannelPedSubbed_t;
+
+typedef struct {
+    unsigned long unixTime;
+    unsigned long status;
+} CalibStruct_t;
+
+typedef struct {
+    unsigned short data[CHANS_PER_IP320];
+} AnalogueDataStruct_t;
+
+typedef struct {
+    long data[CHANS_PER_IP320];
+} AnalogueCorrectedDataStruct_t;
+
+typedef struct {
+    AnalogueCode_t code;
+    AnalogueDataStruct_t board[NUM_IP320_BOARDS];
+} FullAnalogueStruct_t;
+
+typedef struct {
+    unsigned short temp[2];
+} SBSTemperatureDataStruct_t;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+} MagnetometerDataStruct_t;
+
+
+typedef struct {    
+    unsigned short threshold;
+    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+} SimpleScalerStruct_t; //No longer used
+
+
+typedef struct {
+    unsigned short diskSpace[8]; //In units of 10 MegaBytes
+    char bladeLabel[10];
+    char usbIntLabel[10];
+    char usbExtLabel[10];
+} DiskSpaceStruct_t;
+
+typedef struct {
+    unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
+    unsigned short cmdLinksLOS;
+    unsigned short cmdLinksSIP;
+    unsigned short headLinks;
+    unsigned short gpsLinks;
+    unsigned short hkLinks;
+    unsigned short monitorLinks;
+    unsigned short surfHkLinks;
+    unsigned short turfHkLinks;
+    unsigned short pedestalLinks;
+} QueueStruct_t;
+
+typedef struct {    
+    unsigned char numCmdBytes;
+    unsigned char cmd[MAX_CMD_LENGTH];
+} CommandStruct_t;
+
+
+typedef struct {
+    unsigned char chanId;   // chan+9*surf
+    unsigned char chipId; // 0-3
+    unsigned short chipEntries;
+    unsigned short pedMean[MAX_NUMBER_SAMPLES]; // actual value
+    unsigned char pedRMS[MAX_NUMBER_SAMPLES]; //times 10
+} LabChipChannelPedStruct_t;
+
+typedef struct {
+    unsigned long eventNumber;
+    int eventDiskBitMask; //Which disks was it written to?
+    char bladeLabel[10];
+    char usbIntLabel[10];
+    char usbExtLabel[10];
+} IndexEntry_t;
+
+
+////////////////////////////////////////////////////////////////////////////
+//Telemetry Structs (may be used for onboard storage)
+////////////////////////////////////////////////////////////////////////////
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime;
+    unsigned long lastEventNumber;
+    float latitude;
+    float longitude;
+    float altitude;
+    unsigned short sbsTemp[2];
+} SlowRateType1_t;
+
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime;
+    unsigned long unixTimeUs;    
+    unsigned short l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
+    unsigned char upperL2Rates[PHI_SECTORS];
+    unsigned char lowerL2Rates[PHI_SECTORS];
+    unsigned char l3Rates[PHI_SECTORS];
+} TurfRateStruct_t;
+
 
 typedef struct {
     GenericHeader_t gHdr;
@@ -391,89 +422,15 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;    /* Global event number */
-    SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
-} AnitaEventBody_t;
-
-typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long eventNumber;    /* Global event number */
-    unsigned long whichPeds; //whichPedestals did we subtract
-    SurfChannelPedSubbed_t channel[NUM_DIGITZED_CHANNELS];
-} PedSubbedEventBody_t;
-
-
-
-/* these are syntactic sugar to help us keep track of bit shifts */
-typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
-typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
-typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
-
-
-/*    FOR THREE STRUCTS THAT FOLLOW
-      valid samples==-1 prior to unwinding 
-*/
-
-typedef struct {
-     int data[MAX_NUMBER_SAMPLES];
-     int valid_samples; 
-} LogicChannel_t;
-
-typedef struct {
-     Fixed3_t data[MAX_NUMBER_SAMPLES];
-     Fixed3_t baseline;
-     short valid_samples;
-} TransientChannel3_t;
-
-typedef struct {
-     Fixed6_t data[MAX_NUMBER_SAMPLES];
-     short valid_samples;
-} TransientChannel6_t;
-
-typedef struct {
-     Fixed8_t data[MAX_NUMBER_SAMPLES];
-     Fixed8_t baseline;
-     short valid_samples;
-} TransientChannel8_t;
-
-typedef struct {
-     float data[MAX_NUMBER_SAMPLES];
-     short valid_samples;
-} TransientChannelF_t;
-
-typedef struct {
-     TransientChannel3_t ch[NUM_DIGITZED_CHANNELS]; 
-} AnitaTransientBody3_t; /* final corrected transient type 
-			    used to calculate power */
-
-typedef struct {
-     TransientChannel6_t ch[NUM_DIGITZED_CHANNELS]; 
-} AnitaPowerBody6_t; /* power from squaring an AnitaTransientBody3 */
-
-typedef struct {
-     TransientChannel8_t ch[NUM_DIGITZED_CHANNELS]; 
-} AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
-			    averaging, and gain correction */
-
-typedef struct {
-     TransientChannelF_t ch[NUM_DIGITZED_CHANNELS]; 
-} AnitaTransientBodyF_t;
-
-typedef struct {
-     TransientChannel6_t S0,S1,S2,S3;
-} AnitaStokes6_t;
-
-
-typedef struct {
-    AnitaEventHeader_t header;
-    AnitaEventBody_t body;
-} AnitaEventFull_t;
+    unsigned long eventNumber;
+    SurfChannelFull_t waveform;
+} RawWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long eventNumber;
-    SurfChannelFull_t waveform;
-} RawWaveformPacket_t;
+    SurfChannelPedSubbed_t waveform;
+} PedSubbedWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
@@ -482,10 +439,10 @@ typedef struct {
 } RawSurfPacket_t;
 
 typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long eventNumber;
-    unsigned long whichPeds;
-    EncodedSurfChannelHeader_t chanHead;
+     GenericHeader_t gHdr;
+     unsigned long eventNumber;
+     unsigned long whichPeds;
+     EncodedSurfChannelHeader_t chanHead;
 } EncodedWaveformPacket_t;
 
 typedef struct {
@@ -497,20 +454,10 @@ typedef struct {
     GenericHeader_t gHdr;
     unsigned long whichPeds;
     unsigned long eventNumber;
-} EncodedPedSubbedSurfPacketHeader_t;
+} BaseWavePacketHeader_t;
 
-
-typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long eventNumber;
-    unsigned long numBytes;
-} EncodedEventWrapper_t;
-
-typedef struct {
-    unsigned long unixTime;
-    unsigned long subTime;
-    int fromAdu5; //1 is yes , 0 is g12
-} GpsSubTime_t;
+typedef BaseWavePacketHeader_t EncodedPedSubbedSurfPacketHeader_t;
+typedef BaseWavePacketHeader_t EncodedPedSubbedChannelPacketHeader_t;
 
 typedef struct {
     GenericHeader_t gHdr;
@@ -578,33 +525,6 @@ typedef struct {
     float tdop;
 } GpsG12PosStruct_t;
 
-typedef struct {
-    unsigned long unixTime;
-    unsigned long status;
-} CalibStruct_t;
-
-typedef struct {
-    unsigned short data[CHANS_PER_IP320];
-} AnalogueDataStruct_t;
-
-typedef struct {
-    long data[CHANS_PER_IP320];
-} AnalogueCorrectedDataStruct_t;
-
-typedef struct {
-    AnalogueCode_t code;
-    AnalogueDataStruct_t board[NUM_IP320_BOARDS];
-} FullAnalogueStruct_t;
-
-typedef struct {
-    unsigned short temp[2];
-} SBSTemperatureDataStruct_t;
-
-typedef struct {
-    float x;
-    float y;
-    float z;
-} MagnetometerDataStruct_t;
 
 typedef struct {    
     GenericHeader_t gHdr;
@@ -614,11 +534,6 @@ typedef struct {
     MagnetometerDataStruct_t mag;
     SBSTemperatureDataStruct_t sbs;
 } HkDataStruct_t;
-
-typedef struct {    
-    unsigned short threshold;
-    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
-} SimpleScalerStruct_t;
 
 typedef struct { 
     GenericHeader_t gHdr;
@@ -633,11 +548,6 @@ typedef struct {
     unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
 } FullSurfHkStruct_t;
 
-typedef struct {    
-    unsigned char numCmdBytes;
-    unsigned char cmd[MAX_CMD_LENGTH];
-} CommandStruct_t;
-
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long unixTime;
@@ -647,39 +557,11 @@ typedef struct {
 } CommandEcho_t;
 
 typedef struct {
-    unsigned short diskSpace[8]; //In units of 10 MegaBytes
-    char bladeLabel[10];
-    char usbIntLabel[10];
-    char usbExtLabel[10];
-} DiskSpaceStruct_t;
-
-typedef struct {
-    unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
-    unsigned short cmdLinksLOS;
-    unsigned short cmdLinksSIP;
-    unsigned short headLinks;
-    unsigned short gpsLinks;
-    unsigned short hkLinks;
-    unsigned short monitorLinks;
-    unsigned short surfHkLinks;
-    unsigned short turfHkLinks;
-    unsigned short pedestalLinks;
-} QueueStruct_t;
-
-typedef struct {
     GenericHeader_t gHdr;
     unsigned long unixTime;
     DiskSpaceStruct_t diskInfo;
     QueueStruct_t queueInfo;
 } MonitorStruct_t;
-
-typedef struct {
-    unsigned char chanId;   // chan+9*surf
-    unsigned char chipId; // 0-3
-    unsigned short chipEntries;
-    unsigned short pedMean[MAX_NUMBER_SAMPLES]; // actual value
-    unsigned char pedRMS[MAX_NUMBER_SAMPLES]; //times 10
-} LabChipChannelPedStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
@@ -688,6 +570,129 @@ typedef struct {
     LabChipChannelPedStruct_t pedChan[CHANNELS_PER_SURF];
 } FullLabChipPedStruct_t;
 
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long numUncompressedBytes;
+} ZippedPacket_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime;
+    unsigned long numUncompressedBytes;
+    char filename[60];
+} ZippedFile_t;
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+// On-board structs
+////////////////////////////////////////////////////////////////////////////
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long eventNumber;    /* Global event number */
+    SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
+} AnitaEventBody_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long eventNumber;    /* Global event number */
+    unsigned long whichPeds; //whichPedestals did we subtract
+    SurfChannelPedSubbed_t channel[NUM_DIGITZED_CHANNELS];
+} PedSubbedEventBody_t;
+
+typedef struct {
+    AnitaEventHeader_t header;
+    AnitaEventBody_t body;
+} AnitaEventFull_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long eventNumber;
+    unsigned long numBytes;
+} EncodedEventWrapper_t; //Not implemented
+
+typedef struct {
+    unsigned long unixTime;
+    unsigned long subTime;
+    int fromAdu5; //1 is yes , 0 is g12
+} GpsSubTime_t;
+
+
+
+///////////////////////////////////////////////////////////////////////
+//Utility Structures
+//////////////////////////////////////////////////////////////////////
+typedef struct {
+    unsigned long pedUnixTime;
+    ChannelEncodingType_t encTypes[ACTIVE_SURFS][CHANNELS_PER_SURF];
+} EncodeControlStruct_t;
+
+////////////////////////////////////////////////////////////////////////////
+//Prioritizer Utitlity Structs
+///////////////////////////////////////////////////////////////////////////
+
+/* these are syntactic sugar to help us keep track of bit shifts */
+typedef int Fixed3_t; /*rescaled integer left shifted 3 bits */
+typedef int Fixed6_t; /*rescaled integer left shifted 6 bits */
+typedef int Fixed8_t; /*rescaled integer left shifted 8 bits */
+
+
+/*    FOR THREE STRUCTS THAT FOLLOW
+      valid samples==-1 prior to unwinding 
+*/
+
+typedef struct {
+     int data[MAX_NUMBER_SAMPLES];
+     int valid_samples; 
+} LogicChannel_t;
+
+typedef struct {
+     Fixed3_t data[MAX_NUMBER_SAMPLES];
+     Fixed3_t baseline;
+     short valid_samples;
+} TransientChannel3_t;
+
+typedef struct {
+     Fixed6_t data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+} TransientChannel6_t;
+
+typedef struct {
+     Fixed8_t data[MAX_NUMBER_SAMPLES];
+     Fixed8_t baseline;
+     short valid_samples;
+} TransientChannel8_t;
+
+typedef struct {
+     float data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+} TransientChannelF_t;
+
+typedef struct {
+     TransientChannel3_t ch[NUM_DIGITZED_CHANNELS]; 
+} AnitaTransientBody3_t; /* final corrected transient type 
+			    used to calculate power */
+
+typedef struct {
+     TransientChannel6_t ch[NUM_DIGITZED_CHANNELS]; 
+} AnitaPowerBody6_t; /* power from squaring an AnitaTransientBody3 */
+
+typedef struct {
+     TransientChannel8_t ch[NUM_DIGITZED_CHANNELS]; 
+} AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
+			    averaging, and gain correction */
+
+typedef struct {
+     TransientChannelF_t ch[NUM_DIGITZED_CHANNELS]; 
+} AnitaTransientBodyF_t;
+
+typedef struct {
+     TransientChannel6_t S0,S1,S2,S3;
+} AnitaStokes6_t;
+
+///////////////////////////////////////////////////////////////////////////////
+////Pedestal Calculation and Storage  Structs
+//////////////////////////////////////////////////////////////////////////////
 typedef struct {
     unsigned long unixTimeStart;
     unsigned long unixTimeEnd;
@@ -714,24 +719,6 @@ typedef struct {
     /* 10 x RMS of the samples (not of mean)*/
 } PedestalStruct_t;
 
-typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long numUncompressedBytes;
-} ZippedPacket_t;
 
-typedef struct {
-    GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long numUncompressedBytes;
-    char filename[60];
-} ZippedFile_t;
-
-typedef struct {
-    unsigned long eventNumber;
-    int eventDiskBitMask; //Which disks was it written to?
-    char bladeLabel[10];
-    char usbIntLabel[10];
-    char usbExtLabel[10];
-} IndexEntry_t;
 
 #endif /* ANITA_STRUCTURES_H */

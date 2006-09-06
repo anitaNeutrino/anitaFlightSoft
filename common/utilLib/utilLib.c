@@ -202,101 +202,6 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 }
 
 
-int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
-{
-    int diskInd;
-    int retVal=0;
-    static int errorCounter=0;
-    int dirNum;
-//    pid_t childPid;    
-    char fullBasename[FILENAME_MAX];
-
-    if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {
-	closeEventFilesAndTidy(awsPtr);
-	awsPtr->gotData=0;
-    }
-
-
-    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
-	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
-
-	if(!awsPtr->currentEventFilePtr[diskInd]) {
-	    //First time
-	    sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);	    	    
-	    //Make base dir
-	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
-	    sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
-	    makeDirectories(awsPtr->currentDirName[diskInd]);
-	    awsPtr->fileCount[diskInd]=0;
-
-	    //Make sub dir
-	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
-	    sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
-	    makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
-	    awsPtr->dirCount[diskInd]=0;
-
-	    //Make files
-	    dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
-	    sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
-		    awsPtr->currentSubDirName[diskInd],dirNum);
-	    awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
-	    awsPtr->writeCount[diskInd]=0;
-	    
-	    if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
-		if(errorCounter<100) {
-		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentHeaderFileName[diskInd]);
-		}
-	    }
-
-	    sprintf(awsPtr->currentEventFileName[diskInd],"%s/ev_%d.dat",
-		    awsPtr->currentSubDirName[diskInd],dirNum);
-	    awsPtr->currentEventFilePtr[diskInd]=
-		fopen(awsPtr->currentEventFileName[diskInd],"ab");
-	    if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
-		if(errorCounter<100) {
-		    errorCounter++;
-		    printf("Error (%d of 100) trying to open file %s\n",
-			   errorCounter,awsPtr->currentEventFileName[diskInd]);
-		}
-	    }
-	    awsPtr->fileEpoch=dirNum+EVENTS_PER_FILE;
-
-	}
-	if(awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
-	    
-	    awsPtr->writeCount[diskInd]++;
-	    if(errorCounter<100 && awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
-		retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
-		if(retVal<0) {
-		    errorCounter++;
-		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-			   errorCounter,awsPtr->writeCount[diskInd],
-			   strerror(errno),retVal);
-		}
-		else 
-		    fflush(awsPtr->currentHeaderFilePtr[diskInd]);  
-		
-		retVal=fwrite(bdPtr,sizeof(AnitaEventBody_t),1,awsPtr->currentEventFilePtr[diskInd]);
-		if(retVal<0) {
-		    errorCounter++;
-		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-			   errorCounter,awsPtr->writeCount[diskInd],
-			   strerror(errno),retVal);
-		}
-		else 
-		    fflush(awsPtr->currentEventFilePtr[diskInd]);  
-		awsPtr->gotData=1;
-	    }    
-	    else continue;       	
-	}
-    }
-    
-    return 0;
-    
-}
-
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 
     int diskInd;
@@ -355,7 +260,7 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 }
 
 
-int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
+int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
     int diskInd,cloneInd;
     int retVal=0;
@@ -394,7 +299,6 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		makeDirectories(bufferName);
 
 	    }
-	    awsPtr->fileCount[diskInd]=0;
 
 	    //Make sub dir
 	    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
@@ -405,7 +309,6 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
 		makeDirectories(bufferName);
 	    }
-	    awsPtr->dirCount[diskInd]=0;
 
 	    //Make files
 	    dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
@@ -419,7 +322,6 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentHeaderFileName[diskInd]);
 		awsPtr->currentHeaderFilePtr[diskInd]=fopen(bufferName,"ab");
 	    }
-	    awsPtr->writeCount[diskInd]=0;
 		    
 	    if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
 		if(errorCounter<100) {
@@ -428,8 +330,9 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 			   errorCounter,awsPtr->currentHeaderFileName[diskInd]);
 		}
 	    }
-	    sprintf(awsPtr->currentEventFileName[diskInd],"%s/encev_%d.dat",
-		    awsPtr->currentSubDirName[diskInd],dirNum);
+	    sprintf(awsPtr->currentEventFileName[diskInd],"%s/%s_%d.dat",
+		    awsPtr->currentSubDirName[diskInd],awsPtr->filePrefix,
+		    dirNum);
 	    if(!bufferDisk[diskInd]) {
 		awsPtr->currentEventFilePtr[diskInd]=
 		    fopen(awsPtr->currentEventFileName[diskInd],"ab");
@@ -469,13 +372,12 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 }
 	if(awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
 	    
-	    awsPtr->writeCount[diskInd]++;
 	    if(errorCounter<100 && awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
 		retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
 		if(retVal<0) {
 		    errorCounter++;
-		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-			   errorCounter,awsPtr->writeCount[diskInd],
+		    printf("Error (%d of 100) writing to file -- %s (%d)\n",
+			   errorCounter,
 			   strerror(errno),retVal);
 		}
 		else 
@@ -484,8 +386,8 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 		retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr[diskInd]);
 		if(retVal<0) {
 		    errorCounter++;
-		    printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
-			   errorCounter,awsPtr->writeCount[diskInd],
+		    printf("Error (%d of 100) writing to file -- %s (%d)\n",
+			   errorCounter,
 			   strerror(errno),retVal);
 		}
 		else 
@@ -1779,7 +1681,7 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_TURF_RATE: string="TurfRateStruct_t"; break;
 	case PACKET_LAB_PED: string="FullLabChipPedStruct_t"; break;
 	case PACKET_FULL_PED: string="FullPedStruct_t"; break;
-	case PACKET_ENC_WV: string="EncodedWaveformPacket_t"; break;
+	case PACKET_ENC_WV: string="EncodedPedSubbedChannelPacketHeader_t"; break;
 	case PACKET_ENC_SURF: string="EncodedSurfPacketHeader_t"; break;
 	case PACKET_ENC_SURF_PEDSUB: string="EncodedPedSubbedSurfPacketHeader_t"; break;
 	case PACKET_GPS_ADU5_PAT: string="GpsAdu5PatStruct_t"; break;
@@ -1993,6 +1895,6 @@ int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned
     int retVal=zipBuffer(input,&output[sizeof(ZippedPacket_t)],numBytes,&numBytesOut);
     if(retVal!=0) 
 	return retVal;
-    fillGenericHeader(output,PACKET_ZIPPED_FILE,sizeof(ZippedPacket_t)+numBytesOut);
+    fillGenericHeader(output,PACKET_ZIPPED_PACKET,sizeof(ZippedPacket_t)+numBytesOut);
     return sizeof(ZippedPacket_t)+numBytesOut;   
 }

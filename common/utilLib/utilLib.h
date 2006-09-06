@@ -53,9 +53,7 @@ typedef struct {
     unsigned int usbintCloneMask;
     unsigned long fileEpoch;
     unsigned long gotData;
-    int writeCount[DISK_TYPES];
-    int fileCount[DISK_TYPES];
-    int dirCount[DISK_TYPES];
+    char filePrefix[FILENAME_MAX];
     char relBaseName[FILENAME_MAX];
     char currentEventFileName[DISK_TYPES][FILENAME_MAX];
     char currentHeaderFileName[DISK_TYPES][FILENAME_MAX];
@@ -136,8 +134,7 @@ int touchFile(char *filename);
 int checkFileExists(char *filename);
 
 int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned long unixTime, AnitaHkWriterStruct_t *awsPtr);
-int cleverRawEventWrite(AnitaEventBody_t *bdPtr,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
-int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
+int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);
     int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr);
     int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr);

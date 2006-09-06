@@ -158,6 +158,7 @@ int main(int argc, char *argv[])
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(GPS_TELEM_LINK_DIR);
     makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(REQUEST_TELEM_LINK_DIR);
 
     
     //Fill event dir names
@@ -874,16 +875,15 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 
 int sendEncodedPedSubbedWavePackets(int bufSize)
 {
-    EncodedWaveformPacket_t *waveHdPtr;
+    EncodedPedSubbedChannelPacketHeader_t *waveHdPtr;
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
     int numBytes,count=0,surf=0,chan,count2;;
     EncodedSurfChannelHeader_t *chanHdPtr;
+    EncodedSurfChannelHeader_t *chanHdPtr2;
 
     // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &eventBuffer[count];
-//	surfHdPtr->gHdr.packetNumber=getLosNumber();
-	numBytes = surfHdPtr->gHdr.numBytes;
 //	printf("surfHdPtr.eventNumber %lu, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
 	count2=count+sizeof(EncodedPedSubbedSurfPacketHeader_t);
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
@@ -895,14 +895,17 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
 		doWrite();
 	    }
-	    waveHdPtr=(EncodedWaveformPacket_t*)&losBuffer[numBytesInBuffer];
+	    waveHdPtr=(EncodedPedSubbedChannelPacketHeader_t*)&losBuffer[numBytesInBuffer];
+	    waveHdPtr->gHdr.packetNumber=getLosNumber();
 	    waveHdPtr->eventNumber=surfHdPtr->eventNumber;
 	    waveHdPtr->whichPeds=surfHdPtr->whichPeds;
-	    waveHdPtr->chanHead=(*chanHdPtr);
-	    numBytesInBuffer+=sizeof(EncodedWaveformPacket_t);
+	    numBytesInBuffer+=sizeof(EncodedPedSubbedChannelPacketHeader_t);
+	    chanHdPtr2= (EncodedSurfChannelHeader_t*)&losBuffer[numBytesInBuffer];
+	    (*chanHdPtr2)=(*chanHdPtr);
+	    numBytesInBuffer+=sizeof(EncodedSurfChannelHeader_t);
 	    count2+=sizeof(EncodedSurfChannelHeader_t);
 	    memcpy(&losBuffer[numBytesInBuffer],&eventBuffer[count2],numBytes);
-	    fillGenericHeader(waveHdPtr,PACKET_ENC_WV,sizeof(EncodedWaveformPacket_t)+numBytes);
+	    fillGenericHeader(waveHdPtr,PACKET_ENC_WV,sizeof(EncodedPedSubbedChannelPacketHeader_t)+sizeof(EncodedSurfChannelHeader_t)+numBytes);
 	    count2+=chanHdPtr->numBytes;
 	    numBytesInBuffer+=numBytes;
 	}
