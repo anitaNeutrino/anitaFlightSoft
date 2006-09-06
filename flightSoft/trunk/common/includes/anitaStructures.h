@@ -47,7 +47,7 @@
 #define VER_SURF_PACKET 6
 #define VER_ENC_WAVE_PACKET 6
 #define VER_ENC_SURF_PACKET 6
-#define VER_SURF_HK 5
+#define VER_SURF_HK 7
 #define VER_ADU5_PAT 4
 #define VER_ADU5_SAT 4
 #define VER_ADU5_VTG 4
@@ -547,6 +547,7 @@ typedef struct {
     unsigned short upperWords[ACTIVE_SURFS];
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
+    unsigned short setThreshold[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
     unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
 } FullSurfHkStruct_t;
