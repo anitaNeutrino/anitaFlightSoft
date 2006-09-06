@@ -797,6 +797,32 @@ int copyFile(const char *theFile, const char *theDir)
 }
 
 
+int copyFileToFile(const char *theFile, const char *newFile)
+{
+    static int errorCounter=0;
+    //Only works on relative small files (will write a better version)
+    unsigned long numBytes=0;
+    char *buffer=readFile(theFile,&numBytes);
+
+    //Open the output file
+    FILE *fout = fopen(newFile,"w");
+    if(!fout) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Couldn't open %s for copy of %s -- Error %s\n",
+		   newFile,theFile,strerror(errno));
+	    fprintf(stderr,"Couldn't open %s for copy of %s -- Error %s\n",
+		    newFile,theFile,strerror(errno));
+	    errorCounter++;
+	}
+	return -1;
+    }
+    fwrite(buffer,1,numBytes,fout);
+    fclose(fout);
+    free(buffer);
+    return 0;
+}
+
+
 int removeFile(const char *theFile)
 {
     static int errorCounter=0;
@@ -1891,7 +1917,7 @@ int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask,int baseInd) {
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
 	sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
-	copyFile(outputFilename,cloneFilename);	
+	copyFileToFile(outputFilename,cloneFilename);	
     }
 
     free(buffer);
@@ -1901,6 +1927,7 @@ int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask,int baseInd) {
 
 
 int zipBufferedFileAndMove(char *filename) {
+//    printf("zipBufferedFileAndMove %s\n",filename);
     int retVal;
     char bufferFilename[FILENAME_MAX];
     char bufferZippedFilename[FILENAME_MAX];
@@ -1909,21 +1936,25 @@ int zipBufferedFileAndMove(char *filename) {
     sprintf(bufferFilename,"/tmp/buffer/%s",filename);
     char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
+	fprintf(stderr,"Problem reading file %s\n",bufferFilename);
 	free(buffer);
 	return -1;
     }    
     sprintf(bufferZippedFilename,"%s.gz",bufferFilename);
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
-    moveFile(bufferZippedFilename,outputFilename);
+    printf("move %s %s\n",bufferZippedFilename,outputFilename);
+    rename(bufferZippedFilename,outputFilename);
     free(buffer);
-    unlink(bufferZippedFilename);
+//    unlink(bufferZippedFilename);
     unlink(bufferFilename);
     return retVal;
 }
 
 int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int baseInd) {
+//    printf("zipBufferedFileAndCloneAndMove %s, %u %d\n",filename,cloneMask,baseInd);
     if(cloneMask==0) return zipBufferedFileAndMove(filename);
+//    printf("Here\n");
     //Doesn't actually clone yet
     int retVal;
     char bufferFilename[FILENAME_MAX];
@@ -1933,7 +1964,7 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     int diskInd;
     unsigned long numBytesIn=0;
     sprintf(bufferFilename,"/tmp/buffer/%s",filename);
-    char *buffer=readFile(filename,&numBytesIn);
+    char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
 	free(buffer);
 	return -1;
@@ -1946,9 +1977,10 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
 	sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
-	copyFile(bufferZippedFilename,cloneFilename);	
+	copyFileToFile(bufferZippedFilename,cloneFilename);	
     }
-    moveFile(bufferZippedFilename,outputFilename);
+//    printf("move2 %s %s\n",bufferZippedFilename,outputFilename);
+    rename(bufferZippedFilename,outputFilename);
     free(buffer);
     unlink(bufferFilename);
     return retVal;

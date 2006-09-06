@@ -380,8 +380,8 @@ void prepWriterStructs() {
 	eventWriter.currentEventFilePtr[diskInd]=0;
     }
     eventWriter.bladeCloneMask=bladeCloneMask;
-    eventWriter.bladeCloneMask=puckCloneMask;
-    eventWriter.bladeCloneMask=usbintCloneMask;   
+    eventWriter.puckCloneMask=puckCloneMask;
+    eventWriter.usbintCloneMask=usbintCloneMask;   
     eventWriter.gotData=0;
     eventWriter.writeBitMask=eventDiskBitMask;
 

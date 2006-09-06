@@ -68,6 +68,7 @@ int is_dir(const char *path);
 int makeLink(const char *theFile, const char *theLinkDir);
 int moveFile(const char *theFile, const char *theDir);
 int copyFile(const char *theFile, const char *theDir);
+    int copyFileToFile(const char *theFile, const char *newFile);
 char *readFile(const char *theFile, unsigned long *numBytes);
 int removeFile(const char *theFile);
 
