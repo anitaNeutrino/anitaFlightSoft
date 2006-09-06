@@ -1037,10 +1037,12 @@ int tailFile(char *filename, int numLines) {
     static int counter=0;
     time_t rawtime;
     time(&rawtime);
+    char tailFilename[FILENAME_MAX];
+    sprintf(tailFilename,"/tmp/tail_%s",basename(filename));
     char theCommand[FILENAME_MAX];
-    sprintf(theCommand,"tail -n %d %s > /tmp/tailFile",numLines,filename);
+    sprintf(theCommand,"tail -n %d %s > %s",numLines,filename,tailFilename);
     system(theCommand);
-    rawtime=makeZippedFilePacket("/tmp/tailFile",counter);
+    rawtime=makeZippedFilePacket(tailFilename,counter);
     counter++;    
     return rawtime;
 }
