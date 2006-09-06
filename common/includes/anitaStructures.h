@@ -68,20 +68,20 @@
 
 //Enumerations
 typedef enum {
-    PACKET_HD = 0x100,
-    PACKET_WV = 0x101, //Too big to telemeter
-    PACKET_SURF = 0x102,
+    PACKET_HD = 0x100, //AnitaEventHeader_t --Yes
+    PACKET_WV = 0x101, //RawWaveformPacket_t --Yes
+    PACKET_SURF = 0x102, //RawSurfPacket_t --No
     PACKET_HD_SLAC = 0x103,
-    PACKET_SURF_HK = 0x110,
-    PACKET_TURF_RATE = 0x111,
-    PACKET_ENC_WV = 0x120,
-    PACKET_ENC_SURF = 0x121,
-    PACKET_ENC_SURF_PEDSUB = 0x122,
-    PACKET_ENC_EVENT_WRAPPER = 0x123,
-    PACKET_PED_SUBBED_EVENT = 0x124,
-    PACKET_ENC_WV_PEDSUB = 0x125,
+    PACKET_SURF_HK = 0x110, //FullSurfHkStruct_t --Yes
+    PACKET_TURF_RATE = 0x111, //TurfRateStruct_t -- Yes
+    PACKET_PEDSUB_WV = 0x120, //PedSubbedWaveformPacket_t -- Yes
+    PACKET_ENC_SURF = 0x121, //EncodedSurfPacketHeader_t -- Yes
+    PACKET_ENC_SURF_PEDSUB = 0x122, //EncodedPedSubbedSurfPacketHeader_t -- Yes
+    PACKET_ENC_EVENT_WRAPPER = 0x123, 
+    PACKET_PED_SUBBED_EVENT = 0x124, //PedSubbedEventBody_t -- No too big
+    PACKET_ENC_WV_PEDSUB = 0x125, // EncodedPedSubbedChannelPacketHeader_t -- Yes
     PACKET_ENC_PEDSUB_EVENT_WRAPPER = 0x126,
-    PACKET_LAB_PED = 0x130,
+    PACKET_LAB_PED = 0x130, //
     PACKET_FULL_PED = 0x131, //Too big to telemeter
     PACKET_GPS_ADU5_PAT = 0x200,
     PACKET_GPS_ADU5_SAT = 0x201,
@@ -446,7 +446,7 @@ typedef struct {
      unsigned long eventNumber;
      unsigned long whichPeds;
      EncodedSurfChannelHeader_t chanHead;
-} EncodedWaveformPacket_t;
+} EncodedWaveformPacket_t; //0x101
 
 typedef struct {
     GenericHeader_t gHdr;
