@@ -37,6 +37,7 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber);
 void readAndSendEventRamdisk(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 int getLosNumber();
+int sendEncodedPedSubbedWavePackets(int bufSize);
 int sendEncodedPedSubbedSurfPackets(int bufSize);
 int sendEncodedSurfPackets(int bufSize);
 
@@ -74,6 +75,7 @@ unsigned char eventBuffer[MAX_EVENT_SIZE];
 unsigned char losBuffer[LOS_MAX_BYTES];
 int numBytesInBuffer=0;
 int sendData=0;
+int sendWavePackets=0;
 
 #define MAX_ATTEMPTS 50
 
@@ -370,6 +372,7 @@ int readConfig()
     status = configLoad ("LOSd.config","losd");
     if(status == CONFIG_E_OK) {
 	sendData=kvpGetInt("sendData",0);
+	sendWavePackets=kvpGetInt("sendWavePackets",0);
 	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	laptopDebug=kvpGetInt("laptopDebug",0);
 	losBus=kvpGetInt("losBus",1);
@@ -775,7 +778,10 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	    retVal=sendEncodedSurfPackets(retVal);
 	    break;
 	case PACKET_ENC_SURF_PEDSUB:
-	    retVal=sendEncodedPedSubbedSurfPackets(retVal);
+	    if(sendWavePackets)
+		retVal=sendEncodedPedSubbedWavePackets(retVal);
+	    else 
+		retVal=sendEncodedPedSubbedSurfPackets(retVal);
 	    break;
 	default:
 	    if(errorCounter<100) {
@@ -858,6 +864,51 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 	    memcpy(&losBuffer[numBytesInBuffer],surfHdPtr,numBytes);
 	    count+=numBytes;
 	    numBytesInBuffer+=numBytes;
+	}
+	else break;
+	if(count>bufSize) return -1;
+    }
+    return 0;
+}
+
+
+int sendEncodedPedSubbedWavePackets(int bufSize)
+{
+    EncodedWaveformPacket_t *waveHdPtr;
+    EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
+    int numBytes,count=0,surf=0,chan,count2;;
+    EncodedSurfChannelHeader_t *chanHdPtr;
+
+    // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &eventBuffer[count];
+//	surfHdPtr->gHdr.packetNumber=getLosNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+//	printf("surfHdPtr.eventNumber %lu, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
+	count2=count+sizeof(EncodedPedSubbedSurfPacketHeader_t);
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    chanHdPtr = (EncodedSurfChannelHeader_t*)&eventBuffer[count2];
+		    
+//	    printf("surf %d, chan %d, encType %d, numBytes %d\n",
+//		   surf,chan,chanHdPtr->encType,chanHdPtr->numBytes);
+	    numBytes=chanHdPtr->numBytes;
+	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+		doWrite();
+	    }
+	    waveHdPtr=(EncodedWaveformPacket_t*)&losBuffer[numBytesInBuffer];
+	    waveHdPtr->eventNumber=surfHdPtr->eventNumber;
+	    waveHdPtr->whichPeds=surfHdPtr->whichPeds;
+	    waveHdPtr->chanHead=(*chanHdPtr);
+	    numBytesInBuffer+=sizeof(EncodedWaveformPacket_t);
+	    count2+=sizeof(EncodedSurfChannelHeader_t);
+	    memcpy(&losBuffer[numBytesInBuffer],&eventBuffer[count2],numBytes);
+	    fillGenericHeader(waveHdPtr,PACKET_ENC_WV,sizeof(EncodedWaveformPacket_t)+numBytes);
+	    count2+=chanHdPtr->numBytes;
+	    numBytesInBuffer+=numBytes;
+	}
+
+	if(numBytes) {
+	    count+=numBytes;
 	}
 	else break;
 	if(count>bufSize) return -1;
