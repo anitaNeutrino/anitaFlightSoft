@@ -52,6 +52,9 @@ int verbosity=0;
 int writeTelem=0;
 
 int eventDiskBitMask;
+int bladeCloneMask;
+int puckCloneMask;
+int usbintCloneMask;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
@@ -91,6 +94,9 @@ int main (int argc, char *argv[])
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
+	bladeCloneMask=kvpGetInt("bladeCloneMask",0);
+	puckCloneMask=kvpGetInt("puckCloneMask",0);
+	usbintCloneMask=kvpGetInt("usbintCloneMask",0);
 	tempString=kvpGetString("archivedPidFile");
 	if(tempString) {
 	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
@@ -373,6 +379,10 @@ void prepWriterStructs() {
 	eventWriter.currentHeaderFilePtr[diskInd]=0;
 	eventWriter.currentEventFilePtr[diskInd]=0;
     }
+    eventWriter.bladeCloneMask=bladeCloneMask;
+    eventWriter.bladeCloneMask=puckCloneMask;
+    eventWriter.bladeCloneMask=usbintCloneMask;   
+    eventWriter.gotData=0;
     eventWriter.writeBitMask=eventDiskBitMask;
 
     //Index Writer
