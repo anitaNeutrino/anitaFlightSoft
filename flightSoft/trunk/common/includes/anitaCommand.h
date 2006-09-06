@@ -43,6 +43,8 @@ typedef enum {
 } ProgramId_t;
 
 typedef enum {
+    CMD_TAIL_VAR_LOG_MESSAGES = 1,
+    CMD_TAIL_VAR_LOG_ANITA = 2,
     CMD_SHUTDOWN_HALT = 129,
     CMD_REBOOT = 130,
     CMD_KILL_PROGS = 131,

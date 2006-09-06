@@ -43,7 +43,8 @@ char *getPidFile(ProgramId_t prog);
 int mountNextBlade();
 int mountNextUsb(int intExtFlag);
 void prepWriterStructs();
-
+int tailFile(char *filename, int numLines);
+int makeZippedFilePacket(char *filename,int fileTag);
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -329,6 +330,12 @@ int executeCommand(CommandStruct_t *theCmd)
     int ivalue;
     char theCommand[FILENAME_MAX];
     switch(theCmd->cmd[0]) {
+	case CMD_TAIL_VAR_LOG_MESSAGES:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return tailFile("/var/log/messages",ivalue);
+	case CMD_TAIL_VAR_LOG_ANITA:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return tailFile("/var/log/anita.log",ivalue);
 	case CMD_SHUTDOWN_HALT:
 	    //Halt
 	    time(&rawtime);
@@ -679,18 +686,11 @@ int cleanDirs()
 
 int sendConfig(int progMask) 
 {
-    ZippedFile_t *zipFilePtr;
-    time_t rawtime;
-    time(&rawtime);
-    int retVal;
+    time_t rawtime=0;
     int errorCount=0;
     ProgramId_t prog;
     char configFile[FILENAME_MAX];
-    char outputName[FILENAME_MAX];
     char *fullFilename;
-    char *inputBuffer;
-    char *outputBuffer;
-    unsigned long numBytesIn=0,numBytesOut=0;
     int testMask;	
 
     printf("sendConfig %d\n",progMask);
@@ -701,25 +701,7 @@ int sendConfig(int progMask)
 	    sprintf(configFile,"%s.config",getProgName(prog));
 	    printf("Trying to send config file -- %s\n",configFile);
 	    fullFilename=configFileSpec(configFile);
-	    inputBuffer=readFile(fullFilename,&numBytesIn);
-	    if(!inputBuffer || !numBytesIn) return 0;
-	    numBytesOut=numBytesIn+1000 +sizeof(ZippedFile_t);
-	    outputBuffer=malloc(numBytesOut);
-	    zipFilePtr = (ZippedFile_t*) outputBuffer;
-	    zipFilePtr->unixTime=rawtime;
-	    zipFilePtr->numUncompressedBytes=numBytesIn;
-	    strncpy(zipFilePtr->filename,configFile,60);
-	    retVal=zipBuffer(inputBuffer,&outputBuffer[sizeof(ZippedFile_t)],numBytesIn,&numBytesOut);
-	    if(retVal==0) {		
-		fillGenericHeader(zipFilePtr,PACKET_ZIPPED_FILE,numBytesOut+sizeof(ZippedFile_t));
-		sprintf(outputName,"%s/zipFile_%d_%lu.dat",REQUEST_TELEM_DIR,
-			prog,zipFilePtr->unixTime);
-		normalSingleWrite((unsigned char*)outputBuffer,
-				  outputName,numBytesOut+sizeof(ZippedFile_t));
-		makeLink(outputName,REQUEST_TELEM_LINK_DIR);		
-	    }
-	    free(inputBuffer);
-	    free(outputBuffer);
+	    rawtime=makeZippedFilePacket(fullFilename,prog);
 	}
     }
     if(errorCount) return 0;
@@ -1049,6 +1031,51 @@ int mountNextUsb(int intExtFlag) {
     startPrograms(MONITORD_ID_MASK);
     return rawtime;
 
+}
+
+int tailFile(char *filename, int numLines) {
+    static int counter=0;
+    time_t rawtime;
+    time(&rawtime);
+    char theCommand[FILENAME_MAX];
+    sprintf(theCommand,"tail -n %d %s > /tmp/tailFile",numLines,filename);
+    system(theCommand);
+    rawtime=makeZippedFilePacket("/tmp/tailFile",counter);
+    counter++;    
+    return rawtime;
+}
+
+int makeZippedFilePacket(char *filename,int fileTag) 
+{
+    int retVal;
+    time_t rawtime;
+    time(&rawtime);
+    ZippedFile_t *zipFilePtr;
+    char outputName[FILENAME_MAX];
+    char *inputBuffer;
+    char *outputBuffer;
+    unsigned long numBytesIn=0,numBytesOut=0;
+    
+    inputBuffer=readFile(filename,&numBytesIn);
+    if(!inputBuffer || !numBytesIn) return 0;
+    numBytesOut=numBytesIn+1000 +sizeof(ZippedFile_t);
+    outputBuffer=malloc(numBytesOut);
+    zipFilePtr = (ZippedFile_t*) outputBuffer;
+    zipFilePtr->unixTime=rawtime;
+    zipFilePtr->numUncompressedBytes=numBytesIn;
+    strncpy(zipFilePtr->filename,basename(filename),60);
+    retVal=zipBuffer(inputBuffer,&outputBuffer[sizeof(ZippedFile_t)],numBytesIn,&numBytesOut);
+    if(retVal==0) {		
+	fillGenericHeader(zipFilePtr,PACKET_ZIPPED_FILE,numBytesOut+sizeof(ZippedFile_t));
+	sprintf(outputName,"%s/zipFile_%d_%lu.dat",REQUEST_TELEM_DIR,
+		fileTag,zipFilePtr->unixTime);
+	normalSingleWrite((unsigned char*)outputBuffer,
+			  outputName,numBytesOut+sizeof(ZippedFile_t));
+	makeLink(outputName,REQUEST_TELEM_LINK_DIR);		
+    }
+    free(inputBuffer);
+    free(outputBuffer);
+    return rawtime;
 }
 
 
