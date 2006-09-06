@@ -775,10 +775,10 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     // it contains EncodedPedSubbedSurfPacketHeader_t
     gHdr = (GenericHeader_t*) &eventBuffer[0];
     switch(gHdr->code) {
-	case PACKET_ENC_SURF:
+	case PACKET_ENC_EVENT_WRAPPER:
 	    retVal=sendEncodedSurfPackets(retVal);
 	    break;
-	case PACKET_ENC_SURF_PEDSUB:
+	case PACKET_ENC_PEDSUB_EVENT_WRAPPER:
 	    if(sendWavePackets)
 		retVal=sendEncodedPedSubbedWavePackets(retVal);
 	    else 
@@ -814,6 +814,9 @@ int sendEncodedSurfPackets(int bufSize)
     int numBytes,count=0,surf=0;
 
     // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
+    count+=sizeof(EncodedEventWrapper_t);
+
+
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
 	surfHdPtr->gHdr.packetNumber=getLosNumber();
@@ -839,6 +842,8 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
     int numBytes,count=0,surf=0,chan,count2;;
     EncodedSurfChannelHeader_t *chanHdPtr;
+
+    count+=sizeof(EncodedEventWrapper_t);
 
     // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -880,6 +885,8 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
     int numBytes,count=0,surf=0,chan,count2;;
     EncodedSurfChannelHeader_t *chanHdPtr;
     EncodedSurfChannelHeader_t *chanHdPtr2;
+
+    count+=sizeof(EncodedEventWrapper_t);
 
     // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
