@@ -1911,7 +1911,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    retVal=makeLink(theFilename,theLinkDir);
     }
     else {
-	retVal=cleverRawEventWrite(theBody,theHeader,&eventWriter);
+	retVal=cleverEventWrite((unsigned char*)theBody,sizeof(AnitaEventBody_t),theHeader,&eventWriter);
 	if(retVal<0) {
 	    //Do something
 	}
@@ -2528,6 +2528,7 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 	    dataInt=*(barMapAddr[surf]);
 
 	    theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
+	    theSurfHk.setThreshold[surf][rfChan]=thresholdArray[surf][rfChan];
 	    if((printToScreen && verbosity>1) || HK_DEBUG) 
 		printf("Surf %d, Threshold %d (Top bits %d) == %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff);
 	    //Should check if it is the same or not
@@ -3181,6 +3182,7 @@ void prepWriterStructs() {
     eventWriter.currentHeaderFilePtr[0]=0;
     eventWriter.currentEventFilePtr[0]=0;
     eventWriter.writeBitMask=1;
+    sprintf(eventWriter.filePrefix,"ev");
 }
 
 
