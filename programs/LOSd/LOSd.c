@@ -907,9 +907,8 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 	    numBytesInBuffer+=numBytes;
 	}
 
-	if(numBytes) {
-	    count+=numBytes;
-	}
+	count+=surfHdPtr->gHdr.numBytes;
+
 	else break;
 	if(count>bufSize) return -1;
     }
