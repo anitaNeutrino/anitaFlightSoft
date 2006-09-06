@@ -301,12 +301,11 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 
     int diskInd;
     pid_t childPid;    
+    int cloneMasks[DISK_TYPES]={awsPtr->bladeCloneMask,
+				awsPtr->puckCloneMask,
+				awsPtr->usbintCloneMask,0,0};
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
-//	char *gzipHeadArg[] = {"gzip",awsPtr->currentHeaderFileName[diskInd],(char*)0};
-//	char *gzipBodyArg[] = {"gzip",awsPtr->currentEventFileName[diskInd],(char*)0};
-	
-//	char *zipAndMoveArg[]={"/bin/bash","/home/anita/flightSoft/bin/zipAndMoveFiles.sh",awsPtr->currentHeaderFileName[diskInd],awsPtr->currentEventFileName[diskInd],(char*)0};
 	if(awsPtr->currentHeaderFilePtr[diskInd]) {
 	    fclose(awsPtr->currentHeaderFilePtr[diskInd]);
 	    awsPtr->currentHeaderFilePtr[diskInd]=0;
@@ -314,12 +313,12 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    if(childPid==0) {
 		//Child
 		if(!bufferDisk[diskInd]) {
-		    zipFileInPlace(awsPtr->currentHeaderFileName[diskInd]);
+		    
+		    zipFileInPlaceAndClone(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
 //		    execv("/bin/gzip",gzipHeadArg);
 		}
 		else {
-		    zipBufferedFileAndMove(awsPtr->currentHeaderFileName[diskInd]);
-//		    execv("/bin/bash",zipAndMoveArg);
+		    zipBufferedFileAndCloneAndMove(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
 		}
 		exit(0);
 	    }
@@ -337,11 +336,10 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 	    if(childPid==0) {
 		//Child
 		if(!bufferDisk[diskInd]) {
-		    zipFileInPlace(awsPtr->currentEventFileName[diskInd]);
-//		    execv("/bin/gzip",gzipBodyArg);
+		    zipFileInPlaceAndClone(awsPtr->currentEventFileName[diskInd],cloneMasks[diskInd],diskInd);
 		}
 		else {
-		    zipBufferedFileAndMove(awsPtr->currentEventFileName[diskInd]);
+		    zipBufferedFileAndCloneAndMove(awsPtr->currentEventFileName[diskInd],cloneMasks[diskInd],diskInd);
 		}
 		exit(0);
 	    }
@@ -1852,10 +1850,13 @@ int zipFileInPlace(char *filename) {
 }
 
 
-int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask) {
+int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask,int baseInd) {
     //Doesn't clone yet
+    if(cloneMask==0) return zipFileInPlace(filename);
     int retVal;
     char outputFilename[FILENAME_MAX];
+    char cloneFilename[FILENAME_MAX];
+    int diskInd;
     unsigned long numBytesIn=0;
     char *buffer=readFile(filename,&numBytesIn);
     if(!buffer || !numBytesIn) {
@@ -1864,6 +1865,14 @@ int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask) {
     }    
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
+    char *relPath=strstr(outputFilename,"anita");
+    if(!relPath) return -1;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
+	sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
+	copyFile(outputFilename,cloneFilename);	
+    }
+
     free(buffer);
     unlink(filename);
     return retVal;
@@ -1892,12 +1901,15 @@ int zipBufferedFileAndMove(char *filename) {
     return retVal;
 }
 
-int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask) {
+int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int baseInd) {
+    if(cloneMask==0) return zipBufferedFileAndMove(filename);
     //Doesn't actually clone yet
     int retVal;
     char bufferFilename[FILENAME_MAX];
     char bufferZippedFilename[FILENAME_MAX];
     char outputFilename[FILENAME_MAX];
+    char cloneFilename[FILENAME_MAX];
+    int diskInd;
     unsigned long numBytesIn=0;
     sprintf(bufferFilename,"/tmp/buffer/%s",filename);
     char *buffer=readFile(filename,&numBytesIn);
@@ -1908,9 +1920,15 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask) {
     sprintf(bufferZippedFilename,"%s.gz",bufferFilename);
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
+    char *relPath=strstr(outputFilename,"anita");
+    if(!relPath) return -1;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
+	sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
+	copyFile(bufferZippedFilename,cloneFilename);	
+    }
     moveFile(bufferZippedFilename,outputFilename);
     free(buffer);
-    unlink(bufferZippedFilename);
     unlink(bufferFilename);
     return retVal;
 }

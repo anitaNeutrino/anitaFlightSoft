@@ -144,9 +144,9 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);
 //Zipping packets and files
     int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
     int zipFileInPlace(char *filename);
-    int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask);
+    int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask,int baseInd);
     int zipBufferedFileAndMove(char *nonBufFilename);
-    int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask);
+    int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask,int baseInd);
 // Signal handling routines
 
 // Signal handling stuff
