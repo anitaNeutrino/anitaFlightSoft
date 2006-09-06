@@ -26,6 +26,9 @@ CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
     int chan=0;  
     EncodedSurfPacketHeader_t *surfHdPtr;
 //    printf("%lu\n",bdPtr->eventNumber);
+    EncodedEventWrapper_t *encEvWrap = (EncodedEventWrapper_t*) output;
+    encEvWrap->eventNumber=bdPtr->eventNumber;
+    count+=sizeof(EncodedEventWrapper_t);
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &output[count];
@@ -45,6 +48,8 @@ CompressErrorCode_t packEvent(AnitaEventBody_t *bdPtr,
 							 
     }
     *numBytes=count;
+    encEvWrap->numBytes=count-sizeof(EncodedEventWrapper_t);
+    fillGenericHeader(encEvWrap,PACKET_ENC_EVENT_WRAPPER,count);
     return COMPRESS_E_OK;
 }
 
@@ -60,6 +65,11 @@ CompressErrorCode_t packPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
     int chan=0;  
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
 //    printf("Event %lu\n",bdPtr->eventNumber);
+
+    EncodedEventWrapper_t *encEvWrap = (EncodedEventWrapper_t*) output;
+    encEvWrap->eventNumber=bdPtr->eventNumber;
+    count+=sizeof(EncodedEventWrapper_t);
+
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &output[count];
 	surfStart=count;
@@ -78,6 +88,8 @@ CompressErrorCode_t packPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 							 
     }
     *numBytes=count;
+    encEvWrap->numBytes=count-sizeof(EncodedEventWrapper_t);
+    fillGenericHeader(encEvWrap,PACKET_ENC_PEDSUB_EVENT_WRAPPER,count);
     return COMPRESS_E_OK;
 }
 
@@ -100,6 +112,7 @@ CompressErrorCode_t unpackEvent(AnitaEventBody_t *bdPtr,
 CompressErrorCode_t unpackToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 					   unsigned char *input,
 					   int numBytes)
+
 {
 
     return unpackToPedSubbedEventWithStats(bdPtr,input,numBytes,0,0);
@@ -164,6 +177,11 @@ CompressErrorCode_t unpackToPedSubbedEventWithStats(PedSubbedEventBody_t *bdPtr,
     CompressErrorCode_t retVal=0;
     EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;
     EncodedSurfChannelHeader_t *chanHdPtr;
+
+    GenericHeader_t *gHdr=(GenericHeader_t*) input;
+    if(gHdr->code==PACKET_ENC_PEDSUB_EVENT_WRAPPER && numBytes>sizeof(EncodedEventWrapper_t)) { 
+	return unpackToPedSubbedEventWithStats(bdPtr,&input[sizeof(EncodedEventWrapper_t)],numBytes-sizeof(EncodedEventWrapper_t),cntlPtr,sizeArray);
+    }
 
 //    printf("unpackToPedSubbedEvent\n");
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -272,6 +290,31 @@ int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, uns
 				  encSize/2);
     return (count+encSize);        
 }
+
+
+CompressErrorCode_t decodeChannel(EncodedSurfChannelHeader_t *encChanHdPtr,unsigned char *input, SurfChannelFull_t *chanPtr)
+{
+    CompressErrorCode_t retVal;
+    int numBytes=encChanHdPtr->numBytes;
+    int newCrc=simpleCrcShort((unsigned short*)input,numBytes/2);
+    if(encChanHdPtr->crc!=newCrc) return COMPRESS_E_BAD_CRC;
+    
+
+//    printf("decodePSChannel encType==%d\n",encChanHdPtr->encType);
+    chanPtr->header=encChanHdPtr->rawHdr;
+    switch(encChanHdPtr->encType) {
+	case ENCODE_NONE:
+	    retVal=decodeWaveNone(input,numBytes,chanPtr);
+	    break;
+	default:
+	    //Try ENCODE_NONE
+	    retVal=decodeWaveNone(input,numBytes,chanPtr);
+	    retVal=COMPRESS_E_BAD_CODE;
+	    break;
+    }
+    return retVal;
+}
+
 
 int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr) {    
     int encSize=MAX_NUMBER_SAMPLES*sizeof(unsigned short);
@@ -435,6 +478,7 @@ CompressErrorCode_t decodePSChannel(EncodedSurfChannelHeader_t *encChanHdPtr,uns
 	default:
 	    //Try ENCODE_NONE
 	    retVal=decodePSWaveNone(input,numBytes,chanPtr);
+	    retVal=COMPRESS_E_BAD_CODE;
 	    break;
     }
     if(retVal==COMPRESS_E_OK) fillMinMaxMeanRMS(chanPtr);

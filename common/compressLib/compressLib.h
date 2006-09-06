@@ -28,7 +28,8 @@ typedef enum {
     COMPRESS_E_NO_PEDS,
     COMPRESS_E_BAD_PEDS,
     COMPRESS_E_TOO_BIG,
-    COMPRESS_E_BAD_CRC
+    COMPRESS_E_BAD_CRC,
+    COMPRESS_E_BAD_CODE
 } CompressErrorCode_t ;
 
     unsigned short bifurcate(short input);
@@ -84,7 +85,7 @@ typedef enum {
     void fillMinMaxMeanRMS(SurfChannelPedSubbed_t *chanPtr);
     unsigned short simpleCrcShort(unsigned short *p, unsigned long n);
     int encodeChannel(ChannelEncodingType_t encType, SurfChannelFull_t *chanPtr, unsigned char *buffer);
-    CompressErrorCode_t decodeChannel(unsigned char *input, int numBytes,SurfChannelFull_t *chanPtr);
+    CompressErrorCode_t decodeChannel(EncodedSurfChannelHeader_t *encChanHdPtr, unsigned char *input, SurfChannelFull_t *chanPtr);
     int encodeWaveNone(unsigned char *buffer,SurfChannelFull_t *chanPtr);
     CompressErrorCode_t decodeWaveNone(unsigned char *input,int numBytes,SurfChannelFull_t *chanPtr);
 

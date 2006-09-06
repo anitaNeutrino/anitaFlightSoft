@@ -79,6 +79,8 @@ typedef enum {
     PACKET_ENC_SURF_PEDSUB = 0x122,
     PACKET_ENC_EVENT_WRAPPER = 0x123,
     PACKET_PED_SUBBED_EVENT = 0x124,
+    PACKET_ENC_WV_PEDSUB = 0x125,
+    PACKET_ENC_PEDSUB_EVENT_WRAPPER = 0x126,
     PACKET_LAB_PED = 0x130,
     PACKET_FULL_PED = 0x131, //Too big to telemeter
     PACKET_GPS_ADU5_PAT = 0x200,
@@ -429,6 +431,7 @@ typedef struct {
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long eventNumber;
+    unsigned long whichPeds;
     SurfChannelPedSubbed_t waveform;
 } PedSubbedWaveformPacket_t;
 
@@ -606,9 +609,9 @@ typedef struct {
 } AnitaEventFull_t;
 
 typedef struct {
-    GenericHeader_t gHdr;
+    GenericHeader_t gHdr; //gHdr.numBytes includes EncodedEventWrapper_t
     unsigned long eventNumber;
-    unsigned long numBytes;
+    unsigned numBytes; //Not including the EncodedEventWrapper_t;
 } EncodedEventWrapper_t; //Not implemented
 
 typedef struct {
