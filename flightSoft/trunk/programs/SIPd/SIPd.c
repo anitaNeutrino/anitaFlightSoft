@@ -37,11 +37,11 @@ void comm2Handler();
 void highrateHandler(int *ignore);
 int readConfig();
 void readAndSendEventRamdisk(char *headerLinkFilename);
-void readAndSendEventRamdiskWavePackets(char *headerLinkFilename);
 int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
 void sendSomeHk(int maxBytes);
 int sendEncodedPedSubbedSurfPackets(int bufSize);
+int sendEncodedPedSubbedWavePackets(int bufSize);
 int sendEncodedSurfPackets(int bufSize);
 
 // Config Thingies
@@ -249,11 +249,7 @@ void highrateHandler(int *ignore)
 	    //Got an event	    
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 		    linkList[numLinks-1]->d_name);
-	    if(!sendWavePackets)
-		readAndSendEventRamdisk(currentHeader); //Also deletes
-	    else
-		readAndSendEventRamdiskWavePackets(currentHeader); //Also deletes
-		
+	    readAndSendEventRamdisk(currentHeader); //Also deletes
 
 	    while(numLinks) {
 		free(linkList[numLinks-1]);
@@ -470,83 +466,6 @@ int readConfig()
 }
 
 
-
-void readAndSendEvent(char *headerFilename) {
-    AnitaEventHeader_t *theHeader;
-    EncodedSurfPacketHeader_t *surfHdPtr;
-    int numBytes,count=0,surf=0,useGzip=0,retVal=0;
-    char waveFilename[FILENAME_MAX];
-    FILE *eventFile;
-    gzFile gzippedEventFile=0;
-
-    if(printToScreen && verbosity) printf("Trying file %s\n",headerFilename);
-
-    //Fitst load header
-    theHeader=(AnitaEventHeader_t*) theBuffer;
-    fillHeader(theHeader,headerFilename);
-    theHeader->gHdr.packetNumber=getTdrssNumber();
-    retVal = sipcom_highrate_write(theBuffer,sizeof(AnitaEventHeader_t));
-    if(retVal<0) {
-	//Problem sending data
-	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
-	fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());	
-    }
-    eventDataSent+=sizeof(AnitaEventHeader_t);
-
-
-    //Now get event file
-    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri],
-	    theHeader->eventNumber);
-    eventFile = fopen(waveFilename,"r");
-    if(!eventFile) {
-	sprintf(waveFilename,"%s/ev_%ld.dat.gz",eventTelemDirs[currentPri],
-		theHeader->eventNumber);
-	gzippedEventFile = gzopen(waveFilename,"rb");
-	if(!gzippedEventFile) {
-	    syslog(LOG_ERR,"Couldn't open %s -- %s",waveFilename,strerror(errno));
-	    fprintf(stderr,"Couldn't open %s -- %s\n",waveFilename,strerror(errno));	
-	    removeFile(headerFilename);
-	    removeFile(waveFilename);
-	    return;
-	}
-	useGzip=1;
-    }
-
-    if(useGzip) {
-	numBytes = gzread(gzippedEventFile,theBuffer,MAX_EVENT_SIZE);
-	gzclose(gzippedEventFile);	
-    }
-    else {
-	numBytes = fread(theBuffer,1,MAX_EVENT_SIZE,eventFile);
-	fclose(eventFile);
-    }
-    
-    // Remember what the file contains is actually:
-    //   9 EncodedSurfPacketHeader_t's
-    count=0;
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
-	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
-	numBytes = surfHdPtr->gHdr.numBytes;
-	if(numBytes) {
-	    retVal = sipcom_highrate_write(theBuffer, numBytes);
-	    if(retVal<0) {
-		//Problem sending data
-		syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
-		fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());	
-	    }
-	    eventDataSent+=numBytes;
-	}
-	else break;			
-    }
-    if(printToScreen && verbosity>1) printf("Removing files %s\t%s\n",headerFilename,waveFilename);
-	        
-    removeFile(headerFilename);
-    removeFile(waveFilename);
-
-}
-
-
 void readAndSendEventRamdisk(char *headerLinkFilename) {
     static int errorCounter=0;
     AnitaEventHeader_t *theHeader;
@@ -628,7 +547,12 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	    retVal=sendEncodedSurfPackets(retVal);
 	    break;
 	case PACKET_ENC_SURF_PEDSUB:
-	    retVal=sendEncodedPedSubbedSurfPackets(retVal);
+	    if(!sendWavePackets) {
+		retVal=sendEncodedPedSubbedSurfPackets(retVal);
+	    }
+	    else {
+		retVal=sendEncodedPedSubbedWavePackets(retVal);
+	    }
 	    break;
 	default:
 	    if(errorCounter<100) {
@@ -729,162 +653,56 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 }
 
 
-void readAndSendEventRamdiskWavePackets(char *headerLinkFilename) {
-    AnitaEventHeader_t *theHeader;
-    EncodedSurfPacketHeader_t *surfHdPtr;
-    EncodedSurfChannelHeader_t *chanHdPtr;    
-    EncodedWaveformPacket_t *wavPtr;
-    int numBytes,count=0,surf=0,retVal,chan;
-    char currentTouchname[FILENAME_MAX];
-    char currentLOSTouchname[FILENAME_MAX];
-    char waveFilename[FILENAME_MAX];
-    char headerFilename[FILENAME_MAX];
-    char crapBuffer[FILENAME_MAX];
-    unsigned long thisEventNumber;
-    unsigned char *tempBuffer;
-
-
-    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-	    thisEventNumber);
-    sprintf(currentTouchname,"%s.sipd",headerFilename);
-    sprintf(currentLOSTouchname,"%s.losd",headerFilename);
-
-
-    if(checkFileExists(currentLOSTouchname)) 
-	return;
-    touchFile(currentTouchname);
-
-//     Next load header 
-    theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
-    retVal=fillHeader(theHeader,headerLinkFilename); 
-        
-    if(retVal<0) {
-	removeFile(headerLinkFilename);
-	sscanf(headerLinkFilename,"%s/hd_%lu.dat",crapBuffer,
-	       &thisEventNumber);
-	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-		thisEventNumber);
-	removeFile(headerFilename);
-	sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-		thisEventNumber);
-	removeFile(waveFilename);
-	
-	//Bollocks
-	return;
-    }
-
-
-    theHeader->gHdr.packetNumber=getTdrssNumber();
-    retVal = sipcom_highrate_write(theBuffer,sizeof(AnitaEventHeader_t));
-    if(retVal<0) {
-	//Problem sending data
-	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
-	fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());	
-    }
-    eventDataSent+=sizeof(AnitaEventHeader_t);
-    
-    
-    thisEventNumber=theHeader->eventNumber;
-    
-
-    //Now get event file
-    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
- 	    thisEventNumber);
-    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
- 	    thisEventNumber);
-
-
-    retVal=genericReadOfFile((unsigned char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
-    if(retVal<0) {
-	fprintf(stderr,"Problem reading %s\n",waveFilename);
-	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);	
-	//Bollocks
-	return;
-    }
-
-
-    // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
-
+int sendEncodedPedSubbedWavePackets(int bufSize) 
+{
+    static int errorCounter=0;
+    EncodedPedSubbedChannelPacketHeader_t *waveHdPtr;    
+    EncodedPedSubbedSurfPacketHeader_t *surfHdPtr;  
+    EncodedSurfChannelHeader_t *chanHdPtr;
+    EncodedSurfChannelHeader_t *chanHdPtr2;
+    int numBytes,count=0,surf=0,retVal,chan,count2=0;
+    int chanNumBytes=0;
+    // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
     count=0;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	surfHdPtr = (EncodedSurfPacketHeader_t*) &theBuffer[count];
-        count+=sizeof(EncodedSurfPacketHeader_t);
-        for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-          //      cout << count << "\t" << numBytes << endl;
-	    wavPtr = (EncodedWaveformPacket_t*) &chanBuffer[0];
-            chanHdPtr = (EncodedSurfChannelHeader_t*) &theBuffer[count];
-            count+=sizeof(EncodedSurfChannelHeader_t);
-	    
-	    wavPtr->eventNumber=surfHdPtr->eventNumber;
-	    if(wavPtr->eventNumber!=thisEventNumber) {
-		printf("Something horribly wrong %lu is not %lu\n",wavPtr->eventNumber,thisEventNumber);
-		syslog(LOG_ERR,"Something horribly wrong %lu is not %lu\n",wavPtr->eventNumber,thisEventNumber);
+	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &theBuffer[count];
+//	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
+	numBytes = surfHdPtr->gHdr.numBytes;
+	count2=count+sizeof(EncodedPedSubbedSurfPacketHeader_t);
+	if(numBytes) {	    
+	    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+		chanNumBytes=0;
+		chanHdPtr = (EncodedSurfChannelHeader_t*) &theBuffer[count2];
+		waveHdPtr= (EncodedPedSubbedChannelPacketHeader_t*) &chanBuffer[0];
+		waveHdPtr->gHdr.packetNumber=getTdrssNumber();
+		waveHdPtr->eventNumber=surfHdPtr->eventNumber;
+		waveHdPtr->whichPeds=surfHdPtr->whichPeds;
+		chanNumBytes=sizeof(EncodedPedSubbedChannelPacketHeader_t);
+		chanHdPtr2 = (EncodedSurfChannelHeader_t*) &chanBuffer[chanNumBytes];
+		(*chanHdPtr2)=(*chanHdPtr);
+		count2+=sizeof(EncodedSurfChannelHeader_t);
+		chanNumBytes+=sizeof(EncodedSurfChannelHeader_t);
+		memcpy(&chanBuffer[chanNumBytes],&theBuffer[count2],chanHdPtr->numBytes);
+		chanNumBytes+=chanHdPtr->numBytes;
 
-		removeFile(headerLinkFilename);
-		removeFile(headerFilename);
-		removeFile(waveFilename);	
-		//Bollocks
-		return;
-	    }
-	    wavPtr->chanHead=(*chanHdPtr);
-	    memcpy(&chanBuffer[sizeof(EncodedWaveformPacket_t)],&theBuffer[count],chanHdPtr->numBytes);
-	    tempBuffer = (unsigned char*) wavPtr;
-//	    syslog(LOG_INFO,"1st 3 %d %d %d and %d %d %d\n",
-//		   tempBuffer[sizeof(EncodedWaveformPacket_t)+0],
-//		   tempBuffer[sizeof(EncodedWaveformPacket_t)+1],
-//		   tempBuffer[sizeof(EncodedWaveformPacket_t)+2],
-//		   theBuffer[count+0],
-//		   theBuffer[count+1],
-//		   theBuffer[count+2]);
-		   
-            count+=chanHdPtr->numBytes;	
-	    numBytes=chanHdPtr->numBytes+sizeof(EncodedWaveformPacket_t);
-	    fillGenericHeader(wavPtr,PACKET_ENC_WV,numBytes);
-//	    syslog(LOG_INFO,"wavPtr info %d %d %d\n",wavPtr->gHdr.code,wavPtr->gHdr.numBytes,wavPtr->gHdr.checksum);
-	    wavPtr->gHdr.packetNumber=getTdrssNumber();
-	     
-	    if(numBytes) {
-		retVal = sipcom_highrate_write((unsigned char*) wavPtr,
-					       numBytes);
+		retVal = sipcom_highrate_write(chanBuffer,chanNumBytes);
+		eventDataSent+=chanNumBytes;
 		if(retVal<0) {
 		    //Problem sending data
-		    syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());
-		    fprintf(stderr,"Problem sending file %s over TDRSS high rate -- %s\n",waveFilename,sipcom_strerror());	
+		    if(errorCounter<100) {
+			syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+			errorCounter++;
+		    }
+		    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
 		}
-//		count+=numBytes;
-		eventDataSent+=numBytes;
-	    }
-	    else break;
-	    
-        }
-    }
-    //    exit(0);
+	    }		
+	    count+=numBytes;
 
-    
-    if(printToScreen && verbosity>1) 
-	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
-	       headerLinkFilename);
-	        
-    if(!checkFileExists(currentLOSTouchname)) {
-	removeFile(headerFilename);
-	removeFile(headerLinkFilename);
-	removeFile(waveFilename);
-	removeFile(currentTouchname);
+	}
+	else break;
+	if(count>bufSize) return -1;
     }
-    else {
-	sleep(1);
-	removeFile(headerFilename);
-	removeFile(headerLinkFilename);
-	removeFile(waveFilename);
-	removeFile(currentTouchname);
-	removeFile(currentLOSTouchname);
-    }
-
-    comm1Data.lastEventNumber=thisEventNumber;
-    comm2Data.lastEventNumber=thisEventNumber;
-
+    return 0;
 }
 
 

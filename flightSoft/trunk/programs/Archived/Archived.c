@@ -25,15 +25,16 @@
 #include "includes/anitaFlight.h"
 
 
-
 // Directories and gubbins 
 char archivedPidFile[FILENAME_MAX];
 
-//char currentEventIndex[FILENAME_MAX];
-//char currentEventDir[FILENAME_MAX];
-//char currentEventBackupDir[FILENAME_MAX];
-int priorityEncodingVal[NUM_PRIORITIES];
-float priorityFractionRaw[NUM_PRIORITIES];
+
+int onboardStorageType;
+int telemType;
+int priDiskEncodingType[NUM_PRIORITIES];
+int priTelemEncodingType[NUM_PRIORITIES];
+int priTelemClockEncodingType[NUM_PRIORITIES];
+float priorityFractionDefault[NUM_PRIORITIES];
 
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -150,12 +151,13 @@ int main (int argc, char *argv[])
     }
     makeDirectories(ANITA_INDEX_DIR);
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
-    prepWriterStructs();
     retVal=0;
     /* Main event getting loop. */
     do {
 	if(printToScreen) printf("Initalizing Archived\n");
 	retVal=readConfigFile();
+	prepWriterStructs();
+
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading Archived.config");
 	    printf("Problem reading Archived.config\n");
@@ -191,25 +193,52 @@ int readConfigFile()
 	writeTelem=kvpGetInt("writeTelem",0);
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
+	onboardStorageType=kvpGetInt("onboardStorageType",1);
+	telemType=kvpGetInt("telemType",1);
 	tempNum=10;
-	kvpStatus = kvpGetIntArray("priorityEncodingVal",
-				   priorityEncodingVal,&tempNum);	
+	kvpStatus = kvpGetIntArray("priDiskEncodingType",
+				   priDiskEncodingType,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(priorityEncodingVal): %s",
+	    syslog(LOG_WARNING,"kvpGetIntArray(priDiskEncodingType): %s",
 		   kvpErrorString(kvpStatus));
 	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(priorityEncodingVal): %s\n",
+		fprintf(stderr,"kvpGetIntArray(priDiskEncodingType): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
 	tempNum=10;
-	kvpStatus = kvpGetFloatArray("priorityFractionRaw",
-				     priorityFractionRaw,&tempNum);	
+	kvpStatus = kvpGetIntArray("priTelemEncodingType",
+				   priTelemEncodingType,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionRaw): %s",
+	    syslog(LOG_WARNING,"kvpGetIntArray(priTelemEncodingType): %s",
 		   kvpErrorString(kvpStatus));
 	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(priorityFractionRaw): %s\n",
+		fprintf(stderr,"kvpGetIntArray(priTelemEncodingType): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priTelemClockEncodingType",
+				   priTelemClockEncodingType,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priTelemClockEncodingType): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priTelemClockEncodingType): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+
+	tempNum=10;
+	kvpStatus = kvpGetFloatArray("priorityFractionDefault",
+				     priorityFractionDefault,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionDefault): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityFractionDefault): %s\n",
 			kvpErrorString(kvpStatus));
 	}
     }
@@ -274,26 +303,49 @@ void processEvent()
     EncodeControlStruct_t diskEncCntl;
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
+    int priority=(theHead.priority&0xf);
+    if(priority>0 || priority>9) priority=9;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-//	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priorityEncodingVal[(theHead.priority & 0xf)];
-	    diskEncCntl.encTypes[surf][chan]= ENCODE_NONE;
-	    telemEncCntl.encTypes[surf][chan]= ENCODE_LOSSLESS_BINARY;
+	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priDiskEncodingType[priority];
+	    telemEncCntl.encTypes[surf][chan]= (ChannelEncodingType_t) priTelemEncodingType[priority];
+	    if(chan==8)
+		telemEncCntl.encTypes[surf][chan]= (ChannelEncodingType_t) priTelemClockEncodingType[priority];
 	}
     }
  
 //Steps
-    //1) PedestalSubtract (and shift to 11bits)
     //2) Pack Event For On Board Storage
     //3) Pack Event For Telemetry
 
-//    //1) PedestalSubtract (and shift to 11bits) 
-//    subtractCurrentPeds(&theBody,&pedSubBody);
 
     //2) Pack Event For On Board Storage
     //Now depending on which option is selected we may either write out pedSubbed or not pedSubbed events to the hard disk (or just AnitaEventBody_t structs)
     memset(outputBuffer,0,MAX_WAVE_BUFFER);
-    retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
+    switch(onboardStorageType) {
+	case ARCHIVE_RAW:
+	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	    numBytes=sizeof(AnitaEventBody_t);
+	    retVal=COMPRESS_E_OK;
+	    break;
+	case ARCHIVE_PEDSUBBED:
+	    memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+	    numBytes=sizeof(PedSubbedEventBody_t);
+	    retVal=COMPRESS_E_OK;
+	    break;
+	case ARCHIVE_ENCODED:	    
+	    retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
+	    break;
+	case ARCHIVE_PEDSUBBED_ENCODED:	    
+	    retVal=packPedSubbedEvent(&pedSubBody,&diskEncCntl,outputBuffer,&numBytes);
+	    break;
+	default:
+	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	    numBytes=sizeof(AnitaEventBody_t);
+	    retVal=COMPRESS_E_OK;
+	    break;	    
+    }
+
     if(retVal==COMPRESS_E_OK) {
 	writeOutputToDisk(numBytes);
     }
@@ -307,6 +359,28 @@ void processEvent()
     //For now we'll just hard code it to something and see how that goes
     memset(outputBuffer,0,MAX_WAVE_BUFFER);
     retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
+
+    switch(telemType) {
+	case ARCHIVE_RAW:
+	    //Need to add routine
+//	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+//	    numBytes=sizeof(AnitaEventBody_t);
+	    retVal=COMPRESS_E_OK;
+	    break;
+	case ARCHIVE_PEDSUBBED:
+	    //Need to add routine
+//	    memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+//	    numBytes=sizeof(PedSubbedEventBody_t);
+	    retVal=COMPRESS_E_OK;
+	    break;
+	case ARCHIVE_ENCODED:	    
+	    retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
+	    break;
+	case ARCHIVE_PEDSUBBED_ENCODED:	    
+	    retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
+	    break;
+    }
+
     if(writeTelem) {
 	if(retVal==COMPRESS_E_OK)
 	    writeOutputForTelem(numBytes);
@@ -315,18 +389,14 @@ void processEvent()
 	    fprintf(stderr,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
 	}
     }
-    
-    
-
 }
-
 
 
 void writeOutputToDisk(int numBytes) {
     IndexEntry_t indEnt;
     int retVal;
 
-    retVal=cleverEncEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
+    retVal=cleverEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
     if(printToScreen && verbosity>1) {
 	printf("Event %lu, (%d bytes)  %s \t%s\n",theHead.eventNumber,
 	       numBytes,eventWriter.currentEventFileName[0],
@@ -372,9 +442,10 @@ void prepWriterStructs() {
     int diskInd;
     if(printToScreen) 
 	printf("Preparing Writer Structs\n");
-
+    closeEventFilesAndTidy(&eventWriter); //Just to be safe
     //Event Writer
     strncpy(eventWriter.relBaseName,EVENT_ARCHIVE_DIR,FILENAME_MAX-1);
+    strncpy(eventWriter.filePrefix,getFilePrefix(onboardStorageType),FILENAME_MAX-1);
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	eventWriter.currentHeaderFilePtr[diskInd]=0;
 	eventWriter.currentEventFilePtr[diskInd]=0;
@@ -394,3 +465,27 @@ void prepWriterStructs() {
 }
 
 
+
+char *getFilePrefix(ArchivedDataType_t dataType)
+{
+    char *string;
+    switch(dataType) {
+	case ARCHIVE_RAW:
+	    string="ev";
+	    break;
+	case ARCHIVE_PEDSUBBED:
+	    string="psev";
+	    break;
+	case ARCHIVE_ENCODED:
+	    string="encev";
+	    break;
+	case ARCHIVE_PEDSUBBED_ENCODED:
+	    string="psev";
+	    break;
+	default:
+	    string="unknownev";
+	    break;
+    }
+    return (string);
+
+}

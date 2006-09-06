@@ -50,6 +50,11 @@
 #define PED_DEFAULT_VALUE 1100
 
 
+//GPS stuff
+#define MAX_SATS 12
+#define MAX_CMD_LENGTH 20
+
+
 //Acromag stuff
 #define CHANS_PER_IP320 40
 #define NUM_IP320_BOARDS 3
@@ -86,9 +91,41 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 #define EVENTS_PER_INDEX 10000
-
-
 #define DISK_TYPES 5
+
+
+
+//Relay Bit Masks
+#define RFCM1_MASK 0x1
+#define RFCM2_MASK 0x2
+#define RFCM3_MASK 0x4
+#define RFCM4_MASK 0x8
+#define VETO_MASK 0x10
+#define GPS_MASK 0x20
+#define CAL_PULSER_MASK 0x40
+
+#define RFSWITCH_MASK 0xf00
+#define RFSWITCH_SHIFT 8
+
+#define SS1_MASK 0xf000
+#define SS1_SHIFT 12
+
+#define WAKEUP_LOS_BUFFER_SIZE 4000
+#define WAKEUP_TDRSS_BUFFER_SIZE 500
+#define WAKEUP_LOW_RATE_BUFFER_SIZE 100
+
+//Turf Bit Masks
+#define CUR_BUF_MASK_READ 0x30
+#define CUR_BUF_SHIFT_READ 4
+#define CUR_BUF_MASK_FINAL 0xc
+#define CUR_BUF_SHIFT_FINAL 2
+#define TRIG_BUF_MASK_READ 0x60
+#define TRIG_BUF_SHIFT_READ 5
+#define TRIG_BUF_MASK_FINAL 0x3
+#define TRIG_BUF_SHIFT_FINAL 0
+
+
+
 
 //Mount points and fake mount points
 #ifdef USE_FAKE_DATA_DIR

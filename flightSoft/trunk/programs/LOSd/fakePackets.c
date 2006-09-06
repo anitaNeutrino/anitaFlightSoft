@@ -372,7 +372,7 @@ void fakeSurfHk(struct timeval *currentTime) {
 
 	}
     }
-	    
+	     
 
 
     fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));

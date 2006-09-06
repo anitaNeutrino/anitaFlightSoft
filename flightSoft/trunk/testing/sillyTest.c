@@ -49,8 +49,8 @@ int main (void)
 	   sizeof(EncodedSurfPacketHeader_t));
     printf("Size of EncodedPedSubbedSurfPacketHeader_t: %d\n",
 	   sizeof(EncodedPedSubbedSurfPacketHeader_t));
-    printf("Size of EncodedWaveformPacket_t: %d\n",
-	   sizeof(EncodedWaveformPacket_t));
+    printf("Size of EncodedPedSubbedChannelPacketHeader_t: %d\n",
+	   sizeof(EncodedPedSubbedChannelPacketHeader_t));
     printf("Size of RawWaveformPacket_t: %d\n",sizeof(RawWaveformPacket_t));
     printf("Size of RawSurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
