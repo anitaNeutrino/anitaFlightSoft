@@ -985,12 +985,11 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 
 int readSingleEncodedEvent(unsigned char *buffer, char *filename) 
 {
-    EncodedSurfPacketHeader_t *surfHeader = (EncodedSurfPacketHeader_t*) &buffer[0];
+    EncodedEventWrapper_t *encEvWrap = (EncodedEventWrapper_t*) &buffer[0];
     static int errorCounter=0;
     int count=0;
     int numBytesRead;  
     int numBytesToRead;
-    int surfCounter=0;
     
     gzFile infile = gzopen (filename, "rb");    
     if(infile == NULL) {
@@ -1004,8 +1003,8 @@ int readSingleEncodedEvent(unsigned char *buffer, char *filename)
 
 
     //Read first header
-    numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
-    if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+    numBytesRead=gzread(infile,encEvWrap,sizeof(EncodedEventWrapper_t));
+    if(numBytesRead!=sizeof(EncodedEventWrapper_t)) {
 	gzclose(infile);
 	if(errorCounter<100) {
 	    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
@@ -1015,42 +1014,20 @@ int readSingleEncodedEvent(unsigned char *buffer, char *filename)
 	return -2;
     } 
     //Now ready to read event
-    count=sizeof(EncodedSurfPacketHeader_t);
-    for(surfCounter=0;surfCounter<9;surfCounter++) {
-	numBytesToRead=surfHeader->gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
-	numBytesRead=gzread(infile,&buffer[count],
-			    numBytesToRead);
-	if(numBytesRead!=numBytesToRead) {
-	    gzclose(infile);
-	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
-		fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
-		errorCounter++;
-	    }	
-	    return -6;
-	}
-	count+=numBytesRead;
-
-	if(surfCounter<8) {
-	    //Need to read next header
-	    surfHeader = (EncodedSurfPacketHeader_t*) &buffer[count];
-	    
-	    numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
-	    if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
-		gzclose(infile);
-		if(errorCounter<100) {
-		    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
-		    fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
-		    errorCounter++;
-		}	
-		return -7;
-	    }
-	    count+=sizeof(EncodedSurfPacketHeader_t);
-	    
-	}
-	
+    count=sizeof(EncodedEventWrapper_t);
+    numBytesToRead=encEvWrap->numBytes;	
+    numBytesRead=gzread(infile,&buffer[count],
+			numBytesToRead);
+    if(numBytesRead!=numBytesToRead) {
+	gzclose(infile);
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
+	    fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
+	    errorCounter++;
+	}	
+	return -6;
     }
-    
+    count+=numBytesRead;
     gzclose(infile);
     return count;
 
@@ -1059,7 +1036,8 @@ int readSingleEncodedEvent(unsigned char *buffer, char *filename)
 int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 			     unsigned long eventNumber) 
 {
-    EncodedSurfPacketHeader_t *surfHeader = (EncodedSurfPacketHeader_t*) &buffer[0];
+    EncodedEventWrapper_t *encEvWrap = (EncodedEventWrapper_t*) &buffer[0];
+
     static int errorCounter=0;
     int count=0;
     int numBytesRead;  
@@ -1076,9 +1054,9 @@ int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 	return -1;
     }   
 
-    //Read first header
-    numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
-    if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+    //Read event wrapper
+    numBytesRead=gzread(infile,encEvWrap,sizeof(EncodedEventWrapper_t));
+    if(numBytesRead!=sizeof(EncodedEventWrapper_t)) {
 	gzclose(infile);
 	if(errorCounter<100) {
 	    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
@@ -1088,28 +1066,23 @@ int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 	return -2;
     }
 
-//    printf("First read %lu (want %lu)\n\t%s\n",surfHeader->eventNumber,eventNumber,filename);
+//    printf("First read %lu (want %lu)\n\t%s\n",encEvWrap->eventNumber,eventNumber,filename);
 
-    if(abs(((int)eventNumber-(int)surfHeader->eventNumber))>1000) {
+    if(abs(((int)eventNumber-(int)encEvWrap->eventNumber))>1000) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
-	    fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
+	    syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
+	    fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
 	    errorCounter++;
 	}	
 	gzclose(infile);
 	return -3;
     }
-    int surfCounter=0;
 
-    while(surfHeader->eventNumber!=eventNumber) {
-	numBytesToSeek=surfHeader->gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
-//	printf("%d\t%lu\t%lu\t\t(seek: %d)\n",surfCounter,surfHeader->eventNumber,eventNumber,
-//	       numBytesToSeek);
-	surfCounter++;
-
+    while(encEvWrap->eventNumber!=eventNumber) {
+	numBytesToSeek=encEvWrap->numBytes;	
 	gzseek(infile,numBytesToSeek,SEEK_CUR);
-	numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
-	if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
+	numBytesRead=gzread(infile,encEvWrap,sizeof(EncodedEventWrapper_t));
+	if(numBytesRead!=sizeof(EncodedEventWrapper_t)) {
 	    gzclose(infile);
 	    if(errorCounter<100) {
 		syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
@@ -1118,13 +1091,12 @@ int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 	    }	
 	    return -4;
 	}
-	
-	
-	if(abs(((int)eventNumber-(int)surfHeader->eventNumber))>1000) {
+		
+	if(abs(((int)eventNumber-(int)encEvWrap->eventNumber))>1000) {
 
 	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
-		fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,surfHeader->eventNumber,filename);
+		syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
+		fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
 		errorCounter++;
 	    }	
 	    gzclose(infile);
@@ -1132,47 +1104,24 @@ int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 	}
     }
 
-    //Now ready to read event
-    count=sizeof(EncodedSurfPacketHeader_t);
-    for(surfCounter=0;surfCounter<9;surfCounter++) {
-	numBytesToRead=surfHeader->gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
-	numBytesRead=gzread(infile,&buffer[count],
-			    numBytesToRead);
-	if(numBytesRead!=numBytesToRead) {
-	    gzclose(infile);
-	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
-		fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
-		errorCounter++;
-	    }	
-	    return -6;
-	}
-	count+=numBytesRead;
 
-	if(surfCounter<8) {
-	    //Need to read next header
-	    surfHeader = (EncodedSurfPacketHeader_t*) &buffer[count];
-	    
-	    numBytesRead=gzread(infile,surfHeader,sizeof(EncodedSurfPacketHeader_t));
-	    if(numBytesRead!=sizeof(EncodedSurfPacketHeader_t)) {
-		gzclose(infile);
-		if(errorCounter<100) {
-		    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
-		    fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
-		    errorCounter++;
-		}	
-		return -7;
-	    }
-	    count+=sizeof(EncodedSurfPacketHeader_t);
-	    
-	}
-	
+    //Now ready to read event
+    count=sizeof(EncodedEventWrapper_t);
+    numBytesToRead=encEvWrap->numBytes;
+    numBytesRead=gzread(infile,&buffer[count],
+			numBytesToRead);
+    if(numBytesRead!=numBytesToRead) {
+	gzclose(infile);
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Only read %d bytes from %s\n",numBytesRead,filename);
+	    fprintf(stderr,"Only read %d bytes from %s\n",numBytesRead,filename);
+	    errorCounter++;
+	}	
+	return -6;
     }
-    
+    count+=numBytesRead;
     gzclose(infile);
     return count;
-
-
 }
 
 
