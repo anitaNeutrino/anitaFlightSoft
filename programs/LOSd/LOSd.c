@@ -675,7 +675,7 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
 /*     } */
     
 
-
+     count+=sizeof(EncodedEventWrapper_t);
     // Remember what the file contains is actually 9 EncodedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedSurfPacketHeader_t*) &eventBuffer[count];
