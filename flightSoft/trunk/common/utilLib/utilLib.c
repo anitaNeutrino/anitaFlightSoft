@@ -357,15 +357,19 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 
 int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
-    int diskInd;
+    int diskInd,cloneInd;
     int retVal=0;
     static int errorCounter=0;
     int dirNum;
 //    pid_t childPid;
-    
+
+    char tempDir[FILENAME_MAX];
     char fullBasename[FILENAME_MAX];
     char bufferName[FILENAME_MAX];
 
+    int cloneMasks[DISK_TYPES]={awsPtr->bladeCloneMask,
+				awsPtr->puckCloneMask,
+				awsPtr->usbintCloneMask,0,0};
     
     if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {
 	closeEventFilesAndTidy(awsPtr);
@@ -445,7 +449,24 @@ int cleverEncEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHead
 	    awsPtr->fileEpoch=dirNum+EVENTS_PER_FILE;
 //	    printf("%s %s %d\n",awsPtr->currentHeaderFileName[diskInd],
 //		   awsPtr->currentEventFileName[diskInd],awsPtr->fileEpoch);
-	}
+
+
+	    if(cloneMasks[diskInd]>0) {
+		for(cloneInd=0;cloneInd<DISK_TYPES;cloneInd++) {
+		    //Need to make dirs for clones
+		    sprintf(fullBasename,"%s/%s",diskNames[cloneInd],awsPtr->relBaseName);	    	    	    
+
+		    //Make base dir
+		    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+		    sprintf(tempDir,"%s/ev%d",fullBasename,dirNum);
+		    makeDirectories(tempDir);
+
+		    dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+		    sprintf(tempDir,"%s/ev%d",tempDir,dirNum);
+		    makeDirectories(tempDir);	    
+		}
+	    }
+}
 	if(awsPtr->currentEventFilePtr[diskInd] && awsPtr->currentHeaderFilePtr[diskInd]) {
 	    
 	    awsPtr->writeCount[diskInd]++;
