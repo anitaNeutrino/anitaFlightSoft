@@ -352,6 +352,8 @@ float getTimeDiff(struct timeval oldTime, struct timeval currentTime) {
 
 void fakeSurfHk(struct timeval *currentTime) {
     
+    char buffer[10000];
+
     FullSurfHkStruct_t theSurfHk;
     char theFilename[FILENAME_MAX];
     int retVal=0,i=0,j=0;
@@ -379,8 +381,19 @@ void fakeSurfHk(struct timeval *currentTime) {
 	printf("Problem with FullSurfHkStruct_t %d\n",retVal);
     sprintf(theFilename,"%s/surfhk_%ld.dat",
 	    SURFHK_TELEM_DIR,theSurfHk.unixTime);
-    retVal=writeSurfHk(&theSurfHk,theFilename);
-    retVal=makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
+    int numBytes=makeZippedPacket((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
+				  buffer,10000);
+    if(numBytes>0) {
+	retVal=normalSingleWrite((unsigned char*)buffer,theFilename,numBytes);
+    
+//    retVal=writeSurfHk(&theSurfHk,theFilename);
+	retVal=makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
+    }
+    else {
+	printf("Problem zipping, sending unzipped\n");
+	retVal=writeSurfHk(&theSurfHk,theFilename);
+	retVal=makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
+    }
 
 }
 

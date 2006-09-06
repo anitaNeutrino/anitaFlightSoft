@@ -65,6 +65,7 @@
 #define VER_SLOW_1 1
 #define VER_SLOW_2 1
 #define VER_ZIPPED_FILE 1
+#define VER_ZIPPED_PACKET 1
 #endif
 
 //Relay Bit Masks
@@ -715,6 +716,7 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
+    unsigned long numUncompressedBytes;
 } ZippedPacket_t;
 
 typedef struct {

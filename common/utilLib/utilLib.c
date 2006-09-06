@@ -1695,6 +1695,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_SLOW1: gHdr->verId=VER_SLOW_1; break;
 	case PACKET_SLOW2: gHdr->verId=VER_SLOW_2; break;
 	case PACKET_ZIPPED_FILE: gHdr->verId=VER_ZIPPED_FILE; break;
+	case PACKET_ZIPPED_PACKET: gHdr->verId=VER_ZIPPED_PACKET; break;
 	default: 
 	    gHdr->verId=0; break;
     }
@@ -1986,3 +1987,12 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     return retVal;
 }
 
+int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned long numBytesOut) {
+    ZippedPacket_t *zipPacket = (ZippedPacket_t*)output;
+    zipPacket->numUncompressedBytes=numBytes;
+    int retVal=zipBuffer(input,&output[sizeof(ZippedPacket_t)],numBytes,&numBytesOut);
+    if(retVal!=0) 
+	return retVal;
+    fillGenericHeader(output,PACKET_ZIPPED_FILE,sizeof(ZippedPacket_t)+numBytesOut);
+    return sizeof(ZippedPacket_t)+numBytesOut;   
+}
