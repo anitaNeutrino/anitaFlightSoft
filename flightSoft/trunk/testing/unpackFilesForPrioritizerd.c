@@ -307,6 +307,7 @@ int fillBodyFromFileNew(AnitaEventBody_t *bodyPtr, gzFile openFile) {
 	    count+=chanHdPtr->numBytes;	    	    
 	}	    	    	        	
     }
+    fillGenericHeader(bodyPtr,PACKET_BD,sizeof(AnitaEventBody_t));
     return 0;
 }
 

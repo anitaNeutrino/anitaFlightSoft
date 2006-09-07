@@ -477,7 +477,7 @@ char *getFilePrefix(ArchivedDataType_t dataType)
 	    string="encev";
 	    break;
 	case ARCHIVE_PEDSUBBED_ENCODED:
-	    string="psev";
+	    string="psencev";
 	    break;
 	default:
 	    string="unknownev";
