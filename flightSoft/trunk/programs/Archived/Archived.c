@@ -356,21 +356,18 @@ void processEvent()
 
     //3) Pack Event For Telemetry
     //Again we have a range of options for event telemetry
-    //For now we'll just hard code it to something and see how that goes
     memset(outputBuffer,0,MAX_WAVE_BUFFER);
-    retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
-
     switch(telemType) {
 	case ARCHIVE_RAW:
 	    //Need to add routine
-//	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-//	    numBytes=sizeof(AnitaEventBody_t);
+	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	    numBytes=sizeof(AnitaEventBody_t);
 	    retVal=COMPRESS_E_OK;
 	    break;
 	case ARCHIVE_PEDSUBBED:
 	    //Need to add routine
-//	    memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
-//	    numBytes=sizeof(PedSubbedEventBody_t);
+	    memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+	    numBytes=sizeof(PedSubbedEventBody_t);
 	    retVal=COMPRESS_E_OK;
 	    break;
 	case ARCHIVE_ENCODED:	    

@@ -158,7 +158,7 @@ CompressErrorCode_t unpackOneSurfToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
     }
 	//Fill Generic Header_t;
 	
-//    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
+    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
     return COMPRESS_E_OK;
 
 }
@@ -213,7 +213,7 @@ CompressErrorCode_t unpackToPedSubbedEventWithStats(PedSubbedEventBody_t *bdPtr,
 	}
 	//Fill Generic Header_t;
     }
-//    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
+    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
     return COMPRESS_E_OK;
 
 }

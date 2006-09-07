@@ -1525,6 +1525,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
     gHdr->numBytes=numBytes;
     gHdr->feByte=0xfe;
     switch(code) {
+	case PACKET_BD: gHdr->verId=VER_EVENT_BODY; break;
 	case PACKET_HD: gHdr->verId=VER_EVENT_HEADER; break;
 	case PACKET_HD_SLAC: gHdr->verId=SLAC_VER_EVENT_HEADER; break;
 	case PACKET_WV: gHdr->verId=VER_WAVE_PACKET; break;
@@ -1533,8 +1534,9 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_TURF_RATE: gHdr->verId=VER_TURF_RATE; break;
 	case PACKET_LAB_PED: gHdr->verId=VER_LAB_PED; break;
 	case PACKET_FULL_PED: gHdr->verId=VER_FULL_PED; break;
-	case PACKET_ENC_WV: gHdr->verId=VER_ENC_WAVE_PACKET; break;
+	case PACKET_ENC_WV_PEDSUB: gHdr->verId=VER_ENC_WAVE_PACKET; break;
 	case PACKET_ENC_SURF: gHdr->verId=VER_ENC_SURF_PACKET; break;
+	case PACKET_PED_SUBBED_EVENT: gHdr->verId=VER_PEDSUBBED_EVENT_BODY; break;
 	case PACKET_GPS_ADU5_PAT: gHdr->verId=VER_ADU5_PAT; break;
 	case PACKET_GPS_ADU5_SAT: gHdr->verId=VER_ADU5_SAT; break;
 	case PACKET_GPS_ADU5_VTG: gHdr->verId=VER_ADU5_VTG; break;
@@ -1578,15 +1580,16 @@ int checkPacket(void *thePtr)
 	retVal+=PKT_E_CHECKSUM;
     }
     switch(code) {
+	case PACKET_BD: packetSize=sizeof(AnitaEventBody_t); break;	    
 	case PACKET_HD: packetSize=sizeof(AnitaEventHeader_t); break;	    
 	case PACKET_WV: packetSize=sizeof(RawWaveformPacket_t); break;
 	case PACKET_SURF: packetSize=sizeof(RawSurfPacket_t); break;
 	case PACKET_SURF_HK: packetSize=sizeof(FullSurfHkStruct_t); break;
 	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
-	case PACKET_ENC_WV: break;
+	case PACKET_ENC_WV_PEDSUB: break;
 	case PACKET_ENC_SURF: break;
 	case PACKET_ENC_SURF_PEDSUB: break;
-	case PACKET_PED_SUBBED_EVENT: break;
+	case PACKET_PED_SUBBED_EVENT: packetSize=sizeof(PedSubbedEventBody_t); break;
 	case PACKET_LAB_PED: packetSize=sizeof(FullLabChipPedStruct_t); break;
 	case PACKET_FULL_PED: packetSize=sizeof(FullPedStruct_t); break;
 	case PACKET_GPS_ADU5_PAT: packetSize=sizeof(GpsAdu5PatStruct_t); break;
@@ -1623,6 +1626,7 @@ int checkPacket(void *thePtr)
 char *packetCodeAsString(PacketCode_t code) {
     char* string ;
     switch(code) {
+	case PACKET_BD: string="AnitaEventBody_t"; break;	    
 	case PACKET_HD: string="AnitaEventHeader_t"; break;	    
 	case PACKET_WV: string="RawWaveformPacket_t"; break;
 	case PACKET_SURF: string="RawSurfPacket_t"; break;
@@ -1630,7 +1634,7 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_TURF_RATE: string="TurfRateStruct_t"; break;
 	case PACKET_LAB_PED: string="FullLabChipPedStruct_t"; break;
 	case PACKET_FULL_PED: string="FullPedStruct_t"; break;
-	case PACKET_ENC_WV: string="EncodedPedSubbedChannelPacketHeader_t"; break;
+	case PACKET_ENC_WV_PEDSUB: string="EncodedPedSubbedChannelPacketHeader_t"; break;
 	case PACKET_ENC_SURF: string="EncodedSurfPacketHeader_t"; break;
 	case PACKET_ENC_SURF_PEDSUB: string="EncodedPedSubbedSurfPacketHeader_t"; break;
 	case PACKET_GPS_ADU5_PAT: string="GpsAdu5PatStruct_t"; break;

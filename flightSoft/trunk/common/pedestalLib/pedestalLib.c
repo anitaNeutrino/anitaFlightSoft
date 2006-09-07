@@ -337,6 +337,7 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 	    
 	}
     }		
+    fillGenericHeader(pedSubBdPtr,PACKET_PED_SUBBED_EVENT,sizeof(PedSubbedEventBody_t));
     return 0;    
 }
 
