@@ -1583,6 +1583,8 @@ int checkPacket(void *thePtr)
 	case PACKET_BD: packetSize=sizeof(AnitaEventBody_t); break;	    
 	case PACKET_HD: packetSize=sizeof(AnitaEventHeader_t); break;	    
 	case PACKET_WV: packetSize=sizeof(RawWaveformPacket_t); break;
+	case PACKET_PEDSUB_WV: packetSize=sizeof(PedSubbedWaveformPacket_t); break;
+	case PACKET_PEDSUB_SURF: packetSize=sizeof(PedSubbedSurfPacket_t); break;
 	case PACKET_SURF: packetSize=sizeof(RawSurfPacket_t); break;
 	case PACKET_SURF_HK: packetSize=sizeof(FullSurfHkStruct_t); break;
 	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
@@ -1629,7 +1631,9 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_BD: string="AnitaEventBody_t"; break;	    
 	case PACKET_HD: string="AnitaEventHeader_t"; break;	    
 	case PACKET_WV: string="RawWaveformPacket_t"; break;
+	case PACKET_PEDSUB_WV: string="PedSubbedWaveformPacket_t"; break;
 	case PACKET_SURF: string="RawSurfPacket_t"; break;
+	case PACKET_PEDSUB_SURF: string="PedSubbedSurfPacket_t"; break;
 	case PACKET_SURF_HK: string="FullSurfHkStruct_t"; break;
 	case PACKET_TURF_RATE: string="TurfRateStruct_t"; break;
 	case PACKET_LAB_PED: string="FullLabChipPedStruct_t"; break;

@@ -1012,6 +1012,7 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelPedSubbed_t));
 	wvPtr->gHdr.packetNumber=getLosNumber();
 	fillGenericHeader(wvPtr,PACKET_PEDSUB_WV,sizeof(PedSubbedWaveformPacket_t));
+//	printf("%#x %d\n",wvPtr->gHdr.code,wvPtr->gHdr.numBytes);
 	numBytesInBuffer+=sizeof(PedSubbedWaveformPacket_t);
     }
     return 0;
