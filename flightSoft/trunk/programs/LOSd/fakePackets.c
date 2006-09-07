@@ -361,18 +361,22 @@ void fakeSurfHk(struct timeval *currentTime) {
 
     theSurfHk.unixTime=currentTime->tv_sec;
     theSurfHk.unixTimeUs=currentTime->tv_usec;
+    theSurfHk.scalerGoal=2600;
     for(i=0;i<ACTIVE_SURFS;i++) {
 	theSurfHk.upperWords[i]=i;
 	for(j=0;j<SCALERS_PER_SURF;j++) {
-	    theSurfHk.scaler[i][j]=200+i*j;
+	    theSurfHk.scaler[i][j]=2600+i-j;
 	    theSurfHk.threshold[i][j]=4000-i*j;
+	    theSurfHk.setThreshold[i][j]=4000-i*j;
+	    if(i+j==20)
+		theSurfHk.setThreshold[i][j]-=j;
 	}
 	for(j=0;j<RFCHAN_PER_SURF;j++) {
 	    theSurfHk.rfPower[i][j]=1000+i*j;
 
 	}
     }
-	     
+    
 
 
     fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));

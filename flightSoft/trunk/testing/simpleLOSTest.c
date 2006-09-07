@@ -102,8 +102,11 @@ int main (int argc, char ** argv)
 void handleScience(unsigned char *buffer,unsigned short numBytes) {
     unsigned short count=0;
     GenericHeader_t *gHdr;
+    GenericHeader_t *gHdr2;
     int checkVal;
-    
+    char packetBuffer[10000];
+
+
     while(count<numBytes-1) {
 	if(buffer[count]==0xfe && buffer[count+1]==0xfe && buffer[numBytes-1]==0xfe) {	    
 	    printf("Got 0xfe Wake Up Buffer\n");
@@ -119,7 +122,23 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 	    if(gHdr->code==PACKET_ENC_SURF) 
 		printSurfInfo((EncodedSurfPacketHeader_t*) gHdr);
 	    if(gHdr->code==PACKET_ENC_SURF_PEDSUB) 
-		printPedSubSurfInfo((EncodedPedSubbedSurfPacketHeader_t*) gHdr);
+		printPedSubSurfInfo((EncodedPedSubbedSurfPacketHeader_t*) gHdr);	    
+	    if(gHdr->code==PACKET_ZIPPED_PACKET) {
+		
+		int retVal=unzipZippedPacket((ZippedPacket_t*)&buffer[count],
+					     packetBuffer,10000);
+		checkVal=checkPacket(packetBuffer);
+		if(retVal==0 && checkVal==0) {
+		    gHdr2=(GenericHeader_t*) packetBuffer;
+		    printf("\tGot %s (%#x) -- (%d bytes)\n",
+			   packetCodeAsString(gHdr2->code),
+			   gHdr2->code,gHdr2->numBytes);
+		}
+		else {
+		    printf("\tunzipZippedPacket retVal %d -- checkPacket == %d\n",retVal,checkVal);
+		}
+	    }
+
 	    count+=gHdr->numBytes;
 	}
 	else {

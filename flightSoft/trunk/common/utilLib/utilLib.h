@@ -146,6 +146,7 @@ extern "C" {
     int zipBufferedFileAndMove(char *nonBufFilename);
     int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask,int baseInd);
     int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned long numBytesOut);
+    int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned long numBytesOut);
 // Signal handling routines
 
 // Signal handling stuff
