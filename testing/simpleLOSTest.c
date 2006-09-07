@@ -58,6 +58,7 @@ int main (int argc, char ** argv)
 
     while(count<numBytes) {
 //	printf("%x\n",bigBuffer[count]);
+//	printf("%d of %d\n",count,numBytes);
 	if(bigBuffer[count]==0xf00d) {
 //	    printf("Got f00d\n");
 	    //Maybe new los buffer
@@ -110,9 +111,10 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 	}
 	printf("count %d\n",count);
 	checkVal=checkPacket(&buffer[count]);
+	gHdr = (GenericHeader_t*) &buffer[count];	
+
 	if(checkVal==0) {
-	    gHdr = (GenericHeader_t*) &buffer[count];	
-	    printf("Got %s (%d) -- (%d bytes)\n",packetCodeAsString(gHdr->code),
+	    printf("Got %s (%#x) -- (%d bytes)\n",packetCodeAsString(gHdr->code),
 		   gHdr->code,gHdr->numBytes);
 	    if(gHdr->code==PACKET_ENC_SURF) 
 		printSurfInfo((EncodedSurfPacketHeader_t*) gHdr);
@@ -121,9 +123,9 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 	    count+=gHdr->numBytes;
 	}
 	else {
-	    printf("Problem with packet -- checkVal==%d\n",checkVal);
+	    printf("Problem with packet -- checkVal==%d  (code? %#x)\n",checkVal,gHdr->code);
 	    return;
-//	    count+=gHdr->numBytes;
+	    count+=gHdr->numBytes;
 	}
     }
        
