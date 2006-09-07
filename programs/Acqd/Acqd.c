@@ -76,7 +76,7 @@ FullSurfHkStruct_t theSurfHk;
 int pedestalMode=0;
 int writeDebugData=0;
 int numPedEvents=4000;
-int switchConfigAtEnd=1;
+int pedSwitchConfigAtEnd=1;
 
 
 //Temporary Global Variables
@@ -115,12 +115,17 @@ int surfonly = FALSE; /* Run in surf only mode */
 int writeData = FALSE; /* Default is not to write data to a disk */
 int writeFullHk = FALSE;
 int justWriteHeader = FALSE;
+
+//Threshold Scan Things
 int doThresholdScan = FALSE;
 int doSingleChannelScan = FALSE;
 int surfForSingle=0;
 int dacForSingle=0;
 int thresholdScanStepSize =1;
 int thresholdScanPointsPerStep =1;
+int threshSwitchConfigAtEnd=1;
+
+
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
@@ -910,7 +915,7 @@ int main(int argc, char **argv) {
 	}  /* closing master while loop. */
 	if(pedestalMode) {
 	    writePedestals();
-	    if(switchConfigAtEnd) {
+	    if(pedSwitchConfigAtEnd) {
 		//Arrrghhh		
 		CommandStruct_t theCmd;
 		theCmd.numCmdBytes=3;
@@ -920,6 +925,16 @@ int main(int argc, char **argv) {
 		writeCommandAndLink(&theCmd);
 	    }
 	}
+	if(doThresholdScan && threshSwitchConfigAtEnd) {
+	    //Arrrghhh		
+	    CommandStruct_t theCmd;
+	    theCmd.numCmdBytes=3;
+	    theCmd.cmd[0]=211;
+	    theCmd.cmd[1]=1;
+	    theCmd.cmd[2]=0;
+	    writeCommandAndLink(&theCmd);
+	}
+	    
 
 
     } while(currentState==PROG_STATE_INIT);
@@ -1365,6 +1380,7 @@ int readConfigFile()
 	dacForSingle=kvpGetInt("dacForSingle",0);
 	thresholdScanStepSize=kvpGetInt("thresholdScanStepSize",0);
 	thresholdScanPointsPerStep=kvpGetInt("thresholdScanPointsPerStep",0);
+	threshSwitchConfigAtEnd=kvpGetInt("threshSwitchConfigAtEnd",1);
 	setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
 	globalThreshold=kvpGetInt("globalThreshold",0);
 	dacPGain=kvpGetFloat("dacPGain",0);
@@ -1478,7 +1494,7 @@ int readConfigFile()
 	//Pedestal things
 	writeDebugData=kvpGetInt("writeDebugData",1);
 	numPedEvents=kvpGetInt("numPedEvents",4000);
-	switchConfigAtEnd=kvpGetInt("switchConfigAtEnd",1);
+	pedSwitchConfigAtEnd=kvpGetInt("pedSwitchConfigAtEnd",1);
 	
 	
     }
@@ -1937,6 +1953,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
     if(verbosity && printToScreen) 
 	printf("Triggered, event %d (by software counter).\n",doingEvent);
 
+
   	
     //Loop over SURFs and read out data
     for(surf=0;surf<numSurfs;surf++){  
@@ -2265,9 +2282,12 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 
     unsigned char tempVal;
     int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
+    int rcoSamp;
     unsigned int headerWord,samp=0;
     unsigned short upperWord=0;
+    unsigned char rcoBit;
     
+
     doingEvent++;
     if(verbosity && printToScreen) 
 	printf("Triggered, event %d (by software counter).\n",doingEvent);
@@ -2408,7 +2428,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 		    theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt);
 		    
 		    //Now check for HITBUS
-		    if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS))
+		    if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS)) 
 			firstHitbus=samp;
 		    if(GetLower16(dataInt)&HITBUS) {
 			if(!wrappedHitbus) {
@@ -2421,11 +2441,17 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 			}		    
 		    }				
 		}
+		rcoSamp=firstHitbus-1;
+		if(wrappedHitbus)
+		    rcoSamp=lastHitbus-1;
+		if(rcoSamp<0 || rcoSamp>255) rcoSamp=100;
+		
+		rcoBit=((labData[surf][chan][rcoSamp]&0x2000)>>13)
 		//End of sample loop
 		tempVal=chan+N_CHAN*surf;
 		theEvent.body.channel[chanId].header.chanId=tempVal;
 		theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
-		tempVal=((upperWord&0xc0)>>6)+(wrappedHitbus<<3);
+		tempVal=((upperWord&0xc0)>>6)+(rcoBit<<2)+(wrappedHitbus<<3);
 		if(lastHitbus>255) {
 		    tempVal+=((lastHitbus-255)<<4);
 		    lastHitbus=255;
@@ -2478,6 +2504,11 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
     if(verbosity && printToScreen) 
 	printf("Reading Surf HK %d.\n",hkNumber);
         
+    if(enableChanServo)
+	theSurfHk.scalerGoal=pidGoal;
+    else 
+	theSurfHk.scalerGoal=0;
+
     for(surf=0;surf<numSurfs;surf++){  
 
 	//Set to read house keeping

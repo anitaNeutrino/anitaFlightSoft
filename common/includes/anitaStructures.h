@@ -51,7 +51,7 @@
 #define VER_SURF_PACKET 6
 #define VER_ENC_WAVE_PACKET 6
 #define VER_ENC_SURF_PACKET 6
-#define VER_SURF_HK 7
+#define VER_SURF_HK 9
 #define VER_ADU5_PAT 4
 #define VER_ADU5_SAT 4
 #define VER_ADU5_VTG 4
@@ -559,6 +559,7 @@ typedef struct {
     unsigned long unixTimeUs;
     unsigned short globalThreshold; //set to zero if there isn't one
     unsigned short errorFlag; //Will define at some point    
+    unsigned short scalerGoal; //What are we aiming for with the scaler rate
     unsigned short upperWords[ACTIVE_SURFS];
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];

@@ -1855,3 +1855,14 @@ int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned
     fillGenericHeader(output,PACKET_ZIPPED_PACKET,sizeof(ZippedPacket_t)+numBytesOut);
     return sizeof(ZippedPacket_t)+numBytesOut;   
 }
+
+int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned long numBytesOut) {
+    char *input = (char*) zipPacket;
+    unsigned long returnBytes=numBytesOut;
+    int retVal=unzipBuffer(&input[sizeof(ZippedPacket_t)],output,zipPacket->gHdr.numBytes-sizeof(ZippedPacket_t),&returnBytes);
+    if(retVal!=0) 
+	return retVal;
+    if(zipPacket->numUncompressedBytes!=returnBytes)
+	return -1;
+    return 0;
+}
