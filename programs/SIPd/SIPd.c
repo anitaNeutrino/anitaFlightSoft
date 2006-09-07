@@ -45,7 +45,8 @@ int sendEncodedPedSubbedWavePackets(int bufSize);
 int sendEncodedSurfPackets(int bufSize);
 int sendRawWaveformPackets(int bufSize); 
 int sendPedSubbedWaveformPackets(int bufSize);
-
+int sendRawSurfPackets(int bufSize);
+int sendPedSubbedSurfPackets(int bufSize); 
 
 // Config Thingies
 char sipdPidFile[FILENAME_MAX];
@@ -547,10 +548,16 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     gHdr = (GenericHeader_t*) &theBuffer[0];
     switch(gHdr->code) {
 	case PACKET_BD:
-	    retVal=sendRawWaveformPackets(retVal);
+	    if(sendWavePackets)
+		retVal=sendRawWaveformPackets(retVal);
+	    else 
+		retVal=sendRawSurfPackets(retVal);
 	    break;
 	case PACKET_PED_SUBBED_EVENT:
-	    retVal=sendPedSubbedWaveformPackets(retVal);
+	    if(sendWavePackets)
+		retVal=sendPedSubbedWaveformPackets(retVal);
+	    else
+		retVal=sendPedSubbedSurfPackets(retVal);
 	    break;
 	case PACKET_ENC_EVENT_WRAPPER:
 	    retVal=sendEncodedSurfPackets(retVal);
@@ -739,7 +746,44 @@ int sendRawWaveformPackets(int bufSize)
 	wvPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(wvPtr,PACKET_WV,sizeof(RawWaveformPacket_t));
 	retVal = sipcom_highrate_write(chanBuffer,sizeof(RawWaveformPacket_t));
-	eventDataSent+=sizeof(PedSubbedWaveformPacket_t);
+	eventDataSent+=sizeof(RawWaveformPacket_t);
+	if(retVal<0) {
+	    //Problem sending data
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+		errorCounter++;
+	    }
+	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+	}
+    }
+    return retVal;
+}
+
+
+int sendRawSurfPackets(int bufSize) 
+{
+    static int errorCounter=0;
+    int retVal;
+    if(bufSize!=sizeof(AnitaEventBody_t)) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    errorCounter++;
+	}
+	return -1;
+    }
+    AnitaEventBody_t *bdPtr = (AnitaEventBody_t*) theBuffer;
+    int surf;
+    RawSurfPacket_t *surfPtr;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfPtr=(RawSurfPacket_t*) chanBuffer;
+	surfPtr->eventNumber=bdPtr->eventNumber;	
+	memcpy(&(surfPtr->waveform[0]),&(bdPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
+
+	surfPtr->gHdr.packetNumber=getTdrssNumber();
+	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(RawSurfPacket_t));
+	retVal = sipcom_highrate_write(chanBuffer,sizeof(RawSurfPacket_t));
+	eventDataSent+=sizeof(RawSurfPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
 	    if(errorCounter<100) {
@@ -773,7 +817,8 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	wvPtr->eventNumber=bdPtr->eventNumber;
 	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelPedSubbed_t));
 	wvPtr->gHdr.packetNumber=getTdrssNumber();
-	fillGenericHeader(wvPtr,PACKET_WV,sizeof(PedSubbedWaveformPacket_t));
+	wvPtr->whichPeds=bdPtr->whichPeds;
+	fillGenericHeader(wvPtr,PACKET_PEDSUB_WV,sizeof(PedSubbedWaveformPacket_t));
 
 	retVal = sipcom_highrate_write(chanBuffer,sizeof(PedSubbedWaveformPacket_t));
 	eventDataSent+=sizeof(PedSubbedWaveformPacket_t);
@@ -786,6 +831,44 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 	}
 
+    }
+    return retVal;
+}
+
+
+int sendPedSubbedSurfPackets(int bufSize) 
+{
+    static int errorCounter=0;
+    int retVal;
+    if(bufSize!=sizeof(PedSubbedEventBody_t)) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    errorCounter++;
+	}
+	return -1;
+    }
+    PedSubbedEventBody_t *bdPtr = (PedSubbedEventBody_t*) theBuffer;
+    int surf;
+    PedSubbedSurfPacket_t *surfPtr;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfPtr=(PedSubbedSurfPacket_t*) chanBuffer;
+	surfPtr->eventNumber=bdPtr->eventNumber;	
+	surfPtr->whichPeds=bdPtr->whichPeds;	
+	memcpy(&(surfPtr->waveform[0]),&(bdPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelPedSubbed_t)*CHANNELS_PER_SURF);
+
+	surfPtr->gHdr.packetNumber=getTdrssNumber();
+	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(PedSubbedSurfPacket_t));
+	retVal = sipcom_highrate_write(chanBuffer,sizeof(PedSubbedSurfPacket_t));
+	eventDataSent+=sizeof(PedSubbedSurfPacket_t);
+	if(retVal<0) {
+	    //Problem sending data
+	    if(errorCounter<100) {
+		syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+		errorCounter++;
+	    }
+	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+	}
     }
     return retVal;
 }

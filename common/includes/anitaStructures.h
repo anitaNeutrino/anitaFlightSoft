@@ -75,7 +75,7 @@ typedef enum {
     PACKET_BD = 0xff, // AnitaEventBody_t -- No
     PACKET_HD = 0x100, //AnitaEventHeader_t --Yes
     PACKET_WV = 0x101, //RawWaveformPacket_t --Yes
-    PACKET_SURF = 0x102, //RawSurfPacket_t --No
+    PACKET_SURF = 0x102, //RawSurfPacket_t -- Yes
     PACKET_HD_SLAC = 0x103,
     PACKET_SURF_HK = 0x110, //FullSurfHkStruct_t --Yes
     PACKET_TURF_RATE = 0x111, //TurfRateStruct_t -- Yes
@@ -86,6 +86,7 @@ typedef enum {
     PACKET_PED_SUBBED_EVENT = 0x124, //PedSubbedEventBody_t -- No too big
     PACKET_ENC_WV_PEDSUB = 0x125, // EncodedPedSubbedChannelPacketHeader_t -- Yes
     PACKET_ENC_PEDSUB_EVENT_WRAPPER = 0x126,
+    PACKET_PEDSUB_SURF = 0x127, //PedSubbedSurfPacket_t -- Yes 
     PACKET_LAB_PED = 0x130, //
     PACKET_FULL_PED = 0x131, //Too big to telemeter
     PACKET_GPS_ADU5_PAT = 0x200,
@@ -445,6 +446,15 @@ typedef struct {
     unsigned long eventNumber;
     SurfChannelFull_t waveform[CHANNELS_PER_SURF];
 } RawSurfPacket_t;
+
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long eventNumber;
+    unsigned long whichPeds;
+    SurfChannelPedSubbed_t waveform[CHANNELS_PER_SURF];
+} PedSubbedSurfPacket_t;
+
 
 // typedef struct {
 //      GenericHeader_t gHdr;

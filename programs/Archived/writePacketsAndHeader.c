@@ -33,7 +33,7 @@ void writePacketsAndHeader(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr)
     char headerName[FILENAME_MAX];
     RawSurfPacket_t surfPacket;
     surfPacket.gHdr.code=PACKET_SURF;
-    for(surf=0;surf<NUM_DIGITZED_CHANNELS;surf++) {
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	sprintf(packetName,"%s/surfpk_%ld_%d.dat",eventTelemDir[(int)(hdPtr->priority&0xf)],hdPtr->eventNumber,surf);
 	surfPacket.eventNumber=hdPtr->eventNumber;
 //	surfPacket.packetNumber=surf;
