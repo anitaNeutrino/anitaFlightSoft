@@ -455,8 +455,8 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long whichPeds;
     unsigned long eventNumber;
+    unsigned long whichPeds;
 } BaseWavePacketHeader_t;
 
 typedef BaseWavePacketHeader_t EncodedPedSubbedSurfPacketHeader_t;
