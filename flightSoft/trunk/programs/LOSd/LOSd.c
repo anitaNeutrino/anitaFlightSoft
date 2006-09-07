@@ -42,7 +42,8 @@ int sendPedSubbedWaveformPackets(int bufSize);
 int sendEncodedPedSubbedWavePackets(int bufSize);
 int sendEncodedPedSubbedSurfPackets(int bufSize);
 int sendEncodedSurfPackets(int bufSize);
-
+int sendRawSurfPackets(int bufSize);
+int sendPedSubbedSurfPackets(int bufSize);
 
 char fakeOutputDir[]="/tmp/fake/los";
 
@@ -778,10 +779,16 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     gHdr = (GenericHeader_t*) &eventBuffer[0];
     switch(gHdr->code) {
 	case PACKET_BD:
-	    retVal=sendRawWaveformPackets(retVal);
+	    if(sendWavePackets) 
+		retVal=sendRawWaveformPackets(retVal);
+	    else
+		retVal=sendRawSurfPackets(retVal);
 	    break;
 	case PACKET_PED_SUBBED_EVENT:
-	    retVal=sendPedSubbedWaveformPackets(retVal);
+	    if(sendWavePackets)
+		retVal=sendPedSubbedWaveformPackets(retVal);
+	    else 
+		retVal=sendPedSubbedSurfPackets(retVal);
 	    break;
 	case PACKET_ENC_EVENT_WRAPPER:
 	    retVal=sendEncodedSurfPackets(retVal);
@@ -937,6 +944,7 @@ int sendRawWaveformPackets(int bufSize)
     if(bufSize!=sizeof(AnitaEventBody_t)) {
 	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
 	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	return -1;
     }
     AnitaEventBody_t *bdPtr = (AnitaEventBody_t*) eventBuffer;
     int chan;
@@ -957,6 +965,33 @@ int sendRawWaveformPackets(int bufSize)
 }
 
 
+int sendRawSurfPackets(int bufSize) 
+{
+    if(bufSize!=sizeof(AnitaEventBody_t)) {
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	return -1;
+    }
+    AnitaEventBody_t *bdPtr = (AnitaEventBody_t*) eventBuffer;
+    int surf;
+    RawSurfPacket_t *surfPtr;
+    int numBytes=sizeof(RawSurfPacket_t);
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+	    doWrite();
+	}
+	surfPtr=(RawSurfPacket_t*) &losBuffer[numBytesInBuffer];
+	surfPtr->eventNumber=bdPtr->eventNumber;	
+	memcpy(&(surfPtr->waveform[0]),&(bdPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelFull_t)*CHANNELS_PER_SURF);
+	surfPtr->gHdr.packetNumber=getLosNumber();
+	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(RawSurfPacket_t));
+	numBytesInBuffer+=sizeof(RawSurfPacket_t);
+    }
+    return 0;
+}
+
+
+
 int sendPedSubbedWaveformPackets(int bufSize) 
 {
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
@@ -973,10 +1008,38 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	}
 	wvPtr=(PedSubbedWaveformPacket_t*) &losBuffer[numBytesInBuffer];
 	wvPtr->eventNumber=bdPtr->eventNumber;
+	wvPtr->whichPeds=bdPtr->whichPeds;
 	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelPedSubbed_t));
 	wvPtr->gHdr.packetNumber=getLosNumber();
-	fillGenericHeader(wvPtr,PACKET_WV,sizeof(PedSubbedWaveformPacket_t));
+	fillGenericHeader(wvPtr,PACKET_PEDSUB_WV,sizeof(PedSubbedWaveformPacket_t));
 	numBytesInBuffer+=sizeof(PedSubbedWaveformPacket_t);
+    }
+    return 0;
+}
+
+
+int sendPedSubbedSurfPackets(int bufSize) 
+{
+    if(bufSize!=sizeof(PedSubbedEventBody_t)) {
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	return -1;
+    }
+    PedSubbedEventBody_t *bdPtr = (PedSubbedEventBody_t*) eventBuffer;
+    int surf;
+    PedSubbedSurfPacket_t *surfPtr;
+    int numBytes=sizeof(PedSubbedSurfPacket_t);
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+	    doWrite();
+	}
+	surfPtr=(PedSubbedSurfPacket_t*) &losBuffer[numBytesInBuffer];
+	surfPtr->eventNumber=bdPtr->eventNumber;	
+	surfPtr->whichPeds=bdPtr->whichPeds;	
+	memcpy(&(surfPtr->waveform[0]),&(bdPtr->channel[CHANNELS_PER_SURF*surf]),sizeof(SurfChannelPedSubbed_t)*CHANNELS_PER_SURF);
+	surfPtr->gHdr.packetNumber=getLosNumber();
+	fillGenericHeader(surfPtr,PACKET_PEDSUB_SURF,sizeof(PedSubbedSurfPacket_t));
+	numBytesInBuffer+=sizeof(PedSubbedSurfPacket_t);
     }
     return 0;
 }
