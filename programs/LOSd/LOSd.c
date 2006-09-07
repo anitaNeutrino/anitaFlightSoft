@@ -804,7 +804,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 		syslog(LOG_ERR,"Don't know what to do with packet %d -- %s (Message %d of 100)\n",gHdr->code,packetCodeAsString(gHdr->code),errorCounter);
 		errorCounter++;
 	    }
-	    fprintf(stderr,"Don't know what to do with packet %d -- %s\n",gHdr->code,packetCodeAsString(gHdr->code));
+	    fprintf(stderr,"Don't know what to do with packet %d -- %s (file %s)\n",gHdr->code,packetCodeAsString(gHdr->code),waveFilename);
     }
 	
         
