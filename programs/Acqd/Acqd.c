@@ -1866,7 +1866,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
     else
 	fillGenericHeader(hdPtr,PACKET_HD_SLAC,sizeof(AnitaEventHeader_t));
-    fillGenericHeader(theBody,PACKET_WV,sizeof(AnitaEventBody_t));
+    fillGenericHeader(theBody,PACKET_BD,sizeof(AnitaEventBody_t));
 
 
 

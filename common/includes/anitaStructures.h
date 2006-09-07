@@ -20,6 +20,8 @@
 
 #ifdef SLAC_DATA06
 //SLAC data definitions
+#define VER_EVENT_BODY 7
+#define VER_PEDSUBBED_EVENT_BODY 7
 #define VER_EVENT_HEADER 7
 #define VER_WAVE_PACKET 4
 #define VER_SURF_PACKET 4
@@ -41,6 +43,8 @@
 #define VER_SLOW_2 1
 #else
 //Current ones
+#define VER_EVENT_BODY 7
+#define VER_PEDSUBBED_EVENT_BODY 7
 #define VER_EVENT_HEADER 9
 #define SLAC_VER_EVENT_HEADER 7
 #define VER_WAVE_PACKET 6
@@ -68,6 +72,7 @@
 
 //Enumerations
 typedef enum {
+    PACKET_BD = 0xff, // AnitaEventBody_t -- No
     PACKET_HD = 0x100, //AnitaEventHeader_t --Yes
     PACKET_WV = 0x101, //RawWaveformPacket_t --Yes
     PACKET_SURF = 0x102, //RawSurfPacket_t --No
@@ -441,12 +446,12 @@ typedef struct {
     SurfChannelFull_t waveform[CHANNELS_PER_SURF];
 } RawSurfPacket_t;
 
-typedef struct {
-     GenericHeader_t gHdr;
-     unsigned long eventNumber;
-     unsigned long whichPeds;
-     EncodedSurfChannelHeader_t chanHead;
-} EncodedWaveformPacket_t; //0x101
+// typedef struct {
+//      GenericHeader_t gHdr;
+//      unsigned long eventNumber;
+//      unsigned long whichPeds;
+//      EncodedSurfChannelHeader_t chanHead;
+// } EncodedWaveformPacket_t; //0x101
 
 typedef struct {
     GenericHeader_t gHdr;

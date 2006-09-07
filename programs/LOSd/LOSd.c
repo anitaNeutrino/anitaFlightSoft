@@ -37,6 +37,8 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber);
 void readAndSendEventRamdisk(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 int getLosNumber();
+int sendRawWaveformPackets(int bufSize);
+int sendPedSubbedWaveformPackets(int bufSize);
 int sendEncodedPedSubbedWavePackets(int bufSize);
 int sendEncodedPedSubbedSurfPackets(int bufSize);
 int sendEncodedSurfPackets(int bufSize);
@@ -775,6 +777,12 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     // it contains EncodedPedSubbedSurfPacketHeader_t
     gHdr = (GenericHeader_t*) &eventBuffer[0];
     switch(gHdr->code) {
+	case PACKET_BD:
+	    retVal=sendRawWaveformPackets(retVal);
+	    break;
+	case PACKET_PED_SUBBED_EVENT:
+	    retVal=sendPedSubbedWaveformPackets(retVal);
+	    break;
 	case PACKET_ENC_EVENT_WRAPPER:
 	    retVal=sendEncodedSurfPackets(retVal);
 	    break;
@@ -792,8 +800,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	    fprintf(stderr,"Don't know what to do with packet %d -- %s\n",gHdr->code,packetCodeAsString(gHdr->code));
     }
 	
-    
-    
+        
     if(printToScreen && verbosity>1) 
 	printf("Removing files %s\t%s\n%s\n",headerFilename,waveFilename,
 	       headerLinkFilename);
@@ -912,7 +919,7 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 	    numBytesInBuffer+=sizeof(EncodedSurfChannelHeader_t);
 	    count2+=sizeof(EncodedSurfChannelHeader_t);
 	    memcpy(&losBuffer[numBytesInBuffer],&eventBuffer[count2],numBytes);
-	    fillGenericHeader(waveHdPtr,PACKET_ENC_WV,sizeof(EncodedPedSubbedChannelPacketHeader_t)+sizeof(EncodedSurfChannelHeader_t)+numBytes);
+	    fillGenericHeader(waveHdPtr,PACKET_ENC_WV_PEDSUB,sizeof(EncodedPedSubbedChannelPacketHeader_t)+sizeof(EncodedSurfChannelHeader_t)+numBytes);
 	    count2+=chanHdPtr->numBytes;
 	    numBytesInBuffer+=numBytes;
 	}
@@ -921,6 +928,55 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 	}
 	else break;
 	if(count>bufSize) return -1;
+    }
+    return 0;
+}
+
+int sendRawWaveformPackets(int bufSize) 
+{
+    if(bufSize!=sizeof(AnitaEventBody_t)) {
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+    }
+    AnitaEventBody_t *bdPtr = (AnitaEventBody_t*) eventBuffer;
+    int chan;
+    RawWaveformPacket_t *wvPtr;
+    int numBytes=sizeof(RawWaveformPacket_t);
+    for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
+	if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+	    doWrite();
+	}
+	wvPtr=(RawWaveformPacket_t*) &losBuffer[numBytesInBuffer];
+	wvPtr->eventNumber=bdPtr->eventNumber;
+	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelFull_t));
+	wvPtr->gHdr.packetNumber=getLosNumber();
+	fillGenericHeader(wvPtr,PACKET_WV,sizeof(RawWaveformPacket_t));
+	numBytesInBuffer+=sizeof(RawWaveformPacket_t);
+    }
+    return 0;
+}
+
+
+int sendPedSubbedWaveformPackets(int bufSize) 
+{
+    if(bufSize!=sizeof(PedSubbedEventBody_t)) {
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+    }
+    PedSubbedEventBody_t *bdPtr = (PedSubbedEventBody_t*) eventBuffer;
+    int chan;
+    PedSubbedWaveformPacket_t *wvPtr;
+    int numBytes=sizeof(PedSubbedWaveformPacket_t);
+    for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
+	if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+	    doWrite();
+	}
+	wvPtr=(PedSubbedWaveformPacket_t*) &losBuffer[numBytesInBuffer];
+	wvPtr->eventNumber=bdPtr->eventNumber;
+	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelPedSubbed_t));
+	wvPtr->gHdr.packetNumber=getLosNumber();
+	fillGenericHeader(wvPtr,PACKET_WV,sizeof(PedSubbedWaveformPacket_t));
+	numBytesInBuffer+=sizeof(PedSubbedWaveformPacket_t);
     }
     return 0;
 }
