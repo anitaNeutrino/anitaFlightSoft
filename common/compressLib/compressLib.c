@@ -572,10 +572,11 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
 
     mean=xMin+rangeTotal/2;
 //    printf("mean %d\txMin %d\txMax %d\tbitSize %d\n",mean,xMin,xMax,bitSize);
-    
-    char *meanPtr=(char*)currentChar;
-    (*meanPtr)=(char)(mean);
-    currentChar++;
+//    if(mean<-20 || mean>20)
+//	printf("mean %d, xMin %d xMax %d\n",mean,xMin,xMax);
+    short *meanPtr=(short*)currentChar;
+    (*meanPtr)=mean;
+    currentChar+=2;
 /*     *currentChar = (unsigned char) bitSize; */
 /*     currentChar++; */
 
@@ -621,7 +622,7 @@ int encodePSWaveLosslessBinary(unsigned char *buffer,SurfChannelPedSubbed_t *cha
 CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes,SurfChannelPedSubbed_t *chanPtr, ChannelEncodingType_t encType)
 {
     int sampNum=0;
-    char *meanPtr=(char*)input;
+    short *meanPtr=(short*)input;
     short mean=(short)(*meanPtr);
 //    unsigned char flag =  input[1];
     int bitSize=getBinaryBitSize(encType);
@@ -629,7 +630,7 @@ CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes
 
 //    printf("mean %d\tbitSize %d\n",mean,bitSize);
 
-    unsigned char *currentChar=&input[1];
+    unsigned char *currentChar=&input[2];
     int currentBit=0;
     unsigned short tempNum;
     while(sampNum<MAX_NUMBER_SAMPLES) {
