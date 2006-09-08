@@ -2446,7 +2446,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 		    rcoSamp=lastHitbus-1;
 		if(rcoSamp<0 || rcoSamp>255) rcoSamp=100;
 		
-		rcoBit=((labData[surf][chan][rcoSamp]&0x2000)>>13)
+		rcoBit=((labData[surf][chan][rcoSamp]&0x2000)>>13);
 		//End of sample loop
 		tempVal=chan+N_CHAN*surf;
 		theEvent.body.channel[chanId].header.chanId=tempVal;

@@ -11,7 +11,7 @@
 
 #include "includes/anitaStructures.h"
 
-
+#include "compressLib/compressLib.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
@@ -161,8 +161,9 @@ void printSurfInfo(EncodedSurfPacketHeader_t *surfPtr)
 
 void printPedSubSurfInfo(EncodedPedSubbedSurfPacketHeader_t *surfPtr) 
 {
+    SurfChannelPedSubbed_t psSurfChan;
     unsigned char *eventBuffer;
-    int count=0,chan;
+    int count=0,chan,i;
     EncodedSurfChannelHeader_t *chanHdPtr;
     printf("event %lu, numBytes %d\n",surfPtr->eventNumber,surfPtr->gHdr.numBytes);
     eventBuffer = (unsigned char*) surfPtr;
@@ -172,8 +173,25 @@ void printPedSubSurfInfo(EncodedPedSubbedSurfPacketHeader_t *surfPtr)
 	chanHdPtr = (EncodedSurfChannelHeader_t*)&eventBuffer[count];
 	    
 	printf("Event %lu  Chan %d: encType %d, numBytes %d crc %d\n",surfPtr->eventNumber,chan,chanHdPtr->encType,chanHdPtr->numBytes,chanHdPtr->crc);
-	count+=chanHdPtr->numBytes;
 	count+=sizeof(EncodedSurfChannelHeader_t);
+	CompressErrorCode_t retVal=decodePSChannel(chanHdPtr,&eventBuffer[count], &psSurfChan);
+	if(retVal==COMPRESS_E_OK) {
+	    if(chan<8) {
+		if(psSurfChan.mean<-50 || psSurfChan.mean>50) {
+		    for(i=0;i<100;i++) {
+			printf("**********************************\n");
+		    }
+		}
+	    }
+	    printf("Chan mean %f, rms %f, xMin %d, xMax %d\n",
+		   psSurfChan.mean,psSurfChan.rms,psSurfChan.xMin,
+		   psSurfChan.xMax);
+	}
+	else {
+	    printf("Problem decoding PS channel\n");
+	}
+	count+=chanHdPtr->numBytes;
+
     }
 
 }
