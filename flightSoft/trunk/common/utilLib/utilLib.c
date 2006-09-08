@@ -1804,9 +1804,10 @@ int zipBufferedFileAndMove(char *filename) {
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
     printf("move %s %s\n",bufferZippedFilename,outputFilename);
-    rename(bufferZippedFilename,outputFilename);
+    copyFileToFile(bufferZippedFilename,outputFilename);
+//    rename(bufferZippedFilename,outputFilename);
     free(buffer);
-//    unlink(bufferZippedFilename);
+    unlink(bufferZippedFilename);
     unlink(bufferFilename);
     return retVal;
 }
@@ -1840,9 +1841,11 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
 	copyFileToFile(bufferZippedFilename,cloneFilename);	
     }
 //    printf("move2 %s %s\n",bufferZippedFilename,outputFilename);
-    rename(bufferZippedFilename,outputFilename);
+//    rename(bufferZippedFilename,outputFilename);
+    copyFileToFile(bufferZippedFilename,outputFilename);
     free(buffer);
     unlink(bufferFilename);
+    unlink(bufferZippedFilename);
     return retVal;
 }
 

@@ -30,7 +30,7 @@ sleep 20
 
 
 daemon -u anita -r Archived -n Archived
-#daemon -u anita -r Acqd -n Acqd
+daemon -u anita -r Acqd -n Acqd
 daemon -u anita -r Eventd -n Eventd
 daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
