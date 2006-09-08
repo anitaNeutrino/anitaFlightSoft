@@ -45,6 +45,8 @@ int mountNextUsb(int intExtFlag);
 void prepWriterStructs();
 int tailFile(char *filename, int numLines);
 int makeZippedFilePacket(char *filename,int fileTag);
+int readAcqdConfig();
+
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -79,6 +81,9 @@ int disableUsbExt;
 char bladeName[FILENAME_MAX];
 char usbIntName[FILENAME_MAX];
 char usbExtName[FILENAME_MAX];
+
+//Needed for commands
+int surfTrigBandMasks[ACTIVE_SURFS][2];
 
 
 
@@ -328,6 +333,9 @@ int executeCommand(CommandStruct_t *theCmd)
     time_t rawtime;
     int retVal=0;
     int ivalue;
+    int ivalue2;
+    int ivalue3;
+    unsigned long ulvalue;
     char theCommand[FILENAME_MAX];
     switch(theCmd->cmd[0]) {
 	case CMD_TAIL_VAR_LOG_MESSAGES:
@@ -564,31 +572,25 @@ int executeCommand(CommandStruct_t *theCmd)
 	    retVal=sendSignal(ID_HKD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
-	case SURF_ADU5_TRIG_FLAG:
+	case ACQD_ADU5_TRIG_FLAG:
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Acqd.config","trigger","enablePPS1Trigger",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
-	case SURF_G12_TRIG_FLAG: 
+	case ACQD_G12_TRIG_FLAG: 
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Acqd.config","trigger","enablePPS2Trigger",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
-	case SURF_RF_TRIG_FLAG: 
-	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","trigger","enableRFTrigger",ivalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
-	    if(retVal) return 0;
-	    return rawtime;
-	case SURF_SOFT_TRIG_FLAG: 	    
+	case ACQD_SOFT_TRIG_FLAG: 	    
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Acqd.config","trigger","enableSoftTrigger",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
-	case SURF_SOFT_TRIG_PERIOD:
+	case ACQD_SOFT_TRIG_PERIOD:
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Acqd.config","trigger","softTrigSleepPeriod",ivalue,&rawtime);
 	    if(ivalue>0) 
@@ -598,6 +600,100 @@ int executeCommand(CommandStruct_t *theCmd)
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
+	case ACQD_ENABLE_CHAN_SERVO: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","thresholds","enableChanServo",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_SET_PID_GOAL: 	    
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Acqd.config","thresholds","pidGoal",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_PEDESTAL_RUN: 	    
+//	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","acqd","pedestalMode",1,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	case ACQD_THRESHOLD_SCAN: 	    
+//	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","thresholdScan","doThresholdScan",1,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	case ACQD_SET_ANT_TRIG_MASK: 	    
+	    ulvalue=(theCmd->cmd[1])&(theCmd->cmd[2]<<8)&(theCmd->cmd[3]<<16)&(theCmd->cmd[4]<<24);
+	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",ulvalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_SET_SURF_BAND_TRIG_MASK: 	    
+	    ivalue=(theCmd->cmd[1]); //Which Surf
+	    ivalue2=(theCmd->cmd[2])+(theCmd->cmd[3]<<8);
+	    ivalue3=(theCmd->cmd[4])+(theCmd->cmd[5]<<8);
+	    readAcqdConfig();
+	    if(ivalue>-1 && ivalue<9) {
+		surfTrigBandMasks[ivalue][0]=ivalue2;
+		surfTrigBandMasks[ivalue][1]=ivalue3;
+		configModifyIntArray("Acqd.config","thresholds","surfTrigBandMasks",&surfTrigBandMasks[0][0],2*ACTIVE_SURFS,&rawtime);
+	    }
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_SET_GLOBAL_THRESHOLD: 	    
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue,&rawtime);
+	    if(ivalue>0) 
+		configModifyInt("Acqd.config","thresholds","setGlobalThreshold",1,&rawtime);
+	    else
+		configModifyInt("Acqd.config","thresholds","setGlobalThreshold",0,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_REPROGRAM_TURF: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","acqd","reprogramTurf",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_SURFHK_PERIOD: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","acqd","surfHkPeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_SURFHK_TELEM_EVERY: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","acqd","surfHkTelemEvery",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_TURFHK_TELEM_EVERY: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","acqd","turfRateTelemEvery",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_NUM_EVENTS_PEDESTAL: 	    
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Acqd.config","pedestal","numPedEvents",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_THRESH_SCAN_STEP_SIZE: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","thresholds","thresholdScanStepSize",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case ACQD_THRESH_SCAN_POINTS_PER_STEP: 	    
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Acqd.config","thresholds","thresholdScanPointsPerStep",ivalue,&rawtime);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+
 	case CLEAN_DIRS: 	    
 	    return cleanDirs();
 	case SEND_CONFIG: 
@@ -1168,5 +1264,175 @@ void prepWriterStructs() {
     cmdWriter.writeBitMask=hkDiskBitMask;
 
 }
+
+
+int readAcqdConfig()
+
+/* Load Acqd config stuff */
+{
+    /* Config file thingies */
+    int status=0;//,count,surf,dac;
+//    char keyName[180];
+    int tempNum=12;
+//    int surfSlots[MAX_SURFS];
+//    int surfBuses[MAX_SURFS];
+//    int surfSlotCount=0;
+//    int surfBusCount=0;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+//    char *tempString;
+
+    kvpReset();
+    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+    status += configLoad ("Acqd.config","output") ;
+    status += configLoad ("Acqd.config","locations") ;
+    status += configLoad ("Acqd.config","debug") ;
+    status += configLoad ("Acqd.config","trigger") ;
+    status += configLoad ("Acqd.config","thresholds") ;
+    status += configLoad ("Acqd.config","acqd") ;
+    status += configLoad ("Acqd.config","pedestal") ;
+//    printf("Debug rc1\n");
+    if(status == CONFIG_E_OK) {
+//	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
+//        niceValue=kvpGetInt("niceValue",-20);
+//	pedestalMode=kvpGetInt("pedestalMode",0);
+//	useInterrupts=kvpGetInt("useInterrupts",0);
+//	firmwareVersion=kvpGetInt("firmwareVersion",2);
+//	turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
+//	surfHkPeriod=kvpGetInt("surfHkPeriod",1);
+//	surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
+//	turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
+//	turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
+//	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
+//	softTrigSleepPeriod=kvpGetInt("softTrigSleepPeriod",0);
+//	reprogramTurf=kvpGetInt("reprogramTurf",0);
+//	pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
+//	pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
+//	doThresholdScan=kvpGetInt("doThresholdScan",0);
+//	doSingleChannelScan=kvpGetInt("doSingleChannelScan",0);
+//	surfForSingle=kvpGetInt("surfForSingle",0);
+//	dacForSingle=kvpGetInt("dacForSingle",0);
+//	thresholdScanStepSize=kvpGetInt("thresholdScanStepSize",0);
+//	thresholdScanPointsPerStep=kvpGetInt("thresholdScanPointsPerStep",0);
+//	threshSwitchConfigAtEnd=kvpGetInt("threshSwitchConfigAtEnd",1);
+//	setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
+//	globalThreshold=kvpGetInt("globalThreshold",0);
+//	dacPGain=kvpGetFloat("dacPGain",0);
+//	dacIGain=kvpGetFloat("dacIGain",0);
+//	dacDGain=kvpGetFloat("dacDGain",0);
+//	dacIMin=kvpGetInt("dacIMin",0);
+//	dacIMax=kvpGetInt("dacIMax",0);
+//	enableChanServo=kvpGetInt("enableChanServo",1);
+//	if(doThresholdScan)
+//	    enableChanServo=0;
+//	pidGoal=kvpGetInt("pidGoal",2000);
+//	pidPanicVal=kvpGetInt("pidPanicVal",200);
+//	pidAverage=kvpGetInt("pidAverage",1);
+//	if(pidAverage<1) pidAverage=1;
+//	tempNum=2;
+//	antTrigMask=kvpGetUnsignedInt("antTrigMask",0);
+//	turfioPos.bus=kvpGetInt("turfioBus",3); //in seconds
+//	turfioPos.slot=kvpGetInt("turfioSlot",10); //in seconds
+
+	tempNum=18;
+	kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0][0],&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(surfTrigBandMasks): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+/* 	tempNum=12; */
+/* 	kvpStatus = kvpGetIntArray("surfBus",surfBuses,&tempNum); */
+/* 	if(kvpStatus!=KVP_E_OK) { */
+/* 	    syslog(LOG_WARNING,"kvpGetIntArray(surfBus): %s", */
+/* 		   kvpErrorString(kvpStatus)); */
+/* 	    if(printToScreen) */
+/* 		fprintf(stderr,"kvpGetIntArray(surfBus): %s\n", */
+/* 			kvpErrorString(kvpStatus)); */
+/* 	} */
+/* 	else { */
+/* 	    for(count=0;count<tempNum;count++) { */
+/* 		surfPos[count].bus=surfBuses[count]; */
+/* 		if(surfBuses[count]!=-1) { */
+/* 		    surfBusCount++; */
+/* 		} */
+/* 	    } */
+/* 	} */
+/* 	tempNum=12; */
+/* 	kvpStatus = kvpGetIntArray("surfSlot",surfSlots,&tempNum); */
+/* 	if(kvpStatus!=KVP_E_OK) { */
+/* 	    syslog(LOG_WARNING,"kvpGetIntArray(surfSlot): %s", */
+/* 		   kvpErrorString(kvpStatus)); */
+/* 	    if(printToScreen) */
+/* 		fprintf(stderr,"kvpGetIntArray(surfSlot): %s\n", */
+/* 			kvpErrorString(kvpStatus)); */
+/* 	} */
+/* 	else { */
+/* 	    for(count=0;count<tempNum;count++) { */
+/* 		surfPos[count].slot=surfSlots[count]; */
+/* 		if(surfSlots[count]!=-1) { */
+/* 		    surfSlotCount++; */
+/* 		} */
+/* 	    } */
+/* 	} */
+/* 	if(surfSlotCount==surfBusCount) numSurfs=surfBusCount; */
+/* 	else { */
+/* 	    syslog(LOG_ERR,"Confused config file bus and slot count do not agree"); */
+/* 	    if(printToScreen) */
+/* 		fprintf(stderr,"Confused config file bus and slot count do not agree\n"); */
+/* 	    exit(0); */
+/* 	} */
+	
+/* 	tempNum=12; */
+/* 	kvpStatus = kvpGetIntArray("dacSurfs",dacSurfs,&tempNum); */
+/* 	if(kvpStatus!=KVP_E_OK) { */
+/* 	    syslog(LOG_WARNING,"kvpGetIntArray(dacSurfs): %s", */
+/* 		   kvpErrorString(kvpStatus)); */
+/* 	    if(printToScreen) */
+/* 		fprintf(stderr,"kvpGetIntArray(dacSurfs): %s\n", */
+/* 			kvpErrorString(kvpStatus)); */
+/* 	} */
+	
+/* 	for(surf=0;surf<ACTIVE_SURFS;surf++) { */
+/* 	    for(dac=0;dac<N_RFTRIG;dac++) { */
+/* 		thresholdArray[surf][dac]=0; */
+/* 	    } */
+/* 	    if(dacSurfs[surf]) {		 */
+/* 		sprintf(keyName,"threshSurf%d",surf+1); */
+/* 		tempNum=32;	        */
+/* 		kvpStatus = kvpGetIntArray(keyName,&(thresholdArray[surf][0]),&tempNum); */
+/* 		if(kvpStatus!=KVP_E_OK) { */
+/* 		    syslog(LOG_WARNING,"kvpGetIntArray(%s): %s",keyName, */
+/* 			   kvpErrorString(kvpStatus)); */
+/* 		    if(printToScreen) */
+/* 			fprintf(stderr,"kvpGetIntArray(%s): %s\n",keyName, */
+/* 				kvpErrorString(kvpStatus)); */
+/* 		} */
+/* 	    } */
+/* 	} */
+    	
+/* 	//Pedestal things */
+/* 	writeDebugData=kvpGetInt("writeDebugData",1); */
+/* 	numPedEvents=kvpGetInt("numPedEvents",4000); */
+/* 	pedSwitchConfigAtEnd=kvpGetInt("pedSwitchConfigAtEnd",1); */
+	
+	
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Acqd.config: %s\n",eString);
+//	if(printToScreen)
+	fprintf(stderr,"Error reading Acqd.config: %s\n",eString);
+	    
+    }
+
+    return status;
+}
+
+
 
 

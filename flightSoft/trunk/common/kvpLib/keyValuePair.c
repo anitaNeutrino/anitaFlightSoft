@@ -485,6 +485,7 @@ static KvpErrorCode kvpUpdate (
    int nchars ;
    int element ;
    int* iPtr ;
+   unsigned int *uiPtr;
    float* fPtr ;
    int entry ;
    int requiredSpace ;
@@ -502,23 +503,24 @@ static KvpErrorCode kvpUpdate (
    }
 
    switch (type) {
-   case KT_INT:
-      requiredSpace = count * MAX_INT_LENGTH;
-      break;
-   case KT_FLOAT:
-      requiredSpace = count * MAX_FLOAT_LENGTH;
-      break;
-   case KT_STRING:
-      requiredSpace = strlen (value) ;
-      break;
-   default:
-      lastError = KVP_E_BADTYPE ;
-      return (lastError) ;
-      break ;
+       case KT_INT:
+       case KT_UINT:
+	   requiredSpace = count * MAX_INT_LENGTH;
+	   break;
+       case KT_FLOAT:
+	   requiredSpace = count * MAX_FLOAT_LENGTH;
+	   break;
+       case KT_STRING:
+	   requiredSpace = strlen (value) ;
+	   break;
+       default:
+	   lastError = KVP_E_BADTYPE ;
+	   return (lastError) ;
+	   break ;
    }
-
+   
    if (spaceLeft < requiredSpace) {
-      kvpRealloc (requiredSpace) ;
+       kvpRealloc (requiredSpace) ;
    }
 
    /* Write the new value at the first spare point in our buffer.
@@ -534,6 +536,16 @@ static KvpErrorCode kvpUpdate (
          }
          nchars += snprintf (spare+nchars, spaceLeft-nchars,
                              "%i", iPtr[element]) ;
+      }
+      break ;
+   case KT_UINT:
+       uiPtr = (unsigned int*) value ;
+      for (element = 0 ; element < count ; element++) {
+         if (element > 0) {
+            spare[nchars++] = ',' ;
+         }
+         nchars += snprintf (spare+nchars, spaceLeft-nchars,
+                             "%u", uiPtr[element]) ;
       }
       break ;
    case KT_FLOAT:
@@ -1176,6 +1188,7 @@ KvpErrorCode kvpSetIntArray (
 * RETURNS: <insert return values here>
 *
 */
+
 KvpErrorCode kvpSetFloatArray (
                                const char* key,
                                const float* values,
@@ -1211,12 +1224,22 @@ KvpErrorCode kvpSetInt (
 * RETURNS: <insert return values here>
 *
 */
+
 KvpErrorCode kvpUpdateInt (
                            const char* key,
                            int value
                         )
 {
    return (kvpUpdate (key, &value, KT_INT, 1)) ;
+}
+
+
+KvpErrorCode kvpUpdateUnsignedInt (
+    const char* key,
+    unsigned int value
+    )
+{
+   return (kvpUpdate (key, &value, KT_UINT, 1)) ;
 }
 
 
@@ -1255,6 +1278,15 @@ KvpErrorCode kvpUpdateString (
    return (kvpUpdate (key, value, KT_STRING, 1)) ;
 }
 
+
+KvpErrorCode kvpUpdateIntArray (
+                             const char* key,
+                             int* values,
+                             int count
+                             )
+{
+   return (kvpUpdate (key, values, KT_INT, count)) ;
+}
 
 /********************************************************************
 *
