@@ -100,6 +100,7 @@ typedef enum {
       KT_STRING,
       KT_FLOAT,
       KT_INT,
+      KT_UINT,
       KT_INVALID
    } KeyType ;
 /* global variable declarations*/   
@@ -144,6 +145,9 @@ typedef enum {
                                    int  maxlen, int* entries) ;
 
     KvpErrorCode kvpUpdateInt (const char* key, int value) ;
+    KvpErrorCode kvpUpdateIntArray (const char* key, int *values,
+				    int count) ;
+    KvpErrorCode kvpUpdateUnsignedInt (const char* key, unsigned int value) ;
     KvpErrorCode kvpUpdateFloat (const char* key, float value) ;
     KvpErrorCode kvpUpdateString (const char* key,const char *value);
 

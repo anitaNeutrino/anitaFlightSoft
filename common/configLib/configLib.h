@@ -74,6 +74,8 @@ extern "C" {
     ConfigErrorCode readBlocks(char *fileName,char blockList[MAX_BLOCKS][BLOCKNAME_MAX],int *numBlocks);
     
     ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value, time_t *rawTimePtr);
+    ConfigErrorCode configModifyIntArray(char *fileName,char *blockName,char *key,int *values, int length, time_t *rawTimePtr);
+    ConfigErrorCode configModifyUnsignedInt(char *fileName,char *blockName,char *key,unsigned long value, time_t *rawTimePtr);
     ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value, time_t *rawTimePtr);
     ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value, time_t *rawTimePtr);
 
