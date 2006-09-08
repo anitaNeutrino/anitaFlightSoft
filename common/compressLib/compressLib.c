@@ -627,7 +627,8 @@ CompressErrorCode_t decodePSWaveLosslessBinary(unsigned char *input,int numBytes
 //    unsigned char flag =  input[1];
     int bitSize=getBinaryBitSize(encType);
     int bitNum;
-
+//    if(mean<-1100 || mean>100)
+//    printf("binary mean %d %#x\n",mean,mean);
 //    printf("mean %d\tbitSize %d\n",mean,bitSize);
 
     unsigned char *currentChar=&input[2];
@@ -906,6 +907,9 @@ CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int num
 
     char *meanPtr=(char*)input;
     short mean=(*meanPtr);
+
+//    if(mean<-1100 || mean>100)
+//	printf("binfib mean %d %#x\n",mean,mean);
 //    unsigned char flag =  input[1];
     int bitSize=getBinFibBitSize(encType);   
     short overFlowVals[256];
