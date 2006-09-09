@@ -35,6 +35,10 @@ int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
 float priorityFractionDefault[NUM_PRIORITIES];
+int priDiskEventMask[NUM_PRIORITIES];
+int alternateUsbs[NUM_PRIORITIES];
+int currentUsb[NUM_PRIORITIES]; // 0 is int, 1 is ext;
+
 
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -59,10 +63,11 @@ int usbintCloneMask;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
-
 char bladeName[FILENAME_MAX];
 char usbIntName[FILENAME_MAX];
 char usbExtName[FILENAME_MAX];
+
+int usbBitMasks[2]={0x4,0x8};
 
 int main (int argc, char *argv[])
 {
@@ -144,11 +149,13 @@ int main (int argc, char *argv[])
     
     //Fill event dir names
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	currentUsb[pri]=0;
 	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
 		EVENT_PRI_PREFIX,pri);
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
+
     makeDirectories(ANITA_INDEX_DIR);
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
     retVal=0;
@@ -230,7 +237,6 @@ int readConfigFile()
 	}
 
 
-
 	tempNum=10;
 	kvpStatus = kvpGetFloatArray("priorityFractionDefault",
 				     priorityFractionDefault,&tempNum);	
@@ -241,6 +247,33 @@ int readConfigFile()
 		fprintf(stderr,"kvpGetIntArray(priorityFractionDefault): %s\n",
 			kvpErrorString(kvpStatus));
 	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priDiskEventMask",
+				   priDiskEventMask,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priDiskEventMask): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priDiskEventMask): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("alternateUsbs",
+				   alternateUsbs,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(alternateUsbs): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(alternateUsbs): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+
     }
     else {
 	eString=configErrorString (status) ;
@@ -304,7 +337,21 @@ void processEvent()
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
     int priority=(theHead.priority&0xf);
-    if(priority>0 || priority>9) priority=9;
+    if(priority<0 || priority>9) priority=9;
+    int thisBitMask=eventDiskBitMask&priDiskEventMask[priority];
+    if(alternateUsbs[priority]) {
+	int notMask= ~(usbBitMasks[currentUsb[priority]]);
+	thisBitMask &= notMask;
+	if(currentUsb[priority]==0) currentUsb[priority]=1;
+	else currentUsb[priority]=0;
+    }
+    if((eventDiskBitMask&0x10) && (priDiskEventMask[priority]&0x10))
+	thisBitMask |= 0x10;
+    eventWriter.writeBitMask=thisBitMask;
+//    printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
+//    printf("\nEvent %lu, priority %d\n",theHead.eventNumber,
+//	   theHead.priority);
+
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    diskEncCntl.encTypes[surf][chan]=(ChannelEncodingType_t) priDiskEncodingType[priority];

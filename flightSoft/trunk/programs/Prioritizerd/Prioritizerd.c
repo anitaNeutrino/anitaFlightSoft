@@ -12,7 +12,7 @@
 #include <sys/time.h>
 
 //#define TIME_DEBUG 1
-#define WRITE_DEBUG_FILE
+//#define WRITE_DEBUG_FILE
 
 char prioritizerdPidFile[FILENAME_MAX];
 
