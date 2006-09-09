@@ -225,7 +225,6 @@ int main(int argc, char *argv[])
 void highrateHandler(int *ignore)
 {
     char currentHeader[FILENAME_MAX];
-    int currentPri=0;
     int numLinks=0;
     struct dirent **linkList;    
 
@@ -479,32 +478,38 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     char currentLOSTouchname[FILENAME_MAX];
     char waveFilename[FILENAME_MAX];
     char headerFilename[FILENAME_MAX];
-    char crapBuffer[FILENAME_MAX];
+//    char crapBuffer[FILENAME_MAX];
+    char justFile[FILENAME_MAX];
     unsigned long thisEventNumber;
 
+    sprintf(justFile,"%s",basename(headerLinkFilename));
+    sscanf(justFile,"hd_%lu.dat",&thisEventNumber);
+    if(thisEventNumber==0) {
+	printf("Why is this zero -- %s\n",headerLinkFilename);
+    }
     sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+	    thisEventNumber);
+    sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
 	    thisEventNumber);
     sprintf(currentTouchname,"%s.sipd",headerFilename);
     sprintf(currentLOSTouchname,"%s.losd",headerFilename);
 
-
+    
     if(checkFileExists(currentLOSTouchname)) 
 	return;
     touchFile(currentTouchname);
+//    printf("%s\n",headerLinkFilename);
+    removeFile(headerLinkFilename);
 
 //     Next load header 
     theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
-    retVal=fillHeader(theHeader,headerLinkFilename); 
+    retVal=fillHeader(theHeader,headerFilename); 
         
     if(retVal<0) {
-	removeFile(headerLinkFilename);
-	sscanf(headerLinkFilename,"%s/hd_%lu.dat",crapBuffer,
-	       &thisEventNumber);
 	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
 		thisEventNumber);
+
 	removeFile(headerFilename);
-	sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-		thisEventNumber);
 	removeFile(waveFilename);
 	
 	//Bollocks
@@ -535,7 +540,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     retVal=genericReadOfFile((unsigned char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
     if(retVal<0) {
 	fprintf(stderr,"Problem reading %s\n",waveFilename);
-	removeFile(headerLinkFilename);
+//	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
 	removeFile(waveFilename);	
 	//Bollocks
@@ -586,15 +591,15 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	       headerLinkFilename);
 	        
     if(!checkFileExists(currentLOSTouchname)) {
+//	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
-	removeFile(headerLinkFilename);
 	removeFile(waveFilename);
 	removeFile(currentTouchname);
     }
     else {
 	sleep(1);
+//	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
-	removeFile(headerLinkFilename);
 	removeFile(waveFilename);
 	removeFile(currentTouchname);
 	removeFile(currentLOSTouchname);
