@@ -1772,7 +1772,8 @@ int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask,int baseInd) {
     }    
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
-    char *relPath=strstr(outputFilename,"anita");
+    unlink(filename);
+    char *relPath=strstr(outputFilename,"current");
     if(!relPath) return -1;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
@@ -1781,7 +1782,6 @@ int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask,int baseInd) {
     }
 
     free(buffer);
-    unlink(filename);
     return retVal;
 }
 
@@ -1803,12 +1803,12 @@ int zipBufferedFileAndMove(char *filename) {
     sprintf(bufferZippedFilename,"%s.gz",bufferFilename);
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
+    unlink(bufferFilename);
     printf("move %s %s\n",bufferZippedFilename,outputFilename);
     copyFileToFile(bufferZippedFilename,outputFilename);
 //    rename(bufferZippedFilename,outputFilename);
     free(buffer);
     unlink(bufferZippedFilename);
-    unlink(bufferFilename);
     return retVal;
 }
 
@@ -1833,18 +1833,19 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     sprintf(bufferZippedFilename,"%s.gz",bufferFilename);
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
-    char *relPath=strstr(outputFilename,"anita");
+    unlink(bufferFilename);
+    char *relPath=strstr(outputFilename,"current");
     if(!relPath) return -1;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
 	sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
 	copyFileToFile(bufferZippedFilename,cloneFilename);	
+	printf("copy %s %s\n",bufferZippedFilename,cloneFilename);
     }
-//    printf("move2 %s %s\n",bufferZippedFilename,outputFilename);
+    printf("move2 %s %s\n",bufferZippedFilename,outputFilename);
 //    rename(bufferZippedFilename,outputFilename);
     copyFileToFile(bufferZippedFilename,outputFilename);
     free(buffer);
-    unlink(bufferFilename);
     unlink(bufferZippedFilename);
     return retVal;
 }

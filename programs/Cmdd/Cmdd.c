@@ -346,7 +346,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    killPrograms(ACQD_ID_MASK);
 	    killPrograms(CALIBD_ID_MASK);
 	    killPrograms(MONITORD_ID_MASK);
-	    sleep(5);
+	    sleep(10);
 	    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
 	    retVal=system(theCommand);
 	    if(retVal==-1) return 0;	    
