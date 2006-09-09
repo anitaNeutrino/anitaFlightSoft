@@ -19,6 +19,7 @@
 #include "utilLib/utilLib.h"
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
+#include "includes/anitaCommand.h"
 
 int readConfigFile();
 int checkDisks(DiskSpaceStruct_t *dsPtr);
@@ -32,6 +33,10 @@ int printToScreen=0;
 int verbosity=0;
 int monitorPeriod=60; //In seconds
 char monitordPidFile[FILENAME_MAX];
+
+//
+int usbSwitchMB=50;
+int bladeSwitchMB=50;
 
 //Link Directories
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -49,6 +54,7 @@ char *diskLocations[8]={"/tmp","/static","/home",SAFE_DATA_MOUNT,PUCK_DATA_MOUNT
 
 int main (int argc, char *argv[])
 {
+    CommandStruct_t theCmd;
     int retVal,pri;
 //    DiskSpaceStruct_t diskSpace;
     MonitorStruct_t monData;
@@ -97,6 +103,31 @@ int main (int argc, char *argv[])
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
 	    writeFileAndLink(&monData);
+
+	    if(monData.diskInfo.diskSpace[5]<bladeSwitchMB) {
+		//Change blade
+		theCmd.numCmdBytes=1;
+		theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
+		writeCommandAndLink(&theCmd);
+	    }
+	    if(monData.diskInfo.diskSpace[6]<usbSwitchMB) {
+		//Change USB int
+		theCmd.numCmdBytes=2;
+		theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
+		theCmd.cmd[1]=1;
+		if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
+		    theCmd.cmd[1]=3;
+		writeCommandAndLink(&theCmd);
+	    }
+	    else if(monData.diskInfo.diskSpace[7]<usbSwitchMB) {
+		//Change USB ext
+		theCmd.numCmdBytes=2;
+		theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
+		theCmd.cmd[1]=2;
+		writeCommandAndLink(&theCmd);
+	    }
+
+
 //	    exit(0);
 //	    usleep(1);
 	    sleep(monitorPeriod);
@@ -185,6 +216,8 @@ int readConfigFile()
 	verbosity=kvpGetInt("verbosity",0);
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
+	usbSwitchMB=kvpGetInt("usbSwitchMB",50);
+	bladeSwitchMB=kvpGetInt("bladeSwitchMB",50);
     }
     else {
 	eString=configErrorString (status) ;
@@ -228,8 +261,8 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	printf("usbInt -- %s\nusbExt -- %s\nblade -- %s\n",
 	       usbIntName,usbExtName,bladeName);
     }
-	       
-
+    
+    
 //    printf("Err Flag %d\n",errFlag);
     return errFlag;
 }
