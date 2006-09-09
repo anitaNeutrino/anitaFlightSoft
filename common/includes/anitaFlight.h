@@ -199,15 +199,15 @@
 #define GPSD_SUBTIME_LINK_DIR "/tmp/anita/gpsd/ttt/link"
 
 //Archiving Directories
-#define CMD_ARCHIVE_DIR "/anita/house/cmd"
-#define CALIB_ARCHIVE_DIR "/anita/house/calib"
-#define HK_ARCHIVE_DIR "/anita/house/hk"
-#define GPS_ARCHIVE_DIR "/anita/house/gps"
-#define SURFHK_ARCHIVE_DIR "/anita/house/surfhk"
-#define TURFHK_ARCHIVE_DIR "/anita/house/turfhk"
-#define MONITOR_ARCHIVE_DIR "/anita/house/monitor"
+#define CMD_ARCHIVE_DIR "/current/house/cmd"
+#define CALIB_ARCHIVE_DIR "/current/house/calib"
+#define HK_ARCHIVE_DIR "/current/house/hk"
+#define GPS_ARCHIVE_DIR "/current/house/gps"
+#define SURFHK_ARCHIVE_DIR "/current/house/surfhk"
+#define TURFHK_ARCHIVE_DIR "/current/house/turfhk"
+#define MONITOR_ARCHIVE_DIR "/current/house/monitor"
 
-#define EVENT_ARCHIVE_DIR "/anita/event/"
+#define EVENT_ARCHIVE_DIR "/current/event/"
 
 #endif /* ANITA_FLIGHT_H */
 

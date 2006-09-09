@@ -27,7 +27,7 @@ mountCurrentUsbExt.sh &
 sleep 4
 mountCurrentUsbInt.sh &
 sleep 20
-
+/home/anita/flightSoft/bin/startNewRun.sh
 
 daemon -u anita -r Archived -n Archived
 daemon -u anita -r Acqd -n Acqd

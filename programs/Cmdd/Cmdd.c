@@ -338,6 +338,27 @@ int executeCommand(CommandStruct_t *theCmd)
     unsigned long ulvalue;
     char theCommand[FILENAME_MAX];
     switch(theCmd->cmd[0]) {
+	case CMD_START_NEW_RUN:
+	    time(&rawtime);
+	    killPrograms(HKD_ID_MASK);
+	    killPrograms(GPSD_ID_MASK);
+	    killPrograms(ARCHIVED_ID_MASK);
+	    killPrograms(ACQD_ID_MASK);
+	    killPrograms(CALIBD_ID_MASK);
+	    killPrograms(MONITORD_ID_MASK);
+	    sleep(5);
+	    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
+	    retVal=system(theCommand);
+	    if(retVal==-1) return 0;	    
+	    time(&rawtime);
+	    startPrograms(HKD_ID_MASK);
+	    startPrograms(GPSD_ID_MASK);
+	    startPrograms(ARCHIVED_ID_MASK);
+	    startPrograms(ACQD_ID_MASK);
+	    startPrograms(CALIBD_ID_MASK);
+	    startPrograms(MONITORD_ID_MASK);
+	    
+	    return rawtime;
 	case CMD_TAIL_VAR_LOG_MESSAGES:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    return tailFile("/var/log/messages",ivalue);

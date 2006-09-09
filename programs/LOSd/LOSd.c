@@ -712,40 +712,40 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     char headerFilename[FILENAME_MAX];
     char currentTouchname[FILENAME_MAX];
     char currentLOSTouchname[FILENAME_MAX];
-    char crapBuffer[FILENAME_MAX];
+    char justFile[FILENAME_MAX];
     unsigned long thisEventNumber;
-
-    //First check if there is room for the header
-    if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t))
-	doWrite();
-
-
+    
+    sprintf(justFile,"%s",basename(headerLinkFilename));
+    sscanf(justFile,"hd_%lu.dat",&thisEventNumber);
     sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
 	    thisEventNumber);
+    sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+		thisEventNumber);
+    
     sprintf(currentTouchname,"%s.sipd",headerFilename);
     sprintf(currentLOSTouchname,"%s.losd",headerFilename);
 
     if(checkFileExists(currentTouchname)) 
 	return;
     touchFile(currentLOSTouchname);
-    
+    removeFile(headerLinkFilename);
+
+
+    //First check if there is room for the header
+    if((LOS_MAX_BYTES-numBytesInBuffer)<sizeof(AnitaEventHeader_t))
+	doWrite();
+
     
 //     Next load header 
     theHeader=(AnitaEventHeader_t*) &losBuffer[numBytesInBuffer]; 
-    retVal=fillHeader(theHeader,headerLinkFilename); 
+    retVal=fillHeader(theHeader,headerFilename); 
     theHeader->gHdr.packetNumber=getLosNumber();
     numBytesInBuffer+=sizeof(AnitaEventHeader_t);
 
     
     if(retVal<0) {
-	removeFile(headerLinkFilename);
-	sscanf(headerLinkFilename,"%s/hd_%lu.dat",crapBuffer,
-	       &thisEventNumber);
-	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-		thisEventNumber);
+//	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
-	sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-		thisEventNumber);
 	removeFile(waveFilename);
 	
 	//Bollocks
@@ -765,7 +765,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     retVal=genericReadOfFile(eventBuffer,waveFilename,MAX_EVENT_SIZE);
     if(retVal<0) {
 	fprintf(stderr,"Problem reading %s\n",waveFilename);
-	removeFile(headerLinkFilename);
+//	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
 	removeFile(waveFilename);
 	
@@ -813,10 +813,14 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	       headerLinkFilename);
 
     if(!checkFileExists(currentTouchname)) {
+//	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
-	removeFile(headerLinkFilename);
 	removeFile(waveFilename);
 	removeFile(currentLOSTouchname);
+    }
+    else {
+	printf("Not removing %s because checkFileExists == %d\n",
+	       headerFilename,checkFileExists(currentTouchname));
     }
     
 }

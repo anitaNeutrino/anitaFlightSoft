@@ -211,8 +211,8 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
 //	printf("%lu\n",megaBytes);
 	if(megaBytes>0) {
-	    if(diskNum>3)
-		megaBytes/=10;
+	    if(diskNum==4)
+		megaBytes/=16;
 	    if(megaBytes<65535) megaBytes_short=megaBytes;
 	    else megaBytes_short=65535;
 	}
