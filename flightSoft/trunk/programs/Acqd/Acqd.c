@@ -58,7 +58,6 @@ int turfHkCounter=0;
 int surfHkCounter=0;
 int surfMask;
 int hkDiskBitMask=0;
-int compressWavefile=1;
 int useInterrupts=0;
 int niceValue=-20;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 

@@ -382,10 +382,25 @@ typedef struct {
     char usbExtLabel[10];
 } IndexEntry_t;
 
+typedef struct {
+    unsigned long eventNumber;
+    unsigned char rfPwrAvg[ACTIVE_SURFS][RFCHAN_PER_SURF];
+    unsigned char avgScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];
+    unsigned char rmsScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];
+    unsigned char avgL1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
+    unsigned char avgUpperL2Rates[PHI_SECTORS];
+    unsigned char avgLowerL2Rates[PHI_SECTORS];
+    unsigned char avgL3Rates[PHI_SECTORS];    
+    unsigned char eventRate1Min;
+    unsigned char eventRate10Min;
+} SlowRateRFStruct_t;
+
+
 
 ////////////////////////////////////////////////////////////////////////////
 //Telemetry Structs (may be used for onboard storage)
 ////////////////////////////////////////////////////////////////////////////
+
 typedef struct {
     GenericHeader_t gHdr;
     unsigned long unixTime;
@@ -741,6 +756,8 @@ typedef struct {
 
 
 /////////////////////////////////////////////////////////////////////////////
-///// Slow Rate Stuff
+///// Slow Rate Stuff                                                   /////
 /////////////////////////////////////////////////////////////////////////////
+
+
 #endif /* ANITA_STRUCTURES_H */

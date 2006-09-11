@@ -335,7 +335,7 @@ int executeCommand(CommandStruct_t *theCmd)
     int ivalue;
     int ivalue2;
     int ivalue3;
-    unsigned long ulvalue;
+    unsigned long ulvalue,ultemp;
     char theCommand[FILENAME_MAX];
     switch(theCmd->cmd[0]) {
 	case CMD_START_NEW_RUN:
@@ -517,7 +517,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    
 	case SET_CALPULSER_ATTEN:
 	    //setCalPulserAtten
-	    if(theCmd->cmd[1]>0 && theCmd->cmd[1]<8) {
+	    if(theCmd->cmd[1]>=0 && theCmd->cmd[1]<8) {
 		configModifyInt("Calibd.config","attenuator","attenStartState",theCmd->cmd[1],&rawtime);
 		configModifyInt("Calibd.config","attenuator","attenLoop",0,&rawtime);
 	    }
@@ -645,7 +645,17 @@ int executeCommand(CommandStruct_t *theCmd)
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	case ACQD_SET_ANT_TRIG_MASK: 	    
-	    ulvalue=(theCmd->cmd[1])&(theCmd->cmd[2]<<8)&(theCmd->cmd[3]<<16)&(theCmd->cmd[4]<<24);
+	    ultemp=(theCmd->cmd[1]);	    
+	    ulvalue=ultemp;
+	    ultemp=(theCmd->cmd[2]);
+	    ulvalue|=(ulvalue<<8);
+	    ultemp=(theCmd->cmd[3]);
+	    ulvalue|=(ulvalue<<16);
+	    ultemp=(theCmd->cmd[4]);
+	    ulvalue|=(ulvalue<<24);
+//	    printf("%d %d %d %d -- %lu\n",theCmd->cmd[1],theCmd->cmd[2],
+//		   theCmd->cmd[3],theCmd->cmd[4],ulvalue);
+
 	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",ulvalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;

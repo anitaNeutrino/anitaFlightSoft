@@ -496,8 +496,9 @@ static KvpErrorCode kvpUpdate (
       lastError = KVP_E_NOTFOUND ;
       return (lastError) ;
    }
-
-   if (valTypes[entry] != type) {
+//   printf("%d %d\n",valTypes[entry],type);
+   if (valTypes[entry] != type && !(valTypes[entry]==KT_INT && type==KT_UINT)) {
+       printf("Here\n");
       lastError = KVP_E_BADVALUE ;
       return (lastError) ;
    }
@@ -545,7 +546,7 @@ static KvpErrorCode kvpUpdate (
             spare[nchars++] = ',' ;
          }
          nchars += snprintf (spare+nchars, spaceLeft-nchars,
-                             "%u", uiPtr[element]) ;
+                             "%#x", uiPtr[element]) ;
       }
       break ;
    case KT_FLOAT:
