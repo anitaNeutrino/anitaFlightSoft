@@ -70,6 +70,9 @@ int main (int argc, char *argv[])
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
     
+    //Dont' wait for children
+    signal(SIGCLD, SIG_IGN); 
+    
     retVal=0;
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
 	sprintf(eventTelemLinkDirs[pri],"%s/%s%d/link",BASE_EVENT_TELEM_DIR,

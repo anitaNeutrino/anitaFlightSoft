@@ -357,7 +357,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    startPrograms(ACQD_ID_MASK);
 	    startPrograms(CALIBD_ID_MASK);
 	    startPrograms(MONITORD_ID_MASK);
-	    
+	    sleep(30);
+	    startPrograms(ARCHIVED_ID_MASK); //Just to be sure
 	    return rawtime;
 	case CMD_TAIL_VAR_LOG_MESSAGES:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
