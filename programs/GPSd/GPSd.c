@@ -63,7 +63,7 @@ int verbosity=0;
 
 // Config stuff for G12
 float g12PpsPeriod=1;
-float g12PpsOffset=0.05;
+float g12PpsOffset=50;
 int g12PpsRisingOrFalling=1; //1 is R, 2 is F
 int g12DataPort=1;
 int g12NtpPort=2;
@@ -241,7 +241,7 @@ int readConfigFile()
 	    g12TttEpochRate=20;
 	}
 	g12PpsPeriod=kvpGetFloat("ppsPeriod",1); //in seconds
-	g12PpsOffset=kvpGetFloat("ppsOffset",0.05); //in seconds 
+	g12PpsOffset=kvpGetFloat("ppsOffset",50); //in milliseconds 
 	g12PpsRisingOrFalling=kvpGetInt("ppsRorF",1); //1 is 'R', 2 is 'F'
 	g12DataPort=kvpGetInt("dataPort",1); //1 is 'A', 2 is 'B'
 	g12NtpPort=kvpGetInt("ntpPort",2); //1 is 'A', 2 is 'B'
@@ -359,8 +359,8 @@ int setupG12()
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);
     strcat(g12Command,tempCommand);
-    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%d,%c\n",g12PpsPeriod,
-	    (int)g12PpsOffset,ppsEdge);
+    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%3.f,%c\n",g12PpsPeriod,
+	    g12PpsOffset,ppsEdge);
     strcat(g12Command,tempCommand);    
     if(g12EnableTtt) {
 	sprintf(tempCommand,"$PASHS,NME,TTT,%c,ON,%1.2f\n",dataPort,1.0/((float)g12TttEpochRate));
