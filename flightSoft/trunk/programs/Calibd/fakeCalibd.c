@@ -233,7 +233,7 @@ void writeStatus()
     theStatus.status |= (((switchState)&0xf)<<RFSWITCH_SHIFT); 
     
     //Might change the below when we have any idea what it is doing
-    theStatus.status |= (((attenState)&0xf)<<SS1_SHIFT); 
+    theStatus.status |= (((attenState)&0xf)<<ATTEN_SHIFT); 
     
     sprintf(filename,"%s/calib_%ld.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);

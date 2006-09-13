@@ -335,6 +335,7 @@ int executeCommand(CommandStruct_t *theCmd)
     int ivalue;
     int ivalue2;
     int ivalue3;
+    float fvalue;
     unsigned long ulvalue,ultemp;
     char theCommand[FILENAME_MAX];
     switch(theCmd->cmd[0]) {
@@ -426,6 +427,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    //turnGPSOn
 	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
 	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    sleep(5);
+	    respawnPrograms(GPSD_ID_MASK);
 	    if(retVal) return 0;
 	    return rawtime;
 	case CMD_TURN_GPS_OFF:
@@ -494,13 +497,13 @@ int executeCommand(CommandStruct_t *theCmd)
 
 	case CMD_TURN_ALL_OFF:
 	    //turnAllOff
-	    configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateCalPulser",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateVeto",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM1",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM2",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM3",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateRFCM4",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateCalPulser",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateVeto",0,&rawtime);
+	    configModifyInt("Calibd.config","relays","stateGPS",0,&rawtime);
 	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -529,8 +532,9 @@ int executeCommand(CommandStruct_t *theCmd)
 	    
 	case SET_ADU5_PAT_PERIOD:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    fvalue=((float)ivalue)/10.;
 //	    printf("ivalue: %d %x\t %x %x\n",ivalue,ivalue,theCmd->cmd[1],theCmd->cmd[2]);
-	    configModifyInt("GPSd.config","adu5","patPeriod",ivalue,&rawtime);
+	    configModifyFloat("GPSd.config","adu5","patPeriod",fvalue,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -548,7 +552,13 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;	    	    
 	case SET_G12_PPS_OFFSET: 
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyInt("GPSd.config","g12","ppsOffset",ivalue,&rawtime);
+	    ivalue2=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
+	    ivalue3=theCmd->cmd[5];
+	    fvalue=ivalue +((float)ivalue2)/10000.;
+	    if(ivalue3==1) fvalue*=-1;	   
+
+//	    printf("%d %d %d -- Offset %3.4f\n",ivalue, ivalue2, ivalue3,fvalue);
+	    configModifyFloat("GPSd.config","g12","ppsOffset",fvalue,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;	    	    
@@ -590,7 +600,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case SET_HK_CAL_PERIOD: 
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyInt("Hkd.config","hkd","calPeriod",ivalue,&rawtime);
+	    configModifyInt("Hkd.config","hkd","calibrationPeriod",ivalue,&rawtime);
 	    retVal=sendSignal(ID_HKD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -635,13 +645,15 @@ int executeCommand(CommandStruct_t *theCmd)
 	    if(retVal) return 0;
 	    return rawtime;
 	case ACQD_PEDESTAL_RUN: 	    
-//	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","acqd","pedestalMode",1,&rawtime);
+	    ivalue=theCmd->cmd[1];
+	    ivalue&=0x1;
+	    configModifyInt("Acqd.config","acqd","pedestalMode",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	case ACQD_THRESHOLD_SCAN: 	    
-//	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","thresholdScan","doThresholdScan",1,&rawtime);
+	    ivalue=theCmd->cmd[1];
+	    ivalue&=0x1;
+	    configModifyInt("Acqd.config","thresholdScan","doThresholdScan",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	case ACQD_SET_ANT_TRIG_MASK: 	    
@@ -1048,6 +1060,7 @@ int respawnPrograms(int progMask)
 		errorCount++;
 		fprintf(stderr," failed to open a file for PID, %s\n", fileName);
 		syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
+		startPrograms(testMask);
 	    }
 	    else {
 		fscanf(fpPid,"%d", &thePid) ;
