@@ -48,7 +48,14 @@ void prepWriterStructs();
 int tailFile(char *filename, int numLines);
 int makeZippedFilePacket(char *filename,int fileTag);
 int readAcqdConfig();
-
+int readArchivedConfig();
+int setEventDiskBitMask(int modOrSet, int bitMask);
+int setHkDiskBitMask(int modOrSet, int bitMask);
+int setPriDiskMask(int pri, int bitmask);
+int setPriEncodingType(int pri, int encType);
+int setAlternateUsb(int pri, int altUsb);
+int setArchiveDefaultFrac(int pri, int frac);
+int setTelemPriEncodingType(int pri, int encType, int encClockType);
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -86,10 +93,17 @@ char usbExtName[FILENAME_MAX];
 
 //Needed for commands
 int surfTrigBandMasks[ACTIVE_SURFS][2];
+int priDiskEncodingType[NUM_PRIORITIES];
+int priTelemEncodingType[NUM_PRIORITIES];
+int priTelemClockEncodingType[NUM_PRIORITIES];
+float priorityFractionDefault[NUM_PRIORITIES];
+int priDiskEventMask[NUM_PRIORITIES];
+int alternateUsbs[NUM_PRIORITIES];
 
 
 
 int hkDiskBitMask;
+int eventDiskBitMask;
 AnitaHkWriterStruct_t cmdWriter;
 
 int main (int argc, char *argv[])
@@ -243,12 +257,10 @@ int readConfig() {
 	    syslog(LOG_ERR,"Couldn't get usbExtName");
 	    fprintf(stderr,"Couldn't get usbExtName\n");
 	}
-
-	disableBlade=kvpGetInt("disableBlade",0);
-	disableUsbInt=kvpGetInt("disableUsbInt",0);
-	disableUsbExt=kvpGetInt("disableUsbExt",0);
-
+	
+	
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
+	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
@@ -358,6 +370,7 @@ int executeCommand(CommandStruct_t *theCmd)
     int ivalue;
     int ivalue2;
     int ivalue3;
+    short svalue;
     float fvalue;
     unsigned long ulvalue,ultemp;
     char theCommand[FILENAME_MAX];
@@ -446,6 +459,49 @@ int executeCommand(CommandStruct_t *theCmd)
 	case CMD_MOUNT_NEXT_USB:
 	    ivalue=theCmd->cmd[1];
 	    return mountNextUsb(ivalue);
+	case CMD_EVENT_DISKTYPE:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    if(ivalue>=0 && ivalue<=2)
+		return setEventDiskBitMask(ivalue,ivalue2);
+	    return 0;
+	case CMD_HK_DISKTYPE:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    if(ivalue>=0 && ivalue<=2)
+		return setHkDiskBitMask(ivalue,ivalue2);
+	    return 0;
+	case ARCHIVE_STORAGE_TYPE:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Archived.config","archived","onboardStorageType",ivalue,&rawtime);
+	    respawnPrograms(ARCHIVED_ID_MASK);
+	    return rawtime;
+	case ARCHIVE_PRI_DISK:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    return setPriDiskMask(ivalue,ivalue2);
+	case ARCHIVE_PRI_ENC_TYPE:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    return setPriEncodingType(ivalue,ivalue2);
+	case ARCHIVE_ALTERNATE_USB:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2];
+	    return setAlternateUsb(ivalue,ivalue2);
+	case ARCHIVE_DEFAULT_FRAC:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    return setArchiveDefaultFrac(ivalue,ivalue2);
+	case TELEM_TYPE:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Archived.config","archived","telemType",ivalue,&rawtime);
+	    respawnPrograms(ARCHIVED_ID_MASK);
+	    return rawtime;
+	case TELEM_PRI_ENC_TYPE:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    ivalue3=theCmd->cmd[4]+(theCmd->cmd[5]<<8);
+	    return setTelemPriEncodingType(ivalue,ivalue2,ivalue3);
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
 	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
@@ -543,7 +599,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    
 	case SET_CALPULSER_ATTEN:
 	    //setCalPulserAtten
-	    if(theCmd->cmd[1]>=0 && theCmd->cmd[1]<8) {
+	    if(theCmd->cmd[1]<8) {
 		configModifyInt("Calibd.config","attenuator","attenStartState",theCmd->cmd[1],&rawtime);
 		configModifyInt("Calibd.config","attenuator","attenLoop",0,&rawtime);
 	    }
@@ -552,6 +608,31 @@ int executeCommand(CommandStruct_t *theCmd)
 	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
+	case SET_ATTEN_LOOP_PERIOD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Calibd.config","attenuator","attenPeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime; 
+	case SET_SWITCH_LOOP_PERIOD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Calibd.config","rfSwitch","switchPeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime; 
+	case SET_PULSER_OFF_PERIOD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Calibd.config","rfSwitch","offPeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime; 
+	case SET_CALIB_WRITE_PERIOD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Calibd.config","calibd","writePeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime; 
+
 	    
 	case SET_ADU5_PAT_PERIOD:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
@@ -566,13 +647,25 @@ int executeCommand(CommandStruct_t *theCmd)
 	    configModifyInt("GPSd.config","adu5","satPeriod",ivalue,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
+	    return rawtime;
+	case SET_ADU5_VTG_PERIOD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("GPSd.config","adu5","vtgPeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
+	    if(retVal) return 0;
 	    return rawtime;	    
 	case SET_G12_PPS_PERIOD:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    configModifyFloat("GPSd.config","g12","ppsPeriod",((float)ivalue)/1000.,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
-	    return rawtime;	    	    
+	    return rawtime;    
+	case SET_G12_POS_PERIOD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyFloat("GPSd.config","g12","posPeriod",((float)ivalue)/1000.,&rawtime);
+	    retVal=sendSignal(ID_GPSD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;	   	    	    
 	case SET_G12_PPS_OFFSET: 
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    ivalue2=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
@@ -586,32 +679,41 @@ int executeCommand(CommandStruct_t *theCmd)
 	    if(retVal) return 0;
 	    return rawtime;	    	    
 	case SET_ADU5_CALIBRATION_12:
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV12_1",((float)ivalue)/1000.,&rawtime);
-	    ivalue=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV12_2",((float)ivalue)/1000.,&rawtime);
-	    ivalue=theCmd->cmd[5]+(theCmd->cmd[6]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV12_3",((float)ivalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[1];
+	    svalue|=(theCmd->cmd[2]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV12_1",((float)svalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[3];
+	    svalue|=(theCmd->cmd[4]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV12_2",((float)svalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[5];
+	    svalue|=(theCmd->cmd[6]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV12_3",((float)svalue)/1000.,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
 	case SET_ADU5_CALIBRATION_13:
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV13_1",((float)ivalue)/1000.,&rawtime);
-	    ivalue=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV13_2",((float)ivalue)/1000.,&rawtime);
-	    ivalue=theCmd->cmd[5]+(theCmd->cmd[6]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV13_3",((float)ivalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[1];
+	    svalue|=(theCmd->cmd[2]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV13_1",((float)svalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[3];
+	    svalue|=(theCmd->cmd[4]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV13_2",((float)svalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[5];
+	    svalue|=(theCmd->cmd[6]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV13_3",((float)svalue)/1000.,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
 	case SET_ADU5_CALIBRATION_14:
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV14_1",((float)ivalue)/1000.,&rawtime);
-	    ivalue=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV14_2",((float)ivalue)/1000.,&rawtime);
-	    ivalue=theCmd->cmd[5]+(theCmd->cmd[6]<<8);
-	    configModifyFloat("GPSd.config","adu5","calibV14_3",((float)ivalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[1];
+	    svalue|=(theCmd->cmd[2]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV14_1",((float)svalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[3];
+	    svalue|=(theCmd->cmd[4]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV14_2",((float)svalue)/1000.,&rawtime);
+	    svalue=theCmd->cmd[5];
+	    svalue|=(theCmd->cmd[6]<<8);
+	    configModifyFloat("GPSd.config","adu5","calibV14_3",((float)svalue)/1000.,&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -1097,6 +1199,114 @@ int respawnPrograms(int progMask)
 	
 }
 
+int setEventDiskBitMask(int modOrSet, int bitMask)
+{
+    int retVal;
+    time_t rawtime;
+    readConfig(); //Get Latest bit mask
+    if(modOrSet==0) {
+	//Then we are in disabling mode
+	eventDiskBitMask&=(~bitMask);
+    }
+    else if(modOrSet==1) {
+	//Then we are in enabling mode
+	eventDiskBitMask|=bitMask;
+    }
+    else if(modOrSet==2) {
+	//Then we are in setting mode
+	eventDiskBitMask=bitMask;
+    }
+    else return 0;
+    configModifyUnsignedInt("anitaSoft.config","global","eventDiskBitMask",eventDiskBitMask,&rawtime);
+    retVal=respawnPrograms(ARCHIVED_ID_MASK);
+    return rawtime;
+}
+
+
+int setHkDiskBitMask(int modOrSet, int bitMask)
+{
+    time_t rawtime;
+    readConfig(); //Get Latest bit mask
+    if(modOrSet==0) {
+	//Then we are in disabling mode
+	hkDiskBitMask&=(~bitMask);
+    }
+    else if(modOrSet==1) {
+	//Then we are in enabling mode
+	hkDiskBitMask|=bitMask;
+    }
+    else if(modOrSet==2) {
+	//Then we are in setting mode
+	hkDiskBitMask=bitMask;
+    } 
+    else return 0;
+    configModifyUnsignedInt("anitaSoft.config","global","hkDiskBitMask",hkDiskBitMask,&rawtime);  
+    closeHkFilesAndTidy(&cmdWriter); 
+    prepWriterStructs();
+    respawnPrograms(HKD_ID_MASK);
+    respawnPrograms(GPSD_ID_MASK);
+    respawnPrograms(ACQD_ID_MASK);
+    respawnPrograms(CALIBD_ID_MASK);
+    respawnPrograms(MONITORD_ID_MASK);
+    return rawtime;
+}
+
+int setPriDiskMask(int pri, int bitmask)
+{
+    time_t rawtime;
+    readArchivedConfig();
+    priDiskEventMask[pri]=bitmask;
+    configModifyIntArray("Archived.config","archived","priDiskEventMask",priDiskEventMask,NUM_PRIORITIES,&rawtime);
+    respawnPrograms(ARCHIVED_ID_MASK);
+    return rawtime;
+}
+
+int setPriEncodingType(int pri, int encType)
+{
+    time_t rawtime;
+    readArchivedConfig();
+    priDiskEncodingType[pri]=encType;
+    configModifyIntArray("Archived.config","archived","priDiskEncodingType",priDiskEncodingType,NUM_PRIORITIES,&rawtime);
+    sendSignal(ID_ARCHIVED,SIGUSR1);
+    return rawtime;
+}
+
+int setAlternateUsb(int pri, int altUsb)
+{
+    time_t rawtime;
+    readArchivedConfig();
+    alternateUsbs[pri]=altUsb;
+    configModifyIntArray("Archived.config","archived","alternateUsbs",alternateUsbs,NUM_PRIORITIES,&rawtime);
+    sendSignal(ID_ARCHIVED,SIGUSR1);
+    return rawtime;
+}
+
+
+int setArchiveDefaultFrac(int pri, int frac)
+{
+ /*    time_t rawtime; */
+/*     readArchivedConfig(); */
+/*     priorityFractionDefault[pri]=frac; */
+/*     configModifyIntArray("Archived.config","archived","priorityFractionDefault",priorityFractionDefault,NUM_PRIORITIES,&rawtime); */
+/*     sendSignal(ID_ARCHIVED,SIGUSR1); */
+/*     return rawtime; */
+    return 0;
+}
+
+
+int setTelemPriEncodingType(int pri, int encType,int encClockType)
+{
+    time_t rawtime;
+    readArchivedConfig();
+    priTelemEncodingType[pri]=encType;
+    priTelemClockEncodingType[pri]=encClockType;
+    configModifyIntArray("Archived.config","archived","priTelemEncodingType",priTelemEncodingType,NUM_PRIORITIES,&rawtime);
+    configModifyIntArray("Archived.config","archived","priTelemClockEncodingType",priTelemClockEncodingType,NUM_PRIORITIES,&rawtime);
+    sendSignal(ID_ARCHIVED,SIGUSR1);
+    return rawtime;
+}
+
+
 int mountNextBlade() {
     int retVal;
     time_t rawtime;
@@ -1534,3 +1744,94 @@ int sameCommand(CommandStruct_t *theCmd, CommandStruct_t *lastCmd)
 }
 
 
+
+int readArchivedConfig() 
+/* Load Archived config stuff */
+{
+    /* Config file thingies */
+    int status=0,tempNum=0;
+    char* eString ;
+    KvpErrorCode kvpStatus;
+    kvpReset();
+    status = configLoad ("Archived.config","archived") ;
+    if(status == CONFIG_E_OK) {
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priDiskEncodingType",
+				   priDiskEncodingType,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priDiskEncodingType): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priDiskEncodingType): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priTelemEncodingType",
+				   priTelemEncodingType,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priTelemEncodingType): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priTelemEncodingType): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priTelemClockEncodingType",
+				   priTelemClockEncodingType,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priTelemClockEncodingType): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priTelemClockEncodingType): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetFloatArray("priorityFractionDefault",
+				     priorityFractionDefault,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionDefault): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityFractionDefault): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priDiskEventMask",
+				   priDiskEventMask,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priDiskEventMask): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priDiskEventMask): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("alternateUsbs",
+				   alternateUsbs,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(alternateUsbs): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(alternateUsbs): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
+
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Archived.config: %s\n",eString);
+    }
+    
+    return status;
+}
