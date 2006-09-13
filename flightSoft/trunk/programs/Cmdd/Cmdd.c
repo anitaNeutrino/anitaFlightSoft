@@ -23,6 +23,8 @@
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"
 
+int sameCommand(CommandStruct_t *theCmd, CommandStruct_t *lastCmd);
+void copyCommand(CommandStruct_t *theCmd, CommandStruct_t *cpCmd);
 int checkCommand(CommandStruct_t *theCmd);
 int checkForNewCommand();
 int executeCommand(CommandStruct_t *theCmd); //Returns unixTime or 0
@@ -53,7 +55,7 @@ int readAcqdConfig();
 /* Global variables */
 int cmdLengths[256];
 
-CommandStruct_t theCmds[MAX_COMMANNDS][MAX_CMD_LENGTH];
+CommandStruct_t theCmds[MAX_COMMANNDS];
 
 int numCmds=256;
 
@@ -92,6 +94,9 @@ AnitaHkWriterStruct_t cmdWriter;
 
 int main (int argc, char *argv[])
 {
+    CommandStruct_t lastCmd;
+    time_t lastCmdTime=0;
+    time_t nowTime;
     int retVal;
     int count;
     int numCmds;
@@ -122,14 +127,32 @@ int main (int argc, char *argv[])
 		    printf("Got %d commands\n",numCmds);		
 		//Got at least one command
 		for(count=0;count<numCmds;count++) {
-		    if(checkCommand(theCmds[count])) {
-			retVal=executeCommand(theCmds[count]);
-			writeCommandEcho(theCmds[count],retVal);
+		    if(printToScreen) 
+			printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
+		    if(checkCommand(&theCmds[count])) {
+			if(printToScreen) 
+			    printf("cmd %d good , (%#x)\n",count,theCmds[count].cmd[0]);		
+			time(&nowTime);
+			if((nowTime-lastCmdTime)>30 ||
+			   !sameCommand(&theCmds[count],&lastCmd)) {
+			    
+			    retVal=executeCommand(&theCmds[count]);
+			    lastCmdTime=retVal;
+			    copyCommand(&theCmds[count],&lastCmd);
+			}
+			else {
+			    printf("Same command: skipping\n");
+			    retVal=lastCmdTime;
+			}
+			if(printToScreen)
+			    printf("Writing command echo %d\n",count);
+			writeCommandEcho(&theCmds[count],retVal);
+
 		    }
 		}
 		
 	    }
-	    usleep(100000);
+	    usleep(1);
 	}
 	
     } while(currentState==PROG_STATE_INIT);
@@ -153,7 +176,7 @@ int checkForNewCommand() {
 		    cmdLinkList[uptoCmd]->d_name);
 	    sprintf(currentLinkname,"%s/%s",CMDD_COMMAND_LINK_DIR,
 		    cmdLinkList[uptoCmd]->d_name);
-	    fillCommand(theCmds[uptoCmd],currentFilename);
+	    fillCommand(&theCmds[uptoCmd],currentFilename);
 	    removeFile(currentFilename);
 	    removeFile(currentLinkname);
 	}
@@ -1223,7 +1246,10 @@ int makeZippedFilePacket(char *filename,int fileTag)
 
 
 
-int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
+int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) 
+{
+//    if(printToScreen)
+//	printf("writeCommandEcho\n");
     CommandEcho_t theEcho;
     int count,retVal=0;
     char filename[FILENAME_MAX];
@@ -1232,12 +1258,18 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
     sprintf(cmdString,"%d",theCmd->cmd[0]);
     theEcho.numCmdBytes=theCmd->numCmdBytes;
     theEcho.cmd[0]=theCmd->cmd[0];
+//    if(printToScreen)
+//	printf("copying command\n");
+
     if(theCmd->numCmdBytes>1) {
 	for(count=1;count<theCmd->numCmdBytes;count++) {
 	    sprintf(cmdString,"%s %d",cmdString,theCmd->cmd[count]);
 	    theEcho.cmd[count]=theCmd->cmd[count];
 	}
     }
+//    if(printToScreen)
+//	printf("Doing something\n");
+
     if(unixTime) {
 	theEcho.unixTime=unixTime;
 	theEcho.goodFlag=1;
@@ -1262,6 +1294,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
 	    fclose(pFile);
 	    sprintf(filename,"%s/cmd_%ld_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
+	    fileTag++;
 	}
     }
     printf("Writing to file %s\n",filename);
@@ -1280,6 +1313,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) {
 	    fclose(pFile);
 	    sprintf(filename,"%s/cmd_%ld_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
+	    fileTag++;
 	}
     }
     printf("Writing to file %s\n",filename);
@@ -1478,6 +1512,25 @@ int readAcqdConfig()
     return status;
 }
 
+void copyCommand(CommandStruct_t *theCmd, CommandStruct_t *cpCmd)
+{
+    int i;
+    cpCmd->numCmdBytes=theCmd->numCmdBytes;
+    for(i=0;i<theCmd->numCmdBytes;i++) {
+	cpCmd->cmd[i]=theCmd->cmd[i];
+    }
+}
 
+int sameCommand(CommandStruct_t *theCmd, CommandStruct_t *lastCmd) 
+{
+    int i;
+    int different=0;
+    different+=(theCmd->numCmdBytes!=lastCmd->numCmdBytes);
+    for(i=0;i<theCmd->numCmdBytes;i++) {
+	different+=(theCmd->cmd[i]!=lastCmd->cmd[i]);
+    }
+    if(different==0) return 1;
+    return 0;
+}
 
 

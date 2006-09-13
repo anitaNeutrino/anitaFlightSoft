@@ -23,6 +23,7 @@
 
 
 // Anita includes
+#include "includes/anitaCommand.h"
 #include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -918,7 +919,7 @@ int main(int argc, char **argv) {
 		//Arrrghhh		
 		CommandStruct_t theCmd;
 		theCmd.numCmdBytes=3;
-		theCmd.cmd[0]=211;
+		theCmd.cmd[0]=LAST_CONFIG;
 		theCmd.cmd[1]=1;
 		theCmd.cmd[2]=0;
 		writeCommandAndLink(&theCmd);
@@ -928,7 +929,7 @@ int main(int argc, char **argv) {
 	    //Arrrghhh		
 	    CommandStruct_t theCmd;
 	    theCmd.numCmdBytes=3;
-	    theCmd.cmd[0]=211;
+	    theCmd.cmd[0]=LAST_CONFIG;
 	    theCmd.cmd[1]=1;
 	    theCmd.cmd[2]=0;
 	    writeCommandAndLink(&theCmd);

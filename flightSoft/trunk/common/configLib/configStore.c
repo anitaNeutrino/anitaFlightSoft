@@ -61,6 +61,23 @@ INCLUDE FILES: <place list of any relevant header files here>
 /* forward declarations */
 
 
+void copyFile(char *fromHere, char *toHere) {
+    char buffer[512];
+    int bytes,inhandle,outhandle;
+    inhandle=open(fromHere,O_RDONLY);
+    outhandle=open(toHere,O_CREAT|O_WRONLY,S_IWUSR|S_IRUSR);
+    while(1) {
+        bytes=read(inhandle,buffer,512);
+        if(bytes>0)
+	    write(outhandle,buffer,bytes);
+        else
+	    break;
+    }
+    close(inhandle);
+    close(outhandle);
+}
+
+
 ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {    
     
 //    int retVal=0;
@@ -117,7 +134,7 @@ ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
    rename(lastFileSpec,newFileSpec);
-   link(oldFileSpec,lastFileSpec);
+   copyFile(oldFileSpec,lastFileSpec);
    rename(oldFileSpec,archiveFileSpec);
    rename(newFileSpec,oldFileSpec);
 
@@ -185,9 +202,9 @@ ConfigErrorCode configSwitch(char *configFile, char whichConfig, time_t *rawTime
    // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // cp newFileSpec oldFileSpec
-   link(oldFileSpec,lastFileSpec);
+   copyFile(oldFileSpec,lastFileSpec);
    rename(oldFileSpec,archiveFileSpec);
-   link(newFileSpec,oldFileSpec);
+   copyFile(newFileSpec,oldFileSpec);
 
    syslog(LOG_INFO,"configSwitch arcvhived: %s", archiveFileSpec);   
    return CONFIG_E_OK;
@@ -267,11 +284,11 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
-   link(oldFileSpec,lastFileSpec);
-   link(oldFileSpec,archiveFileSpec);
-   unlink(oldFileSpec);
-   link(newFileSpec,oldFileSpec);
-   unlink(newFileSpec);
+   copyFile(oldFileSpec,lastFileSpec);
+   rename(oldFileSpec,archiveFileSpec);
+//   unlink(oldFileSpec);
+   rename(newFileSpec,oldFileSpec);
+//   unlink(newFileSpec);
 
 
 /*    sprintf(mvCommand,"cp %s %s\n",oldFileSpec,lastFileSpec); */
