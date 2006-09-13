@@ -750,13 +750,13 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case ACQD_THRESH_SCAN_STEP_SIZE: 	    
 	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","thresholds","thresholdScanStepSize",ivalue,&rawtime);
+	    configModifyInt("Acqd.config","thresholdScan","thresholdScanStepSize",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
 	case ACQD_THRESH_SCAN_POINTS_PER_STEP: 	    
 	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","thresholds","thresholdScanPointsPerStep",ivalue,&rawtime);
+	    configModifyInt("Acqd.config","thresholdScan","thresholdScanPointsPerStep",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
