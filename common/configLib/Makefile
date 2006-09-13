@@ -8,20 +8,27 @@
 #-------------------------------------------------------------------------
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
-
+SOFLAGS       = -shared
 
 LIB_OBJS =  configLoad.o configStore.o configError.o configFileSpec.o
 
-Target       = $(ANITA_LIB_DIR)/libConfig.a
+Name = libConfig
+DynLib  = $(ANITA_LIB_DIR)/$(Name).so
+Library = $(ANITA_LIB_DIR)/$(Name).a
 
+all: $(Library) $(DynLib)
 
-all: $(Target)
-
-$(Target): $(LIB_OBJS)
-	@/bin/rm -f $(Target)	
-	@echo "Linking $(Target) ..."
+$(Library): $(LIB_OBJS)
+	@/bin/rm -f $(Library)	
+	@echo "Linking $(Library) ..."
 	@ar -r $@ $^
 
+$(DynLib): $(LIB_OBJS)
+	@/bin/rm -f $(DynLib)	
+	@echo "Creating $(DynLib) ..."
+	@$(LD) $(LDFLAGS) $(LIBS) $(SOFLAGS) $(LIB_OBJS) -o $(DynLib)
+	@chmod 555 $(DynLib)
+
 clean: objclean
-	@/bin/rm -f $(Target)
+	@/bin/rm -f $(Library) $(DynLib)
 
