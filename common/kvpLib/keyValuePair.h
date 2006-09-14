@@ -148,6 +148,12 @@ typedef enum {
     KvpErrorCode kvpUpdateIntArray (const char* key, int *values,
 				    int count) ;
     KvpErrorCode kvpUpdateUnsignedInt (const char* key, unsigned int value) ;
+
+    KvpErrorCode kvpUpdateUnsignedIntArray (const char* key, unsigned int *values,
+					    int count) ;
+    KvpErrorCode kvpUpdateFloatArray (const char* key, float *values,
+				      int count) ;
+    
     KvpErrorCode kvpUpdateFloat (const char* key, float value) ;
     KvpErrorCode kvpUpdateString (const char* key,const char *value);
 

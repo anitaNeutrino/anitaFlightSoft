@@ -513,6 +513,82 @@ Does exactly what it says on the tin */
     return configReplace(fileName,tempFile,rawTimePtr);
 }
 
+ConfigErrorCode configModifyUnsignedIntArray(char *fileName,char *blockName,char *key,unsigned int *values, int length, time_t *rawTimePtr)
+{
+    /* Config file thingies */
+    int status=0;
+    KvpErrorCode kvpStatus=0;
+//    char* eString;
+    char blockList[MAX_BLOCKS][BLOCKNAME_MAX];
+    int numBlocks=0,blockNum;
+    char tempFile[FILENAME_MAX];
+    sprintf(tempFile,"%s.new",fileName);
+    /* Load Config */
+    kvpReset () ;
+    readBlocks(fileName,blockList,&numBlocks);
+    for(blockNum=0;blockNum<numBlocks;blockNum++) {
+	kvpReset () ;
+	status = configLoad (fileName,blockList[blockNum]) ;
+	if(status == CONFIG_E_OK) {	
+	    if (strcmp (blockName, blockList[blockNum]) == 0) {
+//		printf("Here\n");
+		kvpStatus=kvpUpdateUnsignedIntArray(key,values,length);
+		if(kvpStatus!=KVP_E_OK) {
+		    printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
+		}
+	    }
+//	    printf("%s\t%s\n",blockName,blockList[blockNum]);
+	    if(blockNum==0)
+		status = configStore(tempFile,blockList[blockNum]);
+	    else
+		status = configAppend(tempFile,blockList[blockNum]);
+	    if(status != CONFIG_E_OK) {
+		printf("Bugger\n");
+	    }
+	}
+    }
+    return configReplace(fileName,tempFile,rawTimePtr);
+}
+
+ConfigErrorCode configModifyFloatArray(char *fileName,char *blockName,char *key,float *values, int length, time_t *rawTimePtr) 
+{
+   /* Config file thingies */
+    int status=0;
+    KvpErrorCode kvpStatus=0;
+//    char* eString;
+    char blockList[MAX_BLOCKS][BLOCKNAME_MAX];
+    int numBlocks=0,blockNum;
+    char tempFile[FILENAME_MAX];
+    sprintf(tempFile,"%s.new",fileName);
+    /* Load Config */
+    kvpReset () ;
+    readBlocks(fileName,blockList,&numBlocks);
+    for(blockNum=0;blockNum<numBlocks;blockNum++) {
+	kvpReset () ;
+	status = configLoad (fileName,blockList[blockNum]) ;
+	if(status == CONFIG_E_OK) {	
+	    if (strcmp (blockName, blockList[blockNum]) == 0) {
+//		printf("Here\n");
+		kvpStatus=kvpUpdateFloatArray(key,values,length);
+		if(kvpStatus!=KVP_E_OK) {
+		    printf("%d\t%s\n",kvpStatus,kvpErrorString(kvpStatus));
+		}
+	    }
+//	    printf("%s\t%s\n",blockName,blockList[blockNum]);
+	    if(blockNum==0)
+		status = configStore(tempFile,blockList[blockNum]);
+	    else
+		status = configAppend(tempFile,blockList[blockNum]);
+	    if(status != CONFIG_E_OK) {
+		printf("Bugger\n");
+	    }
+	}
+    }
+    return configReplace(fileName,tempFile,rawTimePtr);
+
+}
+
+
 
 ConfigErrorCode configModifyUnsignedInt(char *fileName,char *blockName,char *key,unsigned long value, time_t *rawTimePtr)
 /* Will tidy it up so that 

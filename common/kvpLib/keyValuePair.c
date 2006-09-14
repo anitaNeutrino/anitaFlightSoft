@@ -1289,6 +1289,20 @@ KvpErrorCode kvpUpdateIntArray (
    return (kvpUpdate (key, values, KT_INT, count)) ;
 }
 
+
+KvpErrorCode kvpUpdateUnsignedIntArray (const char* key, unsigned int *values,
+					int count) 
+{
+    return (kvpUpdate (key, values, KT_UINT,count));
+}
+
+KvpErrorCode kvpUpdateFloatArray (const char* key, float *values,
+				  int count) 
+{
+    return (kvpUpdate (key, values, KT_FLOAT,count));
+}
+
+
 /********************************************************************
 *
 * kvpSetFloat - Store a key value pair with a float value
