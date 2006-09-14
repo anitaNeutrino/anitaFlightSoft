@@ -61,21 +61,66 @@ INCLUDE FILES: <place list of any relevant header files here>
 /* forward declarations */
 
 
-void copyFile(char *fromHere, char *toHere) {
-    char buffer[512];
-    int bytes,inhandle,outhandle;
-    inhandle=open(fromHere,O_RDONLY);
-    outhandle=open(toHere,O_CREAT|O_WRONLY,S_IWUSR|S_IRUSR);
-    while(1) {
-        bytes=read(inhandle,buffer,512);
-        if(bytes>0)
-	    write(outhandle,buffer,bytes);
-        else
-	    break;
-    }
-    close(inhandle);
-    close(outhandle);
-}
+/* void copyFile(char *fromHere, char *toHere) { */
+/*     char buffer[512]; */
+/*     int bytes,inhandle,outhandle; */
+/*     inhandle=open(fromHere,O_RDONLY); */
+/*     outhandle=open(toHere,O_CREAT|O_WRONLY,S_IWUSR|S_IRUSR); */
+/*     while(1) { */
+/*         bytes=read(inhandle,buffer,512); */
+/*         if(bytes>0) */
+/* 	    write(outhandle,buffer,bytes); */
+/*         else */
+/* 	    break; */
+/*     } */
+/*     close(inhandle); */
+/*     close(outhandle); */
+/* } */
+
+
+ int copyFile(const char *theFile, const char *newFile) 
+ { 
+     //Only works on relative small files (will write a better version) 
+     static int errorCounter=0;
+     char *buffer;
+     //Open the input file
+     FILE *fin = fopen(theFile,"r");
+     unsigned long numBytes;
+     if(!fin) {
+	 if(errorCounter<100) {
+	     syslog(LOG_ERR,"Error reading file %s -- Error %s\n",
+		   theFile,strerror(errno));
+	     fprintf(stderr,"Error reading file %s-- Error %s\n",
+		     theFile,strerror(errno));
+	     errorCounter++;
+	 }
+	 return -1;
+     }
+     
+     fseek(fin,0,SEEK_END);
+     (numBytes)=ftell(fin);
+     fseek(fin,SEEK_SET,0);
+     buffer=malloc((numBytes));
+     fread(buffer,1,(numBytes),fin);
+     fclose(fin);
+     
+     //Open the output file 
+     FILE *fout = fopen(newFile,"w"); 
+     if(!fout) { 
+ 	if(errorCounter<100) { 
+ 	    syslog(LOG_ERR,"Couldn't open %s for copy of %s -- Error %s\n", 
+ 		   newFile,theFile,strerror(errno)); 
+ 	    fprintf(stderr,"Couldn't open %s for copy of %s -- Error %s\n", 
+ 		    newFile,theFile,strerror(errno)); 
+ 	    errorCounter++; 
+ 	} 
+ 	return -1; 
+     } 
+     fwrite(buffer,1,numBytes,fout); 
+     fclose(fout); 
+     free(buffer); 
+     return 0; 
+ } 
 
 
 ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {    
