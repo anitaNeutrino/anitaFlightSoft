@@ -32,6 +32,7 @@ char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,
 int bufferDisk[DISK_TYPES]={1,0,1,1,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
+//    sync();
     int diskInd;
     pid_t childPid;
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
@@ -203,7 +204,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 
 
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
-
+//    sync();
     int diskInd;
     pid_t childPid;    
     int cloneMasks[DISK_TYPES]={awsPtr->bladeCloneMask,
@@ -699,69 +700,69 @@ int copyFile(const char *theFile, const char *theDir)
 }
 
 
-int copyFileToFile(const char *fromHere, const char *toHere) {
-    static int errorCounter=0;
-    char buffer[512];
-    int bytes,inhandle,outhandle;
-    inhandle=open(fromHere,O_RDONLY);
-    if(inhandle<0) {	
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Error reading file %s -- Error %s\n",
-		   fromHere,strerror(errno));
-	    fprintf(stderr,"Error reading file %s-- Error %s\n",
-		    fromHere,strerror(errno));
-	    errorCounter++;
-	}
-	return -1;
-    }    
-    outhandle=open(toHere,O_CREAT|O_WRONLY|S_IWRITE);
-    if(outhandle<0) {	
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Error opening file %s -- Error %s\n",
-		   toHere,strerror(errno));
-	    fprintf(stderr,"Error opening file %s-- Error %s\n",
-		    toHere,strerror(errno));
-	    errorCounter++;
-	}
-	return -1;
-    }    
-    
-    while(1) {
-        bytes=read(inhandle,buffer,512);
-        if(bytes>0)
-	    write(outhandle,buffer,bytes);
-        else
-	    break;
-    }
-    close(inhandle);
-    close(outhandle);
-    return 0;
-}
-
-/* int copyFileToFile(const char *theFile, const char *newFile) */
-/* { */
+/* int copyFileToFile(const char *fromHere, const char *toHere) { */
 /*     static int errorCounter=0; */
-/*     //Only works on relative small files (will write a better version) */
-/*     unsigned long numBytes=0; */
-/*     char *buffer=readFile(theFile,&numBytes); */
-
-/*     //Open the output file */
-/*     FILE *fout = fopen(newFile,"w"); */
-/*     if(!fout) { */
+/*     char buffer[512]; */
+/*     int bytes,inhandle,outhandle; */
+/*     inhandle=open(fromHere,O_RDONLY); */
+/*     if(inhandle<0) {	 */
 /* 	if(errorCounter<100) { */
-/* 	    syslog(LOG_ERR,"Couldn't open %s for copy of %s -- Error %s\n", */
-/* 		   newFile,theFile,strerror(errno)); */
-/* 	    fprintf(stderr,"Couldn't open %s for copy of %s -- Error %s\n", */
-/* 		    newFile,theFile,strerror(errno)); */
+/* 	    syslog(LOG_ERR,"Error reading file %s -- Error %s\n", */
+/* 		   fromHere,strerror(errno)); */
+/* 	    fprintf(stderr,"Error reading file %s-- Error %s\n", */
+/* 		    fromHere,strerror(errno)); */
 /* 	    errorCounter++; */
 /* 	} */
 /* 	return -1; */
+/*     }     */
+/*     outhandle=open(toHere,O_CREAT|O_WRONLY|S_IWRITE); */
+/*     if(outhandle<0) {	 */
+/* 	if(errorCounter<100) { */
+/* 	    syslog(LOG_ERR,"Error opening file %s -- Error %s\n", */
+/* 		   toHere,strerror(errno)); */
+/* 	    fprintf(stderr,"Error opening file %s-- Error %s\n", */
+/* 		    toHere,strerror(errno)); */
+/* 	    errorCounter++; */
+/* 	} */
+/* 	return -1; */
+/*     }     */
+    
+/*     while(1) { */
+/*         bytes=read(inhandle,buffer,512); */
+/*         if(bytes>0) */
+/* 	    write(outhandle,buffer,bytes); */
+/*         else */
+/* 	    break; */
 /*     } */
-/*     fwrite(buffer,1,numBytes,fout); */
-/*     fclose(fout); */
-/*     free(buffer); */
+/*     close(inhandle); */
+/*     close(outhandle); */
 /*     return 0; */
 /* } */
+
+ int copyFileToFile(const char *theFile, const char *newFile) 
+ { 
+     static int errorCounter=0; 
+     //Only works on relative small files (will write a better version) 
+     unsigned long numBytes=0; 
+     char *buffer=readFile(theFile,&numBytes); 
+
+     //Open the output file 
+     FILE *fout = fopen(newFile,"w"); 
+     if(!fout) { 
+ 	if(errorCounter<100) { 
+ 	    syslog(LOG_ERR,"Couldn't open %s for copy of %s -- Error %s\n", 
+ 		   newFile,theFile,strerror(errno)); 
+ 	    fprintf(stderr,"Couldn't open %s for copy of %s -- Error %s\n", 
+ 		    newFile,theFile,strerror(errno)); 
+ 	    errorCounter++; 
+ 	} 
+ 	return -1; 
+     } 
+     fwrite(buffer,1,numBytes,fout); 
+     fclose(fout); 
+     free(buffer); 
+     return 0; 
+ } 
 
 
 int removeFile(const char *theFile)
