@@ -75,6 +75,8 @@ extern "C" {
     
     ConfigErrorCode configModifyInt(char *fileName,char *blockName,char *key,int value, time_t *rawTimePtr);
     ConfigErrorCode configModifyIntArray(char *fileName,char *blockName,char *key,int *values, int length, time_t *rawTimePtr);
+    ConfigErrorCode configModifyUnsignedIntArray(char *fileName,char *blockName,char *key,unsigned int *values, int length, time_t *rawTimePtr);
+    ConfigErrorCode configModifyFloatArray(char *fileName,char *blockName,char *key,float *values, int length, time_t *rawTimePtr);
     ConfigErrorCode configModifyUnsignedInt(char *fileName,char *blockName,char *key,unsigned long value, time_t *rawTimePtr);
     ConfigErrorCode configModifyFloat(char *fileName,char *blockName,char *key,float value, time_t *rawTimePtr);
     ConfigErrorCode configModifyString(char *fileName,char *blockName,char *key,char *value, time_t *rawTimePtr);

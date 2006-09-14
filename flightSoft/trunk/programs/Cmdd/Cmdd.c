@@ -56,6 +56,7 @@ int setPriEncodingType(int pri, int encType);
 int setAlternateUsb(int pri, int altUsb);
 int setArchiveDefaultFrac(int pri, int frac);
 int setTelemPriEncodingType(int pri, int encType, int encClockType);
+int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -99,6 +100,7 @@ int priTelemClockEncodingType[NUM_PRIORITIES];
 float priorityFractionDefault[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
+float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
 
 
 
@@ -862,7 +864,13 @@ int executeCommand(CommandStruct_t *theCmd)
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
-
+	case ACQD_CHAN_PID_GOAL_SCALE:
+	    ivalue=theCmd->cmd[1]; //surf 0:8
+	    ivalue2=theCmd->cmd[2]; //dac 0:31
+	    if(ivalue>8 || ivalue2>31) return 0;
+	    ivalue3=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
+	    fvalue=((float)ivalue3)/1000.;
+	    return setPidGoalScaleFactor(ivalue,ivalue2,fvalue);	    
 	case CLEAN_DIRS: 	    
 	    return cleanDirs();
 	case SEND_CONFIG: 
@@ -1306,6 +1314,18 @@ int setTelemPriEncodingType(int pri, int encType,int encClockType)
     return rawtime;
 }
 
+int setPidGoalScaleFactor(int surf, int dac, float scaleFactor) 
+{
+    time_t rawtime;
+    char keyName[180];
+    readAcqdConfig();
+    pidGoalScaleFactors[surf][dac]=scaleFactor;
+    sprintf(keyName,"pidGoalScaleSurf%d",surf+1);
+    configModifyFloatArray("Acqd.config","thresholds",keyName,&(pidGoalScaleFactors[surf][0]),SCALERS_PER_SURF,&rawtime);
+    sendSignal(ID_ACQD,SIGUSR1);
+    return rawtime;
+}
+
 
 int mountNextBlade() {
     int retVal;
@@ -1560,8 +1580,8 @@ int readAcqdConfig()
 /* Load Acqd config stuff */
 {
     /* Config file thingies */
-    int status=0;//,count,surf,dac;
-//    char keyName[180];
+    int status=0,surf,dac;
+    char keyName[180];
     int tempNum=12;
 //    int surfSlots[MAX_SURFS];
 //    int surfBuses[MAX_SURFS];
@@ -1632,6 +1652,27 @@ int readAcqdConfig()
 		fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
 			kvpErrorString(kvpStatus));
 	}
+
+
+
+	for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	    for(dac=0;dac<SCALERS_PER_SURF;dac++) {
+		pidGoalScaleFactors[surf][dac]=0;
+	    }
+	    sprintf(keyName,"pidGoalScaleSurf%d",surf+1);
+	    tempNum=32;	       
+	    kvpStatus = kvpGetFloatArray(keyName,&(pidGoalScaleFactors[surf][0]),&tempNum);
+	    if(kvpStatus!=KVP_E_OK) {
+		syslog(LOG_WARNING,"kvpGetFloatArray(%s): %s",keyName,
+		       kvpErrorString(kvpStatus));
+		if(printToScreen)
+		    fprintf(stderr,"kvpGetFloatArray(%s): %s\n",keyName,
+			    kvpErrorString(kvpStatus));
+	    }
+	    
+	}
+	
+    	
 
 
 /* 	tempNum=12; */
