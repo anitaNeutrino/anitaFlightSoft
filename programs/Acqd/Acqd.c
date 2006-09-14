@@ -141,6 +141,7 @@ int pps2TrigFlag = 0;
 //int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
 int surfTrigBandMasks[ACTIVE_SURFS][2];
 int thresholdArray[ACTIVE_SURFS][N_RFTRIG];
+float pidGoalScaleFactors[ACTIVE_SURFS][N_RFTRIG];
 int setGlobalThreshold=0; 
 int globalThreshold=2200;
 DacPidStruct_t thePids[ACTIVE_SURFS][N_RFTRIG];
@@ -253,6 +254,8 @@ int main(int argc, char **argv) {
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, sigUsr2Handler);
+    signal(SIGINT, sigUsr2Handler);
 
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -451,7 +454,11 @@ int main(int argc, char **argv) {
 		    firstLoop=0;
 		}
 
-		if(doingDacVal>4095) exit(0);//doingDacVal=0;
+		if(doingDacVal>4095) {
+		    currentState=PROG_STATE_TERMINATE;
+		    continue;
+		    exit(0);//doingDacVal=0;
+		}
 		if(threshScanCounter>=thresholdScanPointsPerStep) {
 		    doingDacVal+=thresholdScanStepSize;
 		    threshScanCounter=0;
@@ -1476,6 +1483,7 @@ int readConfigFile()
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	    for(dac=0;dac<N_RFTRIG;dac++) {
 		thresholdArray[surf][dac]=0;
+		pidGoalScaleFactors[surf][dac]=0;
 	    }
 	    if(dacSurfs[surf]) {		
 		sprintf(keyName,"threshSurf%d",surf+1);
@@ -1488,6 +1496,18 @@ int readConfigFile()
 			fprintf(stderr,"kvpGetIntArray(%s): %s\n",keyName,
 				kvpErrorString(kvpStatus));
 		}
+
+		sprintf(keyName,"pidGoalScaleSurf%d",surf+1);
+		tempNum=32;	       
+		kvpStatus = kvpGetFloatArray(keyName,&(pidGoalScaleFactors[surf][0]),&tempNum);
+		if(kvpStatus!=KVP_E_OK) {
+		    syslog(LOG_WARNING,"kvpGetFloatArray(%s): %s",keyName,
+			   kvpErrorString(kvpStatus));
+		    if(printToScreen)
+			fprintf(stderr,"kvpGetFloatArray(%s): %s\n",keyName,
+				kvpErrorString(kvpStatus));
+		}
+
 	    }
 	}
     	
@@ -3115,11 +3135,15 @@ int updateThresholdsUsingPID() {
     int wayOffCount=0;
     int surf,dac,error,value,change;
     float pTerm, dTerm, iTerm;
+    int chanGoal;
     avgCount++;
     for(surf=0;surf<numSurfs;surf++) {
 	if(dacSurfs[surf]==1) {
 	    for(dac=0;dac<N_RFTRIG;dac++) {
-		if(abs(theSurfHk.scaler[surf][dac]-pidGoal)>pidPanicVal)
+		chanGoal=(int)(pidGoal*pidGoalScaleFactors[surf][dac]);
+		if(chanGoal<0) chanGoal=0;
+		if(chanGoal>32000) chanGoal=32000;
+		if(abs(theSurfHk.scaler[surf][dac]-chanGoal)>pidPanicVal)
 		    wayOffCount++;
 		avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
 	    }
@@ -3131,10 +3155,13 @@ int updateThresholdsUsingPID() {
     if(avgCount==pidAverage || wayOffCount>100) {
 	for(surf=0;surf<numSurfs;surf++) {
 	    for(dac=0;dac<N_RFTRIG;dac++) {		
+		chanGoal=(int)(pidGoal*pidGoalScaleFactors[surf][dac]);
+		if(chanGoal<0) chanGoal=0;
+		if(chanGoal>32000) chanGoal=32000;
 		if(dacSurfs[surf]==1) {
 		    value=avgScalerData[surf][dac]/avgCount;
 		    avgScalerData[surf][dac]=0;
-		    error=pidGoal-value;
+		    error=chanGoal-value;
 //		    printf("%d %d %d %d\n",thePids[surf][dac].iState,
 //			   avgScalerData[surf][dac],value,error);
 	    
