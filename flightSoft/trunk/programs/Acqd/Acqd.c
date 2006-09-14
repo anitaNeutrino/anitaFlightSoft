@@ -1325,6 +1325,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","debug") ;
     status += configLoad ("Acqd.config","trigger") ;
     status += configLoad ("Acqd.config","thresholds") ;
+    status += configLoad ("Acqd.config","thresholdScan") ;
     status += configLoad ("Acqd.config","acqd") ;
     status += configLoad ("Acqd.config","pedestal") ;
 //    printf("Debug rc1\n");
@@ -1528,6 +1529,7 @@ int readConfigFile()
 
     if(printToScreen) {
 	printf("Read Config File\n");
+	printf("doThresholdScan %d\n",doThresholdScan);
 	printf("pedestalMode %d\n",pedestalMode);
 	printf("writeData %d",writeData);
 	if(writeData) {

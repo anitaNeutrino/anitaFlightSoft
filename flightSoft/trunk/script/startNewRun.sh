@@ -27,7 +27,7 @@ ln -sf /mnt/usbint/run${run} /mnt/usbint/current
 
 mkdir /mnt/usbext/run${run}
 rm -f /mnt/usbext/current
-mkdir /mnt/usbext/current /mnt/usbext/current.run${run} 
+mv /mnt/usbext/current /mnt/usbext/current.run${run} 
 ln -sf /mnt/usbext/run${run} /mnt/usbext/current
 
 echo "$run" > /home/anita/flightSoft/lastRunNumber
