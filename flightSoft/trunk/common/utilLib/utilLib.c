@@ -44,6 +44,7 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 	    childPid=fork();
 	    if(childPid==0) {
 		//Child
+		nice(10);
 //	    awsPtr->currentFileName;
 		if(!bufferDisk[diskInd]) {
 		    zipFileInPlace(awsPtr->currentFileName[diskInd]);
