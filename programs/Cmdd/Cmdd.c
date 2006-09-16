@@ -57,6 +57,7 @@ int setAlternateUsb(int pri, int altUsb);
 int setArchiveDefaultFrac(int pri, int frac);
 int setTelemPriEncodingType(int pri, int encType, int encClockType);
 int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
+int startNewRun();
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -386,8 +387,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    killPrograms(CALIBD_ID_MASK);
 	    killPrograms(MONITORD_ID_MASK);
 	    sleep(10);
-	    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
-	    retVal=system(theCommand);
+	    retVal=startNewRun();
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
 	    startPrograms(HKD_ID_MASK);
@@ -1355,7 +1355,8 @@ int mountNextBlade() {
     configModifyString("anitaSoft.config","global","bladeName",bladeName,&rawtime);
     retVal=system("/home/anita/flightSoft/bin/mountCurrentBlade.sh");
     sleep(5);
-
+    startNewRun();
+    sleep(10);
     prepWriterStructs();
     startPrograms(HKD_ID_MASK);
     startPrograms(GPSD_ID_MASK);
@@ -1415,6 +1416,8 @@ int mountNextUsb(int intExtFlag) {
 	retVal=system("/home/anita/flightSoft/bin/mountCurrentUsbExt.sh");
     }
     sleep(5);
+    startNewRun();
+    sleep(10);
 
     prepWriterStructs();
     startPrograms(HKD_ID_MASK);
@@ -1875,4 +1878,12 @@ int readArchivedConfig()
     }
     
     return status;
+}
+
+int startNewRun() {
+    int retVal=0;
+    char theCommand[180];
+    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
+    retVal=system(theCommand);
+    return retVal;
 }
