@@ -592,9 +592,9 @@ int executeCommand(CommandStruct_t *theCmd)
 	case SET_CALPULSER_SWITCH:
 	    //setCalPulserSwitch
 	    if(theCmd->cmd[1]>0 && theCmd->cmd[1]<5)
-		configModifyInt("Calibd.config","rfswitch","steadyState",theCmd->cmd[1],&rawtime);
+		configModifyInt("Calibd.config","rfSwitch","steadyState",theCmd->cmd[1],&rawtime);
 	    else //Switch off steady state
-		configModifyInt("Calibd.config","rfswitch","steadyState",0,&rawtime);
+		configModifyInt("Calibd.config","rfSwitch","steadyState",0,&rawtime);
 	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -777,12 +777,14 @@ int executeCommand(CommandStruct_t *theCmd)
 	    configModifyInt("Acqd.config","acqd","pedestalMode",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
+	    return rawtime;
 	case ACQD_THRESHOLD_SCAN: 	    
 	    ivalue=theCmd->cmd[1];
 	    ivalue&=0x1;
 	    configModifyInt("Acqd.config","thresholdScan","doThresholdScan",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
+	    return rawtime;
 	case ACQD_SET_ANT_TRIG_MASK: 	    
 	    ultemp=(theCmd->cmd[1]);	    
 	    ulvalue=ultemp;

@@ -917,9 +917,13 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 //	    printf("surf %d, chan %d, encType %d, numBytes %d\n",
 //		   surf,chan,chanHdPtr->encType,chanHdPtr->numBytes);
 	    numBytes=chanHdPtr->numBytes;
-	    if((LOS_MAX_BYTES-numBytesInBuffer)<numBytes) {
+//	    printf("%d %d %d\n",numBytesInBuffer,LOS_MAX_BYTES,numBytes);
+	    if((numBytesInBuffer+numBytes+sizeof(EncodedPedSubbedSurfPacketHeader_t)+sizeof(EncodedSurfChannelHeader_t))>LOS_MAX_BYTES) {
 		doWrite();
 	    }
+//	    if((LOS_MAX_BYTES-numBytesInBuffer)<(numBytes+sizeof(EncodedSurfChannelHeader_t))) {		
+//		doWrite();
+//	    }
 	    waveHdPtr=(EncodedPedSubbedChannelPacketHeader_t*)&losBuffer[numBytesInBuffer];
 	    waveHdPtr->gHdr.packetNumber=getLosNumber();
 	    waveHdPtr->eventNumber=surfHdPtr->eventNumber;

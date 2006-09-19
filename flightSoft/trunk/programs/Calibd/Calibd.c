@@ -132,6 +132,8 @@ int main (int argc, char *argv[])
 	if(printToScreen) printf("Initializing Calibd\n");
 	retVal=readConfigFile();
 	relaysChanged=1;
+	switchChanged=1;
+	attenChanged=1;
 	currentState=PROG_STATE_RUN;
 	writeSec=0;
 	attenSec=0;
@@ -158,7 +160,7 @@ int main (int argc, char *argv[])
 	    
 
 	    if(firstTime) firstTime=0;
-	    if(stateCalPulser && attenSec>=attenPeriod) {
+	    if(stateCalPulser && attenSec>=attenPeriod && attenLoop) {
 		currentAtten++;
 		while(!attenLoopMap[currentAtten-1] && currentAtten<9) {
 		    currentAtten++;
@@ -174,12 +176,13 @@ int main (int argc, char *argv[])
 		    currentPort++;
 		    if(currentPort>4) {
 			currentPort=1;
-			stateCalPulser=0;
+			if(offPeriod) stateCalPulser=0;
 			relaysChanged=1;
 		    }
 		    switchChanged=1;
 		}
 		else {
+		    currentPort=steadyState;
 		    stateCalPulser=0;
 		    relaysChanged=1;
 		}
@@ -280,6 +283,8 @@ int readConfigFile()
 		
 	//RF Switch
 	steadyState=kvpGetInt("steadyState",0);
+	if(steadyState>=1 && steadyState<=4)
+	    currentPort=steadyState;
 	switchPeriod=kvpGetInt("switchPeriod",60);
 	offPeriod=kvpGetInt("offPeriod",60);
 

@@ -239,9 +239,9 @@ int main (int argc, char *argv[])
 	    rename(bodyFilename,archiveBodyFilename);
 //	    unlink(bodyFilename);
 
-	    sprintf(archiveBodyFilename,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
-                    theHeader.eventNumber);
-	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
+//	    sprintf(archiveBodyFilename,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+//                    theHeader.eventNumber);
+//	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
