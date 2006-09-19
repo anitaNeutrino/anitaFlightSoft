@@ -307,17 +307,20 @@ void checkEvents()
 	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
 	retVal=fillBody(&theBody,currentBodyname);
-	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
-		theHead.eventNumber);
-	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
+//	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+//		theHead.eventNumber);
+//	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
 //	printf("Event %lu, Body %lu, PS Body %lu\n",theHead.eventNumber,
 //	       theBody.eventNumber,pedSubBody.eventNumber);
+
+	//Subtract Pedestals
+	subtractCurrentPeds(&theBody,&pedSubBody);
 
 
 	processEvent();
 	removeFile(currentLinkname);
 	removeFile(currentBodyname);
-	removeFile(currentPSBodyname);
+//	removeFile(currentPSBodyname);
 	removeFile(currentHeadname);
     }
 	
