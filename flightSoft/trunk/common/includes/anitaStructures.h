@@ -396,6 +396,12 @@ typedef struct {
 } SlowRateRFStruct_t;
 
 
+typedef struct {
+    char temps[4];
+    char powers[2];
+} SlowRateHkStruct_t;
+
+
 
 ////////////////////////////////////////////////////////////////////////////
 //Telemetry Structs (may be used for onboard storage)
@@ -410,6 +416,12 @@ typedef struct {
     float altitude;
     unsigned short sbsTemp[2];
 } SlowRateType1_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    SlowRateRFStruct_t rf;
+    SlowRateHkStruct_t hk;
+} SlowRateFull_t;
 
 
 typedef struct {
