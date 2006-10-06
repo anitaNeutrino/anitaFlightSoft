@@ -141,6 +141,7 @@ extern "C" {
 
 //Zipping packets and files
     int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
+    int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
     int zipFileInPlace(char *filename);
     int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask,int baseInd);
     int zipBufferedFileAndMove(char *nonBufFilename);
@@ -151,7 +152,9 @@ extern "C" {
 
 // Signal handling stuff
 // this variable is used when catching signals 
+#ifndef RYAN_HACK_17
     ProgramStateCode currentState; 
+#endif
     void sigUsr1Handler(int sig); 
     void sigUsr2Handler(int sig);
     void writePidFile(char *fileName);
