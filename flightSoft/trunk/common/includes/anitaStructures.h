@@ -419,6 +419,7 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
+    unsigned long unixTime;
     SlowRateRFStruct_t rf;
     SlowRateHkStruct_t hk;
 } SlowRateFull_t;
