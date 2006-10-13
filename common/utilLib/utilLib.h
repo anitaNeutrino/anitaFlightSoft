@@ -119,6 +119,7 @@ extern "C" {
     int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename);
     int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
     int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename);
+    int writeSlowRate(SlowRateFull_t *slowPtr, char *filename);
     int writeCommandAndLink(CommandStruct_t *theCmd);
 
     int genericReadOfFile(unsigned char *buffer, char *filename, int maxBytes);
