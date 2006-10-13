@@ -39,6 +39,7 @@
 #define VER_TURF_RATE 6
 #define VER_LAB_PED 1
 #define VER_FULL_PED 1
+#define VER_SLOW_FULL 1
 #define VER_SLOW_1 1
 #define VER_SLOW_2 1
 #else
@@ -65,6 +66,7 @@
 #define VER_FULL_PED 1
 #define VER_SLOW_1 1
 #define VER_SLOW_2 1
+#define VER_SLOW_FULL 1
 #define VER_ZIPPED_FILE 1
 #define VER_ZIPPED_PACKET 1
 #endif
@@ -103,6 +105,7 @@ typedef enum {
     PACKET_WAKEUP_COMM2 = 0x603,
     PACKET_SLOW1 = 0x700,
     PACKET_SLOW2 = 0x800,
+    PACKET_SLOW_FULL = 0x801,
     PACKET_ZIPPED_PACKET = 0x900, // Is just a zipped version of another packet
     PACKET_ZIPPED_FILE = 0xa00 // Is a zipped file
 } PacketCode_t;
@@ -385,20 +388,23 @@ typedef struct {
 typedef struct {
     unsigned long eventNumber;
     unsigned char rfPwrAvg[ACTIVE_SURFS][RFCHAN_PER_SURF];
-    unsigned char avgScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];
+    unsigned char avgScalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; // * 2^7
     unsigned char rmsScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];
-    unsigned char avgL1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
-    unsigned char avgUpperL2Rates[PHI_SECTORS];
+    unsigned char avgL1Rates[TRIGGER_SURFS]; // 3 of 8 counters
+    unsigned char avgUpperL2Rates[PHI_SECTORS]; 
     unsigned char avgLowerL2Rates[PHI_SECTORS];
     unsigned char avgL3Rates[PHI_SECTORS];    
-    unsigned char eventRate1Min;
-    unsigned char eventRate10Min;
+    unsigned char eventRate1Min; //Multiplied by 8
+    unsigned char eventRate10Min; //Multiplied by 8
 } SlowRateRFStruct_t;
 
 
 typedef struct {
-    char temps[4];
-    char powers[2];
+    float latitude;
+    float longitude;
+    float altitude;
+    char temps[8];
+    char powers[4];
 } SlowRateHkStruct_t;
 
 

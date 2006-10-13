@@ -1494,6 +1494,19 @@ int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename)
 }
 
 
+int writeSlowRate(SlowRateFull_t *slowPtr, char *filename)
+/* Writes the SlowRateFull_t object pointed to by slowPtr to filename */
+{
+
+#ifdef NO_ZLIB
+    return normalSingleWrite((unsigned char*)slowPtr,filename,sizeof(SlowRateFull_t));
+#else
+    return zippedSingleWrite((unsigned char*)slowPtr,filename,sizeof(SlowRateFull_t));
+#endif
+
+}
+
+
 
  
 void sigUsr1Handler(int sig)
@@ -1588,6 +1601,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_MONITOR: gHdr->verId=VER_MONITOR; break;
 	case PACKET_SLOW1: gHdr->verId=VER_SLOW_1; break;
 	case PACKET_SLOW2: gHdr->verId=VER_SLOW_2; break;
+	case PACKET_SLOW_FULL: gHdr->verId=VER_SLOW_FULL; break;
 	case PACKET_ZIPPED_FILE: gHdr->verId=VER_ZIPPED_FILE; break;
 	case PACKET_ZIPPED_PACKET: gHdr->verId=VER_ZIPPED_PACKET; break;
 	default: 
@@ -1653,6 +1667,8 @@ int checkPacket(void *thePtr)
 	case PACKET_SLOW1: packetSize=sizeof(SlowRateType1_t); 
 	    break;
 	case PACKET_SLOW2: packetSize=sizeof(SlowRateType1_t); 
+	    break;
+	case PACKET_SLOW_FULL: packetSize=sizeof(SlowRateFull_t); 
 	    break;
 	case PACKET_ZIPPED_PACKET: break;
 	case PACKET_ZIPPED_FILE: break;

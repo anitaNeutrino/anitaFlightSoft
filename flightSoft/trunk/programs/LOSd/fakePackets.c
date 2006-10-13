@@ -25,7 +25,7 @@ void fakeHkRaw(struct timeval *currentTime);
 void fakeMonitor(struct timeval *currentTime);
 void fakeSurfHk(struct timeval *currentTime);
 void fakeTurfRate(struct timeval *currentTime);
-
+void fakeSlowPackets(struct timeval *currentTime);
 
 void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
 int rand_no(int lim);
@@ -47,6 +47,7 @@ int hkCalPeriod=600;
 int monitorPeriod=60; //In seconds
 int surfHkPeriod=10;
 int turfRateTelemInterval=60;
+int slowRatePeriod=60;
 
 // Event structs
 AnitaEventHeader_t theHeader;
@@ -153,6 +154,8 @@ int main(int argc, char *argv[])
     lastSurfHk.tv_sec=0;
     struct timeval lastTurfRate;
     lastTurfRate.tv_sec=0;
+    struct timeval lastSlowRate;
+    lastSlowRate.tv_sec=0;
     struct timeval currentTime;
 
     printf("ADU5 PAT Period %f\n",adu5PatPeriod);
@@ -165,6 +168,7 @@ int main(int argc, char *argv[])
     printf("TURF Rate Period %d\n",turfRateTelemInterval);
     printf("Acromag Cal Period %d\n",hkCalPeriod);
     printf("Acromag Data Period %f\n",actualHkPeriod);
+    printf("Slow Rate Period %d\n",slowRatePeriod);
 
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
     makeDirectories(HEADER_TELEM_LINK_DIR);
@@ -225,6 +229,11 @@ int main(int argc, char *argv[])
 		fakeTurfRate(&currentTime);
 		lastTurfRate=currentTime;
 	    }
+	}
+	//If not one per event
+	if(getTimeDiff(lastSlowRate,currentTime)>slowRatePeriod) {
+	    fakeSlowPackets(&currentTime);
+	    lastSlowRate=currentTime;
 	}
 	
 
@@ -428,8 +437,69 @@ void fakeTurfRate(struct timeval *currentTime) {
 	    TURFHK_TELEM_DIR,theTurfRates.unixTime);
     retVal=writeTurfRate(&theTurfRates,theFilename);
     retVal=makeLink(theFilename,TURFHK_TELEM_LINK_DIR);
-
 }
+
+
+
+void fakeSlowPackets(struct timeval *currentTime) {
+    static int eventNumber=1;
+    static unsigned long lastTime=0;
+    SlowRateFull_t slowRate;
+    char theFilename[FILENAME_MAX];
+    int retVal=0,i=0,j=0;
+    slowRate.unixTime=currentTime->tv_sec;
+    slowRate.hk.powers[0]=28;
+    slowRate.hk.powers[1]=-15;
+    slowRate.hk.powers[2]=12;
+    slowRate.hk.powers[3]=10;
+    slowRate.hk.temps[0]=25;
+    slowRate.hk.temps[1]=25;
+    slowRate.hk.temps[2]=-100;
+    slowRate.hk.temps[3]=25;
+    slowRate.hk.temps[4]=25;
+    slowRate.hk.temps[5]=25;
+    slowRate.hk.temps[6]=25;
+    slowRate.hk.temps[7]=25;
+
+    if(lastTime>0) {
+	eventNumber=eventNumber+(slowRate.unixTime-lastTime)*5;
+    }    
+    lastTime=slowRate.unixTime;
+    slowRate.rf.eventNumber=eventNumber;
+    slowRate.rf.eventRate1Min=40;
+    slowRate.rf.eventRate10Min=41;
+    for(i=0;i<ACTIVE_SURFS;i++) {
+	for(j=0;j<RFCHAN_PER_SURF;j++) {
+	    slowRate.rf.rfPwrAvg[i][j]=800+i-j;
+	}
+    }
+
+    for(i=0;i<TRIGGER_SURFS;i++) {
+	for(j=0;j<ANTS_PER_SURF;j++) {
+	    slowRate.rf.avgScalerRates[i][j]=15+j;
+	    slowRate.rf.rmsScalerRates[i][j]=10;
+	}
+	slowRate.rf.avgL1Rates[i]=i;
+    }
+
+    for(i=0;i<PHI_SECTORS;i++) {
+	slowRate.rf.avgUpperL2Rates[i]=255-i;
+	slowRate.rf.avgLowerL2Rates[i]=i;
+	slowRate.rf.avgL3Rates[i]=128+i;
+    }
+
+    fillGenericHeader(&slowRate,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
+    retVal=checkPacket(&slowRate);
+    if(retVal) 
+	printf("Problem with SlowRateFull_t %d\n",retVal);
+    sprintf(theFilename,"%s/slowrate_%ld.dat",
+	    SURFHK_TELEM_DIR,slowRate.unixTime);
+    retVal=writeSlowRate(&slowRate,theFilename);
+    retVal=makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
+}
+
+
+
 
 
 void fakeMonitor(struct timeval *currentTime) {
