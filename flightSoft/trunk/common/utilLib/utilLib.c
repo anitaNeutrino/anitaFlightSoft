@@ -1627,7 +1627,9 @@ int checkPacket(void *thePtr)
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
     unsigned long longBytes=(gHdr->numBytes-sizeof(GenericHeader_t))/4;
     unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t)); 
-    unsigned long checksum=simpleLongCrc(dataPtr,longBytes);
+    unsigned long checksum=0;
+    if(longBytes<4000)
+	checksum=simpleLongCrc(dataPtr,longBytes);
     PacketCode_t code=gHdr->code;
     if(checksum!=gHdr->checksum) {
 	printf("Checksum Mismatch (possibly %s (%d)) (%lu bytes) %lu -- %lu \n",

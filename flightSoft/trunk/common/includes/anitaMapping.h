@@ -74,5 +74,4 @@ typedef struct {
     AntennaPol_t pol;    
 } SurfAntMapStruct_t;
 
-
 #endif //ANITA_MAPPING_H

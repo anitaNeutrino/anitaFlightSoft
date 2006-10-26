@@ -61,24 +61,7 @@ INCLUDE FILES: <place list of any relevant header files here>
 /* forward declarations */
 
 
-/* void copyFile(char *fromHere, char *toHere) { */
-/*     char buffer[512]; */
-/*     int bytes,inhandle,outhandle; */
-/*     inhandle=open(fromHere,O_RDONLY); */
-/*     outhandle=open(toHere,O_CREAT|O_WRONLY,S_IWUSR|S_IRUSR); */
-/*     while(1) { */
-/*         bytes=read(inhandle,buffer,512); */
-/*         if(bytes>0) */
-/* 	    write(outhandle,buffer,bytes); */
-/*         else */
-/* 	    break; */
-/*     } */
-/*     close(inhandle); */
-/*     close(outhandle); */
-/* } */
-
-
- int copyFile(const char *theFile, const char *newFile) 
+ int copyFile2(const char *theFile, const char *newFile) 
  { 
      //Only works on relative small files (will write a better version) 
      static int errorCounter=0;
@@ -121,6 +104,7 @@ INCLUDE FILES: <place list of any relevant header files here>
      free(buffer); 
      return 0; 
  } 
+
 
 
 ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {    
@@ -179,7 +163,7 @@ ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
    rename(lastFileSpec,newFileSpec);
-   copyFile(oldFileSpec,lastFileSpec);
+   copyFile2(oldFileSpec,lastFileSpec);
    rename(oldFileSpec,archiveFileSpec);
    rename(newFileSpec,oldFileSpec);
 
@@ -247,9 +231,9 @@ ConfigErrorCode configSwitch(char *configFile, char whichConfig, time_t *rawTime
    // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // cp newFileSpec oldFileSpec
-   copyFile(oldFileSpec,lastFileSpec);
+   copyFile2(oldFileSpec,lastFileSpec);
    rename(oldFileSpec,archiveFileSpec);
-   copyFile(newFileSpec,oldFileSpec);
+   copyFile2(newFileSpec,oldFileSpec);
 
    syslog(LOG_INFO,"configSwitch arcvhived: %s", archiveFileSpec);   
    return CONFIG_E_OK;
@@ -307,8 +291,8 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    strcat (lastFileSpec, oldFileName) ;
 
    
-
-   sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,oldFileName,*rawTimePtr);
+   if(rawTimePtr!=NULL)
+      sprintf(archiveFileSpec,"%s/archive/%s.%ld",configPath,oldFileName,*rawTimePtr);
 
 
    strcpy (newFileSpec, configPath) ;
@@ -329,10 +313,16 @@ ConfigErrorCode configReplace(char *oldFileName, char *newFileName, time_t *rawT
    // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
-   copyFile(oldFileSpec,lastFileSpec);
-   rename(oldFileSpec,archiveFileSpec);
-//   unlink(oldFileSpec);
-   rename(newFileSpec,oldFileSpec);
+   if(rawTimePtr) {
+       copyFile2(oldFileSpec,lastFileSpec);
+       rename(oldFileSpec,archiveFileSpec);
+       rename(newFileSpec,oldFileSpec);
+   }
+   else {
+       copyFile2(newFileSpec,oldFileSpec);
+       unlink(newFileSpec);
+   }
+
 //   unlink(newFileSpec);
 
 

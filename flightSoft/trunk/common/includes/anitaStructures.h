@@ -208,7 +208,6 @@ typedef enum {
 //Structures
 ///////////////////////////////////////////////////////////////////////////
 
-//Low level structs
 typedef struct {
     PacketCode_t code;    
     unsigned long packetNumber; //Especially for Ped
@@ -217,7 +216,6 @@ typedef struct {
     unsigned char verId;
     unsigned long checksum;
 } GenericHeader_t;
-
 
 typedef struct {
     unsigned char trigType; //Trig type bit masks
