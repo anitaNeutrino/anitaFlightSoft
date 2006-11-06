@@ -47,7 +47,7 @@ int hkCalPeriod=600;
 int monitorPeriod=60; //In seconds
 int surfHkPeriod=10;
 int turfRateTelemInterval=60;
-int slowRatePeriod=60;
+int slowRatePeriod=10;
 
 // Event structs
 AnitaEventHeader_t theHeader;
@@ -488,7 +488,7 @@ void fakeSlowPackets(struct timeval *currentTime) {
 	slowRate.rf.avgL3Rates[i]=128+i;
     }
 
-    fillGenericHeader(&slowRate,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
+    fillGenericHeader(&slowRate,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
     retVal=checkPacket(&slowRate);
     if(retVal) 
 	printf("Problem with SlowRateFull_t %d\n",retVal);

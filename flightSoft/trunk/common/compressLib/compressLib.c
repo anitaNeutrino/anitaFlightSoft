@@ -164,6 +164,42 @@ CompressErrorCode_t unpackOneSurfToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 }
 
 
+
+CompressErrorCode_t unpackOneWaveToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
+						  unsigned char *input,
+						  int numBytes)
+{
+    int count=0;
+    int chan=0;  
+    int chanIndex;
+    CompressErrorCode_t retVal=0;
+    EncodedPedSubbedChannelPacketHeader_t *waveHdPtr;
+    EncodedSurfChannelHeader_t *chanHdPtr;
+    
+    
+    waveHdPtr = (EncodedPedSubbedChannelPacketHeader_t*) &input[count];
+    bdPtr->whichPeds=waveHdPtr->whichPeds;
+    bdPtr->eventNumber=waveHdPtr->eventNumber;
+    count+=sizeof(EncodedPedSubbedChannelPacketHeader_t);
+	
+    chanHdPtr = (EncodedSurfChannelHeader_t*)&input[count];
+    count+=sizeof(EncodedSurfChannelHeader_t);
+    chanIndex=chanHdPtr->rawHdr.chanId;
+    retVal=decodePSChannel(chanHdPtr,
+			   &input[count],
+			   &(bdPtr->channel[chanIndex]));
+    if(retVal!=COMPRESS_E_OK) return retVal;
+    count+=chanHdPtr->numBytes;
+    if(count>numBytes)
+	return COMPRESS_E_BADSIZE;
+    
+	//Fill Generic Header_t;	
+//    fillGenericHeader(bdPtr,PACKET_PED_SUBBED_EVENT,count);
+    return COMPRESS_E_OK;
+
+}
+
+
 CompressErrorCode_t unpackToPedSubbedEventWithStats(PedSubbedEventBody_t *bdPtr,
 					   unsigned char *input,
 					   int numBytes,
