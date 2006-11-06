@@ -579,10 +579,10 @@ int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
 int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes) 
 {
     static int errorCounter=0;
-   int numObjs;    
-   gzFile outfile = gzopen (filename, "wb");  
-   if(outfile == NULL) { 
-       if(errorCounter<100) {
+    int numObjs;    
+    gzFile outfile = gzopen (filename, "wb");  
+    if(outfile == NULL) { 
+	if(errorCounter<100) {
 	   syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	   fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),filename);
 	   errorCounter++;

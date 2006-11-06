@@ -73,6 +73,9 @@ typedef enum {
     CompressErrorCode_t unpackOneSurfToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 						      unsigned char *input,
 						      int numBytes);
+    CompressErrorCode_t unpackOneWaveToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
+						      unsigned char *input,
+						      int numBytes);
     CompressErrorCode_t 
     unpackToPedSubbedEventWithStats(PedSubbedEventBody_t *bdPtr,
 				    unsigned char *input,
