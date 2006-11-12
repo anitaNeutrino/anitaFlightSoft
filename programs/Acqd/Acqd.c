@@ -1357,12 +1357,26 @@ int readConfigFile()
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status += configLoad ("Acqd.config","output") ;
     status += configLoad ("Acqd.config","locations") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- locations\n");
     status += configLoad ("Acqd.config","debug") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- debug\n");
     status += configLoad ("Acqd.config","trigger") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- trigger\n");
     status += configLoad ("Acqd.config","thresholds") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- thresholds\n");
     status += configLoad ("Acqd.config","thresholdScan") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- thresholdScan\n");
     status += configLoad ("Acqd.config","acqd") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- acq\n");
     status += configLoad ("Acqd.config","pedestal") ;
+    if(status != CONFIG_E_OK)
+	fprintf(stderr,"Problem Reading Acqd.config -- pedestal\n");
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
 	numEvents=kvpGetInt("numEvents",1);
@@ -1557,9 +1571,9 @@ int readConfigFile()
     }
     else {
 	eString=configErrorString (status) ;
-	syslog(LOG_ERR,"Error reading Acqd.config: %s\n",eString);
+	syslog(LOG_ERR,"Error reading 1 Acqd.config: %s\n",eString);
 //	if(printToScreen)
-	fprintf(stderr,"Error reading Acqd.config: %s\n",eString);
+	fprintf(stderr,"Error reading 1 Acqd.config: %s\n",eString);
 	    
     }
 
