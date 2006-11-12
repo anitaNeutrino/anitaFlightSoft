@@ -109,6 +109,8 @@ int hkDiskBitMask;
 int eventDiskBitMask;
 AnitaHkWriterStruct_t cmdWriter;
 
+
+
 int main (int argc, char *argv[])
 {
     CommandStruct_t lastCmd;
@@ -1374,9 +1376,21 @@ int mountNextUsb(int intExtFlag) {
     int retVal;
     time_t rawtime;
     int currentNum[2]={0};
-    if(intExtFlag<1 || intExtFlag>3) return 0;
 
     readConfig(); // Get latest names and status
+
+    disableUsbInt=1;
+    disableUsbExt=1;
+    
+    if(hkDiskBitMask&USBINT_DISK_MASK) disableUsbInt=0;
+    if(eventDiskBitMask&USBINT_DISK_MASK) disableUsbInt=0;
+
+    if(hkDiskBitMask&USBEXT_DISK_MASK) disableUsbExt=0;
+    if(eventDiskBitMask&USBEXT_DISK_MASK) disableUsbExt=0;
+
+
+    if(intExtFlag<1 || intExtFlag>3) return 0;
+
     if(intExtFlag==1 && disableUsbInt) return 0;
     else if(intExtFlag==2 && disableUsbExt) return 0;
     else if(intExtFlag==3 && disableUsbExt && disableUsbInt) return 0;

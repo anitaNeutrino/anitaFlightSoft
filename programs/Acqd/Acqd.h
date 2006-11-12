@@ -143,6 +143,8 @@ void makeSubAltDir();
 void prepWriterStructs();
 int getChanIndex(int surf, int chan);
 void myUsleep(int usec);
+void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
+
 
 typedef struct {
     unsigned char test[8];

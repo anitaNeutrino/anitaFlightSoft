@@ -40,6 +40,8 @@ int bladeSwitchMB=50;
 
 //Link Directories
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
+char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
+
 
 char bladeName[FILENAME_MAX];
 char usbIntName[FILENAME_MAX];
@@ -77,6 +79,9 @@ int main (int argc, char *argv[])
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
 	sprintf(eventTelemLinkDirs[pri],"%s/%s%d/link",BASE_EVENT_TELEM_DIR,
 		EVENT_PRI_PREFIX,pri);
+	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
+		EVENT_PRI_PREFIX,pri);
+
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
     
@@ -325,9 +330,62 @@ int checkQueues(QueueStruct_t *queuePtr) {
 	queuePtr->eventLinks[count]=numLinks;
 	if(printToScreen) printf("%s\t%u\n",eventTelemLinkDirs[count]
 				 ,numLinks);
-	if(((short)numLinks)==-1) retVal--;
+	if(((short)numLinks)==-1) {
+	    retVal--;
+	}
+	else if(numLinks>200) {
+	    //purge directory
+	}
     }
     return retVal;
+}
+
+void purgeDirectory(int priority) {    
+    int count;
+    unsigned long eventNumber;
+    char currentTouchname[FILENAME_MAX];
+    char currentHeader[FILENAME_MAX];
+    struct dirent **linkList;
+    int numLinks=getListofLinks(eventTelemLinkDirs[priority],
+				&linkList);
+    if(numLinks>200) {
+	syslog(LOG_INFO,"LOSd not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
+	fprintf(stderr,"LOSd not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
+	for(count=0;count<numLinks-100;
+	    count++) {
+	    
+	    sscanf(linkList[count]->d_name,
+		   "hd_%lu.dat",&eventNumber);
+
+
+	    sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[priority], 
+		    eventNumber);	    
+	    sprintf(currentTouchname,"%s.sipd",currentHeader);
+	    if(checkFileExists(currentTouchname))
+		continue;
+
+	    sprintf(currentTouchname,"%s.losd",currentHeader);
+	    if(checkFileExists(currentTouchname))
+		continue;
+	    
+
+	    removeFile(currentHeader);			
+
+	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[priority],
+		    linkList[count]->d_name);	    	    
+	    removeFile(currentHeader);
+	    
+	    sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[priority], 
+		    eventNumber);
+	    removeFile(currentHeader);			
+	}
+	for(count=0;count<numLinks;
+	    count++) 
+	    free(linkList[count]);		    
+	free(linkList);		
+    }
+    
+
 }
 
 

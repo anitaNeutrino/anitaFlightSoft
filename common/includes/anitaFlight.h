@@ -124,6 +124,13 @@
 #define TRIG_BUF_MASK_FINAL 0x3
 #define TRIG_BUF_SHIFT_FINAL 0
 
+//Disk Bit Masks
+#define BLADE_DISK_MASK 0x1
+#define PUCK_DISK_MASK 0x1
+#define USBINT_DISK_MASK 0x1
+#define USBEXT_DISK_MASK 0x1
+#define PMC_DISK_MASK 0x1
+
 
 
 
@@ -146,6 +153,8 @@
 #define USBEXT_DATA_MOUNT "/mnt/usbext"
 #endif
 
+
+#define DISK_BUFFER_DIR "/mnt/bitmicro/buffer"
 
 //Index and pedestal dirs
 #define ANITA_INDEX_DIR "anita/index"

@@ -86,7 +86,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 	    strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
 
 	    if(bufferDisk[diskInd]) {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentDirName[diskInd]);
 		makeDirectories(bufferName);
 
 	    }
@@ -95,7 +95,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 	    tempDir=getCurrentHkDir(awsPtr->currentDirName[diskInd],unixTime);
 	    strncpy(awsPtr->currentSubDirName[diskInd],tempDir,FILENAME_MAX-1);
 	    if(bufferDisk[diskInd]) {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentSubDirName[diskInd]);
 		makeDirectories(bufferName);
 	    }
 	    awsPtr->fileCount[diskInd]=0;
@@ -109,7 +109,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 		awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");	    
 	    }
 	    else {		
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentFileName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentFileName[diskInd]);
 		awsPtr->currentFilePtr[diskInd]=fopen(bufferName,"ab");
 	    }
 	    awsPtr->writeCount[diskInd]=0;						      
@@ -150,7 +150,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 		    strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
 		    makeDirectories(awsPtr->currentDirName[diskInd]);
 		    if(bufferDisk[diskInd]) {
-			sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+			sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentDirName[diskInd]);
 			makeDirectories(bufferName);
 			
 		    }
@@ -162,7 +162,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 		strncpy(awsPtr->currentSubDirName[diskInd],tempDir,FILENAME_MAX-1);
 		makeDirectories(awsPtr->currentSubDirName[diskInd]);
 		if(bufferDisk[diskInd]) {
-		    sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+		    sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentSubDirName[diskInd]);
 		    makeDirectories(bufferName);
 		}
 		awsPtr->fileCount[diskInd]=0;
@@ -177,7 +177,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, A
 		awsPtr->currentFilePtr[diskInd]=fopen(awsPtr->currentFileName[diskInd],"wb");  
 	    }
 	    else {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentFileName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentFileName[diskInd]);
 		awsPtr->currentFilePtr[diskInd]=fopen(bufferName,"wb");
 	    }
 	    
@@ -297,7 +297,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 	    makeDirectories(awsPtr->currentDirName[diskInd]);
 
 	    if(bufferDisk[diskInd]) {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentDirName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentDirName[diskInd]);
 		makeDirectories(bufferName);
 
 	    }
@@ -308,7 +308,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 	    makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
 
 	    if(bufferDisk[diskInd]) {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentSubDirName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentSubDirName[diskInd]);
 		makeDirectories(bufferName);
 	    }
 
@@ -321,7 +321,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 		awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
 	    }
 	    else {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentHeaderFileName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentHeaderFileName[diskInd]);
 		awsPtr->currentHeaderFilePtr[diskInd]=fopen(bufferName,"ab");
 	    }
 		    
@@ -340,7 +340,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 		    fopen(awsPtr->currentEventFileName[diskInd],"ab");
 	    }
 	    else {
-		sprintf(bufferName,"/tmp/buffer/%s",awsPtr->currentEventFileName[diskInd]);
+		sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentEventFileName[diskInd]);
 		awsPtr->currentEventFilePtr[diskInd]=fopen(bufferName,"ab");
 	    }
 
@@ -1852,7 +1852,7 @@ int zipBufferedFileAndMove(char *filename) {
     char bufferZippedFilename[FILENAME_MAX];
     char outputFilename[FILENAME_MAX];
     unsigned long numBytesIn=0;
-    sprintf(bufferFilename,"/tmp/buffer/%s",filename);
+    sprintf(bufferFilename,"%s/%s",DISK_BUFFER_DIR,filename);
     char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
 	fprintf(stderr,"Problem reading file %s\n",bufferFilename);
@@ -1883,7 +1883,7 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     char cloneFilename[FILENAME_MAX];
     int diskInd;
     unsigned long numBytesIn=0;
-    sprintf(bufferFilename,"/tmp/buffer/%s",filename);
+    sprintf(bufferFilename,"%s/%s",DISK_BUFFER_DIR,filename);
     char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
 	free(buffer);
