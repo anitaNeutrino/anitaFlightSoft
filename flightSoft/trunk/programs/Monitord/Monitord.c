@@ -26,7 +26,7 @@ int checkDisks(DiskSpaceStruct_t *dsPtr);
 int checkQueues(QueueStruct_t *queuePtr);
 int writeFileAndLink(MonitorStruct_t *monitorPtr);
 void prepWriterStructs();
-
+void purgeDirectory(int priority);
 
 // Global Variables
 int printToScreen=0;
@@ -335,6 +335,7 @@ int checkQueues(QueueStruct_t *queuePtr) {
 	}
 	else if(numLinks>200) {
 	    //purge directory
+	    purgeDirectory(count);
 	}
     }
     return retVal;
@@ -349,8 +350,8 @@ void purgeDirectory(int priority) {
     int numLinks=getListofLinks(eventTelemLinkDirs[priority],
 				&linkList);
     if(numLinks>200) {
-	syslog(LOG_INFO,"LOSd not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
-	fprintf(stderr,"LOSd not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
+	syslog(LOG_INFO,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
+	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
 	for(count=0;count<numLinks-100;
 	    count++) {
 	    

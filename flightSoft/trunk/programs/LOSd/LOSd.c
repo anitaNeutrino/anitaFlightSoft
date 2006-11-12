@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 {
     int pri,retVal,firstTime=1;
     char *tempString;
-    unsigned long eventNumber=0;
+//    unsigned long eventNumber=0;
     /* Config file thingies */
     int status=0;
 //    KvpErrorCode kvpStatus=0;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     char *progName=basename(argv[0]);
 
     //Directory listing tools
-    char currentTouchname[FILENAME_MAX];
+//    char currentTouchname[FILENAME_MAX];
     char currentHeader[FILENAME_MAX];
     int numLinks[NUM_PRIORITIES]={0};
     int totalEventLinks=0;
@@ -201,50 +201,54 @@ int main(int argc, char *argv[])
 		    getListofLinks(eventTelemLinkDirs[currentPri],
 				   &linkList[currentPri]);
 		totalEventLinks+=numLinks[currentPri];
+
+
 		//Quick and dirty hack
-		if(numLinks[currentPri]>200) {
-//		    printf("Here %d %d\n",currentPri,numLinks[currentPri]);
-		    syslog(LOG_INFO,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]);
-		    fprintf(stderr,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]);
-		    for(count=0;count<numLinks[currentPri]-100;
-			count++) {
+
+
+		if(numLinks[currentPri]>200) /* { */
+/* //		    printf("Here %d %d\n",currentPri,numLinks[currentPri]); */
+/* 		    syslog(LOG_INFO,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]); */
+/* 		    fprintf(stderr,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]); */
+/* 		    for(count=0;count<numLinks[currentPri]-100; */
+/* 			count++) { */
 			
-			sscanf(linkList[currentPri][count]->d_name,
-			       "hd_%lu.dat",&eventNumber);
+/* 			sscanf(linkList[currentPri][count]->d_name, */
+/* 			       "hd_%lu.dat",&eventNumber); */
 
-#ifdef SPEED_UP_LOSD
-			sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
-				eventNumber);
-			sprintf(currentTouchname,"%s.sipd",currentHeader);
-			if(checkFileExists(currentTouchname))
-			    continue;
+/* #ifdef SPEED_UP_LOSD */
+/* 			sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[currentPri],  */
+/* 				eventNumber); */
+/* 			sprintf(currentTouchname,"%s.sipd",currentHeader); */
+/* 			if(checkFileExists(currentTouchname)) */
+/* 			    continue; */
 
-			removeFile(currentHeader);			
-#endif
+/* 			removeFile(currentHeader);			 */
+/* #endif */
 
 									
-			sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
-				linkList[currentPri][count]->d_name);
+/* 			sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri], */
+/* 				linkList[currentPri][count]->d_name); */
 			
 
-			removeFile(currentHeader);
+/* 			removeFile(currentHeader); */
 
-			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
-				eventNumber);
-			removeFile(currentHeader);			
-		    }
-		    for(count=0;count<numLinks[currentPri];
-			count++) 
-			free(linkList[currentPri][count]);		    
-		    free(linkList[currentPri]);
+/* 			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri],  */
+/* 				eventNumber); */
+/* 			removeFile(currentHeader);			 */
+/* 		    } */
+/* 		    for(count=0;count<numLinks[currentPri]; */
+/* 			count++)  */
+/* 			free(linkList[currentPri][count]);		     */
+/* 		    free(linkList[currentPri]); */
 		    
-		    totalEventLinks-=numLinks[currentPri];
-		    numLinks[currentPri]=
-			getListofLinks(eventTelemLinkDirs[currentPri],
-				       &linkList[currentPri]);	
-		    totalEventLinks+=numLinks[currentPri];
+/* 		    totalEventLinks-=numLinks[currentPri]; */
+/* 		    numLinks[currentPri]= */
+/* 			getListofLinks(eventTelemLinkDirs[currentPri], */
+/* 				       &linkList[currentPri]);	 */
+/* 		    totalEventLinks+=numLinks[currentPri]; */
 		    
-		}
+/* 		} */
 		
 		if(printToScreen && verbosity>1) {
 		    printf("Got %d links in %s\n",numLinks[currentPri],
