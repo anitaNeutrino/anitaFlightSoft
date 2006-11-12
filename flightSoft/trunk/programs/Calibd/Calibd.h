@@ -23,14 +23,25 @@ int setMultipleLevels(int basePort, int baseChan, int nbits, int value);
 int readConfigFile();
 
 //Relay locations 
-#define RFCM1_ON_LOGIC 23
-#define RFCM1_OFF_LOGIC 22
-#define RFCM2_ON_LOGIC 21
-#define RFCM2_OFF_LOGIC 20
-#define RFCM3_ON_LOGIC 19
-#define RFCM3_OFF_LOGIC 18
-#define RFCM4_ON_LOGIC 7
-#define RFCM4_OFF_LOGIC 6
+/* #define RFCM1_ON_LOGIC 23 */
+/* #define RFCM1_OFF_LOGIC 22 */
+/* #define RFCM2_ON_LOGIC 21 */
+/* #define RFCM2_OFF_LOGIC 20 */
+/* #define RFCM3_ON_LOGIC 19 */
+/* #define RFCM3_OFF_LOGIC 18 */
+/* #define RFCM4_ON_LOGIC 7 */
+/* #define RFCM4_OFF_LOGIC 6 */
+
+#define RFCM3_ON_LOGIC 23
+#define RFCM3_OFF_LOGIC 22
+#define RFCM4_ON_LOGIC 21
+#define RFCM4_OFF_LOGIC 20
+#define RFCM1_ON_LOGIC 19
+#define RFCM1_OFF_LOGIC 18
+#define RFCM2_ON_LOGIC 7
+#define RFCM2_OFF_LOGIC 6
+
+
 #define VETO_ON_LOGIC 5
 #define VETO_OFF_LOGIC 4
 #define GPS_ON_LOGIC 3

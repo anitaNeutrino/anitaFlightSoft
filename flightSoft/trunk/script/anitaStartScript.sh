@@ -30,7 +30,7 @@ sleep 40
 sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
 
 daemon -u anita -r Archived -n Archived
-daemon -u anita -r Acqd -n Acqd
+#daemon -u anita -r Acqd -n Acqd
 daemon -u anita -r Eventd -n Eventd
 daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd

@@ -1,3 +1,5 @@
+
+
 /*  \file Acqd.c
     \brief The Acqd program 
     The first functional version of the acquisition software to work with SURF version 3. For now this guy will try to have the same functionality as crate_test, but will look less like a dead dog. 
@@ -36,6 +38,7 @@
 //#define TIME_DEBUG 1
 //#define BAD_DEBUG 1
 #define HK_DEBUG 0
+void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
 
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
     return (a>>8)+(a<<8);
@@ -154,10 +157,10 @@ int enableChanServo = FALSE; //Turn on the individual chanel servo
 int pidGoal;
 int pidPanicVal;
 int pidAverage;
+int numEvents=0;
 //time_t lastRateTime;
 int lastEventCounter=0;
 int calculateRateAfter=5;
-
 
 //Rate servo stuff
 int enableRateServo=1;
@@ -218,7 +221,7 @@ int main(int argc, char **argv) {
 // Read only one chip per trigger. PM
 
     int i=0,tmo=0; 
-    int numDevices, numEvents=0 ;
+    int numDevices; 
     int tmpGPIO,tmpINTR;
     unsigned short dacVal=2200;
     int surf;
@@ -431,7 +434,7 @@ int main(int argc, char **argv) {
 	    gettimeofday(&timeStruct2,NULL);
 	    fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    if((standAloneMode || pedestalMode) && (numEvents && numEvents<doingEvent)) {
+	    if((standAloneMode || pedestalMode || numEvents) && (numEvents && numEvents<doingEvent)) {
 		currentState=PROG_STATE_TERMINATE;
 		break;
 	    }
@@ -484,7 +487,8 @@ int main(int argc, char **argv) {
 
 	    //Send software trigger if we want to
 	    if(sendSoftTrigger || doingEvent==0) {
-		sleep(softTrigSleepPeriod);
+		usleep(softTrigSleepPeriod);
+		
 		setTurfControl(turfioHandle,SendSoftTrg);
 	    }
 
@@ -1361,6 +1365,7 @@ int readConfigFile()
     status += configLoad ("Acqd.config","pedestal") ;
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	numEvents=kvpGetInt("numEvents",1);
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
         niceValue=kvpGetInt("niceValue",-20);
 	pedestalMode=kvpGetInt("pedestalMode",0);
@@ -2640,9 +2645,11 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 		theSurfHk.errorFlag|=(1>>surf);
 	    }
 	    if(!doThresholdScan) {
-		if((theSurfHk.threshold[surf][rfChan]&0xfff)!=thresholdArray[surf][rfChan])
-		{
-		    printf("Surf %d, Threshold %d (Top bits %d) -- Is %d Should be %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff,thresholdArray[surf][rfChan]);
+		if(!setGlobalThreshold) {
+		    if((theSurfHk.threshold[surf][rfChan]&0xfff)!=thresholdArray[surf][rfChan])
+		    {
+			printf("Surf %d, Threshold %d (Top bits %d) -- Is %d Should be %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff,thresholdArray[surf][rfChan]);
+		    }
 		}
 	    }
 	}
