@@ -170,7 +170,6 @@ CompressErrorCode_t unpackOneWaveToPedSubbedEvent(PedSubbedEventBody_t *bdPtr,
 						  int numBytes)
 {
     int count=0;
-    int chan=0;  
     int chanIndex;
     CompressErrorCode_t retVal=0;
     EncodedPedSubbedChannelPacketHeader_t *waveHdPtr;

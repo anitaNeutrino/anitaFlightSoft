@@ -158,6 +158,19 @@ int pidAverage;
 int lastEventCounter=0;
 int calculateRateAfter=5;
 
+
+//Rate servo stuff
+int enableRateServo=1;
+int servoRateCalcPeriod=60;
+float rateGoal=5;
+float ratePGain=100;
+float rateIGain=1;
+float rateDGain=0;
+float rateIMax=100;
+float rateIMin=-100;
+
+
+
 //RFCM Mask
 //1 is disable
 //lowest bit of first word is antenna 1
@@ -214,10 +227,14 @@ int main(int argc, char **argv) {
     unsigned short doingDacVal=1;//2100;
     struct timeval timeStruct;
     struct timeval lastRateCalc;
+    struct timeval lastServoRateCalc;
     struct timeval lastSurfHkRead;
     int timeDiff=0;
+    unsigned long lastRateCalcEvent=0;
     lastRateCalc.tv_sec=0;
     lastRateCalc.tv_usec=0;
+    lastServoRateCalc.tv_sec=0;
+    lastServoRateCalc.tv_usec=0;
     lastSurfHkRead.tv_sec=0;
     lastSurfHkRead.tv_usec=0;
     float rateCalcPeriod;
@@ -505,6 +522,7 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"Waitf for EVT_RDY { %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 	    fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+
 	    if(useInterrupts) {
 		if(printToScreen) 
 		    printf("Using Interrupt Logic\n");
@@ -556,6 +574,19 @@ int main(int argc, char **argv) {
 
 
 			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
+
+			    if(enableRateServo) {
+				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
+				    //Time to servo on rate
+				    servoOnRate(doingEvent,lastRateCalcEvent,&timeStruct,&lastServoRateCalc);
+				    lastRateCalcEvent=doingEvent;
+				    lastServoRateCalc.tv_sec=timeStruct.tv_sec;
+				    lastServoRateCalc.tv_usec=timeStruct.tv_usec;
+				    
+				}				    
+			    }
+			
+
 			    rateCalcPeriod=0;
 			    //Make rate calculation;
 			    if(lastRateCalc.tv_sec>0) {
@@ -1526,6 +1557,26 @@ int readConfigFile()
 	fprintf(stderr,"Error reading Acqd.config: %s\n",eString);
 	    
     }
+
+    
+    kvpReset();
+    status = configLoad ("Acqd.config","rates");
+    if(status == CONFIG_E_OK) {
+	enableRateServo=kvpGetInt("enableRateServo",0);
+	servoRateCalcPeriod=kvpGetInt("servoRateCalcPeriod",60);
+	rateGoal=kvpGetFloat("rateGoal",5);
+	ratePGain=kvpGetFloat("ratePGain",100);
+	rateIGain=kvpGetFloat("rateIGain",1);
+	rateDGain=kvpGetFloat("rateDGain",1);
+	rateIMax=kvpGetFloat("rateIMax",100);
+	rateIMin-kvpGetFloat("rateIMin",-100);
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Acqd.config: %s\n",eString);
+    }
+
+
 
     if(printToScreen) {
 	printf("Read Config File\n");
@@ -3261,4 +3312,57 @@ void myUsleep(int usec)
     waitTime.tv_nsec=usec*1000;
     
     nanosleep(&waitTime,&retTime);
+}
+
+
+void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime)
+{
+    static float dState=0;  // Last position input
+    static float iState=0;  // Integrator state
+    float timespan=(currentTime->tv_sec-lastRateCalcTime->tv_sec) 
+	+ 1e-6*(float)(currentTime->tv_usec)
+	-1e-6*(float)(lastRateCalcTime->tv_usec);
+    float rate=((float)(eventNumber-lastRateCalcEvent))/timespan;    
+    float error;
+    int change,setting;
+    float pTerm, dTerm, iTerm;
+
+    if(!setGlobalThreshold) 
+	setting=pidGoal;
+    else
+	setting=globalThreshold;
+    
+    error=rateGoal-rate;
+    
+    // Proportional term
+    pTerm = ratePGain * error;
+    
+    // Calculate integral with limiting factors
+    iState+=error;
+    if (iState > rateIMax) 
+	iState = rateIMax;
+    else if (iState < rateIMin) 
+	iState = rateIMin;
+		    
+    // Integral and Derivative Terms
+    iTerm = rateIGain * iState;  
+    dTerm = rateDGain * (rate-dState);
+    dState = rate;
+		    
+	    //Put them together		  
+    printf("p %f\t + i %f\t -d %f\n",pTerm,iTerm,dTerm);
+    change = (int) (pTerm + iTerm - dTerm);
+    printf("Rate %2.2f Hz, Goal %2.2f Hz, Setting %d -- Change %d\n",
+	   rate,rateGoal,setting,change);
+    setting+=change;
+    if(!setGlobalThreshold) {
+	pidGoal=setting;
+	if(pidGoal<1) pidGoal=1;
+	if(pidGoal>10000) pidGoal=10000;
+    }
+    else {
+	globalThreshold=setting;
+	if(globalThreshold<1) globalThreshold=1;
+	if(globalThreshold>4095) globalThreshold=4095;
+    }    
 }
