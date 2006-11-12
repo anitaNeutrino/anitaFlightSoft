@@ -1,0 +1,45 @@
+Data format 2006b
+
+LOS and SIP high-rate data format.
+
+    byte    length
+    offset  (bytes)  value    description
+    ------  ------   -----    -----------
+       0       2     0xF00D   START_HDR
+       2       2     NW       Number of 16-bit words clocked in by the board.
+       4       2     -        Unused word.
+       6       2     0xF00D   START_HDR
+       8       2     0xD0CC   AUX_HDR
+      10       2     0xAE0x   ID_HDR (See below)
+      12       4     -        Sequential buffer count (32 bits)
+      16       2     NB       Number of bytes of science data
+      18      NB     -        Science data
+      18+NB    2     -        Checksum (See below)
+      20+NB    2     0xAEFF   SW_END_HDR
+      22+NB    2     0xC0FE   END_HDR
+      24+NB    2     0xD0CC   AUX_HDR
+
+    ID_HDR:
+	bit 0 = 0 LOS data
+	bit 0 = 1 SIP high-rate data
+
+	bit 1 = 0 Even number of science bytes.
+	bit 1 = 1 Odd number of science bytes. NB must be
+	    decremented and 0x00 pad byte at end of data removed.
+
+    The first three words are inserted by the ground LOS board.
+
+    Checksum calculated over the science bytes only; that is bytes
+	18 through (18+NB)-1 using the following function:
+
+	    unsigned short
+	    crc_short(unsigned short *p, unsigned long n)
+	    {
+		unsigned short sum = 0;
+		unsigned long i;
+		for (i=0L; i<n; i++) {
+		    sum += *p++;
+		}
+		return ((0xffff - sum) + 1);
+	    }
+
