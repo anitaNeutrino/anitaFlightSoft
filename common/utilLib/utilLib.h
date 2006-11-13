@@ -154,7 +154,7 @@ extern "C" {
 // Signal handling stuff
 // this variable is used when catching signals 
 #ifndef RYAN_HACK_17
-    ProgramStateCode currentState; 
+    extern ProgramStateCode currentState; 
 #endif
     void sigUsr1Handler(int sig); 
     void sigUsr2Handler(int sig);

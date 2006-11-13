@@ -266,10 +266,22 @@ int subtractThesePeds(AnitaEventBody_t *rawBdPtr,
 int subtractPedsFromFile(AnitaEventBody_t *rawBdPtr,
 			 PedSubbedEventBody_t *pedSubBdPtr,
 			 char *filename) {
+
     loadPedsFromFile(filename);
     return doPedSubtraction(rawBdPtr,pedSubBdPtr);
 }
 
+int subtractPedsFromBufferedFile(AnitaEventBody_t *rawBdPtr,
+				 PedSubbedEventBody_t *pedSubBdPtr,
+				 char *filename,
+				 int forceReload) {
+    static int fileLoaded=0;
+    if(!fileLoaded || forceReload) {
+	loadPedsFromFile(filename);
+	fileLoaded=1;
+    }
+    return doPedSubtraction(rawBdPtr,pedSubBdPtr);
+}
 
 int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 		     PedSubbedEventBody_t *pedSubBdPtr) {

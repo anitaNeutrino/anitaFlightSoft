@@ -30,6 +30,11 @@ int subtractThesePeds(AnitaEventBody_t *rawBdPtr,
 int subtractPedsFromFile(AnitaEventBody_t *rawBdPtr,
 			 PedSubbedEventBody_t *pedSubBdPtr,
 			 char *filename);
+
+int subtractPedsFromBufferedFile(AnitaEventBody_t *rawBdPtr,
+				 PedSubbedEventBody_t *pedSubBdPtr,
+				 char *filename,
+				 int forceReload);
 //Raw routine do not use, use above wrappers instead
 int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 		     PedSubbedEventBody_t *pedSubBdPtr);
