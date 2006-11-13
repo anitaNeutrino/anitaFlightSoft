@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets =  simpleLog sillyTest simpleLOSTest simplePacketReader unpackFilesForPrioritizerd ridiculousRunLog makePedestalFilesFromRun dumpCurrentPeds unpackFilesForArchived dumpEventTelemFile dumpLabPedFile testZipping #bzTest #checksumTest
+Targets =  simpleLog sillyTest simpleLOSTest simplePacketReader unpackFilesForPrioritizerd ridiculousRunLog makePedestalFilesFromRun dumpCurrentPeds unpackFilesForArchived dumpEventTelemFile dumpLabPedFile testZipping slac2ice #bzTest #checksumTest
 
 all: $(Targets)
 
