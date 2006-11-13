@@ -58,6 +58,7 @@ int setArchiveDefaultFrac(int pri, int frac);
 int setTelemPriEncodingType(int pri, int encType, int encClockType);
 int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
 int startNewRun();
+int getRunNumber();
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -80,7 +81,7 @@ char losdPidFile[FILENAME_MAX];
 char prioritizerdPidFile[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
 char monitordPidFile[FILENAME_MAX];
-
+char lastRunNumberFile[FILENAME_MAX];
 
 //Debugging Output
 int printToScreen=1;
@@ -109,7 +110,9 @@ int hkDiskBitMask;
 int eventDiskBitMask;
 AnitaHkWriterStruct_t cmdWriter;
 
+int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
 
+char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
 
 int main (int argc, char *argv[])
 {
@@ -275,6 +278,17 @@ int readConfig() {
 	    fprintf(stderr,"Problem getting cmdLengths -- %s\n",
 		    kvpErrorString(kvpStatus));
 	}
+	
+	tempString=kvpGetString("lastRunNumberFile");
+	if(tempString) {
+	    strncpy(lastRunNumberFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get lastRunNumberFile");
+	    fprintf(stderr,"Couldn't get lastRunNumberFile\n");
+	}
+
+
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -379,28 +393,46 @@ int executeCommand(CommandStruct_t *theCmd)
     float fvalue;
     unsigned long ulvalue,ultemp;
     char theCommand[FILENAME_MAX];
+
+    int index;
+    int numDataProgs=6;
+    int dataProgMasks[6]={HKD_ID_MASK,GPSD_ID_MASK,ARCHIVED_ID_MASK,
+			  ACQD_ID_MASK,CALIBD_ID_MASK,MONITORD_ID_MASK};
+    char *dataPidFiles[6]={hkdPidFile,gpsdPidFile,archivedPidFile,acqdPidFile,
+			   calibdPidFile,monitordPidFile};
+    
+
     switch(theCmd->cmd[0]) {
 	case CMD_START_NEW_RUN:
+	{
+	    
+	    int sleepCount=0;
 	    time(&rawtime);
-	    killPrograms(HKD_ID_MASK);
-	    killPrograms(GPSD_ID_MASK);
-	    killPrograms(ARCHIVED_ID_MASK);
-	    killPrograms(ACQD_ID_MASK);
-	    killPrograms(CALIBD_ID_MASK);
-	    killPrograms(MONITORD_ID_MASK);
-	    sleep(10);
+	    for(index=0;index<numDataProgs;index++) {
+		killPrograms(dataProgMasks[index]);
+	    }
+	    
+	    for(index=0;index<numDataProgs;index++) {
+		int fileExists=0;
+		do {
+		    FILE *test =fopen(dataPidFiles[index],"r");
+		    if(test==NULL) fileExists=0;
+		    else {
+			fclose(test);
+			fileExists=1;
+			sleepCount++;
+		    }
+		}
+		while(fileExists && sleepCount<20);
+	    }	   
 	    retVal=startNewRun();
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
-	    startPrograms(HKD_ID_MASK);
-	    startPrograms(GPSD_ID_MASK);
-	    startPrograms(ARCHIVED_ID_MASK);
-	    startPrograms(ACQD_ID_MASK);
-	    startPrograms(CALIBD_ID_MASK);
-	    startPrograms(MONITORD_ID_MASK);
-	    sleep(30);
-	    startPrograms(ARCHIVED_ID_MASK); //Just to be sure
+	    for(index=0;index<numDataProgs;index++) {
+		startPrograms(dataProgMasks[index]);
+	    }
 	    return rawtime;
+	    }
 	case CMD_TAIL_VAR_LOG_MESSAGES:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    return tailFile("/var/log/messages",ivalue);
@@ -521,20 +553,33 @@ int executeCommand(CommandStruct_t *theCmd)
 	    if(retVal) return 0;
 	    return rawtime;
 	case CMD_TURN_RFCM_ON:
+	    ivalue=theCmd->cmd[1];
 	    //turnRFCMOn
-	    configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
+	    if(ivalue&0x1)
+		configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
+	    if(ivalue&0x2)
+		configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
+	    if(ivalue&0x4)
+		configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
+	    if(ivalue&0x8)
+		configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
 	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
 	case CMD_TURN_RFCM_OFF:
+	    ivalue=theCmd->cmd[1];
 	    //turnRFCMOff
-	    configModifyInt("Calibd.config","relays","stateRFCM1",0,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM2",0,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM3",0,&rawtime);
-	    configModifyInt("Calibd.config","relays","stateRFCM4",0,&rawtime);
+	    if(ivalue&0x1)
+		configModifyInt("Calibd.config","relays","stateRFCM1",0,&rawtime);
+	    
+	    if(ivalue&0x2)
+		configModifyInt("Calibd.config","relays","stateRFCM2",0,&rawtime);
+	    
+	    if(ivalue&0x4)
+		configModifyInt("Calibd.config","relays","stateRFCM3",0,&rawtime);
+	    
+	    if(ivalue&0x8)
+		configModifyInt("Calibd.config","relays","stateRFCM4",0,&rawtime);
 	    retVal=sendSignal(ID_CALIBD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -1897,9 +1942,75 @@ int readArchivedConfig()
 }
 
 int startNewRun() {
+    int diskInd=0;
     int retVal=0;
-    char theCommand[180];
-    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
-    retVal=system(theCommand);
+    int runNum=getRunNumber();
+    char newRunDir[FILENAME_MAX];
+    char currentDirLink[FILENAME_MAX];
+    char mistakeDirName[FILENAME_MAX];
+
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(hkDiskBitMask&diskBitMasks[diskInd]) &&
+	   !(eventDiskBitMask&diskBitMasks[diskInd]))
+	    continue; // Disk not enabled
+	
+	sprintf(newRunDir,"%s/run%d",diskNames[diskInd],runNum);
+	sprintf(currentDirLink,"%s/current",diskNames[diskInd]);
+	
+	makeDirectories(newRunDir);
+	removeFile(currentDirLink);
+	if(is_dir(currentDirLink)) {
+	    sprintf(mistakeDirName,"%s/run%d.current",diskNames[diskInd],runNum-1);
+	    rename(currentDirLink,mistakeDirName);	    
+	}
+	symlink(newRunDir,currentDirLink);       
+//    char theCommand[180];
+//    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
+//    retVal=system(theCommand);
+    }
     return retVal;
+}
+
+
+int getRunNumber() {
+	int retVal=0;
+    static int firstTime=1;
+    static int runNumber=0;
+    /* This is just to get the lastRunNumber in case of program restart. */
+    FILE *pFile;
+    if(firstTime) {
+	pFile = fopen (lastRunNumberFile, "r");
+	if(pFile == NULL) {
+	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		    lastRunNumberFile);
+	}
+	else {	    	    
+	    retVal=fscanf(pFile,"%d",&runNumber);
+	    if(retVal<0) {
+		syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
+			lastRunNumberFile);
+	    }
+	    fclose (pFile);
+	}
+	if(printToScreen) printf("The last run number is %d\n",runNumber);
+	firstTime=0;
+    }
+    runNumber++;
+
+    pFile = fopen (lastRunNumberFile, "w");
+    if(pFile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		lastRunNumberFile);
+    }
+    else {
+	retVal=fprintf(pFile,"%d\n",runNumber);
+	if(retVal<0) {
+	    syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+		    lastRunNumberFile);
+	    }
+	fclose (pFile);
+    }
+
+    return runNumber;
+    
 }

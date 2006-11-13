@@ -89,6 +89,7 @@ int ip320Ranges[NUM_IP320_BOARDS];
 int numIP320s;
 int printToScreen;
 int readoutPeriod;
+int telemEvery;
 int calibrationPeriod;
 
 int hkDiskBitMask;
@@ -242,6 +243,7 @@ int readConfigFile()
 	numIP320s=kvpGetInt("numIP320s",3);
 	printToScreen=kvpGetInt("printToScreen",-1);
 	readoutPeriod=kvpGetInt("readoutPeriod",60);
+	telemEvery=kvpGetInt("telemEvery",60);
 	calibrationPeriod=kvpGetInt("calibrationPeriod",1200);
        	kvpStatus = kvpGetIntArray("ip320Ranges",ip320Ranges,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
@@ -468,6 +470,8 @@ int outputData(AnalogueCode_t code)
     HkDataStruct_t theHkData;
     AnitaHkWriterStruct_t *wrPtr;
 
+    static int telemCount=0;
+
 
     struct timeval timeStruct;
     gettimeofday(&timeStruct,NULL);
@@ -508,11 +512,16 @@ int outputData(AnalogueCode_t code)
 
     fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
 
-    
-    //Write file and make link for SIPd
-    sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);
-    retVal=writeHk(&theHkData,fullFilename);     
-    retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
+
+    telemCount++;
+    if(telemCount>=telemEvery) {    
+	//Write file and make link for SIPd
+	sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);
+	retVal=writeHk(&theHkData,fullFilename);     
+	retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
+	
+	telemCount=0;
+    }
     
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&theHkData,sizeof(HkDataStruct_t),

@@ -1,9 +1,14 @@
 #!/bin/bash
 
-logic=`getConfigValue Hkd.config relaycontrol turnVetoOffLogic`
-port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
-channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
 
-RelayControlPSA $port $channel 0
-RelayControlPSA $port $channel 1
-RelayControlPSA $port $channel 0
+if [ -f /tmp/anita/pid/calibd.pid ]; then
+    CmdTest 157
+else
+    logic=`getConfigValue Hkd.config relaycontrol turnVetoOffLogic`
+    port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
+    channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
+    
+    RelayControlPSA $port $channel 0
+    RelayControlPSA $port $channel 1
+    RelayControlPSA $port $channel 0
+fi

@@ -27,12 +27,28 @@ int checkQueues(QueueStruct_t *queuePtr);
 int writeFileAndLink(MonitorStruct_t *monitorPtr);
 void prepWriterStructs();
 void purgeDirectory(int priority);
+void checkProcesses();
+int getIdMask(ProgramId_t prog);
+char *getPidFile(ProgramId_t prog);
+char *getProgName(ProgramId_t prog);
 
 // Global Variables
 int printToScreen=0;
 int verbosity=0;
 int monitorPeriod=60; //In seconds
+
+char acqdPidFile[FILENAME_MAX];
+char archivedPidFile[FILENAME_MAX];
+char calibdPidFile[FILENAME_MAX];
+char cmddPidFile[FILENAME_MAX];
+char eventdPidFile[FILENAME_MAX];
+char gpsdPidFile[FILENAME_MAX];
+char hkdPidFile[FILENAME_MAX];
+char losdPidFile[FILENAME_MAX];
+char prioritizerdPidFile[FILENAME_MAX];
+char sipdPidFile[FILENAME_MAX];
 char monitordPidFile[FILENAME_MAX];
+
 
 //
 int usbSwitchMB=50;
@@ -49,6 +65,7 @@ char usbExtName[FILENAME_MAX];
 
 
 int hkDiskBitMask;
+int eventDiskBitMask;
 AnitaHkWriterStruct_t monWriter;
 
 char *diskLocations[8]={"/tmp","/static","/home",SAFE_DATA_MOUNT,PUCK_DATA_MOUNT,BLADE_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT};
@@ -113,26 +130,35 @@ int main (int argc, char *argv[])
 	    writeFileAndLink(&monData);
 
 	    if(monData.diskInfo.diskSpace[5]<bladeSwitchMB) {
-		//Change blade
-		theCmd.numCmdBytes=1;
-		theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
-		writeCommandAndLink(&theCmd);
+		readConfigFile();
+		//Change blade if in use
+		if(!(hkDiskBitMask&BLADE_DISK_MASK || eventDiskBitMask&BLADE_DISK_MASK)) {
+		    theCmd.numCmdBytes=1;
+		    theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
+		    writeCommandAndLink(&theCmd);
+		}
 	    }
 	    if(monData.diskInfo.diskSpace[6]<usbSwitchMB) {
-		//Change USB int
-		theCmd.numCmdBytes=2;
-		theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
-		theCmd.cmd[1]=1;
-		if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
-		    theCmd.cmd[1]=3;
-		writeCommandAndLink(&theCmd);
+		readConfigFile();
+		//Change USB int if in use
+		if(!(hkDiskBitMask&USBINT_DISK_MASK || eventDiskBitMask&USBINT_DISK_MASK)) {
+		    theCmd.numCmdBytes=2;
+		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
+		    theCmd.cmd[1]=1;
+		    if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
+			theCmd.cmd[1]=3;
+		    writeCommandAndLink(&theCmd);
+		}
 	    }
 	    else if(monData.diskInfo.diskSpace[7]<usbSwitchMB) {
-		//Change USB ext
-		theCmd.numCmdBytes=2;
-		theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
-		theCmd.cmd[1]=2;
-		writeCommandAndLink(&theCmd);
+		readConfigFile();
+		//Change USB ext if in use
+		if(!(hkDiskBitMask&USBEXT_DISK_MASK || eventDiskBitMask&USBEXT_DISK_MASK)) {
+		    theCmd.numCmdBytes=2;
+		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
+		    theCmd.cmd[1]=2;
+		    writeCommandAndLink(&theCmd);
+		}
 	    }
 
 
@@ -180,16 +206,95 @@ int readConfigFile()
     status += configLoad ("Monitord.config","output") ;
 
     if(status == CONFIG_E_OK) {
+	
+	tempString=kvpGetString("acqdPidFile");
+	if(tempString) {
+	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
+	    fprintf(stderr,"Couldn't get acqdPidFile\n");
+	}
+	tempString=kvpGetString("calibdPidFile");
+	if(tempString) {
+	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
+	    fprintf(stderr,"Couldn't get calibdPidFile\n");
+	}
+	tempString=kvpGetString("cmddPidFile");
+	if(tempString) {
+	    strncpy(cmddPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmddPidFile");
+	    fprintf(stderr,"Couldn't get cmddPidFile\n");
+	}
+	tempString=kvpGetString("archivedPidFile");
+	if(tempString) {
+	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
+	    fprintf(stderr,"Couldn't get archivedPidFile\n");
+	}
+	tempString=kvpGetString("eventdPidFile");
+	if(tempString) {
+	    strncpy(eventdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get eventdPidFile");
+	    fprintf(stderr,"Couldn't get eventdPidFile\n");
+	}
+	tempString=kvpGetString("gpsdPidFile");
+	if(tempString) {
+	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
+	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
+	}
+	tempString=kvpGetString("hkdPidFile");
+	if(tempString) {
+	    strncpy(hkdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get hkdPidFile");
+	    fprintf(stderr,"Couldn't get hkdPidFile\n");
+	}
+	tempString=kvpGetString("losdPidFile");
+	if(tempString) {
+	    strncpy(losdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get losdPidFile");
+	    fprintf(stderr,"Couldn't get losdPidFile\n");
+	}
+	tempString=kvpGetString("prioritizerdPidFile");
+	if(tempString) {
+	    strncpy(prioritizerdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get prioritizerdPidFile");
+	    fprintf(stderr,"Couldn't get prioritizerdPidFile\n");
+	}
+	tempString=kvpGetString("sipdPidFile");
+	if(tempString) {
+	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
+	    fprintf(stderr,"Couldn't get sipdPidFile\n");
+	}
 	tempString=kvpGetString("monitordPidFile");
 	if(tempString) {
 	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
-	    writePidFile(monitordPidFile);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
 	    fprintf(stderr,"Couldn't get monitordPidFile\n");
 	}
-
 
 	tempString=kvpGetString("bladeName");
 	if(tempString) {
@@ -223,6 +328,7 @@ int readConfigFile()
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
+	eventDiskBitMask=kvpGetInt("eventDiskBitMask",0);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
 	usbSwitchMB=kvpGetInt("usbSwitchMB",50);
 	bladeSwitchMB=kvpGetInt("bladeSwitchMB",50);
@@ -404,3 +510,86 @@ void prepWriterStructs() {
     monWriter.writeBitMask=hkDiskBitMask;
 }
 
+
+void checkProcesses()
+{
+    ProgramId_t prog;
+    CommandStruct_t theCmd;    
+    theCmd.numCmdBytes=3;
+    theCmd.cmd[0]=CMD_START_PROGS;
+    unsigned int value=0;
+    int sendCommand=0;
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+	char *pidFile=getPidFile(prog);
+	FILE *test = fopen(pidFile,"r");
+	if(!test) {
+	    sendCommand=1;
+	    value|=getIdMask(prog);	    
+	}
+	else fclose(test);
+    }
+    if(sendCommand) {
+	theCmd.cmd[1]=value&0xff;
+	theCmd.cmd[2]=(value&0xff)>>8;
+	writeCommandAndLink(&theCmd);
+    }
+
+
+}
+
+int getIdMask(ProgramId_t prog) {
+    switch(prog) {
+	case ID_ACQD: return ACQD_ID_MASK;
+	case ID_ARCHIVED: return ARCHIVED_ID_MASK;
+	case ID_CALIBD: return CALIBD_ID_MASK;
+	case ID_CMDD: return CMDD_ID_MASK;
+	case ID_EVENTD: return EVENTD_ID_MASK;
+	case ID_GPSD: return GPSD_ID_MASK;
+	case ID_HKD: return HKD_ID_MASK;
+	case ID_LOSD: return LOSD_ID_MASK;
+	case ID_PRIORITIZERD: return PRIORITIZERD_ID_MASK;
+	case ID_SIPD: return SIPD_ID_MASK;
+	case ID_MONITORD: return MONITORD_ID_MASK;
+	default: break;
+    }
+    return 0;
+}
+
+
+
+char *getProgName(ProgramId_t prog) {
+    char *string;
+    switch(prog) {
+	case ID_ACQD: string="Acqd"; break;
+	case ID_ARCHIVED: string="Archived"; break;
+	case ID_CALIBD: string="Calibd"; break;
+	case ID_CMDD: string="Cmdd"; break;
+	case ID_EVENTD: string="Eventd"; break;
+	case ID_GPSD: string="GPSd"; break;
+	case ID_HKD: string="Hkd"; break;
+	case ID_LOSD: string="LOSd"; break;
+	case ID_PRIORITIZERD: string="Prioritizerd"; break;
+	case ID_SIPD: string="SIPd"; break;
+	case ID_MONITORD: string="Monitord"; break;
+	default: string=NULL; break;
+    }
+    return string;
+}
+
+char *getPidFile(ProgramId_t prog) {
+    switch(prog) {
+	case ID_ACQD: return acqdPidFile;
+	case ID_ARCHIVED: return archivedPidFile;
+	case ID_CALIBD: return calibdPidFile;
+	case ID_CMDD: return cmddPidFile;
+	case ID_EVENTD: return eventdPidFile;
+	case ID_GPSD: return gpsdPidFile;
+	case ID_HKD: return hkdPidFile;
+	case ID_LOSD: return losdPidFile;
+	case ID_PRIORITIZERD: return prioritizerdPidFile;
+	case ID_SIPD: return sipdPidFile;
+	case ID_MONITORD: return monitordPidFile;
+	default: break;
+    }
+    return NULL;
+}
