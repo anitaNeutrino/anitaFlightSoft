@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
 		     printf("channel[1].header.chanId = %d\n",theBody.channel[1].header.chanId);
 		}
 		gzwrite(outputHead,&theHeader,sizeof(AnitaEventHeader_t));
-		gzwrite(outputEvent,&thePedSubbedBody,sizeof(AnitaEventBody_t));
+		gzwrite(outputEvent,&thePedSubbedBody,sizeof(PedSubbedEventBody_t));
 		
 
 		eventCount++;
