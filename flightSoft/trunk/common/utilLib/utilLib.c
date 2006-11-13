@@ -24,6 +24,8 @@
 #include <fcntl.h>
 #define NO_ZLIB
 
+ProgramStateCode currentState; 
+
 
 extern  int versionsort(const void *a, const void *b);
 
