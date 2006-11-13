@@ -943,12 +943,12 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 		theSat.sat[doingAnt][doingSat].prn=atoi(subString);
 		break;
 	    case 3:
-		theSat.sat[doingAnt][doingSat].azimuth=atoi(subString);
-		break;
-	    case 4:
-		theSat.sat[doingAnt][doingSat].elevation=atoi(subString);
-		break;
-	    case 5:
+//		theSat.sat[doingAnt][doingSat].azimuth=atoi(subString);
+//		break;
+//	    case 4:
+//		theSat.sat[doingAnt][doingSat].elevation=atoi(subString);
+//		break;
+//	    case 5:
 		theSat.sat[doingAnt][doingSat].snr=atoi(subString);
 		doingSat++;
 		count=1;
