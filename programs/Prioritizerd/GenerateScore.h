@@ -5,14 +5,14 @@
 #include "AnitaInstrument.h"
 
 typedef struct {
-    int overallPeakSize[3];
-    int overallPeakLoc[3];
-    int overallPeakPhi[3];
-    int overallPeakRing[3];
-    int numPeaks[PHI_SECTORS][2];
+     int overallPeakSize[3]; //
+     int overallPeakLoc[3]; //
+     int overallPeakPhi[3]; //
+     int overallPeakRing[3]; //
+     int numPeaks[PHI_SECTORS][2]; //
     int peakSize[3][PHI_SECTORS][2]; // 0 is upper, 1 is lower
-    int peakLocation[3][PHI_SECTORS][2];
-    int totalOccupancy[PHI_SECTORS][2];
+     int peakLocation[3][PHI_SECTORS][2]; //
+     int totalOccupancy[PHI_SECTORS][2]; //
 } AnitaSectorAnalysis_t;
     
 #ifdef __cplusplus
