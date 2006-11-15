@@ -10,7 +10,7 @@ typedef struct {
      int overallPeakPhi[3]; //
      int overallPeakRing[3]; //
      int numPeaks[PHI_SECTORS][2]; //
-    int peakSize[3][PHI_SECTORS][2]; // 0 is upper, 1 is lower
+     int peakSize[3][PHI_SECTORS][2]; // 0 is upper, 1 is lower
      int peakLocation[3][PHI_SECTORS][2]; //
      int totalOccupancy[PHI_SECTORS][2]; //
 } AnitaSectorAnalysis_t;
