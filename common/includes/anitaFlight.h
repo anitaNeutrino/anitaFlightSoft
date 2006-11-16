@@ -218,5 +218,9 @@
 
 #define EVENT_ARCHIVE_DIR "/current/event/"
 
+//Slow Rate Stuff
+#define SLOW_RF_FILE "/tmp/anita/latestSlowRf.dat"
+
+
 #endif /* ANITA_FLIGHT_H */
 

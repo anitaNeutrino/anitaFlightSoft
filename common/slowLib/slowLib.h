@@ -12,14 +12,12 @@
 
 #include "includes/anitaStructures.h"
 
-
-//RF thingies
+//RF thingies (to be called by Acqd)
 void addSurfHkToAverage(FullSurfHkStruct_t *hkStruct);
 void addTurfRateToAverage(TurfRateStruct_t *turfRate);
-void writeCurrentRFSlowRateObject(short globalTriggerRate, unsigned long lastEventnumber);
+void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEventNumber);
 
-
-
+//Hk Thingies filled by SIPd
 
 
 #endif /* SLOWLIB_H */
