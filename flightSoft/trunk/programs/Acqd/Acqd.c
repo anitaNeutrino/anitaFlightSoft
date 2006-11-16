@@ -31,6 +31,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "pedestalLib/pedestalLib.h"
+#include "slowLib/slowLib.h"
 #include "includes/anitaStructures.h"
 
 
@@ -70,6 +71,8 @@ AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
 AnitaEventBody_t *bdPtr;//=&(theEvent.header);
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
+int newTurfRateData=0;
+
 
 SimpleScalerStruct_t theScalers;
 FullSurfHkStruct_t theSurfHk;
@@ -234,7 +237,17 @@ int main(int argc, char **argv) {
     struct timeval lastSurfHkRead;
     int timeDiff=0;
     unsigned long lastRateCalcEvent=0;
-    lastRateCalc.tv_sec=0;
+    
+    unsigned long lastSlowRateEvent=0; 
+    unsigned long lastSlowSurfHk=0;
+//    unsigned long lastSlowTurfRate=0;
+
+    struct timeval lastSlowRateCalc; //Every 60sec
+
+    lastSlowRateCalc.tv_sec=time(NULL);
+    lastSlowRateCalc.tv_usec=0;
+
+    lastRateCalc.tv_sec=time(NULL);
     lastRateCalc.tv_usec=0;
     lastServoRateCalc.tv_sec=0;
     lastServoRateCalc.tv_usec=0;
@@ -576,6 +589,26 @@ int main(int argc, char **argv) {
 			    myUsleep(1); 
 			tmo++;
 
+			
+
+			if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) {
+			    if(doingEvent) {
+				float slowRate=doingEvent-lastSlowRateEvent;
+				float slowTime=timeStruct.tv_sec-lastSlowRateCalc.tv_sec;
+				slowTime+=1e-6*((float)timeStruct.tv_usec);
+				slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
+				slowRate/=slowTime;
+				writeCurrentRFSlowRateObject(slowRate,hdPtr->eventNumber);
+				lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
+				lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
+				lastSlowRateEvent=doingEvent;
+			    }
+			    else 
+				writeCurrentRFSlowRateObject(0,0);
+			}
+
+
+
 
 			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
 
@@ -656,6 +689,13 @@ int main(int argc, char **argv) {
 				    if(verbosity && printToScreen) 
 					printf("Read SURF Housekeeping\n");
 				    
+
+				    if(timeStruct.tv_sec>lastSlowSurfHk) {
+					addSurfHkToAverage(&theSurfHk);
+					lastSlowSurfHk=timeStruct.tv_sec;
+				    }
+
+
 				    if(verbosity && printToScreen && enableChanServo) 
 					printf("Will servo on channel scalers\n");
 				    if(enableChanServo) {
@@ -841,6 +881,13 @@ int main(int argc, char **argv) {
 #endif
 	    
 	    if(verbosity && printToScreen) printf("Done reading\n");
+
+	    //Add TURF Rate Info to slow file
+	    if(newTurfRateData) {
+		addTurfRateToAverage(&turfRates);
+	    }
+
+
 	    //Error checking
 	    if(status!=ACQD_E_OK) {
 		//We have an error
@@ -904,21 +951,23 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 			fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-			writeTurfHousekeeping(1);
-			turfHkCounter++;
-			if(turfHkCounter>=turfRateTelemEvery) {
+			if(newTurfRateData) {
+			    writeTurfHousekeeping(1);
+			    turfHkCounter++;
+			    if(turfHkCounter>=turfRateTelemEvery) {
 //			    printf("turfHk %d %d\n",turfHkCounter,turfRateTelemEvery);
-			    turfHkCounter=0;
-			    writeTurfHousekeeping(2);
-			    lastTurfHk=turfRates.unixTime;
-			}
-			else if(turfRateTelemInterval && 
-				(turfRateTelemInterval<=
-				 (turfRates.unixTime-lastTurfHk))) {
+				turfHkCounter=0;
+				writeTurfHousekeeping(2);
+				lastTurfHk=turfRates.unixTime;
+			    }
+			    else if(turfRateTelemInterval && 
+				    (turfRateTelemInterval<=
+				     (turfRates.unixTime-lastTurfHk))) {
 //			    printf("turfHk times %d %d -- %d\n",turfRates.unixTime,lastTurfHk,turfRateTelemInterval);
-			    turfHkCounter=0;
-			    writeTurfHousekeeping(2);
-			    lastTurfHk=turfRates.unixTime;
+				turfHkCounter=0;
+				writeTurfHousekeeping(2);
+				lastTurfHk=turfRates.unixTime;
+			    }
 			}
 		    }
 		    
@@ -2893,7 +2942,7 @@ AcqdErrorCode_t readTurfEventDataVer2(PlxHandle_t turfioHandle)
 AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
 /*! Reads out the TURF data via the TURFIO */
 {
-
+    newTurfRateData=0;
 //    PlxReturnCode_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned short  dataWord=0;
@@ -3102,6 +3151,9 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
 	       turfioPtr->upperL2TrigPattern,
 	       turfioPtr->lowerL2TrigPattern,
 	       turfioPtr->l3TrigPattern);
+    }
+    if(turfioPtr->ppsNum!=lastPPSNum) {
+	newTurfRateData=1;
     }
     lastPPSNum=turfioPtr->ppsNum;
     return status;	

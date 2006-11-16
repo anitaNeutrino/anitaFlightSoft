@@ -401,8 +401,8 @@ typedef struct {
     float latitude;
     float longitude;
     float altitude;
-    char temps[8];
-    char powers[4];
+    char temps[8];  //{SBS,SURF,TURF,RAD,RFCM1,RFCM5,RFCM12,RFCM15}
+    char powers[4]; //{PV V, +24V, BAT I, 24 I}
 } SlowRateHkStruct_t;
 
 

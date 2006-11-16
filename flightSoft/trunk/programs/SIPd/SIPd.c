@@ -87,8 +87,8 @@ int throttleRate=MAX_WRITE_RATE;
 int sendWavePackets=0;
 
 //Low Rate Struct
-SlowRateType1_t comm1Data;
-SlowRateType1_t comm2Data;
+SlowRateFull_t slowRateData;
+
 
 
 int main(int argc, char *argv[])
@@ -114,8 +114,7 @@ int main(int argc, char *argv[])
 
 
     //Zero low rate structs
-    memset(&comm1Data,0,sizeof(SlowRateType1_t));
-    memset(&comm2Data,0,sizeof(SlowRateType1_t));
+    memset(&slowRateData,0,sizeof(SlowRateFull_t));
 
    /* Load Config */
     kvpReset () ;
@@ -328,15 +327,24 @@ void comm1Handler()
     ++start;
     fprintf(stderr, "comm1Handler %02x %02x\n", count, start);
 
-#ifdef SEND_REAL_SLOW_DATA
-//    fprintf(stderr,"Last Temp %d\n",comm1Data.sbsTemp[0]);
-    comm1Data.unixTime=time(NULL);
-    fillGenericHeader(&comm1Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
-    printf("Comm1 %lu\n",comm1Data.unixTime);
-    ret = sipcom_slowrate_write(COMM1, (unsigned char*)&comm1Data, sizeof(SlowRateType1_t));
-#else
-    ret = sipcom_slowrate_write(COMM1, buf, SLBUF_SIZE+6);
-#endif
+
+//    fprintf(stderr,"Last Temp %d\n",slowRateData.sbsTemp[0]);
+    FILE *fp =fopen(SLOW_RF_FILE,"rb");
+    if(fp) {
+	int numObjs=fread(&(slowRateData.rf),sizeof(SlowRateRFStruct_t),1,fp);
+	if(numObjs<0) {
+	    syslog(LOG_ERR,"Error reading %s: %s\n",SLOW_RF_FILE,strerror(errno));
+	}
+	fclose(fp);
+    }
+
+
+
+    slowRateData.unixTime=time(NULL);
+    fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
+    printf("SlowRateFull_t %lu\n",slowRateData.unixTime);
+    ret = sipcom_slowrate_write(COMM1, (unsigned char*)&slowRateData, sizeof(SlowRateFull_t));
+
     if (ret) {
 	fprintf(stderr, "comm1Handler: %s\n", sipcom_strerror());
     }
@@ -354,14 +362,18 @@ void comm2Handler()
     }
     --start;
     fprintf(stderr, "comm2Handler %02x\n", start);
-    
-#ifdef SEND_REAL_SLOW_DATA
-    comm2Data.unixTime=time(NULL);
-    fillGenericHeader(&comm2Data,PACKET_SLOW1,sizeof(SlowRateType1_t));
-    ret = sipcom_slowrate_write(COMM2,(unsigned char*) &comm2Data, sizeof(SlowRateType1_t));
-#else
-    ret = sipcom_slowrate_write(COMM2, buf, SLBUF_SIZE);
-#endif
+   
+    FILE *fp =fopen(SLOW_RF_FILE,"rb");
+    if(fp) {
+	int numObjs=fread(&(slowRateData.rf),sizeof(SlowRateRFStruct_t),1,fp);
+	if(numObjs<0) {
+	    syslog(LOG_ERR,"Error reading %s: %s\n",SLOW_RF_FILE,strerror(errno));
+	}
+	fclose(fp);
+    }
+    slowRateData.unixTime=time(NULL);
+    fillGenericHeader(&slowRateData,PACKET_SLOW1,sizeof(SlowRateFull_t));
+    ret = sipcom_slowrate_write(COMM2,(unsigned char*) &slowRateData, sizeof(SlowRateFull_t));
 
     if (ret) {
 	fprintf(stderr, "comm2Handler: %s\n", sipcom_strerror());
@@ -605,8 +617,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	removeFile(currentLOSTouchname);
     }
 
-    comm1Data.lastEventNumber=thisEventNumber;
-    comm2Data.lastEventNumber=thisEventNumber;
+
 
 }
 
@@ -1073,24 +1084,43 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	    removeFile(currentTouchname);
 	    removeFile(currentLOSTouchname);
 	}
-
+	int j;
+	int tempInds[7]={1,3,6,37,19,15,36};
+	int powerInds[4]={37,36,15,16};
+	float powerCal[4]={18.252,10.1377,20,20};
+	float tempVal;
 	//Now fill low rate structs
 	switch (gHdr->code) {
 	    case PACKET_GPS_ADU5_PAT:
 		patPtr=(GpsAdu5PatStruct_t*)gHdr;
-		comm1Data.altitude=patPtr->altitude;
-		comm2Data.altitude=patPtr->altitude;
-		comm1Data.longitude=patPtr->longitude;
-		comm2Data.longitude=patPtr->longitude;
-		comm1Data.latitude=patPtr->latitude;
-		comm2Data.latitude=patPtr->latitude;
+		slowRateData.hk.altitude=patPtr->altitude;
+		slowRateData.hk.longitude=patPtr->longitude;
+		slowRateData.hk.latitude=patPtr->latitude;
 		break;
 	    case PACKET_HKD:
 		hkPtr=(HkDataStruct_t*)gHdr;
-		comm1Data.sbsTemp[0]=hkPtr->sbs.temp[0];
-		comm2Data.sbsTemp[0]=hkPtr->sbs.temp[0];
-		comm1Data.sbsTemp[1]=hkPtr->sbs.temp[1];
-		comm2Data.sbsTemp[1]=hkPtr->sbs.temp[1];
+		slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
+		for(j=0;j<7;j++) {
+		    tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>4);
+		    tempVal*=5;
+		    tempVal/=4096;
+		    tempVal*=100;
+		    tempVal+=273.15;
+		    if(tempVal<-127) tempVal=-127;
+		    if(tempVal>127) tempVal=127;
+		    slowRateData.hk.temps[j+1]=(char)tempVal;
+		}
+		for(j=0;j<4;j++) {		    
+		    tempVal=((hkPtr->ip320.board[1].data[powerInds[j]])>>4);
+		    tempVal*=5;
+		    tempVal/=4096;
+		    tempVal*=powerCal[j];
+		    if(tempVal<-127) tempVal=-127;
+		    if(tempVal>127) tempVal=127;
+		    slowRateData.hk.powers[j]=(char)tempVal;
+		}
+		
+		
 	    default:
 		break;
 	}
