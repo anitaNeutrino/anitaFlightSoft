@@ -1,5 +1,5 @@
-#ifndef GENERATESCORE_H
-#define GENERATESCORE_H_H
+#ifndef BASELINEANALYSIS_H
+#define BASELINEANALYSIS_H
 #include <anitaStructures.h>
 #include <anitaFlight.h>
 #include "AnitaInstrument.h"
@@ -8,22 +8,37 @@
 
 typedef struct {
      int nbaselines;
-     float position[MAX_BASELINES][2][3];
-     float boresight[MAX_BASELINES][2][3];
-     float time[MAX_BASELINES][2]; //time difference in meters
-     float direction[MAX_BASELINES][3];
-     float angle[MAX_BASELINES];
-     int valid[MAX_BASELINES];
+     int ngood; //count the baselines that are not bad.  
+                //If there are too few to perform the fit, 
+                //don't call the fitter.
+     int validfit; //zero for good fit; otherwise an error code
+     float arrival[3]; //best fit to vector from instrument to
+                       //source, normalized on the unit sphere
+     float norm; //fitted length of direction vector
+     float position[MAX_BASELINES][2][3]; //convenience copies of
+     float boresight[MAX_BASELINES][2][3];//antenna positions 
+                                          //and boresight vectors
+     float delay[MAX_BASELINES][2]; //time difference in meters
+     float direction[MAX_BASELINES][3]; //unit vector from 
+                                        //late to early antenna
+     float length[MAX_BASELINES]; //length of baseline
+     float sinangle[MAX_BASELINES]; //sine has errors which 
+                                    //are linear in delay
+     float cosangle[MAX_BASELINES]; //used for statB
+     int bad[MAX_BASELINES]; //nonzero for 'bad' baselines
+                             //integer gives pass on which baseline
+                             //was rejected
 } BaselineAnalysis_t;
     
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-    void AnalyseSectorLogic(AnitaSectorLogic_t *secLogPtr,
-			    AnitaSectorAnalysis_t *secAnaPtr);		
-    int GetSecAnaScore(AnitaSectorAnalysis_t *secAnaPtr);
+     float det3(float a[3][3]);
+     float det3p(float *a[3]);
+     int solve3(float a[3][3], float b[3], float x[3]);
+     int fitBaselines(BaselineAnalysis_t *theBL);
 #ifdef __cplusplus
 }
 #endif
-#endif /* GENERATESCORE_H_H_H */
+#endif /* BASELINEANALYSIS_H */
