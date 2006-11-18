@@ -5,6 +5,7 @@
 #include "AnitaInstrument.h"
 
 #define MAX_BASELINES 16
+#define MAX_ITER 10
 
 typedef struct {
      int nbaselines;
@@ -12,6 +13,12 @@ typedef struct {
                 //If there are too few to perform the fit, 
                 //don't call the fitter.
      int validfit; //zero for good fit; otherwise an error code
+     //-1 : a singular matrix was found in the initial fit
+     //-2 : a singular matrix was found in the Lagrange multiplier search
+     //-3 : too many iterations in the Lagrange search
+     //-4 : too few baselines to fit
+     int niter; //number of itereations to get norm right
+     float lambda; //Lagrange multiplier for norm constraint
      float arrival[3]; //best fit to vector from instrument to
                        //source, normalized on the unit sphere
      float norm; //fitted length of direction vector

@@ -32,8 +32,6 @@ typedef struct{
      LogicChannel_t discone;
 } AnitaSectorLogic_t;
 
-    
-
 extern int topRingIndex[PHI_SECTORS][2];
 extern int botRingIndex[PHI_SECTORS][2];
 extern int biconeIndex[4];
