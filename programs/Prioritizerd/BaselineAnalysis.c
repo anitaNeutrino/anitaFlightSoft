@@ -1,5 +1,6 @@
 #include "BaselineAnalysis.h"
 #include <math.h>
+#include <stdio.h>
 
 //arrays here are column index first, 
 //but remember det(At) = det A
@@ -40,9 +41,10 @@ int solve3(float a[3][3], float b[3], float x[3]){
 }
 
 int fitBaselines(BaselineAnalysis_t *theBL){
-     int nused,status;
+     int nused,status,status2;
      float statA[3][MAX_BASELINES],statB[MAX_BASELINES],
-	  statATA[3][3],statATB[3];
+	  statATA[3][3],statATB[3],
+	  statATAL[3][3],lambda,oldlambda,oldnorm,tempfloat;
      // direction in the struct is A transpose (column index first)
      // cosangle is the column vector b
      int i,j,k;
@@ -56,6 +58,7 @@ int fitBaselines(BaselineAnalysis_t *theBL){
 	       nused++;
 	  }
      }
+     theBL->ngood=nused; //eventually will need to deal with cutting baselines
      for (i=0; i<3; i++){
 	  statATB[i]=0.;
 	  for (k=0;k<nused;k++){
@@ -68,15 +71,59 @@ int fitBaselines(BaselineAnalysis_t *theBL){
 	       }
 	  }
      }
-     status=solve3(statATA,statB,theBL->arrival);
-     if (status==0) { //normalization may be worth looking at 
-	              // as a goodness of fit measure
-	  theBL->norm=theBL->arrival[0]*theBL->arrival[0]
-	       +theBL->arrival[1]*theBL->arrival[1]
-	       +theBL->arrival[2]*theBL->arrival[2];
+     status=solve3(statATA,statATB,theBL->arrival);
+     theBL->norm=sqrtf(theBL->arrival[0]*theBL->arrival[0]
+			    +theBL->arrival[1]*theBL->arrival[1]
+			    +theBL->arrival[2]*theBL->arrival[2]);
+     //need to use newtons method to find the Lagrange multiplier
+     //to enforce the constraint that arrival[] is a unit vector
+     theBL->niter=0;
+     oldlambda=0.;
+     theBL->lambda=0.;
+     printf("Initial:%i %f\n",theBL->niter,theBL->norm);
+     if (status==0) { 
+	  while (fabsf(theBL->norm-1.)>0.001){
+	       if (theBL->niter==0) {
+		    theBL->lambda=theBL->norm-1.;
+	       }
+	       else {
+		    tempfloat=theBL->lambda-
+			 ((theBL->lambda-oldlambda)/(theBL->norm-oldnorm))
+			 *(theBL->norm-1);
+		    oldlambda=theBL->lambda;
+		    theBL->lambda=tempfloat;
+	       }
+	       for (i=0; i<3; i++){
+		    for (j=0; j<3; j++){
+			 statATAL[i][j]=statATA[i][j];
+		    }
+		    statATAL[i][i]+=theBL->lambda;
+	       }
+	       status=solve3(statATAL,statATB,theBL->arrival);
+	       theBL->niter++;
+	       if (status==0){
+		    oldnorm=theBL->norm;
+		    theBL->norm=sqrtf(theBL->arrival[0]*theBL->arrival[0]
+				      +theBL->arrival[1]*theBL->arrival[1]
+				      +theBL->arrival[2]*theBL->arrival[2]);
+		    printf("Newton:%i %f %f\n",theBL->niter,theBL->norm,
+			   theBL->lambda);
+	       }
+	       else {
+		    status=-2;
+		    break;
+	       }
+	       if (theBL->niter==MAX_ITER){
+		    status=-3;
+		    break;
+	       }
+	  }
+     }
+     if (status==0 || status==-3){
 	  theBL->arrival[0]=theBL->arrival[0]/theBL->norm; 
 	  theBL->arrival[1]=theBL->arrival[1]/theBL->norm; 
 	  theBL->arrival[2]=theBL->arrival[2]/theBL->norm;
      }
+     theBL->validfit=status;
      return status;
 }
