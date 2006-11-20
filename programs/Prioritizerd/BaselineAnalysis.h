@@ -8,10 +8,10 @@
 #define MAX_ITER 10
 
 typedef struct {
-     int nbaselines;
+     int nbaselines; //filled by builder
      int ngood; //count the baselines that are not bad.  
                 //If there are too few to perform the fit, 
-                //don't call the fitter.
+                //don't fit.  Filled by fitter.
      int validfit; //zero for good fit; otherwise an error code
      //-1 : a singular matrix was found in the initial fit
      //-2 : a singular matrix was found in the Lagrange multiplier search
@@ -23,9 +23,7 @@ typedef struct {
                        //source, normalized on the unit sphere
      float norm; //fitted length of direction vector
      float position[MAX_BASELINES][2][3]; //convenience copies of
-     float boresight[MAX_BASELINES][2][3];//antenna positions 
-                                          //and boresight vectors
-     float delay[MAX_BASELINES][2]; //time difference in meters
+     float delay[MAX_BASELINES][2]; //time in meters
      float direction[MAX_BASELINES][3]; //unit vector from 
                                         //late to early antenna
      float length[MAX_BASELINES]; //length of baseline

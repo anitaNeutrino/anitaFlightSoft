@@ -738,6 +738,7 @@ typedef struct {
      TransientChannelF_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBodyF_t;
 
+
 typedef struct {
      TransientChannel6_t S0,S1,S2,S3;
 } AnitaStokes6_t;

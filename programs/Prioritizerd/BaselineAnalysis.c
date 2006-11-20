@@ -3,9 +3,7 @@
 #include <stdio.h>
 
 //arrays here are column index first, 
-//but remember det(At) = det A
-
-
+//but remember det(At) = det(A)
 float det3(float a[3][3]){//3x3 determinant
                           //passing a single **float
 return a[0][0]*a[1][1]*a[2][2]-a[0][2]*a[1][1]*a[2][0]
