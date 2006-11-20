@@ -38,7 +38,7 @@ int solve3(float a[3][3], float b[3], float x[3]){
      return 0;
 }
 
-int fitBaselines(BaselineAnalysis_t *theBL){
+int FitBaselines(BaselineAnalysis_t *theBL){
      int nused,status,status2;
      float statA[3][MAX_BASELINES],statB[MAX_BASELINES],
 	  statATA[3][3],statATB[3],

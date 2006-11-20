@@ -1,5 +1,4 @@
 #include "AnitaInstrument.h"
-#include "BaselineAnalysis.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -467,33 +466,17 @@ void peakTime(TransientChannelF_t *T, Peak_t *peak){
      peakSample=0;
      peak->value=T->data[0];
      for (i=1;i<T->valid_samples; i++){
-	  if (fabsf(T->data[i]>peak->value)){
+	  if (fabsf(T->data[i])>peak->value){
 	       peak->value=T->data[i];
 	       peakSample=i;
 	  }
      }
      peak->time=peakSample;
 /* things get ugly when there is a zero crossing between points */
-/* if (peakSample==0 || peakSample==T->valid_samples-1){ */
-/* 	  peak->time=peakSample; */
-/*      } */
-/*      else{ */
-/* 	  total=T->data[i-1]+T->data[i]*T->data[i]+T->data[i+1]; */
-/* 	  if (total  0){ */
-/* 	  peak->time=(T->data[i-1]*(i-1) */
-/* 		    +T->data[i]*(i) */
-/* 		    +T->data[i+1]*(i+1)) */
-/* 		    /total; */
-/* 	  } */
-/* 	  else  */
-/* 	  { */
-/* 	       peak->time=peakSample; */
-/* 	  } */
-/*      } */
      peak->time=(peak->time)*(meters_per_ns/samples_per_ns);
 }
 
-void findPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak){
+void FindPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak){
      int i,j;
      for (i=0;i<16;i++){
 	  for (j=0;j<2;j++){
@@ -509,46 +492,48 @@ void findPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak){
      }
 }
 
-void makeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,int dphi){
+void MakeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,int dphi){
      //phi is the left edge boresight, counting from zero.
      //dphi is the number of phi sectors to include, two minimum.
-     int i,j,k,pol,n;
-     float timediff,sign,hypotenuse;
+     int i,j,k,pol,n,curphi;
+     float timediff,sign;
      typedef struct{int phi; int pol; float value; float time;} Local_t;
      Local_t best[4]={{0,0,0.,0.},{0,0,0.,0.},
 		      {0,0,0.,0.},{0,0,0.,0.}};
      for (i=phi; i<phi+dphi; i++){
+	  curphi=i%16;
 	  for(pol=0;pol<2;pol++){
-	       if (thePeak->topRing[phi][pol].value>(best[0]).value){
-		    best[0].value=thePeak->topRing[phi][pol].value;
-		    best[0].time=thePeak->topRing[phi][pol].time;
-		    best[0].phi=i;
+	       if (thePeak->topRing[curphi][pol].value>(best[0]).value){
+		    best[0].value=thePeak->topRing[curphi][pol].value;
+		    best[0].time=thePeak->topRing[curphi][pol].time;
+		    best[0].phi=curphi;
 		    best[0].pol=pol;
 	       }
-	       if (thePeak->botRing[phi][pol].value>(best[1]).value){
-		    best[1].value=thePeak->botRing[phi][pol].value;
-		    best[1].time=thePeak->botRing[phi][pol].time;
-		    best[1].phi=i;
+	       if (thePeak->botRing[curphi][pol].value>(best[1]).value){
+		    best[1].value=thePeak->botRing[curphi][pol].value;
+		    best[1].time=thePeak->botRing[curphi][pol].time;
+		    best[1].phi=curphi;
 		    best[1].pol=pol;
 	       }
 	  }
      }
      //now get the second best from a _different_antenna_ in each ring
      for (i=phi; i<phi+dphi; i++){
+	  curphi=i%16;
 	  for(pol=0;pol<2;pol++){
-	       if (phi != best[0].phi){
-		    if (thePeak->topRing[phi][pol].value>(best[2]).value){
-			 best[2].value=thePeak->topRing[phi][pol].value;
-			 best[2].time=thePeak->topRing[phi][pol].time;
-			 best[2].phi=i;
+	       if (curphi != best[0].phi){
+		    if (thePeak->topRing[curphi][pol].value>(best[2]).value){
+			 best[2].value=thePeak->topRing[curphi][pol].value;
+			 best[2].time=thePeak->topRing[curphi][pol].time;
+			 best[2].phi=curphi;
 			 best[2].pol=pol;
 		    }
 	       }
-	       if (phi != best[1].phi){
-		    if (thePeak->botRing[phi][pol].value>(best[3]).value){
-		    best[3].value=thePeak->botRing[phi][pol].value;
-		    best[3].time=thePeak->botRing[phi][pol].time;
-		    best[3].phi=i;
+	       if (curphi != best[1].phi){
+		    if (thePeak->botRing[curphi][pol].value>(best[3]).value){
+		    best[3].value=thePeak->botRing[curphi][pol].value;
+		    best[3].time=thePeak->botRing[curphi][pol].time;
+		    best[3].phi=curphi;
 		    best[3].pol=pol;
 		    }   
 	       }
@@ -556,8 +541,9 @@ void makeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,in
      }
      //we have two antennas selected in each ring
      //now load all possible pairs into a BaselineAnalysis structure
-     for (i=0; i<4; i++){
-	  for (j=i;j<4; j++){
+     n=0;
+     for (i=0; i<3; i++){
+	  for (j=i+1;j<4; j++){
 	       //NEED SURF DEPENDENT CORRECTIONS!!!
 	       //fill elements corresponding to first member of pair (i)
 	       if (i%2==0){//top ring 
@@ -591,7 +577,8 @@ void makeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,in
 	       }
 	       //fill the elements that depend on both points
 	       timediff=theBA->delay[n][1]-theBA->delay[n][0];
-	       sign=timediff/fabsf(timediff);
+                     //vector should point at earlier antenna
+	       sign=-timediff/fabsf(timediff);
 	       timediff=fabsf(timediff);
 	       theBA->length[n]=0.;
 	       for (k=0;k<3;k++){
@@ -603,16 +590,16 @@ void makeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,in
 	       for (k=0;k<3;k++){
 		    theBA->direction[n][k]=theBA->direction[n][k]/theBA->length[n];
 	       }
-	       theBA->sinangle[n]=timediff/theBA->length[n];
-	       if (fabsf(theBA->sinangle[n])>1.) {
+	       theBA->cosangle[n]=timediff/theBA->length[n];
+	       if (fabsf(theBA->cosangle[n])>1.) {
 		    theBA->bad[n]=1;  //noncausal
 	       }
 	       else{
 		    theBA->bad[n]=0.;
-		    theBA->cosangle[n]=sqrtf(1.-theBA->sinangle[n]*theBA->sinangle[n]);
+		    theBA->sinangle[n]=sqrtf(1.-theBA->cosangle[n]*theBA->cosangle[n]);
 	       }
+	       n++;
 	  }
-	  n++;
      }
      theBA->nbaselines=n;
 }
