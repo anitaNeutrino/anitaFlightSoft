@@ -574,6 +574,8 @@ int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
 	    index=samp;
 	    if(index>=EFFECTIVE_SAMPLES) index-=EFFECTIVE_SAMPLES;
 	    tempVal=pedSubBdPtr->channel[chan].data[index];
+	    if(chan==0 && index==0)
+		tempVal=pedSubBdPtr->channel[chan].data[259];
 	    tempVal-=pedSubBdPtr->channel[chan].mean;
 	    uwTransPtr->ch[chan].data[samp-firstSamp]=tempVal;
 	}
