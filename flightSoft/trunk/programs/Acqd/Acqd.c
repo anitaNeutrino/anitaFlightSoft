@@ -3429,15 +3429,18 @@ void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, str
     change = (int) (pTerm + iTerm - dTerm);
     printf("Rate %2.2f Hz, Goal %2.2f Hz, Setting %d -- Change %d\n",
 	   rate,rateGoal,setting,change);
+    
     setting+=change;
     if(!setGlobalThreshold) {
 	pidGoal=setting;
 	if(pidGoal<1) pidGoal=1;
 	if(pidGoal>10000) pidGoal=10000;
+	syslog(LOG_INFO,"Changing pidGoal to %d\n",pidGoal);
     }
     else {
 	globalThreshold=setting;
 	if(globalThreshold<1) globalThreshold=1;
 	if(globalThreshold>4095) globalThreshold=4095;
+	syslog(LOG_INFO,"Changing globalThreshold to %d\n",pidGoal);
     }    
 }
