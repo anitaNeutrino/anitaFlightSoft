@@ -151,9 +151,15 @@ int main (int argc, char *argv[])
 		for(count=0;count<numCmds;count++) {
 		    if(printToScreen) 
 			printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
+		    syslog(LOG_INFO,"Checking Cmd %d, numBytes %d\n",
+			   theCmds[count].cmd[0],theCmds[count].numCmdBytes);
+		    
 		    if(checkCommand(&theCmds[count])) {
 			if(printToScreen) 
 			    printf("cmd %d good , (%#x)\n",count,theCmds[count].cmd[0]);		
+			syslog(LOG_INFO,"Got Cmd %d, numBytes %d\n",
+			       theCmds[count].cmd[0],theCmds[count].numCmdBytes);
+
 			time(&nowTime);
 			if((nowTime-lastCmdTime)>30 ||
 			   !sameCommand(&theCmds[count],&lastCmd)) {
@@ -403,6 +409,11 @@ int executeCommand(CommandStruct_t *theCmd)
     
 
     switch(theCmd->cmd[0]) {
+	case CMD_MAKE_NEW_RUN_DIRS:
+	    startNewRun();	    
+	    time(&rawtime);
+	    return rawtime;
+	    break;
 	case CMD_START_NEW_RUN:
 	{
 	    

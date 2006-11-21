@@ -832,6 +832,8 @@ int encodePSWaveLosslessBinFibCombo(unsigned char *buffer,SurfChannelPedSubbed_t
     float logValue=(float)(log(rangeTotal+1)/log(2));
     int bitSize=(int)logValue;
     if((logValue-bitSize)>0) bitSize++;
+    if(bitSize==1) bitSize++;
+
 
     //Reset xMin and xMax to be the binary/fibonacci cut off point
     xMin=mean-(1<<(bitSize-1));
