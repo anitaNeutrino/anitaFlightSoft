@@ -32,6 +32,17 @@
 /*     unsigned char eventRate10Min; //Multiplied by 8 */
 /* } SlowRateRFStruct_t; */
 
+<<<<<<< .mine
+
+/* typedef struct { */
+/*     float latitude; */
+/*     float longitude; */
+/*     float altitude; */
+/*     char temps[8]; */
+/*     char powers[4]; */
+/* } SlowRateHkStruct_t; */
+
+=======
 
 /* typedef struct { */
 /*     float latitude; */
@@ -70,6 +81,7 @@
 /* } TurfRateStruct_t; */
 
 
+>>>>>>> .r438
 typedef struct {
     float rfPwr[ACTIVE_SURFS][RFCHAN_PER_SURF];
     float scalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; 

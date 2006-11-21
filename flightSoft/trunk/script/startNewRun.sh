@@ -1,6 +1,6 @@
 #!/bin/bash
 
-run=`cat /home/anita/flightSoft/lastRunNumber`
+run=`cat /mnt/data/numbers/lastRunNumber`
 echo $run
 let "run += 1"
 echo $run
@@ -47,4 +47,4 @@ if [ -d /mnt/usbext/current ] ; then
 fi
 ln -sf /mnt/usbext/run${run} /mnt/usbext/current
 
-echo "$run" > /home/anita/flightSoft/lastRunNumber
+echo "$run" > /mnt/data/numbers/lastRunNumber

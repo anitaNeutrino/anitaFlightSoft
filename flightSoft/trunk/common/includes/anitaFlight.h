@@ -126,10 +126,10 @@
 
 //Disk Bit Masks
 #define BLADE_DISK_MASK 0x1
-#define PUCK_DISK_MASK 0x1
-#define USBINT_DISK_MASK 0x1
-#define USBEXT_DISK_MASK 0x1
-#define PMC_DISK_MASK 0x1
+#define PUCK_DISK_MASK 0x2
+#define USBINT_DISK_MASK 0x4
+#define USBEXT_DISK_MASK 0x8
+#define PMC_DISK_MASK 0x10
 
 
 
