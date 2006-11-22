@@ -34,7 +34,7 @@ int telemType;
 int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
-float priorityFractionDefault[NUM_PRIORITIES];
+float priorityFractionDelete[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
 int currentUsb[NUM_PRIORITIES]; // 0 is int, 1 is ext;
@@ -68,6 +68,8 @@ char usbIntName[FILENAME_MAX];
 char usbExtName[FILENAME_MAX];
 
 int usbBitMasks[2]={0x4,0x8};
+
+int shouldWeThrowAway(int pri);
 
 int main (int argc, char *argv[])
 {
@@ -238,13 +240,13 @@ int readConfigFile()
 
 
 	tempNum=10;
-	kvpStatus = kvpGetFloatArray("priorityFractionDefault",
-				     priorityFractionDefault,&tempNum);	
+	kvpStatus = kvpGetFloatArray("priorityFractionDelete",
+				     priorityFractionDelete,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionDefault): %s",
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDelete): %s",
 		   kvpErrorString(kvpStatus));
 	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(priorityFractionDefault): %s\n",
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDelete): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
@@ -304,9 +306,11 @@ void checkEvents()
 		linkList[count]->d_name);
 	retVal=fillHeader(&theHead,currentHeadname);
 
-	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+	if(!shouldWeThrowAway(theHead.priority&0xf) && !(theHead.turfio.trigType&0x6) ) {
+	    
+	    sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
-	retVal=fillBody(&theBody,currentBodyname);
+	    retVal=fillBody(&theBody,currentBodyname);
 //	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 //		theHead.eventNumber);
 //	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
@@ -314,10 +318,20 @@ void checkEvents()
 //	       theBody.eventNumber,pedSubBody.eventNumber);
 
 	//Subtract Pedestals
-	subtractCurrentPeds(&theBody,&pedSubBody);
+	    subtractCurrentPeds(&theBody,&pedSubBody);
+	    
 
+	    processEvent();
+	}
+	else {
+	    int pri=theHead.priority&0xf;
+	    if(pri>9) pri=9;
+	    char headName[FILENAME_MAX];
+	    sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+	    writeHeader(&theHead,headName);
+	    makeLink(headName,eventTelemLinkDirs[pri]);
+	}
 
-	processEvent();
 	removeFile(currentLinkname);
 	removeFile(currentBodyname);
 //	removeFile(currentPSBodyname);
@@ -478,9 +492,7 @@ void writeOutputForTelem(int numBytes) {
     else {
 	writeHeader(&theHead,headName);
 	makeLink(headName,eventTelemLinkDirs[pri]);
-    }
-
- 
+    } 
 }
 
 
@@ -535,4 +547,12 @@ char *getFilePrefix(ArchivedDataType_t dataType)
     }
     return (string);
 
+}
+
+int shouldWeThrowAway(int pri)
+{
+    double testVal=drand48();
+    if(testVal<priorityFractionDelete[pri])
+	return 1;
+    return 0;
 }

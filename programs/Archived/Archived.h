@@ -25,5 +25,7 @@ void checkEvents();
 int readConfigFile();
 void prepWriterStructs();
 char *getFilePrefix(ArchivedDataType_t dataType);
+int shouldWeThrowAway(int pri);
+
 
 #endif //ARCHIVED_H

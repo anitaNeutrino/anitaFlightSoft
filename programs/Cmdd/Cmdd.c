@@ -32,6 +32,7 @@ int writeCommandEcho(CommandStruct_t *theCommand, int unixTime);
 int sendSignal(ProgramId_t progId, int theSignal); 
 int readConfig();
 int cleanDirs();
+int clearRamdisk();
 int sendConfig(int progMask);
 int defaultConfig(int progMask);
 int lastConfig(int progMask);
@@ -55,6 +56,7 @@ int setPriDiskMask(int pri, int bitmask);
 int setPriEncodingType(int pri, int encType);
 int setAlternateUsb(int pri, int altUsb);
 int setArchiveDefaultFrac(int pri, int frac);
+int setArchiveDecimatePri(int pri, float frac);
 int setTelemPriEncodingType(int pri, int encType, int encClockType);
 int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
 int startNewRun();
@@ -100,6 +102,7 @@ int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
 float priorityFractionDefault[NUM_PRIORITIES];
+float priorityFractionDelete[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
 float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
@@ -295,6 +298,15 @@ int readConfig() {
 	}
 
 
+	tempString=kvpGetString("cmddPidFile");
+	if(tempString) {
+	    strncpy(cmddPidFile,tempString,FILENAME_MAX);
+	    writePidFile(cmddPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmddPidFile");
+	    fprintf(stderr,"Couldn't get cmddPidFile\n");
+	}
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -539,6 +551,11 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ivalue=theCmd->cmd[1];
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
 	    return setArchiveDefaultFrac(ivalue,ivalue2);
+	case ARCHIVE_DECIMATE_PRI:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    fvalue=((float)ivalue2)/1000.;
+	    return setArchiveDecimatePri(ivalue,fvalue);
 	case TELEM_TYPE:
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Archived.config","archived","telemType",ivalue,&rawtime);
@@ -932,7 +949,11 @@ int executeCommand(CommandStruct_t *theCmd)
 	    fvalue=((float)ivalue3)/1000.;
 	    return setPidGoalScaleFactor(ivalue,ivalue2,fvalue);	    
 	case CLEAN_DIRS: 	    
-	    return cleanDirs();
+	    cleanDirs();	    
+	    return rawtime;
+	case CLEAR_RAMDISK: 	    
+	    clearRamdisk();
+	    return rawtime;
 	case SEND_CONFIG: 
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    return sendConfig(ivalue);	    
@@ -1014,6 +1035,8 @@ int sendSignal(ProgramId_t progId, int theSignal)
 
 int cleanDirs()
 {
+    
+
     return 0;
 }
 
@@ -1358,6 +1381,17 @@ int setArchiveDefaultFrac(int pri, int frac)
 /*     configModifyIntArray("Archived.config","archived","priorityFractionDefault",priorityFractionDefault,NUM_PRIORITIES,&rawtime); */
 /*     sendSignal(ID_ARCHIVED,SIGUSR1); */
 /*     return rawtime; */
+    return 0;
+}
+
+int setArchiveDecimatePri(int pri, float frac)
+{
+    time_t rawtime;
+    readArchivedConfig();
+    priorityFractionDelete[pri]=frac;
+    configModifyFloatArray("Archived.config","archived","priorityFractionDelete",priorityFractionDelete,NUM_PRIORITIES,&rawtime);
+    sendSignal(ID_ARCHIVED,SIGUSR1);
+    return rawtime;
     return 0;
 }
 
@@ -1882,16 +1916,6 @@ int readArchivedConfig()
 			kvpErrorString(kvpStatus));
 	}
 
-	tempNum=10;
-	kvpStatus = kvpGetIntArray("priTelemEncodingType",
-				   priTelemEncodingType,&tempNum);	
-	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(priTelemEncodingType): %s",
-		   kvpErrorString(kvpStatus));
-	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(priTelemEncodingType): %s\n",
-			kvpErrorString(kvpStatus));
-	}
 
 
 	tempNum=10;
@@ -1906,14 +1930,15 @@ int readArchivedConfig()
 	}
 
 
+
 	tempNum=10;
-	kvpStatus = kvpGetFloatArray("priorityFractionDefault",
-				     priorityFractionDefault,&tempNum);	
+	kvpStatus = kvpGetFloatArray("priorityFractionDelete",
+				     priorityFractionDelete,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionDefault): %s",
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityFractionDelete): %s",
 		   kvpErrorString(kvpStatus));
 	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(priorityFractionDefault): %s\n",
+		fprintf(stderr,"kvpGetIntArray(priorityFractionDelete): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
@@ -2024,4 +2049,28 @@ int getRunNumber() {
 
     return runNumber;
     
+}
+
+int clearRamdisk()
+{
+    int progMask=0;
+    progMask|=ACQD_ID_MASK;
+    progMask|=ARCHIVED_ID_MASK;
+    progMask|=CALIBD_ID_MASK;
+//    progMask|=CMDD_ID_MASK;
+    progMask|=EVENTD_ID_MASK;
+    progMask|=GPSD_ID_MASK;
+    progMask|=HKD_ID_MASK;
+    progMask|=LOSD_ID_MASK;
+    progMask|=PRIORITIZERD_ID_MASK;
+    progMask|=SIPD_ID_MASK;
+    progMask|=MONITORD_ID_MASK;
+    killPrograms(progMask);   
+    int retVal=system("rm -rf /tmp/anita");
+    makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
+    makeDirectories(CMDD_COMMAND_LINK_DIR);
+    makeDirectories(REQUEST_TELEM_LINK_DIR);
+    startPrograms(progMask);  
+    return retVal;
 }
