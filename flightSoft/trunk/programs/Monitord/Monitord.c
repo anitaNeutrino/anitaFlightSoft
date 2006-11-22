@@ -36,6 +36,9 @@ char *getProgName(ProgramId_t prog);
 int printToScreen=0;
 int verbosity=0;
 int monitorPeriod=60; //In seconds
+int watchProcesses=0;
+int ramdiskKillAcqd=50;
+int ramdiskDumpData=5;
 
 char acqdPidFile[FILENAME_MAX];
 char archivedPidFile[FILENAME_MAX];
@@ -160,7 +163,7 @@ int main (int argc, char *argv[])
 		    writeCommandAndLink(&theCmd);
 		}
 	    }
-
+	    checkProcesses();
 
 //	    exit(0);
 //	    usleep(1);
@@ -206,7 +209,7 @@ int readConfigFile()
     status += configLoad ("Monitord.config","output") ;
 
     if(status == CONFIG_E_OK) {
-	
+	watchProcesses=kvpGetInt("watchProcesses",0);
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -332,6 +335,8 @@ int readConfigFile()
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
 	usbSwitchMB=kvpGetInt("usbSwitchMB",50);
 	bladeSwitchMB=kvpGetInt("bladeSwitchMB",50);
+	ramdiskKillAcqd=kvpGetInt("ramdiskKillAcqd",50);
+	ramdiskDumpData=kvpGetInt("ramdiskDumpData",5);
     }
     else {
 	eString=configErrorString (status) ;
