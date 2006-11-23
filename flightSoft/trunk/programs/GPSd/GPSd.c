@@ -359,7 +359,7 @@ int setupG12()
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);
     strcat(g12Command,tempCommand);
-    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%3.f,%c\n",g12PpsPeriod,
+    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%3.2f,%c\n",g12PpsPeriod,
 	    g12PpsOffset,ppsEdge);
     strcat(g12Command,tempCommand);    
     if(g12EnableTtt) {

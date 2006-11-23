@@ -220,7 +220,7 @@
 
 //Slow Rate Stuff
 #define SLOW_RF_FILE "/tmp/anita/latestSlowRf.dat"
-
+#define RUN_START_FILE "/tmp/anita/latestRunStart.dat"
 
 #endif /* ANITA_FLIGHT_H */
 

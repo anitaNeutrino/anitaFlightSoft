@@ -47,4 +47,6 @@ if [ -d /mnt/usbext/current ] ; then
 fi
 ln -sf /mnt/usbext/run${run} /mnt/usbext/current
 
+rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd
+
 echo "$run" > /mnt/data/numbers/lastRunNumber

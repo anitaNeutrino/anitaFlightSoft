@@ -69,6 +69,7 @@
 #define VER_SLOW_FULL 1
 #define VER_ZIPPED_FILE 1
 #define VER_ZIPPED_PACKET 1
+#define VER_RUN_START 1
 #endif
 
 
@@ -107,7 +108,8 @@ typedef enum {
     PACKET_SLOW2 = 0x800,
     PACKET_SLOW_FULL = 0x801,
     PACKET_ZIPPED_PACKET = 0x900, // Is just a zipped version of another packet
-    PACKET_ZIPPED_FILE = 0xa00 // Is a zipped file
+    PACKET_ZIPPED_FILE = 0xa00, // Is a zipped file
+    PACKET_RUN_START = 0xb00 
 } PacketCode_t;
 
 typedef enum {
@@ -634,6 +636,12 @@ typedef struct {
     char filename[60];
 } ZippedFile_t;
 
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime; //Start time
+    unsigned long eventNumber; //Start eventNumber
+    unsigned long runNumber; //Run number
+} RunStart_t;
 
 
 /////////////////////////////////////////////////////////////////////////////
