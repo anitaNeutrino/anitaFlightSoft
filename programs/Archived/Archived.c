@@ -60,6 +60,8 @@ int eventDiskBitMask;
 int bladeCloneMask;
 int puckCloneMask;
 int usbintCloneMask;
+int priorityPPS1;
+int priorityPPS2;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
@@ -204,6 +206,8 @@ int readConfigFile()
 	verbosity=kvpGetInt("verbosity",0);
 	onboardStorageType=kvpGetInt("onboardStorageType",1);
 	telemType=kvpGetInt("telemType",1);
+	priorityPPS1=kvpGetInt("priorityPPS1",3);
+	priorityPPS2=kvpGetInt("priorityPPS2",2);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priDiskEncodingType",
 				   priDiskEncodingType,&tempNum);	
@@ -480,8 +484,12 @@ void writeOutputForTelem(int numBytes) {
     char headName[FILENAME_MAX];
     char bodyName[FILENAME_MAX];
     int pri=theHead.priority&0xf;
+    if(theHead.turfio.trigType&0x2 && priorityPPS1<0)
+	pri=priorityPPS1;
+    if(theHead.turfio.trigType&0x4 && priorityPPS2<0)
+	pri=priorityPPS2;
    
-    if(pri>9) pri=9;
+    if(pri<0 || pri>9) pri=9;
 
     sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
     sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
