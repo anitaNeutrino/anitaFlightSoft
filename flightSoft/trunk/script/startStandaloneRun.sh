@@ -11,7 +11,7 @@ daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 
 echo "Sleeping while files are written and zipped"
-sleep 10
+sleep 20
 
 echo "Making new directories"
 #CmdTest 4
