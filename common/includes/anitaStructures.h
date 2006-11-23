@@ -721,6 +721,13 @@ typedef struct {
 } TransientChannelF_t;
 
 typedef struct {
+     float data[MAX_NUMBER_SAMPLES];
+     short valid_samples;
+     float RMSall;
+     float RMSpre;
+} TransientChannelFRMS_t;
+
+typedef struct {
      TransientChannel3_t ch[NUM_DIGITZED_CHANNELS]; 
 } AnitaTransientBody3_t; /* final corrected transient type 
 			    used to calculate power */

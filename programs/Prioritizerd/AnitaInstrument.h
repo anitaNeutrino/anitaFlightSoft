@@ -24,7 +24,6 @@ typedef struct {
      short npoints;
 } EnvelopeF_t;
 
-
 typedef struct{
      EnvelopeF_t topRing[PHI_SECTORS][2];
      EnvelopeF_t botRing[PHI_SECTORS][2];
@@ -58,7 +57,15 @@ typedef struct{
      Peak_t discone[4];
 } AnitaPeak_t;
 
-#define MAX_BASELINES 16
+typedef struct{
+     int nover;
+     float topRing[PHI_SECTORS][2];
+     float botRing[PHI_SECTORS][2];
+     float bicone[4];
+     float discone[4];
+}RMScheck_t;
+
+#define MAX_BASELINES 32
 #define MAX_ITER 10
 
 typedef struct{
@@ -76,8 +83,9 @@ typedef struct{
      float arrival[3]; //best fit to vector from instrument to
                        //source, normalized on the unit sphere
      float norm; //fitted length of direction vector
-     float position[MAX_BASELINES][2][3]; //convenience copies of
+     float position[MAX_BASELINES][2][3]; //convenience copies of locations
      float delay[MAX_BASELINES][2]; //time in meters
+     float value[MAX_BASELINES][2];
      float direction[MAX_BASELINES][3]; //unit vector from 
                                         //late to early antenna
      float length[MAX_BASELINES]; //length of baseline
@@ -129,6 +137,12 @@ extern "C"
 			       int ringthresh,int ringwidth,
 			       int conethresh,int conewidth);
 
+     void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
+				     AnitaChannelDiscriminator_t *out,
+				     int hornthresh,int hornwidth,
+				     int conethresh,int conewidth,
+				     int holdoff);
+
      int RMS(TransientChannel3_t *in);
 
      float RMSF(TransientChannelF_t *in);
@@ -139,9 +153,16 @@ extern "C"
      void DiscriminateF(TransientChannelF_t *in,LogicChannel_t *out,
 		       float threshold, int width);
 
+     void DiscriminateF_noup(TransientChannelF_t *in,LogicChannel_t *out,
+			     float threshold, int width,int holdoff);
+
      void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 			     AnitaSectorLogic_t *out,
 			     int sectorWidth);
+
+     void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
+				AnitaSectorLogic_t *out,
+				int sectorWidth,int pol);
 
      void FindPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak);
 
