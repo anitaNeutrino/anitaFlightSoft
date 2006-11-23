@@ -57,15 +57,19 @@ int FitBaselines(BaselineAnalysis_t *theBL){
 	  }
      }
      theBL->ngood=nused; //eventually will need to deal with cutting baselines
+     //weight baselines by the square of their length; 
+     // cos(theta) has uniform contribution from timing errors
      for (i=0; i<3; i++){
 	  statATB[i]=0.;
 	  for (k=0;k<nused;k++){
-	       statATB[i]+=statA[i][k]*statB[k];
+	       statATB[i]+=statA[i][k]*statB[k]
+		    *(theBL->length[k]*theBL->length[k]);
 	  }
 	  for (j=0; j<3; j++){
 	       statATA[i][j]=0.;
 	       for (k=0; k<nused; k++){
-		    statATA[i][j]+=statA[i][k]*statA[j][k];
+		    statATA[i][j]+=statA[i][k]*statA[j][k]
+			 *(theBL->length[k]*theBL->length[k]);
 	       }
 	  }
      }
