@@ -306,7 +306,7 @@ void checkEvents()
 		linkList[count]->d_name);
 	retVal=fillHeader(&theHead,currentHeadname);
 
-	if(!shouldWeThrowAway(theHead.priority&0xf) && !(theHead.turfio.trigType&0x6) ) {
+	if(!shouldWeThrowAway(theHead.priority&0xf) ) {
 	    
 	    sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);

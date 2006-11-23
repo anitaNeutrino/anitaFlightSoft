@@ -61,6 +61,7 @@ int setTelemPriEncodingType(int pri, int encType, int encClockType);
 int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
 int startNewRun();
 int getRunNumber();
+int getLatestEventNumber();
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -84,6 +85,7 @@ char prioritizerdPidFile[FILENAME_MAX];
 char sipdPidFile[FILENAME_MAX];
 char monitordPidFile[FILENAME_MAX];
 char lastRunNumberFile[FILENAME_MAX];
+char lastEventNumberFile[FILENAME_MAX];
 
 //Debugging Output
 int printToScreen=1;
@@ -297,6 +299,11 @@ int readConfig() {
 	    fprintf(stderr,"Couldn't get lastRunNumberFile\n");
 	}
 
+	tempString=kvpGetString ("lastEventNumberFile");
+	if(tempString)
+	    strncpy(lastEventNumberFile,tempString,FILENAME_MAX-1);
+	else
+	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
 
 	tempString=kvpGetString("cmddPidFile");
 	if(tempString) {
@@ -413,11 +420,14 @@ int executeCommand(CommandStruct_t *theCmd)
     char theCommand[FILENAME_MAX];
 
     int index;
-    int numDataProgs=6;
-    int dataProgMasks[6]={HKD_ID_MASK,GPSD_ID_MASK,ARCHIVED_ID_MASK,
-			  ACQD_ID_MASK,CALIBD_ID_MASK,MONITORD_ID_MASK};
-    char *dataPidFiles[6]={hkdPidFile,gpsdPidFile,archivedPidFile,acqdPidFile,
-			   calibdPidFile,monitordPidFile};
+    int numDataProgs=8;
+    int dataProgMasks[8]={HKD_ID_MASK,GPSD_ID_MASK,ARCHIVED_ID_MASK,
+			  ACQD_ID_MASK,CALIBD_ID_MASK,MONITORD_ID_MASK,
+			  PRIORITIZERD_ID_MASK,EVENTD_ID_MASK};
+    
+    char *dataPidFiles[8]={hkdPidFile,gpsdPidFile,archivedPidFile,acqdPidFile,
+			   calibdPidFile,monitordPidFile,prioritizerdPidFile,
+			   eventdPidFile};
     
 
     switch(theCmd->cmd[0]) {
@@ -1978,13 +1988,19 @@ int readArchivedConfig()
 }
 
 int startNewRun() {
+    char filename[FILENAME_MAX];
+    RunStart_t runStart;
     int diskInd=0;
     int retVal=0;
     int runNum=getRunNumber();
     char newRunDir[FILENAME_MAX];
     char currentDirLink[FILENAME_MAX];
     char mistakeDirName[FILENAME_MAX];
+    runStart.runNumber=runNum;
+    runStart.unixTime=time(NULL);
+    runStart.eventNumber=getLatestEventNumber();
 
+    //First make dirs
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(hkDiskBitMask&diskBitMasks[diskInd]) &&
 	   !(eventDiskBitMask&diskBitMasks[diskInd]))
@@ -2004,6 +2020,23 @@ int startNewRun() {
 //    sprintf(theCommand,"/home/anita/flightSoft/bin/startNewRun.sh");
 //    retVal=system(theCommand);
     }
+
+    //Now delete dirs
+    //For now with system command
+    system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd");
+    
+    fillGenericHeader(&runStart,PACKET_RUN_START,sizeof(RunStart_t));
+    //Write file for Monitord
+    normalSingleWrite((unsigned char*)&runStart,RUN_START_FILE,sizeof(RunStart_t));
+    
+    sprintf(filename,"%s/run_%lu.dat",LOSD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
+    normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
+    makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
+    
+    sprintf(filename,"%s/run_%lu.dat",SIPD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
+    normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
+    makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
+
     return retVal;
 }
 
@@ -2065,12 +2098,36 @@ int clearRamdisk()
     progMask|=PRIORITIZERD_ID_MASK;
     progMask|=SIPD_ID_MASK;
     progMask|=MONITORD_ID_MASK;
-    killPrograms(progMask);   
+    killPrograms(progMask);
+    sleep(10);
     int retVal=system("rm -rf /tmp/anita");
     makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(CMDD_COMMAND_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
+    startNewRun();
     startPrograms(progMask);  
     return retVal;
+}
+
+
+int getLatestEventNumber() {
+    int retVal=0;
+    int eventNumber=0;
+
+    FILE *pFile;
+    pFile = fopen (lastEventNumberFile, "r");
+    if(pFile == NULL) {
+	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
+		lastEventNumberFile);
+    }
+    else {	    	    
+	retVal=fscanf(pFile,"%d",&eventNumber);
+	if(retVal<0) {
+	    syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
+		    lastEventNumberFile);
+	}
+	fclose (pFile);
+    }
+    return eventNumber;
 }

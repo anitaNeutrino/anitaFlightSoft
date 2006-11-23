@@ -1604,6 +1604,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_SLOW_FULL: gHdr->verId=VER_SLOW_FULL; break;
 	case PACKET_ZIPPED_FILE: gHdr->verId=VER_ZIPPED_FILE; break;
 	case PACKET_ZIPPED_PACKET: gHdr->verId=VER_ZIPPED_PACKET; break;
+	case PACKET_RUN_START: gHdr->verId=VER_RUN_START; break;
 	default: 
 	    gHdr->verId=0; break;
     }
@@ -1672,6 +1673,8 @@ int checkPacket(void *thePtr)
 	    break;
 	case PACKET_SLOW_FULL: packetSize=sizeof(SlowRateFull_t); 
 	    break;
+	case PACKET_RUN_START: packetSize=sizeof(RunStart_t); 
+	    break;
 	case PACKET_ZIPPED_PACKET: break;
 	case PACKET_ZIPPED_FILE: break;
 	default: 
@@ -1716,6 +1719,7 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_SLOW2: string="SlowRateType1_t"; break;
 	case PACKET_ZIPPED_PACKET: string="ZippedPacket_t"; break;
 	case PACKET_ZIPPED_FILE: string="ZippedFile_t"; break;
+	case PACKET_RUN_START: string="RunStart_t"; break;
 
 	default: 
 	    string="Unknown Packet Code"; break;

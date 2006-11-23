@@ -1,5 +1,3 @@
-
-
 /*  \file Acqd.c
     \brief The Acqd program 
     The first functional version of the acquisition software to work with SURF version 3. For now this guy will try to have the same functionality as crate_test, but will look less like a dead dog. 
@@ -373,6 +371,8 @@ int main(int argc, char **argv) {
 
 	if(doingEvent==0) prepWriterStructs();
 
+	//Send software trigger
+	setTurfControl(turfioHandle,SendSoftTrg);
 
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
@@ -499,7 +499,7 @@ int main(int argc, char **argv) {
 	    }
 
 	    //Send software trigger if we want to
-	    if(sendSoftTrigger || doingEvent==0) {
+	    if(sendSoftTrigger && doingEvent>0) {
 		usleep(softTrigSleepPeriod);
 		
 		setTurfControl(turfioHandle,SendSoftTrg);
@@ -895,7 +895,7 @@ int main(int argc, char **argv) {
 		
 		status=ACQD_E_OK;
 	    }
-	    else if(doingEvent>1) {
+	    else if(doingEvent>=0) { //RJN changed 24/11/06 for test
 		hdPtr->eventNumber=getEventNumber();
 		bdPtr->eventNumber=hdPtr->eventNumber;
 		hdPtr->surfMask=surfMask;
@@ -1679,40 +1679,22 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     PlxReturnCode_t  rc ;
 
     if(verbosity &&printToScreen) printf("*** Clearing devices ***\n");
+    
 
-// Prepare SURF boards
-    for(i=0;i<numSurfs;++i){
-	/* init. 9030 I/O descripter (to enable READY# input |= 0x02.) */
-	if(printToScreen) printf("Trying to set Sp0 on SURF %d\n",surfIndex[i]);
-	if(PlxRegisterWrite(surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
-	   != ApiSuccess)  {
-	    syslog(LOG_ERR,"Failed to set SpO descriptor on SURF %d",surfIndex[i]);
-	    if(printToScreen)
-		printf("Failed to set Sp0 descriptor on SURF %d.\n",surfIndex[i] ) ;    
-	}
-	
-	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
+    //Added RJN 24/11/06
+    trigMode=TrigNone;
+    if (setTurfControl(turfioHandle, SetTrigMode) != ApiSuccess) {
+	syslog(LOG_ERR,"Failed to set trigger mode to none on TURF\n") ;
 	if(printToScreen)
-	    printf(" GPIO register contents SURF %d = %o\n",surfIndex[i],testVal);
-		   
-	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
-	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-	    if(printToScreen)
-		printf("Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]);
-	}
+	    printf("Failed to set trigger mode to none on SURF\n");
     }
 
-    if(printToScreen){
-	printf(" Try to test interrupt control register.\n") ;
-	for(i=0;i<numSurfs;++i) {
-	    testVal=
-		PlxRegisterRead(surfHandles[i],PCI9030_INT_CTRL_STAT, &rc); 
-	    printf(" Int reg contents SURF %d = %x\n",surfIndex[i],testVal);
-	}
-		   
-    }
+    antTrigMask=0xffffffff;    
+    //Mask off all antennas
+    writeAntTrigMask(turfioHandle);
 
-    // Prepare TURFIO board
+
+    // Prepare TURF board
   
     /*  Get PLX Chip Type */
     /*   PlxChipTypeGet(surfHandles[i], &ChipTypeSelected, &ChipRevision ); */
@@ -1729,9 +1711,9 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
     
     if (setTurfControl(turfioHandle, TurfClearAll) != ApiSuccess) {
-	syslog(LOG_ERR,"Failed to send clear pulse on TURF %d.\n",i) ;
+	syslog(LOG_ERR,"Failed to send clear pulse on TURF \n") ;
 	if(printToScreen)
-	    printf("  failed to send clear pulse on TURF %d.\n",i) ;
+	    printf("  failed to send clear pulse on TURF \n") ;
     }
 
 
@@ -1746,6 +1728,41 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	printf(" Try to test interrupt control register.\n") ;
 	printf(" int reg contents TURFIO = %x\n",testVal);
 	       
+    }
+    
+
+
+// Prepare SURF boards
+    for(i=0;i<numSurfs;++i){
+	/* init. 9030 I/O descripter (to enable READY# input |= 0x02.) */
+	if(printToScreen) printf("Trying to set Sp0 on SURF %d\n",surfIndex[i]);
+	if(PlxRegisterWrite(surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
+	   != ApiSuccess)  {
+	    syslog(LOG_ERR,"Failed to set SpO descriptor on SURF %d",surfIndex[i]);
+	    if(printToScreen)
+		printf("Failed to set Sp0 descriptor on SURF %d.\n",surfIndex[i] ) ;    
+	}
+	
+	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
+	if(printToScreen)
+	    printf(" GPIO register contents SURF %d = %o\n",surfIndex[i],testVal);
+		   
+
+	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
+	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+	    if(printToScreen)
+		printf("Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]);
+	}
+    }
+
+    if(printToScreen){
+	printf(" Try to test interrupt control register.\n") ;
+	for(i=0;i<numSurfs;++i) {
+	    testVal=
+		PlxRegisterRead(surfHandles[i],PCI9030_INT_CTRL_STAT, &rc); 
+	    printf(" Int reg contents SURF %d = %x\n",surfIndex[i],testVal);
+	}
+		   
     }
     
     return;
@@ -2472,6 +2489,29 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 	if(printToScreen && verbosity>2) {
 	    printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord);
 	}
+	
+	if(surf==0) {
+	    hdPtr->otherFlag=0;
+	    hdPtr->otherFlag2=0;
+	}
+	
+	int surfEvNum=((headerWord&0xf000000)>>24);
+	if(surf==0) {
+	    hdPtr->otherFlag=surfEvNum;
+	}
+	if(surf==1) {
+	    hdPtr->otherFlag|=(surfEvNum<<4);
+	}
+	if(surf==7) {
+	    hdPtr->otherFlag2=surfEvNum;
+	}
+	if(surf==8) {
+	    hdPtr->otherFlag2|=(surfEvNum<<4);
+	}
+	if(printToScreen && verbosity>2)
+	    printf("surf %d\tsurfEvNum %d\theaderWord %#x\nhdPtr->otherFlag %d\n",surf,surfEvNum,headerWord,hdPtr->otherFlag);
+
+
 	//Now prime data stream
 	dataInt=*(barMapAddr[surf]);
 	if(printToScreen && verbosity>2) {

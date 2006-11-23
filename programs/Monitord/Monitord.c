@@ -39,6 +39,9 @@ int monitorPeriod=60; //In seconds
 int watchProcesses=0;
 int ramdiskKillAcqd=50;
 int ramdiskDumpData=5;
+int killedAcqd=0;
+int acqdKillTime=0;
+int maxAcqdWaitPeriod=180;
 
 char acqdPidFile[FILENAME_MAX];
 char archivedPidFile[FILENAME_MAX];
@@ -131,6 +134,34 @@ int main (int argc, char *argv[])
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
 	    writeFileAndLink(&monData);
+
+	    if(!killedAcqd) {
+		if(monData.diskInfo.diskSpace[0]<ramdiskDumpData) {		
+		    theCmd.numCmdBytes=1;
+		    theCmd.cmd[0]=CLEAR_RAMDISK;
+		    writeCommandAndLink(&theCmd);
+		}
+		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd) {		
+		    theCmd.numCmdBytes=3;
+		    theCmd.cmd[0]=CMD_KILL_PROGS;
+		    theCmd.cmd[1]=ACQD_ID_MASK;
+		    theCmd.cmd[2]=0;
+		    writeCommandAndLink(&theCmd);
+		    killedAcqd=1;
+		    acqdKillTime=monData.unixTime;
+		}
+	    }
+	    else {
+		if(monData.diskInfo.diskSpace[0]>100 || (monData.unixTime-acqdKillTime)>maxAcqdWaitPeriod) {	
+		    theCmd.numCmdBytes=3;
+		    theCmd.cmd[0]=CMD_START_PROGS;
+		    theCmd.cmd[1]=ACQD_ID_MASK;
+		    theCmd.cmd[2]=0;
+		    writeCommandAndLink(&theCmd);
+		    killedAcqd=0;
+		}
+	    }
+
 
 	    if(monData.diskInfo.diskSpace[5]<bladeSwitchMB) {
 		readConfigFile();
@@ -337,6 +368,7 @@ int readConfigFile()
 	bladeSwitchMB=kvpGetInt("bladeSwitchMB",50);
 	ramdiskKillAcqd=kvpGetInt("ramdiskKillAcqd",50);
 	ramdiskDumpData=kvpGetInt("ramdiskDumpData",5);
+	maxAcqdWaitPeriod=kvpGetInt("maxAcqdWaitPeriod",180);
     }
     else {
 	eString=configErrorString (status) ;
@@ -527,9 +559,14 @@ void checkProcesses()
     for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
 	char *pidFile=getPidFile(prog);
 	FILE *test = fopen(pidFile,"r");
+
 	if(!test) {
-	    sendCommand=1;
-	    value|=getIdMask(prog);	    
+	    if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
+		syslog(LOG_WARNING,"%s not present will restart process\n",
+		       pidFile);
+		sendCommand=1;
+		value|=getIdMask(prog);	    
+	    }
 	}
 	else fclose(test);
     }

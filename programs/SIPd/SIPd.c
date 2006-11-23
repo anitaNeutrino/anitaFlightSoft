@@ -1039,9 +1039,9 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 				 currentFilename,
 				 MAX_EVENT_SIZE);
 	if(retVal<=0) {
-	    syslog(LOG_ERR,"Error opening file, will delete: %s",
-		   currentFilename);
-	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
+//	    syslog(LOG_ERR,"Error opening file, will delete: %s",
+//		   currentFilename);
+//	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
 	    removeFile(currentFilename);
 
 	    removeFile(currentLinkname);
