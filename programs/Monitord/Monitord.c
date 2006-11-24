@@ -42,6 +42,7 @@ int ramdiskDumpData=5;
 int killedAcqd=0;
 int acqdKillTime=0;
 int maxAcqdWaitPeriod=180;
+int maxEventQueueSize=300;
 
 char acqdPidFile[FILENAME_MAX];
 char archivedPidFile[FILENAME_MAX];
@@ -86,6 +87,7 @@ int main (int argc, char *argv[])
 
     /* Log stuff */
     char *progName=basename(argv[0]);
+    unsigned long startTime=time(NULL);
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -135,6 +137,8 @@ int main (int argc, char *argv[])
 	    retVal=checkQueues(&(monData.queueInfo));
 	    writeFileAndLink(&monData);
 
+
+	    printf("ramDiskSpace: %d mb\n",monData.diskInfo.diskSpace[0]);
 	    if(!killedAcqd) {
 		if(monData.diskInfo.diskSpace[0]<ramdiskDumpData) {		
 		    theCmd.numCmdBytes=1;
@@ -194,7 +198,8 @@ int main (int argc, char *argv[])
 		    writeCommandAndLink(&theCmd);
 		}
 	    }
-	    checkProcesses();
+	    if((monData.unixTime-startTime)>60)
+		checkProcesses();
 
 //	    exit(0);
 //	    usleep(1);
@@ -241,6 +246,7 @@ int readConfigFile()
 
     if(status == CONFIG_E_OK) {
 	watchProcesses=kvpGetInt("watchProcesses",0);
+	maxEventQueueSize=kvpGetInt("maxEventQueueSize",300);
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -492,7 +498,7 @@ void purgeDirectory(int priority) {
     struct dirent **linkList;
     int numLinks=getListofLinks(eventTelemLinkDirs[priority],
 				&linkList);
-    if(numLinks>200) {
+    if(numLinks>maxEventQueueSize) {
 	syslog(LOG_INFO,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
 	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
 	for(count=0;count<numLinks-100;
@@ -561,6 +567,7 @@ void checkProcesses()
 	FILE *test = fopen(pidFile,"r");
 
 	if(!test) {
+	    syslog(LOG_INFO,"%s not present what will I do\n",pidFile);
 	    if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
 		syslog(LOG_WARNING,"%s not present will restart process\n",
 		       pidFile);

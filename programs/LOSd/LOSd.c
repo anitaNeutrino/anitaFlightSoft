@@ -200,7 +200,55 @@ int main(int argc, char *argv[])
 		numLinks[currentPri]=
 		    getListofLinks(eventTelemLinkDirs[currentPri],
 				   &linkList[currentPri]);
-		totalEventLinks+=numLinks[currentPri];	
+		totalEventLinks+=numLinks[currentPri];
+
+
+		//Quick and dirty hack
+
+
+//		if(numLinks[currentPri]>200) /* { */
+/* //		    printf("Here %d %d\n",currentPri,numLinks[currentPri]); */
+/* 		    syslog(LOG_INFO,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]); */
+/* 		    fprintf(stderr,"LOSd not keeping up removing %d event links from queue %s\n",numLinks[currentPri]-100,eventTelemLinkDirs[currentPri]); */
+/* 		    for(count=0;count<numLinks[currentPri]-100; */
+/* 			count++) { */
+			
+/* 			sscanf(linkList[currentPri][count]->d_name, */
+/* 			       "hd_%lu.dat",&eventNumber); */
+
+/* #ifdef SPEED_UP_LOSD */
+/* 			sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[currentPri],  */
+/* 				eventNumber); */
+/* 			sprintf(currentTouchname,"%s.sipd",currentHeader); */
+/* 			if(checkFileExists(currentTouchname)) */
+/* 			    continue; */
+
+/* 			removeFile(currentHeader);			 */
+/* #endif */
+
+									
+/* 			sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri], */
+/* 				linkList[currentPri][count]->d_name); */
+			
+
+/* 			removeFile(currentHeader); */
+
+/* 			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri],  */
+/* 				eventNumber); */
+/* 			removeFile(currentHeader);			 */
+/* 		    } */
+/* 		    for(count=0;count<numLinks[currentPri]; */
+/* 			count++)  */
+/* 			free(linkList[currentPri][count]);		     */
+/* 		    free(linkList[currentPri]); */
+		    
+/* 		    totalEventLinks-=numLinks[currentPri]; */
+/* 		    numLinks[currentPri]= */
+/* 			getListofLinks(eventTelemLinkDirs[currentPri], */
+/* 				       &linkList[currentPri]);	 */
+/* 		    totalEventLinks+=numLinks[currentPri]; */
+		    
+/* 		} */
 		
 		if(printToScreen && verbosity>1) {
 		    printf("Got %d links in %s\n",numLinks[currentPri],
@@ -210,9 +258,20 @@ int main(int argc, char *argv[])
 	    }
 	    if(numLinks[currentPri]>0) {
 		//Got an event
+#ifdef SPEED_UP_LOSD
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 			linkList[currentPri][numLinks[currentPri]-1]->d_name);
 		readAndSendEventRamdisk(currentHeader); //Also deletes
+//		printf("Here1:\t%s\n",currentHeader);
+#else
+		sscanf(linkList[currentPri][numLinks[currentPri]-1]->d_name,
+		       "hd_%lu.dat",&eventNumber);
+		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+			linkList[currentPri][numLinks[currentPri]-1]->d_name);
+		readAndSendEvent(currentHeader,eventNumber); //Also deletes
+//		printf("Here2:\t%s\n",currentHeader);
+#endif
+//		printf("%s\n",currentHeader);
 		free(linkList[currentPri][numLinks[currentPri]-1]);
 		numLinks[currentPri]--;
 		totalEventLinks--;
