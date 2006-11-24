@@ -149,7 +149,7 @@ void TCF_RMSfill(TransientChannelFRMS_t *theData){
 void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
 		      AnitaInstrumentF_t  *antennaData)
 {			 
-     int i,j,k;
+     int i,j;
      for (i=0;i<16;i++){
 	  for (j=0; j<2; j++){
 	       antennaData->topRing[i][j]=(surfData->ch[topRingIndex[i][j]]);
@@ -642,6 +642,41 @@ void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
 	       minvalid=(in->discone[i]).valid_samples;
      }
      (out->discone).valid_samples = minvalid;
+}
+
+int FormSectorCoincidence(AnitaSectorLogic_t *majority,
+			  AnitaCoincidenceLogic_t *coinc,  int delay,
+			  int topthresh, int botthresh){
+// compare the bottom and the top delay ns later
+// if each is greater than their respective threshold,
+// add the values and place it in  the sample corresponding to
+// the bottom sample index.
+// Return the maximum value found in any sector at any time.
+     int phi,k,max;
+     //delay must be positive, but...
+     delay=abs(delay);
+     max=0;
+     for (phi=0;phi<16;phi++){
+	  coinc->sector[phi].valid_samples=
+	       (majority->topRing[phi].valid_samples<
+		majority->botRing[phi].valid_samples)
+	       ?majority->topRing[phi].valid_samples-delay 
+	       :majority->botRing[phi].valid_samples-delay;
+	  for (k=0;k<coinc->sector[phi].valid_samples;k++){
+	       coinc->sector[phi].data[k]=0;
+	       if(majority->topRing[phi].data[k+delay]>=topthresh
+		  &&
+		  majority->botRing[phi].data[k]>=botthresh){
+		    coinc->sector[phi].data[k]=
+			 majority->topRing[phi].data[k+delay]
+			 +majority->botRing[phi].data[k];
+		    if (coinc->sector[phi].data[k]>max){
+			 max=coinc->sector[phi].data[k];
+		    }
+	       }
+	  }
+     }
+     return max;
 }
 
 void makeEnvelope(TransientChannelF_t *volts,EnvelopeF_t *absv){

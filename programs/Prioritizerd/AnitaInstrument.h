@@ -46,6 +46,10 @@ typedef struct{
 } AnitaSectorLogic_t;
 
 typedef struct{
+     LogicChannel_t sector[PHI_SECTORS];
+} AnitaCoincidenceLogic_t;
+
+typedef struct{
      float time;
      float value;
 } Peak_t;
@@ -163,6 +167,11 @@ extern "C"
      void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
 				AnitaSectorLogic_t *out,
 				int sectorWidth,int pol);
+
+     int FormSectorCoincidence(AnitaSectorLogic_t *majority,
+			       AnitaCoincidenceLogic_t *coinc,  
+			       int delay,
+			       int topthresh, int botthresh);
 
      void FindPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak);
 
