@@ -770,13 +770,13 @@ int removeFile(const char *theFile)
 {
     static int errorCounter=0;
     int retVal=unlink(theFile);
-    if(retVal!=0) {
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Error (%d of 100) removing %s:\t%s",errorCounter,theFile,strerror(errno));
-	    fprintf(stderr,"Error (%d of 100) removing %s:\t%s\n",errorCounter,theFile,strerror(errno));
-	    errorCounter++;
-	}
-    }
+/*     if(retVal!=0) { */
+/* 	if(errorCounter<100) { */
+/* 	    syslog(LOG_ERR,"Error (%d of 100) removing %s:\t%s",errorCounter,theFile,strerror(errno)); */
+/* 	    fprintf(stderr,"Error (%d of 100) removing %s:\t%s\n",errorCounter,theFile,strerror(errno)); */
+/* 	    errorCounter++; */
+/* 	} */
+/*     } */
     return retVal;
 }
 
