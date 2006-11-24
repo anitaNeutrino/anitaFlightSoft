@@ -3252,9 +3252,11 @@ PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle)
     U32 gpio ;  
     int i=0,j=0,chanBit=1;
     int actualMask[2]={255,0};
+    
     actualMask[0]|=((antTrigMask&0xffffff)<<8);
     actualMask[1]=(antTrigMask&0xff000000)>>24;
-
+    syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n",
+	   antTrigMask,actualMask[1],actualMask[0]);
 
     rc=setTurfControl(turfioHandle,RFCBit);
     if(rc!=ApiSuccess) {		
@@ -3284,9 +3286,9 @@ PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle)
     /* check GPIO8 is set or not. */
     if((gpio=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc )) 
        & 0400000000) {
-	syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1],actualMask[0]) ;
+	syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1],actualMask[0]) ;
 	if(printToScreen) 
-	    printf("writeAntTrigMask: GPIO8 on, so mask should be set to %x%x.\n", actualMask[1], actualMask[0]) ;
+	    printf("writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1], actualMask[0]) ;
     }   
     else {
 	syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpio);
