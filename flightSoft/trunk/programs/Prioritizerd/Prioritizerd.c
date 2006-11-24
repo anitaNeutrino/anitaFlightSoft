@@ -32,7 +32,8 @@ int hornDiscWidth=0;
 int hornSectorWidth=0;
 float coneThresh=0;
 int coneDiscWidth=0;
-
+int holdoff=0;
+int delay=0;
 
 
 int main (int argc, char *argv[])
@@ -69,8 +70,16 @@ int main (int argc, char *argv[])
     AnitaInstrumentF_t theInstrument;
     AnitaInstrumentF_t theXcorr;
     AnitaChannelDiscriminator_t theDiscriminator;
+    AnitaChannelDiscriminator_t theNonupdating;
     AnitaSectorLogic_t theMajority;
     AnitaSectorAnalysis_t sectorAna;
+    AnitaSectorLogic_t theMajorityNoUp;
+    AnitaSectorLogic_t theHorizontal;
+    AnitaSectorLogic_t theVertical;
+    AnitaCoincidenceLogic_t theCoincidenceAll;
+    AnitaCoincidenceLogic_t theCoincidenceH;
+    AnitaCoincidenceLogic_t theCoincidenceV;
+    int MaxAll, MaxH, MaxV;
 
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
@@ -184,12 +193,16 @@ int main (int argc, char *argv[])
 	    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
 	    BuildInstrumentF(&unwrappedBody,&theInstrument);
 	    HornMatchedFilterAll(&theInstrument,&theXcorr);
+	    
+
 
 //	    printf("%lu %d %d %f %f %f\n",theBody.eventNumber,theBody.channel[0].data[160],pedSubBody.channel[0].data[160],unwrappedBody.ch[0].data[160],theInstrument.topRing[0][0].data[160],theXcorr.topRing[0][0].data[160]);
 
 	    
 	    //Now we get to dick around for a while
 //	    printf("400 %d %f %d\n",hornDiscWidth,coneThresh,coneDiscWidth);
+
+// Ordinalry coincidence and scoring
 	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
 				  400,hornDiscWidth,
 				  coneThresh,coneDiscWidth);
@@ -214,18 +227,34 @@ int main (int argc, char *argv[])
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
 	    fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
 #endif
-	      
-	    
+// nonupdating discriminators and majorities
+	    DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
+				       hornThresh,hornDiscWidth,
+				       coneThresh,coneDiscWidth,
+				       holdoff);
+	    FormSectorMajority(&theNonupdating,&theMajorityNoUp,hornSectorWidth);
+	    FormSectorMajorityPol(&theNonupdating,&theHorizontal,hornSectorWidth,0);
+	    FormSectorMajorityPol(&theNonupdating,&theVertical,hornSectorWidth,1);
+	    MaxAll=FormSectorCoincidence(&theMajorityNoUp,&theCoincidenceAll,
+				  delay,2*hornSectorWidth-1,2*hornSectorWidth-1);
+	    MaxH=FormSectorCoincidence(&theHorizontal,&theCoincidenceH,
+				  delay,hornSectorWidth-1,hornSectorWidth-1);
+	    MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
+				delay,hornSectorWidth-1,hornSectorWidth-1);
 	    //Sillyness for now
 	    //Must determine priority here
 //	    priority=1;
+//revised scoring here
 	    priority=9;
-	    if(score4>=600)
-		priority=1;
-	    else if(score3>1900) priority=2;
-	    else if(score3>1500) priority=3;
-	    else if(score3>1000) priority=4;
-	    else if(score3>600) priority=5;
+	    if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth) priority=1;
+	    else if (MaxAll>=4*hornSectorWidth-2) priority=2;
+	    else if (MaxH>=2*hornSectorWidth-1 || MaxH>=2*hornSectorWidth-1) 
+		 priority=3;
+	    else if(score4>=600) priority=4;
+	    else if(score3>1900) priority=5;
+	    else if(score3>1500) priority=6;
+	    else if(score3>1000) priority=7;
+	    else if(score3>600) priority=8;
 
 	    theHeader.priority=priority;
 	
@@ -349,9 +378,11 @@ int readConfig()
     if(status == CONFIG_E_OK) {
 	hornThresh=kvpGetFloat("hornThresh",250);
 	coneThresh=kvpGetFloat("coneThresh",250);
-	hornDiscWidth=kvpGetInt("hornDiscWidth",13);
-	coneDiscWidth=kvpGetInt("coneDiscWidth",13);
-	hornSectorWidth=kvpGetInt("hornSectorWidth",5);
+	hornDiscWidth=kvpGetInt("hornDiscWidth",16);
+	coneDiscWidth=kvpGetInt("coneDiscWidth",16);
+	hornSectorWidth=kvpGetInt("hornSectorWidth",3);
+	holdoff=kvpGetInt("holdoff",39);
+	delay=kvpGetInt("delay",8);
     }
     else {
 	eString=configErrorString (status) ;

@@ -24,7 +24,7 @@ adapted to flight software environment JJB
 
 #define NPTS 256              /* size of the waveform and template arrays */
                               /*        must be power of 2 */
-#define WFRAC  0.33333        /* lead fraction of waveform 
+#define WFRAC  0.33333        /* lead fraction of waveform */
                               /*        to use for noise statistics */
 	
 			      
