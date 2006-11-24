@@ -454,10 +454,12 @@ int executeCommand(CommandStruct_t *theCmd)
 			fclose(test);
 			fileExists=1;
 			sleepCount++;
+			sleep(1);
 		    }
 		}
 		while(fileExists && sleepCount<20);
 	    }	   
+	    sleep(10);
 	    retVal=startNewRun();
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
@@ -874,13 +876,13 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ultemp=(theCmd->cmd[1]);	    
 	    ulvalue=ultemp;
 	    ultemp=(theCmd->cmd[2]);
-	    ulvalue|=(ulvalue<<8);
+	    ulvalue|=(ultemp<<8);
 	    ultemp=(theCmd->cmd[3]);
-	    ulvalue|=(ulvalue<<16);
+	    ulvalue|=(ultemp<<16);
 	    ultemp=(theCmd->cmd[4]);
-	    ulvalue|=(ulvalue<<24);
-//	    printf("%d %d %d %d -- %lu\n",theCmd->cmd[1],theCmd->cmd[2],
-//		   theCmd->cmd[3],theCmd->cmd[4],ulvalue);
+	    ulvalue|=(ultemp<<24);
+	    syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %lu -- %#x\n",theCmd->cmd[1],theCmd->cmd[2],
+		   theCmd->cmd[3],theCmd->cmd[4],ulvalue,ulvalue);
 
 	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",ulvalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);

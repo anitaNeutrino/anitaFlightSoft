@@ -166,11 +166,11 @@ int main (int argc, char *argv[])
 		}
 	    }
 
-
+	    printf("blade %d\t%d\n",monData.diskInfo.diskSpace[5],bladeSwitchMB);
 	    if(monData.diskInfo.diskSpace[5]<bladeSwitchMB) {
 		readConfigFile();
 		//Change blade if in use
-		if(!(hkDiskBitMask&BLADE_DISK_MASK || eventDiskBitMask&BLADE_DISK_MASK)) {
+		if((hkDiskBitMask&BLADE_DISK_MASK || eventDiskBitMask&BLADE_DISK_MASK)) {
 		    theCmd.numCmdBytes=1;
 		    theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
 		    writeCommandAndLink(&theCmd);
@@ -179,7 +179,7 @@ int main (int argc, char *argv[])
 	    if(monData.diskInfo.diskSpace[6]<usbSwitchMB) {
 		readConfigFile();
 		//Change USB int if in use
-		if(!(hkDiskBitMask&USBINT_DISK_MASK || eventDiskBitMask&USBINT_DISK_MASK)) {
+		if((hkDiskBitMask&USBINT_DISK_MASK || eventDiskBitMask&USBINT_DISK_MASK)) {
 		    theCmd.numCmdBytes=2;
 		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
 		    theCmd.cmd[1]=1;
@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
 	    else if(monData.diskInfo.diskSpace[7]<usbSwitchMB) {
 		readConfigFile();
 		//Change USB ext if in use
-		if(!(hkDiskBitMask&USBEXT_DISK_MASK || eventDiskBitMask&USBEXT_DISK_MASK)) {
+		if((hkDiskBitMask&USBEXT_DISK_MASK || eventDiskBitMask&USBEXT_DISK_MASK)) {
 		    theCmd.numCmdBytes=2;
 		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
 		    theCmd.cmd[1]=2;
