@@ -34,7 +34,12 @@ float coneThresh=0;
 int coneDiscWidth=0;
 int holdoff=0;
 int delay=0;
-
+int hornGuardOffset=30;
+int hornGuardWidth=20;
+int hornGuardThresh=50;
+int coneGuardOffset=30;
+int coneGuardWidth=20;
+int coneGuardThresh=50;
 
 int main (int argc, char *argv[])
 {
@@ -69,10 +74,12 @@ int main (int argc, char *argv[])
     AnitaTransientBodyF_t unwrappedBody;
     AnitaInstrumentF_t theInstrument;
     AnitaInstrumentF_t theXcorr;
+    //original analysis
     AnitaChannelDiscriminator_t theDiscriminator;
-    AnitaChannelDiscriminator_t theNonupdating;
     AnitaSectorLogic_t theMajority;
     AnitaSectorAnalysis_t sectorAna;
+    //nonupdating discriminator method
+    AnitaChannelDiscriminator_t theNonupdating;
     AnitaSectorLogic_t theMajorityNoUp;
     AnitaSectorLogic_t theHorizontal;
     AnitaSectorLogic_t theVertical;
@@ -80,7 +87,15 @@ int main (int argc, char *argv[])
     AnitaCoincidenceLogic_t theCoincidenceH;
     AnitaCoincidenceLogic_t theCoincidenceV;
     int MaxAll, MaxH, MaxV;
-
+    //xcorr peak boxcar method
+    AnitaChannelDiscriminator_t theBoxcar;
+    AnitaSectorLogic_t theMajorityBoxcar;
+    AnitaSectorLogic_t theMajorityBoxcarH;
+    AnitaSectorLogic_t theMajorityBoxcarV;
+    AnitaCoincidenceLogic_t theCoincidenceBoxcarAll;
+    AnitaCoincidenceLogic_t theCoincidenceBoxcarH;
+    AnitaCoincidenceLogic_t theCoincidenceBoxcarV;
+    int MaxBoxAll,MaxBoxH,MaxBoxV;
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
     timeFile = fopen("/tmp/priTimeLog.txt","w");
@@ -236,22 +251,53 @@ int main (int argc, char *argv[])
 	    FormSectorMajorityPol(&theNonupdating,&theHorizontal,hornSectorWidth,0);
 	    FormSectorMajorityPol(&theNonupdating,&theVertical,hornSectorWidth,1);
 	    MaxAll=FormSectorCoincidence(&theMajorityNoUp,&theCoincidenceAll,
-				  delay,2*hornSectorWidth-1,2*hornSectorWidth-1);
+				  delay,2*hornSectorWidth-2,2*hornSectorWidth-1);
 	    MaxH=FormSectorCoincidence(&theHorizontal,&theCoincidenceH,
 				  delay,hornSectorWidth-1,hornSectorWidth-1);
 	    MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
 				delay,hornSectorWidth-1,hornSectorWidth-1);
-	    //Sillyness for now
+	    //xcorr peak boxcar method
+	    PeakBoxcarAll(&theXcorr,&theBoxcar,
+		   hornDiscWidth,hornGuardOffset,
+		   hornGuardWidth,hornGuardThresh,
+		   coneDiscWidth,coneGuardOffset,
+		   coneGuardWidth,coneGuardThresh);
+	    FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
+			       hornSectorWidth);
+	    FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
+				  hornSectorWidth,0);
+	    FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
+				  hornSectorWidth,1);
+	    MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
+					    &theCoincidenceBoxcarAll,
+					    8,2*hornSectorWidth-1,
+					    2*hornSectorWidth-2);
+	    MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
+					  &theCoincidenceBoxcarH,
+					  8,hornSectorWidth-1,
+					  hornSectorWidth-1);
+	    MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
+					  &theCoincidenceBoxcarV,
+					  8,hornSectorWidth-1,
+					  hornSectorWidth-1);
+	    //Sillyness forever...
 	    //Must determine priority here
 //	    priority=1;
 //revised scoring here
 	    priority=9;
-	    if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth) priority=1;
-	    else if (MaxAll>=4*hornSectorWidth-2) priority=2;
-	    else if (MaxH>=2*hornSectorWidth-1 || MaxH>=2*hornSectorWidth-1) 
+	    if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
+		 priority=1;
+	    else if (MaxBoxAll>=4*hornSectorWidth-4 ||
+		     MaxBoxH>=2*hornSectorWidth-1 || 
+		     MaxBoxV>=2*hornSectorWidth-1 ) 
+		 priority=2;
+	    else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth) 
 		 priority=3;
-	    else if(score4>=600) priority=4;
-	    else if(score3>1900) priority=5;
+	    else if (MaxAll>=4*hornSectorWidth-4) priority=4;
+	    else if (MaxH>=2*hornSectorWidth-1 || MaxH>=2*hornSectorWidth-1) 
+		 priority=4;
+	    else if(score4>=600) priority=5;
+	    else if(score3>1900) priority=6;
 	    else if(score3>1500) priority=6;
 	    else if(score3>1000) priority=7;
 	    else if(score3>600) priority=8;
@@ -383,6 +429,12 @@ int readConfig()
 	hornSectorWidth=kvpGetInt("hornSectorWidth",3);
 	holdoff=kvpGetInt("holdoff",39);
 	delay=kvpGetInt("delay",8);
+	hornGuardOffset=kvpGetInt("hornGuardOffset",30);
+	hornGuardWidth=kvpGetInt("hornGuardWidth",20);
+	hornGuardThresh=kvpGetInt("hornGuardThresh",50);
+	coneGuardOffset=kvpGetInt("coneGuardOffset",30);
+	coneGuardWidth=kvpGetInt("coneGuardWidth",20);
+	coneGuardThresh=kvpGetInt("coneGuardThresh",50);
     }
     else {
 	eString=configErrorString (status) ;

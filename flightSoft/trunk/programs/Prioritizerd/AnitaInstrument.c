@@ -387,6 +387,58 @@ void DiscriminateF_noup(TransientChannelF_t *in,LogicChannel_t *out,
      }
 }
 
+int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
+		   int width, int guardOffset, int guardWidth,int guardThresh)
+{
+// out is a boxcar width wide around the maximum absolute value of the input
+// Return value is the peak sample number.
+//
+// if guardWidth is greater than zero, looks in a region offset
+// from the peak by guardOffset [guardOffset, guardOffset+guardWidth) for
+// a value greater than guardThresh*100 times the peak value
+//
+// If the guard conditon is met, the boxcar is suppressed.
+//
+     int i,guardLeft,guardRight;
+     int peaksample;
+     float peakvalue, guardvalue;
+     out->valid_samples=in->valid_samples;
+     //find the peak 
+     //if there are two equal, this gets the first one
+     //zero the output array while we're looping
+     peaksample=0; peakvalue=0.;
+     for (i=0;i<(in->valid_samples); i++){
+	  if (fabsf(in->data[i])>peakvalue){
+	       peaksample=i;
+	       peakvalue=fabsf(in->data[i]);
+	  }
+	  out->data[i]=0;
+     }
+     //now check the guard region
+     //if guardWidth is zero, the loop gets skipped
+     guardLeft=peaksample+guardOffset;
+     guardRight=peaksample+guardOffset+guardWidth;
+     if (guardLeft>=in->valid_samples){
+	  guardLeft=in->valid_samples-1;
+	  guardRight=in->valid_samples-1;
+     }
+     else if (guardRight>in->valid_samples){
+	  guardRight=in->valid_samples;
+     }
+     guardvalue=0.;
+     for (i=guardLeft; i<guardRight; i++){ 
+	  if (fabsf(in->data[i])>guardvalue){
+	       guardvalue=fabsf(in->data[i]);
+	  }
+     }
+     if (!(guardvalue>guardThresh*peakvalue/100.)){
+	  for (i=peaksample;(i<peaksample+width)&&(i<out->valid_samples);i++){
+	       out->data[i]=1;
+	  }
+     } 
+     return peaksample;
+}
+
 void DiscriminateChannels(AnitaInstrument3_t *in,
 			  AnitaChannelDiscriminator_t *out,
 			  int hornthresh,int hornwidth,
@@ -486,6 +538,36 @@ void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
 		   * (float) conethresh/100.);
 	  DiscriminateF_noup(&(in->discone[i]),&(out->discone[i]),
 			thresh,conewidth,holdoff);
+     }
+	  
+}
+
+void PeakBoxcarAll(AnitaInstrumentF_t *in,
+		   AnitaChannelDiscriminator_t *out,
+		   int hornWidth,int hornGuardOffset, int hornGuardWidth,int hornGuardThresh,
+		   int coneWidth,int coneGuardOffset, int coneGuardWidth,int coneGuardThresh)
+{
+     int phi,pol,i; 
+     for (phi=0;phi<16; phi++){
+	  for (pol=0;pol<2;pol++){
+	       PeakBoxcarOne(&(in->topRing[phi][pol]),
+			     &(out->topRing[phi][pol]),
+			     hornWidth,hornGuardOffset,
+			     hornGuardWidth,hornGuardThresh);
+	       PeakBoxcarOne(&(in->botRing[phi][pol]),
+			     &(out->botRing[phi][pol]),
+			     hornWidth,hornGuardOffset,
+			     hornGuardWidth,hornGuardThresh);
+	  }
+     }
+	  
+     for (i=0; i<4; i++){	       
+	  PeakBoxcarOne(&(in->bicone[i]),&(out->bicone[i]),
+			coneWidth,coneGuardOffset,
+			coneGuardWidth,coneGuardThresh);
+	  PeakBoxcarOne(&(in->discone[i]),&(out->discone[i]),
+			coneWidth,coneGuardOffset,
+			coneGuardWidth,coneGuardThresh);
      }
 	  
 }
