@@ -81,6 +81,8 @@ Sun Nov 26 05:11:19 2006
 
 extern int MethodMask,FFTPeakMaxA,FFTPeakMaxB,FFTPeakWindowL,FFTPeakWindowR;
 
+extern int FFTNumChannels;
+
 int fftwcorr(float wfm[], float tmpl[], float cout[])
   /*  wfm[] = pointer to float waveform data, 
       tmpl[] = pointer to template for correlation 
@@ -187,6 +189,9 @@ int fftwcorr(float wfm[], float tmpl[], float cout[])
        for (i=0;i<NPTS; i++){
 	    cout[i]=0.;
        }
+       //another ugly hack--increment globabl varaible FFTNumChannels
+       //this must be zeroed tested in main program
+       FFTNumChannels++; 
        return(0);
   }
 }
