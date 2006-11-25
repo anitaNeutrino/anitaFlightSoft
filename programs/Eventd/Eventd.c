@@ -34,6 +34,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr);
 int getCalibStatus(int unixTime);
 int setGpsTime(AnitaEventHeader_t *theHeaderPtr);
 int deleteGPSFiles(GpsSubTime_t *theGpsPtr);
+void clearGpsDir();
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset);
 int readConfigFile();
 int compareGpsTimes(const void *ptr1, const void *ptr2);
@@ -44,6 +45,7 @@ char eventdPidFile[FILENAME_MAX];
 
 int printToScreen=0;
 int verbosity=0;
+int tryToMatchGps=0;
 
 AnitaEventHeader_t theAcqdEventHeader;
 
@@ -191,7 +193,13 @@ int main (int argc, char *argv[])
 	    
 		do {
 //		    printf("Here %lu (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
-		    filledSubTime=setGpsTime(&theAcqdEventHeader);
+		    if(tryToMatchGps) {
+			filledSubTime=setGpsTime(&theAcqdEventHeader);
+		    }
+		    else {
+			filledSubTime=1;
+			clearGpsDir();
+		    }
 		    if(!filledSubTime) {
 			if((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT) sleep(1);
 			else break;
@@ -248,6 +256,27 @@ int main (int argc, char *argv[])
     return 0;
 }
 
+
+void clearGpsDir() 
+{
+    int  count;
+    struct dirent **gpsSubTimeLinkList;
+    char currentFilename[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+
+    int numGpsTimeLinks=getListofLinks(GPSD_SUBTIME_LINK_DIR,&gpsSubTimeLinkList);
+
+    for(count=0;count<numGpsTimeLinks;count++) {
+	sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
+		gpsSubTimeLinkList[count]->d_name);   
+	sprintf(currentLinkname,"%s/%s",GPSD_SUBTIME_DIR,
+		gpsSubTimeLinkList[count]->d_name);     
+	removeFile(currentFilename);
+	removeFile(currentLinkname);
+	
+    }
+}
+
 int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 {
     int retVal,count;
@@ -274,21 +303,24 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     int numGpsTimeLinks;
     float fracUnix,fracTurf,fracGps;
     numGpsTimeLinks=getListofLinks(GPSD_SUBTIME_LINK_DIR,&gpsSubTimeLinkList);
-    
+    int loadGpsLinks=numGpsTimeLinks;
+
     if(verbosity>2 && printToScreen) 	
 	fprintf(stderr,"There are %d gps links.\n",numGpsTimeLinks);
     
     
     /* need to do something if we ever have more 
        than MAX_GPS_TIMES subTimes.*/
-    if(numGpsStored>MAX_GPS_TIMES-100) {
+    if(numGpsStored+numGpsTimeLinks>MAX_GPS_TIMES-100) {
 	syslog(LOG_ERR,"GPS overload junking %d times\n",numGpsStored);
 	fprintf(stderr,"GPS overload junking %d times\n",numGpsStored);
 	numGpsStored=0;
 	bzero(gpsArray, sizeof(GpsSubTime_t)*MAX_GPS_TIMES) ;	    
     }
-
-    for(count=0;count<numGpsTimeLinks;count++) {
+    if(loadGpsLinks>MAX_GPS_TIMES)
+	loadGpsLinks=MAX_GPS_TIMES-10;
+    
+    for(count=0;count<loadGpsLinks;count++) {
 	sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
 		gpsSubTimeLinkList[count]->d_name);     
 	retVal=fillGpsStruct(&gpsArray[numGpsStored],currentFilename);	
@@ -298,6 +330,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	}
 	deleteGPSFiles(&gpsArray[numGpsStored-1]);
     }    
+
     for(count=0;count<numGpsTimeLinks;count++)
 	free(gpsSubTimeLinkList[count]);
     free(gpsSubTimeLinkList);
@@ -633,9 +666,11 @@ int readConfigFile()
 
     kvpReset();
     status = configLoad ("Eventd.config","output") ;
+    status = configLoad ("Eventd.config","eventd") ;
     if(status == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
+	tryToMatchGps=kvpGetInt("tryToMatchGps",1);
 
 	   
     }
