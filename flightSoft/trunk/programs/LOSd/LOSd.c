@@ -62,6 +62,7 @@ int losSlot;
 int verbosity;
 int printToScreen;
 int laptopDebug;
+int needToReload=0;
 
 // Bandwidth variables
 int eventBandwidth=80;
