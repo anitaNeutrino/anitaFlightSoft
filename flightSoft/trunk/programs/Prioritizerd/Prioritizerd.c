@@ -42,6 +42,16 @@ int hornGuardThresh=50;
 int coneGuardOffset=30;
 int coneGuardWidth=20;
 int coneGuardThresh=50;
+int FFTPeakMaxA=0;
+int FFTPeakMaxB=0;
+int FFTPeakWindowL=0;
+int FFTPeakWindowR=0;
+int RMSMax=0;
+int RMSevents=0;
+int WindowCut=400;
+int BeginWindow=0;
+int EndWindow=0;
+int MethodMask=0;
 
 int main (int argc, char *argv[])
 {
@@ -300,7 +310,7 @@ int main (int argc, char *argv[])
 	    else if (MaxBoxAll>=4*hornSectorWidth-4 ||
 		     MaxBoxH>=2*hornSectorWidth-1 || 
 		     MaxBoxV>=2*hornSectorWidth-1 ) 
-		 priority=2
+		 priority=2;
 /* 	    else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)  */
 /* 		 priority=3; */
 /* 	    else if (MaxAll>=4*hornSectorWidth-4) priority=4; */
@@ -445,6 +455,16 @@ int readConfig()
 	coneGuardOffset=kvpGetInt("coneGuardOffset",30);
 	coneGuardWidth=kvpGetInt("coneGuardWidth",20);
 	coneGuardThresh=kvpGetInt("coneGuardThresh",50);
+	FFTPeakMaxA=kvpGetInt("FFTPeakMaxA",2500);
+	FFTPeakMaxB=kvpGetInt("FFTPeakMaxB",2500);
+	FFTPeakWindowL=kvpGetInt("FFTPeakWindowL",0);
+	FFTPeakWindowR=kvpGetInt("FFTPeakWindowR",0);
+	RMSMax=kvpGetInt("RMSMax",200);
+	RMSevents=kvpGetInt("RMSevents",1000);
+	WindowCut=kvpGetInt("WindowCut",400);
+	BeginWindow=kvpGetInt("BeginWindow",100);
+	EndWindow=kvpGetInt("EndWindow",100);
+	MethodMask=kvpGetInt("WindowCut",0xFFFF);
     }
     else {
 	eString=configErrorString (status) ;
