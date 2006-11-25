@@ -9,6 +9,8 @@
 Modified by Ped to use fftw;
 adapted to flight software environment JJB
 8/14/06
+power spectrum peak cutter added JJB
+Sun Nov 26 05:11:19 2006
 
 */
 
@@ -77,6 +79,7 @@ adapted to flight software environment JJB
 
 /*----------------------------------------------------*/
 
+extern int MethodMask,FFTPeakMaxA,FFTPeakMaxB,FFTPeakWindowL,FFTPeakWindowR;
 
 int fftwcorr(float wfm[], float tmpl[], float cout[])
   /*  wfm[] = pointer to float waveform data, 
@@ -96,7 +99,8 @@ int fftwcorr(float wfm[], float tmpl[], float cout[])
   static fftw_plan fft_plan;
   static fftw_plan ifft_plan;
   double stdev, mean, meansum, varsum;
-  int i;
+  double power_spectrum[NPTS],power_avg,power_peakA,power_peakB; 
+  int i,peakok;
   static int mpts = WFRAC*NPTS;  /* use lead fraction for noise stats */
 
   if(first){
@@ -117,46 +121,72 @@ int fftwcorr(float wfm[], float tmpl[], float cout[])
     // Show that initialization has been done
     first=0;
   }
-
   // Calculate FFT of sample wavefrom
   for(i=0;i<NPTS;++i) wfm_in[i]=wfm[i];
   fftw_execute(fft_plan);
-  
-  // Now calculate cross-corelation in place by multyplying FFTs
-  for(i=0;i<=NPTS/2;++i) wfm_fft[i]=wfm_fft[i]*tmpl_fft[i];
+  peakok=0;
+  //look at fft for peaks exceeding 
+  if ((MethodMask&0x0002)!=0){
+       power_avg=0.;
+       power_peakA=0.;
+       power_peakB=0.;
+       for (i=0; i<NPTS; i++){
+	    power_spectrum[i]=wfm_fft[i]*conj(wfm_fft[i]);
+	    power_avg+=power_spectrum[i];
+	    if (power_spectrum[i]>power_peakA) power_peakA=power_spectrum[i];
+	    if (((i>FFTPeakWindowL)&&(i<FFTPeakWindowR)) &&
+		 (power_spectrum[i]>power_peakB)) power_peakB=power_spectrum[i];
+       }
+       power_avg=power_avg/NPTS;
+       if (power_peakA>power_avg*(float)FFTPeakMaxA/100.) peakok=-1;
+       else if (power_peakB>power_avg*(float)FFTPeakMaxB/100.) peakok=-2;
+  }
 
-  // Execute inverse FFT
-  fftw_execute(ifft_plan);
-    
-  /* get statistics on first par of waveform */
-  /* if there is non-thermal noise or signal there, 
-     this won't work very well */
-  mean = meansum =  varsum = stdev = 0.0;
-  for(i=1;i<=mpts;i++){
-    meansum += corr[i];
-    varsum += fabs(corr[i]*corr[i]);
+  if (peakok>=0){
+       // Now calculate cross-corelation in place by multyplying FFTs
+       for(i=0;i<=NPTS/2;++i) wfm_fft[i]=wfm_fft[i]*tmpl_fft[i];
+       
+       // Execute inverse FFT
+       fftw_execute(ifft_plan);
+       
+       /* get statistics on first par of waveform */
+       /* if there is non-thermal noise or signal there, 
+	  this won't work very well */
+       mean = meansum =  varsum = stdev = 0.0;
+       for(i=1;i<=mpts;i++){
+	    meansum += corr[i];
+	    varsum += fabs(corr[i]*corr[i]);
+       }
+       
+       mean = meansum/((double)(mpts));
+       stdev = sqrt(varsum/((double)(mpts)) - (mean*mean) );
+       
+       /* this section to handle goofy data gracefully */
+       if(stdev <= 0.0) {  // how could it be?? nature finds a way
+	    for(i=0;i<NPTS;++i){
+		 cout[i] = corr[i]; 
+	    }  /* don't normalize to sdev */
+	    return(1); /* return here since sdev is not usable */
+       }
+  
+       /* end of stdev section */
+  
+       /* replace the waveform with normalized correlation */
+       for(i=0;i<NPTS;++i){
+	    cout[i] = corr[i]/stdev; 
+       }
+  
+       if(fabs(mean) > 3.0*stdev) return(2);
+  
+       return(0);  /* in this case all is well */
   }
-  
-  mean = meansum/((double)(mpts));
-  stdev = sqrt(varsum/((double)(mpts)) - (mean*mean) );
-  
-  /* this section to handle goofy data gracefully */
-  if(stdev <= 0.0) {  // how could it be?? nature finds a way
-    for(i=0;i<NPTS;++i){
-      cout[i] = corr[i]; 
-    }  /* don't normalize to sdev */
-    return(1); /* return here since sdev is not usable */
+  else
+  {
+       //if we fail, cut this channel
+       //an ugly hack--zero out the waveform
+       for (i=0;i<NPTS; i++){
+	    cout[i]=0.;
+       }
+       return(0);
   }
-  
-  /* end of stdev section */
-  
-  /* replace the waveform with normalized correlation */
-  for(i=0;i<NPTS;++i){
-    cout[i] = corr[i]/stdev; 
-  }
-  
-  if(fabs(mean) > 3.0*stdev) return(2);
-  
-  return(0);  /* in this case all is well */
-
 }
