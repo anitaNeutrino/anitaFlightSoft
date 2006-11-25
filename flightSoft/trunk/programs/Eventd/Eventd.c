@@ -23,8 +23,8 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 100
-#define MAX_CALIB_TIMES 100
+#define MAX_GPS_TIMES 2000
+#define MAX_CALIB_TIMES 2000
 #define EVENT_TIMEOUT 5
 
 #define TIME_MATCH 0.005 //seconds
@@ -91,8 +91,6 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
-    signal(SIGSEGV, sigUsr2Handler);
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -277,29 +275,13 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
     float fracUnix,fracTurf,fracGps;
     numGpsTimeLinks=getListofLinks(GPSD_SUBTIME_LINK_DIR,&gpsSubTimeLinkList);
     
-    if(printToScreen) 	
+    if(verbosity>2 && printToScreen) 	
 	fprintf(stderr,"There are %d gps links.\n",numGpsTimeLinks);
     
-    if(numGpsTimeLinks>MAX_GPS_TIMES) {
-	for(count=0;count<numGpsTimeLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
-		    gpsSubTimeLinkList[count]->d_name);     
-	    removeFile(currentFilename);
-	    sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_DIR,
-		    gpsSubTimeLinkList[count]->d_name);     
-	    removeFile(currentFilename);
-	}
-	for(count=0;count<numGpsTimeLinks;count++)
-	    free(gpsSubTimeLinkList[count]);
-	free(gpsSubTimeLinkList);
-	
-	numGpsTimeLinks=0;
-    }
-
-
+    
     /* need to do something if we ever have more 
        than MAX_GPS_TIMES subTimes.*/
-    if(numGpsStored+numGpsTimeLinks>MAX_GPS_TIMES-100) {
+    if(numGpsStored>MAX_GPS_TIMES-100) {
 	syslog(LOG_ERR,"GPS overload junking %d times\n",numGpsStored);
 	fprintf(stderr,"GPS overload junking %d times\n",numGpsStored);
 	numGpsStored=0;
