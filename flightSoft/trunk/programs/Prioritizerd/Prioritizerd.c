@@ -171,199 +171,210 @@ int main (int argc, char *argv[])
  
     retVal=0;
     /* Main event getting loop. */
-    while(1) {
+
+
+    do {
+	if(printToScreen) printf("Initalizing Prioritizerd\n");
 	retVal=readConfig();
+	if(retVal<0) {
+	    syslog(LOG_ERR,"Problem reading Prioritizerd.config");
+	    printf("Problem reading Prioritizerd.config\n");
+	    exit(1);
+	}
+	currentState=PROG_STATE_RUN;
+	while(currentState==PROG_STATE_RUN) {
+
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 //	usleep(1);
-	numEventLinks=getListofLinks(EVENTD_EVENT_LINK_DIR,&eventLinkList);
-
-	if(!numEventLinks) {
-	    usleep(1000);
-	    continue;
-	}
-
+	    numEventLinks=getListofLinks(EVENTD_EVENT_LINK_DIR,&eventLinkList);
+	    
+	    if(!numEventLinks) {
+		usleep(1000);
+		continue;
+	    }
+	    
 #ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    gettimeofday(&timeStruct2,NULL);
+	    fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 //	printf("Got %d events\n",numEventLinks);
-	/* What to do with our events? */	
-	for(count=0;count<numEventLinks;count++) {
+	    /* What to do with our events? */	
+	    for(count=0;count<numEventLinks;count++) {
 // 	    printf("%s\n",eventLinkList[count]->d_name); 
-	    sscanf(eventLinkList[count]->d_name,"hd_%d.dat",&doingEvent);
-	    sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
-		    eventLinkList[count]->d_name);
-	    sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
-		    doingEvent);
-	    sprintf(bodyFilename,"%s/ev_%d.dat",ACQD_EVENT_DIR,
-		    doingEvent);
+		sscanf(eventLinkList[count]->d_name,"hd_%d.dat",&doingEvent);
+		sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
+			eventLinkList[count]->d_name);
+		sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
+			doingEvent);
+		sprintf(bodyFilename,"%s/ev_%d.dat",ACQD_EVENT_DIR,
+			doingEvent);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    
-	    
-	    retVal=fillBody(&theBody,bodyFilename);
+		
+		
+		retVal=fillBody(&theBody,bodyFilename);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    retVal=fillHeader(&theHeader,hdFilename);
-
+		retVal=fillHeader(&theHeader,hdFilename);
+		
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    //Subtract Pedestals
-	    subtractCurrentPeds(&theBody,&pedSubBody);
-
-	    
+		//Subtract Pedestals
+		subtractCurrentPeds(&theBody,&pedSubBody);
+		
+		
 //	    printf("Event %lu, Body %lu, PS Body %lu\n",theHeader.eventNumber,
 //	       theBody.eventNumber,pedSubBody.eventNumber);
-
+		
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-
-	    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
-	    BuildInstrumentF(&unwrappedBody,&theInstrument);
-	    FFTNumChannels=0.;
-	    HornMatchedFilterAll(&theInstrument,&theXcorr);
-	    if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
-		 // reject this event as narrowband crap
-		 priority=9;
-	    }
-	    else{
-
+		
+		unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
+		BuildInstrumentF(&unwrappedBody,&theInstrument);
+		FFTNumChannels=0.;
+		HornMatchedFilterAll(&theInstrument,&theXcorr);
+		if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
+		    // reject this event as narrowband crap
+		    priority=9;
+		}
+		else{
+		    
 // Ordinary coincidence and scoring
-		 if ((MethodMask&0x4)!=0){
-		      DiscriminateFChannels(&theXcorr,&theDiscriminator,
-					    400,hornDiscWidth,
-					    coneThresh,coneDiscWidth);
-		      FormSectorMajority(&theDiscriminator,&theMajority,
-					 hornSectorWidth);
-		      AnalyseSectorLogic(&theMajority,&sectorAna);
-		      score=GetSecAnaScore(&sectorAna);
-		      score4=score;
-		 }
-		 else
-		 {
-		      score4=0;
-		 }
+		    if ((MethodMask&0x4)!=0){
+			DiscriminateFChannels(&theXcorr,&theDiscriminator,
+					      400,hornDiscWidth,
+					      coneThresh,coneDiscWidth);
+			FormSectorMajority(&theDiscriminator,&theMajority,
+					   hornSectorWidth);
+			AnalyseSectorLogic(&theMajority,&sectorAna);
+			score=GetSecAnaScore(&sectorAna);
+			score4=score;
+		    }
+		    else
+		    {
+			score4=0;
+		    }
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-		 fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
+		    fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
 #endif
-		 if ((MethodMask&0x8)!=0){
-		      DiscriminateFChannels(&theXcorr,&theDiscriminator,
-					    300,hornDiscWidth,
-					    coneThresh,coneDiscWidth);
-		      FormSectorMajority(&theDiscriminator,&theMajority,
-					 hornSectorWidth);
-		      AnalyseSectorLogic(&theMajority,&sectorAna);
-		      score=GetSecAnaScore(&sectorAna);
-		      score3=score;
-		 }
-		 else{
-		      score3=0;
-		 }
+		    if ((MethodMask&0x8)!=0){
+			DiscriminateFChannels(&theXcorr,&theDiscriminator,
+					      300,hornDiscWidth,
+					      coneThresh,coneDiscWidth);
+			FormSectorMajority(&theDiscriminator,&theMajority,
+					   hornSectorWidth);
+			AnalyseSectorLogic(&theMajority,&sectorAna);
+			score=GetSecAnaScore(&sectorAna);
+			score3=score;
+		    }
+		    else{
+			score3=0;
+		    }
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-		 fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
+		    fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
 #endif
 // nonupdating discriminators and majorities
-		 if ((MethodMask & 0x10)!=0){
-		      DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
-						 hornThresh,hornDiscWidth,
-						 coneThresh,coneDiscWidth,
-						 holdoff);
-		      FormSectorMajority(&theNonupdating,&theMajorityNoUp,
-					 hornSectorWidth);
-		      FormSectorMajorityPol(&theNonupdating,&theHorizontal,
-					    hornSectorWidth,0);
-		      FormSectorMajorityPol(&theNonupdating,&theVertical,
+		    if ((MethodMask & 0x10)!=0){
+			DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
+						   hornThresh,hornDiscWidth,
+						   coneThresh,coneDiscWidth,
+						   holdoff);
+			FormSectorMajority(&theNonupdating,&theMajorityNoUp,
+					   hornSectorWidth);
+			FormSectorMajorityPol(&theNonupdating,&theHorizontal,
+					      hornSectorWidth,0);
+			FormSectorMajorityPol(&theNonupdating,&theVertical,
 					    hornSectorWidth,1);
-		      MaxAll=FormSectorCoincidence(&theMajorityNoUp,
-						   &theCoincidenceAll,
-						   delay,2*hornSectorWidth-2,
-						   2*hornSectorWidth-1);
-		      MaxH=FormSectorCoincidence(&theHorizontal,
-						 &theCoincidenceH,
-						 delay,hornSectorWidth-1,
-						 hornSectorWidth-1);
-		      MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
-						 delay,hornSectorWidth-1,
-						 hornSectorWidth-1);
-		 }
-		 else{
-		      MaxAll=0; MaxH=0; MaxV=0;
-		 }
-		 //xcorr peak boxcar method
-		 if ((MethodMask & 0x1)!=0){
-		      PeakBoxcarAll(&theXcorr,&theBoxcar,
-				    hornDiscWidth,hornGuardOffset,
-				    hornGuardWidth,hornGuardThresh,
-				    coneDiscWidth,coneGuardOffset,
-				    coneGuardWidth,coneGuardThresh);
-		      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
-					 hornSectorWidth);
-		      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
+			MaxAll=FormSectorCoincidence(&theMajorityNoUp,
+						     &theCoincidenceAll,
+						     delay,2*hornSectorWidth-2,
+						     2*hornSectorWidth-1);
+			MaxH=FormSectorCoincidence(&theHorizontal,
+						   &theCoincidenceH,
+						   delay,hornSectorWidth-1,
+						   hornSectorWidth-1);
+			MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
+						   delay,hornSectorWidth-1,
+						   hornSectorWidth-1);
+		    }
+		    else{
+			MaxAll=0; MaxH=0; MaxV=0;
+		    }
+		    //xcorr peak boxcar method
+		    if ((MethodMask & 0x1)!=0){
+			PeakBoxcarAll(&theXcorr,&theBoxcar,
+				      hornDiscWidth,hornGuardOffset,
+				      hornGuardWidth,hornGuardThresh,
+				      coneDiscWidth,coneGuardOffset,
+				      coneGuardWidth,coneGuardThresh);
+			FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
+					   hornSectorWidth);
+			FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
 					    hornSectorWidth,0);
-		      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
-					    hornSectorWidth,1);
-		      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
-						      &theCoincidenceBoxcarAll,
-						      8,2*hornSectorWidth-1,
-						      2*hornSectorWidth-2);
-		      MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
-						    &theCoincidenceBoxcarH,
-						    8,hornSectorWidth-1,
-						    hornSectorWidth-1);
-		      MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
-						    &theCoincidenceBoxcarV,
-						    8,hornSectorWidth-1,
-						    hornSectorWidth-1);
-		 }
-		 else{
-		      MaxBoxAll=0; MaxBoxH=0; MaxBoxV=0;
-		 }
+			FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
+					      hornSectorWidth,1);
+			MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
+							&theCoincidenceBoxcarAll,
+							8,2*hornSectorWidth-1,
+							2*hornSectorWidth-2);
+			MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
+						      &theCoincidenceBoxcarH,
+						      8,hornSectorWidth-1,
+						      hornSectorWidth-1);
+			MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
+						      &theCoincidenceBoxcarV,
+						      8,hornSectorWidth-1,
+						      hornSectorWidth-1);
+		    }
+		    else{
+			MaxBoxAll=0; MaxBoxH=0; MaxBoxV=0;
+		    }
 		 //Sillyness forever...
 		 //Must determine priority here
 //	    priority=1;
 //revised scoring here
-		 priority=8;
-		 if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
-		      priority=1;
-		 else if (MaxBoxAll>=4*hornSectorWidth-4 ||
-			  MaxBoxH>=2*hornSectorWidth-1 || 
-			  MaxBoxV>=2*hornSectorWidth-1 ) 
-		      priority=2;
-		 else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)
-		      priority=3;
-		 else if (MaxAll>=4*hornSectorWidth-4) priority=4;
-		 else if (MaxH>=2*hornSectorWidth-1 || 
-			  MaxV>=2*hornSectorWidth-1)
-		      priority=4;
-		 else if(score4>=600) priority=5;
-		 else if(score3>1900) priority=6;
-		 else if(score3>1500) priority=6;
-		 else if(score3>1000) priority=7;
-		 else if(score3>600) priority=7;
-	    }
-	    theHeader.priority=priority;
+		    priority=8;
+		    if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
+			priority=1;
+		    else if (MaxBoxAll>=4*hornSectorWidth-4 ||
+			     MaxBoxH>=2*hornSectorWidth-1 || 
+			     MaxBoxV>=2*hornSectorWidth-1 ) 
+			priority=2;
+		    else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)
+			priority=3;
+		    else if (MaxAll>=4*hornSectorWidth-4) priority=4;
+		    else if (MaxH>=2*hornSectorWidth-1 || 
+			     MaxV>=2*hornSectorWidth-1)
+			priority=4;
+		    else if(score4>=600) priority=5;
+		    else if(score3>1900) priority=6;
+		    else if(score3>1500) priority=6;
+		    else if(score3>1000) priority=7;
+		    else if(score3>600) priority=7;
+		}
+		theHeader.priority=priority;
 	
-	    //Now Fill Generic Header and calculate checksum
-	    fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
+		//Now Fill Generic Header and calculate checksum
+		fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
   
 	     
-	    //Write body and header for Archived
-	    sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
-		    theHeader.eventNumber);
-	    rename(bodyFilename,archiveBodyFilename);
+		//Write body and header for Archived
+		sprintf(archiveBodyFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+			theHeader.eventNumber);
+		rename(bodyFilename,archiveBodyFilename);
 //	    unlink(bodyFilename);
 
 //	    sprintf(archiveBodyFilename,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
@@ -371,69 +382,71 @@ int main (int argc, char *argv[])
 //	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
 
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    sprintf(archiveHdFilename,"%s/hd_%lu.dat",PRIORITIZERD_EVENT_DIR,
-		    theHeader.eventNumber);
-	    writeHeader(&theHeader,archiveHdFilename);
+		sprintf(archiveHdFilename,"%s/hd_%lu.dat",PRIORITIZERD_EVENT_DIR,
+			theHeader.eventNumber);
+		writeHeader(&theHeader,archiveHdFilename);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
+		makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
     
-	    //Write Header and make Link for telemetry 	    
-	    sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
-		    doingEvent);
-	    retVal=writeHeader(&theHeader,telemHdFilename);
+		//Write Header and make Link for telemetry 	    
+		sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
+			doingEvent);
+		retVal=writeHeader(&theHeader,telemHdFilename);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
+		makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    
-	    /* Delete input */
-	    removeFile(linkFilename);
+		/* Delete input */
+		removeFile(linkFilename);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 //	    removeFile(bodyFilename);
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"12 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    removeFile(hdFilename);
+		removeFile(hdFilename);
 
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"13 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
 //	    wasteTime(&theBody);
 
 #ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"14 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		gettimeofday(&timeStruct2,NULL);
+		fprintf(timeFile,"14 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
-	}
+	    }
 	
-	/* Free up the space used by dir queries */
-        for(count=0;count<numEventLinks;count++)
-            free(eventLinkList[count]);
-        free(eventLinkList);
+	    /* Free up the space used by dir queries */
+	    for(count=0;count<numEventLinks;count++)
+		free(eventLinkList[count]);
+	    free(eventLinkList);
 //	usleep(10000);
-    }	
+	}
+    } while(currentState==PROG_STATE_INIT); 
+    unlink(prioritizerdPidFile);    
 }
 
 void wasteTime(AnitaEventBody_t *bdPtr) {

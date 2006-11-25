@@ -283,7 +283,8 @@ void commandHandler(unsigned char *cmd)
     
     retVal=writeCommandAndLink(&theCmd);
 
-	       
+    
+    //Need to add here
 
 /*     if (cmd[0] == 129) { */
 /* 	fprintf(stderr, "DISABLE_DATA_COLL\n"); */
