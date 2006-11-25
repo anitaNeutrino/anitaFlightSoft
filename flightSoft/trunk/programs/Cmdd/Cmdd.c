@@ -37,6 +37,7 @@ int sendConfig(int progMask);
 int defaultConfig(int progMask);
 int lastConfig(int progMask);
 int switchConfig(int progMask,unsigned char configId);
+int saveConfig(int progMask,unsigned char configId);
 int killPrograms(int progMask);
 int startPrograms(int progMask);
 int respawnPrograms(int progMask);
@@ -596,7 +597,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ivalue2=theCmd->cmd[2];
 	    if(ivalue<0 || ivalue>9) ivalue=-1;
 	    if(ivalue2<0 || ivalue2>9) ivalue2=-1;
-	    configModifyInt("Archived.config","archived","priorityPPS1",ivalue,&rawtime);
+	    configModifyInt("Archived.config","archived","priorityPPS1",ivalue,NULL);
 	    configModifyInt("Archived.config","archived","priorityPPS2",ivalue2,&rawtime);
 	    retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
 	    return rawtime;
@@ -880,7 +881,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case ACQD_SOFT_TRIG_PERIOD:
 	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","trigger","softTrigSleepPeriod",ivalue,&rawtime);
+	    configModifyInt("Acqd.config","trigger","softTrigSleepPeriod",ivalue,NULL);
 	    if(ivalue>0) 
 		configModifyInt("Acqd.config","trigger","sendSoftTrig",1,&rawtime);
 	    else
@@ -945,7 +946,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case ACQD_SET_GLOBAL_THRESHOLD: 	    
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue,&rawtime);
+	    configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue,NULL);
 	    if(ivalue>0) 
 		configModifyInt("Acqd.config","thresholds","setGlobalThreshold",1,&rawtime);
 	    else
@@ -1005,7 +1006,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	case ACQD_SET_RATE_SERVO:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[1]<<8);
 	    if(ivalue>0) {
-		configModifyInt("Acqd.config","rates","enableRateServo",1,&rawtime);
+		configModifyInt("Acqd.config","rates","enableRateServo",1,NULL);
 		fvalue=((float)ivalue)/1000.;
 		configModifyFloat("Acqd.config","rates","rateGoal",fvalue,&rawtime);
 	    }
@@ -1088,6 +1089,16 @@ int executeCommand(CommandStruct_t *theCmd)
 	    configModifyInt("Monitord.config","monitord","maxEventQueueSize",ivalue,&rawtime);	
 	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
 	    return rawtime;
+	case MONITORD_INODES_KILL_ACQD:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Monitord.config","monitord","inodesKillAcqd",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;
+	case MONITORD_INODES_DUMP_DATA:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Monitord.config","monitord","inodesDumpData",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;
 	case PRIORITIZERD_COMMAND:
 	    ivalue=theCmd->cmd[1]; //Command num
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
@@ -1113,6 +1124,9 @@ int executeCommand(CommandStruct_t *theCmd)
 	case SWITCH_CONFIG:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    return switchConfig(ivalue,theCmd->cmd[3]);
+	case SAVE_CONFIG:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    return saveConfig(ivalue,theCmd->cmd[3]);
 	case LAST_CONFIG:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    return lastConfig(ivalue);
@@ -1252,6 +1266,40 @@ int switchConfig(int progMask, unsigned char configId)
     if(errorCount) return 0;
     return rawtime;
 }
+
+
+int saveConfig(int progMask, unsigned char configId) 
+{
+    if(configId<10) return -1;
+    time_t rawtime=time(NULL);
+//    time(&rawtime);
+    int retVal;
+    int errorCount=0;
+    ProgramId_t prog;
+    char configFile[FILENAME_MAX];
+    char configFileNew[FILENAME_MAX];
+    
+    int testMask;	
+
+    printf("saveConfig %d %d\n",progMask,configId);
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+	testMask=getIdMask(prog);
+//	printf("%d %d\n",progMask,testMask);
+	if(progMask&testMask) {
+	    sprintf(configFile,"/home/anita/flightSoft/config/%s.config",
+		    getProgName(prog));
+	    sprintf(configFileNew,"/home/anita/flightSoft/config/%s.config.%d",
+		    getProgName(prog),configId);
+
+	    retVal=copyFile(configFile,configFileNew);
+
+	}
+    }
+    if(errorCount) return 0;
+    return rawtime;
+}
+
+
 
 int lastConfig(int progMask)
 {

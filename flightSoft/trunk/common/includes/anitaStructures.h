@@ -70,6 +70,7 @@
 #define VER_ZIPPED_FILE 1
 #define VER_ZIPPED_PACKET 1
 #define VER_RUN_START 1
+#define VER_OTHER_MON 1
 #endif
 
 
@@ -109,7 +110,8 @@ typedef enum {
     PACKET_SLOW_FULL = 0x801,
     PACKET_ZIPPED_PACKET = 0x900, // Is just a zipped version of another packet
     PACKET_ZIPPED_FILE = 0xa00, // Is a zipped file
-    PACKET_RUN_START = 0xb00 
+    PACKET_RUN_START = 0xb00, 
+    PACKET_OTHER_MONITOR = 0xb01 
 } PacketCode_t;
 
 typedef enum {
@@ -621,6 +623,18 @@ typedef struct {
     DiskSpaceStruct_t diskInfo;
     QueueStruct_t queueInfo;
 } MonitorStruct_t;
+
+typedef struct {
+    GenericHeader_t gHdr;
+    unsigned long unixTime;
+    unsigned long ramDiskInodes;
+    unsigned long runStartTime;
+    unsigned long runStartEventNumber; //Start eventNumber
+    unsigned long runNumber; //Run number
+    unsigned short dirFiles[3]; // /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
+    unsigned short dirLinks[3]; // /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
+    unsigned short otherFlag;
+} OtherMonitorStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;

@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
 
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -31,6 +33,10 @@ void checkProcesses();
 int getIdMask(ProgramId_t prog);
 char *getPidFile(ProgramId_t prog);
 char *getProgName(ProgramId_t prog);
+int getRamdiskInodes();
+void fillOtherStruct(OtherMonitorStruct_t *otherPtr);
+int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr);
+
 
 // Global Variables
 int printToScreen=0;
@@ -39,6 +45,8 @@ int monitorPeriod=60; //In seconds
 int watchProcesses=0;
 int ramdiskKillAcqd=50;
 int ramdiskDumpData=5;
+int inodesKillAcqd=10000;
+int inodesDumpData=2000;
 int killedAcqd=0;
 int acqdKillTime=0;
 int maxAcqdWaitPeriod=180;
@@ -74,9 +82,12 @@ char usbExtName[FILENAME_MAX];
 int hkDiskBitMask;
 int eventDiskBitMask;
 AnitaHkWriterStruct_t monWriter;
+AnitaHkWriterStruct_t otherMonWriter;
+
 
 char *diskLocations[8]={"/tmp","/static","/home",SAFE_DATA_MOUNT,PUCK_DATA_MOUNT,BLADE_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT};
-
+char *otherDirLoc[3]={ACQD_EVENT_DIR,EVENTD_EVENT_DIR,PRIORITIZERD_EVENT_DIR};
+char *otherLinkLoc[3]={ACQD_EVENT_LINK_DIR,EVENTD_EVENT_LINK_DIR,PRIORITIZERD_EVENT_LINK_DIR};
 
 int main (int argc, char *argv[])
 {
@@ -84,6 +95,7 @@ int main (int argc, char *argv[])
     int retVal,pri;
 //    DiskSpaceStruct_t diskSpace;
     MonitorStruct_t monData;
+    OtherMonitorStruct_t otherData;
 
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -135,17 +147,23 @@ int main (int argc, char *argv[])
 	    retVal=checkDisks(&(monData.diskInfo));	    
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
-	    writeFileAndLink(&monData);
+	    fillOtherStruct(&otherData);
+
+
 
 
 	    printf("ramDiskSpace: %d mb\n",monData.diskInfo.diskSpace[0]);
 	    if(!killedAcqd) {
-		if(monData.diskInfo.diskSpace[0]<ramdiskDumpData) {		
+		//Need to put inode check here as well
+
+		if(monData.diskInfo.diskSpace[0]<ramdiskDumpData || 
+		   otherData.ramDiskInodes<inodesDumpData) {		
 		    theCmd.numCmdBytes=1;
 		    theCmd.cmd[0]=CLEAR_RAMDISK;
 		    writeCommandAndLink(&theCmd);
 		}
-		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd) {		
+		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd|| 
+			otherData.ramDiskInodes<inodesKillAcqd) {		
 		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_KILL_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
@@ -201,6 +219,11 @@ int main (int argc, char *argv[])
 	    if((monData.unixTime-startTime)>60) {
 		checkProcesses();
 	    }
+
+
+	    writeFileAndLink(&monData);
+	    writeOtherFileAndLink(&otherData);
+
 
 //	    exit(0);
 //	    usleep(1);
@@ -376,6 +399,8 @@ int readConfigFile()
 	ramdiskKillAcqd=kvpGetInt("ramdiskKillAcqd",50);
 	ramdiskDumpData=kvpGetInt("ramdiskDumpData",5);
 	maxAcqdWaitPeriod=kvpGetInt("maxAcqdWaitPeriod",180);
+	inodesKillAcqd=kvpGetInt("inodesKillAcqd",10000);
+	inodesDumpData=kvpGetInt("inodesDumpData",2000);
     }
     else {
 	eString=configErrorString (status) ;
@@ -390,7 +415,9 @@ int readConfigFile()
 	       );
 	       
     makeDirectories(MONITOR_TELEM_LINK_DIR);
+    makeDirectories(CMDD_COMMAND_LINK_DIR);
     return status;
+
 }
 
 int checkDisks(DiskSpaceStruct_t *dsPtr) {
@@ -483,7 +510,7 @@ int checkQueues(QueueStruct_t *queuePtr) {
 	if(((short)numLinks)==-1) {
 	    retVal--;
 	}
-	else if(numLinks>200) {
+	else if(numLinks>maxEventQueueSize) {
 	    //purge directory
 	    purgeDirectory(count);
 	}
@@ -552,6 +579,12 @@ void prepWriterStructs() {
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	monWriter.currentFilePtr[diskInd]=0;
     monWriter.writeBitMask=hkDiskBitMask;
+
+    sprintf(otherMonWriter.relBaseName,"%s/",MONITOR_ARCHIVE_DIR);
+    sprintf(otherMonWriter.filePrefix,"othermon");
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	otherMonWriter.currentFilePtr[diskInd]=0;
+    otherMonWriter.writeBitMask=hkDiskBitMask;
 }
 
 
@@ -643,4 +676,74 @@ char *getPidFile(ProgramId_t prog) {
 	default: break;
     }
     return NULL;
+}
+
+
+void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
+{
+    int retVal=0;
+    otherPtr->unixTime=time(NULL);
+    otherPtr->ramDiskInodes=getRamdiskInodes();
+    if(printToScreen)
+	printf("Ramdisk inodes: %lu\n",otherPtr->ramDiskInodes);
+    otherPtr->runStartTime=0;
+    otherPtr->runStartEventNumber=0;
+    otherPtr->runNumber=0;
+
+    FILE *fp = fopen(RUN_START_FILE,"rb");
+    if(fp) {
+	RunStart_t runStart;
+	retVal=fread(&runStart,sizeof(RunStart_t),1,fp);
+	if(retVal>0) {
+	    otherPtr->runStartTime=runStart.unixTime;
+	    otherPtr->runStartEventNumber=runStart.eventNumber;
+	    otherPtr->runNumber=runStart.runNumber;
+	}	    	           
+	fclose(fp);
+    }
+    int i;
+    unsigned short numLinks=0;
+    
+    for(i=0;i<3;i++) {
+	numLinks=countFilesInDir(otherDirLoc[i]);
+	otherPtr->dirFiles[i]=numLinks;
+	numLinks=countFilesInDir(otherLinkLoc[i]);
+	otherPtr->dirLinks[i]=numLinks;
+    }	
+}
+
+int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr) {
+    char theFilename[FILENAME_MAX];
+    int retVal=0;
+    
+    fillGenericHeader(otherPtr,PACKET_OTHER_MONITOR,sizeof(OtherMonitorStruct_t));
+    
+    sprintf(theFilename,"%s/othermon_%ld.dat",
+	    MONITOR_TELEM_DIR,otherPtr->unixTime);
+    retVal=normalSingleWrite((unsigned char*)otherPtr,theFilename,sizeof(OtherMonitorStruct_t));
+    retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
+
+    retVal=cleverHkWrite((unsigned char*)otherPtr,sizeof(OtherMonitorStruct_t),
+			 otherPtr->unixTime,&otherMonWriter);
+    if(retVal<0) {
+	//Had an error
+    }
+    
+    return retVal;        
+}
+
+
+int getRamdiskInodes() {
+    struct statvfs diskStat;
+    static int errorCounter=0;
+    int retVal=statvfs("/tmp",&diskStat); 
+    if(retVal<0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Unable to statvfs /tmp: %s",strerror(errno));  
+	    fprintf(stderr,"Unable to statvfs /tmp: %s\n",strerror(errno));            
+	}
+//	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
+	return 0;
+    }    
+    return diskStat.f_favail;
 }

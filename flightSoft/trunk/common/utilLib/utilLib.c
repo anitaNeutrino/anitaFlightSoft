@@ -822,6 +822,7 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
 }
 
 
+
 unsigned long getDiskSpace(char *dirName) {
     struct statvfs diskStat;
     static int errorCounter=0;
@@ -1617,6 +1618,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_ZIPPED_FILE: gHdr->verId=VER_ZIPPED_FILE; break;
 	case PACKET_ZIPPED_PACKET: gHdr->verId=VER_ZIPPED_PACKET; break;
 	case PACKET_RUN_START: gHdr->verId=VER_RUN_START; break;
+	case PACKET_OTHER_MONITOR: gHdr->verId=VER_OTHER_MON; break;
 	default: 
 	    gHdr->verId=0; break;
     }
@@ -1687,6 +1689,8 @@ int checkPacket(void *thePtr)
 	    break;
 	case PACKET_RUN_START: packetSize=sizeof(RunStart_t); 
 	    break;
+	case PACKET_OTHER_MONITOR: packetSize=sizeof(OtherMonitorStruct_t); 
+	    break;
 	case PACKET_ZIPPED_PACKET: break;
 	case PACKET_ZIPPED_FILE: break;
 	default: 
@@ -1732,6 +1736,7 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_ZIPPED_PACKET: string="ZippedPacket_t"; break;
 	case PACKET_ZIPPED_FILE: string="ZippedFile_t"; break;
 	case PACKET_RUN_START: string="RunStart_t"; break;
+	case PACKET_OTHER_MONITOR: string="OtherMonitorStruct_t"; break;
 
 	default: 
 	    string="Unknown Packet Code"; break;
