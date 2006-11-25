@@ -558,6 +558,10 @@ void fillBufferWithHk()
 		     LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR,
 		     sizeof(CommandEcho_t)); 
     }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
+		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+    }  
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullLabChipPedStruct_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
 		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
@@ -583,11 +587,7 @@ void fillBufferWithHk()
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(TurfRateStruct_t)) {	
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,TURFHK_TELEM_DIR,
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
-    }
-    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
-		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-    }        
+    }      
     if(numBytesInBuffer>0)
 	doWrite();
     if((LOS_MAX_BYTES-numBytesInBuffer)>4000) {	

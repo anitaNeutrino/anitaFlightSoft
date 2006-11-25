@@ -9,7 +9,9 @@
 #include "GenerateScore.h"
 #include "Filters.h"
 #include "pedestalLib/pedestalLib.h"
+#include "utilLib/utilLib.h"
 #include <sys/time.h>
+#include <signal.h>
 
 //#define TIME_DEBUG 1
 //#define WRITE_DEBUG_FILE
@@ -112,7 +114,15 @@ int main (int argc, char *argv[])
 	exit(0);
     }
 #endif
-    	    
+    	
+
+
+    /* Set signal handlers */
+    signal(SIGUSR1, sigUsr1Handler);
+    signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, sigUsr2Handler);
+    signal(SIGINT, sigUsr2Handler);
+    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
@@ -218,44 +228,44 @@ int main (int argc, char *argv[])
 //	    printf("400 %d %f %d\n",hornDiscWidth,coneThresh,coneDiscWidth);
 
 // Ordinalry coincidence and scoring
-	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
-				  400,hornDiscWidth,
-				  coneThresh,coneDiscWidth);
-	    FormSectorMajority(&theDiscriminator,&theMajority,
-			       hornSectorWidth);
-	    AnalyseSectorLogic(&theMajority,&sectorAna);
-	    score=GetSecAnaScore(&sectorAna);
-	    score4=score;
+/* 	    DiscriminateFChannels(&theXcorr,&theDiscriminator, */
+/* 				  400,hornDiscWidth, */
+/* 				  coneThresh,coneDiscWidth); */
+/* 	    FormSectorMajority(&theDiscriminator,&theMajority, */
+/* 			       hornSectorWidth); */
+/* 	    AnalyseSectorLogic(&theMajority,&sectorAna); */
+/* 	    score=GetSecAnaScore(&sectorAna); */
+/* 	    score4=score; */
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
 	    fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
 #endif
-	    DiscriminateFChannels(&theXcorr,&theDiscriminator,
-				  300,hornDiscWidth,
-				  coneThresh,coneDiscWidth);
-	    FormSectorMajority(&theDiscriminator,&theMajority,
-			       hornSectorWidth);
-	    AnalyseSectorLogic(&theMajority,&sectorAna);
-	    score=GetSecAnaScore(&sectorAna);
-	    score3=score;
+/* 	    DiscriminateFChannels(&theXcorr,&theDiscriminator, */
+/* 				  300,hornDiscWidth, */
+/* 				  coneThresh,coneDiscWidth); */
+/* 	    FormSectorMajority(&theDiscriminator,&theMajority, */
+/* 			       hornSectorWidth); */
+/* 	    AnalyseSectorLogic(&theMajority,&sectorAna); */
+/* 	    score=GetSecAnaScore(&sectorAna); */
+/* 	    score3=score; */
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
 	    fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
 #endif
 // nonupdating discriminators and majorities
-	    DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
-				       hornThresh,hornDiscWidth,
-				       coneThresh,coneDiscWidth,
-				       holdoff);
-	    FormSectorMajority(&theNonupdating,&theMajorityNoUp,hornSectorWidth);
-	    FormSectorMajorityPol(&theNonupdating,&theHorizontal,hornSectorWidth,0);
-	    FormSectorMajorityPol(&theNonupdating,&theVertical,hornSectorWidth,1);
-	    MaxAll=FormSectorCoincidence(&theMajorityNoUp,&theCoincidenceAll,
-				  delay,2*hornSectorWidth-2,2*hornSectorWidth-1);
-	    MaxH=FormSectorCoincidence(&theHorizontal,&theCoincidenceH,
-				  delay,hornSectorWidth-1,hornSectorWidth-1);
-	    MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
-				delay,hornSectorWidth-1,hornSectorWidth-1);
+/* 	    DiscriminateFChannels_noup(&theXcorr,&theNonupdating, */
+/* 				       hornThresh,hornDiscWidth, */
+/* 				       coneThresh,coneDiscWidth, */
+/* 				       holdoff); */
+/* 	    FormSectorMajority(&theNonupdating,&theMajorityNoUp,hornSectorWidth); */
+/* 	    FormSectorMajorityPol(&theNonupdating,&theHorizontal,hornSectorWidth,0); */
+/* 	    FormSectorMajorityPol(&theNonupdating,&theVertical,hornSectorWidth,1); */
+/* 	    MaxAll=FormSectorCoincidence(&theMajorityNoUp,&theCoincidenceAll, */
+/* 				  delay,2*hornSectorWidth-2,2*hornSectorWidth-1); */
+/* 	    MaxH=FormSectorCoincidence(&theHorizontal,&theCoincidenceH, */
+/* 				  delay,hornSectorWidth-1,hornSectorWidth-1); */
+/* 	    MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV, */
+/* 				delay,hornSectorWidth-1,hornSectorWidth-1); */
 	    //xcorr peak boxcar method
 	    PeakBoxcarAll(&theXcorr,&theBoxcar,
 		   hornDiscWidth,hornGuardOffset,
@@ -290,17 +300,17 @@ int main (int argc, char *argv[])
 	    else if (MaxBoxAll>=4*hornSectorWidth-4 ||
 		     MaxBoxH>=2*hornSectorWidth-1 || 
 		     MaxBoxV>=2*hornSectorWidth-1 ) 
-		 priority=2;
-	    else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth) 
-		 priority=3;
-	    else if (MaxAll>=4*hornSectorWidth-4) priority=4;
-	    else if (MaxH>=2*hornSectorWidth-1 || MaxH>=2*hornSectorWidth-1) 
-		 priority=4;
-	    else if(score4>=600) priority=5;
-	    else if(score3>1900) priority=6;
-	    else if(score3>1500) priority=6;
-	    else if(score3>1000) priority=7;
-	    else if(score3>600) priority=8;
+		 priority=2
+/* 	    else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)  */
+/* 		 priority=3; */
+/* 	    else if (MaxAll>=4*hornSectorWidth-4) priority=4; */
+/* 	    else if (MaxH>=2*hornSectorWidth-1 || MaxH>=2*hornSectorWidth-1)  */
+/* 		 priority=4; */
+/* 	    else if(score4>=600) priority=5; */
+/* 	    else if(score3>1900) priority=6; */
+/* 	    else if(score3>1500) priority=6; */
+/* 	    else if(score3>1000) priority=7; */
+/* 	    else if(score3>600) priority=8; */
 
 	    theHeader.priority=priority;
 	

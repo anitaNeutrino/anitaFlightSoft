@@ -62,6 +62,8 @@ int puckCloneMask;
 int usbintCloneMask;
 int priorityPPS1;
 int priorityPPS2;
+float pps1FractionDelete=0;
+float pps2FractionDelete=0;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
@@ -208,6 +210,8 @@ int readConfigFile()
 	telemType=kvpGetInt("telemType",1);
 	priorityPPS1=kvpGetInt("priorityPPS1",3);
 	priorityPPS2=kvpGetInt("priorityPPS2",2);
+	pps1FractionDelete=kvpGetFloat("pps1FractionDelete",0);
+	pps2FractionDelete=kvpGetFloat("pps2FractionDelete",0);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priDiskEncodingType",
 				   priDiskEncodingType,&tempNum);	
@@ -299,21 +303,22 @@ void checkEvents()
     char currentHeadname[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     char currentBodyname[FILENAME_MAX];
-    char currentPSBodyname[FILENAME_MAX];
+//    char currentPSBodyname[FILENAME_MAX];
 
     numLinks=getListofLinks(PRIORITIZERD_EVENT_LINK_DIR,&linkList);
     if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
+    eventWriter.justHeader=0;
     for(count=0;count<numLinks;count++) {
 	sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,
 		linkList[count]->d_name);
 	sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,
 		linkList[count]->d_name);
 	retVal=fillHeader(&theHead,currentHeadname);
-
+	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+		theHead.eventNumber);
 	if(!shouldWeThrowAway(theHead.priority&0xf) ) {
 	    
-	    sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
-		theHead.eventNumber);
+	    
 	    retVal=fillBody(&theBody,currentBodyname);
 //	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
 //		theHead.eventNumber);
@@ -328,12 +333,9 @@ void checkEvents()
 	    processEvent();
 	}
 	else {
-	    int pri=theHead.priority&0xf;
-	    if(pri>9) pri=9;
-	    char headName[FILENAME_MAX];
-	    sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-	    writeHeader(&theHead,headName);
-	    makeLink(headName,eventTelemLinkDirs[pri]);
+	    eventWriter.justHeader=1;
+	    processEvent();
+	    
 	}
 
 	removeFile(currentLinkname);
@@ -353,7 +355,7 @@ void processEvent()
 // This just fills the buffer with 9 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
 {
 
-    CompressErrorCode_t retVal;
+    CompressErrorCode_t retVal=0;
     EncodeControlStruct_t diskEncCntl;
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
@@ -389,32 +391,35 @@ void processEvent()
 
     //2) Pack Event For On Board Storage
     //Now depending on which option is selected we may either write out pedSubbed or not pedSubbed events to the hard disk (or just AnitaEventBody_t structs)
-    memset(outputBuffer,0,MAX_WAVE_BUFFER);
-    switch(onboardStorageType) {
-	case ARCHIVE_RAW:
-	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-	    numBytes=sizeof(AnitaEventBody_t);
-	    retVal=COMPRESS_E_OK;
-	    break;
-	case ARCHIVE_PEDSUBBED:
-	    memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
-	    numBytes=sizeof(PedSubbedEventBody_t);
-	    retVal=COMPRESS_E_OK;
-	    break;
-	case ARCHIVE_ENCODED:	    
-	    retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
-	    break;
-	case ARCHIVE_PEDSUBBED_ENCODED:	    
-	    retVal=packPedSubbedEvent(&pedSubBody,&diskEncCntl,outputBuffer,&numBytes);
-	    break;
-	default:
-	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-	    numBytes=sizeof(AnitaEventBody_t);
-	    retVal=COMPRESS_E_OK;
-	    break;	    
+    if(!eventWriter.justHeader) {
+	memset(outputBuffer,0,MAX_WAVE_BUFFER);
+	switch(onboardStorageType) {
+	    case ARCHIVE_RAW:
+		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+		numBytes=sizeof(AnitaEventBody_t);
+		retVal=COMPRESS_E_OK;
+		break;
+	    case ARCHIVE_PEDSUBBED:
+		memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+		numBytes=sizeof(PedSubbedEventBody_t);
+		retVal=COMPRESS_E_OK;
+		break;
+	    case ARCHIVE_ENCODED:	    
+		retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
+		break;
+	    case ARCHIVE_PEDSUBBED_ENCODED:	    
+		retVal=packPedSubbedEvent(&pedSubBody,&diskEncCntl,outputBuffer,&numBytes);
+		break;
+	    default:
+		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+		numBytes=sizeof(AnitaEventBody_t);
+		retVal=COMPRESS_E_OK;
+		break;	    
+	}
     }
+    else numBytes=0;
 
-    if(retVal==COMPRESS_E_OK) {
+    if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
 	writeOutputToDisk(numBytes);
     }
     else {
@@ -424,28 +429,29 @@ void processEvent()
 
     //3) Pack Event For Telemetry
     //Again we have a range of options for event telemetry
-    memset(outputBuffer,0,MAX_WAVE_BUFFER);
-    switch(telemType) {
-	case ARCHIVE_RAW:
-	    //Need to add routine
-	    memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-	    numBytes=sizeof(AnitaEventBody_t);
-	    retVal=COMPRESS_E_OK;
-	    break;
-	case ARCHIVE_PEDSUBBED:
-	    //Need to add routine
-	    memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
-	    numBytes=sizeof(PedSubbedEventBody_t);
-	    retVal=COMPRESS_E_OK;
-	    break;
-	case ARCHIVE_ENCODED:	    
-	    retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
-	    break;
-	case ARCHIVE_PEDSUBBED_ENCODED:	    
-	    retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
-	    break;
+    if(!eventWriter.justHeader) {
+	memset(outputBuffer,0,MAX_WAVE_BUFFER);
+	switch(telemType) {
+	    case ARCHIVE_RAW:
+		//Need to add routine
+		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+		numBytes=sizeof(AnitaEventBody_t);
+		retVal=COMPRESS_E_OK;
+		break;
+	    case ARCHIVE_PEDSUBBED:
+		//Need to add routine
+		memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+		numBytes=sizeof(PedSubbedEventBody_t);
+		retVal=COMPRESS_E_OK;
+		break;
+	    case ARCHIVE_ENCODED:	    
+		retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
+		break;
+	    case ARCHIVE_PEDSUBBED_ENCODED:	    
+		retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
+		break;
+	}
     }
-
     if(writeTelem) {
 	if(retVal==COMPRESS_E_OK)
 	    writeOutputForTelem(numBytes);
@@ -490,17 +496,18 @@ void writeOutputForTelem(int numBytes) {
 	pri=priorityPPS2;
    
     if(pri<0 || pri>9) pri=9;
-
-    sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-    sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-    retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
-    if(retVal<0) {
-	printf("Something wrong while writing %s\n",bodyName);
+    if(!eventWriter.justHeader) {
+	sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+	sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+	retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
+	if(retVal<0) {
+	    printf("Something wrong while writing %s\n",bodyName);
+	}
+	else {
+	    writeHeader(&theHead,headName);
+	    makeLink(headName,eventTelemLinkDirs[pri]);
+	} 
     }
-    else {
-	writeHeader(&theHead,headName);
-	makeLink(headName,eventTelemLinkDirs[pri]);
-    } 
 }
 
 

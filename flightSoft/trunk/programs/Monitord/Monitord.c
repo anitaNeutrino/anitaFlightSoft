@@ -198,8 +198,9 @@ int main (int argc, char *argv[])
 		    writeCommandAndLink(&theCmd);
 		}
 	    }
-	    if((monData.unixTime-startTime)>60)
+	    if((monData.unixTime-startTime)>60) {
 		checkProcesses();
+	    }
 
 //	    exit(0);
 //	    usleep(1);
@@ -564,6 +565,7 @@ void checkProcesses()
     int sendCommand=0;
     for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
 	char *pidFile=getPidFile(prog);
+//	syslog(LOG_INFO,"Trying prog: %d %s\n",prog,pidFile); 
 	FILE *test = fopen(pidFile,"r");
 
 	if(!test) {

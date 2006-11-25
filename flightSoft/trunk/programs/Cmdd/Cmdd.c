@@ -156,8 +156,9 @@ int main (int argc, char *argv[])
 		for(count=0;count<numCmds;count++) {
 		    if(printToScreen) 
 			printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
-		    syslog(LOG_INFO,"Checking Cmd %d, numBytes %d\n",
-			   theCmds[count].cmd[0],theCmds[count].numCmdBytes);
+		    syslog(LOG_INFO,"Checking Cmd %d %d, numBytes %d\n",
+			   theCmds[count].cmd[0],theCmds[count].cmd[1],
+			   theCmds[count].numCmdBytes);
 		    
 		    if(checkCommand(&theCmds[count])) {
 			if(printToScreen) 
@@ -512,6 +513,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    killPrograms(ACQD_ID_MASK);
 	    killPrograms(CALIBD_ID_MASK);
 	    killPrograms(MONITORD_ID_MASK);
+	    killPrograms(PRIORITIZERD_ID_MASK);
+	    killPrograms(EVENTD_ID_MASK);
 	    retVal=system("sudo /sbin/rmmod usb-uhci");
 	    retVal=system("sudo /sbin/insmod usb-uhci");
 	    sleep(10);
@@ -522,6 +525,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    startPrograms(ACQD_ID_MASK);
 	    startPrograms(CALIBD_ID_MASK);
 	    startPrograms(MONITORD_ID_MASK);
+	    startPrograms(PRIORITIZERD_ID_MASK);
+	    startPrograms(EVENTD_ID_MASK);
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
 	    return rawtime;
@@ -1450,6 +1455,8 @@ int mountNextBlade() {
     killPrograms(ACQD_ID_MASK);
     killPrograms(CALIBD_ID_MASK);
     killPrograms(MONITORD_ID_MASK);
+    killPrograms(PRIORITIZERD_ID_MASK);
+    killPrograms(EVENTD_ID_MASK);
     closeHkFilesAndTidy(&cmdWriter);    
     sleep(5); //Let them gzip their data
 
@@ -1470,6 +1477,8 @@ int mountNextBlade() {
     startPrograms(ACQD_ID_MASK);
     startPrograms(CALIBD_ID_MASK);
     startPrograms(MONITORD_ID_MASK);
+    startPrograms(PRIORITIZERD_ID_MASK);
+    startPrograms(EVENTD_ID_MASK);
     return rawtime;
 
 }
@@ -1517,6 +1526,8 @@ int mountNextUsb(int intExtFlag) {
     killPrograms(ACQD_ID_MASK);
     killPrograms(CALIBD_ID_MASK);
     killPrograms(MONITORD_ID_MASK);
+    killPrograms(PRIORITIZERD_ID_MASK);
+    killPrograms(EVENTD_ID_MASK);
     closeHkFilesAndTidy(&cmdWriter);    
     sleep(5); //Let them gzip their data
 
@@ -1544,6 +1555,8 @@ int mountNextUsb(int intExtFlag) {
     startPrograms(ACQD_ID_MASK);
     startPrograms(CALIBD_ID_MASK);
     startPrograms(MONITORD_ID_MASK);
+    startPrograms(PRIORITIZERD_ID_MASK);
+    startPrograms(EVENTD_ID_MASK);
     return rawtime;
 
 }
