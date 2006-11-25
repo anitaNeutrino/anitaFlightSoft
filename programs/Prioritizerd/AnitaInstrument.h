@@ -160,6 +160,14 @@ extern "C"
      void DiscriminateF_noup(TransientChannelF_t *in,LogicChannel_t *out,
 			     float threshold, int width,int holdoff);
 
+     int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
+		       int width, int guardOffset, int guardWidth,int guardThresh);
+
+     void PeakBoxcarAll(AnitaInstrumentF_t *in,
+		   AnitaChannelDiscriminator_t *out,
+		   int hornwidth,int hornGuardOffset, int hornGuardWidth,int hornGuardThresh,
+			int conewidth,int coneGuardOffset, int coneGuardWidth,int coneGuardThresh);
+     
      void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 			     AnitaSectorLogic_t *out,
 			     int sectorWidth);
