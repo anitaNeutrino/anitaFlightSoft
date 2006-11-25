@@ -46,12 +46,16 @@ int FFTPeakMaxA=0;
 int FFTPeakMaxB=0;
 int FFTPeakWindowL=0;
 int FFTPeakWindowR=0;
+int FFTMaxChannels=0;
 int RMSMax=0;
 int RMSevents=0;
 int WindowCut=400;
 int BeginWindow=0;
 int EndWindow=0;
 int MethodMask=0;
+
+//ugly hack to count number of channels with fft peaks
+int FFTNumChannels;
 
 int main (int argc, char *argv[])
 {
@@ -227,101 +231,129 @@ int main (int argc, char *argv[])
 
 	    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
 	    BuildInstrumentF(&unwrappedBody,&theInstrument);
+	    FFTNumChannels=0.;
 	    HornMatchedFilterAll(&theInstrument,&theXcorr);
-	    
+	    if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
+		 // reject this event as narrowband crap
+		 priority=9;
+	    }
+	    else{
 
-
-//	    printf("%lu %d %d %f %f %f\n",theBody.eventNumber,theBody.channel[0].data[160],pedSubBody.channel[0].data[160],unwrappedBody.ch[0].data[160],theInstrument.topRing[0][0].data[160],theXcorr.topRing[0][0].data[160]);
-
-	    
-	    //Now we get to dick around for a while
-//	    printf("400 %d %f %d\n",hornDiscWidth,coneThresh,coneDiscWidth);
-
-// Ordinalry coincidence and scoring
-/* 	    DiscriminateFChannels(&theXcorr,&theDiscriminator, */
-/* 				  400,hornDiscWidth, */
-/* 				  coneThresh,coneDiscWidth); */
-/* 	    FormSectorMajority(&theDiscriminator,&theMajority, */
-/* 			       hornSectorWidth); */
-/* 	    AnalyseSectorLogic(&theMajority,&sectorAna); */
-/* 	    score=GetSecAnaScore(&sectorAna); */
-/* 	    score4=score; */
+// Ordinary coincidence and scoring
+		 if ((MethodMask&0x4)!=0){
+		      DiscriminateFChannels(&theXcorr,&theDiscriminator,
+					    400,hornDiscWidth,
+					    coneThresh,coneDiscWidth);
+		      FormSectorMajority(&theDiscriminator,&theMajority,
+					 hornSectorWidth);
+		      AnalyseSectorLogic(&theMajority,&sectorAna);
+		      score=GetSecAnaScore(&sectorAna);
+		      score4=score;
+		 }
+		 else
+		 {
+		      score4=0;
+		 }
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-	    fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
+		 fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
 #endif
-/* 	    DiscriminateFChannels(&theXcorr,&theDiscriminator, */
-/* 				  300,hornDiscWidth, */
-/* 				  coneThresh,coneDiscWidth); */
-/* 	    FormSectorMajority(&theDiscriminator,&theMajority, */
-/* 			       hornSectorWidth); */
-/* 	    AnalyseSectorLogic(&theMajority,&sectorAna); */
-/* 	    score=GetSecAnaScore(&sectorAna); */
-/* 	    score3=score; */
+		 if ((MethodMask&0x8)!=0){
+		      DiscriminateFChannels(&theXcorr,&theDiscriminator,
+					    300,hornDiscWidth,
+					    coneThresh,coneDiscWidth);
+		      FormSectorMajority(&theDiscriminator,&theMajority,
+					 hornSectorWidth);
+		      AnalyseSectorLogic(&theMajority,&sectorAna);
+		      score=GetSecAnaScore(&sectorAna);
+		      score3=score;
+		 }
+		 else{
+		      score3=0;
+		 }
 #ifdef WRITE_DEBUG_FILE
 //	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-	    fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
+		 fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
 #endif
 // nonupdating discriminators and majorities
-/* 	    DiscriminateFChannels_noup(&theXcorr,&theNonupdating, */
-/* 				       hornThresh,hornDiscWidth, */
-/* 				       coneThresh,coneDiscWidth, */
-/* 				       holdoff); */
-/* 	    FormSectorMajority(&theNonupdating,&theMajorityNoUp,hornSectorWidth); */
-/* 	    FormSectorMajorityPol(&theNonupdating,&theHorizontal,hornSectorWidth,0); */
-/* 	    FormSectorMajorityPol(&theNonupdating,&theVertical,hornSectorWidth,1); */
-/* 	    MaxAll=FormSectorCoincidence(&theMajorityNoUp,&theCoincidenceAll, */
-/* 				  delay,2*hornSectorWidth-2,2*hornSectorWidth-1); */
-/* 	    MaxH=FormSectorCoincidence(&theHorizontal,&theCoincidenceH, */
-/* 				  delay,hornSectorWidth-1,hornSectorWidth-1); */
-/* 	    MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV, */
-/* 				delay,hornSectorWidth-1,hornSectorWidth-1); */
-	    //xcorr peak boxcar method
-	    PeakBoxcarAll(&theXcorr,&theBoxcar,
-		   hornDiscWidth,hornGuardOffset,
-		   hornGuardWidth,hornGuardThresh,
-		   coneDiscWidth,coneGuardOffset,
-		   coneGuardWidth,coneGuardThresh);
-	    FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
-			       hornSectorWidth);
-	    FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
-				  hornSectorWidth,0);
-	    FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
-				  hornSectorWidth,1);
-	    MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
-					    &theCoincidenceBoxcarAll,
-					    8,2*hornSectorWidth-1,
-					    2*hornSectorWidth-2);
-	    MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
-					  &theCoincidenceBoxcarH,
-					  8,hornSectorWidth-1,
-					  hornSectorWidth-1);
-	    MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
-					  &theCoincidenceBoxcarV,
-					  8,hornSectorWidth-1,
-					  hornSectorWidth-1);
-	    //Sillyness forever...
-	    //Must determine priority here
+		 if ((MethodMask & 0x10)!=0){
+		      DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
+						 hornThresh,hornDiscWidth,
+						 coneThresh,coneDiscWidth,
+						 holdoff);
+		      FormSectorMajority(&theNonupdating,&theMajorityNoUp,
+					 hornSectorWidth);
+		      FormSectorMajorityPol(&theNonupdating,&theHorizontal,
+					    hornSectorWidth,0);
+		      FormSectorMajorityPol(&theNonupdating,&theVertical,
+					    hornSectorWidth,1);
+		      MaxAll=FormSectorCoincidence(&theMajorityNoUp,
+						   &theCoincidenceAll,
+						   delay,2*hornSectorWidth-2,
+						   2*hornSectorWidth-1);
+		      MaxH=FormSectorCoincidence(&theHorizontal,
+						 &theCoincidenceH,
+						 delay,hornSectorWidth-1,
+						 hornSectorWidth-1);
+		      MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
+						 delay,hornSectorWidth-1,
+						 hornSectorWidth-1);
+		 }
+		 else{
+		      MaxAll=0; MaxH=0; MaxV=0;
+		 }
+		 //xcorr peak boxcar method
+		 if ((MethodMask & 0x1)!=0){
+		      PeakBoxcarAll(&theXcorr,&theBoxcar,
+				    hornDiscWidth,hornGuardOffset,
+				    hornGuardWidth,hornGuardThresh,
+				    coneDiscWidth,coneGuardOffset,
+				    coneGuardWidth,coneGuardThresh);
+		      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
+					 hornSectorWidth);
+		      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
+					    hornSectorWidth,0);
+		      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
+					    hornSectorWidth,1);
+		      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
+						      &theCoincidenceBoxcarAll,
+						      8,2*hornSectorWidth-1,
+						      2*hornSectorWidth-2);
+		      MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
+						    &theCoincidenceBoxcarH,
+						    8,hornSectorWidth-1,
+						    hornSectorWidth-1);
+		      MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
+						    &theCoincidenceBoxcarV,
+						    8,hornSectorWidth-1,
+						    hornSectorWidth-1);
+		 }
+		 else{
+		      MaxBoxAll=0; MaxBoxH=0; MaxBoxV=0;
+		 }
+		 //Sillyness forever...
+		 //Must determine priority here
 //	    priority=1;
 //revised scoring here
-	    priority=9;
-	    if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
-		 priority=1;
-	    else if (MaxBoxAll>=4*hornSectorWidth-4 ||
-		     MaxBoxH>=2*hornSectorWidth-1 || 
-		     MaxBoxV>=2*hornSectorWidth-1 ) 
-		 priority=2;
-/* 	    else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)  */
-/* 		 priority=3; */
-/* 	    else if (MaxAll>=4*hornSectorWidth-4) priority=4; */
-/* 	    else if (MaxH>=2*hornSectorWidth-1 || MaxH>=2*hornSectorWidth-1)  */
-/* 		 priority=4; */
-/* 	    else if(score4>=600) priority=5; */
-/* 	    else if(score3>1900) priority=6; */
-/* 	    else if(score3>1500) priority=6; */
-/* 	    else if(score3>1000) priority=7; */
-/* 	    else if(score3>600) priority=8; */
-
+		 priority=8;
+		 if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
+		      priority=1;
+		 else if (MaxBoxAll>=4*hornSectorWidth-4 ||
+			  MaxBoxH>=2*hornSectorWidth-1 || 
+			  MaxBoxV>=2*hornSectorWidth-1 ) 
+		      priority=2;
+		 else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)
+		      priority=3;
+		 else if (MaxAll>=4*hornSectorWidth-4) priority=4;
+		 else if (MaxH>=2*hornSectorWidth-1 || 
+			  MaxV>=2*hornSectorWidth-1)
+		      priority=4;
+		 else if(score4>=600) priority=5;
+		 else if(score3>1900) priority=6;
+		 else if(score3>1500) priority=6;
+		 else if(score3>1000) priority=7;
+		 else if(score3>600) priority=7;
+	    }
 	    theHeader.priority=priority;
 	
 	    //Now Fill Generic Header and calculate checksum
@@ -459,6 +491,7 @@ int readConfig()
 	FFTPeakMaxB=kvpGetInt("FFTPeakMaxB",2500);
 	FFTPeakWindowL=kvpGetInt("FFTPeakWindowL",0);
 	FFTPeakWindowR=kvpGetInt("FFTPeakWindowR",0);
+	FFTMaxChannels=kvpGetInt("FFTMaxChannels",0);
 	RMSMax=kvpGetInt("RMSMax",200);
 	RMSevents=kvpGetInt("RMSevents",1000);
 	WindowCut=kvpGetInt("WindowCut",400);
