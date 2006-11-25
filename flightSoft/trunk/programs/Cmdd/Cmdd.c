@@ -43,13 +43,15 @@ int respawnPrograms(int progMask);
 char *getProgName(ProgramId_t prog);
 int getIdMask(ProgramId_t prog);
 char *getPidFile(ProgramId_t prog);
-int mountNextBlade();
-int mountNextUsb(int intExtFlag);
+int mountNextBlade(int whichZeus);
+int mountNextUsb(int intExtFlag,int whichUsb);
 void prepWriterStructs();
 int tailFile(char *filename, int numLines);
 int makeZippedFilePacket(char *filename,int fileTag);
 int readAcqdConfig();
 int readArchivedConfig();
+int readLosdConfig();
+int readSipdConfig();
 int setEventDiskBitMask(int modOrSet, int bitMask);
 int setHkDiskBitMask(int modOrSet, int bitMask);
 int setPriDiskMask(int pri, int bitmask);
@@ -59,6 +61,9 @@ int setArchiveDefaultFrac(int pri, int frac);
 int setArchiveDecimatePri(int pri, float frac);
 int setTelemPriEncodingType(int pri, int encType, int encClockType);
 int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
+int setLosdPriorityBandwidth(int pri, int bw);
+int setSipdPriorityBandwidth(int pri, int bw);
+int executePrioritizerdCommand(int command, int value);
 int startNewRun();
 int getRunNumber();
 int getLatestEventNumber();
@@ -108,7 +113,8 @@ float priorityFractionDelete[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
 float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
-
+int losdBandwidths[NUM_PRIORITIES];
+int sipdBandwidths[NUM_PRIORITIES];
 
 
 int hkDiskBitMask;
@@ -531,10 +537,12 @@ int executeCommand(CommandStruct_t *theCmd)
 	    time(&rawtime);
 	    return rawtime;
 	case CMD_MOUNT_NEXT_BLADE:
-	    return mountNextBlade();
+	    ivalue=theCmd->cmd[1];	    
+	    return mountNextBlade(ivalue);
 	case CMD_MOUNT_NEXT_USB:
 	    ivalue=theCmd->cmd[1];
-	    return mountNextUsb(ivalue);
+	    ivalue2=theCmd->cmd[2];
+	    return mountNextUsb(ivalue,ivalue2);
 	case CMD_EVENT_DISKTYPE:
 	    ivalue=theCmd->cmd[1];
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
@@ -583,6 +591,29 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
 	    ivalue3=theCmd->cmd[4]+(theCmd->cmd[5]<<8);
 	    return setTelemPriEncodingType(ivalue,ivalue2,ivalue3);
+	case ARCHIVE_PPS_PRIORITIES:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2];
+	    if(ivalue<0 || ivalue>9) ivalue=-1;
+	    if(ivalue2<0 || ivalue2>9) ivalue2=-1;
+	    configModifyInt("Archived.config","archived","priorityPPS1",ivalue,&rawtime);
+	    configModifyInt("Archived.config","archived","priorityPPS2",ivalue2,&rawtime);
+	    retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
+	    return rawtime;
+	case ARCHIVE_PPS_DECIMATE:
+	    ivalue=theCmd->cmd[1];
+	    if(ivalue<1 || ivalue>2) return -1;
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+	    fvalue=((float)ivalue2)/1000.;
+	    if(ivalue==1) {
+		configModifyInt("Archived.config","archived","pps1FractionDelete",fvalue,&rawtime);
+	    }
+	    else if(ivalue==2) {
+		configModifyInt("Archived.config","archived","pps2FractionDelete",fvalue,&rawtime);
+	    }
+	    retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
+	    return rawtime;
+	    
 	case CMD_TURN_GPS_ON:
 	    //turnGPSOn
 	    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
@@ -764,7 +795,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    ivalue2=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
 	    ivalue3=theCmd->cmd[5];
-	    fvalue=ivalue +((float)ivalue2)/10000.;
+	    fvalue=((float)ivalue) +((float)ivalue2)/10000.;
 	    if(ivalue3==1) fvalue*=-1;	   
 
 //	    printf("%d %d %d -- Offset %3.4f\n",ivalue, ivalue2, ivalue3,fvalue);
@@ -820,6 +851,12 @@ int executeCommand(CommandStruct_t *theCmd)
 	case SET_HK_CAL_PERIOD: 
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    configModifyInt("Hkd.config","hkd","calibrationPeriod",ivalue,&rawtime);
+	    retVal=sendSignal(ID_HKD,SIGUSR1);
+	    if(retVal) return 0;
+	    return rawtime;
+	case SET_HK_TELEM_EVERY: 
+	    ivalue=theCmd->cmd[1];//+(theCmd->cmd[2]<<8);
+	    configModifyInt("Hkd.config","hkd","telemEvery",ivalue,&rawtime);
 	    retVal=sendSignal(ID_HKD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -887,7 +924,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ultemp=(theCmd->cmd[4]);
 	    ulvalue|=(ultemp<<24);
 	    syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %lu -- %#x\n",theCmd->cmd[1],theCmd->cmd[2],
-		   theCmd->cmd[3],theCmd->cmd[4],ulvalue,ulvalue);
+		   theCmd->cmd[3],theCmd->cmd[4],ulvalue,(unsigned int)ulvalue);
 
 	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",ulvalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
@@ -964,7 +1001,103 @@ int executeCommand(CommandStruct_t *theCmd)
 	    if(ivalue>8 || ivalue2>31) return 0;
 	    ivalue3=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
 	    fvalue=((float)ivalue3)/1000.;
-	    return setPidGoalScaleFactor(ivalue,ivalue2,fvalue);	    
+	    return setPidGoalScaleFactor(ivalue,ivalue2,fvalue);
+	case ACQD_SET_RATE_SERVO:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[1]<<8);
+	    if(ivalue>0) {
+		configModifyInt("Acqd.config","rates","enableRateServo",1,&rawtime);
+		fvalue=((float)ivalue)/1000.;
+		configModifyFloat("Acqd.config","rates","rateGoal",fvalue,&rawtime);
+	    }
+	    else {
+		configModifyInt("Acqd.config","rates","enableRateServo",0,&rawtime);	    
+	    }
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    return rawtime;
+	case ACQD_SET_NICE_VALUE:
+	    ivalue=theCmd->cmd[1]; //Between 0 and 255
+	    ivalue-=20; //-20 is the lowest;
+	    configModifyInt("Acqd.config","acqd","niceValue",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);    
+	    return rawtime;
+	case SIPD_SEND_WAVE:
+	    ivalue=theCmd->cmd[1];
+	    if(ivalue<0 || ivalue>1) return -1;
+	    configModifyInt("SIPd.config","sipd","sendWavePackets",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_SIPD,SIGUSR1);    
+	    return rawtime;
+	case SIPD_THROTTLE_RATE:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8); 
+	    if(ivalue>680) return -1;
+	    configModifyInt("SIPd.config","sipd","throttleRate",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_SIPD,SIGUSR1);    
+	    return rawtime;
+	case SIPD_PRIORITY_BANDWIDTH:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[1];
+	    if(ivalue<0 || ivalue>9) return -1;
+	    if(ivalue2<0 || ivalue2>100) return -1;
+	    return setSipdPriorityBandwidth(ivalue,ivalue2);
+	case LOSD_PRIORITY_BANDWIDTH:
+	    ivalue=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[1];
+	    if(ivalue<0 || ivalue>9) return -1;
+	    if(ivalue2<0 || ivalue2>100) return -1;
+	    return setLosdPriorityBandwidth(ivalue,ivalue2);
+	case LOSD_SEND_DATA:
+	    ivalue=theCmd->cmd[1];
+	    if(ivalue>1 || ivalue<0) return -1;
+	    configModifyInt("LOSd.config","losd","sendData",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_LOSD,SIGUSR1);    
+	    return rawtime;	
+	    
+	case MONITORD_RAMDISK_KILL_ACQD:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Monitord.config","monitord","ramdiskKillAcqd",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;		    
+	case MONITORD_RAMDISK_DUMP_DATA:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Monitord.config","monitord","ramdiskDumpData",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;	
+	    
+	    
+	case MONITORD_MAX_ACQD_WAIT:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Monitord.config","monitord","maxAcqdWaitPeriod",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;		    
+	case MONITORD_PERIOD:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Monitord.config","monitord","monitorPeriod",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;		    
+	case MONITORD_USB_THRESH:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Monitord.config","monitord","usbSwitchMB",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;		    
+	case MONITORD_BLADE_THRESH:
+	    ivalue=theCmd->cmd[1];
+	    configModifyInt("Monitord.config","monitord","bladeSwitchMB",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;
+	case MONITORD_MAX_QUEUE:
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    configModifyInt("Monitord.config","monitord","maxEventQueueSize",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;
+	case PRIORITIZERD_COMMAND:
+	    ivalue=theCmd->cmd[1]; //Command num
+	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
+	    return executePrioritizerdCommand(ivalue,ivalue2);		    
+	case EVENTD_MATCH_GPS:
+	    ivalue=theCmd->cmd[1];
+	    if(ivalue<0 || ivalue>1) return -1;
+	    configModifyInt("Eventd.config","eventd","tryToMatchGps",ivalue,&rawtime);	
+	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+	    return rawtime;	
 	case CLEAN_DIRS: 	    
 	    cleanDirs();	    
 	    return rawtime;
@@ -1413,6 +1546,110 @@ int setArchiveDecimatePri(int pri, float frac)
 }
 
 
+int setLosdPriorityBandwidth(int pri, int bw)
+{
+    time_t rawtime;
+    readLosdConfig();
+    losdBandwidths[pri]=bw;
+    configModifyIntArray("LOSd.config","bandwidth","priorityBandwidths",losdBandwidths,NUM_PRIORITIES,&rawtime);
+    sendSignal(ID_LOSD,SIGUSR1);
+    return rawtime;    
+}
+
+int setSipdPriorityBandwidth(int pri, int bw)
+{
+    time_t rawtime;
+    readSipdConfig();
+    sipdBandwidths[pri]=bw;
+    configModifyIntArray("SIPd.config","bandwidth","priorityBandwidths",sipdBandwidths,NUM_PRIORITIES,&rawtime);
+    sendSignal(ID_SIPD,SIGUSR1);
+    return rawtime;    
+
+}
+
+int executePrioritizerdCommand(int command, int value)
+{
+    time_t rawtime;
+    switch(command) {
+	case PRI_HORN_THRESH:
+	    configModifyFloat("Prioritizerd.config","prioritizerd","hornThresh",(float)value,&rawtime);
+	    break;
+	case PRI_HORN_DESC_WIDTH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","hornDiscWidth",value,&rawtime);
+	    break;
+	case PRI_HORN_SECTOR_WIDTH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","hornSectorWidth",value,&rawtime);
+	    break;
+	case PRI_CONE_THRESH:
+	    configModifyFloat("Prioritizerd.config","prioritizerd","coneThresh",(float)value,&rawtime);
+	    break;	    
+	case PRI_CONE_DESC_WIDTH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","coneDiscWidth",value,&rawtime);
+	    break;
+	case PRI_HOLDOFF:
+	    configModifyInt("Prioritizerd.config","prioritizerd","holdoff",value,&rawtime);
+	    break;	    
+	case PRI_DELAY:
+	    configModifyInt("Prioritizerd.config","prioritizerd","delay",value,&rawtime);
+	    break;	    
+	case PRI_HORN_GUARD_OFFSET:
+	    configModifyInt("Prioritizerd.config","prioritizerd","hornGuardOffset",value,&rawtime);
+	    break;	    
+	case PRI_HORN_GUARD_WIDTH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","hornGuardWidth",value,&rawtime);
+	    break;	    	    
+	case PRI_HORN_GUARD_THRESH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","hornGuardThresh",value,&rawtime);
+	    break;	    
+	case PRI_CONE_GUARD_OFFSET:
+	    configModifyInt("Prioritizerd.config","prioritizerd","coneGuardOffset",value,&rawtime);
+	    break;	    
+	case PRI_CONE_GUARD_WIDTH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","coneGuardWidth",value,&rawtime);
+	    break;	    
+	case PRI_CONE_GUARD_THRESH:
+	    configModifyInt("Prioritizerd.config","prioritizerd","coneGuardThresh",value,&rawtime);
+	    break;	    	    
+	case PRI_FFT_PEAK_MAX_A:
+	    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakMaxA",value,&rawtime);
+	    break;	    	    	    	    
+	case PRI_FFT_PEAK_MAX_B:
+	    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakMaxB",value,&rawtime);
+	    break;	    	  	    
+	case PRI_RMS_MAX:
+	    configModifyInt("Prioritizerd.config","prioritizerd","RMSMax",value,&rawtime);
+	    break;	    	  	    
+	case PRI_RMS_EVENTS:
+	    configModifyInt("Prioritizerd.config","prioritizerd","RMSevents",value,&rawtime);
+	    break;	    	    
+	case PRI_WINDOW_CUT:
+	    configModifyInt("Prioritizerd.config","prioritizerd","RMSevents",value,&rawtime);
+	    break;	    	    
+	case PRI_BEGIN_WINDOW:
+	    configModifyInt("Prioritizerd.config","prioritizerd","BeginWindow",value,&rawtime);
+	    break;	    	    
+	case PRI_END_WINDOW:
+	    configModifyInt("Prioritizerd.config","prioritizerd","EndWindow",value,&rawtime);
+	    break;	    	    
+	case PRI_METHOD_MASK:
+	    configModifyInt("Prioritizerd.config","prioritizerd","MethodMask",value,&rawtime);
+	    break;	   	    
+	case PRI_FFT_MAX_CHANNELS:
+	    configModifyInt("Prioritizerd.config","prioritizerd","FFTMaxChannels",value,&rawtime);
+	    break;
+	case PRI_FFT_PEAK_WINDOW_L:
+	    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakWindowL",value,&rawtime);
+	    break;	    
+	case PRI_FFT_PEAK_WINDOW_R:
+	    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakWindowR",value,&rawtime);
+	    break;	    	   
+	default:
+	    return -1;
+    }	    
+    return rawtime;
+}
+
+
 int setTelemPriEncodingType(int pri, int encType,int encClockType)
 {
     time_t rawtime;
@@ -1438,14 +1675,19 @@ int setPidGoalScaleFactor(int surf, int dac, float scaleFactor)
 }
 
 
-int mountNextBlade() {
+int mountNextBlade(int whichZeus) {
     int retVal;
     time_t rawtime;
     int currentNum=0;
     readConfig(); // Get latest names and status
     if(disableBlade) return -1;
     sscanf(bladeName,"zeus%02d",&currentNum);
-    currentNum++;
+    if(whichZeus==0)
+	currentNum++;
+    else {
+	currentNum=whichZeus;
+    }
+       
     if(currentNum>NUM_BLADES) return -1;
 
     //Kill all programs that write to disk
@@ -1483,7 +1725,7 @@ int mountNextBlade() {
 
 }
 
-int mountNextUsb(int intExtFlag) {
+int mountNextUsb(int intExtFlag, int whichUsb) {
     int retVal;
     time_t rawtime;
     int currentNum[2]={0};
@@ -1509,14 +1751,20 @@ int mountNextUsb(int intExtFlag) {
     else if(intExtFlag==3 && disableUsbExt) intExtFlag=1;
 
     sscanf(usbIntName,"usbint%02d",&currentNum[0]);
-    currentNum[0]++;
+    if(whichUsb==0)
+	currentNum[0]++;
+    else 
+	currentNum[0]=whichUsb;
     if(currentNum[0]>NUM_USBINTS) {
 	if(intExtFlag==1) return 0;
 	else intExtFlag=2;
     }
 
     sscanf(usbExtName,"usbext%02d",&currentNum[1]);
-    currentNum[1]++;
+    if(whichUsb==0)
+	currentNum[1]++;
+    else 
+	currentNum[1]=whichUsb;
     if(currentNum[1]>NUM_USBEXTS && intExtFlag>1) return 0;
 
     //Kill all programs that write to disk
@@ -2001,6 +2249,66 @@ int readArchivedConfig()
     
     return status;
 }
+
+
+int readLosdConfig() 
+/* Load Losd config stuff */
+{
+    /* Config file thingies */
+    int status=0,tempNum=0;
+    char* eString ;
+    KvpErrorCode kvpStatus;
+    kvpReset();
+    status = configLoad ("LOSd.config","bandwidth") ;
+    if(status == CONFIG_E_OK) {
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priorityBandwidths",
+				   losdBandwidths,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityBandwidths): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityBandwidths): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
+    }
+    
+    return status;
+}
+
+int readSipdConfig() 
+/* Load Sipd config stuff */
+{
+    /* Config file thingies */
+    int status=0,tempNum=0;
+    char* eString ;
+    KvpErrorCode kvpStatus;
+    kvpReset();
+    status = configLoad ("SIPd.config","bandwidth") ;
+    if(status == CONFIG_E_OK) {
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priorityBandwidths",
+				   sipdBandwidths,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priorityBandwidths): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priorityBandwidths): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading SIPd.config: %s\n",eString);
+    }
+    
+    return status;
+}
+
 
 int startNewRun() {
     char filename[FILENAME_MAX];

@@ -387,6 +387,11 @@ typedef struct {
 
 typedef struct {
     unsigned long eventNumber;
+    int pri;
+} PlaybackRequest_t;
+
+typedef struct {
+    unsigned long eventNumber;
     unsigned char rfPwrAvg[ACTIVE_SURFS][RFCHAN_PER_SURF];
     unsigned char avgScalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; // * 2^7
     unsigned char rmsScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];

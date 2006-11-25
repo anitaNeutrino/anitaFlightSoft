@@ -47,7 +47,7 @@
 #define EFFECTIVE_SAMPLES 256
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
-#define PED_DEFAULT_VALUE 1100
+#define PED_DEFAULT_VALUE 650
 
 
 //GPS stuff
@@ -158,6 +158,7 @@
 
 //Index and pedestal dirs
 #define ANITA_INDEX_DIR "anita/index"
+#define ANITA_PRIORITY_CATCH_SUB_DIR "anita/trashed"
 #define PEDESTAL_DIR "anita/pedestal"
 #define CURRENT_PEDESTALS "anita/pedestal/current"
 
@@ -206,6 +207,9 @@
 #define CALIBD_STATUS_LINK_DIR "/tmp/anita/calibd/link"
 #define GPSD_SUBTIME_DIR "/tmp/anita/gpsd/ttt"
 #define GPSD_SUBTIME_LINK_DIR "/tmp/anita/gpsd/ttt/link"
+#define PLAYBACK_DIR "/tmp/anita/playbackd"
+#define PLAYBACK_LINK_DIR "/tmp/anita/playbackd/link"
+
 
 //Archiving Directories
 #define CMD_ARCHIVE_DIR "/current/house/cmd"
