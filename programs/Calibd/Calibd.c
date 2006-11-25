@@ -102,6 +102,8 @@ int main (int argc, char *argv[])
     // Set signal handlers 
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, sigUsr2Handler);
+    signal(SIGSEGV, sigUsr2Handler);
     
     // Load Config 
     kvpReset () ;

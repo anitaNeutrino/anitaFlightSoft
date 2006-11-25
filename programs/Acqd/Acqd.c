@@ -499,7 +499,7 @@ int main(int argc, char **argv) {
 	    }
 
 	    //Send software trigger if we want to
-	    if(sendSoftTrigger && doingEvent>0) {
+	    if(sendSoftTrigger && doingEvent>=0) {
 		usleep(softTrigSleepPeriod);
 		
 		setTurfControl(turfioHandle,SendSoftTrg);

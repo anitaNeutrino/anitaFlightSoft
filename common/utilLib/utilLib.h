@@ -53,6 +53,7 @@ extern "C" {
 	unsigned int usbintCloneMask;
 	unsigned long fileEpoch;
 	unsigned long gotData;
+	unsigned long justHeader;
 	char filePrefix[FILENAME_MAX];
 	char relBaseName[FILENAME_MAX];
 	char currentEventFileName[DISK_TYPES][FILENAME_MAX];
