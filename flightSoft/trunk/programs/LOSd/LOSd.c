@@ -180,13 +180,15 @@ int main(int argc, char *argv[])
 	    sendWakeUpBuffer();
 	    firstTime=0;
 	}
-	    	
+	int hkCount=0;    	
 	currentState=PROG_STATE_RUN;
         while(currentState==PROG_STATE_RUN) {
 	    if(!sendData) {
 		sleep(1);
 		continue;
 	    }
+	    if(hkCount%5==0) fillBufferWithHk();
+	    hkCount++;
 	    currentPri=priorityOrder[orderIndex];	    
 	    if(numLinks[currentPri]==0 || 
 	       (sillyEvNum[currentPri])>maxEventsBetweenLists) {
