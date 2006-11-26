@@ -485,6 +485,14 @@ int executeCommand(CommandStruct_t *theCmd)
 	case CMD_SHUTDOWN_HALT:
 	    //Halt
 	    time(&rawtime);
+	    killPrograms(MONITORD_ID_MASK);
+	    killPrograms(HKD_ID_MASK);
+	    killPrograms(GPSD_ID_MASK);
+	    killPrograms(ARCHIVED_ID_MASK);
+	    killPrograms(ACQD_ID_MASK);
+	    killPrograms(CALIBD_ID_MASK);
+	    killPrograms(PRIORITIZERD_ID_MASK);
+	    killPrograms(EVENTD_ID_MASK);
 	    sprintf(theCommand,"sudo halt");
 	    retVal=system(theCommand);
 	    if(retVal==-1) return 0;	    
@@ -492,6 +500,14 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case CMD_REBOOT:
 	    //Reboot
+	    killPrograms(MONITORD_ID_MASK);
+	    killPrograms(HKD_ID_MASK);
+	    killPrograms(GPSD_ID_MASK);
+	    killPrograms(ARCHIVED_ID_MASK);
+	    killPrograms(ACQD_ID_MASK);
+	    killPrograms(CALIBD_ID_MASK);
+	    killPrograms(PRIORITIZERD_ID_MASK);
+	    killPrograms(EVENTD_ID_MASK);
 	    sprintf(theCommand,"sudo reboot");
 	    retVal=system(theCommand);
 	    if(retVal==-1) return 0;	    
@@ -514,12 +530,12 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return retVal;
 	case CMD_MOUNT:
 	    //Mount -a
+	    killPrograms(MONITORD_ID_MASK);
 	    killPrograms(HKD_ID_MASK);
 	    killPrograms(GPSD_ID_MASK);
 	    killPrograms(ARCHIVED_ID_MASK);
 	    killPrograms(ACQD_ID_MASK);
 	    killPrograms(CALIBD_ID_MASK);
-	    killPrograms(MONITORD_ID_MASK);
 	    killPrograms(PRIORITIZERD_ID_MASK);
 	    killPrograms(EVENTD_ID_MASK);
 	    retVal=system("sudo /sbin/rmmod usb-uhci");
@@ -776,7 +792,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case SET_ADU5_VTG_PERIOD:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyInt("GPSd.config","adu5","vtgPeriod",ivalue,&rawtime);
+	    configModifyFloat("GPSd.config","adu5","vtgPeriod",((float)ivalue),&rawtime);
 	    retVal=sendSignal(ID_GPSD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;	    
@@ -1035,13 +1051,13 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	case SIPD_PRIORITY_BANDWIDTH:
 	    ivalue=theCmd->cmd[1];
-	    ivalue2=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2];
 	    if(ivalue<0 || ivalue>9) return -1;
 	    if(ivalue2<0 || ivalue2>100) return -1;
 	    return setSipdPriorityBandwidth(ivalue,ivalue2);
 	case LOSD_PRIORITY_BANDWIDTH:
 	    ivalue=theCmd->cmd[1];
-	    ivalue2=theCmd->cmd[1];
+	    ivalue2=theCmd->cmd[2];
 	    if(ivalue<0 || ivalue>9) return -1;
 	    if(ivalue2<0 || ivalue2>100) return -1;
 	    return setLosdPriorityBandwidth(ivalue,ivalue2);
@@ -1739,12 +1755,12 @@ int mountNextBlade(int whichZeus) {
     if(currentNum>NUM_BLADES) return -1;
 
     //Kill all programs that write to disk
+    killPrograms(MONITORD_ID_MASK);
     killPrograms(HKD_ID_MASK);
     killPrograms(GPSD_ID_MASK);
     killPrograms(ARCHIVED_ID_MASK);
     killPrograms(ACQD_ID_MASK);
     killPrograms(CALIBD_ID_MASK);
-    killPrograms(MONITORD_ID_MASK);
     killPrograms(PRIORITIZERD_ID_MASK);
     killPrograms(EVENTD_ID_MASK);
     closeHkFilesAndTidy(&cmdWriter);    
@@ -1816,12 +1832,12 @@ int mountNextUsb(int intExtFlag, int whichUsb) {
     if(currentNum[1]>NUM_USBEXTS && intExtFlag>1) return 0;
 
     //Kill all programs that write to disk
+    killPrograms(MONITORD_ID_MASK);
     killPrograms(HKD_ID_MASK);
     killPrograms(GPSD_ID_MASK);
     killPrograms(ARCHIVED_ID_MASK);
     killPrograms(ACQD_ID_MASK);
     killPrograms(CALIBD_ID_MASK);
-    killPrograms(MONITORD_ID_MASK);
     killPrograms(PRIORITIZERD_ID_MASK);
     killPrograms(EVENTD_ID_MASK);
     closeHkFilesAndTidy(&cmdWriter);    
