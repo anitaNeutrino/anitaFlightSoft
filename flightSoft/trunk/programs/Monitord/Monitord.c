@@ -354,6 +354,7 @@ int readConfigFile()
 	tempString=kvpGetString("monitordPidFile");
 	if(tempString) {
 	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
+	    writePidFile(monitordPidFile);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get monitordPidFile");

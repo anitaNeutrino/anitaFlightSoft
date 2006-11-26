@@ -114,6 +114,7 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
 
+
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
