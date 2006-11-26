@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     int numLinks[NUM_PRIORITIES]={0};
     int totalEventLinks=0;
     struct dirent **linkList[NUM_PRIORITIES];
-    int sillyEvNum=0;
+    int sillyEvNum[NUM_PRIORITIES]={0};
     int count=0;
 
    
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 	    }
 	    currentPri=priorityOrder[orderIndex];	    
 	    if(numLinks[currentPri]==0 || 
-	       (sillyEvNum)>maxEventsBetweenLists) {
+	       (sillyEvNum[currentPri])>maxEventsBetweenLists) {
 		if(numLinks[currentPri]>0) {
 		    //Need to free memory
 		    for(count=0;count<numLinks[currentPri];
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 		    printf("Got %d links in %s\n",numLinks[currentPri],
 			   eventTelemLinkDirs[currentPri]);
 		}
-		sillyEvNum=0;
+		sillyEvNum[currentPri]=0;
 	    }
 	    if(numLinks[currentPri]>0) {
 		//Got an event
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 		free(linkList[currentPri][numLinks[currentPri]-1]);
 		numLinks[currentPri]--;
 		totalEventLinks--;
-		sillyEvNum++;	       
+		sillyEvNum[currentPri]++;	       
 	    }
 	    fillBufferWithHk();
 	    if(totalEventLinks<1) usleep(100);
@@ -559,6 +559,11 @@ void fillBufferWithHk()
 		     LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR,
 		     sizeof(CommandEcho_t)); 
     }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(MonitorStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
+		     sizeof(MonitorStruct_t)); 
+    }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(AnitaEventHeader_t)) {	
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
 		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
@@ -567,11 +572,6 @@ void fillBufferWithHk()
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
 		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
 		     sizeof(FullLabChipPedStruct_t)); 
-    }
-    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(MonitorStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
-		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
-		     sizeof(MonitorStruct_t)); 
     }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5SatStruct_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,GPS_TELEM_DIR,

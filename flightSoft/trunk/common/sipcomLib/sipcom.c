@@ -17,6 +17,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <assert.h>
 
@@ -538,6 +539,7 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
 
     if (seq != *length_so_far) {
 	// Out of sequence packet. Reset everything.
+	syslog(LOG_ERR,"Bad Command Packet %d\n",cmdbyte);
 	*length_so_far = 0;
 	return;
     }
@@ -558,6 +560,7 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
 
     } else if (Cmdlen[id] == -1) {
 	// Unknown command. Reset everything. Let callback handle the cmd.
+	syslog(LOG_ERR,"Unknown Command Packet %d\n",cmdbyte);
 	if (Cmdf != NULL) {
 	    Cmdf(cmd_so_far);
 	}
