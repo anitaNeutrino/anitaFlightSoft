@@ -179,10 +179,12 @@ int main (int argc, char *argv[])
 //	printf("Here\n");
 	currentState=PROG_STATE_RUN;
 //	currentState=PROG_STATE_TERMINATE;
+	unsigned long loopCounter=0;
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
 	    checkAdu5A();
-	    if(!startedNtpd && g12StartNtp) startedNtpd=tryToStartNtpd();
+	    if(!startedNtpd && g12StartNtp && loopCounter>60) startedNtpd=tryToStartNtpd();
+	    loopCounter++;
 	    usleep(1);
 	}
 	printf("currentState == %d\n",currentState);

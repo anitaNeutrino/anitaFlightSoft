@@ -198,9 +198,10 @@ int main (int argc, char *argv[])
 		readConfigFile();
 		//Change USB int if in use
 		if((hkDiskBitMask&USBINT_DISK_MASK || eventDiskBitMask&USBINT_DISK_MASK)) {
-		    theCmd.numCmdBytes=2;
+		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
 		    theCmd.cmd[1]=1;
+		    theCmd.cmd[2]=0;
 		    if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
 			theCmd.cmd[1]=3;
 		    writeCommandAndLink(&theCmd);
@@ -210,9 +211,10 @@ int main (int argc, char *argv[])
 		readConfigFile();
 		//Change USB ext if in use
 		if((hkDiskBitMask&USBEXT_DISK_MASK || eventDiskBitMask&USBEXT_DISK_MASK)) {
-		    theCmd.numCmdBytes=2;
+		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
 		    theCmd.cmd[1]=2;
+		    theCmd.cmd[2]=0;
 		    writeCommandAndLink(&theCmd);
 		}
 	    }

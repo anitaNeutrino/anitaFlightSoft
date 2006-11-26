@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo 0 > /tmp/usbExtMounted
 export ANITA_FLIGHT_SOFT_DIR=/home/anita/flightSoft
 export PATH=/bin:/usr/bin:/usr/local/bin
 ## Shouldn't need to change this
