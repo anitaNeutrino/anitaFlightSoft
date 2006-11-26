@@ -148,7 +148,8 @@ int main (int argc, char *argv[])
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
 	    fillOtherStruct(&otherData);
-
+	    writeFileAndLink(&monData);
+	    writeOtherFileAndLink(&otherData);
 
 
 
@@ -223,8 +224,7 @@ int main (int argc, char *argv[])
 	    }
 
 
-	    writeFileAndLink(&monData);
-	    writeOtherFileAndLink(&otherData);
+
 
 
 //	    exit(0);
@@ -722,9 +722,9 @@ int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr) {
     fillGenericHeader(otherPtr,PACKET_OTHER_MONITOR,sizeof(OtherMonitorStruct_t));
     
     sprintf(theFilename,"%s/othermon_%ld.dat",
-	    MONITOR_TELEM_DIR,otherPtr->unixTime);
+	    PEDESTAL_TELEM_DIR,otherPtr->unixTime);
     retVal=normalSingleWrite((unsigned char*)otherPtr,theFilename,sizeof(OtherMonitorStruct_t));
-    retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
+    retVal=makeLink(theFilename,PEDESTAL_TELEM_LINK_DIR);
 
     retVal=cleverHkWrite((unsigned char*)otherPtr,sizeof(OtherMonitorStruct_t),
 			 otherPtr->unixTime,&otherMonWriter);
