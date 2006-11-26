@@ -510,7 +510,7 @@ int readConfig()
 	WindowCut=kvpGetInt("WindowCut",400);
 	BeginWindow=kvpGetInt("BeginWindow",100);
 	EndWindow=kvpGetInt("EndWindow",100);
-	MethodMask=kvpGetInt("WindowCut",0xFFFF);
+	MethodMask=kvpGetInt("MethodMask",0xFFFF);
     }
     else {
 	eString=configErrorString (status) ;
