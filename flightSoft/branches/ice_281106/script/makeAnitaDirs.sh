@@ -1,0 +1,44 @@
+#!/bin/sh
+
+#turnAllOff
+mkdir /tmp/anita
+mkdir /tmp/anita/telem
+mkdir /tmp/anita/telem/head
+mkdir /tmp/anita/telem/head/link
+mkdir /tmp/anita/telem/house
+mkdir /tmp/anita/telem/house/gps
+mkdir /tmp/anita/telem/house/gps/link
+mkdir /tmp/anita/telem/house/cmd
+mkdir /tmp/anita/telem/house/cmd/link
+mkdir /tmp/anita/telem/house/hk
+mkdir /tmp/anita/telem/house/hk/link
+mkdir /tmp/anita/telem/house/monitor
+mkdir /tmp/anita/telem/house/monitor/link
+mkdir /tmp/anita/telem/house/surfhk
+mkdir /tmp/anita/telem/house/surfhk/link
+mkdir /tmp/anita/telem/house/turfhk
+mkdir /tmp/anita/telem/house/turfhk/link
+mkdir /tmp/anita/telem/event
+mkdir /tmp/anita/telem/event/pri0
+mkdir /tmp/anita/telem/event/pri0/link
+mkdir /tmp/anita/telem/event/pri1
+mkdir /tmp/anita/telem/event/pri1/link
+mkdir /tmp/anita/telem/event/pri2
+mkdir /tmp/anita/telem/event/pri2/link
+mkdir /tmp/anita/telem/event/pri3
+mkdir /tmp/anita/telem/event/pri3/link
+mkdir /tmp/anita/telem/event/pri4
+mkdir /tmp/anita/telem/event/pri4/link
+mkdir /tmp/anita/telem/event/pri5
+mkdir /tmp/anita/telem/event/pri5/link
+mkdir /tmp/anita/telem/event/pri6
+mkdir /tmp/anita/telem/event/pri6/link
+mkdir /tmp/anita/telem/event/pri7
+mkdir /tmp/anita/telem/event/pri7/link
+mkdir /tmp/anita/telem/event/pri8
+mkdir /tmp/anita/telem/event/pri8/link
+mkdir /tmp/anita/telem/event/pri9
+mkdir /tmp/anita/telem/event/pri9/link
+mkdir /mnt/data/anita
+mkdir /mnt/data/anita/index
+#mkdir /mnt/data/anita/telem

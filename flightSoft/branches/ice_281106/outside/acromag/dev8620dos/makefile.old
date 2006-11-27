@@ -1,0 +1,13 @@
+
+CC=gcc
+MODCFLAGS := -Wall -DMODULE -D__KERNEL__ -DLINUX -I /usr/src/linux-2.4.20-8/include/
+
+apc8620.o:		dev8620.o isr408.o
+			ld -r -o apc8620.o dev8620.o isr408.o
+
+dev8620.o:		dev8620.c /usr/include/linux/version.h
+			$(CC) $(MODCFLAGS) -c dev8620.c
+
+isr408.o:		isr408.c /usr/include/linux/version.h
+			$(CC) $(MODCFLAGS) -c isr408.c
+

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#turnCalPulserOn
+turnGPSOn
+turnVetoOn
+turnRFCM1On
+turnRFCM2On
+turnRFCM3On
+turnRFCM4On
