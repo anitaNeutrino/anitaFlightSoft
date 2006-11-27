@@ -74,6 +74,7 @@ char usbExtName[FILENAME_MAX];
 int usbBitMasks[2]={0x4,0x8};
 
 int shouldWeThrowAway(int pri);
+void handleBadSigs(int sig);
 
 int main (int argc, char *argv[])
 {
@@ -94,7 +95,7 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
 
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -570,4 +571,14 @@ int shouldWeThrowAway(int pri)
     if(testVal<priorityFractionDelete[pri])
 	return 1;
     return 0;
+}
+
+void handleBadSigs(int sig)
+{
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    closeEventFilesAndTidy(&eventWriter);
+    closeHkFilesAndTidy(&indexWriter);
+    unlink(archivedPidFile);
+    syslog(LOG_INFO,"Archived terminating");
+    exit(0);
 }
