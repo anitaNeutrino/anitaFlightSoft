@@ -163,8 +163,9 @@ int main (int argc, char *argv[])
 		    theCmd.cmd[0]=CLEAR_RAMDISK;
 		    writeCommandAndLink(&theCmd);
 		}
-		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd|| 
-			otherData.ramDiskInodes<inodesKillAcqd) {		
+		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd || 
+			otherData.ramDiskInodes<inodesKillAcqd) {
+		    syslog(LOG_WARNING,"Killing Acqd -- ramDisk %d MB, %d inodes",monData.diskInfo.diskSpace[0],otherData.ramDiskInodes); 
 		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_KILL_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
@@ -617,7 +618,7 @@ void checkProcesses()
     }
     if(sendCommand) {
 	theCmd.cmd[1]=value&0xff;
-	theCmd.cmd[2]=(value&0xff)>>8;
+	theCmd.cmd[2]=(value&0xff00)>>8;
 	writeCommandAndLink(&theCmd);
     }
 
