@@ -1419,7 +1419,7 @@ int killPrograms(int progMask)
     ProgramId_t prog;
     
     int testMask;	
-
+    syslog(LOG_INFO,"killPrograms %#x\n",progMask);
 //    printf("Kill programs %d\n",progMask);
     for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
 	testMask=getIdMask(prog);
@@ -1428,6 +1428,7 @@ int killPrograms(int progMask)
 //	    printf("Killing prog %s\n",getProgName(prog));
 	    sendSignal(prog,SIGUSR2);
 	    sprintf(daemonCommand,"daemon --stop -n %s",getProgName(prog));
+	    syslog(LOG_INFO,"Sending command: %s",daemonCommand);
 	    retVal=system(daemonCommand);
 	    if(retVal!=0) {
 		errorCount++;
@@ -1453,12 +1454,15 @@ int startPrograms(int progMask)
     ProgramId_t prog;
     int testMask;	
     int errorCount=0;
+    syslog(LOG_INFO,"startPrograms %#x\n",progMask);
     for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
 	testMask=getIdMask(prog);
 	if(progMask&testMask) {
 	    //Match
 	    sprintf(daemonCommand,"daemon -r %s -n %s ",
 		    getProgName(prog),getProgName(prog));
+
+	    syslog(LOG_INFO,"Sending command: %s",daemonCommand);
 	    retVal=system(daemonCommand);
 	    if(retVal!=0) {
 		errorCount++;

@@ -194,6 +194,7 @@ int main (int argc, char *argv[])
 		    continue;
 		}	
 	    
+		int tryCount=0;
 		do {
 //		    printf("Here %lu (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
 		    if(tryToMatchGps) {
@@ -208,8 +209,9 @@ int main (int argc, char *argv[])
 			else break;
 		    }
 		    else break;
+		    tryCount++;
 		} while((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT
-			&& !filledSubTime);
+			&& !filledSubTime && tryCount<20);
 				
 #ifdef TIME_DEBUG
 		gettimeofday(&timeStruct2,NULL);
