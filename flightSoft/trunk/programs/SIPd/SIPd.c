@@ -23,6 +23,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "includes/anitaStructures.h"
+#include "includes/anitaCommand.h"
   
 #define SLBUF_SIZE 240
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
@@ -286,23 +287,27 @@ void commandHandler(unsigned char *cmd)
     
     //Need to add here
 
-/*     if (cmd[0] == 129) { */
-/* 	fprintf(stderr, "DISABLE_DATA_COLL\n"); */
-/*     } else if (cmd[0] == 131) { */
-/* 	// Use this command to quit. */
-/* 	fprintf(stderr, "QUIT CMD\n"); */
-/* 	sipcom_end(); */
-/*     } else if (cmd[0] == 138) { */
-/* 	fprintf(stderr, "HV_PWR_ON\n"); */
-/*     } else if (cmd[0] == 221) { */
-/* 	// Use the MARK command to change the throttle rate. Oops, need to */
-/* 	// tell the highrate writer process to change the rate. */
-/* 	unsigned short mark = (cmd[2] << 8) | cmd[1]; */
-/* 	fprintf(stderr, "MARK %u\n", mark); */
-/* 	sipcom_highrate_set_throttle(mark); */
-/*     } else { */
-/* 	fprintf(stderr, "Unknown command = 0x%02x (%d)\n", cmd[0], cmd[0]); */
-/*     } */
+    if (cmd[0] == CMD_SIPD_REBOOT) {
+	syslog(LOG_INFO,"Received command %d -- SIPd reboot",cmd[0]);
+	system("daemon --stop -n Monitord");
+	system("daemon --stop -n Acqd");
+	system("daemon --stop -n Archived");
+	system("daemon --stop -n GPSd");
+	system("daemon --stop -n Eventd");
+	system("daemon --stop -n Prioritizerd");
+	system("rm -rf /tmp/anita/acqd /tmp/anita/prioritizerd /tmp/anita/eventd");
+	system("sudo reboot");	
+    } else if (cmd[0] == CMD_RESPAWN_PROGS && cmd[2]&0x2) {
+	// Use this command to quit.
+	syslog(LOG_INFO,"SIPd received respawn cmd\n");
+	sipcom_end();
+    } else if (cmd[0] == SIPD_THROTTLE_RATE) {
+	// Use the MARK command to change the throttle rate. Oops, need to
+	// tell the highrate writer process to change the rate.
+	unsigned short mark = (cmd[2] << 8) | cmd[1];
+	syslog(LOG_INFO,"SIPd changing throttle rate to %u\n", mark);
+	sipcom_highrate_set_throttle(mark);
+    }
 }
 
 void comm1Handler()

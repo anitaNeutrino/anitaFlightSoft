@@ -1020,7 +1020,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    fvalue=((float)ivalue3)/1000.;
 	    return setPidGoalScaleFactor(ivalue,ivalue2,fvalue);
 	case ACQD_SET_RATE_SERVO:
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[1]<<8);
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    if(ivalue>0) {
 		configModifyInt("Acqd.config","rates","enableRateServo",1,NULL);
 		fvalue=((float)ivalue)/1000.;
