@@ -1,0 +1,263 @@
+OBJS = hkd.o  \
+../ip320/ainsc320.o ../ip320/mccd320.o \
+../ip320/rsts320.o ../ip320/sccd320.o ../ip470/cnfg470.o \
+../ip470/rpnt470.o ../ip470/rprt470.o ../ip470/rsts470.o ../ip470/wpnt470.o \
+../ip470/wprt470.o ../carrier/apc8620.o
+
+OBJS3 = hkd3.o
+
+OBJSCMD = hkcommand.o 
+
+SRCS = hkd.c hkd3.c hkcommand.c  ../ip320/ainmc320.c \
+../ip320/ainsc320.c ../ip320/mccd320.c \
+../ip320/rsts320.c ../ip320/sccd320.c ../ip470/cnfg470.c \
+../ip470/rpnt470.c ../ip470/rprt470.c ../ip470/rsts470.c ../ip470/wpnt470.c \
+../ip470/wprt470.c ../carrier/apc8620.c
+
+CFLAGS = -g -I ./
+
+LDFLAGS = -lm
+
+all: hkd hkd3 hkcommand
+
+hkd: $(OBJS)
+	gcc $(LDFLAGS) -o hkd $(OBJS)
+
+hkd3: $(OBJS3)
+	gcc $(LDFLAGS) -o hkd3 $(OBJS3)
+
+hkcommand: $(OBJSCMD)
+	gcc $(LDFLAGS) -o hkcommand $(OBJSCMD)
+
+clean:  clean
+	rm $(OBJS)
+
+depend:
+	makedepend -- $(CFLAGS) -- $(SRCS)
+
+# DO NOT DELETE
+
+hkd.o: ../carrier/apc8620.h /usr/include/stdio.h /usr/include/features.h
+hkd.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+hkd.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+hkd.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+hkd.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+hkd.o: /usr/include/_G_config.h /usr/include/wchar.h
+hkd.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+hkd.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+hkd.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
+hkd.o: /usr/include/sys/types.h /usr/include/time.h /usr/include/fcntl.h
+hkd.o: /usr/include/bits/fcntl.h ../ip320/ip320.h ../ip470/ip470.h
+hkd.o: /usr/include/string.h /usr/include/sys/timeb.h /usr/include/math.h
+hkd.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
+hkd.o: /usr/include/bits/mathcalls.h /usr/include/signal.h
+hkd.o: /usr/include/bits/sigset.h /usr/include/bits/signum.h
+hkd3.o: ./hkd3.h ../carrier/apc8620.h /usr/include/stdio.h
+hkd3.o: /usr/include/features.h /usr/include/sys/cdefs.h
+hkd3.o: /usr/include/gnu/stubs.h
+hkd3.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+hkd3.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+hkd3.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+hkd3.o: /usr/include/_G_config.h /usr/include/wchar.h
+hkd3.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+hkd3.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+hkd3.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
+hkd3.o: /usr/include/sys/types.h /usr/include/time.h /usr/include/fcntl.h
+hkd3.o: /usr/include/bits/fcntl.h ../ip320/ip320.h ../ip470/ip470.h
+hkd3.o: /usr/include/string.h /usr/include/sys/timeb.h /usr/include/math.h
+hkd3.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
+hkd3.o: /usr/include/bits/mathcalls.h /usr/include/signal.h
+hkd3.o: /usr/include/bits/sigset.h /usr/include/bits/signum.h
+hkd3.o: /usr/include/stdlib.h /usr/include/ctype.h /usr/include/endian.h
+hkd3.o: /usr/include/bits/endian.h /usr/include/unistd.h
+hkd3.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+hkd3.o: /usr/include/errno.h /usr/include/bits/errno.h
+hkd3.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+hkd3.o: /usr/include/asm-generic/errno.h
+hkd3.o: /usr/include/asm-generic/errno-base.h /usr/include/malloc.h
+hkd3.o: /usr/include/sys/ipc.h /usr/include/bits/ipctypes.h
+hkd3.o: /usr/include/bits/ipc.h /usr/include/sys/msg.h
+hkd3.o: /usr/include/bits/msq.h /usr/include/sys/time.h
+hkd3.o: /usr/include/bits/time.h /usr/include/sys/select.h
+hkd3.o: /usr/include/bits/select.h /usr/include/dirent.h
+hkd3.o: /usr/include/bits/dirent.h /usr/include/sys/stat.h
+hkd3.o: /usr/include/bits/stat.h /usr/include/sys/sysmacros.h
+hkd3.o: /usr/include/pthread.h /usr/include/sched.h /usr/include/bits/sched.h
+hkd3.o: /usr/include/bits/pthreadtypes.h /usr/include/bits/initspin.h
+hkd3.o: /usr/include/bits/sigthread.h /usr/include/sys/shm.h
+hkd3.o: /usr/include/bits/shm.h /usr/include/termio.h /usr/include/termios.h
+hkd3.o: /usr/include/bits/termios.h /usr/include/sys/ioctl.h
+hkd3.o: /usr/include/bits/ioctls.h /usr/include/asm/ioctls.h
+hkd3.o: /usr/include/asm/ioctl.h /usr/include/bits/ioctl-types.h
+hkd3.o: /usr/include/sys/ttydefaults.h
+hkcommand.o: /usr/include/stdio.h /usr/include/features.h
+hkcommand.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+hkcommand.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+hkcommand.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+hkcommand.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+hkcommand.o: /usr/include/_G_config.h /usr/include/wchar.h
+hkcommand.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+hkcommand.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+hkcommand.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
+hkcommand.o: /usr/include/stdlib.h /usr/include/string.h /usr/include/math.h
+hkcommand.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
+hkcommand.o: /usr/include/bits/mathcalls.h /usr/include/ctype.h
+hkcommand.o: /usr/include/endian.h /usr/include/bits/endian.h
+hkcommand.o: /usr/include/sys/types.h /usr/include/time.h
+hkcommand.o: /usr/include/dirent.h /usr/include/bits/dirent.h
+../ip320/ainmc320.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip320/ainmc320.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip320/ainmc320.o: /usr/include/gnu/stubs.h
+../ip320/ainmc320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip320/ainmc320.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip320/ainmc320.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip320/ainmc320.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip320/ainmc320.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip320/ainmc320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip320/ainmc320.o: /usr/include/bits/stdio_lim.h
+../ip320/ainmc320.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip320/ainmc320.o: /usr/include/time.h /usr/include/fcntl.h
+../ip320/ainmc320.o: /usr/include/bits/fcntl.h ../ip320/ip320.h
+../ip320/ainsc320.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip320/ainsc320.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip320/ainsc320.o: /usr/include/gnu/stubs.h
+../ip320/ainsc320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip320/ainsc320.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip320/ainsc320.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip320/ainsc320.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip320/ainsc320.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip320/ainsc320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip320/ainsc320.o: /usr/include/bits/stdio_lim.h
+../ip320/ainsc320.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip320/ainsc320.o: /usr/include/time.h /usr/include/fcntl.h
+../ip320/ainsc320.o: /usr/include/bits/fcntl.h ../ip320/ip320.h
+../ip320/mccd320.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip320/mccd320.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip320/mccd320.o: /usr/include/gnu/stubs.h
+../ip320/mccd320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip320/mccd320.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip320/mccd320.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip320/mccd320.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip320/mccd320.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip320/mccd320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip320/mccd320.o: /usr/include/bits/stdio_lim.h
+../ip320/mccd320.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip320/mccd320.o: /usr/include/time.h /usr/include/fcntl.h
+../ip320/mccd320.o: /usr/include/bits/fcntl.h ../ip320/ip320.h
+../ip320/rsts320.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip320/rsts320.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip320/rsts320.o: /usr/include/gnu/stubs.h
+../ip320/rsts320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip320/rsts320.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip320/rsts320.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip320/rsts320.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip320/rsts320.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip320/rsts320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip320/rsts320.o: /usr/include/bits/stdio_lim.h
+../ip320/rsts320.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip320/rsts320.o: /usr/include/time.h /usr/include/fcntl.h
+../ip320/rsts320.o: /usr/include/bits/fcntl.h ../ip320/ip320.h
+../ip320/sccd320.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip320/sccd320.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip320/sccd320.o: /usr/include/gnu/stubs.h
+../ip320/sccd320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip320/sccd320.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip320/sccd320.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip320/sccd320.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip320/sccd320.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip320/sccd320.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip320/sccd320.o: /usr/include/bits/stdio_lim.h
+../ip320/sccd320.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip320/sccd320.o: /usr/include/time.h /usr/include/fcntl.h
+../ip320/sccd320.o: /usr/include/bits/fcntl.h ../ip320/ip320.h
+../ip470/cnfg470.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip470/cnfg470.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip470/cnfg470.o: /usr/include/gnu/stubs.h
+../ip470/cnfg470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip470/cnfg470.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip470/cnfg470.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip470/cnfg470.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip470/cnfg470.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip470/cnfg470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip470/cnfg470.o: /usr/include/bits/stdio_lim.h
+../ip470/cnfg470.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip470/cnfg470.o: /usr/include/time.h /usr/include/fcntl.h
+../ip470/cnfg470.o: /usr/include/bits/fcntl.h ../ip470/ip470.h
+../ip470/rpnt470.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip470/rpnt470.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip470/rpnt470.o: /usr/include/gnu/stubs.h
+../ip470/rpnt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip470/rpnt470.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip470/rpnt470.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip470/rpnt470.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip470/rpnt470.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip470/rpnt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip470/rpnt470.o: /usr/include/bits/stdio_lim.h
+../ip470/rpnt470.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip470/rpnt470.o: /usr/include/time.h /usr/include/fcntl.h
+../ip470/rpnt470.o: /usr/include/bits/fcntl.h ../ip470/ip470.h
+../ip470/rprt470.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip470/rprt470.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip470/rprt470.o: /usr/include/gnu/stubs.h
+../ip470/rprt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip470/rprt470.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip470/rprt470.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip470/rprt470.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip470/rprt470.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip470/rprt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip470/rprt470.o: /usr/include/bits/stdio_lim.h
+../ip470/rprt470.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip470/rprt470.o: /usr/include/time.h /usr/include/fcntl.h
+../ip470/rprt470.o: /usr/include/bits/fcntl.h ../ip470/ip470.h
+../ip470/rsts470.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip470/rsts470.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip470/rsts470.o: /usr/include/gnu/stubs.h
+../ip470/rsts470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip470/rsts470.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip470/rsts470.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip470/rsts470.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip470/rsts470.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip470/rsts470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip470/rsts470.o: /usr/include/bits/stdio_lim.h
+../ip470/rsts470.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip470/rsts470.o: /usr/include/time.h /usr/include/fcntl.h
+../ip470/rsts470.o: /usr/include/bits/fcntl.h ../ip470/ip470.h
+../ip470/wpnt470.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip470/wpnt470.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip470/wpnt470.o: /usr/include/gnu/stubs.h
+../ip470/wpnt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip470/wpnt470.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip470/wpnt470.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip470/wpnt470.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip470/wpnt470.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip470/wpnt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip470/wpnt470.o: /usr/include/bits/stdio_lim.h
+../ip470/wpnt470.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip470/wpnt470.o: /usr/include/time.h /usr/include/fcntl.h
+../ip470/wpnt470.o: /usr/include/bits/fcntl.h ../ip470/ip470.h
+../ip470/wprt470.o: ../carrier/apc8620.h /usr/include/stdio.h
+../ip470/wprt470.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../ip470/wprt470.o: /usr/include/gnu/stubs.h
+../ip470/wprt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../ip470/wprt470.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../ip470/wprt470.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../ip470/wprt470.o: /usr/include/_G_config.h /usr/include/wchar.h
+../ip470/wprt470.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../ip470/wprt470.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../ip470/wprt470.o: /usr/include/bits/stdio_lim.h
+../ip470/wprt470.o: /usr/include/bits/sys_errlist.h /usr/include/sys/types.h
+../ip470/wprt470.o: /usr/include/time.h /usr/include/fcntl.h
+../ip470/wprt470.o: /usr/include/bits/fcntl.h ../ip470/ip470.h
+../carrier/apc8620.o: ../carrier/apc8620.h /usr/include/stdio.h
+../carrier/apc8620.o: /usr/include/features.h /usr/include/sys/cdefs.h
+../carrier/apc8620.o: /usr/include/gnu/stubs.h
+../carrier/apc8620.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stddef.h
+../carrier/apc8620.o: /usr/include/bits/types.h /usr/include/bits/wordsize.h
+../carrier/apc8620.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../carrier/apc8620.o: /usr/include/_G_config.h /usr/include/wchar.h
+../carrier/apc8620.o: /usr/include/bits/wchar.h /usr/include/gconv.h
+../carrier/apc8620.o: /usr/lib/gcc-lib/i486-linux/3.3.5/include/stdarg.h
+../carrier/apc8620.o: /usr/include/bits/stdio_lim.h
+../carrier/apc8620.o: /usr/include/bits/sys_errlist.h
+../carrier/apc8620.o: /usr/include/sys/types.h /usr/include/time.h
+../carrier/apc8620.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h

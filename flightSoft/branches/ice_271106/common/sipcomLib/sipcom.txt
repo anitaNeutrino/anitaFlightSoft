@@ -1,0 +1,88 @@
+Title: SIP COMmuncation library
+
+sipcom is a library of C functions that takes care of
+communicating with the Long Duration Balloon SIP package of the NSBF
+(http://www.nsbf.nasa.gov).
+
+We use the following SIP services:
+	- transfers science commands from the ground
+	- transfers ``high rate'' data from the science payload to the
+	  ground at rates up to 6000 bits/second via TDRSS.
+	- transfers ``low rate'' data at a rate of 255 bytes every 30
+	  seconds via TDRSS or Iridium.
+	- provides GPS time, position, and pressure/altitude to the science
+	  payload.
+
+Cabling:
+
+Communicating with the SIP requires three (3) serial lines.
+
+When using the SIP simulator, each cable has a 9-pin RS-232 connector on
+each end. The pins are connected as in the diagram below. For the actual
+SIP, I am not sure.
+
+>     2 ___________    ___________ 2
+>                  \  /
+>                   \/     
+>                   /\      
+>     3 ___________/  \___________ 3
+>                   
+>     5 __________________________ 5
+
+ANITA notes:
+
+	The three serial lines are set up as follows
+
+	- /dev/ttyS0 (com1) connects to SIP COMM1 port.
+	- /dev/ttyS1 (com2) connects to SIP COMM2 port.
+	- /dev/ttyS2 (com3) connects to SIP high rate TDRSS port.
+
+	On the ANITA SBS flight computer, the following command must be
+	run at boot time. I put it in /etc/rc.local. It puts the third
+	serial line at the correct IRQ.
+>		/bin/setserial /dev/ttyS2 irq 11
+
+	Also, the bios settings must be changed on the "peripheral
+	setup" page:
+
+>               Desc                    orig    now
+>               OnBoard Serial Port 1   Auto    3F8h
+>               "       "      "    2   Auto    2F8h
+>               "       "      "    3   Auto    3E8h,IRQ11
+>               "       "      "    4   Auto    Auto
+ 
+
+Callback functions:
+
+If you want to do anything when sipcom parses input from the SIP, you must
+provide callback functions. The callbacks are code that you provide, and
+that sipcom will execute whenever it parses
+	- a command from the ground
+	- a request for low-rate data
+	- SIP gps position
+	- SIP gps time
+	- SIP altitude/pressure
+
+If you do not provide a callback for a particular item, then sipcom will
+take no action when it encounters it.
+
+Compiling:
+
+Since sipcom uses the pthreads library, you must link using -lpthread.
+
+Example code:
+
+See the file driver.c in the source distribution. It should contain
+examples of all, I hope, functions in the library.
+
+Author:
+
+    Marty Olevitch
+
+    Physics Dept, Washington U in St Louis
+
+    Tel: 314-935-6285
+
+    marty@cosray.wustl.edu
+
+    http://cosray.wustl.edu/~marty
