@@ -20,6 +20,7 @@ char prioritizerdPidFile[FILENAME_MAX];
 
 void wasteTime(AnitaEventBody_t *bdPtr);
 int readConfig();
+void handleBadSigs(int sig);
 
 
 #ifdef TIME_DEBUG
@@ -134,8 +135,9 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
-    signal(SIGINT, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
     
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -518,4 +520,12 @@ int readConfig()
 	fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString);
     }
     return status;
+}
+
+void handleBadSigs(int sig)
+{
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    unlink(prioritizerdPidFile);
+    syslog(LOG_INFO,"Prioritizerd terminating");
+    exit(0);
 }

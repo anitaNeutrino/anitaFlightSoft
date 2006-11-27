@@ -38,7 +38,7 @@ void clearGpsDir();
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset);
 int readConfigFile();
 int compareGpsTimes(const void *ptr1, const void *ptr2);
-
+void handleBadSigs(int sig);
 
 /* Directories and gubbins */
 char eventdPidFile[FILENAME_MAX];
@@ -93,9 +93,9 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
-    signal(SIGINT, sigUsr2Handler);
-    signal(SIGSEGV, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -705,4 +705,12 @@ int compareGpsTimes(const void *ptr1, const void *ptr2) {
     
     return 0;
 
+}
+
+void handleBadSigs(int sig)
+{
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    unlink(eventdPidFile);
+    syslog(LOG_INFO,"Eventd terminating");
+    exit(0);
 }
