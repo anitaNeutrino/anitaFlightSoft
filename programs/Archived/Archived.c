@@ -491,9 +491,9 @@ void writeOutputForTelem(int numBytes) {
     char headName[FILENAME_MAX];
     char bodyName[FILENAME_MAX];
     int pri=theHead.priority&0xf;
-    if(theHead.turfio.trigType&0x2 && priorityPPS1<0)
+    if(theHead.turfio.trigType&0x2 && (priorityPPS1>=0 && priorityPPS1<=9))
 	pri=priorityPPS1;
-    if(theHead.turfio.trigType&0x4 && priorityPPS2<0)
+    if(theHead.turfio.trigType&0x4 && (priorityPPS2>=0 && priorityPPS2<=9))
 	pri=priorityPPS2;
     if(pri<0 || pri>9) pri=9;
     theHead.priority=16*theHead.priority+pri;
