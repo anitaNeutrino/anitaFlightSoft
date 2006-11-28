@@ -149,7 +149,11 @@ int main (int argc, char *argv[])
 
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
-    makeDirectories(GPS_TELEM_LINK_DIR);
+    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
+    makeDirectories(G12_POS_TELEM_LINK_DIR);
+    makeDirectories(G12_SAT_TELEM_LINK_DIR);
     
     printf("hkDiskBitMask %d\n",hkDiskBitMask);
 
@@ -601,9 +605,9 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
            
     //Write file and link for sipd
-    sprintf(theFilename,"%s/vtg_%ld.dat",GPS_TELEM_DIR,theVtg.unixTime);
+    sprintf(theFilename,"%s/vtg_%ld.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime);
     retVal=writeGpsVtg(&theVtg,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+    retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR);  
 
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
@@ -691,9 +695,9 @@ void processPosString(char *gpsString, int gpsLength) {
 
     fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%ld.dat",GPS_TELEM_DIR,thePos.unixTime);
+    sprintf(theFilename,"%s/pos_%ld.dat",G12_POS_TELEM_DIR,thePos.unixTime);
     retVal=writeGpsPos(&thePos,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+    retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR);  
 
     //Write file to main disk
 
@@ -892,9 +896,9 @@ void processG12SatString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/sat_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%ld.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsG12Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+    retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);  
 
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsG12SatStruct_t),
@@ -981,9 +985,9 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	else {
 	    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
 	    //Write file and link for sipd
-	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
+	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
 	    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-	    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+	    retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);  
 
 	    //Write file to main disk
 	    retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsAdu5SatStruct_t),
@@ -1073,9 +1077,9 @@ void processGppatString(char *gpsString, int gpsLength) {
     fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld.dat",GPS_TELEM_DIR,thePat.unixTime);
+    sprintf(theFilename,"%s/pat_%ld.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime);
     retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+    retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR);  
 
 
     //Write file to main disk

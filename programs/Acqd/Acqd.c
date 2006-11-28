@@ -207,6 +207,10 @@ float intervalDeadtime; //In secs
 
 
 
+//Nasty fix as SURF 2 is the only one we monitor busy on
+int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
+
+
 int main(int argc, char **argv) {
     char reniceCommand[FILENAME_MAX];
     PlxHandle_t surfHandles[MAX_SURFS];
@@ -371,9 +375,6 @@ int main(int argc, char **argv) {
 
 	if(doingEvent==0) prepWriterStructs();
 
-	//Send software trigger
-	setTurfControl(turfioHandle,SendSoftTrg);
-
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
 	trigMode=TrigNone;
@@ -382,13 +383,12 @@ int main(int argc, char **argv) {
 	// RJN debugging
 //	setTurfControl(turfioHandle,SetTrigMode);
 
-
-	    
-
-
 	//Write RFCM Mask
 	writeAntTrigMask(turfioHandle);
 	
+	//Send software trigger
+	setTurfControl(turfioHandle,SendSoftTrg);
+
 	theSurfHk.globalThreshold=0;
 
 	//Pedestal Mode
@@ -989,10 +989,12 @@ int main(int argc, char **argv) {
 #endif	    
 
 	    // Clear boards
-	    for(surf=0;surf<numSurfs;++surf)
+	    int tempInd;
+	    for(tempInd=0;tempInd<numSurfs;tempInd++) {
+		surf=surfClearIndex[tempInd];
 		if (setSurfControl(surfHandles[surf], SurfClearEvent) != ApiSuccess)
 		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-	    
+	    }
 //	    if(!surfonly)
 //		if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
 //		    printf("  failed to send clear event pulse on TURFIO.\n") ;
@@ -1733,7 +1735,9 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
 
 // Prepare SURF boards
-    for(i=0;i<numSurfs;++i){
+    int tempInd;
+    for(tempInd=0;tempInd<numSurfs;tempInd++) {
+	i=surfClearIndex[tempInd];
 	/* init. 9030 I/O descripter (to enable READY# input |= 0x02.) */
 	if(printToScreen) printf("Trying to set Sp0 on SURF %d\n",surfIndex[i]);
 	if(PlxRegisterWrite(surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
@@ -1746,8 +1750,8 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
 	if(printToScreen)
 	    printf(" GPIO register contents SURF %d = %o\n",surfIndex[i],testVal);
-		   
-
+	
+	
 	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
 	    if(printToScreen)
@@ -1765,6 +1769,11 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 		   
     }
     
+
+    antTrigMask=0xffffffff;    
+    //Mask off all antennas
+    writeAntTrigMask(turfioHandle);
+
     return;
 }
 

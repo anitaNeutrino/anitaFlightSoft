@@ -160,7 +160,11 @@ int main(int argc, char *argv[])
     makeDirectories(PEDESTAL_TELEM_LINK_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
-    makeDirectories(GPS_TELEM_LINK_DIR);
+    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(G12_SAT_TELEM_LINK_DIR);
+    makeDirectories(G12_POS_TELEM_LINK_DIR);
     makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
 
@@ -575,14 +579,32 @@ void fillBufferWithHk()
 		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
 		     sizeof(FullLabChipPedStruct_t)); 
     }
-    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5SatStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,GPS_TELEM_DIR,
-		     GPS_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
-    }
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(HkDataStruct_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HK_TELEM_DIR,
 		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
     }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5SatStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,ADU5_SAT_TELEM_DIR,
+		     ADU5_SAT_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsG12SatStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,G12_SAT_TELEM_DIR,
+		     G12_SAT_TELEM_LINK_DIR,sizeof(GpsG12SatStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5PatStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,ADU5_PAT_TELEM_DIR,
+		     ADU5_PAT_TELEM_LINK_DIR,sizeof(GpsAdu5PatStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsG12PosStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,G12_POS_TELEM_DIR,
+		     G12_POS_TELEM_LINK_DIR,sizeof(GpsG12PosStruct_t)); 
+    }
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(GpsAdu5VtgStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,ADU5_VTG_TELEM_DIR,
+		     ADU5_VTG_TELEM_LINK_DIR,sizeof(GpsAdu5VtgStruct_t)); 
+    }
+
+    
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullSurfHkStruct_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,SURFHK_TELEM_DIR,
 		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 

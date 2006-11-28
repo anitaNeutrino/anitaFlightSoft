@@ -36,7 +36,7 @@ char *getProgName(ProgramId_t prog);
 int getRamdiskInodes();
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr);
 int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr);
-
+void purgeHkDirectory(char *dirName,char *linkDirName);
 
 // Global Variables
 int printToScreen=0;
@@ -51,6 +51,7 @@ int killedAcqd=0;
 int acqdKillTime=0;
 int maxAcqdWaitPeriod=180;
 int maxEventQueueSize=300;
+int maxHkQueueSize=200;
 
 char acqdPidFile[FILENAME_MAX];
 char archivedPidFile[FILENAME_MAX];
@@ -165,7 +166,7 @@ int main (int argc, char *argv[])
 		}
 		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd || 
 			otherData.ramDiskInodes<inodesKillAcqd) {
-		    syslog(LOG_WARNING,"Killing Acqd -- ramDisk %d MB, %d inodes",monData.diskInfo.diskSpace[0],otherData.ramDiskInodes); 
+		    syslog(LOG_WARNING,"Killing Acqd -- ramDisk %d MB, %lu inodes",monData.diskInfo.diskSpace[0],otherData.ramDiskInodes); 
 		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_KILL_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
@@ -274,6 +275,7 @@ int readConfigFile()
     if(status == CONFIG_E_OK) {
 	watchProcesses=kvpGetInt("watchProcesses",0);
 	maxEventQueueSize=kvpGetInt("maxEventQueueSize",300);
+	maxHkQueueSize=kvpGetInt("maxHkQueueSize",200);
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -465,46 +467,105 @@ int checkQueues(QueueStruct_t *queuePtr) {
     queuePtr->cmdLinksLOS=numLinks;
     if(printToScreen) printf("%s\t%u\n",LOSD_CMD_ECHO_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     queuePtr->cmdLinksSIP=numLinks;
     if(printToScreen) printf("%s\t%u\n",SIPD_CMD_ECHO_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(HK_TELEM_LINK_DIR);
     queuePtr->hkLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",HK_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(HK_TELEM_DIR,HK_TELEM_LINK_DIR);
+    }
 
-    numLinks=countFilesInDir(GPS_TELEM_LINK_DIR);
+    numLinks=countFilesInDir(G12_POS_TELEM_LINK_DIR);
     queuePtr->gpsLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",GPS_TELEM_LINK_DIR,numLinks);
+    if(printToScreen) printf("%s\t%u\n",G12_POS_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(G12_POS_TELEM_DIR,G12_POS_TELEM_LINK_DIR);
+    }
+
+    numLinks=countFilesInDir(G12_SAT_TELEM_LINK_DIR);
+    queuePtr->gpsLinks+=numLinks;
+    if(printToScreen) printf("%s\t%u\n",G12_SAT_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(G12_SAT_TELEM_LINK_DIR,G12_SAT_TELEM_LINK_DIR);
+    }
+
+    numLinks=countFilesInDir(ADU5_PAT_TELEM_LINK_DIR);
+    queuePtr->gpsLinks+=numLinks;
+    if(printToScreen) printf("%s\t%u\n",ADU5_PAT_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(ADU5_PAT_TELEM_DIR,ADU5_PAT_TELEM_LINK_DIR);
+    }
+
+    numLinks=countFilesInDir(ADU5_VTG_TELEM_LINK_DIR);
+    queuePtr->gpsLinks+=numLinks;
+    if(printToScreen) printf("%s\t%u\n",ADU5_VTG_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(ADU5_VTG_TELEM_DIR,ADU5_VTG_TELEM_LINK_DIR);
+    }
+
+    numLinks=countFilesInDir(ADU5_SAT_TELEM_LINK_DIR);
+    queuePtr->gpsLinks+=numLinks;
+    if(printToScreen) printf("%s\t%u\n",ADU5_SAT_TELEM_LINK_DIR,numLinks);
+    if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(ADU5_SAT_TELEM_DIR,ADU5_SAT_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(MONITOR_TELEM_LINK_DIR);
     queuePtr->monitorLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",MONITOR_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(SURFHK_TELEM_LINK_DIR);
     queuePtr->surfHkLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",SURFHK_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(SURFHK_TELEM_DIR,SURFHK_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(TURFHK_TELEM_LINK_DIR);
     queuePtr->turfHkLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",TURFHK_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(TURFHK_TELEM_DIR,TURFHK_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(HEADER_TELEM_LINK_DIR);
     queuePtr->headLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",HEADER_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxEventQueueSize) {
+	purgeHkDirectory(HEADER_TELEM_DIR,HEADER_TELEM_LINK_DIR);
+    }
 
     numLinks=countFilesInDir(PEDESTAL_TELEM_LINK_DIR);
     queuePtr->pedestalLinks=numLinks;
     if(printToScreen) printf("%s\t%u\n",PEDESTAL_TELEM_LINK_DIR,numLinks);
     if(((short)numLinks)==-1) retVal--;
+    else if(numLinks>maxHkQueueSize) {
+	purgeHkDirectory(PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR);
+    }
     
     for(count=0;count<NUM_PRIORITIES;count++) {
 	numLinks=countFilesInDir(eventTelemLinkDirs[count]);
@@ -521,6 +582,32 @@ int checkQueues(QueueStruct_t *queuePtr) {
     }
     return retVal;
 }
+
+void purgeHkDirectory(char *dirName,char *linkDirName) 
+{
+    int count=0;
+    char currentLink[FILENAME_MAX];
+    char currentFile[FILENAME_MAX];
+    struct dirent **linkList;
+    int numLinks=getListofLinks(linkDirName,
+				&linkList);
+    if(numLinks>maxHkQueueSize) {
+	syslog(LOG_INFO,"Telemetry not keeping up removing %d links from queue %s\n",numLinks-50,dirName);
+	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-50,dirName);
+	for(count=0;count<numLinks-50;count++) {
+	    sprintf(currentLink,"%s/%s",linkDirName,linkList[count]->d_name);
+	    sprintf(currentFile,"%s/%s",linkDirName,linkList[count]->d_name);
+	    removeFile(currentFile);
+	    removeFile(currentLink);			
+	}
+	for(count=0;count<numLinks;
+	    count++) 
+	    free(linkList[count]);		    
+	free(linkList);		
+    }
+
+}
+
 
 void purgeDirectory(int priority) {    
     int count;
@@ -552,7 +639,6 @@ void purgeDirectory(int priority) {
 	    
 
 	    removeFile(currentHeader);			
-
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[priority],
 		    linkList[count]->d_name);	    	    
 	    removeFile(currentHeader);
