@@ -11,8 +11,8 @@ turnAllOff
 turnGPSOn
 
 #Start Cmdd and SIPd
-daemon -u anita -r SIPd -n SIPd
-daemon -u anita -r Cmdd -n Cmdd
+nice -n -20 daemon -u anita -r SIPd -n SIPd
+nice -n -20 daemon -u anita -r Cmdd -n Cmdd
 
 
 ###First up try to mount drives
