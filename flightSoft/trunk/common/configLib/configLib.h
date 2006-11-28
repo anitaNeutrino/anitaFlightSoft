@@ -65,6 +65,7 @@ extern "C" {
 /* function prototype declarations */
    char* configFileSpec (char* fileName) ;
    ConfigErrorCode configLoad (char* fleName, char* blockList) ;
+   ConfigErrorCode configLoadFullPath (char* fleName, char* blockList) ;
    ConfigErrorCode configStore (char* fileName, char* blockName) ;
    char* configErrorString (ConfigErrorCode code) ;
    ConfigErrorCode configValidate (char* fileName) ;

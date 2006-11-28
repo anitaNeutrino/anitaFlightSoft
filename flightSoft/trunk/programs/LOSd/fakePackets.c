@@ -176,7 +176,11 @@ int main(int argc, char *argv[])
     makeDirectories(TURFHK_TELEM_LINK_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
-    makeDirectories(GPS_TELEM_LINK_DIR);
+    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(G12_SAT_TELEM_LINK_DIR);
+    makeDirectories(G12_POS_TELEM_LINK_DIR);
 
     while(!maxEvents || (evNum<=maxEvents)) {
 	gettimeofday(&currentTime,0);
@@ -559,10 +563,10 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     retVal=checkPacket(&thePat);
     if(retVal) 
 	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/pat_%ld_%ld.dat",GPS_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
+    sprintf(theFilename,"%s/pat_%ld_%ld.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
 //    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
     retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR); 
+    retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR); 
 }
 
 
@@ -586,9 +590,9 @@ void fakeAdu5Vtg(struct timeval *currentTime) {
     retVal=checkPacket(&theVtg);
     if(retVal) 
 	printf("Problem with GpsAdu5VtgStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/vtg_%ld_%ld.dat",GPS_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
+    sprintf(theFilename,"%s/vtg_%ld_%ld.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
     retVal=writeGpsVtg(&theVtg,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR); 
+    retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR); 
 }
 
 
@@ -617,9 +621,9 @@ void fakeAdu5Sat(struct timeval *currentTime) {
     retVal=checkPacket(&theSat);
     if(retVal) 
 	printf("Problem with GpsAdu5SatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/sat_adu5_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_adu5_%ld.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);
+    retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);
 }
 
 
@@ -649,9 +653,9 @@ void fakeG12Pos(struct timeval *currentTime) {
     if(retVal) 
 	printf("Problem with GpsG12PosStruct_t %d\n",retVal);
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%ld_%ld.dat",GPS_TELEM_DIR,thePos.unixTime,thePos.unixTimeUs);
+    sprintf(theFilename,"%s/pos_%ld_%ld.dat",G12_POS_TELEM_DIR,thePos.unixTime,thePos.unixTimeUs);
     retVal=writeGpsPos(&thePos,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR); 
+    retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR); 
 }
 
 
@@ -679,9 +683,9 @@ void fakeG12Sat(struct timeval *currentTime) {
     retVal=checkPacket(&theSat);
     if(retVal) 
 	printf("Problem with GpsG12SatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/sat_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%ld.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsG12Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);
+    retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);
 }
 
 

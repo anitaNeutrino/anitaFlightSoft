@@ -319,6 +319,82 @@ ConfigErrorCode configLoad (
    return (status) ;
 }
 
+
+
+ConfigErrorCode configLoadFullPath (
+                            char* fileName,   /* Name of config file */
+                            char* blockList   /* Blocks we're interested in */
+                            )
+{
+   char thisBlock[BLOCKNAME_MAX] ;
+   int foundBlock[MAX_BLOCKS] ;
+   int wantBlock ;
+   int blocksRead ;
+   int block ;
+   int status ;
+//   char* fileSpec ;
+
+   nBlocks = parseBlockList (blockList) ;
+
+   blocksRead = 0 ;
+   for (block = 0 ; block < nBlocks ; block++) {
+      foundBlock[block] = 0 ;
+   }
+
+//   fileSpec = configFileSpec (fileName) ;
+   syslog (LOG_DEBUG,"configLoad Reading params from: %s", fileName) ;
+
+   config = fopen (fileName, "r") ;
+   if (config != NULL) {
+      blocksRead = 0 ;
+      do {
+         /* Skip to block that we want */
+         wantBlock = 0 ;
+         inBlock = 0 ;
+         status = 0 ;
+         while (!wantBlock && (status == 0)) {
+            status = getTag (thisBlock) ;
+            if (status == CONFIG_E_OK) {
+               block = checkTag (thisBlock) ;
+               if (block >= 0) {
+                  foundBlock[block] = 1 ;
+                  wantBlock = 1 ;
+               }
+            }
+            else if (status == CONFIG_E_EOF) {
+               status = CONFIG_E_SECTION ;
+               for (block = 0 ; block < nBlocks ; block++) {
+                  if (!foundBlock[block]) {
+                     syslog (LOG_WARNING,"<%s> block not found", blockName[block]) ;
+                  }
+               }
+            }
+         }
+
+         if (wantBlock) {
+            status = readBlock () ;
+            blocksRead++ ;
+         }
+
+      } while ((blocksRead < nBlocks) && (status == CONFIG_E_OK));
+      fclose (config) ;
+   }
+   else {
+      if (errno == ENOENT) {
+         syslog (LOG_ERR,"configLoad: %s not found", fileName) ;
+         status = CONFIG_E_NOFILE ;
+      }
+      else {
+         syslog (LOG_ERR,"configLoad: error %d opening %s", errno, fileName) ;
+         status = CONFIG_E_SYSTEM ;
+      }
+   }
+
+   return (status) ;
+}
+
+
+
 ConfigErrorCode configValidate (
                                 char* fileName   /* Name of config file */
                                 )

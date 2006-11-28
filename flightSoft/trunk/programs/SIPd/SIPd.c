@@ -163,7 +163,11 @@ int main(int argc, char *argv[])
     }
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(HEADER_TELEM_LINK_DIR);
-    makeDirectories(GPS_TELEM_LINK_DIR);
+    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(G12_SAT_TELEM_LINK_DIR);
+    makeDirectories(G12_POS_TELEM_LINK_DIR);
     makeDirectories(PEDESTAL_TELEM_LINK_DIR);
     makeDirectories(SURFHK_TELEM_LINK_DIR);
     makeDirectories(TURFHK_TELEM_LINK_DIR);
@@ -282,7 +286,6 @@ void commandHandler(unsigned char *cmd)
     for(byteNum=0;byteNum<cmdLengths[cmd[0]];byteNum++) 
 	theCmd.cmd[byteNum]=cmd[byteNum];
     
-    retVal=writeCommandAndLink(&theCmd);
 
     
     //Need to add here
@@ -299,7 +302,8 @@ void commandHandler(unsigned char *cmd)
 	system("sudo reboot");	
     } else if (cmd[0] == CMD_RESPAWN_PROGS && cmd[2]&0x2) {
 	// Use this command to quit.
-	syslog(LOG_INFO,"SIPd received respawn cmd\n");
+	syslog(LOG_INFO,"SIPd received respawn cmd\n");  
+	retVal=writeCommandAndLink(&theCmd);
 	sipcom_end();
     } else if (cmd[0] == SIPD_THROTTLE_RATE) {
 	// Use the MARK command to change the throttle rate. Oops, need to
@@ -307,7 +311,12 @@ void commandHandler(unsigned char *cmd)
 	unsigned short mark = (cmd[2] << 8) | cmd[1];
 	syslog(LOG_INFO,"SIPd changing throttle rate to %u\n", mark);
 	sipcom_highrate_set_throttle(mark);
+	retVal=writeCommandAndLink(&theCmd);
     }
+    else {
+	retVal=writeCommandAndLink(&theCmd);
+    }
+	
 }
 
 void comm1Handler()
@@ -981,10 +990,29 @@ void sendSomeHk(int maxBytes)
 		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
 		     sizeof(MonitorStruct_t)); 
     }
+
+
     if((maxBytes-hkCount)>sizeof(GpsAdu5SatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,GPS_TELEM_DIR,
-		     GPS_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_SAT_TELEM_DIR,
+		     ADU5_SAT_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
     }
+    if((maxBytes-hkCount)>sizeof(GpsG12SatStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,G12_SAT_TELEM_DIR,
+		     G12_SAT_TELEM_LINK_DIR,sizeof(GpsG12SatStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(GpsAdu5PatStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_PAT_TELEM_DIR,
+		     ADU5_PAT_TELEM_LINK_DIR,sizeof(GpsAdu5PatStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(GpsG12PosStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,G12_POS_TELEM_DIR,
+		     G12_POS_TELEM_LINK_DIR,sizeof(GpsG12PosStruct_t)); 
+    }
+    if((maxBytes-hkCount)>sizeof(GpsAdu5VtgStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_VTG_TELEM_DIR,
+		     ADU5_VTG_TELEM_LINK_DIR,sizeof(GpsAdu5VtgStruct_t)); 
+    }
+
     if((maxBytes-hkCount)>sizeof(HkDataStruct_t)) {
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HK_TELEM_DIR,
 		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
