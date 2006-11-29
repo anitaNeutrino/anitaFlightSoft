@@ -263,6 +263,7 @@ int main(int argc, char **argv) {
     intervalDeadtime=0;
     int firstLoop=1;
     int reInitNeeded=0;
+    int lastSofTrigTime=0;
 
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
@@ -387,6 +388,8 @@ int main(int argc, char **argv) {
 	reInitNeeded=0;
 	slipCounter=0;
 
+	//Send software trigger
+	setTurfControl(turfioHandle,SendSoftTrg);
 
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
@@ -399,8 +402,6 @@ int main(int argc, char **argv) {
 	//Write RFCM Mask
 	writeAntTrigMask(turfioHandle);
 	
-	//Send software trigger
-	setTurfControl(turfioHandle,SendSoftTrg);
 
 	theSurfHk.globalThreshold=0;
 
@@ -513,9 +514,10 @@ int main(int argc, char **argv) {
 
 	    //Send software trigger if we want to
 	    if(sendSoftTrigger && doingEvent>=0) {
-		usleep(softTrigSleepPeriod);
-		
-		setTurfControl(turfioHandle,SendSoftTrg);
+		if(!softTrigSleepPeriod || (time(NULL)-lastSofTrigTime)>softTrigSleepPeriod) {		    		
+		    setTurfControl(turfioHandle,SendSoftTrg);
+		    lastSofTrigTime=time(NULL);
+		}
 	    }
 
 	    
@@ -902,7 +904,10 @@ int main(int argc, char **argv) {
 		syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d",slipCounter,hdPtr->turfio.trigNum);
 		currentState=PROG_STATE_INIT;
 	    }
-
+	    hdPtr->otherFlag2=0;
+	    if(reInitNeeded) {
+		hdPtr->otherFlag2=0x1;
+	    }
 	    
 	    if(verbosity && printToScreen) printf("Done reading\n");
 
@@ -2539,12 +2544,6 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 	}
 	if(surf==1) {
 	    hdPtr->otherFlag|=(surfEvNum<<4);
-	}
-	if(surf==7) {
-	    hdPtr->otherFlag2=surfEvNum;
-	}
-	if(surf==8) {
-	    hdPtr->otherFlag2|=(surfEvNum<<4);
 	}
 	if(printToScreen && verbosity>2)
 	    printf("surf %d\tsurfEvNum %d\theaderWord %#x\nhdPtr->otherFlag %d\n",surf,surfEvNum,headerWord,hdPtr->otherFlag);
