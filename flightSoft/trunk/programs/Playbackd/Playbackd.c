@@ -18,10 +18,13 @@
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"
+#include "compressLib/compressLib.h"
+#include "pedestalLib/pedestalLib.h"
 
 int readConfigFile();
 int checkForRequests();
-
+void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,PedSubbedEventBody_t *psbPtr,int pri);
+void sendEvent(PlaybackRequest_t *pReq);
 
 // Global Variables
 int printToScreen=0;
@@ -34,6 +37,8 @@ char playbackdPidFile[FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 
+//Encoding Buffer
+unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
 int main (int argc, char *argv[])
 {
@@ -123,7 +128,7 @@ int readConfigFile()
 
 int checkForRequests() {
     int count,retVal;
-    unsigned long eventNumber;
+//    unsigned long eventNumber;
     char fileName[FILENAME_MAX];
     char linkName[FILENAME_MAX];
     struct dirent **linkList;
@@ -188,7 +193,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     //Now have index
     if(indEntry.eventDiskBitMask&PUCK_DISK_MASK) {
 	//Read it from puck
-	sprintf(headerFileName,"%s/run%d/event/ev%d/ev%d/hd_%d.dat.gz",
+	sprintf(headerFileName,"%s/run%lu/event/ev%d/ev%d/hd_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,dirNum,subDirNum,fileNum);
 	gzFile headFile = gzopen(headerFileName,"rb");
 	if(!headFile) return;
@@ -200,11 +205,10 @@ void sendEvent(PlaybackRequest_t *pReq)
 	gzclose(headFile);
 	if(retVal<0) return;
 
-	sprintf(eventFileName,"/run%d/event/ev%d/ev%d/psev_%d.dat.gz",
+	sprintf(eventFileName,"%s/run%lu/event/ev%d/ev%d/psev_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,dirNum,subDirNum,fileNum);
 	gzFile eventFile = gzopen(eventFileName,"rb");
 	if(!eventFile) return;
-	int retVal;
 	do {
 	    retVal=gzread(eventFile,&psBody,sizeof(PedSubbedEventBody_t));
 	}
@@ -212,6 +216,39 @@ void sendEvent(PlaybackRequest_t *pReq)
 	gzclose(eventFile);
 	if(retVal<0) return;
     }
+    //In theory should have header and event now
+    encodeAndWriteEvent(&theHead,&psBody, pReq->pri);
+
 }
 
+void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
+			 PedSubbedEventBody_t *psbPtr,
+			 int pri)
+{
+    EncodeControlStruct_t telemEncCntl;
+    int surf,chan;
+    int retVal,numBytes;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	    telemEncCntl.encTypes[surf][chan]=ENCODE_LOSSLESS_BINFIB_COMBO;
+	    if(chan==8)
+		telemEncCntl.encTypes[surf][chan]=ENCODE_LOSSLESS_BINARY;
+	}
+    }
+    	    
+    retVal=packPedSubbedEvent(psbPtr,&telemEncCntl,outputBuffer,&numBytes);
+
+    char headName[FILENAME_MAX];
+    char bodyName[FILENAME_MAX];
+    sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],hdPtr->eventNumber);
+    sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],hdPtr->eventNumber);
+    retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
+    if(retVal<0) {
+	printf("Something wrong while writing %s\n",bodyName);
+    }
+    else {
+	writeHeader(hdPtr,headName);
+	makeLink(headName,eventTelemLinkDirs[pri]);
+    } 
+}
 
