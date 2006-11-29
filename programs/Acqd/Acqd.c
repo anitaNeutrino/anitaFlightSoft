@@ -75,6 +75,8 @@ int newTurfRateData=0;
 SimpleScalerStruct_t theScalers;
 FullSurfHkStruct_t theSurfHk;
 
+int eventsBeforeClear=1000;
+
 
 //Pedestal stuff
 int pedestalMode=0;
@@ -377,7 +379,7 @@ int main(int argc, char **argv) {
 
 	// Clear devices 
 	clearDevices(surfHandles,turfioHandle);
-
+	reInitNeeded=0;
 
 
 	// Set trigger modes
@@ -886,10 +888,12 @@ int main(int argc, char **argv) {
 #endif
 	    printf("Read TURF data -- doingEvent %d -- trigNum %d\n",
 		   doingEvent,hdPtr->turfio.trigNum);
-	    if(0 && doingEvent!=hdPtr->turfio.trigNum) {
+	    if(doingEvent!=hdPtr->turfio.trigNum) {
+		reInitNeeded=1;
+	    }
+	    if(reInitNeeded && (doingEvent>eventsBeforeClear)) {
 		currentState=PROG_STATE_INIT;
 	    }
-
 
 	    
 	    if(verbosity && printToScreen) printf("Done reading\n");
@@ -1442,6 +1446,7 @@ int readConfigFile()
 	fprintf(stderr,"Problem Reading Acqd.config -- pedestal\n");
 //    printf("Debug rc1\n");
     if(status == CONFIG_E_OK) {
+	eventsBeforeClear=kvpGetInt("eventsBeforeClear",1000);
 	numEvents=kvpGetInt("numEvents",1);
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
         niceValue=kvpGetInt("niceValue",-20);

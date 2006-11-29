@@ -596,7 +596,7 @@ void purgeHkDirectory(char *dirName,char *linkDirName)
 	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-50,dirName);
 	for(count=0;count<numLinks-50;count++) {
 	    sprintf(currentLink,"%s/%s",linkDirName,linkList[count]->d_name);
-	    sprintf(currentFile,"%s/%s",linkDirName,linkList[count]->d_name);
+	    sprintf(currentFile,"%s/%s",dirName,linkList[count]->d_name);
 	    removeFile(currentFile);
 	    removeFile(currentLink);			
 	}
