@@ -55,6 +55,9 @@ int BeginWindow=0;
 int EndWindow=0;
 int MethodMask=0;
 
+int priorityPPS1=2;
+int priorityPPS2=3;
+
 //ugly hack to count number of channels with fft peaks
 int FFTNumChannels;
 
@@ -399,6 +402,14 @@ int main (int argc, char *argv[])
 		gettimeofday(&timeStruct2,NULL);
 		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+		
+		int pri=theHeader.priority&0xf;
+		if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
+		    pri=priorityPPS1;
+		if((theHeader.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
+		    pri=priorityPPS2;
+		if(pri<0 || pri>9) pri=9;
+		theHeader.priority=(16*theHeader.priority)+pri;
     
 		//Write Header and make Link for telemetry 	    
 		sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
@@ -513,6 +524,17 @@ int readConfig()
 	BeginWindow=kvpGetInt("BeginWindow",100);
 	EndWindow=kvpGetInt("EndWindow",100);
 	MethodMask=kvpGetInt("MethodMask",0xFFFF);
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
+	fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString);
+    }
+    kvpReset();
+    status = configLoad ("Archived.config","archived");
+    if(status == CONFIG_E_OK) {
+	priorityPPS1=kvpGetInt("priorityPPS1",3);
+	priorityPPS2=kvpGetInt("priorityPPS2",2);
     }
     else {
 	eString=configErrorString (status) ;

@@ -39,6 +39,7 @@ int lastConfig(int progMask);
 int switchConfig(int progMask,unsigned char configId);
 int saveConfig(int progMask,unsigned char configId);
 int killPrograms(int progMask);
+int reallyKillPrograms(int progMask);
 int startPrograms(int progMask);
 int respawnPrograms(int progMask);
 char *getProgName(ProgramId_t prog);
@@ -517,6 +518,11 @@ int executeCommand(CommandStruct_t *theCmd)
 	    //Kill progs
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
 	    retVal=killPrograms(ivalue);
+	    return retVal;
+	case CMD_REALLY_KILL_PROGS:
+	    //Kill progs
+	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+	    retVal=reallyKillPrograms(ivalue);
 	    return retVal;
 	case CMD_RESPAWN_PROGS:
 	    //Respawn progs
@@ -1438,6 +1444,34 @@ int killPrograms(int progMask)
 	    else {
 		syslog(LOG_INFO,"Killed %s\n",getProgName(prog));
 	    }
+	}
+    }
+    if(errorCount) return 0;
+    return rawtime;
+}
+
+
+int reallyKillPrograms(int progMask) 
+{
+    time_t rawtime;
+    time(&rawtime);
+    char systemCommand[FILENAME_MAX];
+    int retVal=0;
+    int errorCount=0;
+    ProgramId_t prog;
+    
+    int testMask;	
+    syslog(LOG_INFO,"reallyKillPrograms %#x\n",progMask);
+//    printf("Kill programs %d\n",progMask);
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+	testMask=getIdMask(prog);
+//	printf("%d %d\n",progMask,testMask);
+	if(progMask&testMask) {
+//	    printf("Killing prog %s\n",getProgName(prog));
+	    
+	    sprintf(systemCommand,"killall -9 %s",getProgName(prog));
+	    retVal=system(systemCommand);
+	    syslog(LOG_INFO,"killall -9 %s\n",getProgName(prog));
 	}
     }
     if(errorCount) return 0;
