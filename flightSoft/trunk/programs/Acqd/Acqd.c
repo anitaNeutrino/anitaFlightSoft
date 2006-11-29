@@ -259,6 +259,7 @@ int main(int argc, char **argv) {
     totalDeadtime=0;
     intervalDeadtime=0;
     int firstLoop=1;
+    int reInitNeeded=0;
 
 #ifdef TIME_DEBUG
     struct timeval timeStruct2;
@@ -358,9 +359,14 @@ int main(int argc, char **argv) {
 	setTurfControl(turfioHandle,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
+    //renice process
+    sprintf(reniceCommand,"sudo renice %d -p `cat %s`",niceValue,
+	    acqdPidFile);
+    retVal=system(reniceCommand);
 
-    // Clear devices 
-    clearDevices(surfHandles,turfioHandle);
+    if(doingEvent==0) prepWriterStructs();
+
+
     if(sendSoftTrigger) sleep(2);
     do {
 	retVal=readConfigFile();
@@ -368,12 +374,11 @@ int main(int argc, char **argv) {
 	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	    return -1;
 	}
-	//renice process
-	sprintf(reniceCommand,"sudo renice %d -p `cat %s`",niceValue,
-		acqdPidFile);
-	retVal=system(reniceCommand);
 
-	if(doingEvent==0) prepWriterStructs();
+	// Clear devices 
+	clearDevices(surfHandles,turfioHandle);
+
+
 
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
@@ -879,6 +884,13 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
+	    printf("Read TURF data -- doingEvent %d -- trigNum %d\n",
+		   doingEvent,hdPtr->turfio.trigNum);
+	    if(0 && doingEvent!=hdPtr->turfio.trigNum) {
+		currentState=PROG_STATE_INIT;
+	    }
+
+
 	    
 	    if(verbosity && printToScreen) printf("Done reading\n");
 
