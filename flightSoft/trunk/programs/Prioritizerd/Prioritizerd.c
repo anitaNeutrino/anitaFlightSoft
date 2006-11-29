@@ -370,7 +370,15 @@ int main (int argc, char *argv[])
 		    else if(score3>1000) priority=7;
 		    else if(score3>600) priority=7;
 		}
-		theHeader.priority=priority;
+		theHeader.priority=priority;		
+		int pri=theHeader.priority&0xf;
+		if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
+		    pri=priorityPPS1;
+		if((theHeader.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
+		    pri=priorityPPS2;
+		if(pri<0 || pri>9) pri=9;
+		theHeader.priority=(16*theHeader.priority)+pri;
+
 	
 		//Now Fill Generic Header and calculate checksum
 		fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
@@ -402,14 +410,6 @@ int main (int argc, char *argv[])
 		gettimeofday(&timeStruct2,NULL);
 		fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-		
-		int pri=theHeader.priority&0xf;
-		if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
-		    pri=priorityPPS1;
-		if((theHeader.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
-		    pri=priorityPPS2;
-		if(pri<0 || pri>9) pri=9;
-		theHeader.priority=(16*theHeader.priority)+pri;
     
 		//Write Header and make Link for telemetry 	    
 		sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,

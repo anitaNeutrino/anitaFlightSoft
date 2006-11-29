@@ -609,19 +609,24 @@ void fillBufferWithHk()
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,TURFHK_TELEM_DIR,
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
     }      
+
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(OtherMonitorStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     OTHER_MONITOR_TELEM_DIR,OTHER_MONITOR_TELEM_LINK_DIR,
+		     sizeof(OtherMonitorStruct_t)); 
+    }    
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullLabChipPedStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
+		     sizeof(FullLabChipPedStruct_t)); 
+    }    
     if(numBytesInBuffer>0)
 	doWrite();
     if((LOS_MAX_BYTES-numBytesInBuffer)>4000) {	
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,REQUEST_TELEM_DIR,
 		     REQUEST_TELEM_LINK_DIR,4000);
     }      
-    if(numBytesInBuffer>0)
-	doWrite();
-    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullLabChipPedStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
-		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
-		     sizeof(FullLabChipPedStruct_t)); 
-    }    
+
     if(numBytesInBuffer>0)
 	doWrite();
     if(numBytesInBuffer<0) {

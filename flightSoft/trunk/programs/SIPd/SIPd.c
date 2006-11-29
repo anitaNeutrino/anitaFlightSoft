@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
     makeDirectories(TURFHK_TELEM_LINK_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
+    makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
 
 
 
@@ -1030,6 +1031,10 @@ void sendSomeHk(int maxBytes)
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
     }    
 
+    if((maxBytes-hkCount)>sizeof(OtherMonitorStruct_t)) {	
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,OTHER_MONITOR_TELEM_DIR,
+		     OTHER_MONITOR_TELEM_LINK_DIR,sizeof(OtherMonitorStruct_t));
+    }
 
     hkDataSent+=hkCount;
     
