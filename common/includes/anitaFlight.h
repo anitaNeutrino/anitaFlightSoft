@@ -180,6 +180,7 @@
 #define G12_POS_TELEM_DIR "/tmp/anita/telem/house/gps/g12/pos"
 #define G12_SAT_TELEM_DIR "/tmp/anita/telem/house/gps/g12/sat"
 #define MONITOR_TELEM_DIR "/tmp/anita/telem/house/monitor"
+#define OTHER_MONITOR_TELEM_DIR "/tmp/anita/telem/house/other"
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 #define REQUEST_TELEM_DIR "/tmp/anita/telem/request"
 
@@ -197,6 +198,7 @@
 #define MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/monitor/link"
 #define HEADER_TELEM_LINK_DIR "/tmp/anita/telem/head/link"
 #define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
+#define OTHER_MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/other/link"
 
 //Event telemetry dirs
 #define BASE_EVENT_TELEM_DIR "/tmp/anita/telem/event"

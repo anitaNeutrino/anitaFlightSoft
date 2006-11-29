@@ -421,6 +421,7 @@ int readConfigFile()
 	       );
 	       
     makeDirectories(MONITOR_TELEM_LINK_DIR);
+    makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
     makeDirectories(CMDD_COMMAND_LINK_DIR);
     return status;
 
@@ -809,9 +810,9 @@ int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr) {
     fillGenericHeader(otherPtr,PACKET_OTHER_MONITOR,sizeof(OtherMonitorStruct_t));
     
     sprintf(theFilename,"%s/othermon_%ld.dat",
-	    PEDESTAL_TELEM_DIR,otherPtr->unixTime);
+	    OTHER_MONITOR_TELEM_DIR,otherPtr->unixTime);
     retVal=normalSingleWrite((unsigned char*)otherPtr,theFilename,sizeof(OtherMonitorStruct_t));
-    retVal=makeLink(theFilename,PEDESTAL_TELEM_LINK_DIR);
+    retVal=makeLink(theFilename,OTHER_MONITOR_TELEM_LINK_DIR);
 
     retVal=cleverHkWrite((unsigned char*)otherPtr,sizeof(OtherMonitorStruct_t),
 			 otherPtr->unixTime,&otherMonWriter);
