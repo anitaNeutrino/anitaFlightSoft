@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
     makeDirectories(PEDESTAL_TELEM_LINK_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
+    makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
     makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
     makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
     makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
