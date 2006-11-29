@@ -38,7 +38,8 @@ float priorityFractionDelete[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
 int currentUsb[NUM_PRIORITIES]; // 0 is int, 1 is ext;
-
+char lastRunNumberFile[FILENAME_MAX];
+int currentRun;
 
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -75,6 +76,7 @@ int usbBitMasks[2]={0x4,0x8};
 
 int shouldWeThrowAway(int pri);
 void handleBadSigs(int sig);
+int getRunNumber();
 
 int main (int argc, char *argv[])
 {
@@ -106,6 +108,14 @@ int main (int argc, char *argv[])
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
+	tempString=kvpGetString("lastRunNumberFile");
+	if(tempString) {
+	    strncpy(lastRunNumberFile,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get lastRunNumberFile");
+	    fprintf(stderr,"Couldn't get lastRunNumberFile\n");
+	}
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 	bladeCloneMask=kvpGetInt("bladeCloneMask",0);
 	puckCloneMask=kvpGetInt("puckCloneMask",0);
@@ -162,6 +172,8 @@ int main (int argc, char *argv[])
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
 	makeDirectories(eventTelemLinkDirs[pri]);
     }
+
+    currentRun=getRunNumber();
 
     makeDirectories(ANITA_INDEX_DIR);
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
@@ -476,6 +488,7 @@ void writeOutputToDisk(int numBytes) {
     }
 
     //Now write the index
+    indEnt.runNumber=currentRun;
     indEnt.eventNumber=theHead.eventNumber;
     indEnt.eventDiskBitMask=eventWriter.writeBitMask;
     strncpy(indEnt.bladeLabel,bladeName,9);
@@ -582,3 +595,22 @@ void handleBadSigs(int sig)
     syslog(LOG_INFO,"Archived terminating");
     exit(0);
 }
+
+
+int getRunNumber() {
+    int retVal=0;
+    int runNumber=0;
+ 
+    FILE *pFile;    
+    pFile = fopen (lastRunNumberFile, "r");
+    retVal=fscanf(pFile,"%d",&runNumber);
+    if(retVal<0) {
+	syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
+		lastRunNumberFile);
+    }
+    fclose (pFile);
+
+    return runNumber;
+    
+}
+

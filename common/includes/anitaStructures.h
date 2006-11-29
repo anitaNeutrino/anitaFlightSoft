@@ -381,6 +381,7 @@ typedef struct {
 
 typedef struct {
     unsigned long eventNumber;
+    unsigned long runNumber;
     int eventDiskBitMask; //Which disks was it written to?
     char bladeLabel[10];
     char usbIntLabel[10];
