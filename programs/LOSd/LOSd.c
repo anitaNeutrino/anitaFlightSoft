@@ -574,11 +574,7 @@ void fillBufferWithHk()
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HEADER_TELEM_DIR,
 		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
     }  
-    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullLabChipPedStruct_t)) {
-	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
-		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
-		     sizeof(FullLabChipPedStruct_t)); 
-    }
+
     if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(HkDataStruct_t)) {
 	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,HK_TELEM_DIR,
 		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
@@ -621,7 +617,13 @@ void fillBufferWithHk()
     }      
     if(numBytesInBuffer>0)
 	doWrite();
-    
+    if((LOS_MAX_BYTES-numBytesInBuffer)>sizeof(FullLabChipPedStruct_t)) {
+	checkLinkDir(LOS_MAX_BYTES-numBytesInBuffer,
+		     PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR,
+		     sizeof(FullLabChipPedStruct_t)); 
+    }    
+    if(numBytesInBuffer>0)
+	doWrite();
     if(numBytesInBuffer<0) {
 	printf("What the heck does %d bytes mean\n",numBytesInBuffer);
     }

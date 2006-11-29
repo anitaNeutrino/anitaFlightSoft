@@ -1444,6 +1444,10 @@ int killPrograms(int progMask)
 	    else {
 		syslog(LOG_INFO,"Killed %s\n",getProgName(prog));
 	    }
+	    if(prog==ID_EVENTD) {
+		sleep(1);
+		system("killall -9 Eventd");
+	    }
 	}
     }
     if(errorCount) return 0;
@@ -1493,7 +1497,7 @@ int startPrograms(int progMask)
 	testMask=getIdMask(prog);
 	if(progMask&testMask) {
 	    //Match
-	    sprintf(daemonCommand,"nice -n 0 daemon -r %s -n %s ",
+	    sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
 		    getProgName(prog),getProgName(prog));
 
 	    syslog(LOG_INFO,"Sending command: %s",daemonCommand);

@@ -52,6 +52,7 @@ int surfIndex[MAX_SURFS];
 int dacChans[NUM_DAC_CHANS];
 int printToScreen=0,standAloneMode=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
+int slipCounter=0;
 int turfRateTelemEvery=1,turfRateTelemInterval=60;
 int surfHkPeriod=0;
 int surfHkTelemEvery=0;
@@ -371,15 +372,20 @@ int main(int argc, char **argv) {
 
     if(sendSoftTrigger) sleep(2);
     do {
-	retVal=readConfigFile();
-	if(retVal!=CONFIG_E_OK) {
-	    syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
-	    return -1;
-	}
-
+	unsigned int tempTrigMask=antTrigMask;
 	// Clear devices 
 	clearDevices(surfHandles,turfioHandle);
+	antTrigMask=tempTrigMask;
+
+	if(!reInitNeeded) {
+	    retVal=readConfigFile();
+	    if(retVal!=CONFIG_E_OK) {
+		syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
+		return -1;
+	    }
+	}
 	reInitNeeded=0;
+	slipCounter=0;
 
 
 	// Set trigger modes
@@ -886,12 +892,14 @@ int main(int argc, char **argv) {
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
 	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
-	    printf("Read TURF data -- doingEvent %d -- trigNum %d\n",
-		   doingEvent,hdPtr->turfio.trigNum);
-	    if(doingEvent!=hdPtr->turfio.trigNum) {
+
+	    if(slipCounter!=hdPtr->turfio.trigNum) {
+/* 		printf("Read TURF data -- doingEvent %d -- trigNum %d\n", */
+/* 		       doingEvent,hdPtr->turfio.trigNum); */
 		reInitNeeded=1;
 	    }
-	    if(reInitNeeded && (doingEvent>eventsBeforeClear)) {
+	    if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
+		syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d",slipCounter,hdPtr->turfio.trigNum);
 		currentState=PROG_STATE_INIT;
 	    }
 
@@ -1713,6 +1721,9 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     writeAntTrigMask(turfioHandle);
 
 
+    //Added RJN 29/11/06
+    setGloablDACThreshold(surfHandles,1);
+
     // Prepare TURF board
   
     /*  Get PLX Chip Type */
@@ -2134,6 +2145,7 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
     unsigned short upperWord=0;
     
     doingEvent++;
+    slipCounter++;
     if(verbosity && printToScreen) 
 	printf("Triggered, event %d (by software counter).\n",doingEvent);
 
@@ -3498,17 +3510,19 @@ void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, str
     printf("Rate %2.2f Hz, Goal %2.2f Hz, Setting %d -- Change %d\n",
 	   rate,rateGoal,setting,change);
     
-    setting+=change;
-    if(!setGlobalThreshold) {
-	pidGoal=setting;
-	if(pidGoal<1) pidGoal=1;
-	if(pidGoal>10000) pidGoal=10000;
-	syslog(LOG_INFO,"Changing pidGoal to %d\n",pidGoal);
+    if(change!=0) {
+	setting+=change;
+	if(!setGlobalThreshold) {
+	    pidGoal=setting;
+	    if(pidGoal<1) pidGoal=1;
+	    if(pidGoal>10000) pidGoal=10000;
+	    syslog(LOG_INFO,"Changing pidGoal to %d\n",pidGoal);
+	}
+	else {
+	    globalThreshold=setting;
+	    if(globalThreshold<1) globalThreshold=1;
+	    if(globalThreshold>4095) globalThreshold=4095;
+	    syslog(LOG_INFO,"Changing globalThreshold to %d\n",pidGoal);
+	}    
     }
-    else {
-	globalThreshold=setting;
-	if(globalThreshold<1) globalThreshold=1;
-	if(globalThreshold>4095) globalThreshold=4095;
-	syslog(LOG_INFO,"Changing globalThreshold to %d\n",pidGoal);
-    }    
 }
