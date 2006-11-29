@@ -80,9 +80,10 @@ int main() {
     strcat(buff, "$PASHS,NME,ALL,B,OFF\r\n");
     strcat(buff, "$PASHQ,PRT\r\n");
     strcat(buff, "$PASHQ,SA4\r\n");    
-    strcat(buff, "$PASHS,NME,TTT,B,ON\r\n");
-    strcat(buff, "$PASHS,NME,PAT,B,ON\r\n");
-    strcat(buff, "$PASHS,NME,PER,5\r\n");
+    strcat(buff, "$PASHS,INI\r\n");    
+//    strcat(buff, "$PASHS,NME,TTT,B,ON\r\n");
+//    strcat(buff, "$PASHS,NME,PAT,B,ON\r\n");
+//    strcat(buff, "$PASHS,NME,PER,5\r\n");
 /* send the commands to ADU5  */
     write(fd, buff, strlen(buff));
 

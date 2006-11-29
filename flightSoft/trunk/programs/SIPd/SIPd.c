@@ -243,7 +243,7 @@ void highrateHandler(int *ignore)
     }
 
     sendWakeUpBuffer();
-
+    int hkCount=0;
     while(1) {
 	if(!sendData) {
 	    sleep(1);
@@ -270,7 +270,9 @@ void highrateHandler(int *ignore)
 	if(orderIndex>=numOrders) orderIndex=0;
 
 	//Need to think about housekeeping and add something here
-	sendSomeHk(10000);
+	if(hkCount%5==0)
+	    sendSomeHk(10000);
+	hkCount++;
     }	
 
 }
@@ -990,8 +992,14 @@ void sendSomeHk(int maxBytes)
 		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
 		     sizeof(MonitorStruct_t)); 
     }
-
-
+    if((maxBytes-hkCount)>sizeof(AnitaEventHeader_t)) {	
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HEADER_TELEM_DIR,
+		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+    }    
+    if((maxBytes-hkCount)>sizeof(HkDataStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HK_TELEM_DIR,
+		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
+    }
     if((maxBytes-hkCount)>sizeof(GpsAdu5SatStruct_t)) {
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_SAT_TELEM_DIR,
 		     ADU5_SAT_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
@@ -1013,10 +1021,6 @@ void sendSomeHk(int maxBytes)
 		     ADU5_VTG_TELEM_LINK_DIR,sizeof(GpsAdu5VtgStruct_t)); 
     }
 
-    if((maxBytes-hkCount)>sizeof(HkDataStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HK_TELEM_DIR,
-		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
-    }
     if((maxBytes-hkCount)>sizeof(FullSurfHkStruct_t)) {
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,SURFHK_TELEM_DIR,
 		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 
@@ -1024,11 +1028,7 @@ void sendSomeHk(int maxBytes)
     if((maxBytes-hkCount)>sizeof(TurfRateStruct_t)) {	
 	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,TURFHK_TELEM_DIR,
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(AnitaEventHeader_t)) {	
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HEADER_TELEM_DIR,
-		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-    }        
+    }    
 
 
     hkDataSent+=hkCount;

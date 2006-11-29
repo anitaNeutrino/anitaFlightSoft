@@ -14,7 +14,8 @@ turnGPSOn
 nice -n -20 daemon -u anita -r SIPd -n SIPd
 nice -n -20 daemon -u anita -r Cmdd -n Cmdd
 
-
+#rm -rf /mnt/usbext/*
+#rm -rf /mnt/usbint/*
 ###First up try to mount drives
 sleep 40
 removeAllScsiDevices.sh
