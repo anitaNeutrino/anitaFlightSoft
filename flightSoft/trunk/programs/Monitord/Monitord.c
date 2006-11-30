@@ -101,6 +101,10 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
     unsigned long startTime=time(NULL);
+    int bladeMountCmdTime=0;
+    int usbintMountCmdTime=0;
+    int usbextMountCmdTime=0;
+
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -192,35 +196,44 @@ int main (int argc, char *argv[])
 		readConfigFile();
 		//Change blade if in use
 		if((hkDiskBitMask&BLADE_DISK_MASK || eventDiskBitMask&BLADE_DISK_MASK)) {
-		    theCmd.numCmdBytes=1;
-		    theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
-		    writeCommandAndLink(&theCmd);
+		    if((monData.unixTime-bladeMountCmdTime)>300) {
+			theCmd.numCmdBytes=1;
+			theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
+			writeCommandAndLink(&theCmd);
+			bladeMountCmdTime=monData.unixTime;
+		    }
 		}
 	    }
 	    if(monData.diskInfo.diskSpace[6]<usbSwitchMB) {
 		readConfigFile();
 		//Change USB int if in use
 		if((hkDiskBitMask&USBINT_DISK_MASK || eventDiskBitMask&USBINT_DISK_MASK)) {
-		    theCmd.numCmdBytes=3;
-		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
-		    theCmd.cmd[1]=1;
-		    theCmd.cmd[2]=0;
-		    if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
-			theCmd.cmd[1]=3;
-		    writeCommandAndLink(&theCmd);
+		    if((monData.unixTime-usbintMountCmdTime)>300) {
+			theCmd.numCmdBytes=3;
+			theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
+			theCmd.cmd[1]=1;
+			theCmd.cmd[2]=0;
+			if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
+			    theCmd.cmd[1]=3;
+			writeCommandAndLink(&theCmd);
+			usbintMountCmdTime=monData.unixTime;
+		    }
 		}
 	    }
 	    else if(monData.diskInfo.diskSpace[7]<usbSwitchMB) {
 		readConfigFile();
 		//Change USB ext if in use
 		if((hkDiskBitMask&USBEXT_DISK_MASK || eventDiskBitMask&USBEXT_DISK_MASK)) {
-		    theCmd.numCmdBytes=3;
-		    theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
-		    theCmd.cmd[1]=2;
-		    theCmd.cmd[2]=0;
-		    writeCommandAndLink(&theCmd);
+		    if((monData.unixTime-usbextMountCmdTime)>300) {
+			theCmd.numCmdBytes=3;
+			theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
+			theCmd.cmd[1]=2;
+			theCmd.cmd[2]=0;
+			writeCommandAndLink(&theCmd);
+		    }
 		}
 	    }
+	    
 	    if((monData.unixTime-startTime)>60) {
 		checkProcesses();
 	    }
@@ -808,7 +821,9 @@ int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr) {
     int retVal=0;
     
     fillGenericHeader(otherPtr,PACKET_OTHER_MONITOR,sizeof(OtherMonitorStruct_t));
-    
+//    syslog(LOG_INFO,"Other packet code: %d, numBytes %d, checkSum %d, feByte %d\n",
+//	   otherPtr->gHdr.code,otherPtr->gHdr.numBytes,otherPtr->gHdr.checksum,otherPtr->gHdr.feByte);
+
     sprintf(theFilename,"%s/othermon_%ld.dat",
 	    OTHER_MONITOR_TELEM_DIR,otherPtr->unixTime);
     retVal=normalSingleWrite((unsigned char*)otherPtr,theFilename,sizeof(OtherMonitorStruct_t));
