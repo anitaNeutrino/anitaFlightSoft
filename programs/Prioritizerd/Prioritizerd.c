@@ -109,6 +109,7 @@ int main (int argc, char *argv[])
      int MaxAll, MaxH, MaxV;
      //xcorr peak boxcar method
      AnitaChannelDiscriminator_t theBoxcar;
+     AnitaChannelDiscriminator_t theBoxcarNoGuard;
 //     AnitaSectorLogic_t theMajorityBoxcar;
      AnitaSectorLogic_t theMajorityBoxcarH;
      AnitaSectorLogic_t theMajorityBoxcarV;
@@ -123,6 +124,9 @@ int main (int argc, char *argv[])
      AnitaCoincidenceLogic_t theCoincidenceBoxcarV2;
      int /*MaxBoxAll,*/MaxBoxH,MaxBoxV;
      int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
+     LogicChannel_t HornCounter,ConeCounter;
+     int HornMax;
+
 #ifdef TIME_DEBUG
      struct timeval timeStruct2;
      timeFile = fopen("/tmp/priTimeLog.txt","w");
@@ -380,12 +384,28 @@ int main (int argc, char *argv[])
 			 else{
 			      /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
 			 }
-			 //Sillyness forever...
+			 // overall majority thingee to get payload blast
+			 if ((MethodMask &0x40)!=0){
+			      PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
+					    hornDiscWidth,0,
+					    0,65535,
+					    coneDiscWidth,0,
+					    0,65535);
+			      HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
+						     &ConeCounter, delay);
+			 }
+			 else{
+			      HornMax=0;
+			 }
+
+//Sillyness forever...
 			 //Must determine priority here
 //	    priority=1;
 //revised scoring here -- comments  are for hornsector width of 3 (suggested default)
-			 priority=8;
-			 if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) //3 for 3 in both rings
+			 priority=7;
+			 if (HornMax>WindowCut) //too many horns peaking simultaneously
+			      priority=8;
+			 else if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) //3 for 3 in both rings
 			      priority=1;
 			 else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) // 2 for 2 in both rings
 			      priority=2;
@@ -401,10 +421,10 @@ int main (int argc, char *argv[])
 				  MaxV>=2*hornSectorWidth-1)
 			      priority=6;
 			 else if(score4>=600) priority=5;
-			 else if(score3>1900) priority=6;
-			 else if(score3>1500) priority=6;
-			 else if(score3>1000) priority=7;
-			 else if(score3>600) priority=7;
+			 // else if(score3>1900) priority=6;
+			 // else if(score3>1500) priority=6;
+			 // else if(score3>1000) priority=6;
+			 else if(score3>600) priority=6;
 		    }
 		    theHeader.priority=priority;		
 		    int pri=theHeader.priority&0xf;
