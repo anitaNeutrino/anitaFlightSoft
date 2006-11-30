@@ -236,6 +236,7 @@ int main(int argc, char **argv) {
     int gotSurfHk=0;
     int threshScanCounter=0;
     unsigned short doingDacVal=1;//2100;
+    unsigned long lastEvNum=0;
     struct timeval timeStruct;
     struct timeval lastRateCalc;
     struct timeval lastServoRateCalc;
@@ -613,7 +614,7 @@ int main(int argc, char **argv) {
 				slowTime+=1e-6*((float)timeStruct.tv_usec);
 				slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
 				slowRate/=slowTime;
-				writeCurrentRFSlowRateObject(slowRate,hdPtr->eventNumber);
+				writeCurrentRFSlowRateObject(slowRate,lastEvNum);
 				lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
 				lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
 				lastSlowRateEvent=doingEvent;
@@ -927,6 +928,7 @@ int main(int argc, char **argv) {
 	    else if(doingEvent>=0) { //RJN changed 24/11/06 for test
 		hdPtr->eventNumber=getEventNumber();
 		bdPtr->eventNumber=hdPtr->eventNumber;
+		lastEvNum=hdPtr->eventNumber;
 		hdPtr->surfMask=surfMask;
 		hdPtr->antTrigMask=(unsigned int)antTrigMask;
 		

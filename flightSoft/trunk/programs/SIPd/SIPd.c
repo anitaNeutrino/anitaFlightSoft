@@ -1141,8 +1141,9 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 		slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
 		for(j=0;j<7;j++) {
 		    tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>4);
-		    tempVal*=5;
+		    tempVal*=10;
 		    tempVal/=4096;
+		    tempVal-=5;
 		    tempVal*=100;
 		    tempVal+=273.15;
 		    if(tempVal<-127) tempVal=-127;
@@ -1151,8 +1152,9 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 		}
 		for(j=0;j<4;j++) {		    
 		    tempVal=((hkPtr->ip320.board[1].data[powerInds[j]])>>4);
-		    tempVal*=5;
+		    tempVal*=10;
 		    tempVal/=4096;
+		    tempVal-=5;
 		    tempVal*=powerCal[j];
 		    if(tempVal<-127) tempVal=-127;
 		    if(tempVal>127) tempVal=127;
