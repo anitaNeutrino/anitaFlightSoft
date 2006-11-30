@@ -556,10 +556,10 @@ int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
 	
 	if(!wrappedHitbus) {
 	    numHitBus=1+lastHitbus-firstHitbus;
-	    uwTransPtr->ch[chan].valid_samples=EFFECTIVE_SAMPLES-numHitBus;
+	    uwTransPtr->ch[chan].valid_samples=(EFFECTIVE_SAMPLES-2)-numHitBus;
 	}
 	else {
-	    uwTransPtr->ch[chan].valid_samples=lastHitbus-(firstHitbus+1);
+	    uwTransPtr->ch[chan].valid_samples=(lastHitbus-2)-(firstHitbus+1);
 	}
 
 	if(!wrappedHitbus) {
