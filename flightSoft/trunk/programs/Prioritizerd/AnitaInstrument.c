@@ -572,6 +572,65 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
 	  
 }
 
+
+
+int GlobalMajority(AnitaChannelDiscriminator_t *in,
+		    LogicChannel_t *horns,
+		    LogicChannel_t *cones,
+		    int delay){
+     int i,j,minvalid,pol,phi,thisvalid,hornmax;
+     for (j=0;j<MAX_NUMBER_SAMPLES; j++){
+	  horns->data[j]=0;
+	  cones->data[j]=0;
+     }
+     minvalid=MAX_NUMBER_SAMPLES;
+     for(pol=0;pol<2;pol++){
+	  for (phi=0;phi<16;phi++){
+	       thisvalid=
+	       (in->topRing[phi][pol].valid_samples<
+	       in->botRing[phi][pol].valid_samples)
+	       ?in->topRing[phi][pol].valid_samples-delay 
+	       :in->botRing[phi][pol].valid_samples-delay;
+	       for (j=0;j<(in->topRing[phi][pol]).valid_samples; j++){
+		    horns->data[j] += (in->topRing[phi][pol]).data[j+delay];
+	       }
+	       for (j=0;j<(in->botRing[phi][pol]).valid_samples; j++){
+		    horns->data[j] += (in->botRing[phi][pol]).data[j];
+	       }
+	       if (minvalid > thisvalid) 
+		    minvalid=thisvalid;
+	  }
+     }
+     horns->valid_samples = minvalid;
+
+     hornmax=0;
+     for (i=0; i<horns->valid_samples; i++){
+	  if (horns->data[i]>hornmax) hornmax=horns->data[i];
+     }
+
+     minvalid=MAX_NUMBER_SAMPLES;
+     for (i=0;i<4;i++){
+	  for (j=0;j<(in->bicone[i]).valid_samples; j++){
+	       cones->data[i] += (in->bicone[i]).data[j];
+	  }
+	  if (minvalid > (in->bicone[i]).valid_samples) 
+	       minvalid=(in->bicone[i]).valid_samples;
+	  for (j=0;j<(in->discone[i]).valid_samples; j++){
+	       cones->data[j] += (in->discone[i]).data[j];
+	  }
+	  if (minvalid > (in->discone[i]).valid_samples) 
+	       minvalid=(in->discone[i]).valid_samples;
+     }
+     cones->valid_samples = minvalid;
+
+     return hornmax;
+}
+
+
+
+
+
+
 void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 			AnitaSectorLogic_t *out,
 			int sectorWidth)

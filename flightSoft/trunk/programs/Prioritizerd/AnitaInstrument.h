@@ -167,6 +167,12 @@ extern "C"
 		   AnitaChannelDiscriminator_t *out,
 		   int hornwidth,int hornGuardOffset, int hornGuardWidth,int hornGuardThresh,
 			int conewidth,int coneGuardOffset, int coneGuardWidth,int coneGuardThresh);
+
+     int GlobalMajority(AnitaChannelDiscriminator_t *in,
+			 LogicChannel_t *horns,
+			 LogicChannel_t *cones,
+			 int delay);
+
      
      void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 			     AnitaSectorLogic_t *out,
