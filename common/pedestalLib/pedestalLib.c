@@ -570,7 +570,7 @@ int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
 	    firstSamp=firstHitbus+1;
 	    lastSamp=lastHitbus;
 	}
-	if(chan==0) {
+	if(chan%9==0) {
 	    pedSubBdPtr->channel[chan].data[0]=pedSubBdPtr->channel[chan].data[259];
 	}
 	float mean=0;
