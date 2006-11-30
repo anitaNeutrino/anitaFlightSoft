@@ -27,6 +27,7 @@
 PedCalcStruct_t thePeds;
 PedestalStruct_t currentPeds;
 
+#define MAX_VAL 600
 
 void addEventToPedestals(AnitaEventBody_t *bdPtr) 
 {
@@ -563,22 +564,35 @@ int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
 
 	if(!wrappedHitbus) {
 	    firstSamp=lastHitbus+1;
-	    lastSamp=(EFFECTIVE_SAMPLES)+firstHitbus;
+	    lastSamp=(MAX_NUMBER_SAMPLES-1)+firstHitbus;
 	}
 	else {
 	    firstSamp=firstHitbus+1;
 	    lastSamp=lastHitbus;
 	}
-
+	if(chan==0) {
+	    pedSubBdPtr->channel[chan].data[0]=pedSubBdPtr->channel[chan].data[259];
+	}
+	float mean=0;
+	int numSamps=0;
 	for(samp=firstSamp;samp<lastSamp;samp++) {
 	    index=samp;
-	    if(index>=EFFECTIVE_SAMPLES) index-=EFFECTIVE_SAMPLES;
+	    if(index>=(MAX_NUMBER_SAMPLES-2)) index-=(MAX_NUMBER_SAMPLES-2);
 	    tempVal=pedSubBdPtr->channel[chan].data[index];
-	    if(chan==0 && index==0)
-		tempVal=pedSubBdPtr->channel[chan].data[259];
-	    tempVal-=pedSubBdPtr->channel[chan].mean;
-	    uwTransPtr->ch[chan].data[samp-firstSamp]=tempVal;
+//	    tempVal-=pedSubBdPtr->channel[chan].mean;
+	    if(tempVal>MAX_VAL) tempVal=MAX_VAL;
+	    if(tempVal<-1*MAX_VAL) tempVal=-1*MAX_VAL;
+	    uwTransPtr->ch[chan].data[numSamps]=tempVal;
+	    mean+=tempVal;
+	    numSamps++;
 	}
+	if(numSamps) {
+	    mean/=((float)numSamps);
+	    for(samp=0;samp<numSamps;samp++) {
+		uwTransPtr->ch[chan].data[samp]-=mean;
+	    }
+	}
+	    
     }
     return 0;
 
