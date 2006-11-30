@@ -149,6 +149,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	    for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
 		slowCalc.rfPwr[surf][chan]/=((float)numSurfHks);
+		slowCalc.rfPwr[surf][chan]/=4.;
 		if(slowCalc.rfPwr[surf][chan]<0)
 		    slowCalc.rfPwr[surf][chan]=0;
 		if(slowCalc.rfPwr[surf][chan]>255)
@@ -161,18 +162,27 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	    for(ant=0;ant<ANTS_PER_SURF;ant++) {
 		slowCalc.scalerRates[surf][ant]/=((float)8*numSurfHks);
 		slowCalc.scalerRatesSq[surf][ant]/=((float)8*numSurfHks);
-		//Now scale
-		slowCalc.scalerRates[surf][ant]/=((float)128);
-		if(slowCalc.scalerRates[surf][ant]<0)
-		    slowCalc.scalerRates[surf][ant]=0;
-		if(slowCalc.scalerRates[surf][ant]>255)
-		    slowCalc.scalerRates[surf][ant]=255;
 
-		slowCalc.scalerRatesSq[surf][ant]/=((float)32);
-		if(slowCalc.scalerRatesSq[surf][ant]<0)
-		    slowCalc.scalerRatesSq[surf][ant]=0;
-		if(slowCalc.scalerRatesSq[surf][ant]>255)
-		    slowCalc.scalerRatesSq[surf][ant]=255;
+		float tempAvg=slowCalc.scalerRates[surf][ant]/128.;
+		if(tempAvg<0)
+		    tempAvg=0;
+		if(tempAvg>255)
+		    tempAvg=255;
+		slowRf.avgScalerRates[surf][ant]=(char)tempAvg;
+
+		if(slowCalc.scalerRatesSq[surf][ant]>(slowCalc.scalerRates[surf][ant]*slowCalc.scalerRates[surf][ant])) {
+		    float tempRms=sqrt(slowCalc.scalerRatesSq[surf][ant]-
+				       (slowCalc.scalerRates[surf][ant]*slowCalc.scalerRates[surf][ant]));
+		    tempRms/=((float)32);
+		    if(tempRms<0)
+			tempRms=0;
+		    if(tempRms>255)
+			tempRms=255;
+		    slowRf.avgScalerRates[surf][ant]=(char)tempRms;
+		}
+		else {
+		    slowRf.avgScalerRates[surf][ant]=0;
+		}		
 
 	    }
 	}
@@ -199,6 +209,8 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 		    slowCalc.avgL1Rates[surf]=0;
 		if(slowCalc.avgL1Rates[surf]>255)
 		    slowCalc.avgL1Rates[surf]=255;
+		slowRf.avgL1Rates[surf]=slowCalc.avgL1Rates[surf];
+
 	    }
 	}
 	
@@ -208,12 +220,14 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 		slowCalc.avgUpperL2Rates[phi]=0;
 	    if(slowCalc.avgUpperL2Rates[phi]>255) 
 		slowCalc.avgUpperL2Rates[phi]=255;
+	    slowRf.avgUpperL2Rates[phi]=slowCalc.avgUpperL2Rates[phi];
 	    
 	    slowCalc.avgLowerL2Rates[phi]/=((float)numTurfRates);
 	    if(slowCalc.avgLowerL2Rates[phi]<0) 
 		slowCalc.avgLowerL2Rates[phi]=0;
 	    if(slowCalc.avgLowerL2Rates[phi]>255) 
 		slowCalc.avgLowerL2Rates[phi]=255;
+	    slowRf.avgLowerL2Rates[phi]=slowCalc.avgLowerL2Rates[phi];
 
 	    slowCalc.avgL3Rates[phi]/=((float)numTurfRates);
 	    slowCalc.avgL3Rates[phi]*=((float)32);
@@ -221,6 +235,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 		slowCalc.avgL3Rates[phi]=0;
 	    if(slowCalc.avgL3Rates[phi]>255)
 		slowCalc.avgL3Rates[phi]=255;
+	    slowRf.avgL3Rates[phi]=slowCalc.avgL3Rates[phi];
 	}
     }
 
