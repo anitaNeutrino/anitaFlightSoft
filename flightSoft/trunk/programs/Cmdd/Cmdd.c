@@ -1461,6 +1461,7 @@ int reallyKillPrograms(int progMask)
 {
     time_t rawtime;
     time(&rawtime);
+    char fileName[FILENAME_MAX];
     char systemCommand[FILENAME_MAX];
     int retVal=0;
     int errorCount=0;
@@ -1473,6 +1474,8 @@ int reallyKillPrograms(int progMask)
 	testMask=getIdMask(prog);
 //	printf("%d %d\n",progMask,testMask);
 	if(progMask&testMask) {
+	    sprintf(fileName,"%s",getPidFile(prog));
+	    removeFile(fileName);
 //	    printf("Killing prog %s\n",getProgName(prog));
 	    
 	    sprintf(systemCommand,"killall -9 %s",getProgName(prog));
