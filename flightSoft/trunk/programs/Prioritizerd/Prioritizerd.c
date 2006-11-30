@@ -1,6 +1,6 @@
 /*! \file Prioritizerd.c
   \brief The Prioritizerd program that creates Event objects 
-    
+  
   Reads the event objects written by Eventd, assigns a priority to each event based on the likelihood that it is an interesting event. Events with the highest priority will be transmitted to the ground first.
   March 2005 rjn@mps.ohio-state.edu
 */
@@ -342,15 +342,15 @@ int main (int argc, char *argv[])
 						    hornSectorWidth,1);
 //			      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
 //							      &theCoincidenceBoxcarAll,
-//							      8,2*hornSectorWidth-2,
-//							      2*hornSectorWidth-2);
+//							      delay,2*hornSectorWidth-1,
+//							      2*hornSectorWidth-1);
 			      MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
 							    &theCoincidenceBoxcarH,
-							    8,hornSectorWidth-1,
+							    delay,hornSectorWidth-1,
 							    hornSectorWidth-1);
 			      MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
 							    &theCoincidenceBoxcarV,
-							    8,hornSectorWidth-1,
+							    delay,hornSectorWidth-1,
 							    hornSectorWidth-1);
 			 }
 			 else{
@@ -366,15 +366,15 @@ int main (int argc, char *argv[])
 						    hornSectorWidth-1,1);
 //			MaxBoxAll2=FormSectorCoincidence(&theMajorityBoxcar2,
 //							&theCoincidenceBoxcarAll2,
-//							8,2*hornSectorWidth-4,
-//							2*hornSectorWidth-4);
+//							8,2*hornSectorWidth-3,
+//							2*hornSectorWidth-3);
 			      MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
 							     &theCoincidenceBoxcarH2,
-							     8,hornSectorWidth-2,
+							     delay,hornSectorWidth-2,
 							     hornSectorWidth-2);
 			      MaxBoxV2=FormSectorCoincidence(&theMajorityBoxcarV2,
 							     &theCoincidenceBoxcarV2,
-							     8,hornSectorWidth-2,
+							     delay,hornSectorWidth-2,
 							     hornSectorWidth-2);
 			 }
 			 else{
