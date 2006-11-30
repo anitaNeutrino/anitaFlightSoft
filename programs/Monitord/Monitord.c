@@ -785,6 +785,8 @@ char *getPidFile(ProgramId_t prog) {
 
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 {
+    static int archivedCheckCount=0;
+    static int archivedLastVal=0;
     int retVal=0;
     otherPtr->unixTime=time(NULL);
     otherPtr->ramDiskInodes=getRamdiskInodes();
@@ -813,6 +815,22 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 	otherPtr->dirFiles[i]=numLinks;
 	numLinks=countFilesInDir(otherLinkLoc[i]);
 	otherPtr->dirLinks[i]=numLinks;
+	if(i==2 && numLinks>1000) {
+	    //Archived is a long way back
+	    syslog(LOG_INFO,"Archived has %d links to process",numLinks);
+	    if(archivedCheckCount>0) {
+		if(numLinks>archivedLastVal) {
+		    syslog(LOG_INFO,"Archived has %d links to process",numLinks);
+		}
+	    }
+	    archivedCheckCount++;
+	    archivedLastVal=numLinks;		
+	}
+	else {
+	    archivedCheckCount=0;
+	}
+
+
     }	
 }
 
