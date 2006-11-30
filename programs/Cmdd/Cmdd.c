@@ -431,12 +431,12 @@ int executeCommand(CommandStruct_t *theCmd)
     int index;
     int numDataProgs=8;
     int dataProgMasks[8]={HKD_ID_MASK,GPSD_ID_MASK,ARCHIVED_ID_MASK,
-			  ACQD_ID_MASK,CALIBD_ID_MASK,MONITORD_ID_MASK,
-			  PRIORITIZERD_ID_MASK,EVENTD_ID_MASK};
+			  CALIBD_ID_MASK,MONITORD_ID_MASK,
+			  PRIORITIZERD_ID_MASK,EVENTD_ID_MASK,ACQD_ID_MASK};
     
-    char *dataPidFiles[8]={hkdPidFile,gpsdPidFile,archivedPidFile,acqdPidFile,
+    char *dataPidFiles[8]={hkdPidFile,gpsdPidFile,archivedPidFile,
 			   calibdPidFile,monitordPidFile,prioritizerdPidFile,
-			   eventdPidFile};
+			   eventdPidFile,acqdPidFile};
     
 
     switch(theCmd->cmd[0]) {
@@ -446,8 +446,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
 	    break;
 	case CMD_START_NEW_RUN:
+    NEW_RUN:
 	{
-	    
 	    int sleepCount=0;
 	    time(&rawtime);
 	    for(index=0;index<numDataProgs;index++) {
@@ -914,7 +914,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	case ACQD_ENABLE_CHAN_SERVO: 	    
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Acqd.config","thresholds","enableChanServo",ivalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
 	    if(retVal) return 0;
 	    return rawtime;
 	case ACQD_SET_PID_GOAL: 	    
@@ -927,14 +927,16 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ivalue=theCmd->cmd[1];
 	    ivalue&=0x1;
 	    configModifyInt("Acqd.config","acqd","pedestalMode",ivalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+//	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    goto NEW_RUN;
 	    if(retVal) return 0;
 	    return rawtime;
 	case ACQD_THRESHOLD_SCAN: 	    
 	    ivalue=theCmd->cmd[1];
 	    ivalue&=0x1;
 	    configModifyInt("Acqd.config","thresholdScan","doThresholdScan",ivalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+//	    retVal=sendSignal(ID_ACQD,SIGUSR1);
+	    goto NEW_RUN;
 	    if(retVal) return 0;
 	    return rawtime;
 	case ACQD_SET_ANT_TRIG_MASK: 	    
@@ -1497,8 +1499,14 @@ int startPrograms(int progMask)
 	testMask=getIdMask(prog);
 	if(progMask&testMask) {
 	    //Match
-	    sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
-		    getProgName(prog),getProgName(prog));
+	    if(prog==ID_PRIORITIZERD) {
+		sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
+			getProgName(prog),getProgName(prog));
+	    }
+	    else {
+		sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
+			getProgName(prog),getProgName(prog));
+	    }
 
 	    syslog(LOG_INFO,"Sending command: %s",daemonCommand);
 	    retVal=system(daemonCommand);

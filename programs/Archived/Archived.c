@@ -509,7 +509,8 @@ void writeOutputForTelem(int numBytes) {
     if((theHead.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
 	pri=priorityPPS2;
     if(pri<0 || pri>9) pri=9;
-    theHead.priority=(16*theHead.priority)+pri;
+    //this step is now done in Prioritizerd
+//    theHead.priority=(16*theHead.priority)+pri;
     if(!eventWriter.justHeader) {
 	sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
 	sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);

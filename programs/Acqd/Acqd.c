@@ -400,9 +400,6 @@ int main(int argc, char **argv) {
 	// RJN debugging
 //	setTurfControl(turfioHandle,SetTrigMode);
 
-	//Write RFCM Mask
-	writeAntTrigMask(turfioHandle);
-	
 
 	theSurfHk.globalThreshold=0;
 
@@ -442,6 +439,14 @@ int main(int argc, char **argv) {
 		printf("Sending software triggers\n");
 	}
 
+	if(doThresholdScan) {
+	    antTrigMask=0xffffffff;
+	}
+
+	//Write RFCM Mask
+
+	writeAntTrigMask(turfioHandle);
+	
 
 	//Set Thresholds
 	if(setGlobalThreshold) {
@@ -896,9 +901,9 @@ int main(int argc, char **argv) {
 	    fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
+//	    printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	    if(slipCounter!=hdPtr->turfio.trigNum) {
-/* 		printf("Read TURF data -- doingEvent %d -- trigNum %d\n", */
-/* 		       doingEvent,hdPtr->turfio.trigNum); */
+ 		printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 		reInitNeeded=1;
 	    }
 	    if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
@@ -1046,6 +1051,9 @@ int main(int argc, char **argv) {
 		theCmd.cmd[0]=LAST_CONFIG;
 		theCmd.cmd[1]=1;
 		theCmd.cmd[2]=0;
+		writeCommandAndLink(&theCmd);	
+		theCmd.numCmdBytes=1;
+		theCmd.cmd[0]=CMD_START_NEW_RUN;
 		writeCommandAndLink(&theCmd);
 	    }
 	}
@@ -1056,6 +1064,9 @@ int main(int argc, char **argv) {
 	    theCmd.cmd[0]=LAST_CONFIG;
 	    theCmd.cmd[1]=1;
 	    theCmd.cmd[2]=0;
+	    writeCommandAndLink(&theCmd);	
+	    theCmd.numCmdBytes=1;
+	    theCmd.cmd[0]=CMD_START_NEW_RUN;
 	    writeCommandAndLink(&theCmd);
 	}
 	    
@@ -2492,6 +2503,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
     
 
     doingEvent++;
+    slipCounter++;
     if(verbosity && printToScreen) 
 	printf("Triggered, event %d (by software counter).\n",doingEvent);
 

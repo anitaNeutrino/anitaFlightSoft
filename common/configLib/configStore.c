@@ -162,10 +162,11 @@ ConfigErrorCode configSwitchToLast(char *configFile, time_t *rawTimePtr) {
    // cp oldFileSpec lastFileSpec
    // mv oldFileSpec archiveFileSpec
    // mv newFileSpec oldFileSpec
-   rename(lastFileSpec,newFileSpec);
+   copyFile2(lastFileSpec,newFileSpec);
    copyFile2(oldFileSpec,lastFileSpec);
-   rename(oldFileSpec,archiveFileSpec);
-   rename(newFileSpec,oldFileSpec);
+   copyFile2(oldFileSpec,archiveFileSpec);
+   copyFile2(newFileSpec,oldFileSpec);
+   unlink(newFileSpec);
 
    syslog(LOG_INFO,"configSwitch arcvhived: %s", archiveFileSpec);   
    return CONFIG_E_OK;

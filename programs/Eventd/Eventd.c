@@ -23,7 +23,7 @@
 
 //#define TIME_DEBUG 1
 
-#define MAX_GPS_TIMES 2000
+#define MAX_GPS_TIMES 500
 #define MAX_CALIB_TIMES 2000
 #define EVENT_TIMEOUT 5
 
@@ -201,8 +201,9 @@ int main (int argc, char *argv[])
 			filledSubTime=setGpsTime(&theAcqdEventHeader);
 		    }
 		    else {
-			filledSubTime=1;
+			filledSubTime=0;
 			clearGpsDir();
+			break;
 		    }
 		    if(!filledSubTime) {
 			if((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT) sleep(1);
@@ -320,7 +321,17 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	syslog(LOG_ERR,"GPS overload junking %d times\n",numGpsStored);
 	fprintf(stderr,"GPS overload junking %d times\n",numGpsStored);
 	numGpsStored=0;
-	bzero(gpsArray, sizeof(GpsSubTime_t)*MAX_GPS_TIMES) ;	    
+	bzero(gpsArray, sizeof(GpsSubTime_t)*MAX_GPS_TIMES) ;	
+	for(count=0;count<numGpsTimeLinks;count++) {
+	    sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
+		    gpsSubTimeLinkList[count]->d_name); 
+	    removeFile(currentFilename);
+	    sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_DIR,
+		    gpsSubTimeLinkList[count]->d_name); 
+	    removeFile(currentFilename);
+	}
+	return 0;
+	    
     }
     if(loadGpsLinks>MAX_GPS_TIMES)
 	loadGpsLinks=MAX_GPS_TIMES-10;
@@ -709,8 +720,14 @@ int compareGpsTimes(const void *ptr1, const void *ptr2) {
 
 void handleBadSigs(int sig)
 {
+    static int firstTime=1;
+    if(firstTime) {
+	clearGpsDir();
+	firstTime=0;
+    }	
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
     unlink(eventdPidFile);
     syslog(LOG_INFO,"Eventd terminating");
+    
     exit(0);
 }
