@@ -168,6 +168,9 @@ extern "C"
 		   int hornwidth,int hornGuardOffset, int hornGuardWidth,int hornGuardThresh,
 			int conewidth,int coneGuardOffset, int coneGuardWidth,int coneGuardThresh);
 
+     int RMSCountAll(AnitaInstrumentF_t *in,int thresh, 
+		     int begwindow,int endwindow);
+
      int GlobalMajority(AnitaChannelDiscriminator_t *in,
 			 LogicChannel_t *horns,
 			 LogicChannel_t *cones,

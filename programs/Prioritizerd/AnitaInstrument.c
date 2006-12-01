@@ -568,10 +568,49 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
 	  PeakBoxcarOne(&(in->discone[i]),&(out->discone[i]),
 			coneWidth,coneGuardOffset,
 			coneGuardWidth,coneGuardThresh);
-     }
-	  
+     }	  
 }
 
+float MSRatio(TransientChannelF_t *in,int begwindow,int endwindow){
+     float msbeg=0.;
+     float msend=0.;
+     int i;
+     if (begwindow>100) begwindow=100;
+     if (endwindow>100) endwindow=100;
+     for (i=0; i<begwindow; i++){
+	  msbeg+=in->data[i]*in->data[i];
+     }
+     msbeg /= begwindow;
+     for (i=in->valid_samples; i>in->valid_samples-endwindow; i--){
+	  msend+=in->data[i]*in->data[i];
+     }
+     msend /= endwindow;
+     return (msend/msbeg);
+}
+
+int RMSCountAll(AnitaInstrumentF_t *in,int thresh, 
+		int begwindow,int endwindow){
+     int count=0;
+     int i,phi,pol;
+     float fthresh=(float) thresh*0.01;
+     fthresh=fthresh*fthresh; // avoid square roots at the price of one square.
+     for (phi=0;phi<16; phi++){
+	  for (pol=0;pol<2;pol++){
+	       if (MSRatio(&(in->topRing[phi][pol]),
+			begwindow, endwindow)>fthresh) count++;
+	       if (MSRatio(&(in->botRing[phi][pol]),
+			begwindow, endwindow)>fthresh) count++;
+	  }
+     }
+	  
+     for (i=0; i<4; i++){	       
+	       if (MSRatio(&(in->bicone[i]),
+			begwindow, endwindow)>fthresh) count++;
+	       if (MSRatio(&(in->discone[i]),
+			begwindow, endwindow)>fthresh) count++;
+     }
+     return count;
+}
 
 
 int GlobalMajority(AnitaChannelDiscriminator_t *in,
