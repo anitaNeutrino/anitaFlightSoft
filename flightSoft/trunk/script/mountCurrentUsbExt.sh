@@ -18,5 +18,9 @@ fi
 
 label=`getConfigString anitaSoft.config global usbExtName`
 echo "Trying to mount $label on /mnt/usbext"
+sudo chmod a-w /mnt/usbext
 sudo mountUsbDriveByName.sh $label
-sudo chmod a+wrx /mnt/usbext
+if df -h | grep -q "usbext"
+then
+	sudo chmod a+wrx /mnt/usbext
+fi
