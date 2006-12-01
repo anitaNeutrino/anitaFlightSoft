@@ -126,6 +126,7 @@ int main (int argc, char *argv[])
      int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
      LogicChannel_t HornCounter,ConeCounter;
      int HornMax;
+     int RMSnum;
 
 #ifdef TIME_DEBUG
      struct timeval timeStruct2;
@@ -397,14 +398,24 @@ int main (int argc, char *argv[])
 			 else{
 			      HornMax=0;
 			 }
+// cut on late vs. early RMS to reject blast starting during the record   
+			 if ((MethodMask & 0x80)!=0){
+			      RMSnum=RMSCountAll(&theXcorr,RMSMax,
+						 BeginWindow,EndWindow);
+			 }
+			 else{
+			      RMSnum=0;
+			 }
 
 //Sillyness forever...
 			 //Must determine priority here
 //	    priority=1;
 //revised scoring here -- comments  are for hornsector width of 3 (suggested default)
-			 priority=7;
+			 priority=6;
 			 if (HornMax>WindowCut) //too many horns peaking simultaneously
 			      priority=8;
+			 else if (RMSnum>RMSevents) priority=7;
+// too many channels with large RMS in end relative to beginning
 			 else if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) //3 for 3 in both rings
 			      priority=1;
 			 else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) // 2 for 2 in both rings
@@ -419,12 +430,12 @@ int main (int argc, char *argv[])
 			      priority=5; //
 			 else if (MaxH>=2*hornSectorWidth-1 || 
 				  MaxV>=2*hornSectorWidth-1)
-			      priority=6;
+			      priority=5;//was 6
 			 else if(score4>=600) priority=5;
 			 // else if(score3>1900) priority=6;
 			 // else if(score3>1500) priority=6;
 			 // else if(score3>1000) priority=6;
-			 else if(score3>600) priority=6;
+			 else if(score3>600) priority=5;//was 6
 		    }
 		    theHeader.priority=priority;		
 		    int pri=theHeader.priority&0xf;
