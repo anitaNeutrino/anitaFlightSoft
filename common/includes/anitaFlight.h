@@ -162,7 +162,6 @@
 #define PEDESTAL_DIR "anita/pedestal"
 #define CURRENT_PEDESTALS "anita/pedestal/current"
 
-
 #define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
 
 

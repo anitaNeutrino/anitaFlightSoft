@@ -119,25 +119,25 @@ void handleScience(unsigned char *buffer,unsigned short numBytes) {
 	if(checkVal==0) {
 	    printf("Got %s (%#x) -- (%d bytes)\n",packetCodeAsString(gHdr->code),
 		   gHdr->code,gHdr->numBytes);
-	    if(gHdr->code==PACKET_ENC_SURF) 
-		printSurfInfo((EncodedSurfPacketHeader_t*) gHdr);
-	    if(gHdr->code==PACKET_ENC_SURF_PEDSUB) 
-		printPedSubSurfInfo((EncodedPedSubbedSurfPacketHeader_t*) gHdr);	    
-	    if(gHdr->code==PACKET_ZIPPED_PACKET) {
+/* 	    if(gHdr->code==PACKET_ENC_SURF)  */
+/* 		printSurfInfo((EncodedSurfPacketHeader_t*) gHdr); */
+/* 	    if(gHdr->code==PACKET_ENC_SURF_PEDSUB)  */
+/* 		printPedSubSurfInfo((EncodedPedSubbedSurfPacketHeader_t*) gHdr);	     */
+/* 	    if(gHdr->code==PACKET_ZIPPED_PACKET) { */
 		
-		int retVal=unzipZippedPacket((ZippedPacket_t*)&buffer[count],
-					     packetBuffer,10000);
-		checkVal=checkPacket(packetBuffer);
-		if(retVal==0 && checkVal==0) {
-		    gHdr2=(GenericHeader_t*) packetBuffer;
-		    printf("\tGot %s (%#x) -- (%d bytes)\n",
-			   packetCodeAsString(gHdr2->code),
-			   gHdr2->code,gHdr2->numBytes);
-		}
-		else {
-		    printf("\tunzipZippedPacket retVal %d -- checkPacket == %d\n",retVal,checkVal);
-		}
-	    }
+/* 		int retVal=unzipZippedPacket((ZippedPacket_t*)&buffer[count], */
+/* 					     packetBuffer,10000); */
+/* 		checkVal=checkPacket(packetBuffer); */
+/* 		if(retVal==0 && checkVal==0) { */
+/* 		    gHdr2=(GenericHeader_t*) packetBuffer; */
+/* 		    printf("\tGot %s (%#x) -- (%d bytes)\n", */
+/* 			   packetCodeAsString(gHdr2->code), */
+/* 			   gHdr2->code,gHdr2->numBytes); */
+/* 		} */
+/* 		else { */
+/* 		    printf("\tunzipZippedPacket retVal %d -- checkPacket == %d\n",retVal,checkVal); */
+/* 		} */
+/* 	    } */
 
 	    count+=gHdr->numBytes;
 	}

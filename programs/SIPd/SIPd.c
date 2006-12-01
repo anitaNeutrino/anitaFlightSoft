@@ -272,7 +272,7 @@ void highrateHandler(int *ignore)
 	    usleep(1);
 	orderIndex++;
 	if(orderIndex>=numOrders) orderIndex=0;
-	int headCount=0;
+//	int headCount=0;
 
 	checkLinkDirAndTdrss(headersPerEvent,HEADER_TELEM_DIR,
 			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
@@ -397,7 +397,7 @@ void comm2Handler()
 	fclose(fp);
     }
     slowRateData.unixTime=time(NULL);
-    fillGenericHeader(&slowRateData,PACKET_SLOW1,sizeof(SlowRateFull_t));
+    fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
     ret = sipcom_slowrate_write(COMM2,(unsigned char*) &slowRateData, sizeof(SlowRateFull_t));
 
     if (ret) {
