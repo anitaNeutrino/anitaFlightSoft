@@ -66,6 +66,7 @@ int setPidGoalScaleFactor(int surf, int dac, float scaleFactor);
 int setLosdPriorityBandwidth(int pri, int bw);
 int setSipdPriorityBandwidth(int pri, int bw);
 int executePrioritizerdCommand(int command, int value);
+int executePlaybackCommand(int command, unsigned int value1, unsigned int value2);
 int startNewRun();
 int getRunNumber();
 int getLatestEventNumber();
@@ -151,6 +152,7 @@ int main (int argc, char *argv[])
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(CMDD_COMMAND_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
+    makeDirectories(PLAYBACK_LINK_DIR);
 
     do {
 	retVal=readConfig();
@@ -1126,7 +1128,19 @@ int executeCommand(CommandStruct_t *theCmd)
 	case PRIORITIZERD_COMMAND:
 	    ivalue=theCmd->cmd[1]; //Command num
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
-	    return executePrioritizerdCommand(ivalue,ivalue2);		    
+	    return executePrioritizerdCommand(ivalue,ivalue2);
+	case PLAYBACKD_COMMAND:
+	    ivalue=theCmd->cmd[1]; //Command num	    
+	    ultemp=(theCmd->cmd[2]);	    
+	    ulvalue=ultemp;
+	    ultemp=(theCmd->cmd[3]);
+	    ulvalue|=(ultemp<<8);
+	    ultemp=(theCmd->cmd[4]);
+	    ulvalue|=(ultemp<<16);
+	    ultemp=(theCmd->cmd[5]);
+	    ulvalue|=(ultemp<<24);	    
+	    ivalue2=theCmd->cmd[6];//+(theCmd->cmd[3]<<8); //command value
+	    return executePlaybackCommand(ivalue,ulvalue,ivalue2);		    
 	case EVENTD_MATCH_GPS:
 	    ivalue=theCmd->cmd[1];
 	    if(ivalue<0 || ivalue>1) return -1;
@@ -1683,6 +1697,37 @@ int setSipdPriorityBandwidth(int pri, int bw)
     return rawtime;    
 
 }
+
+
+int executePlaybackCommand(int command, unsigned int value1, unsigned int value2)
+{
+    
+    PlaybackRequest_t pReq;
+    time_t rawtime;    
+    char filename[FILENAME_MAX];
+    switch(command) {
+	case PLAY_GET_EVENT:
+	    pReq.eventNumber=value1;
+	    pReq.pri=value2;
+//	    printf("event %lu, pri %d\n",value1,value2);
+	    sprintf(filename,"%s/play_%lu.dat",PLAYBACK_DIR,pReq.eventNumber);
+	    normalSingleWrite((unsigned char*)&pReq,filename,sizeof(PlaybackRequest_t));
+	    makeLink(filename,PLAYBACK_LINK_DIR);
+	    rawtime=time(NULL);
+	    break;
+	case PLAY_START_PRI:
+	    rawtime=time(NULL);
+	    break;
+	case PLAY_STOP_PRI:
+	    rawtime=time(NULL);
+	    break;
+	default:
+	    return -1;
+    }
+	      
+    return rawtime;
+}
+
 
 int executePrioritizerdCommand(int command, int value)
 {

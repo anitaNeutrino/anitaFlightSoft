@@ -135,8 +135,8 @@ int checkForRequests() {
     PlaybackRequest_t pReq;
     int numLinks=getListofLinks(PLAYBACK_LINK_DIR,&linkList);
     if(numLinks>0) {
-	fprintf(stderr,"Playbackd has received request\n");
-	for(count=0;count<numLinks-100;count++) {
+	fprintf(stderr,"Playbackd has received %d requests\n",numLinks);
+	for(count=0;count<numLinks;count++) {
 	    sprintf(linkName,"%s/%s",PLAYBACK_LINK_DIR,linkList[count]->d_name);
 	    sprintf(fileName,"%s/%s",PLAYBACK_DIR,linkList[count]->d_name);
 
@@ -153,7 +153,7 @@ int checkForRequests() {
 		removeFile(fileName);
 		continue;
 	    }
-
+//	    fprintf(stderr,"Here\n");
 	    sendEvent(&pReq);
 	    removeFile(linkName);
 	    removeFile(fileName);
@@ -178,9 +178,14 @@ void sendEvent(PlaybackRequest_t *pReq)
     int fileNum=(EVENTS_PER_FILE)*(pReq->eventNumber/EVENTS_PER_FILE);
 
     sprintf(indexName,"/mnt/data/index/ev%d/ev%d/index_%d.dat.gz",dirNum,subDirNum,fileNum);
+    
+    syslog(LOG_INFO,"Trying to send event %lu, with priority %d\n",
+	   pReq->eventNumber,pReq->pri);
+
     gzFile *indFile=gzopen(indexName,"rb");
     if(!indFile) return;
     
+
     IndexEntry_t indEntry;
     do {
 	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));

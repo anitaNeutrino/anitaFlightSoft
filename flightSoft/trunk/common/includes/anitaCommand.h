@@ -141,7 +141,8 @@ typedef enum {
     ACQD_SET_RATE_SERVO = 249,
     ACQD_SET_NICE_VALUE = 250,
     EVENTD_MATCH_GPS = 251,
-    PRIORITIZERD_COMMAND =253    
+    PRIORITIZERD_COMMAND =253,  
+    PLAYBACKD_COMMAND =254    
 } CommandCode_t;
 
 
@@ -172,5 +173,10 @@ typedef enum {
     PRI_FFT_PEAK_WINDOW_R=24
 } PrioritizerdCommandCode_t;
     
+typedef enum {
+    PLAY_GET_EVENT=1,
+    PLAY_START_PRI=2,
+    PLAY_STOP_PRI=3
+} PlaybackCommandCode_t;
 
 #endif /* ANITA_COMMAND_H */
