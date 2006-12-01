@@ -1,0 +1,112 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  Common.def
+#      Abstract     :  Common definitions between all targets
+#      Last Revision:  09-01-03
+#      SDK Version  :  4.20
+#
+#-----------------------------------------------------------------------------
+
+
+#=============================================================================
+# Check for errors
+#=============================================================================
+ifndef PLX_SDK_DIR
+    $(error ERROR: Variable 'PLX_SDK_DIR' not set ***)
+endif
+
+ifndef TOOLS_NAME
+    # Only Gcc is supported
+    TOOLS_NAME := Gcc
+endif
+
+ifndef ImageName
+    $(error ERROR: Variable 'ImageName' not set ***)
+endif
+
+ifndef TGT_TYPE
+    $(error ERROR: Variable 'TGT_TYPE' not set ***)
+endif
+
+ifndef PLX_CHIP
+    ifeq ($(TGT_TYPE), Driver)
+        $(error ERROR: Variable 'PLX_CHIP' not set ***)
+    else
+        PLX_CHIP := n/a
+    endif
+endif
+
+ifndef KERNEL_VER
+    ifeq ($(TGT_TYPE), Driver)
+        $(error ERROR: Variable 'KERNEL_VER' not set ***)
+    else
+        KERNEL_VER := n/a
+    endif
+endif
+
+
+
+
+#=============================================================================
+# The directory locations:
+#
+#  OUT_DIR      = Contains the final build images
+#  OBJ_DIR      = Contains all intermediate build files (e.g. obj, map, etc)
+#  COMMON_DIR   = Directory where common shared files reside
+#  PLX_CHIP_DIR = Directory where chip-specific driver files are located
+#=============================================================================
+OUT_DIR = $(TGT_TYPE)
+OBJ_DIR = $(OUT_DIR)/Obj$(DBG)
+
+ifeq ($(TGT_TYPE), App)
+    COMMON_DIR := $(PLX_SDK_DIR)/linux/samples/common
+endif
+
+ifeq ($(TGT_TYPE), Driver)
+    ifeq ($(PLX_CHIP), PlxPci)
+        COMMON_DIR := ../common.PlxPci
+    else
+        ifeq ($(PLX_CHIP), 6000)
+            COMMON_DIR := ../common.6000
+        else
+            COMMON_DIR := ../common
+        endif
+    endif
+
+    PLX_CHIP_DIR  = $(COMMON_DIR)/PlxChip/Pci$(PLX_CHIP)
+endif
+
+
+#=============================================================================
+# Additional PLX-specific command-line options
+#=============================================================================
+PLX_OPT := $(PLX_OPT) -DPCI_CODE -DPLX_LITTLE_ENDIAN
+
+ifdef DEBUG
+    PLX_OPT := $(PLX_OPT) -DPLX_DEBUG
+endif
+
+ifeq ($(TGT_TYPE), App)
+    PLX_OPT := $(PLX_OPT) -DPLX_LINUX 
+endif
+
+ifeq ($(TGT_TYPE), Library)
+    PLX_OPT := $(PLX_OPT) -DPLX_LINUX
+endif
+
+ifeq ($(TGT_TYPE), Driver)
+    PLX_OPT := $(PLX_OPT) -D__KERNEL__ -DMODULE -D__NO_VERSION__
+    PLX_OPT := $(PLX_OPT) -DPCI$(PLX_CHIP) -DLINUX_DRIVER
+endif
+
+
+
+#=============================================================================
+# PLX specific definitions
+#=============================================================================
+ifdef DEBUG
+    DBG        = _dbg
+    BUILD_TYPE = Debug
+else
+    BUILD_TYPE = Release
+endif
