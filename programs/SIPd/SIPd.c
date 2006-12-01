@@ -68,7 +68,7 @@ int printToScreen;
 int sendData;
 
 // Bandwidth variables
-int eventBandwidth=80;
+int eventBandwidth=5;
 int priorityBandwidths[NUM_PRIORITIES];
 int priorityOrder[NUM_PRIORITIES*100];
 int numOrders=1000;
@@ -257,6 +257,7 @@ void highrateHandler(int *ignore)
 	    //Got an event	    
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 		    linkList[numLinks-1]->d_name);
+	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
 	    readAndSendEventRamdisk(currentHeader); //Also deletes
 
 	    while(numLinks) {
@@ -266,12 +267,13 @@ void highrateHandler(int *ignore)
 	    free(linkList);
 		 
 	}
-	usleep(1);
+	else
+	    usleep(1);
 	orderIndex++;
 	if(orderIndex>=numOrders) orderIndex=0;
 
 	//Need to think about housekeeping and add something here
-	if(hkCount%5==0)
+	if(hkCount%eventBandwidth==0)
 	    sendSomeHk(10000);
 	hkCount++;
     }	
@@ -444,7 +446,7 @@ int readConfig()
     status = configLoad ("SIPd.config","bandwidth") ;
     if(status == CONFIG_E_OK) {
 //	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
-	eventBandwidth=kvpGetInt("eventBandwidth",80);
+	eventBandwidth=kvpGetInt("eventBandwidth",5);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
@@ -548,7 +550,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 
 
     theHeader->gHdr.packetNumber=getTdrssNumber();
-    retVal = sipcom_highrate_write(theBuffer,sizeof(AnitaEventHeader_t));
+    retVal = sipcom_highrate_write((unsigned char*)theHeader,sizeof(AnitaEventHeader_t));
     if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());

@@ -9,8 +9,11 @@ if [ $disabled -eq 1 ] ; then
 fi
 
 
-
+sudo chmod a-w /mnt/blade
 label=`getConfigString anitaSoft.config global bladeName`
 echo "Trying to mount $label on /mnt/blade"
 sudo mount -L $label -o defaults,sync /mnt/blade
-sudo chmod a+wrx /mnt/blade
+if df -h | grep -q "blade"
+then
+	sudo chmod a+wrx /mnt/blade
+fi
