@@ -68,6 +68,7 @@ int printToScreen;
 int sendData;
 
 // Bandwidth variables
+int headersPerEvent=30;
 int eventBandwidth=5;
 int priorityBandwidths[NUM_PRIORITIES];
 int priorityOrder[NUM_PRIORITIES*100];
@@ -271,6 +272,10 @@ void highrateHandler(int *ignore)
 	    usleep(1);
 	orderIndex++;
 	if(orderIndex>=numOrders) orderIndex=0;
+	int headCount=0;
+
+	checkLinkDirAndTdrss(headersPerEvent,HEADER_TELEM_DIR,
+			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
 
 	//Need to think about housekeeping and add something here
 	if(hkCount%eventBandwidth==0)
@@ -446,6 +451,7 @@ int readConfig()
     status = configLoad ("SIPd.config","bandwidth") ;
     if(status == CONFIG_E_OK) {
 //	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
+	headersPerEvent=kvpGetInt("headersPerEvent",30);
 	eventBandwidth=kvpGetInt("eventBandwidth",5);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);
@@ -538,9 +544,10 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     retVal=fillHeader(theHeader,headerFilename); 
         
     if(retVal<0) {
+	syslog(LOG_ERR,"Problem with %s",headerFilename);
 	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
 		thisEventNumber);
-
+	
 	removeFile(headerFilename);
 	removeFile(waveFilename);
 	
@@ -572,6 +579,8 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     retVal=genericReadOfFile((unsigned char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
     if(retVal<0) {
 	fprintf(stderr,"Problem reading %s\n",waveFilename);
+	syslog(LOG_ERR,"Problem reading %s\n",waveFilename);
+
 //	removeFile(headerLinkFilename);
 	removeFile(headerFilename);
 	removeFile(waveFilename);	
@@ -977,66 +986,62 @@ void sendSomeHk(int maxBytes)
 {
     int hkCount=0;
     if((maxBytes-hkCount)>2000) {	
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,REQUEST_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(1,REQUEST_TELEM_DIR,
 		     REQUEST_TELEM_LINK_DIR,2000);
-    }        
+    }   
     if((maxBytes-hkCount)>sizeof(CommandEcho_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,
+	hkCount+=checkLinkDirAndTdrss(10,
 		     SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR,
 		     sizeof(CommandEcho_t)); 
-    }
+    }  
     if((maxBytes-hkCount)>sizeof(FullLabChipPedStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,PEDESTAL_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(1,PEDESTAL_TELEM_DIR,
 				      PEDESTAL_TELEM_LINK_DIR,
 				      sizeof(FullLabChipPedStruct_t)); 
-    }
+    }   
     if((maxBytes-hkCount)>sizeof(MonitorStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,
+	hkCount+=checkLinkDirAndTdrss(3,
 		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
 		     sizeof(MonitorStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(AnitaEventHeader_t)) {	
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HEADER_TELEM_DIR,
-		     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
     }    
+
     if((maxBytes-hkCount)>sizeof(HkDataStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,HK_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(5,HK_TELEM_DIR,
 		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
     }
     if((maxBytes-hkCount)>sizeof(GpsAdu5SatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_SAT_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(1,ADU5_SAT_TELEM_DIR,
 		     ADU5_SAT_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
     }
     if((maxBytes-hkCount)>sizeof(GpsG12SatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,G12_SAT_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(1,G12_SAT_TELEM_DIR,
 		     G12_SAT_TELEM_LINK_DIR,sizeof(GpsG12SatStruct_t)); 
     }
     if((maxBytes-hkCount)>sizeof(GpsAdu5PatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_PAT_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(3,ADU5_PAT_TELEM_DIR,
 		     ADU5_PAT_TELEM_LINK_DIR,sizeof(GpsAdu5PatStruct_t)); 
     }
     if((maxBytes-hkCount)>sizeof(GpsG12PosStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,G12_POS_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(3,G12_POS_TELEM_DIR,
 		     G12_POS_TELEM_LINK_DIR,sizeof(GpsG12PosStruct_t)); 
     }
     if((maxBytes-hkCount)>sizeof(GpsAdu5VtgStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,ADU5_VTG_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(3,ADU5_VTG_TELEM_DIR,
 		     ADU5_VTG_TELEM_LINK_DIR,sizeof(GpsAdu5VtgStruct_t)); 
     }
-
-    if((maxBytes-hkCount)>sizeof(FullSurfHkStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,SURFHK_TELEM_DIR,
-		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 
-    }
     if((maxBytes-hkCount)>sizeof(TurfRateStruct_t)) {	
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,TURFHK_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(5,TURFHK_TELEM_DIR,
 		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
-    }    
-
+    }   
     if((maxBytes-hkCount)>sizeof(OtherMonitorStruct_t)) {	
-	hkCount+=checkLinkDirAndTdrss(maxBytes-hkCount,OTHER_MONITOR_TELEM_DIR,
+	hkCount+=checkLinkDirAndTdrss(3,OTHER_MONITOR_TELEM_DIR,
 		     OTHER_MONITOR_TELEM_LINK_DIR,sizeof(OtherMonitorStruct_t));
     }
+    if((maxBytes-hkCount)>sizeof(FullSurfHkStruct_t)) {
+	hkCount+=checkLinkDirAndTdrss(3,SURFHK_TELEM_DIR,
+		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 
+    } 
+
 
     hkDataSent+=hkCount;
     
@@ -1063,7 +1068,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
     if(numLinks<=0) {
 	return 0;
     }
-        
+    int counter=0;
     for(count=numLinks-1;count>=0;count--) {
 	sprintf(currentFilename,"%s/%s",telemDir,
 		linkList[count]->d_name);
@@ -1079,6 +1084,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	retVal=genericReadOfFile((unsigned char*)theBuffer,
 				 currentFilename,
 				 MAX_EVENT_SIZE);
+	syslog(LOG_DEBUG,"Trying %s",currentFilename);
 	if(retVal<=0) {
 //	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 //		   currentFilename);
@@ -1168,8 +1174,10 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 		break;
 	}
 
-	if((totalBytes+fileSize)>maxCopy) break;
-	break;
+//	if((totalBytes+fileSize)>maxCopy) break;
+	counter++;
+	if(counter>=maxCopy) break;
+//	break;
     }
     
     for(count=0;count<numLinks;count++)
