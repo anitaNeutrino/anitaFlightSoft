@@ -237,6 +237,10 @@ void sendEvent(PlaybackRequest_t *pReq)
 	    return;
 	}
     }
+
+    theHead.priority=((pReq->pri&0xf) | (theHead.priority&0xf0));
+    fillGenericHeader(&theHead,PACKET_HD,sizeof(AnitaEventHeader_t));
+
     //In theory should have header and event now
     encodeAndWriteEvent(&theHead,&psBody, pReq->pri);
 
