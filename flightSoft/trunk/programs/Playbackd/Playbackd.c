@@ -177,7 +177,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     int subDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pReq->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
     int fileNum=(EVENTS_PER_FILE)*(pReq->eventNumber/EVENTS_PER_FILE);
 
-    sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",dirNum,subDirNum,fileNum);
+    sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",subDirNum,dirNum,fileNum);
     
     syslog(LOG_INFO,"Trying to send event %lu, with priority %d\n",
 	   pReq->eventNumber,pReq->pri);
@@ -203,7 +203,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     if(indEntry.eventDiskBitMask&PUCK_DISK_MASK) {
 	//Read it from puck
 	sprintf(headerFileName,"%s/run%lu/event/ev%d/ev%d/hd_%d.dat.gz",
-		PUCK_DATA_MOUNT,indEntry.runNumber,dirNum,subDirNum,fileNum);
+		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
 	gzFile headFile = gzopen(headerFileName,"rb");
 	if(!headFile) {
 	    fprintf(stderr,"Couldn't open: %s\n",headerFileName);	    
@@ -221,7 +221,7 @@ void sendEvent(PlaybackRequest_t *pReq)
 	}
 
 	sprintf(eventFileName,"%s/run%lu/event/ev%d/ev%d/psev_%d.dat.gz",
-		PUCK_DATA_MOUNT,indEntry.runNumber,dirNum,subDirNum,fileNum);
+		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
 	gzFile eventFile = gzopen(eventFileName,"rb");
 	if(!eventFile) {
 	    fprintf(stderr,"Couldn't open: %s\n",eventFileName);	    
