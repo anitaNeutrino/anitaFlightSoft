@@ -183,13 +183,17 @@ void sendEvent(PlaybackRequest_t *pReq)
 	   pReq->eventNumber,pReq->pri);
 
     gzFile *indFile=gzopen(indexName,"rb");
-    if(!indFile) return;
+    if(!indFile) {
+	fprintf(stderr,"Couldn't open: %s\n",indexName);
+	return;
+    }
     
 
     IndexEntry_t indEntry;
     do {
 	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));
 	if(test<0) {
+	    fprintf(stderr,"Couldn't read from: %s\n",indexName);
 	    gzclose(indFile);
 	    return;
 	}
@@ -201,25 +205,37 @@ void sendEvent(PlaybackRequest_t *pReq)
 	sprintf(headerFileName,"%s/run%lu/event/ev%d/ev%d/hd_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,dirNum,subDirNum,fileNum);
 	gzFile headFile = gzopen(headerFileName,"rb");
-	if(!headFile) return;
+	if(!headFile) {
+	    fprintf(stderr,"Couldn't open: %s\n",headerFileName);	    
+	    return;
+	}
 	int retVal;
 	do {
 	    retVal=gzread(headFile,&theHead,sizeof(AnitaEventHeader_t));
 	}
 	while(retVal>0 && theHead.eventNumber!=pReq->eventNumber);
 	gzclose(headFile);
-	if(retVal<0) return;
+	if(retVal<0) {
+	    fprintf(stderr,"Couldn't find header %lu\n",pReq->eventNumber);	    
+	    return;
+	}
 
 	sprintf(eventFileName,"%s/run%lu/event/ev%d/ev%d/psev_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,dirNum,subDirNum,fileNum);
 	gzFile eventFile = gzopen(eventFileName,"rb");
-	if(!eventFile) return;
+	if(!eventFile) {
+	    fprintf(stderr,"Couldn't open: %s\n",eventFileName);	    
+	    return;
+	}
 	do {
 	    retVal=gzread(eventFile,&psBody,sizeof(PedSubbedEventBody_t));
 	}
 	while(retVal>0 && psBody.eventNumber!=pReq->eventNumber);	
 	gzclose(eventFile);
-	if(retVal<0) return;
+	if(retVal<0) {
+	    fprintf(stderr,"Couldn't find event %lu\n",pReq->eventNumber);	    
+	    return;
+	}
     }
     //In theory should have header and event now
     encodeAndWriteEvent(&theHead,&psBody, pReq->pri);
