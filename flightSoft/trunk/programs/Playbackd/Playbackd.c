@@ -198,7 +198,7 @@ void sendEvent(PlaybackRequest_t *pReq)
 	    return;
 	}
     } while (indEntry.eventNumber!=pReq->eventNumber);
-
+    gzclose(indFile);
     //Now have index
     if(indEntry.eventDiskBitMask&PUCK_DISK_MASK) {
 	//Read it from puck
@@ -270,6 +270,7 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
     else {
 	writeHeader(hdPtr,headName);
 	makeLink(headName,eventTelemLinkDirs[pri]);
+	fprintf(stderr,"Think I did it\n");
     } 
 }
 
