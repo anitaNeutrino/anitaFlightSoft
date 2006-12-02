@@ -74,6 +74,7 @@ int bladeSwitchMB=50;
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 
+char priorityPurgeDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 char bladeName[FILENAME_MAX];
 char usbIntName[FILENAME_MAX];
@@ -123,8 +124,11 @@ int main (int argc, char *argv[])
 		EVENT_PRI_PREFIX,pri);
 	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
 		EVENT_PRI_PREFIX,pri);
-
 	makeDirectories(eventTelemLinkDirs[pri]);
+
+	sprintf(priorityPurgeDirs[pri],"%s/pri%d",BASE_PRIORITY_PURGE_DIR,
+		pri);
+	makeDirectories(priorityPurgeDirs[pri]);
     }
     
     retVal=readConfigFile();
@@ -628,12 +632,21 @@ void purgeDirectory(int priority) {
     unsigned long eventNumber;
     char currentTouchname[FILENAME_MAX];
     char currentHeader[FILENAME_MAX];
+    char purgeFile[FILENAME_MAX];
+    char purgeString[60];
     struct dirent **linkList;
     int numLinks=getListofLinks(eventTelemLinkDirs[priority],
 				&linkList);
     if(numLinks>maxEventQueueSize) {
 	syslog(LOG_INFO,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
 	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
+	
+	
+	sscanf(linkList[0]->d_name,
+	       "hd_%lu.dat",&eventNumber);
+	sprintf(purgeFile,"%s/purged_%lu.txt.gz",priorityPurgeDirs[priority],eventNumber);
+	gzFile Purge=gzopen(purgeFile,"w");
+
 	for(count=0;count<numLinks-100;
 	    count++) {
 	    
@@ -651,6 +664,13 @@ void purgeDirectory(int priority) {
 	    if(checkFileExists(currentTouchname))
 		continue;
 	    
+	    //Now need to add something here that archived the event numbers 
+	    //to be deleted, so that Playbackd can resurrect them.
+	    if(Purge) {
+		sprintf(purgeString,"%lu\n",eventNumber);
+		gzputs(Purge,purgeString);
+	    }
+
 
 	    removeFile(currentHeader);			
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[priority],
@@ -661,6 +681,10 @@ void purgeDirectory(int priority) {
 		    eventNumber);
 	    removeFile(currentHeader);			
 	}
+	if(Purge) {
+	    gzclose(Purge);
+	}
+
 	for(count=0;count<numLinks;
 	    count++) 
 	    free(linkList[count]);		    
