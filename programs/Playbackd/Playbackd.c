@@ -177,7 +177,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     int subDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pReq->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
     int fileNum=(EVENTS_PER_FILE)*(pReq->eventNumber/EVENTS_PER_FILE);
 
-    sprintf(indexName,"/mnt/data/index/ev%d/ev%d/index_%d.dat.gz",dirNum,subDirNum,fileNum);
+    sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",dirNum,subDirNum,fileNum);
     
     syslog(LOG_INFO,"Trying to send event %lu, with priority %d\n",
 	   pReq->eventNumber,pReq->pri);
