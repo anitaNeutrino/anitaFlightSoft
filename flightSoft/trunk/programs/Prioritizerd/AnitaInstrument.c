@@ -588,28 +588,46 @@ float MSRatio(TransientChannelF_t *in,int begwindow,int endwindow){
      return (msend/msbeg);
 }
 
+void ZeroChannel(TransientChannelF_t *in){
+     int i;
+     for (i=0;i<MAX_NUMBER_SAMPLES;i++){
+	  in->data[i]=0.;
+     }
+}
+
+extern int MethodMask;
+
 int RMSCountAll(AnitaInstrumentF_t *in,int thresh, 
 		int begwindow,int endwindow){
      int count=0;
-     int i,phi,pol;
+//     int i;
+     int phi,pol;
      float fthresh=(float) thresh*0.01;
      fthresh=fthresh*fthresh; // avoid square roots at the price of one square.
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
 	       if (MSRatio(&(in->topRing[phi][pol]),
-			begwindow, endwindow)>fthresh) count++;
+			begwindow, endwindow)>fthresh){
+		    count++;
+		    if ((MethodMask &0x100)!=0) 
+			 ZeroChannel(&in->topRing[phi][pol]);
+	       }
 	       if (MSRatio(&(in->botRing[phi][pol]),
-			begwindow, endwindow)>fthresh) count++;
+			begwindow, endwindow)>fthresh){
+		    count++;
+		    if ((MethodMask &0x100)!=0) 
+			 ZeroChannel(&in->botRing[phi][pol]);
+	       }
 	  }
      }
 	  
-     for (i=0; i<4; i++){	       
-	       if (MSRatio(&(in->bicone[i]),
-			begwindow, endwindow)>fthresh) count++;
-	       if (MSRatio(&(in->discone[i]),
-			begwindow, endwindow)>fthresh) count++;
-     }
-     return count;
+/*      for (i=0; i<4; i++){	        */
+/* 	       if (MSRatio(&(in->bicone[i]), */
+/* 			begwindow, endwindow)>fthresh) count++; */
+/* 	       if (MSRatio(&(in->discone[i]), */
+/* 			begwindow, endwindow)>fthresh) count++; */
+/*      } */
+     return count; 
 }
 
 

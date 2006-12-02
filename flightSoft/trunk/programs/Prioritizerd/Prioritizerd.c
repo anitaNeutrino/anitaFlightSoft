@@ -330,6 +330,29 @@ int main (int argc, char *argv[])
 			 else{
 			      MaxAll=0; MaxH=0; MaxV=0;
 			 }
+			 // overall majority thingee to get payload blast
+			 if ((MethodMask &0x40)!=0){
+			      PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
+					    hornDiscWidth,0,
+					    0,65535,
+					    coneDiscWidth,0,
+					    0,65535);
+			      HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
+						     &ConeCounter, delay);
+			 }
+			 else{
+			      HornMax=0;
+			 }
+// cut on late vs. early RMS to reject blast starting during the record   
+// this can also be given the side effect of taking the channels
+// involved out of the priority 1-4 (boxcar) decsion.
+			 if ((MethodMask & 0x80)!=0){
+			      RMSnum=RMSCountAll(&theXcorr,RMSMax,
+						 BeginWindow,EndWindow);
+			 }
+			 else{
+			      RMSnum=0;
+			 }
 			 //xcorr peak boxcar method
 			 if ((MethodMask &0x21)!=0){
 			      PeakBoxcarAll(&theXcorr,&theBoxcar,
@@ -384,27 +407,6 @@ int main (int argc, char *argv[])
 			 }
 			 else{
 			      /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
-			 }
-			 // overall majority thingee to get payload blast
-			 if ((MethodMask &0x40)!=0){
-			      PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
-					    hornDiscWidth,0,
-					    0,65535,
-					    coneDiscWidth,0,
-					    0,65535);
-			      HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
-						     &ConeCounter, delay);
-			 }
-			 else{
-			      HornMax=0;
-			 }
-// cut on late vs. early RMS to reject blast starting during the record   
-			 if ((MethodMask & 0x80)!=0){
-			      RMSnum=RMSCountAll(&theXcorr,RMSMax,
-						 BeginWindow,EndWindow);
-			 }
-			 else{
-			      RMSnum=0;
 			 }
 
 //Sillyness forever...
