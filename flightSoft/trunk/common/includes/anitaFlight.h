@@ -219,6 +219,8 @@
 #define PLAYBACK_DIR "/tmp/anita/playbackd"
 #define PLAYBACK_LINK_DIR "/tmp/anita/playbackd/link"
 
+#define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
+
 
 //Archiving Directories
 #define CMD_ARCHIVE_DIR "/current/house/cmd"
