@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+int FFTNumChannels; //hack to communicate fft info from the crosscorrelator
+
 //indices have surf channel counting from zero.
 // 0 is H, 1 is V polarization
 const int topRingIndex[16][2]={{4,0},//phi=1
@@ -387,6 +390,9 @@ void DiscriminateF_noup(TransientChannelF_t *in,LogicChannel_t *out,
      }
 }
 
+extern int MethodMask;
+extern int NuCut;
+
 int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 		   int width, int guardOffset, int guardWidth,int guardThresh)
 {
@@ -399,9 +405,14 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 //
 // If the guard conditon is met, the boxcar is suppressed.
 //
+// hack in a 'neutrinoivity cut'
+// 
      int i,guardLeft,guardRight;
      int peaksample;
      float peakvalue, guardvalue;
+     int neutrinoish; // yes, I know this is silly...
+     int winl,winr;
+     float mean,var, weights;
      out->valid_samples=in->valid_samples;
      //find the peak 
      //if there are two equal, this gets the first one
@@ -431,7 +442,27 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 	       guardvalue=fabsf(in->data[i]);
 	  }
      }
-     if (!(guardvalue>guardThresh*peakvalue/100.)){
+     if ((MethodMask & 0x200)!=0){ // check for neutrinolike appearance
+	  //neutrinos have narrow peaks in the crosscorrelator
+	  winl=((peaksample-50>=0)?(peaksample-50):0);
+	  winr=((peaksample+50<=in->valid_samples)?
+		(peaksample+50):in->valid_samples);
+	  mean=0; weights=0;
+	  var=0;
+	  for (i=winl;i<winr;i++){
+	       var+=(i-peaksample)*(i-peaksample)*in->data[i];
+	       mean+=(i-peaksample)*in->data[i];
+	       weights+=in->data[i];
+	  }
+	  mean=mean/weights;
+	  var=var/weights-mean*mean;
+	  if (var<NuCut) neutrinoish=1;
+	  else neutrinoish=0;
+     }
+     else{
+	  neutrinoish=1;
+     }
+     if (!(guardvalue>guardThresh*peakvalue/100.) && (neutrinoish>0)){
 	  for (i=peaksample;(i<peaksample+width)&&(i<out->valid_samples);i++){
 	       out->data[i]=1;
 	  }
@@ -544,8 +575,10 @@ void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
 
 void PeakBoxcarAll(AnitaInstrumentF_t *in,
 		   AnitaChannelDiscriminator_t *out,
-		   int hornWidth,int hornGuardOffset, int hornGuardWidth,int hornGuardThresh,
-		   int coneWidth,int coneGuardOffset, int coneGuardWidth,int coneGuardThresh)
+		   int hornWidth,int hornGuardOffset, 
+		   int hornGuardWidth,int hornGuardThresh,
+		   int coneWidth,int coneGuardOffset, 
+		   int coneGuardWidth,int coneGuardThresh)
 {
      int phi,pol,i; 
      for (phi=0;phi<16; phi++){
@@ -1092,3 +1125,188 @@ void analyticEnvelope(TransientChannelF_t *T, TransientChannelF_t *E){
      //just a reminder to do this sometime...   
 }
 
+int determinePriority(){
+     int priority,score,score3,score4;
+     unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
+     BuildInstrumentF(&unwrappedBody,&theInstrument);
+     FFTNumChannels=0.;
+     HornMatchedFilterAll(&theInstrument,&theXcorr);
+     if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
+	  // reject this event as narrowband crap
+	  priority=9;
+     }
+     else{
+// Ordinary coincidence and scoring
+	  if ((MethodMask&0x4)!=0){
+	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
+				     400,hornDiscWidth,
+				     coneThresh,coneDiscWidth);
+	       FormSectorMajority(&theDiscriminator,&theMajority,
+				  hornSectorWidth);
+	       AnalyseSectorLogic(&theMajority,&sectorAna);
+	       score=GetSecAnaScore(&sectorAna);
+	       score4=score;
+	  }
+	  else
+	  {
+	       score4=0;
+	  }
+#ifdef WRITE_DEBUG_FILE
+//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+	  fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
+#endif
+	  if ((MethodMask&0x8)!=0){
+	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
+				     300,hornDiscWidth,
+				     coneThresh,coneDiscWidth);
+	       FormSectorMajority(&theDiscriminator,&theMajority,
+				  hornSectorWidth);
+	       AnalyseSectorLogic(&theMajority,&sectorAna);
+	       score=GetSecAnaScore(&sectorAna);
+	       score3=score;
+	  }
+	  else{
+	       score3=0;
+	  }
+#ifdef WRITE_DEBUG_FILE
+//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
+	  fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
+#endif
+// nonupdating discriminators and majorities
+	  if ((MethodMask & 0x10)!=0){
+	       DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
+					  hornThresh,hornDiscWidth,
+					  coneThresh,coneDiscWidth,
+					  holdoff);
+	       FormSectorMajority(&theNonupdating,&theMajorityNoUp,
+				  hornSectorWidth);
+	       FormSectorMajorityPol(&theNonupdating,&theHorizontal,
+				     hornSectorWidth,0);
+	       FormSectorMajorityPol(&theNonupdating,&theVertical,
+				     hornSectorWidth,1);
+	       MaxAll=FormSectorCoincidence(&theMajorityNoUp,
+					    &theCoincidenceAll,
+					    delay,2*hornSectorWidth-2,
+					    2*hornSectorWidth-1);
+	       MaxH=FormSectorCoincidence(&theHorizontal,
+					  &theCoincidenceH,
+					  delay,hornSectorWidth-1,
+					  hornSectorWidth-1);
+	       MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
+					  delay,hornSectorWidth-1,
+					  hornSectorWidth-1);
+	  }
+	  else{
+	       MaxAll=0; MaxH=0; MaxV=0;
+	  }
+	  // overall majority thingee to get payload blast
+	  if ((MethodMask &0x40)!=0){
+	       PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
+			     hornDiscWidth,0,
+			     0,65535,
+			     coneDiscWidth,0,
+			     0,65535);
+	       HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
+				      &ConeCounter, delay);
+	  }
+	  else{
+	       HornMax=0;
+	  }
+// cut on late vs. early RMS to reject blast starting during the record   
+// this can also be given the side effect of taking the channels
+// involved out of the priority 1-4 (boxcar) decsion.
+	  if ((MethodMask & 0x80)!=0){
+	       RMSnum=RMSCountAll(&theXcorr,RMSMax,
+				  BeginWindow,EndWindow);
+	  }
+	  else{
+	       RMSnum=0;
+	  }
+	  //xcorr peak boxcar method
+	  if ((MethodMask &0x21)!=0){
+	       PeakBoxcarAll(&theXcorr,&theBoxcar,
+			     hornDiscWidth,hornGuardOffset,
+			     hornGuardWidth,hornGuardThresh,
+			     coneDiscWidth,coneGuardOffset,
+			     coneGuardWidth,coneGuardThresh);
+	  }
+	  if ((MethodMask & 0x1)!=0){
+//			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
+//						 hornSectorWidth);
+	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
+				     hornSectorWidth,0);
+	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
+				     hornSectorWidth,1);
+//			      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
+//							      &theCoincidenceBoxcarAll,
+//							      delay,2*hornSectorWidth-1,
+//							      2*hornSectorWidth-1);
+	       MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
+					     &theCoincidenceBoxcarH,
+					     delay,hornSectorWidth-1,
+					     hornSectorWidth-1);
+	       MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
+					     &theCoincidenceBoxcarV,
+					     delay,hornSectorWidth-1,
+					     hornSectorWidth-1);
+	  }
+	  else{
+	       /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
+	  }
+	  //xcorr peak boxcar method with narrowed sector
+	  if ((MethodMask & 0x20)!=0){
+//			FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
+//					   hornSectorWidth-1);
+	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
+				     hornSectorWidth-1,0);
+	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV2,
+				     hornSectorWidth-1,1);
+//			MaxBoxAll2=FormSectorCoincidence(&theMajorityBoxcar2,
+//							&theCoincidenceBoxcarAll2,
+//							8,2*hornSectorWidth-3,
+//							2*hornSectorWidth-3);
+	       MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
+					      &theCoincidenceBoxcarH2,
+					      delay,hornSectorWidth-2,
+					      hornSectorWidth-2);
+	       MaxBoxV2=FormSectorCoincidence(&theMajorityBoxcarV2,
+					      &theCoincidenceBoxcarV2,
+					      delay,hornSectorWidth-2,
+					      hornSectorWidth-2);
+	  }
+	  else{
+	       /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
+	  }
+
+//Sillyness forever...
+	  //Must determine priority here
+//	    priority=1;
+//revised scoring here -- comments  are for hornsector width of 3 (suggested default)
+	  priority=6;
+	  if (HornMax>WindowCut) //too many horns peaking simultaneously
+	       priority=8;
+	  else if (RMSnum>RMSevents) priority=7;
+// too many channels with large RMS in end relative to beginning
+	  else if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) //3 for 3 in both rings
+	       priority=1;
+	  else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) // 2 for 2 in both rings
+	       priority=2;
+	  else if (/*MaxBoxAll>=4*hornSectorWidth-4 ||*/
+	       MaxBoxH>=2*hornSectorWidth-1 || 
+	       MaxBoxV>=2*hornSectorWidth-1 ) 
+	       priority=3; // 2/3  in pol in both rings or 4/6 polarizations (redundant)
+	  else if (MaxBoxH2>=2*(hornSectorWidth-1)-1 || MaxBoxV2>=2*(hornSectorWidth-1)-1) // 2 for 2 in one ring and 1/2 in other
+	       priority=4;
+	  else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)
+	       priority=5; //
+	  else if (MaxH>=2*hornSectorWidth-1 || 
+		   MaxV>=2*hornSectorWidth-1)
+	       priority=5;//was 6
+	  else if(score4>=600) priority=5;
+	  // else if(score3>1900) priority=6;
+	  // else if(score3>1500) priority=6;
+	  // else if(score3>1000) priority=6;
+	  else if(score3>600) priority=5;//was 6
+     }
+     return priority;
+}
