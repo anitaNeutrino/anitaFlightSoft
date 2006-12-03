@@ -2,6 +2,8 @@
 #define ANITAINSTRUMENT_H
 #include <anitaStructures.h>
 #include <anitaFlight.h>
+#include "pedestalLib/pedestalLib.h"
+#include "utilLib/utilLib.h"
 #include <math.h>
 
 typedef struct{
@@ -101,6 +103,20 @@ typedef struct{
                              //was rejected
 }BaselineAnalysis_t;
 
+typedef struct {
+     int overallPeakSize[3]; //
+     int overallPeakLoc[3]; //
+     int overallPeakPhi[3]; //
+     int overallPeakRing[3]; //
+     int numPeaks[PHI_SECTORS][2]; //
+     int peakSize[3][PHI_SECTORS][2]; // 0 is upper, 1 is lower
+     int peakLocation[3][PHI_SECTORS][2]; //
+     int totalOccupancy[PHI_SECTORS][2]; //
+} AnitaSectorAnalysis_t;
+
+#include "GenerateScore.h"
+#include "Filters.h"
+    
 extern const int topRingIndex[PHI_SECTORS][2];
 extern const int botRingIndex[PHI_SECTORS][2];
 extern const int biconeIndex[4]; //phi=2,6,10,14
@@ -116,6 +132,78 @@ extern const float sectorPhiACS[16];
 extern const float dipangle; 
 extern const float samples_per_ns; //SURF nominal
 extern const float meters_per_ns; //speed of light in meters per ns
+
+
+//Global Control Variables
+extern int printToScreen;
+extern int verbosity;
+extern float hornThresh;
+extern int hornDiscWidth;
+extern int hornSectorWidth;
+extern float coneThresh;
+extern int coneDiscWidth;
+extern int holdoff;
+extern int delay;
+extern int hornGuardOffset;
+extern int hornGuardWidth;
+extern int hornGuardThresh;
+extern int coneGuardOffset;
+extern int coneGuardWidth;
+extern int coneGuardThresh;
+extern int FFTPeakMaxA;
+extern int FFTPeakMaxB;
+extern int FFTPeakWindowL;
+extern int FFTPeakWindowR;
+extern int FFTMaxChannels;
+extern int RMSMax;
+extern int RMSevents;
+extern int WindowCut;
+extern int BeginWindow;
+extern int EndWindow;
+extern int MethodMask;
+extern int NuCut;
+
+// global event thingees
+/*Event object*/
+extern AnitaEventHeader_t theHeader;
+extern AnitaEventBody_t theBody;
+extern PedSubbedEventBody_t pedSubBody;
+extern AnitaTransientBodyF_t unwrappedBody;
+extern AnitaInstrumentF_t theInstrument;
+extern AnitaInstrumentF_t theXcorr;
+//original analysis
+extern AnitaChannelDiscriminator_t theDiscriminator;
+extern AnitaSectorLogic_t theMajority;
+extern AnitaSectorAnalysis_t sectorAna;
+//nonupdating discriminator method
+extern AnitaChannelDiscriminator_t theNonupdating;
+extern AnitaSectorLogic_t theMajorityNoUp;
+extern AnitaSectorLogic_t theHorizontal;
+extern AnitaSectorLogic_t theVertical;
+extern AnitaCoincidenceLogic_t theCoincidenceAll;
+extern AnitaCoincidenceLogic_t theCoincidenceH;
+extern AnitaCoincidenceLogic_t theCoincidenceV;
+extern int MaxAll, MaxH, MaxV;
+//xcorr peak boxcar method
+extern AnitaChannelDiscriminator_t theBoxcar;
+extern AnitaChannelDiscriminator_t theBoxcarNoGuard;
+//extern AnitaSectorLogic_t theMajorityBoxcar;
+extern AnitaSectorLogic_t theMajorityBoxcarH;
+extern AnitaSectorLogic_t theMajorityBoxcarV;
+//extern AnitaCoincidenceLogic_t theCoincidenceBoxcarAll;
+extern AnitaCoincidenceLogic_t theCoincidenceBoxcarH;
+extern AnitaCoincidenceLogic_t theCoincidenceBoxcarV;
+//extern AnitaSectorLogic_t theMajorityBoxcar2;
+extern AnitaSectorLogic_t theMajorityBoxcarH2;
+extern AnitaSectorLogic_t theMajorityBoxcarV2;
+//extern AnitaCoincidenceLogic_t theCoincidenceBoxcarAll2;
+extern AnitaCoincidenceLogic_t theCoincidenceBoxcarH2;
+extern AnitaCoincidenceLogic_t theCoincidenceBoxcarV2;
+extern int /*MaxBoxAll,*/MaxBoxH,MaxBoxV;
+extern int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
+extern LogicChannel_t HornCounter,ConeCounter;
+extern int HornMax;
+extern int RMSnum;
 
 #ifdef __cplusplus
 extern "C"
@@ -194,6 +282,8 @@ extern "C"
 
      void MakeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,
 			    int phi,int dphi);			    
+     int determinePriority();
+
 #ifdef __cplusplus
 }
 #endif

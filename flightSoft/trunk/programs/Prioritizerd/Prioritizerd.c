@@ -27,7 +27,7 @@ void handleBadSigs(int sig);
 FILE *timeFile;
 #endif    
 
-//Global Variables
+//Global Control Variables
 int printToScreen=0;
 int verbosity=0;
 float hornThresh=0;
@@ -54,12 +54,57 @@ int WindowCut=400;
 int BeginWindow=0;
 int EndWindow=0;
 int MethodMask=0;
+int NuCut=0;
 
 int priorityPPS1=2;
 int priorityPPS2=3;
 
 //ugly hack to count number of channels with fft peaks
-int FFTNumChannels;
+//moved to AnitaInstrument.c
+//int FFTNumChannels;
+
+// global event thingees
+/*Event object*/
+AnitaEventHeader_t theHeader;
+AnitaEventBody_t theBody;
+PedSubbedEventBody_t pedSubBody;
+AnitaTransientBodyF_t unwrappedBody;
+AnitaInstrumentF_t theInstrument;
+AnitaInstrumentF_t theXcorr;
+//original analysis
+AnitaChannelDiscriminator_t theDiscriminator;
+AnitaSectorLogic_t theMajority;
+AnitaSectorAnalysis_t sectorAna;
+//nonupdating discriminator method
+AnitaChannelDiscriminator_t theNonupdating;
+AnitaSectorLogic_t theMajorityNoUp;
+AnitaSectorLogic_t theHorizontal;
+AnitaSectorLogic_t theVertical;
+AnitaCoincidenceLogic_t theCoincidenceAll;
+AnitaCoincidenceLogic_t theCoincidenceH;
+AnitaCoincidenceLogic_t theCoincidenceV;
+int MaxAll, MaxH, MaxV;
+//xcorr peak boxcar method
+AnitaChannelDiscriminator_t theBoxcar;
+AnitaChannelDiscriminator_t theBoxcarNoGuard;
+//     AnitaSectorLogic_t theMajorityBoxcar;
+AnitaSectorLogic_t theMajorityBoxcarH;
+AnitaSectorLogic_t theMajorityBoxcarV;
+//     AnitaCoincidenceLogic_t theCoincidenceBoxcarAll;
+AnitaCoincidenceLogic_t theCoincidenceBoxcarH;
+AnitaCoincidenceLogic_t theCoincidenceBoxcarV;
+//    AnitaSectorLogic_t theMajorityBoxcar2;
+AnitaSectorLogic_t theMajorityBoxcarH2;
+AnitaSectorLogic_t theMajorityBoxcarV2;
+//    AnitaCoincidenceLogic_t theCoincidenceBoxcarAll2;
+AnitaCoincidenceLogic_t theCoincidenceBoxcarH2;
+AnitaCoincidenceLogic_t theCoincidenceBoxcarV2;
+int /*MaxBoxAll,*/MaxBoxH,MaxBoxV;
+int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
+LogicChannel_t HornCounter,ConeCounter;
+int HornMax;
+int RMSnum;
+
 
 int main (int argc, char *argv[])
 {
@@ -72,7 +117,7 @@ int main (int argc, char *argv[])
      char archiveBodyFilename[FILENAME_MAX];
 
      char *tempString;
-     int priority,score,score3,score4;
+//     int priority,score,score3,score4;
 //    float probWriteOut9=0.03; /* Will become a config file thingy */
 
      /* Config file thingies */
@@ -87,46 +132,7 @@ int main (int argc, char *argv[])
      /* Log stuff */
      char *progName=basename(argv[0]);
 
-     /*Event object*/
-     AnitaEventHeader_t theHeader;
-     AnitaEventBody_t theBody;
-     PedSubbedEventBody_t pedSubBody;
-     AnitaTransientBodyF_t unwrappedBody;
-     AnitaInstrumentF_t theInstrument;
-     AnitaInstrumentF_t theXcorr;
-     //original analysis
-     AnitaChannelDiscriminator_t theDiscriminator;
-     AnitaSectorLogic_t theMajority;
-     AnitaSectorAnalysis_t sectorAna;
-     //nonupdating discriminator method
-     AnitaChannelDiscriminator_t theNonupdating;
-     AnitaSectorLogic_t theMajorityNoUp;
-     AnitaSectorLogic_t theHorizontal;
-     AnitaSectorLogic_t theVertical;
-     AnitaCoincidenceLogic_t theCoincidenceAll;
-     AnitaCoincidenceLogic_t theCoincidenceH;
-     AnitaCoincidenceLogic_t theCoincidenceV;
-     int MaxAll, MaxH, MaxV;
-     //xcorr peak boxcar method
-     AnitaChannelDiscriminator_t theBoxcar;
-     AnitaChannelDiscriminator_t theBoxcarNoGuard;
-//     AnitaSectorLogic_t theMajorityBoxcar;
-     AnitaSectorLogic_t theMajorityBoxcarH;
-     AnitaSectorLogic_t theMajorityBoxcarV;
-//     AnitaCoincidenceLogic_t theCoincidenceBoxcarAll;
-     AnitaCoincidenceLogic_t theCoincidenceBoxcarH;
-     AnitaCoincidenceLogic_t theCoincidenceBoxcarV;
-//    AnitaSectorLogic_t theMajorityBoxcar2;
-     AnitaSectorLogic_t theMajorityBoxcarH2;
-     AnitaSectorLogic_t theMajorityBoxcarV2;
-//    AnitaCoincidenceLogic_t theCoincidenceBoxcarAll2;
-     AnitaCoincidenceLogic_t theCoincidenceBoxcarH2;
-     AnitaCoincidenceLogic_t theCoincidenceBoxcarV2;
-     int /*MaxBoxAll,*/MaxBoxH,MaxBoxV;
-     int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
-     LogicChannel_t HornCounter,ConeCounter;
-     int HornMax;
-     int RMSnum;
+//event thingees were formerly here; now are globals
 
 #ifdef TIME_DEBUG
      struct timeval timeStruct2;
@@ -257,189 +263,10 @@ int main (int argc, char *argv[])
 		    fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 		
-		    unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
-		    BuildInstrumentF(&unwrappedBody,&theInstrument);
-		    FFTNumChannels=0.;
-		    HornMatchedFilterAll(&theInstrument,&theXcorr);
-		    if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
-			 // reject this event as narrowband crap
-			 priority=9;
-		    }
-		    else{
-		    
-// Ordinary coincidence and scoring
-			 if ((MethodMask&0x4)!=0){
-			      DiscriminateFChannels(&theXcorr,&theDiscriminator,
-						    400,hornDiscWidth,
-						    coneThresh,coneDiscWidth);
-			      FormSectorMajority(&theDiscriminator,&theMajority,
-						 hornSectorWidth);
-			      AnalyseSectorLogic(&theMajority,&sectorAna);
-			      score=GetSecAnaScore(&sectorAna);
-			      score4=score;
-			 }
-			 else
-			 {
-			      score4=0;
-			 }
-#ifdef WRITE_DEBUG_FILE
-//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-			 fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
-#endif
-			 if ((MethodMask&0x8)!=0){
-			      DiscriminateFChannels(&theXcorr,&theDiscriminator,
-						    300,hornDiscWidth,
-						    coneThresh,coneDiscWidth);
-			      FormSectorMajority(&theDiscriminator,&theMajority,
-						 hornSectorWidth);
-			      AnalyseSectorLogic(&theMajority,&sectorAna);
-			      score=GetSecAnaScore(&sectorAna);
-			      score3=score;
-			 }
-			 else{
-			      score3=0;
-			 }
-#ifdef WRITE_DEBUG_FILE
-//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-			 fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
-#endif
-// nonupdating discriminators and majorities
-			 if ((MethodMask & 0x10)!=0){
-			      DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
-							 hornThresh,hornDiscWidth,
-							 coneThresh,coneDiscWidth,
-							 holdoff);
-			      FormSectorMajority(&theNonupdating,&theMajorityNoUp,
-						 hornSectorWidth);
-			      FormSectorMajorityPol(&theNonupdating,&theHorizontal,
-						    hornSectorWidth,0);
-			      FormSectorMajorityPol(&theNonupdating,&theVertical,
-						    hornSectorWidth,1);
-			      MaxAll=FormSectorCoincidence(&theMajorityNoUp,
-							   &theCoincidenceAll,
-							   delay,2*hornSectorWidth-2,
-							   2*hornSectorWidth-1);
-			      MaxH=FormSectorCoincidence(&theHorizontal,
-							 &theCoincidenceH,
-							 delay,hornSectorWidth-1,
-							 hornSectorWidth-1);
-			      MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
-							 delay,hornSectorWidth-1,
-							 hornSectorWidth-1);
-			 }
-			 else{
-			      MaxAll=0; MaxH=0; MaxV=0;
-			 }
-			 // overall majority thingee to get payload blast
-			 if ((MethodMask &0x40)!=0){
-			      PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
-					    hornDiscWidth,0,
-					    0,65535,
-					    coneDiscWidth,0,
-					    0,65535);
-			      HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
-						     &ConeCounter, delay);
-			 }
-			 else{
-			      HornMax=0;
-			 }
-// cut on late vs. early RMS to reject blast starting during the record   
-// this can also be given the side effect of taking the channels
-// involved out of the priority 1-4 (boxcar) decsion.
-			 if ((MethodMask & 0x80)!=0){
-			      RMSnum=RMSCountAll(&theXcorr,RMSMax,
-						 BeginWindow,EndWindow);
-			 }
-			 else{
-			      RMSnum=0;
-			 }
-			 //xcorr peak boxcar method
-			 if ((MethodMask &0x21)!=0){
-			      PeakBoxcarAll(&theXcorr,&theBoxcar,
-					    hornDiscWidth,hornGuardOffset,
-					    hornGuardWidth,hornGuardThresh,
-					    coneDiscWidth,coneGuardOffset,
-					    coneGuardWidth,coneGuardThresh);
-			 }
-			 if ((MethodMask & 0x1)!=0){
-//			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
-//						 hornSectorWidth);
-			      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
-						    hornSectorWidth,0);
-			      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
-						    hornSectorWidth,1);
-//			      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
-//							      &theCoincidenceBoxcarAll,
-//							      delay,2*hornSectorWidth-1,
-//							      2*hornSectorWidth-1);
-			      MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
-							    &theCoincidenceBoxcarH,
-							    delay,hornSectorWidth-1,
-							    hornSectorWidth-1);
-			      MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
-							    &theCoincidenceBoxcarV,
-							    delay,hornSectorWidth-1,
-							    hornSectorWidth-1);
-			 }
-			 else{
-			      /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
-			 }
-			 //xcorr peak boxcar method with narrowed sector
-			 if ((MethodMask & 0x20)!=0){
-//			FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
-//					   hornSectorWidth-1);
-			      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
-						    hornSectorWidth-1,0);
-			      FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV2,
-						    hornSectorWidth-1,1);
-//			MaxBoxAll2=FormSectorCoincidence(&theMajorityBoxcar2,
-//							&theCoincidenceBoxcarAll2,
-//							8,2*hornSectorWidth-3,
-//							2*hornSectorWidth-3);
-			      MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
-							     &theCoincidenceBoxcarH2,
-							     delay,hornSectorWidth-2,
-							     hornSectorWidth-2);
-			      MaxBoxV2=FormSectorCoincidence(&theMajorityBoxcarV2,
-							     &theCoincidenceBoxcarV2,
-							     delay,hornSectorWidth-2,
-							     hornSectorWidth-2);
-			 }
-			 else{
-			      /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
-			 }
-
-//Sillyness forever...
-			 //Must determine priority here
-//	    priority=1;
-//revised scoring here -- comments  are for hornsector width of 3 (suggested default)
-			 priority=6;
-			 if (HornMax>WindowCut) //too many horns peaking simultaneously
-			      priority=8;
-			 else if (RMSnum>RMSevents) priority=7;
-// too many channels with large RMS in end relative to beginning
-			 else if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) //3 for 3 in both rings
-			      priority=1;
-			 else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) // 2 for 2 in both rings
-			      priority=2;
-			 else if (/*MaxBoxAll>=4*hornSectorWidth-4 ||*/
-				  MaxBoxH>=2*hornSectorWidth-1 || 
-				  MaxBoxV>=2*hornSectorWidth-1 ) 
-			      priority=3; // 2/3  in pol in both rings or 4/6 polarizations (redundant)
-			 else if (MaxBoxH2>=2*(hornSectorWidth-1)-1 || MaxBoxV2>=2*(hornSectorWidth-1)-1) // 2 for 2 in one ring and 1/2 in other
-			      priority=4;
-			 else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)
-			      priority=5; //
-			 else if (MaxH>=2*hornSectorWidth-1 || 
-				  MaxV>=2*hornSectorWidth-1)
-			      priority=5;//was 6
-			 else if(score4>=600) priority=5;
-			 // else if(score3>1900) priority=6;
-			 // else if(score3>1500) priority=6;
-			 // else if(score3>1000) priority=6;
-			 else if(score3>600) priority=5;//was 6
-		    }
-		    theHeader.priority=priority;		
+// all priority determination is now in AnitaInstrument.c
+// communication is via global variables
+		    theHeader.priority=determinePriority();		
+		    // handle queue forcing of PPS here
 		    int pri=theHeader.priority&0xf;
 		    if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
 			 pri=priorityPPS1;
@@ -594,6 +421,7 @@ int readConfig()
 	  BeginWindow=kvpGetInt("BeginWindow",100);
 	  EndWindow=kvpGetInt("EndWindow",100);
 	  MethodMask=kvpGetInt("MethodMask",0xFFFF);
+	  NuCut=kvpGetInt("NuCut",100);
      }
      else {
 	  eString=configErrorString (status) ;
