@@ -1130,6 +1130,7 @@ int determinePriority(){
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
      FFTNumChannels=0.;
+     // the next function has the side effect of counting the bad FFT peaks
      HornMatchedFilterAll(&theInstrument,&theXcorr);
      priority=6; // default for others not satisfied; thermal goes here we hope
      if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
@@ -1150,8 +1151,8 @@ int determinePriority(){
      }
      // cut on late vs. early RMS to reject blast starting during the record   
      // this can also be given the side effect of taking the channels
-     // involved out of the priority 1-4 (boxcar) decsion. See RMSCountAll
-     // IF THE LATTER IS DESIRED NEED TO EVALUATE 1-4 for 7 as well as 6.
+     // involved out of the priority 1-4 (boxcar) decision. See RMSCountAll
+     // IF THE LATTER IS DESIRED NEED TO EVALUATE 1-5 for 7 as well as 6.
      else if ((MethodMask & 0x80)!=0){
 	  RMSnum=RMSCountAll(&theXcorr,RMSMax,
 			     BeginWindow,EndWindow);
@@ -1164,7 +1165,7 @@ int determinePriority(){
 // score3 is next group of SLAC priorities
 // the nonupdating discriminator thingee is like those but rejects blast, 
 //     but the blast rejector above for priority 8 seems to work well enough.
-     else{//
+     if (priority==6 || (priority==7 && MethodMask&0x400)) {
           // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
 	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
@@ -1242,18 +1243,18 @@ int determinePriority(){
 				hornSectorWidth,0);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
 				hornSectorWidth,1);
-//			      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
-//							      &theCoincidenceBoxcarAll,
-//							      delay,2*hornSectorWidth-1,
-//							      2*hornSectorWidth-1);
+//	  MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
+//			   &theCoincidenceBoxcarAll,
+//			   delay,2*hornSectorWidth-1,
+//			   2*hornSectorWidth-1);
 	  MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
-					     &theCoincidenceBoxcarH,
-					     delay,hornSectorWidth-1,
-					     hornSectorWidth-1);
+				     &theCoincidenceBoxcarH,
+				     delay,hornSectorWidth-1,
+				     hornSectorWidth-1);
 	  MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
-					&theCoincidenceBoxcarV,
-					delay,hornSectorWidth-1,
-					hornSectorWidth-1);
+				     &theCoincidenceBoxcarV,
+				     delay,hornSectorWidth-1,
+				     hornSectorWidth-1);
      }
      else{
 	  /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
