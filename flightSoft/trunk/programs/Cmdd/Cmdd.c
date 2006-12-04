@@ -1716,7 +1716,7 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
 	    rawtime=time(NULL);
 	    break;
 	case PLAY_START_PRI:
-`
+
 	    configModifyInt("Playbackd.config","playbackd","sendData",1,&rawtime);
 	    system("killall Playbackd");
 	    break;

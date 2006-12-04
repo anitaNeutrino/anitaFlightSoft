@@ -274,9 +274,19 @@ void highrateHandler(int *ignore)
 	if(orderIndex>=numOrders) orderIndex=0;
 //	int headCount=0;
 
-	checkLinkDirAndTdrss(headersPerEvent,HEADER_TELEM_DIR,
-			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-
+	if(numLinks) {
+	    checkLinkDirAndTdrss(headersPerEvent,HEADER_TELEM_DIR,
+				 HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+	    checkLinkDirAndTdrss(10,
+		     SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR,
+				 sizeof(CommandEcho_t)); 
+	    checkLinkDirAndTdrss(5,HK_TELEM_DIR,
+				 HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t));
+	    checkLinkDirAndTdrss(3,
+				 MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
+				 sizeof(MonitorStruct_t)); 
+	    
+	}
 	//Need to think about housekeeping and add something here
 	if(hkCount%eventBandwidth==0)
 	    sendSomeHk(10000);
