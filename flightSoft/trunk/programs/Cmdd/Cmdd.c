@@ -1716,10 +1716,13 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
 	    rawtime=time(NULL);
 	    break;
 	case PLAY_START_PRI:
-	    rawtime=time(NULL);
+`
+	    configModifyInt("Playbackd.config","playbackd","sendData",1,&rawtime);
+	    system("killall Playbackd");
 	    break;
 	case PLAY_STOP_PRI:
-	    rawtime=time(NULL);
+	    configModifyInt("Playbackd.config","playbackd","sendData",0,&rawtime);	    
+	    system("killall Playbackd")
 	    break;
 	default:
 	    return -1;
@@ -1804,6 +1807,9 @@ int executePrioritizerdCommand(int command, int value)
 	    break;	    
 	case PRI_FFT_PEAK_WINDOW_R:
 	    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakWindowR",value,&rawtime);
+	    break;	    
+	case PRI_NU_CUT:
+	    configModifyInt("Prioritizerd.config","prioritizerd","NuCut",value,&rawtime);
 	    break;	    	   
 	default:
 	    return -1;
