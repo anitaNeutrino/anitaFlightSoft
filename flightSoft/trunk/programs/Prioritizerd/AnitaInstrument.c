@@ -1126,6 +1126,19 @@ void analyticEnvelope(TransientChannelF_t *T, TransientChannelF_t *E){
 }
 
 int determinePriority(){
+     // MethodMask switches
+     // 0x1--peak boxcar (pri 1 and 3)
+     // 0x2--fft peak cuts
+     // 0x4--score 4 (pri 5)
+     // 0x8--score 3 (pri 5)
+     // 0x10--nonupdating (pri 5)
+     // 0x20-- second boxcar with narrower sectors (2 & 4)
+     // 0x40--blast remover (pri 8)
+     // 0x80--late vs. early RMS counter (pri 7)
+     // 0x100--also cut channels involved in 0x80
+     // 0x200--cut channels with wide crosscorrelator peaks (not neutrinoish)
+     // 0x400--look at events which fail 0x80 for promotion to pri 5,
+     //                             with the offending channels cut 
      int priority,score,score3,score4;
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
@@ -1152,13 +1165,14 @@ int determinePriority(){
      // cut on late vs. early RMS to reject blast starting during the record   
      // this can also be given the side effect of taking the channels
      // involved out of the priority 1-4 (boxcar) decision. See RMSCountAll
-     // IF THE LATTER IS DESIRED NEED TO EVALUATE 1-5 for 7 as well as 6.
+     // One can force the priority 7 cut to be ignored after this for promotion
+     // consideration--see below.
      else if ((MethodMask & 0x80)!=0){
 	  RMSnum=RMSCountAll(&theXcorr,RMSMax,
 			     BeginWindow,EndWindow);
 	  if (RMSnum>RMSevents) priority=7;
      }
-     // if there are no 'black marks' everything is now priority 6.
+// if there are no 'black marks' everything is now priority 6.
 // next block gives three choices for making the initial promotion decision.
 // to go from priority 6 to priority 5
 // score4 is ~SLAC priority 1
@@ -1221,7 +1235,7 @@ int determinePriority(){
 	  else{
 	       MaxAll=0; MaxH=0; MaxV=0;
 	  }
-	  if(score4>=600 || score3>600 || 
+	  if(score4>=600 || score3>=600 || 
 	     MaxH>=2*hornSectorWidth-1 || MaxV>=2*hornSectorWidth-1) priority=5;
 //
 // at this point everything is 5-9
