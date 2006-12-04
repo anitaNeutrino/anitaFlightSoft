@@ -809,8 +809,10 @@ char *getPidFile(ProgramId_t prog) {
 
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 {
+    CommandStruct_t theCmd;
     static int archivedCheckCount=0;
     static int archivedLastVal=0;
+    static int killedPrioritizerd=0;
     int retVal=0;
     otherPtr->unixTime=time(NULL);
     otherPtr->ramDiskInodes=getRamdiskInodes();
@@ -845,6 +847,16 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 	    if(archivedCheckCount>0) {
 		if(numLinks>archivedLastVal) {
 		    syslog(LOG_INFO,"Archived has %d links to process",numLinks);
+		    if(archivedCheckCount>5) {
+			if(!killedPrioritizerd) {
+			    theCmd.numCmdBytes=3;
+			    theCmd.cmd[0]=CMD_REALLY_KILL_PROGS;
+			    theCmd.cmd[1]=0;
+			    theCmd.cmd[2]=0x1; //Prioritizerd
+			    writeCommandAndLink(&theCmd);
+			    killedPrioritizerd=1;
+			}
+		    }			 
 		}
 	    }
 	    archivedCheckCount++;
