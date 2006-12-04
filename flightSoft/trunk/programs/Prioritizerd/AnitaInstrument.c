@@ -1215,28 +1215,28 @@ int determinePriority(){
 					  coneThresh,coneDiscWidth,
 					  holdoff);
 	       FormSectorMajority(&theNonupdating,&theMajorityNoUp,
-				  hornSectorWidth);
+				  hornSectorWidth-1);
 	       FormSectorMajorityPol(&theNonupdating,&theHorizontal,
-				     hornSectorWidth,0);
+				     hornSectorWidth-1,0);
 	       FormSectorMajorityPol(&theNonupdating,&theVertical,
-				     hornSectorWidth,1);
+				     hornSectorWidth-1,1);
 	       MaxAll=FormSectorCoincidence(&theMajorityNoUp,
 					    &theCoincidenceAll,
-					    delay,2*hornSectorWidth-2,
-					    2*hornSectorWidth-1);
+					    delay,2*(hornSectorWidth-1)-2,
+					    2*(hornSectorWidth-2)-2);
 	       MaxH=FormSectorCoincidence(&theHorizontal,
 					  &theCoincidenceH,
-					  delay,hornSectorWidth-1,
-					  hornSectorWidth-1);
+					  delay,hornSectorWidth-2,
+					  hornSectorWidth-2);
 	       MaxV=FormSectorCoincidence(&theVertical,&theCoincidenceV,
-					  delay,hornSectorWidth-1,
-					  hornSectorWidth-1);
+					  delay,hornSectorWidth-2,
+					  hornSectorWidth-2);
 	  }
 	  else{
 	       MaxAll=0; MaxH=0; MaxV=0;
 	  }
 	  if(score4>=600 || score3>=600 || 
-	     MaxH>=2*hornSectorWidth-1 || MaxV>=2*hornSectorWidth-1) 
+	     MaxH>=2*(hornSectorWidth-1)-2 || MaxV>=2*(hornSectorWidth-1)-2) 
 	       priority=5;
      }
 
