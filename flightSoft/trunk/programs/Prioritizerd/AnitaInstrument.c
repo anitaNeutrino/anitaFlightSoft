@@ -1152,14 +1152,14 @@ int determinePriority(){
      }
      // overall majority thingee to get payload blast
      else if ((MethodMask &0x40)!=0){
-	       PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
-			     hornDiscWidth,0,
-			     0,65535,
-			     coneDiscWidth,0,
-			     0,65535);
-	       HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
-				      &ConeCounter, delay);
-	       if (HornMax>WindowCut) //too many horns peaking simultaneously
+	  PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
+			hornDiscWidth,0,
+			0,65535,
+			coneDiscWidth,0,
+			0,65535);
+	  HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
+				 &ConeCounter, delay);
+	  if (HornMax>WindowCut) //too many horns peaking simultaneously
 	       priority=8;
      }
      // cut on late vs. early RMS to reject blast starting during the record   
@@ -1236,7 +1236,10 @@ int determinePriority(){
 	       MaxAll=0; MaxH=0; MaxV=0;
 	  }
 	  if(score4>=600 || score3>=600 || 
-	     MaxH>=2*hornSectorWidth-1 || MaxV>=2*hornSectorWidth-1) priority=5;
+	     MaxH>=2*hornSectorWidth-1 || MaxV>=2*hornSectorWidth-1) 
+	       priority=5;
+     }
+
 //
 // at this point everything is 5-9
 // only priority 5 gets further scrutiny for promotion
@@ -1250,7 +1253,7 @@ int determinePriority(){
 			coneDiscWidth,coneGuardOffset,
 			coneGuardWidth,coneGuardThresh);
      }
-     if ((MethodMask & 0x1)!=0){
+     if ((MethodMask & 0x1)!=0 && priority==5){
 //			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
 //						 hornSectorWidth);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
@@ -1262,13 +1265,13 @@ int determinePriority(){
 //			   delay,2*hornSectorWidth-1,
 //			   2*hornSectorWidth-1);
 	  MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
-				     &theCoincidenceBoxcarH,
-				     delay,hornSectorWidth-1,
-				     hornSectorWidth-1);
+					&theCoincidenceBoxcarH,
+					delay,hornSectorWidth-1,
+					hornSectorWidth-1);
 	  MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
-				     &theCoincidenceBoxcarV,
-				     delay,hornSectorWidth-1,
-				     hornSectorWidth-1);
+					&theCoincidenceBoxcarV,
+					delay,hornSectorWidth-1,
+					hornSectorWidth-1);
      }
      else{
 	  /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
@@ -1286,18 +1289,18 @@ int determinePriority(){
 //							8,2*hornSectorWidth-3,
 //							2*hornSectorWidth-3);
 	  MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
-					      &theCoincidenceBoxcarH2,
-					      delay,hornSectorWidth-2,
-					      hornSectorWidth-2);
+					 &theCoincidenceBoxcarH2,
+					 delay,hornSectorWidth-2,
+					 hornSectorWidth-2);
 	  MaxBoxV2=FormSectorCoincidence(&theMajorityBoxcarV2,
-					      &theCoincidenceBoxcarV2,
-					      delay,hornSectorWidth-2,
-					      hornSectorWidth-2);
-	  }
-	  else{
-	       /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
-	  }
+					 &theCoincidenceBoxcarV2,
+					 delay,hornSectorWidth-2,
+					 hornSectorWidth-2);
      }
+     else{
+	  /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
+     }
+
      if (priority == 5){ //consider promotion
 	  if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
 	       //3 for 3 in both rings
@@ -1309,7 +1312,7 @@ int determinePriority(){
 	       MaxBoxH>=2*hornSectorWidth-1 || 
 	       MaxBoxV>=2*hornSectorWidth-1 ) 
 	       priority=3; 
-     // 2/3  in eithr pol in both rings
+	  // 2/3  in eithr pol in both rings
 	  else if (MaxBoxH2>=2*(hornSectorWidth-1)-1 || 
 		   MaxBoxV2>=2*(hornSectorWidth-1)-1) 
 	       // 2 for 2 in one ring and 1/2 in other
