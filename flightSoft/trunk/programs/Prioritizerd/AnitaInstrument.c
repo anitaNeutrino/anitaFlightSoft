@@ -450,9 +450,9 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 	  mean=0; weights=0;
 	  var=0;
 	  for (i=winl;i<winr;i++){
-	       var+=(i-peaksample)*(i-peaksample)*in->data[i];
-	       mean+=(i-peaksample)*in->data[i];
-	       weights+=in->data[i];
+	       var+=(i-peaksample)*(i-peaksample)*fabsf(in->data[i]);
+	       mean+=(i-peaksample)*fabsf(in->data[i]);
+	       weights+=fabsf(in->data[i]);
 	  }
 	  mean=mean/weights;
 	  var=var/weights-mean*mean;
