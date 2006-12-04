@@ -1131,12 +1131,41 @@ int determinePriority(){
      BuildInstrumentF(&unwrappedBody,&theInstrument);
      FFTNumChannels=0.;
      HornMatchedFilterAll(&theInstrument,&theXcorr);
+     priority=6; // default for others not satisfied; thermal goes here we hope
      if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
 	  // reject this event as narrowband crap
 	  priority=9;
      }
-     else{
-// Ordinary coincidence and scoring
+     // overall majority thingee to get payload blast
+     else if ((MethodMask &0x40)!=0){
+	       PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
+			     hornDiscWidth,0,
+			     0,65535,
+			     coneDiscWidth,0,
+			     0,65535);
+	       HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
+				      &ConeCounter, delay);
+	       if (HornMax>WindowCut) //too many horns peaking simultaneously
+	       priority=8;
+     }
+     // cut on late vs. early RMS to reject blast starting during the record   
+     // this can also be given the side effect of taking the channels
+     // involved out of the priority 1-4 (boxcar) decsion. See RMSCountAll
+     // IF THE LATTER IS DESIRED NEED TO EVALUATE 1-4 for 7 as well as 6.
+     else if ((MethodMask & 0x80)!=0){
+	  RMSnum=RMSCountAll(&theXcorr,RMSMax,
+			     BeginWindow,EndWindow);
+	  if (RMSnum>RMSevents) priority=7;
+     }
+     // if there are no 'black marks' everything is now priority 6.
+// next block gives three choices for making the initial promotion decision.
+// to go from priority 6 to priority 5
+// score4 is ~SLAC priority 1
+// score3 is next group of SLAC priorities
+// the nonupdating discriminator thingee is like those but rejects blast, 
+//     but the blast rejector above for priority 8 seems to work well enough.
+     else{//
+          // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
 	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
 				     400,hornDiscWidth,
@@ -1151,10 +1180,6 @@ int determinePriority(){
 	  {
 	       score4=0;
 	  }
-#ifdef WRITE_DEBUG_FILE
-//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-	  fprintf(debugFile,"%lu 4 %d\n",theHeader.eventNumber,score);
-#endif
 	  if ((MethodMask&0x8)!=0){
 	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
 				     300,hornDiscWidth,
@@ -1168,11 +1193,7 @@ int determinePriority(){
 	  else{
 	       score3=0;
 	  }
-#ifdef WRITE_DEBUG_FILE
-//	    fwrite(&sectorAna,sizeof(AnitaSectorAnalysis_t),1,debugFile);
-	  fprintf(debugFile,"%lu 3 %d\n",theHeader.eventNumber,score);
-#endif
-// nonupdating discriminators and majorities
+          // nonupdating discriminators and majorities
 	  if ((MethodMask & 0x10)!=0){
 	       DiscriminateFChannels_noup(&theXcorr,&theNonupdating,
 					  hornThresh,hornDiscWidth,
@@ -1199,77 +1220,61 @@ int determinePriority(){
 	  else{
 	       MaxAll=0; MaxH=0; MaxV=0;
 	  }
-	  // overall majority thingee to get payload blast
-	  if ((MethodMask &0x40)!=0){
-	       PeakBoxcarAll(&theXcorr,&theBoxcarNoGuard,
-			     hornDiscWidth,0,
-			     0,65535,
-			     coneDiscWidth,0,
-			     0,65535);
-	       HornMax=GlobalMajority(&theBoxcarNoGuard,&HornCounter,
-				      &ConeCounter, delay);
-	  }
-	  else{
-	       HornMax=0;
-	  }
-// cut on late vs. early RMS to reject blast starting during the record   
-// this can also be given the side effect of taking the channels
-// involved out of the priority 1-4 (boxcar) decsion.
-	  if ((MethodMask & 0x80)!=0){
-	       RMSnum=RMSCountAll(&theXcorr,RMSMax,
-				  BeginWindow,EndWindow);
-	  }
-	  else{
-	       RMSnum=0;
-	  }
-	  //xcorr peak boxcar method
-	  if ((MethodMask &0x21)!=0){
-	       PeakBoxcarAll(&theXcorr,&theBoxcar,
-			     hornDiscWidth,hornGuardOffset,
-			     hornGuardWidth,hornGuardThresh,
-			     coneDiscWidth,coneGuardOffset,
-			     coneGuardWidth,coneGuardThresh);
-	  }
-	  if ((MethodMask & 0x1)!=0){
+	  if(score4>=600 || score3>600 || 
+	     MaxH>=2*hornSectorWidth-1 || MaxV>=2*hornSectorWidth-1) priority=5;
+//
+// at this point everything is 5-9
+// only priority 5 gets further scrutiny for promotion
+//
+//
+     //xcorr peak boxcar method
+     if ((MethodMask &0x21)!=0 && priority==5){
+	  PeakBoxcarAll(&theXcorr,&theBoxcar,
+			hornDiscWidth,hornGuardOffset,
+			hornGuardWidth,hornGuardThresh,
+			coneDiscWidth,coneGuardOffset,
+			coneGuardWidth,coneGuardThresh);
+     }
+     if ((MethodMask & 0x1)!=0){
 //			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
 //						 hornSectorWidth);
-	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
-				     hornSectorWidth,0);
-	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
-				     hornSectorWidth,1);
+	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
+				hornSectorWidth,0);
+	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV,
+				hornSectorWidth,1);
 //			      MaxBoxAll=FormSectorCoincidence(&theMajorityBoxcar,
 //							      &theCoincidenceBoxcarAll,
 //							      delay,2*hornSectorWidth-1,
 //							      2*hornSectorWidth-1);
-	       MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
+	  MaxBoxH=FormSectorCoincidence(&theMajorityBoxcarH,
 					     &theCoincidenceBoxcarH,
 					     delay,hornSectorWidth-1,
 					     hornSectorWidth-1);
-	       MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
-					     &theCoincidenceBoxcarV,
-					     delay,hornSectorWidth-1,
-					     hornSectorWidth-1);
-	  }
-	  else{
-	       /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
-	  }
-	  //xcorr peak boxcar method with narrowed sector
-	  if ((MethodMask & 0x20)!=0){
+	  MaxBoxV=FormSectorCoincidence(&theMajorityBoxcarV,
+					&theCoincidenceBoxcarV,
+					delay,hornSectorWidth-1,
+					hornSectorWidth-1);
+     }
+     else{
+	  /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
+     }
+     //xcorr peak boxcar method with narrowed sector
+     if ((MethodMask & 0x20)!=0  && priority==5){
 //			FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
 //					   hornSectorWidth-1);
-	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
-				     hornSectorWidth-1,0);
-	       FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV2,
-				     hornSectorWidth-1,1);
+	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
+				hornSectorWidth-1,0);
+	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV2,
+				hornSectorWidth-1,1);
 //			MaxBoxAll2=FormSectorCoincidence(&theMajorityBoxcar2,
 //							&theCoincidenceBoxcarAll2,
 //							8,2*hornSectorWidth-3,
 //							2*hornSectorWidth-3);
-	       MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
+	  MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
 					      &theCoincidenceBoxcarH2,
 					      delay,hornSectorWidth-2,
 					      hornSectorWidth-2);
-	       MaxBoxV2=FormSectorCoincidence(&theMajorityBoxcarV2,
+	  MaxBoxV2=FormSectorCoincidence(&theMajorityBoxcarV2,
 					      &theCoincidenceBoxcarV2,
 					      delay,hornSectorWidth-2,
 					      hornSectorWidth-2);
@@ -1277,36 +1282,23 @@ int determinePriority(){
 	  else{
 	       /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
 	  }
-
-//Sillyness forever...
-	  //Must determine priority here
-//	    priority=1;
-//revised scoring here -- comments  are for hornsector width of 3 (suggested default)
-	  priority=6;
-	  if (HornMax>WindowCut) //too many horns peaking simultaneously
-	       priority=8;
-	  else if (RMSnum>RMSevents) priority=7;
-// too many channels with large RMS in end relative to beginning
-	  else if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) //3 for 3 in both rings
+     }
+     if (priority == 5){ //consider promotion
+	  if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
+	       //3 for 3 in both rings
 	       priority=1;
-	  else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) // 2 for 2 in both rings
+	  else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) 
+	       // 2 for 2 in both rings
 	       priority=2;
 	  else if (/*MaxBoxAll>=4*hornSectorWidth-4 ||*/
 	       MaxBoxH>=2*hornSectorWidth-1 || 
 	       MaxBoxV>=2*hornSectorWidth-1 ) 
-	       priority=3; // 2/3  in pol in both rings or 4/6 polarizations (redundant)
-	  else if (MaxBoxH2>=2*(hornSectorWidth-1)-1 || MaxBoxV2>=2*(hornSectorWidth-1)-1) // 2 for 2 in one ring and 1/2 in other
+	       priority=3; 
+     // 2/3  in eithr pol in both rings
+	  else if (MaxBoxH2>=2*(hornSectorWidth-1)-1 || 
+		   MaxBoxV2>=2*(hornSectorWidth-1)-1) 
+	       // 2 for 2 in one ring and 1/2 in other
 	       priority=4;
-	  else if (MaxH>=2*hornSectorWidth || MaxV>=2*hornSectorWidth)
-	       priority=5; //
-	  else if (MaxH>=2*hornSectorWidth-1 || 
-		   MaxV>=2*hornSectorWidth-1)
-	       priority=5;//was 6
-	  else if(score4>=600) priority=5;
-	  // else if(score3>1900) priority=6;
-	  // else if(score3>1500) priority=6;
-	  // else if(score3>1000) priority=6;
-	  else if(score3>600) priority=5;//was 6
      }
      return priority;
 }
