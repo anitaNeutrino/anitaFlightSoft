@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
 
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -21,15 +23,18 @@
 #include "compressLib/compressLib.h"
 #include "pedestalLib/pedestalLib.h"
 
+
 int readConfigFile();
 int checkForRequests();
 void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,PedSubbedEventBody_t *psbPtr,int pri);
 void sendEvent(PlaybackRequest_t *pReq);
+void startPlayback();
+
 
 // Global Variables
 int printToScreen=0;
 int verbosity=0;
-
+int sendData=0;
 char playbackdPidFile[FILENAME_MAX];
 
 
@@ -39,6 +44,11 @@ char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 //Encoding Buffer
 unsigned char outputBuffer[MAX_WAVE_BUFFER];
+
+char priorityPurgeDirs[NUM_PRIORITIES][FILENAME_MAX];
+
+
+
 
 int main (int argc, char *argv[])
 {
@@ -66,6 +76,10 @@ int main (int argc, char *argv[])
 		EVENT_PRI_PREFIX,pri);
 
 	makeDirectories(eventTelemLinkDirs[pri]);
+	
+	sprintf(priorityPurgeDirs[pri],"%s/pri%d",BASE_PRIORITY_PURGE_DIR,
+		pri);
+	makeDirectories(priorityPurgeDirs[pri]);
     }
     
     retVal=readConfigFile();
@@ -87,6 +101,7 @@ int main (int argc, char *argv[])
 	}
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
+	    if(sendData) startPlayback();
 	    retVal=checkForRequests();
 	    if(!retVal)
 		sleep(10);
@@ -105,8 +120,10 @@ int readConfigFile()
     char* eString ;
     kvpReset();
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
+    status = configLoad ("Playbackd.config","playbackd") ;
 
     if(status == CONFIG_E_OK) {
+	sendData=kvpGetInt("sendData",0);
 	tempString=kvpGetString("playbackdPidFile");
 	if(tempString) {
 	    strncpy(playbackdPidFile,tempString,FILENAME_MAX);
@@ -278,3 +295,67 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
     } 
 }
 
+
+void startPlayback() 
+{
+    int priority;
+    int eventCount=0;
+    PlaybackRequest_t pReq;
+    char purgeFile[FILENAME_MAX];
+    char evNumAsString[180];
+    struct dirent **linkList;
+    syslog(LOG_INFO,"Playbackd Starting Playback");
+    
+    while(currentState==PROG_STATE_RUN) {
+	
+	int numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
+	if(numPri0Links<100) {
+	
+
+	    for(priority=0;priority<=9;priority++) {		
+		
+		int numLinks=getListofLinks(eventTelemLinkDirs[priority],
+					    &linkList);
+		int i;
+		for(i=0;i<numLinks;i++) {
+		    //Loop over files;
+		    sprintf(purgeFile,"%s/%s",eventTelemLinkDirs[priority],linkList[i]->d_name);
+		    gzFile Purge=gzopen(purgeFile,"r");
+		    
+		    if(Purge) {
+			
+			while(1) {
+			    char *test=gzgets(Purge,evNumAsString,179);
+			    if(test==Z_NULL) break;
+			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
+			    pReq.pri=0;
+			    sendEvent(&pReq);
+			    eventCount++;
+			    if(eventCount+numPri0Links>100) {
+				sleep(60);
+				numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
+				eventCount=0;
+			    }
+			}
+		    }
+
+
+
+
+		    if(eventCount+numPri0Links>100) break;
+		}
+
+
+		for(i=0;i<numLinks;i++) {
+		    free(linkList[i]);	
+		}	    
+		free(linkList);		
+	    }
+
+	}
+	sleep(1);
+	eventCount=0;
+    }
+
+
+}

@@ -170,7 +170,8 @@ typedef enum {
     PRI_METHOD_MASK=21,
     PRI_FFT_MAX_CHANNELS=22,
     PRI_FFT_PEAK_WINDOW_L=23,
-    PRI_FFT_PEAK_WINDOW_R=24
+    PRI_FFT_PEAK_WINDOW_R=24,
+    PRI_NU_CUT=25
 } PrioritizerdCommandCode_t;
     
 typedef enum {
