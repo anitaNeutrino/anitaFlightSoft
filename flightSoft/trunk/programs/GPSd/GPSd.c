@@ -650,8 +650,7 @@ void processPosString(char *gpsString, int gpsLength) {
     
     //Copy string
     strncpy(gpsCopy,gpsString,gpsLength);
-//    sprintf(gpsCopy,"$PASHR,POS,0,06,183805.00,3722.36221,N,12159.82742,W,+00016.06,179.22,021.21,+003.96,+34,06.1,04.2,03.2,01.4,GA00*cc");
-    
+//    sprintf(gpsCopy,"$PASHR,POS,0,03,003821.00,7751.70766,S,16703.78078,E,-00039.33,,007.64,000.17,+000.00,03.6,03.6,00.0,01.4,YM06*38");
     //Get unix Timestamp
     gettimeofday(&timeStruct,NULL);
     thePos.unixTime=timeStruct.tv_sec;
@@ -659,11 +658,11 @@ void processPosString(char *gpsString, int gpsLength) {
 
     //Scan string
     subString = strtok (gpsCopy,"*");
-//    printf("%s\n",subString);
-    sscanf(subString,"$PASHR,POS,%d,%lu,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%f,%f,%f,%s",
+/*    printf("%s\n",subString); */
+    sscanf(subString,"$PASHR,POS,%d,%lu,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,,%f,%f,%f,%f,%f,%f,%f,%s",
 	   &posType,&(thePos.numSats),&hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
-	   &(thePos.altitude),&reserved,&(thePos.trueCourse),
+	   &(thePos.altitude),&(thePos.trueCourse),
 	   &(thePos.speedInKnots),&(thePos.verticalVelocity),
 	   &(thePos.pdop),&(thePos.hdop),&(thePos.vdop),&(thePos.tdop),
 	   firmware);
@@ -684,7 +683,7 @@ void processPosString(char *gpsString, int gpsLength) {
     thePos.timeOfDay+=(float)(1000*60*60*hour);  
 
     //Debugging
-/*     printf("Time:\t %ld\t%ld\t%ld\nNum Sats:\t%d\nPosition:\t%f\t%f\t%f\nCourse/Speed:\t%f\t%f\t%f\nDOP:\t\t%f\t%f\t%f\t%f\n", */
+  /*   printf("Time:\t %ld\t%ld\t%ld\nNum Sats:\t%d\nPosition:\t%f\t%f\t%f\nCourse/Speed:\t%f\t%f\t%f\nDOP:\t\t%f\t%f\t%f\t%f\n", */
 /* 	   thePos.unixTime,thePos.unixTimeUs,thePos.timeOfDay, */
 /* 	   thePos.numSats, */
 /* 	   thePos.latitude,thePos.longitude,thePos.altitude, */
