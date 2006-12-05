@@ -455,7 +455,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    for(index=0;index<numDataProgs;index++) {
 		killPrograms(dataProgMasks[index]);
 	    }
-	    
+	    sleep(10); 
 	    for(index=0;index<numDataProgs;index++) {
 		int fileExists=0;
 		do {
@@ -1722,7 +1722,7 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
 	    break;
 	case PLAY_STOP_PRI:
 	    configModifyInt("Playbackd.config","playbackd","sendData",0,&rawtime);	    
-	    system("killall Playbackd")
+	    system("killall Playbackd");
 	    break;
 	default:
 	    return -1;
