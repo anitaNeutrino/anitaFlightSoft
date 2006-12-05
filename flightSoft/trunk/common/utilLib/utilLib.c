@@ -821,6 +821,23 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
     return n;	    
 }
 
+int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist)
+{
+/*     int count; */
+    static int errorCounter=0;
+    int n = scandir(theEventLinkDir, namelist, filterOnGzs, versionsort);
+    if (n < 0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
+	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
+	    errorCounter++;
+	}
+	    
+    }	
+ /*    for(count=0;count<n;count++)  */
+/* 	printf("%s\n",(*namelist)[count]->d_name); */
+    return n;	    
+}
 
 
 unsigned long getDiskSpace(char *dirName) {
@@ -904,6 +921,15 @@ int filterOnDats(const struct dirent *dir)
 {
 
     if(strstr(dir->d_name,".dat")!=NULL)
+	return 1;
+    return 0;
+}
+
+
+int filterOnGzs(const struct dirent *dir)
+{
+
+    if(strstr(dir->d_name,".gz")!=NULL)
 	return 1;
     return 0;
 }

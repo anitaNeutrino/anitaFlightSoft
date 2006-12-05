@@ -74,7 +74,9 @@ extern "C" {
 #ifndef __CINT__
     int filterHeaders(const struct dirent *dir);
     int filterOnDats(const struct dirent *dir);
+    int filterOnGzs(const struct dirent *dir);
     int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
+    int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist);
 #endif
     unsigned long getDiskSpace(char *dirName);
     unsigned short countFilesInDir(char *dirName);
