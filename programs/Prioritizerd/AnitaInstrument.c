@@ -407,8 +407,12 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 //
 // hack in a 'neutrinoivity cut'
 // 
+//
+// also hack in a minimum value for the peak SNR, bound to conethresh
+//
      int i,guardLeft,guardRight;
      int peaksample;
+     int peakcut;
      float peakvalue, guardvalue;
      int neutrinoish; // yes, I know this is silly...
      int winl,winr;
@@ -462,7 +466,14 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
      else{
 	  neutrinoish=1;
      }
-     if (!(guardvalue>guardThresh*peakvalue/100.) && (neutrinoish>0)){
+     if ((MethodMask & 0x800) && (peakvalue<0.01*coneThresh)){
+	  peakcut=1;
+     }
+     else{
+	  peakcut=0;
+     }
+     if (!(guardvalue>guardThresh*peakvalue/100.) && (neutrinoish>0) 
+	 && !peakcut){
 	  for (i=peaksample;(i<peaksample+width)&&(i<out->valid_samples);i++){
 	       out->data[i]=1;
 	  }
@@ -1139,6 +1150,7 @@ int determinePriority(){
      // 0x200--cut channels with wide crosscorrelator peaks (not neutrinoish)
      // 0x400--look at events which fail 0x80 for promotion to pri 5,
      //                             with the offending channels cut 
+     // 0x800--cut on minimum SNR for peak on boxcar, bound to conethresh
      int priority,score,score3,score4;
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
