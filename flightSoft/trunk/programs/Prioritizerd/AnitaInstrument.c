@@ -1183,8 +1183,9 @@ int determinePriority(){
           // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
 	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
-				     400,hornDiscWidth,
-				     coneThresh,coneDiscWidth);
+				     hornThresh,hornDiscWidth,
+				     coneThresh,coneDiscWidth); 
+                                    //hornthresh was 400 at SLAC
 	       FormSectorMajority(&theDiscriminator,&theMajority,
 				  hornSectorWidth);
 	       AnalyseSectorLogic(&theMajority,&sectorAna);
