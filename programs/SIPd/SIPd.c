@@ -258,7 +258,7 @@ void highrateHandler(int *ignore)
 	    //Got an event	    
 	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 		    linkList[numLinks-1]->d_name);
-	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
+//	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
 	    readAndSendEventRamdisk(currentHeader); //Also deletes
 
 	    while(numLinks) {
