@@ -305,38 +305,49 @@ void startPlayback()
     char evNumAsString[180];
     struct dirent **linkList;
     syslog(LOG_INFO,"Playbackd Starting Playback");
+    printf("Playbackd Starting Playback\n");
     
     while(currentState==PROG_STATE_RUN) {
 	
 	int numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
+//	printf("Here\n");
 	if(numPri0Links<100) {
-	
-
+//	    printf("Here\n");
 	    for(priority=0;priority<=9;priority++) {		
 		
-		int numLinks=getListofLinks(eventTelemLinkDirs[priority],
-					    &linkList);
+		int numLinks=getListofPurgeFiles(priorityPurgeDirs[priority],
+						 &linkList);
 		int i;
+//		printf("Here: %d -- %s\n",numLinks,priorityPurgeDirs[priority]);
 		for(i=0;i<numLinks;i++) {
 		    //Loop over files;
-		    sprintf(purgeFile,"%s/%s",eventTelemLinkDirs[priority],linkList[i]->d_name);
+		    sprintf(purgeFile,"%s/%s",priorityPurgeDirs[priority],linkList[i]->d_name);
+//		    printf("%s\n",purgeFile);
+					
 		    gzFile Purge=gzopen(purgeFile,"r");
 		    
 		    if(Purge) {
 			
 			while(1) {
 			    char *test=gzgets(Purge,evNumAsString,179);
+//			    printf("evNumAsString: %s\n",evNumAsString);
 			    if(test==Z_NULL) break;
 			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
 			    pReq.pri=0;
+//			    printf("Freda\n");
 			    sendEvent(&pReq);
 			    eventCount++;
+//			    printf("Fred: eventCount: %d\n",eventCount);
 			    if(eventCount+numPri0Links>100) {
-				sleep(60);
+//				sleep(60);
 				numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
 				eventCount=0;
 			    }
+//			    printf("Fredrick\n");
 			}
+//			printf("Here\n");
+			gzclose(Purge);
+			removeFile(purgeFile);
 		    }
 
 
@@ -351,6 +362,7 @@ void startPlayback()
 		}	    
 		free(linkList);		
 	    }
+	    sleep(1);
 
 	}
 	sleep(1);
