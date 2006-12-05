@@ -74,6 +74,9 @@ char usbExtName[FILENAME_MAX];
 
 int usbBitMasks[2]={0x4,0x8};
 
+FILE *fpHead=NULL;
+FILE *fpEvent=NULL;
+
 int shouldWeThrowAway(int pri);
 void handleBadSigs(int sig);
 int getRunNumber();
@@ -197,6 +200,8 @@ int main (int argc, char *argv[])
 
     closeEventFilesAndTidy(&eventWriter);
     closeHkFilesAndTidy(&indexWriter);
+    if(fpHead) fclose(fpHead);
+    if(fpEvent) fclose(fpEvent);
     unlink(archivedPidFile);
     syslog(LOG_INFO,"Archived terminating");
     return 0;
@@ -372,6 +377,18 @@ void processEvent()
     EncodeControlStruct_t diskEncCntl;
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
+
+    //Stuff for puck
+    static int errorCounter=0;
+    static int fileEpoch=0;
+    static int fileNum=0;
+    static int dirNum=0;
+    static int otherDirNum=0;
+    static char puckDirName[FILENAME_MAX];
+    static char puckHeaderFileName[FILENAME_MAX];
+    static char puckEventFileName[FILENAME_MAX];
+    
+
     int priority=(theHead.priority&0xf);
     if(priority<0 || priority>9) priority=9;
     int thisBitMask=eventDiskBitMask&priDiskEventMask[priority];
@@ -433,6 +450,64 @@ void processEvent()
     else numBytes=0;
 
     if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
+	if(eventWriter.writeBitMask & PUCK_DISK_MASK) {
+	    //Now write to puck
+	    if(pedSubBody.eventNumber>fileEpoch) {
+		if(fileEpoch) {
+		    //Close file and zip
+		    if(fpHead) {
+			fclose(fpHead);
+			zipFileInPlace(puckHeaderFileName);
+			fpHead=NULL;
+		    }
+		    if(fpEvent) {
+			fclose(fpEvent);
+			zipFileInPlace(puckEventFileName);
+			fpEvent=NULL;
+		    }			
+		}
+		//Need to make files
+		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
+		//Make sub dir
+		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
+		sprintf(puckDirName,"/mnt/puck/current/event/ev%d/ev%d",dirNum,otherDirNum);
+		makeDirectories(puckDirName);
+		
+		//Make files
+		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE);
+		sprintf(puckEventFileName,"%s/psev_%d.dat",puckDirName,fileNum);
+		sprintf(puckHeaderFileName,"%s/hd_%d.dat",puckDirName,fileNum);
+		fileEpoch=fileNum+EVENTS_PER_FILE;
+		fpHead=fopen(puckHeaderFileName,"ab");
+		fpEvent=fopen(puckEventFileName,"ab");
+	    }
+	    
+	    if(fpHead) {
+		retVal=fwrite(&theHead,sizeof(AnitaEventHeader_t),1,fpHead);
+		if(retVal<0) {
+		    errorCounter++;
+		    printf("Error (%d of 100) writing to file -- %s (%d)\n",
+			   errorCounter,
+			   strerror(errno),retVal);
+		}
+		else 
+		    fflush(fpHead);
+	    } 
+	    if(fpEvent) {
+		retVal=fwrite(&pedSubBody,sizeof(PedSubbedEventBody_t),1,fpEvent);
+		if(retVal<0) {
+		    errorCounter++;
+		    printf("Error (%d of 100) writing to file -- %s (%d)\n",
+			   errorCounter,
+			   strerror(errno),retVal);
+		}
+		else 
+		    fflush(fpEvent);
+	    }     
+	    
+
+	}
+	eventWriter.writeBitMask &= ~PUCK_DISK_MASK;
 	writeOutputToDisk(numBytes);
     }
     else {
