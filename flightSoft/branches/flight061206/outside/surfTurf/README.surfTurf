@@ -1,0 +1,17 @@
+Started: Tue Jun 21 10:33:49 BST 2005
+
+Wahoo, if you've got this far you are really close to being able to actually run some software and read out the SURF and TURF. In the surfTurf directory there are four sub-directories:
+crate/ -- slightly modified version of the code we ran in palestine
+dacSetTest/ -- more code form Palestine that was the start of a test program to set the various DAC values.
+PlxLinux/ -- a copy of what is in /usr/local/PlxLinux on the flight computer (it just aids compilation on non-flight computer computers)
+shige/ -- The code that Shige (and Ped) had for the Minnesota and Palestine tests.
+
+'crate' is probably the only directory you'll need for now. To make the code:
+source [flightSoftDir]/script/anitaFlightSoftSetup.sh  (after editing it to point to correct location)
+declare -x PLX_SDK_DIR=/usr/local/PlxLinux
+make
+
+Then it will make crate_test  which is working code that is hardwired to reeadout three SURFs and the TURFIO. Depending on how productive I've been you may also be able to use the configurable firstAcqd, but to be honest unless I get some time with remote access to the hardware it is unlikely that I'll be able to get it up and running smoothly.
+
+To run crate_test look at the README.crate file in the crate directory.
+
