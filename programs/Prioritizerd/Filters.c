@@ -160,7 +160,7 @@ void HornMatchedFilterAllSmooth(AnitaInstrumentF_t *in,
 void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in, 
 			  AnitaInstrumentF_t *out,AnitaInstrumentF_t *pow_out)
 {
-     int i,j,k;
+     int i,j,k,ii;
      float mean;
      AnitaInstrumentF_t pow_tmp;
      for (i=0;i<16;i++){
@@ -188,12 +188,12 @@ void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in,
 	  }
 	  //normalize
 	  mean=0.;
-	  for (i=0; i<85; i++){
+	  for (ii=0; ii<85; ii++){
 	       mean+=pow_out->topRing[i][0].data[i];
 	  }
 	  mean=mean/85.;
 	  if (mean>0){
-	       for (i=0; i<pow_out->topRing[i][0].valid_samples;i++){
+	       for (ii=0; ii<pow_out->topRing[i][0].valid_samples;ii++){
 		    pow_out->topRing[i][0].data[i] /= mean;
 	       }
 	  }
@@ -223,12 +223,12 @@ void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in,
 	  }
 	  //normalize
 	  mean=0.;
-	  for (i=0; i<85; i++){
+	  for (ii=0; ii<85; ii++){
 	       mean+=pow_out->botRing[i][0].data[i];
 	  }
 	  mean=mean/85.;
 	  if (mean>0){
-	       for (i=0; i<pow_out->botRing[i][0].valid_samples;i++){
+	       for (ii=0; ii<pow_out->botRing[i][0].valid_samples;ii++){
 		    pow_out->botRing[i][0].data[i] /= mean;
 	       }
 	  }
