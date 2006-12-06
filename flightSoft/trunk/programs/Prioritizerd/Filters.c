@@ -155,4 +155,93 @@ void HornMatchedFilterAllSmooth(AnitaInstrumentF_t *in,
      }
 			    
 }
-     
+    
+
+void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in, 
+			  AnitaInstrumentF_t *out,AnitaInstrumentF_t *pow_out)
+{
+     int i,j,k;
+     float mean;
+     AnitaInstrumentF_t pow_tmp;
+     for (i=0;i<16;i++){
+	  for (j=0;j<2;j++){
+	       HornMatchedFilter(&(in->topRing[i][j]),&(out->topRing[i][j]));
+	       HornMatchedFilter(&(in->botRing[i][j]),&(out->botRing[i][j]));
+	  }
+	  // fill pow_out pol 0 with the smoothed sum of the squares if the two polarizations
+	  // set the record length to the shorter of the two
+	  (pow_tmp.topRing[i][0]).valid_samples=
+	       (out->topRing[i][0].valid_samples>out->topRing[i][1].valid_samples)?
+	       out->topRing[i][1].valid_samples:
+	       out->topRing[i][0].valid_samples;
+	  //compute the total power
+	  for (k=0; k<(pow_tmp.topRing[i][0]).valid_samples; k++){
+	       (pow_tmp.topRing[i][0]).data[k]=
+		    out->topRing[i][0].data[k]*out->topRing[i][0].data[k]
+		    +out->topRing[i][1].data[k]*out->topRing[i][1].data[k];
+	  } 
+	  // smooth it into pow_out; three point 1-2-1 Boxcar
+	  pow_out->topRing[i][0].valid_samples=(pow_tmp.topRing[i][0]).valid_samples-2;
+	  for (k=1; k<(pow_tmp.topRing[i][0]).valid_samples-1; k++){
+	       pow_out->topRing[i][0].data[k-1]=0.25*(pow_tmp.topRing[i][0]).data[k-1]
+		    +0.5*(pow_tmp.topRing[i][0]).data[k]+0.25*(pow_tmp.topRing[i][0]).data[k+1];
+	  }
+	  //normalize
+	  mean=0.;
+	  for (i=0; i<85; i++){
+	       mean+=pow_out->topRing[i][0].data[i];
+	  }
+	  mean=mean/85.;
+	  if (mean>0){
+	       for (i=0; i<pow_out->topRing[i][0].valid_samples;i++){
+		    pow_out->topRing[i][0].data[i] /= mean;
+	       }
+	  }
+	  //copy into the other polarization so we don't break anything
+	  for (k=0; k<(pow_out->topRing[i][0]).valid_samples; k++){
+	       pow_out->topRing[i][1].data[k]=pow_out->topRing[i][0].data[k];
+	  }
+	  // now do the bottom ring horn
+	  // fill pow_out pol 0 with the smoothed sum of the squares if the two polarizations
+	  // set the record length to the shorter of the two
+	  (pow_tmp.botRing[i][0]).valid_samples=
+	       (out->botRing[i][0].valid_samples>out->botRing[i][1].valid_samples)?
+	       out->botRing[i][1].valid_samples:
+	       out->botRing[i][0].valid_samples;
+	  //compute the total power
+	  for (k=0; k<(pow_tmp.botRing[i][0]).valid_samples; k++){
+	       (pow_tmp.botRing[i][0]).data[k]=
+		    out->botRing[i][0].data[k]*out->botRing[i][0].data[k]
+		    +out->botRing[i][1].data[k]*out->botRing[i][1].data[k];
+	  } 
+	  // smooth it into pow_out; three point 1-2-1 Boxcar
+	  pow_out->botRing[i][0].valid_samples=(pow_tmp.botRing[i][0]).valid_samples-2;
+	  pow_out->botRing[i][1].valid_samples=pow_out->botRing[i][0].valid_samples;
+	  for (k=1; k<(pow_tmp.botRing[i][0]).valid_samples-1; k++){
+	       pow_out->botRing[i][0].data[k-1]=0.25*(pow_tmp.botRing[i][0].data[k-1])
+		    +0.5*(pow_tmp.botRing[i][0]).data[k]+0.25*(pow_tmp.botRing[i][0]).data[k+1];
+	  }
+	  //normalize
+	  mean=0.;
+	  for (i=0; i<85; i++){
+	       mean+=pow_out->botRing[i][0].data[i];
+	  }
+	  mean=mean/85.;
+	  if (mean>0){
+	       for (i=0; i<pow_out->botRing[i][0].valid_samples;i++){
+		    pow_out->botRing[i][0].data[i] /= mean;
+	       }
+	  }
+	  //copy into the other polarization so we don't break anything
+	  for (k=0; k<(pow_out->botRing[i][0]).valid_samples; k++){
+	       pow_out->botRing[i][1].data[k]=pow_out->botRing[i][0].data[k];
+	  }
+     }
+   
+     for (i=0;i<4;i++){
+	  HornMatchedFilter(&(in->bicone[i]),&(out->bicone[i]));
+	  HornMatchedFilter(&(in->discone[i]),&(out->discone[i]));
+     }
+			    
+}
+      

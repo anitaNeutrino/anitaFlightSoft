@@ -171,6 +171,7 @@ extern PedSubbedEventBody_t pedSubBody;
 extern AnitaTransientBodyF_t unwrappedBody;
 extern AnitaInstrumentF_t theInstrument;
 extern AnitaInstrumentF_t theXcorr;
+extern AnitaInstrumentF_t theXcorrNoBlind;
 //original analysis
 extern AnitaChannelDiscriminator_t theDiscriminator;
 extern AnitaSectorLogic_t theMajority;
