@@ -189,12 +189,12 @@ void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in,
 	  //normalize
 	  mean=0.;
 	  for (ii=0; ii<85; ii++){
-	       mean+=pow_out->topRing[i][0].data[i];
+	       mean+=pow_out->topRing[i][0].data[ii];
 	  }
 	  mean=mean/85.;
 	  if (mean>0){
 	       for (ii=0; ii<pow_out->topRing[i][0].valid_samples;ii++){
-		    pow_out->topRing[i][0].data[i] /= mean;
+		    pow_out->topRing[i][0].data[ii] /= mean;
 	       }
 	  }
 	  //copy into the other polarization so we don't break anything
@@ -224,12 +224,12 @@ void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in,
 	  //normalize
 	  mean=0.;
 	  for (ii=0; ii<85; ii++){
-	       mean+=pow_out->botRing[i][0].data[i];
+	       mean+=pow_out->botRing[i][0].data[ii];
 	  }
 	  mean=mean/85.;
 	  if (mean>0){
 	       for (ii=0; ii<pow_out->botRing[i][0].valid_samples;ii++){
-		    pow_out->botRing[i][0].data[i] /= mean;
+		    pow_out->botRing[i][0].data[ii] /= mean;
 	       }
 	  }
 	  //copy into the other polarization so we don't break anything
