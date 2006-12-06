@@ -1157,7 +1157,10 @@ int determinePriority(){
      BuildInstrumentF(&unwrappedBody,&theInstrument);
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks
-     if (MethodMask & 0x1000){
+     if (MethodMask & 0x2000){
+	  HornMatchedFilterAllBlind(&theInstrument,&theXcorrNoBlind,&theXcorr);
+     }
+     else if (MethodMask & 0x1000){
 	  HornMatchedFilterAllSmooth(&theInstrument,&theXcorr);
      }else{
 	  HornMatchedFilterAll(&theInstrument,&theXcorr);
@@ -1195,8 +1198,14 @@ int determinePriority(){
 // score4 is ~SLAC priority 1
 // score3 is next group of SLAC priorities
 // the nonupdating discriminator thingee is like those but rejects blast, 
-//     but the blast rejector above for priority 8 seems to work well enough.
+// but the blast rejector above for priority 8 seems to work well enough.
      if (priority==6 || (priority==7 && MethodMask&0x400)) {
+	  // make a second hacked crosscorrelator that contains the
+	  // smoothed squared signal from both polarizations,
+	  // added incoherently
+          
+	  
+
           // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
 	       DiscriminateFChannels(&theXcorr,&theDiscriminator,

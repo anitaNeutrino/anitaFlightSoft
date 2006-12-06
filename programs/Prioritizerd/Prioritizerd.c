@@ -71,6 +71,7 @@ PedSubbedEventBody_t pedSubBody;
 AnitaTransientBodyF_t unwrappedBody;
 AnitaInstrumentF_t theInstrument;
 AnitaInstrumentF_t theXcorr;
+AnitaInstrumentF_t theXcorrNoBlind;
 //original analysis
 AnitaChannelDiscriminator_t theDiscriminator;
 AnitaSectorLogic_t theMajority;

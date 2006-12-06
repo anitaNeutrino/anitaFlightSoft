@@ -21,6 +21,10 @@ extern "C"
      void HornMatchedFilterAllSmooth(AnitaInstrumentF_t *in, 
 			       AnitaInstrumentF_t *out);
 
+     void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in, 
+				    AnitaInstrumentF_t *out,
+				    AnitaInstrumentF_t *pow_out);
+
 //     void BiconeMatchedFilter(TransientChannelF_t *inch,
 //			    TransientChannelF_t *outch);
 //     void DisconeMatchedFilter(TransientChannelF_t *inch,
