@@ -85,4 +85,74 @@ void HornMatchedFilterAll(AnitaInstrumentF_t *in,
      }
 			    
 }
+
+void HornMatchedFilterSmooth(TransientChannelF_t *inch,TransientChannelF_t *outch)
+{
+//     int status,i;
+    int i;
+     static int first=1;
+     static float template[256];
+     float corr_out[512];
+     float stdev;
+     FILE *fptmpl;
+     char templateName[FILENAME_MAX];
+     if (first){
+	  //read in template
+#ifdef USING_PVIEW	
+	 sprintf(templateName,"horn_template.dat");
+#else
+	 char *anitaDir=getenv("ANITA_FLIGHT_SOFT_DIR");
+	 if(anitaDir) 
+	     sprintf(templateName,"%s/programs/Prioritizerd/horn_template.dat",anitaDir);
+	 else
+	     sprintf(templateName,"horn_template.dat");
+#endif
+//	 printf("%s\n",templateName);
+	 fptmpl=fopen(templateName,"r");
+	     if (fptmpl==NULL){
+	       fprintf(stderr,"Unable to open horn template.\n");
+	       exit(-1);
+	  }
+	  for (i=0;i<256;i++){
+	       fscanf(fptmpl,"%f",&(template[i]));
+	  }
+	  fclose(fptmpl);
+	  first=0;
+     }
+     fftwcorr(inch->data,template,corr_out);
+//three point binomial smoothing of the absolute value
+     for (i=1;i<inch->valid_samples-1;i++){
+	  outch->data[i-1]=0.25*fabsf(corr_out[i-1])
+	       +0.5*fabsf(corr_out[i])+0.25*fabsf(corr_out[i+1]);
+     }
+     outch->valid_samples=inch->valid_samples-2;
+//now renormailze to the rms of the first ~third
+     stdev=0.;
+     for (i=0; i<85; i++){
+	  stdev+=outch->data[i]*outch->data[i];
+     }
+     stdev=sqrt(stdev/85.);
+     if (stdev>0){
+	  for (i=0; i<outch->valid_samples;i++){
+	       outch->data[i]=outch->data[i]/stdev;
+	  }
+     }
+}
+
+void HornMatchedFilterAllSmooth(AnitaInstrumentF_t *in, 
+			  AnitaInstrumentF_t *out)
+{
+     int i,j;
+     for (i=0;i<16;i++){
+	  for (j=0;j<2;j++){
+	       HornMatchedFilterSmooth(&(in->topRing[i][j]),&(out->topRing[i][j]));
+	       HornMatchedFilterSmooth(&(in->botRing[i][j]),&(out->botRing[i][j]));
+	  }
+     }
+     for (i=0;i<4;i++){
+	  HornMatchedFilterSmooth(&(in->bicone[i]),&(out->bicone[i]));
+	  HornMatchedFilterSmooth(&(in->discone[i]),&(out->discone[i]));
+     }
+			    
+}
      

@@ -1151,12 +1151,17 @@ int determinePriority(){
      // 0x400--look at events which fail 0x80 for promotion to pri 5,
      //                             with the offending channels cut 
      // 0x800--cut on minimum SNR for peak on boxcar, bound to conethresh
+     // 0x1000--boxcar smoothing of crosscorrelator
      int priority,score,score3,score4;
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks
-     HornMatchedFilterAll(&theInstrument,&theXcorr);
+     if (MethodMask & 0x1000){
+	  HornMatchedFilterAllSmooth(&theInstrument,&theXcorr);
+     }else{
+	  HornMatchedFilterAll(&theInstrument,&theXcorr);
+     }
      priority=6; // default for others not satisfied; thermal goes here we hope
      if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
 	  // reject this event as narrowband crap
