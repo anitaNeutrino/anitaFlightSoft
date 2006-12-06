@@ -1152,6 +1152,7 @@ int determinePriority(){
      //                             with the offending channels cut 
      // 0x800--cut on minimum SNR for peak on boxcar, bound to conethresh
      // 0x1000--boxcar smoothing of crosscorrelator
+     // 0x2000--polarization-blind smoothing
      int priority,score,score3,score4;
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
