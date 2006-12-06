@@ -1201,12 +1201,6 @@ int determinePriority(){
 // the nonupdating discriminator thingee is like those but rejects blast, 
 // but the blast rejector above for priority 8 seems to work well enough.
      if (priority==6 || (priority==7 && MethodMask&0x400)) {
-	  // make a second hacked crosscorrelator that contains the
-	  // smoothed squared signal from both polarizations,
-	  // added incoherently
-          
-	  
-
           // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
 	       DiscriminateFChannels(&theXcorr,&theDiscriminator,
