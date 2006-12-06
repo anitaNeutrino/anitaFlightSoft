@@ -199,7 +199,8 @@ void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in,
 	  }
 	  //copy into the other polarization so we don't break anything
 	  for (k=0; k<(pow_out->topRing[i][0]).valid_samples; k++){
-	       pow_out->topRing[i][1].data[k]=pow_out->topRing[i][0].data[k];
+//	       pow_out->topRing[i][1].data[k]=pow_out->topRing[i][0].data[k];
+	       pow_out->topRing[i][1].data[k]=1.;
 	  }
 	  // now do the bottom ring horn
 	  // fill pow_out pol 0 with the smoothed sum of the squares if the two polarizations
@@ -234,7 +235,8 @@ void HornMatchedFilterAllBlind(AnitaInstrumentF_t *in,
 	  }
 	  //copy into the other polarization so we don't break anything
 	  for (k=0; k<(pow_out->botRing[i][0]).valid_samples; k++){
-	       pow_out->botRing[i][1].data[k]=pow_out->botRing[i][0].data[k];
+//	       pow_out->botRing[i][1].data[k]=pow_out->botRing[i][0].data[k];
+	       pow_out->botRing[i][1].data[k]=1.
 	  }
      }
    
