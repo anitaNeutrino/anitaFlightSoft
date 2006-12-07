@@ -1308,7 +1308,7 @@ int switchConfig(int progMask, unsigned char configId)
 
 int saveConfig(int progMask, unsigned char configId) 
 {
-    if(configId<10) return -1;
+//    if(configId<10) return -1;
     time_t rawtime=time(NULL);
 //    time(&rawtime);
     int retVal;
