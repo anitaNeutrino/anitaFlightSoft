@@ -15,7 +15,7 @@ sudo -u anita cp /home/anita/flightSoft/config/defaults/Archived.config.0 /home/
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Calibd.config.0 /home/anita/flightSoft/config/Calibd.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Eventd.config.0 /home/anita/flightSoft/config/Eventd.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/GPSd.config.0 /home/anita/flightSoft/config/GPSd.config
-sudo -u anita cp /home/anita/flightSoft/config/defaults/LOSd.config.0 /home/anita/flightSoft/config/LOSd.config
+#sudo -u anita cp /home/anita/flightSoft/config/defaults/LOSd.config.0 /home/anita/flightSoft/config/LOSd.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Monitord.config.0 /home/anita/flightSoft/config/Monitord.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Playbackd.config.0 /home/anita/flightSoft/config/Playbackd.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Priroitizerd.config.0 /home/anita/flightSoft/config/Prioritizerd.config
@@ -39,7 +39,9 @@ mountCurrentUsbExt.sh &
 sleep 4
 mountCurrentUsbInt.sh &
 sleep 40
-sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
+#sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
+sudo -u anita CmdTest 4
+sleep 10
 
 daemon -u anita -r Archived -n Archived
 daemon -u anita -r Acqd -n Acqd
