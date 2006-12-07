@@ -1326,10 +1326,10 @@ int saveConfig(int progMask, unsigned char configId)
 	if(progMask&testMask) {
 	    sprintf(configFile,"/home/anita/flightSoft/config/%s.config",
 		    getProgName(prog));
-	    sprintf(configFileNew,"/home/anita/flightSoft/config/%s.config.%d",
+	    sprintf(configFileNew,"/home/anita/flightSoft/config/defaults/%s.config.%d",
 		    getProgName(prog),configId);
 
-	    retVal=copyFile(configFile,configFileNew);
+	    retVal=copyFileToFile(configFile,configFileNew);
 
 	}
     }
