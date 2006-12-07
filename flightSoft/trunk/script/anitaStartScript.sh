@@ -39,8 +39,8 @@ mountCurrentUsbExt.sh &
 sleep 4
 mountCurrentUsbInt.sh &
 sleep 40
-#sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
-sudo -u anita CmdTest 4
+sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
+#sudo -u anita CmdTest 4
 sleep 10
 
 daemon -u anita -r Archived -n Archived
