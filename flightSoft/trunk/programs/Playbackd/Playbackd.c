@@ -92,7 +92,7 @@ int main (int argc, char *argv[])
 
     //Main Loop
     do {
-	if(printToScreen) printf("Initalizing Playbackd\n");
+	printf("Initalizing Playbackd\n");
 	retVal=readConfigFile();
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading Playbackd.config");
@@ -104,7 +104,7 @@ int main (int argc, char *argv[])
 	    if(sendData) startPlayback();
 	    retVal=checkForRequests();
 	    if(!retVal)
-		sleep(10);
+		printf("sleep\n");sleep(10);
 	}
     } while(currentState==PROG_STATE_INIT);    
     unlink(playbackdPidFile);
@@ -198,15 +198,24 @@ void sendEvent(PlaybackRequest_t *pReq)
     
     syslog(LOG_INFO,"Trying to send event %lu, with priority %d\n",
 	   pReq->eventNumber,pReq->pri);
-
+    fprintf(stderr,"Trying to send event %lu, with priority %d\n",
+	   pReq->eventNumber,pReq->pri);
+    
+    int numSeek=pReq->eventNumber-fileNum;
+    numSeek--;
     gzFile *indFile=gzopen(indexName,"rb");
     if(!indFile) {
 	fprintf(stderr,"Couldn't open: %s\n",indexName);
 	return;
     }
     
+/*     if(numSeek) { */
+/* 	gzseek(indFile,numSeek*sizeof(IndexEntry_t),SEEK_SET); */
+/*     } */
+
 
     IndexEntry_t indEntry;
+    int count=0;
     do {
 	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));
 	if(test<0) {
@@ -214,10 +223,14 @@ void sendEvent(PlaybackRequest_t *pReq)
 	    gzclose(indFile);
 	    return;
 	}
+//	printf("count %d, index %lu\n",count,indEntry.eventNumber);
+	count++;
     } while (indEntry.eventNumber!=pReq->eventNumber);
     gzclose(indFile);
+//    printf("index: %lu -- %#x\n",indEntry.eventNumber,indEntry.eventDiskBitMask);
+
     //Now have index
-    if(indEntry.eventDiskBitMask&PUCK_DISK_MASK) {
+    if(1) {
 	//Read it from puck
 	sprintf(headerFileName,"%s/run%lu/event/ev%d/ev%d/hd_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
@@ -227,8 +240,17 @@ void sendEvent(PlaybackRequest_t *pReq)
 	    return;
 	}
 	int retVal;
+
+	
+	if(numSeek) {
+	    gzseek(headFile,numSeek*sizeof(AnitaEventHeader_t),SEEK_SET);
+	}
+
+	int test=0;
 	do {
 	    retVal=gzread(headFile,&theHead,sizeof(AnitaEventHeader_t));
+	    printf("try %d, head %lu\n",test,theHead.eventNumber);
+	    test++;
 	}
 	while(retVal>0 && theHead.eventNumber!=pReq->eventNumber);
 	gzclose(headFile);
@@ -244,6 +266,11 @@ void sendEvent(PlaybackRequest_t *pReq)
 	    fprintf(stderr,"Couldn't open: %s\n",eventFileName);	    
 	    return;
 	}
+//	int numSeek=pReq->eventNumber-fileNum;
+//	numSeek--;
+	if(numSeek) {
+	    gzseek(eventFile,numSeek*sizeof(PedSubbedEventBody_t),SEEK_SET);
+	}
 	do {
 	    retVal=gzread(eventFile,&psBody,sizeof(PedSubbedEventBody_t));
 	}
@@ -257,7 +284,11 @@ void sendEvent(PlaybackRequest_t *pReq)
 
     theHead.priority=((pReq->pri&0xf) | (theHead.priority&0xf0));
     fillGenericHeader(&theHead,PACKET_HD,sizeof(AnitaEventHeader_t));
-
+    printf("head: %lu, event: %lu\n",theHead.eventNumber,psBody.eventNumber);
+//    int samp=0;
+//    for(samp=0;samp<260;samp++) {
+//	printf("%d --%d\n",samp,psBody.channel[0].data[samp]);
+//    }
     //In theory should have header and event now
     encodeAndWriteEvent(&theHead,&psBody, pReq->pri);
 
@@ -267,6 +298,7 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
 			 PedSubbedEventBody_t *psbPtr,
 			 int pri)
 {
+    memset(outputBuffer,0,MAX_WAVE_BUFFER);
     EncodeControlStruct_t telemEncCntl;
     int surf,chan;
     int retVal,numBytes;
@@ -274,12 +306,12 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    telemEncCntl.encTypes[surf][chan]=ENCODE_LOSSLESS_BINFIB_COMBO;
 	    if(chan==8)
-		telemEncCntl.encTypes[surf][chan]=ENCODE_LOSSLESS_BINARY;
+		telemEncCntl.encTypes[surf][chan]=ENCODE_LOSSY_MULAW_6BIT;
 	}
     }
     	    
     retVal=packPedSubbedEvent(psbPtr,&telemEncCntl,outputBuffer,&numBytes);
-
+    printf("retVal %d, numBytes %d\n",retVal,numBytes);
     char headName[FILENAME_MAX];
     char bodyName[FILENAME_MAX];
     sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],hdPtr->eventNumber);
@@ -324,6 +356,7 @@ void startPlayback()
 		    sprintf(purgeFile,"%s/%s",priorityPurgeDirs[priority],linkList[i]->d_name);
 //		    printf("%s\n",purgeFile);
 					
+		    printf("Got purgeFile: %s\n",purgeFile);
 		    gzFile Purge=gzopen(purgeFile,"r");
 		    
 		    if(Purge) {
@@ -332,14 +365,17 @@ void startPlayback()
 			    char *test=gzgets(Purge,evNumAsString,179);
 //			    printf("evNumAsString: %s\n",evNumAsString);
 			    if(test==Z_NULL) break;
+//			    printf("%d %d\n",test,evNumAsString);
 			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
+			    printf("Got string: %s num: %lu\n",
+				   evNumAsString,pReq.eventNumber);
 			    pReq.pri=0;
 //			    printf("Freda\n");
 			    sendEvent(&pReq);
 			    eventCount++;
 //			    printf("Fred: eventCount: %d\n",eventCount);
 			    if(eventCount+numPri0Links>100) {
-//				sleep(60);
+//				printf("sleep\n");sleep(60);
 				numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
 				eventCount=0;
 			    }
@@ -362,10 +398,10 @@ void startPlayback()
 		}	    
 		free(linkList);		
 	    }
-	    sleep(1);
+	    printf("sleep\n");sleep(1);
 
 	}
-	sleep(1);
+	printf("sleep\n");sleep(1);
 	eventCount=0;
     }
 
