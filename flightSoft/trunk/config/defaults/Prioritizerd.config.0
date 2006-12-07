@@ -1,3 +1,4 @@
+
 <output>
 printToScreen#I1=1;
 verbosity#I1=1;
@@ -5,7 +6,7 @@ verbosity#I1=1;
 
 
 <prioritizerd>
-hornThresh#F1=400;
+hornThresh#F1=300;
 hornDiscWidth#I1=20;
 hornSectorWidth#I1=3;
 coneThresh#F1=250;
@@ -28,6 +29,6 @@ RMSevents#I1=12;
 WindowCut#I1=20;
 BeginWindow#I1=50;
 EndWindow#I1=50;
-MethodMask#I1=103;
+MethodMask#I1=6247;
 NuCut#I1=1000;
 </prioritizerd>
