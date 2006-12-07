@@ -1268,14 +1268,14 @@ int determinePriority(){
 //
 //
      //xcorr peak boxcar method
-     if ((MethodMask &0x21)!=0 && priority==5){
+     if ((MethodMask &0x21)!=0 && (priority==5 || priority==6)){
 	  PeakBoxcarAll(&theXcorr,&theBoxcar,
 			hornDiscWidth,hornGuardOffset,
 			hornGuardWidth,hornGuardThresh,
 			coneDiscWidth,coneGuardOffset,
 			coneGuardWidth,coneGuardThresh);
      }
-     if ((MethodMask & 0x1)!=0 && priority==5){
+     if ((MethodMask & 0x1)!=0 && (priority==5 || priority==6)){
 //			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
 //						 hornSectorWidth);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
@@ -1299,7 +1299,7 @@ int determinePriority(){
 	  /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
      }
      //xcorr peak boxcar method with narrowed sector
-     if ((MethodMask & 0x20)!=0  && priority==5){
+     if ((MethodMask & 0x20)!=0  && (priority==5 || priority==6)){
 //			FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
 //					   hornSectorWidth-1);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
@@ -1323,7 +1323,7 @@ int determinePriority(){
 	  /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
      }
 
-     if (priority == 5){ //consider promotion
+     if (priority == 5 || priority==6){ //consider promotion
 	  if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
 	       //3 for 3 in both rings
 	       priority=1;
