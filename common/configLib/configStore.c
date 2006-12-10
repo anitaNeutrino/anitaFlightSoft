@@ -405,10 +405,12 @@ ConfigErrorCode configStore (
       if (status == -1) {
 	  /*errMessage = kvpErrorString (kvpError()) ;*/
          syslog (LOG_ERR,"storeConfig: kvpWrite failed %s",kvpErrorString (kvpError()) ) ;
+	 close(config);
          return (CONFIG_E_KVP) ;
       }
       snprintf (tag, BLOCKNAME_MAX+3, "\n</%s>\n", blockName) ;
       write (config, tag, strlen (tag)) ;
+      close(config);
       return (CONFIG_E_OK) ;
    }
 }
@@ -460,10 +462,12 @@ ConfigErrorCode configAppend (
       if (status == -1) {
 	  /*errMessage = kvpErrorString (kvpError()) ;*/
          syslog (LOG_ERR,"configAppend: kvpWrite failed %s",kvpErrorString (kvpError()) ) ;
+	 close(config);
          return (CONFIG_E_KVP) ;
       }
       snprintf (tag, BLOCKNAME_MAX+3, "\n</%s>\n", blockName) ;
       write (config, tag, strlen (tag)) ;
+      close(config);
       return (CONFIG_E_OK) ;
    }
 }
