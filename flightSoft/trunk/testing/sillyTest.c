@@ -76,6 +76,7 @@ int main (void)
     printf("Size of QueueStruct_t: %d\n",sizeof(QueueStruct_t));
     printf("Size of MonitorStruct_t: %d\n",sizeof(MonitorStruct_t));
     printf("Size of OtherMonitorStruct_t: %d\n",sizeof(OtherMonitorStruct_t));
+    printf("Size of RunStart_t: %d\n",sizeof(RunStart_t));
     printf("Size of LabChipChannelPedStruct_t: %d\n",sizeof(LabChipChannelPedStruct_t));
     printf("Size of FullLabChipPedStruct_t: %d\n",sizeof(FullLabChipPedStruct_t));
     printf("Size of FullPedStruct_t: %d\n",sizeof(FullPedStruct_t));
