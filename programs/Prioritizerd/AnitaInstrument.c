@@ -491,26 +491,25 @@ void DiscriminateChannels(AnitaInstrument3_t *in,
      dhornthresh= ((double) hornthresh)/100.;
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
-//	       thresh = (int)(RMS(in->topRing[phi][pol])*dhornthresh); 
-	       thresh = dhornthresh;
+	       thresh = (int)(RMS(in->topRing[phi][pol])*dhornthresh); 
 	       Discriminate(in->topRing[phi][pol],&(out->topRing[phi][pol]),
 			    thresh,hornwidth);
-	       // thresh = (int)(RMS(in->botRing[phi][pol])*dhornthresh); 
+	       thresh = (int)(RMS(in->botRing[phi][pol])*dhornthresh); 
 	       Discriminate(in->botRing[phi][pol],&(out->botRing[phi][pol]),
 			    thresh,hornwidth);
 	  }
      }
 	  
-/*      for (i=0; i<4; i++){	        */
-/* 	  thresh= (int)(RMS(in->bicone[i])  */
-/* 			* (double) conethresh/100.); */
-/* 	  Discriminate(in->bicone[i],&(out->bicone[i]), */
-/* 		       thresh,conewidth); */
-/* 	  thresh= (int)(RMS(in->discone[i])  */
-/* 			* (double) conethresh/100.); */
-/* 	  Discriminate(in->discone[i],&(out->discone[i]), */
-/* 		       thresh,conewidth); */
-/*      } */
+     for (i=0; i<4; i++){	       
+	  thresh= (int)(RMS(in->bicone[i]) 
+			* (double) conethresh/100.);
+	  Discriminate(in->bicone[i],&(out->bicone[i]),
+		       thresh,conewidth);
+	  thresh= (int)(RMS(in->discone[i]) 
+			* (double) conethresh/100.);
+	  Discriminate(in->discone[i],&(out->discone[i]),
+		       thresh,conewidth);
+     }
 	  
 }
 
@@ -524,28 +523,28 @@ void DiscriminateFChannels(AnitaInstrumentF_t *in,
      fhornthresh= ((float) hornthresh)/100.;
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
-	       //      thresh = (RMSF(&(in->topRing[phi][pol]))*fhornthresh); 
-	       thresh=fhornthresh;
+	       thresh = (RMSF(&(in->topRing[phi][pol]))*fhornthresh); 
+//	       printf("thresh %f\n",thresh);
 	       DiscriminateF(&(in->topRing[phi][pol]),
 			     &(out->topRing[phi][pol]),
 			     thresh,hornwidth);
-	       //thresh = (RMSF(&(in->botRing[phi][pol]))*fhornthresh); 
+	       thresh = (RMSF(&(in->botRing[phi][pol]))*fhornthresh); 
 	       DiscriminateF(&(in->botRing[phi][pol]),
 			     &(out->botRing[phi][pol]),
 			     thresh,hornwidth);
 	  }
      }
 	  
-    /*  for (i=0; i<4; i++){	        */
-/* 	  thresh= (RMSF(&(in->bicone[i]))  */
-/* 		   * (float) conethresh/100.); */
-/* 	  DiscriminateF(&(in->bicone[i]),&(out->bicone[i]), */
-/* 			thresh,conewidth); */
-/* 	  thresh= (RMSF(&(in->discone[i]))  */
-/* 		   * (float) conethresh/100.); */
-/* 	  DiscriminateF(&(in->discone[i]),&(out->discone[i]), */
-/* 			thresh,conewidth); */
-/*      } */
+     for (i=0; i<4; i++){	       
+	  thresh= (RMSF(&(in->bicone[i])) 
+		   * (float) conethresh/100.);
+	  DiscriminateF(&(in->bicone[i]),&(out->bicone[i]),
+			thresh,conewidth);
+	  thresh= (RMSF(&(in->discone[i])) 
+		   * (float) conethresh/100.);
+	  DiscriminateF(&(in->discone[i]),&(out->discone[i]),
+			thresh,conewidth);
+     }
 	  
 }
 
@@ -560,29 +559,28 @@ void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
      fhornthresh= ((float) hornthresh)/100.;
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
-//	       thresh = (RMSF(&(in->topRing[phi][pol]))*fhornthresh); 
-	       thresh = fhornthresh;
+	       thresh = (RMSF(&(in->topRing[phi][pol]))*fhornthresh); 
 //	       printf("thresh %f\n",thresh);
 	       DiscriminateF_noup(&(in->topRing[phi][pol]),
 			     &(out->topRing[phi][pol]),
 			     thresh,hornwidth,holdoff);
-//	       thresh = (RMSF(&(in->botRing[phi][pol]))*fhornthresh); 
+	       thresh = (RMSF(&(in->botRing[phi][pol]))*fhornthresh); 
 	       DiscriminateF_noup(&(in->botRing[phi][pol]),
 			     &(out->botRing[phi][pol]),
 			     thresh,hornwidth,holdoff);
 	  }
      }
 	  
-/*      for (i=0; i<4; i++){	        */
-/* 	  thresh= (RMSF(&(in->bicone[i]))  */
-/* 		   * (float) conethresh/100.); */
-/* 	  DiscriminateF_noup(&(in->bicone[i]),&(out->bicone[i]), */
-/* 			thresh,conewidth,holdoff); */
-/* 	  thresh= (RMSF(&(in->discone[i]))  */
-/* 		   * (float) conethresh/100.); */
-/* 	  DiscriminateF_noup(&(in->discone[i]),&(out->discone[i]), */
-/* 			thresh,conewidth,holdoff); */
-/*      } */
+     for (i=0; i<4; i++){	       
+	  thresh= (RMSF(&(in->bicone[i])) 
+		   * (float) conethresh/100.);
+	  DiscriminateF_noup(&(in->bicone[i]),&(out->bicone[i]),
+			thresh,conewidth,holdoff);
+	  thresh= (RMSF(&(in->discone[i])) 
+		   * (float) conethresh/100.);
+	  DiscriminateF_noup(&(in->discone[i]),&(out->discone[i]),
+			thresh,conewidth,holdoff);
+     }
 	  
 }
 
@@ -1154,16 +1152,12 @@ int determinePriority(){
      //                             with the offending channels cut 
      // 0x800--cut on minimum SNR for peak on boxcar, bound to conethresh
      // 0x1000--boxcar smoothing of crosscorrelator
-     // 0x2000--polarization-blind smoothing
      int priority,score,score3,score4;
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks
-     if (MethodMask & 0x2000){
-	  HornMatchedFilterAllBlind(&theInstrument,&theXcorrNoBlind,&theXcorr);
-     }
-     else if (MethodMask & 0x1000){
+     if (MethodMask & 0x1000){
 	  HornMatchedFilterAllSmooth(&theInstrument,&theXcorr);
      }else{
 	  HornMatchedFilterAll(&theInstrument,&theXcorr);
@@ -1201,7 +1195,7 @@ int determinePriority(){
 // score4 is ~SLAC priority 1
 // score3 is next group of SLAC priorities
 // the nonupdating discriminator thingee is like those but rejects blast, 
-// but the blast rejector above for priority 8 seems to work well enough.
+//     but the blast rejector above for priority 8 seems to work well enough.
      if (priority==6 || (priority==7 && MethodMask&0x400)) {
           // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
@@ -1270,14 +1264,14 @@ int determinePriority(){
 //
 //
      //xcorr peak boxcar method
-     if ((MethodMask &0x21)!=0 && (priority==5 || priority==6)){
+     if ((MethodMask &0x21)!=0 && priority==5){
 	  PeakBoxcarAll(&theXcorr,&theBoxcar,
 			hornDiscWidth,hornGuardOffset,
 			hornGuardWidth,hornGuardThresh,
 			coneDiscWidth,coneGuardOffset,
 			coneGuardWidth,coneGuardThresh);
      }
-     if ((MethodMask & 0x1)!=0 && (priority==5 || priority==6)){
+     if ((MethodMask & 0x1)!=0 && priority==5){
 //			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
 //						 hornSectorWidth);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
@@ -1301,7 +1295,7 @@ int determinePriority(){
 	  /* MaxBoxAll=0;*/ MaxBoxH=0; MaxBoxV=0;
      }
      //xcorr peak boxcar method with narrowed sector
-     if ((MethodMask & 0x20)!=0  && (priority==5 || priority==6)){
+     if ((MethodMask & 0x20)!=0  && priority==5){
 //			FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
 //					   hornSectorWidth-1);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
@@ -1325,7 +1319,7 @@ int determinePriority(){
 	  /*MaxBoxAll2=0;*/ MaxBoxH2=0; MaxBoxV2=0;
      }
 
-     if (priority == 5 || priority==6){ //consider promotion
+     if (priority == 5){ //consider promotion
 	  if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
 	       //3 for 3 in both rings
 	       priority=1;
