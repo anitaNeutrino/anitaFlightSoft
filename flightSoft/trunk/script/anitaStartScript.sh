@@ -45,9 +45,9 @@ sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
 #sudo -u anita CmdTest 4
 sleep 10
 
-daemon -u anita -r Archived -n Archived
+daemon -u anita -A 20 -L 30 -r Archived -n Archived
 daemon -u anita -r Acqd -n Acqd
-daemon -u anita -r Eventd -n Eventd
+daemon -u anita -A 20 -L 30 -r Eventd -n Eventd
 daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
 daemon -u anita -r LOSd -n LOSd
