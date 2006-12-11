@@ -2371,6 +2371,17 @@ int readArchivedConfig()
 	}
 
 
+	tempNum=10;
+	kvpStatus = kvpGetIntArray("priTelemEncodingType",
+				   priTelemEncodingType,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(priTelemEncodingType): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(priTelemEncodingType): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
 
 	tempNum=10;
 	kvpStatus = kvpGetFloatArray("priorityFractionDelete",
