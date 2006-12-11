@@ -18,7 +18,7 @@ sudo -u anita cp /home/anita/flightSoft/config/defaults/GPSd.config.0 /home/anit
 #sudo -u anita cp /home/anita/flightSoft/config/defaults/LOSd.config.0 /home/anita/flightSoft/config/LOSd.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Monitord.config.0 /home/anita/flightSoft/config/Monitord.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/Playbackd.config.0 /home/anita/flightSoft/config/Playbackd.config
-sudo -u anita cp /home/anita/flightSoft/config/defaults/Priroitizerd.config.0 /home/anita/flightSoft/config/Prioritizerd.config
+sudo -u anita cp /home/anita/flightSoft/config/defaults/Prioritizerd.config.0 /home/anita/flightSoft/config/Prioritizerd.config
 sudo -u anita cp /home/anita/flightSoft/config/defaults/SIPd.config.0 /home/anita/flightSoft/config/SIPd.config
 
 #Start Cmdd and SIPd
@@ -33,10 +33,12 @@ removeAllScsiDevices.sh
 sleep 5
 removeAllScsiDevices.sh
 sleep 5
+mountPuck.sh &
+sleep 4
 mountCurrentBlade.sh &
 sleep 4
 mountCurrentUsbExt.sh &
-sleep 4
+sleep 10
 mountCurrentUsbInt.sh &
 sleep 40
 sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
