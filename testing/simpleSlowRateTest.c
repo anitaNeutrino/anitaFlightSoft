@@ -37,8 +37,8 @@ int main (int argc, char ** argv)
     printf("Read %d bytes from %s\n",numBytes,argv[1]);
 
     while(count<numBytes) {
-//	printf("%x\n",bigBuffer[count]);
-//	printf("%d of %d\n",count,numBytes);
+	printf("%x\n",bigBuffer[count]);
+	printf("%d of %d\n",count,numBytes);
 	unsigned char comm1or2=bigBuffer[count];
 	if(comm1or2==0xc1 || comm1or2==0xc2) {
 
