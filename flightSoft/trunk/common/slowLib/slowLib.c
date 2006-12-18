@@ -135,7 +135,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	for(i=0;i<numSurfHks;i++) {
 	    for(surf=0;surf<ACTIVE_SURFS;surf++) {
 		for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-		slowCalc.rfPwr[surf][chan]+=theSurfHks[i].rfPower[surf][chan];
+		    slowCalc.rfPwr[surf][chan]+=theSurfHks[i].rfPower[surf][chan];
 		}
 	    }
 	    for(surf=0;surf<TRIGGER_SURFS;surf++) {
