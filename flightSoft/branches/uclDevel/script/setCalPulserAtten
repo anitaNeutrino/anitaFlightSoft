@@ -1,0 +1,41 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+    echo "Usage `basename $0` atten <0-7>"
+    exit 0
+fi  
+
+
+VAR=$1
+atten=0
+
+if [ $VAR -eq 0 ]; then
+    atten=7
+elif [ $VAR -eq 1 ]; then
+    atten=3
+elif [ $VAR -eq 2 ]; then
+    atten=5
+elif [ $VAR -eq 3 ]; then
+    aten=1
+elif [ $VAR -eq 4 ]; then
+    atten=6
+elif [ $VAR -eq 5 ]; then
+    atten=2
+elif [ $VAR -eq 6 ]; then
+    atten=4
+elif [ $VAR -eq 7 ]; then
+    atten=0
+else 
+    echo "Usage `basename $0` attenuation <0-7>"
+    exit 0
+fi
+
+
+
+logic=`getConfigValue Hkd.config relaycontrol calpulserAttenLSB`
+port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
+channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
+
+echo $VAR $atten
+
+RelayControlPSA -n 3 $port $channel $atten

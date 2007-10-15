@@ -1,0 +1,7 @@
+#!/bin/bash
+for i in `seq 31 192`
+do
+mkdir ~/slacIce/theRuns/run${i}
+mkdir ~/slacIce/theRuns/run${i}/anita
+./slac2ice ~/slacData/theRuns/run${i}/anita/event/ev ~/slacIce/theRuns/run${i}/anita/event
+done

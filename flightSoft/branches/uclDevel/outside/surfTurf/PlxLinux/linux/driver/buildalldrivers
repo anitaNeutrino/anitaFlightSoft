@@ -1,0 +1,25 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  buildalldrivers
+#      Abstract     :  Builds all PLX drivers
+#      Last Revision:  03-01-02
+#      SDK Version  :  3.50
+#
+#-----------------------------------------------------------------------------
+
+
+clear
+
+# Remove comment to display script commands as it runs
+#set -x
+
+./builddriver 9050 $1 $2
+./builddriver 9030 $1 $2
+./builddriver 9080 $1 $2
+./builddriver 9054 $1 $2
+./builddriver 9056 $1 $2
+./builddriver 9656 $1 $2
+./builddriver 6000 $1 $2
+./builddriver PlxPci $1 $2
+
+echo
