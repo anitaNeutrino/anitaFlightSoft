@@ -30,7 +30,8 @@ int openGpsDevice(char devName[])
     if(retVal<0) return retVal;
     fd = open(devName, O_RDWR | O_NOCTTY);
     if(fd<0) { 	
-	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
+	syslog(LOG_ERR,"open %s: %s\n",devName,strerror(errno)); 
+	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
 	return -1;
     }
     retVal=setGpsTerminalOptions(fd,0);
@@ -50,7 +51,8 @@ int openGpsNtpDevice(char devName[])
     if(retVal<0) return retVal;
     fd = open(devName, O_RDWR | O_NOCTTY);
     if(fd<0) { 	
-	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
+	syslog(LOG_ERR,"open %s: %s\n",devName,strerror(errno)); 
+	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
 	return -1;
     }
     retVal=setGpsTerminalOptions(fd,1);
@@ -70,7 +72,8 @@ int openMagnetometerDevice(char devName[])
     if(retVal<0) return retVal;
     fd = open(devName, O_RDWR | O_NOCTTY);
     if(fd<0) { 	
-	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
+	syslog(LOG_ERR,"open %s: %s\n",devName,strerror(errno)); 
+	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
 	return -1;
     }
     retVal=setMagnetometerTerminalOptions(fd);
@@ -90,7 +93,8 @@ int setGpsTerminalOptions(int fd,int isNtp)
 /* port settings */
     retVal=tcgetattr(fd, &options); /* get current port settings */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcgetattr on fd %d: %s",fd,strerror(errno));
+	syslog(LOG_ERR,"tcgetattr on fd %d: %s\n",fd,strerror(errno));
+	fprintf(stderr,"tcgetattr on fd %d: %s\n",fd,strerror(errno));
 	return -1;
     }
         
@@ -124,7 +128,8 @@ int setGpsTerminalOptions(int fd,int isNtp)
  
     retVal=tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcsetattr on fd %d: %s",fd,strerror(errno));
+	syslog(LOG_ERR,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
+	fprintf(stderr,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
 	return -1;
     }
     return 0;
@@ -141,7 +146,8 @@ int setMagnetometerTerminalOptions(int fd)
 /* port settings */
     retVal=tcgetattr(fd, &options);            /* get current port settings */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcgetattr on fd %d: %s",fd,strerror(errno));
+	syslog(LOG_ERR,"tcgetattr on fd %d: %s\n",fd,strerror(errno));
+	fprintf(stderr,"tcgetattr on fd %d: %s\n",fd,strerror(errno));
 	return -1;
     }
 
@@ -160,7 +166,8 @@ int setMagnetometerTerminalOptions(int fd)
  
     retVal=tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcsetattr on fd %d: %s",fd,strerror(errno));
+	syslog(LOG_ERR,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
+	fprintf(stderr,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
 	return -1;
     }
     return 0;
@@ -178,14 +185,16 @@ int toggleCRTCTS(char devName[])
     fd = open(devName, O_RDWR | O_NOCTTY |O_NONBLOCK ); 
     if(fd<0)
     {
-	syslog(LOG_ERR,"open %s: %s",devName,strerror(errno)); 
+	syslog(LOG_ERR,"open %s: %s\n",devName,strerror(errno)); 
+	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
 	return -1;
     }
 
 /* port settings */
     retVal=tcgetattr(fd, &options);            /* get current port settings */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcgetattr on fd %d: %s",fd,strerror(errno));
+	syslog(LOG_ERR,"tcgetattr on fd %d: %s\n",fd,strerror(errno));
+	fprintf(stderr,"tcgetattr on fd %d: %s\n",fd,strerror(errno));
 	return -1;
     }
 
@@ -213,7 +222,8 @@ int toggleCRTCTS(char devName[])
  
     tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcsetattr on fd %d: %s",fd,strerror(errno));
+	syslog(LOG_ERR,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
+	fprintf(stderr,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
 	return -1;
     }
     close(fd);	
@@ -253,7 +263,8 @@ int isThereData(int filedes,struct timeval *waitTimePtr)
     numReady=select (FD_SETSIZE, &read_fd_set, NULL, NULL, waitTimePtr);
     if ( numReady< 0)
     {
-	syslog (LOG_ERR,"select on %d: %s",filedes,strerror(errno));
+	syslog (LOG_ERR,"select on %d: %s\n",filedes,strerror(errno));
+	fprintf(stderr,"select on %d: %s\n",filedes,strerror(errno));
 	return -1;
     }
     if(numReady) {

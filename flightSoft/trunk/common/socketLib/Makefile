@@ -4,8 +4,6 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-#SOFLAGS       = -shared
-
 
 LIB_OBJS         =  socketLib.o
 

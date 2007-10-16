@@ -103,7 +103,7 @@ int main (int argc, char *argv[])
     signal(SIGTERM, handleBadSigs);
 
     //Dont' wait for children
-    signal(SIGCLD, SIG_IGN); 
+    signal(SIGCHLD, SIG_IGN); 
    
     /* Load Config */
     readConfigFile();

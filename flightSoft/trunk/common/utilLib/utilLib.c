@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/types.h>
-#include <sys/vfs.h>
+//#include <sys/vfs.h>
 #include <unistd.h>
 #include <zlib.h>
 #include <fcntl.h>
@@ -27,7 +27,7 @@
 ProgramStateCode currentState;
 
 
-extern  int versionsort(const void *a, const void *b);
+//extern  int versionsort(const void *a, const void *b);
 
 int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
 char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
@@ -807,7 +807,8 @@ int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
 {
 /*     int count; */
     static int errorCounter=0;
-    int n = scandir(theEventLinkDir, namelist, filterOnDats, versionsort);
+    //RJN hack for testing on Mac OS X
+    int n = scandir(theEventLinkDir, namelist, filterOnDats, alphasort);
     if (n < 0) {
 	if(errorCounter<100) {
 	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
@@ -825,7 +826,8 @@ int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist)
 {
 /*     int count; */
     static int errorCounter=0;
-    int n = scandir(theEventLinkDir, namelist, filterOnGzs, versionsort);
+    //RJN hack for testing on Mac OS X
+    int n = scandir(theEventLinkDir, namelist, filterOnGzs, alphasort);
     if (n < 0) {
 	if(errorCounter<100) {
 	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));

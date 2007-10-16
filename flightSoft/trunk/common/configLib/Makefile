@@ -8,12 +8,11 @@
 #-------------------------------------------------------------------------
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
-SOFLAGS       = -shared
 
 LIB_OBJS =  configLoad.o configStore.o configError.o configFileSpec.o
 
 Name = libConfig
-DynLib  = $(ANITA_LIB_DIR)/$(Name).so
+DynLib  = $(ANITA_LIB_DIR)/$(Name).${DllSuf}
 Library = $(ANITA_LIB_DIR)/$(Name).a
 
 all: $(Library) $(DynLib)
