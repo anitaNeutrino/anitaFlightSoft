@@ -4,9 +4,6 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-#SOFLAGS       = -shared
-
-
 LIB_OBJS         =  serialLib.o
 
 Target       = $(ANITA_LIB_DIR)/libSerial.a

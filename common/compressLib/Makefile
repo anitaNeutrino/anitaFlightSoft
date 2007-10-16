@@ -4,12 +4,10 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-SOFLAGS       = -shared
-
 
 LIB_OBJS         =  compressLib.o pack12bit.o fibonacci.o compUtils.o mulaw.o
 Library       = $(ANITA_LIB_DIR)/libCompress.a
-DynLib = $(ANITA_LIB_DIR)/libCompress.so
+DynLib = $(ANITA_LIB_DIR)/libCompress.${DllSuf}
 TestProgs     =  ftest btest packtest unpacktest testmedian packwavetest unpackwavetest
 all: $(Library) $(DynLib)
 test: ${TestProgs}

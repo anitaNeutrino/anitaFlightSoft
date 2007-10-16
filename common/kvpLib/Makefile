@@ -8,12 +8,11 @@
 #-------------------------------------------------------------------------
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
-SOFLAGS       = -shared
 
 LIB_OBJS         =  keyValuePair.o
 
 Name = libkvp
-DynLib  = $(ANITA_LIB_DIR)/$(Name).so
+DynLib  = $(ANITA_LIB_DIR)/$(Name).${DllSuf}
 Library = $(ANITA_LIB_DIR)/$(Name).a
 
 all: $(Library) $(DynLib)

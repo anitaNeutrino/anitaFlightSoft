@@ -4,14 +4,11 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-SOFLAGS       = -shared
-
-
 LIB_OBJS         =  slowLib.o
 
 Name = libSlow
 Library  = $(ANITA_LIB_DIR)/$(Name).a
-DynLib  = $(ANITA_LIB_DIR)/$(Name).so
+DynLib  = $(ANITA_LIB_DIR)/$(Name).${DllSuf}
 
 
 all: $(Library) $(DynLib)
