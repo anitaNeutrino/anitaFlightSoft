@@ -108,21 +108,29 @@ void printUsage(char *progName) {
   printf("Command line options:\n");
   printf("\t-r <rate>\tSet event rate (i.e. TTT rate) in Hz\n");
   printf("\t-b\t\tEnable broken mode\n");
+  printf("\t-s <rate>\tSet $LIMIT_IS_REACHED rate in Hz (enables broken mode)\n");
   printf("\t-h\t\tShow this message\n");
 }
 
 int main (int argc, char *argv[])
 {
+  float limitRate=0;
   float rate=4;
   char clswitch;
   if(argc>1) {
     //Got some command line args, we should do thingies
-    while((clswitch = getopt(argc, argv, "hbr:")) != -1) {
+    while((clswitch = getopt(argc, argv, "hbr:s:")) != -1) {
       
       switch(clswitch) {
       case 'b':
 	printf("Switching to broken mode\n");
 	justSendLimitIsReached=1;
+	break;	
+      case 's':
+	justSendLimitIsReached=1;
+	limitRate=atof(optarg);
+	printf("Switching to broken mode\n");
+	printf("Sending $LIMIT_IS_REACHED messages at %f\n",limitRate);
 	break;	
       case 'r':
 	rate=atof(optarg);
@@ -158,10 +166,22 @@ int main (int argc, char *argv[])
     //    retVal=setupG12Ntp();
     //    retVal=setupAdu5();
     
+    double usleepPeriod=0;
+    if(limitRate>0) {
+      usleepPeriod=1e6/limitRate;
+    }
+
     while(1) {
-      serviceG12();
       serviceAdu5();
-      usleep(1);
+      if(limitRate>0) {
+	sendLimitIsReached(fdG12);
+	sendLimitIsReached(fdG12Ntp);
+	usleep(usleepPeriod);
+      }
+      else {
+	serviceG12();
+	usleep(1);
+       } 
     }
     return 0;
 }
@@ -390,32 +410,32 @@ int serviceAdu5()
   if(fTime>=lastGPPAT+adu5PatPeriod) {
     //  printf("%d\t%d\t%f\n",curTime,lastPOS,g12PosPeriod);
     lastGPPAT=fTime;
-    if(justSendLimitIsReached)
-      sendLimitIsReached(fdAdu5);
-    else 
-      sendAdu5PAT(curTime,-70.68,175.0,30456.2);
+    //    if(justSendLimitIsReached)
+    //      sendLimitIsReached(fdAdu5);
+    //    else 
+    sendAdu5PAT(curTime,-70.68,175.0,30456.2);
   }
   if(fTime>=lastGPVTG+adu5VtgPeriod) {
     //  printf("%d\t%d\t%f\n",curTime,lastPOS,g12PosPeriod);
     lastGPVTG=fTime;
-    if(justSendLimitIsReached)
-      sendLimitIsReached(fdAdu5);
-    else 
-      sendAdu5VTG(curTime);
+    //    if(justSendLimitIsReached)
+    //      sendLimitIsReached(fdAdu5);
+    //    else 
+    sendAdu5VTG(curTime);
   }
   if(curTime>=lastSAT+(int)adu5SatPeriod) {
     lastSAT=curTime;
-    if(justSendLimitIsReached)
-      sendLimitIsReached(fdAdu5);
-    else 
-      sendAdu5Sat();
+    //    if(justSendLimitIsReached)
+    //      sendLimitIsReached(fdAdu5);
+    //    else 
+    sendAdu5Sat();
   }
   if(fTime>=lastTtt+adu5TttPeriod) {
     lastTtt=fTime;
-    if(justSendLimitIsReached)
-      sendLimitIsReached(fdAdu5);
-    else 
-      sendAdu5TTT(fTime);
+    //    if(justSendLimitIsReached)
+    //      sendLimitIsReached(fdAdu5);
+    //    else 
+    sendAdu5TTT(fTime);
   }
 
   
@@ -734,11 +754,12 @@ int sendAdu5Sat()
 void sendLimitIsReached(int thisFd)
 {						
   char gpsString[180];
-  sprintf(gpsString,"LIMIT IS REACHED*00");
+  int retVal=0;
+  sprintf(gpsString,"$LIMIT IS REACHED*00");
   addChecksum(gpsString,strlen(gpsString));
   //  int retVal=checkChecksum(gpsString,strlen(gpsString));
 #ifdef NO_SERIAL
-    fprintf(stderr,"%s\n",gpsString);
+    retVal=fprintf(stderr,"%s\n",gpsString);
 #else
     retVal=write(thisFd,gpsString,strlen(gpsString));
     if(retVal<0) {
