@@ -277,7 +277,7 @@ int openDevices()
     }
     else fdG12=retVal;
 
-    retVal=openGpsDevice(G12_NTP_PORT);
+    retVal=openGpsNtpDevice(G12_NTP_PORT);
     if(retVal<=0) {
 	//syslog(LOG_ERR,"Couldn't open: %s\n",G12_NTP_PORT);
 	if(1) printf("Couldn't open: %s\n",G12_NTP_PORT);
