@@ -10,6 +10,8 @@
 #export CVSROOT=:ext:rjn@auger1.mps.ohio-state.edu:/work1/anitaCVS
 #export CVS_RSH=ssh
 
+
+
 ## Where is the main directory
 export ANITA_FLIGHT_SOFT_DIR=/home/anita/flightSoft
 

@@ -75,8 +75,8 @@ FFTW_LIB = -L$(ANITA_FLIGHT_SOFT_DIR)/outside/fftw/lib -lfftw3
 all: $(Target)
 
 %.$(ObjSuf) : %.$(SrcSuf)
-	@echo "<**Compiling**> "$<
-	@$(CC) $(CCFLAGS) -c $< -o  $@
+	@echo "<**Compiling****> "$<
+	$(CC) $(CCFLAGS) -c $< -o  $@
 
 objclean:
 	@-rm -f *.o
