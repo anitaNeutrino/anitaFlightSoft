@@ -189,6 +189,7 @@ unsigned int antTrigMask=0;
 
 //Test of BarMap
 //U32 barMapDataWord[ACTIVE_SURFS];
+//RJN comment should this int be a U32 or a void?
 __volatile__ int *barMapAddr[ACTIVE_SURFS];
 __volatile__ int *turfBarMap;
 
@@ -216,13 +217,13 @@ int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
 
 int main(int argc, char **argv) {
     char reniceCommand[FILENAME_MAX];
-    PlxHandle_t surfHandles[MAX_SURFS];
-    PlxHandle_t turfioHandle;
-    PlxHandle_t lint1Handle;
-    PlxIntr_t plxIntr, plxState;
-    PlxDevLocation_t surfLocation[MAX_SURFS];
-    PlxDevLocation_t turfioLocation;
-    PlxReturnCode_t rc;
+    PlxDevObject_t surfHandles[MAX_SURFS];
+    PlxDevObject_t turfioHandle;
+    PlxNotifyObject_t lint1Handle;
+    PlxInterrupt_t plxIntr, plxState;
+    PlxDevKey_t surfKey[MAX_SURFS];
+    PlxDevKey_t turfioKey;
+    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     int retVal=0;
 //    unsigned short  dataWord=0;
@@ -326,42 +327,42 @@ int main(int argc, char **argv) {
 
     // Initialize devices
     if ((numDevices = initializeDevices(surfHandles,&turfioHandle,
-					surfLocation,&turfioLocation)) < 0) {
+					surfKey,&turfioKey)) < 0) {
 	if(printToScreen) printf("Problem initializing devices\n");
 	syslog(LOG_ERR,"Error initializing devices");
 	return -1 ;
     }
 
     
-    rc = setBarMap(surfHandles,turfioHandle);
+    rc = setBarMap(surfHandles,&turfioHandle);
     if(rc!=ApiSuccess) {
 	printf("Error setting bar map\n");
     }
 
     
     // Initialize interrupt structure.
-    memset(&plxIntr, 0, sizeof(PlxIntr_t)) ;
-    memset(&plxState, 0, sizeof(PlxIntr_t)) ;
+    memset(&plxIntr, 0, sizeof(PlxInterrupt_t)) ;
+    memset(&plxState, 0, sizeof(PlxInterrupt_t)) ;
     
-    plxIntr.IopToPciInt = 1 ;    // LINT1 interrupt line 
-    plxIntr.IopToPciInt_2 = 1 ;  // LINT2 interrupt line 
-    plxIntr.PciMainInt = 1 ;
+    plxIntr.LocalToPci_1 = 1 ;    // LINT1 interrupt line 
+    plxIntr.LocalToPci_2 = 1 ;  // LINT2 interrupt line 
+    plxIntr.PciMain = 1 ;
 
-    /*    if (PlxRegisterWrite(PlxHandle, PCI9030_INT_CTRL_STAT, 0x00300000 )  */
+    /*    if (PlxPci_PlxRegisterWrite(PlxHandle, PCI9030_INT_CTRL_STAT, 0x00300000 )  */
     /*        != ApiSuccess)  */
     /*      printf("  failed to reset interrupt control bits.\n") ;  */
 
     if(useInterrupts) {
-	if (PlxIntrDisable(surfHandles[0], &plxIntr) != ApiSuccess)
+	if (PlxPci_InterruptDisable(&surfHandles[0], &plxIntr) != ApiSuccess)
 	    printf(" Failed to disable interrupt.\n") ;
-	plxIntr.IopToPciInt_2 = 0 ;  // LINT2 interrupt line 
+	plxIntr.LocalToPci_2 = 0 ;  // LINT2 interrupt line 
     }
 
 
 //Reprogram TURF if desired
     if (reprogramTurf) {
 	printf("Reprogramming Turf\n");
-	setTurfControl(turfioHandle,RprgTurf) ;
+	setTurfControl(&turfioHandle,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
     //renice process
@@ -376,7 +377,7 @@ int main(int argc, char **argv) {
     do {
 	unsigned int tempTrigMask=antTrigMask;
 	// Clear devices 
-	clearDevices(surfHandles,turfioHandle);
+	clearDevices(surfHandles,&turfioHandle);
 	antTrigMask=tempTrigMask;
 
 	if(!reInitNeeded) {
@@ -390,7 +391,7 @@ int main(int argc, char **argv) {
 	slipCounter=0;
 
 	//Send software trigger
-	setTurfControl(turfioHandle,SendSoftTrg);
+	setTurfControl(&turfioHandle,SendSoftTrg);
 
 	// Set trigger modes
 	//RF and Software Triggers enabled by default
@@ -398,7 +399,7 @@ int main(int argc, char **argv) {
 	if(pps1TrigFlag) trigMode|=TrigPPS1;
 	if(pps2TrigFlag) trigMode|=TrigPPS2;
 	// RJN debugging
-//	setTurfControl(turfioHandle,SetTrigMode);
+//	setTurfControl(&turfioHandle,SetTrigMode);
 
 
 	theSurfHk.globalThreshold=0;
@@ -445,7 +446,7 @@ int main(int argc, char **argv) {
 
 	//Write RFCM Mask
 
-	writeAntTrigMask(turfioHandle);
+	writeAntTrigMask(&turfioHandle);
 	
 
 	//Set Thresholds
@@ -521,7 +522,7 @@ int main(int argc, char **argv) {
 	    //Send software trigger if we want to
 	    if(sendSoftTrigger && doingEvent>=0) {
 		if(!softTrigSleepPeriod || (time(NULL)-lastSofTrigTime)>softTrigSleepPeriod) {		    		
-		    setTurfControl(turfioHandle,SendSoftTrg);
+		    setTurfControl(&turfioHandle,SendSoftTrg);
 		    lastSofTrigTime=time(NULL);
 		}
 	    }
@@ -531,25 +532,25 @@ int main(int argc, char **argv) {
 	    // Otherwise, API disables LINT1 and waiting for it 
 	    // will time out.   21-Jan-05, SM. 
 	    if (useInterrupts) {
-		if (PlxIntrAttach(surfHandles[0], plxIntr, &lint1Handle) 
+		if (PlxPci_NotificationRegisterFor(&surfHandles[0], &plxIntr, &lint1Handle) 
 		    != ApiSuccess)
 		    printf(" failed to attatch interrupt. \n") ;
 		
-		if (PlxIntrEnable(surfHandles[0], &plxIntr) != ApiSuccess)
+		if (PlxPci_InterruptEnable(&surfHandles[0], &plxIntr) != ApiSuccess)
 		    printf("  failed to enable interrupt.\n") ;
 		if(verbosity>1 && printToScreen) {
-		    tmpGPIO=PlxRegisterRead(surfHandles[0], 
+		    tmpGPIO=PlxPci_PlxRegisterRead(&surfHandles[0], 
 					    PCI9030_GP_IO_CTRL, &rc);
 		    printf("SURF %d GPIO (after INTR attachment) : 0x%o %d\n",
 			   surfIndex[0],tmpGPIO,tmpGPIO);
 		    
-		    tmpINTR=PlxRegisterRead(surfHandles[0],
+		    tmpINTR=PlxPci_PlxRegisterRead(&surfHandles[0],
 					    PCI9030_INT_CTRL_STAT, &rc); 
 		    printf("INTR Reg (after INTR attachment) contents SURF %d = %x\n",
 			   surfIndex[i],tmpINTR);
 		}
 		
-		if (setSurfControl(surfHandles[0], IntEnb) != ApiSuccess)
+		if (setSurfControl(&surfHandles[0], IntEnb) != ApiSuccess)
 		    printf("  failed to send IntEnb pulse to SURF %d.\n",i) ;
 	    }
 
@@ -565,14 +566,14 @@ int main(int argc, char **argv) {
 		if(printToScreen) 
 		    printf("Using Interrupt Logic\n");
 		//wait for an interrupt on LINT1 line.  worked, 21-Jan-05
-		switch(PlxIntrWait(surfHandles[0],lint1Handle,N_TMO_INT)) {
+		switch(PlxPci_NotificationWait(&surfHandles[0],&lint1Handle,N_TMO_INT)) {
 		    case ApiSuccess:
 			if(printToScreen)
 			    printf("\tGot Interrput!\n");
 			break;
 		    case ApiWaitTimeout:
 			// any setSurfControl call will reset IntEnb
-			if(setSurfControl(surfHandles[0],RDMode) !=
+			if(setSurfControl(&surfHandles[0],RDMode) !=
 			   ApiSuccess) {
 			    printf("Failed to set RDMode (reset IntEnb) on SURF %d \n",surfIndex[0]);
 			}
@@ -583,12 +584,12 @@ int main(int argc, char **argv) {
 			printf(" interrupt wait was canceled ") ;
 			printf("(likely indicates attach failure).\n") ;
 		    case ApiFailed :
-		    default: printf(" API failed for PlxIntrWait.\n") ;
+		    default: printf(" API failed for PlxPci_NotificationWait.\n") ;
 			exit(1) ;
 		}
 	    
 		if(printToScreen && verbosity>1) {		
-		    tmpINTR=PlxRegisterRead(surfHandles[0],
+		    tmpINTR=PlxPci_PlxRegisterRead(&surfHandles[0],
 					    PCI9030_INT_CTRL_STAT, &rc); 
 		    printf("INTR Reg (after INTR wait) contents SURF %d = %x\n",
 			   surfIndex[i],tmpINTR);
@@ -601,7 +602,7 @@ int main(int argc, char **argv) {
 		    if(verbosity && printToScreen) 
 			printf("Wait for EVT_RDY on SURF %d\n",surfIndex[0]);
 		    do {
-			tmpGPIO=PlxRegisterRead(surfHandles[0], 
+			tmpGPIO=PlxPci_PlxRegisterRead(&surfHandles[0], 
 						PCI9030_GP_IO_CTRL, &rc);
 			if(verbosity>3 && printToScreen) 
 			    printf("SURF %d GPIO: 0x%o %d\n",
@@ -702,7 +703,7 @@ int main(int argc, char **argv) {
 				    lastSurfHkRead=timeStruct;
 				    status=readSurfHkData(surfHandles);
 				    for(surf=0;surf<numSurfs;++surf)
-					if (setSurfControl(surfHandles[surf], 
+					if (setSurfControl(&surfHandles[surf], 
 							   SurfClearHk) 
 					    != ApiSuccess)
 					    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
@@ -782,7 +783,7 @@ int main(int argc, char **argv) {
 
 
 //Now load event into ram
-	    if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
+	    if (setTurfControl(&turfioHandle,TurfLoadRam) != ApiSuccess)
 		printf("  failed to send clear event pulse on TURFIO.\n") ;
 	    
 //	    if(sendSoftTrigger) {
@@ -846,7 +847,7 @@ int main(int argc, char **argv) {
 		
 		    //Will change to SurfClearHk
 		    for(surf=0;surf<numSurfs;++surf)
-			if (setSurfControl(surfHandles[surf], 
+			if (setSurfControl(&surfHandles[surf], 
 					   SurfClearHk) 
 			    != ApiSuccess)
 			    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
@@ -892,9 +893,9 @@ int main(int argc, char **argv) {
 	    fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    if(turfFirmwareVersion<=2) 
-		status+=readTurfEventDataVer2(turfioHandle);
+		status+=readTurfEventDataVer2(&turfioHandle);
 	    else
-		status+=readTurfEventDataVer3(turfioHandle);
+		status+=readTurfEventDataVer3(&turfioHandle);
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
 //	    fprintf(stderr,"readTurfEventData -- end %ld s, %ld ms\n",timeStruct2.tv_sec,timeStruct2.tv_usec);
@@ -1028,11 +1029,11 @@ int main(int argc, char **argv) {
 	    int tempInd;
 	    for(tempInd=0;tempInd<numSurfs;tempInd++) {
 		surf=surfClearIndex[tempInd];
-		if (setSurfControl(surfHandles[surf], SurfClearEvent) != ApiSuccess)
+		if (setSurfControl(&surfHandles[surf], SurfClearEvent) != ApiSuccess)
 		    printf("  failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
 	    }
 //	    if(!surfonly)
-//		if (setTurfControl(turfioHandle,TurfLoadRam) != ApiSuccess)
+//		if (setTurfControl(&turfioHandle,TurfLoadRam) != ApiSuccess)
 //		    printf("  failed to send clear event pulse on TURFIO.\n") ;
 	    
 #ifdef TIME_DEBUG
@@ -1075,10 +1076,14 @@ int main(int argc, char **argv) {
     } while(currentState==PROG_STATE_INIT);
 
 
-    unsetBarMap(surfHandles,turfioHandle);
+    unsetBarMap(surfHandles,&turfioHandle);
     // Clean up
     for(surf=0;surf<numSurfs;surf++)
-	PlxPciDeviceClose(surfHandles[surf] );
+	PlxPci_DeviceClose(&surfHandles[surf] );
+
+    //RJN comment 27th March 2008
+    //Why don't we close turfio here
+
 
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);
@@ -1163,7 +1168,7 @@ char *turfControlActionAsString(TurfControlAction_t action) {
     return string;
 }
 
-PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t action)
+PlxStatus_t setSurfControl(PlxDevObject_t *surfHandlePtr, SurfControlAction_t action)
 {
     //These numbers are octal
     
@@ -1179,10 +1184,10 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
     
  
     U32           gpioVal ;
-    PlxReturnCode_t   rc ;
+    PlxStatus_t   rc ;
 
     // Read current GPIO state
-//    U32 gpioVal=PlxRegisterRead(surfHandle, PCI9030_GP_IO_CTRL, &rc) ; 
+//    U32 gpioVal=PlxPci_PlxRegisterRead(surfHandlePtr, PCI9030_GP_IO_CTRL, &rc) ; 
 
     //Make RD mode the default
     baseVal|=rdWrFlag;
@@ -1205,7 +1210,7 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
 	printf(" setSurfControl: action %s, gpio= %o\n", 
 	       surfControlActionAsString(action), gpioVal) ; 
 
-    if ((rc = PlxRegisterWrite(surfHandle, PCI9030_GP_IO_CTRL, gpioVal ))
+    if ((rc = PlxPci_PlxRegisterWrite(surfHandlePtr, PCI9030_GP_IO_CTRL, gpioVal ))
 	!= ApiSuccess) {
 	syslog(LOG_ERR,"setSurfControl: failed to set GPIO to %o.\n", gpioVal);
 	if(printToScreen)
@@ -1214,12 +1219,12 @@ PlxReturnCode_t setSurfControl(PlxHandle_t surfHandle, SurfControlAction_t actio
     }
     if (SurfClearHk < action && action < DACLoad) return rc ; 
     //Reset GPIO to base val
-    return PlxRegisterWrite(surfHandle, PCI9030_GP_IO_CTRL, baseVal ) ;
+    return PlxPci_PlxRegisterWrite(surfHandlePtr, PCI9030_GP_IO_CTRL, baseVal ) ;
 
 }
 
 
-PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t action) {
+PlxStatus_t setTurfControl(PlxDevObject_t *turfioHandlePtr, TurfControlAction_t action) {
 
     //These numbers are octal
     U32 baseClr          = 0022222222 ;
@@ -1233,7 +1238,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
     U32 clearAll         = 0040000000 ;
 
     U32           gpioVal,baseVal ;
-    PlxReturnCode_t   rc ;
+    PlxStatus_t   rc ;
     int i ;
 
     static int first=1;
@@ -1241,18 +1246,18 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
 //    exit(0);
     if(first) {
 	gpioVal=baseClr;    
-	if ((rc = PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, gpioVal ))
+	if ((rc = PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, gpioVal ))
 	    != ApiSuccess) {
 	    syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%d).\n", gpioVal,rc);
 	    if(printToScreen)
 		printf(" setTurfControl : failed to set GPIO to %o\t (%d).\n", gpioVal,rc) ;
 	    return rc ;
 	}
-	if(printToScreen) printf("First read of TURF GPIO: %o\n", PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc));
+	if(printToScreen) printf("First read of TURF GPIO: %o\n", PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc));
 	first=0;
     }
     // Read current GPIO state
-    baseVal=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc) ; 
+    baseVal=PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc) ; 
     
     if(trigMode&TrigPPS1) baseVal |= enablePPS1Trig;
     if(trigMode&TrigPPS2) baseVal |= enablePPS2Trig;
@@ -1279,7 +1284,7 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
 	printf("setTurfControl: action %s, gpioVal = %o\n", 
 	       turfControlActionAsString(action), gpioVal) ; 
 
-    if ((rc = PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, gpioVal ))
+    if ((rc = PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, gpioVal ))
 	!= ApiSuccess) {
 	syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%d).\n", gpioVal,rc);
 	if(printToScreen)
@@ -1290,84 +1295,97 @@ PlxReturnCode_t setTurfControl(PlxHandle_t turfioHandle, TurfControlAction_t act
     if (action == RprgTurf)  /* wait a while in case of RprgTurf. */
 	for(i=0 ; i++<10 ; usleep(1)) ;
 
-    return PlxRegisterWrite(turfioHandle, PCI9030_GP_IO_CTRL, baseVal ) ;
+    return PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, baseVal ) ;
 
 }
 
-void copyPlxLocation(PlxDevLocation_t *dest, PlxDevLocation_t source)
-{
-    int count;
-    dest->BusNumber=source.BusNumber;
-    dest->SlotNumber=source.SlotNumber;
-    dest->DeviceId=source.DeviceId;
-    dest->VendorId=source.VendorId;
-    for(count=0;count<12;count++)
-	dest->SerialNumber[count]=source.SerialNumber[count];
 
-}
-
-int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDevLocation_t *surfLoc, PlxDevLocation_t *turfioLoc)
+int initializeDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr, PlxDevKey_t *surfKey, PlxDevKey_t *turfioKey)
 /*! 
   Initializes the SURFs and TURFIO, returns the number of devices initialized.
 */
 {
     
     int surfNum,countSurfs=0;
-    U32  numDevices,i ;
-    PlxDevLocation_t tempLoc;
-    PlxReturnCode_t rc;
+    U8  numDevices,i ;
+    PlxDevKey_t tempKey;
+    PlxStatus_t rc;
     //  U32  n=0 ;  /* this is the numebr of board from furthest from CPU. */
 
-    tempLoc.BusNumber       = (U8)-1;
-    tempLoc.SlotNumber      = (U8)-1;
-    tempLoc.VendorId        = (U16)-1;
-    tempLoc.DeviceId        = (U16)-1;
-    tempLoc.SerialNumber[0] = '\0';
+    //Note that the Plx VendorID is 0x10b5
+
+    tempKey.bus       = PCI_FIELD_IGNORE;
+    tempKey.slot      = PCI_FIELD_IGNORE;
+    tempKey.function      = PCI_FIELD_IGNORE;
+    tempKey.VendorId        = PCI_FIELD_IGNORE;
+    tempKey.DeviceId        = PCI_FIELD_IGNORE;
+    tempKey.SubVendorId = PCI_FIELD_IGNORE;
+    tempKey.SubDeviceId = PCI_FIELD_IGNORE;
+    tempKey.Revision = PCI_FIELD_IGNORE;
    
-    /* need to go through PlxPciDeviceFind twice.  1st for counting devices
+    //RJN comment not sure this works may have to manually loop through to find number of devices.
+    //Will probably change this to actual use the SURF Ids at some point (but not right now)
+
+    /* need to go through PlxPci_DeviceFind twice.  1st for counting devices
        with "numDevices=FIND_AMOUNT_MATCHED" and 2nd to get device info. */
 
-    numDevices = FIND_AMOUNT_MATCHED;
-    if (PlxPciDeviceFind(&tempLoc, &numDevices) != ApiSuccess ||
-	numDevices > 13) return -1 ;
-    if (verbosity && printToScreen) printf("initializeDevices: found %d PLX devices.\n", numDevices) ;
+    numDevices = 0;
+    for(i=0;i<20;i++) {
+	if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess)
+	    break;
+	if(verbosity & printToScreen) {
+	    printf("Found device at (Bus %d -- Slot %X)\n",
+		   tempKey.bus,tempKey.slot);
 
+	}
+	numDevices=i+1;
+    }
+    
+    if(numDevices > 13) {
+	//Add syslog here
+	return -1 ;
+    }
+    if (verbosity && printToScreen) printf("initializeDevices: found %d PLX devices.\n", numDevices) ;
+	    
     /* Initialize SURFs */    
     for(surfNum=0;surfNum<MAX_SURFS;surfNum++) {
 	if(surfPos[surfNum].bus<0 || surfPos[surfNum].slot<0) continue;
 	i=0;
-	tempLoc.BusNumber       = surfPos[surfNum].bus;
-	tempLoc.SlotNumber      = surfPos[surfNum].slot;
-	tempLoc.VendorId        = (U16)-1;
-	tempLoc.DeviceId        = (U16)-1;
-	tempLoc.SerialNumber[0] = '\0';
-	if (PlxPciDeviceFind(&tempLoc, &i) != ApiSuccess) {
+	tempKey.bus       = surfPos[surfNum].bus;
+	tempKey.slot      = surfPos[surfNum].slot;
+	tempKey.function      = PCI_FIELD_IGNORE;
+	tempKey.VendorId        = PCI_FIELD_IGNORE;
+	tempKey.DeviceId        = PCI_FIELD_IGNORE;
+	tempKey.SubVendorId = PCI_FIELD_IGNORE;
+	tempKey.SubDeviceId = PCI_FIELD_IGNORE;
+	tempKey.Revision = PCI_FIELD_IGNORE;
+	if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess) {
 	    //syslog
 	    printf("Couldn't find SURF %d (Bus %d -- Slot %X)\n",
 		   surfNum+1,surfPos[surfNum].bus,surfPos[surfNum].slot);
 	}
 	else {	    
 	    // Got a SURF
-/* 		printf("tempLoc[%d] %d %d \t surfPos[%d] %d %d\n", */
-/* 		       i,tempLoc[i].BusNumber,tempLoc[i].SlotNumber,surfNum, */
+/* 		printf("tempKey[%d] %d %d \t surfPos[%d] %d %d\n", */
+/* 		       i,tempKey[i].bus,tempKey[i].slot,surfNum, */
 /* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */		       	    	    
-	    copyPlxLocation(&surfLoc[countSurfs],tempLoc);
+	    surfKey[countSurfs]=tempKey;
 	    if (verbosity && printToScreen)
-		printf("SURF %d found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
+		printf("SURF %d found, %.4x %.4x [%.4x - bus %.2x  slot %.2x]\n",
 		       surfNum+1,
-		       surfLoc[countSurfs].DeviceId, 
-		       surfLoc[countSurfs].VendorId, 
-		       surfLoc[countSurfs].SerialNumber,
-		       surfLoc[countSurfs].BusNumber, 
-		       surfLoc[countSurfs].SlotNumber);
-	    rc=PlxPciDeviceOpen(&surfLoc[countSurfs],&surfHandles[countSurfs]);
+		       surfKey[countSurfs].DeviceId, 
+		       surfKey[countSurfs].VendorId, 
+		       surfKey[countSurfs].function,
+		       surfKey[countSurfs].bus, 
+		       surfKey[countSurfs].slot);
+	    rc=PlxPci_DeviceOpen(&surfKey[countSurfs],&surfHandles[countSurfs]);
 	    if ( rc!= ApiSuccess) {
 		syslog(LOG_ERR,"Error opening SURF device %d",rc);
 		if(printToScreen)
 		    fprintf(stderr,"Error opening SURF device %d\n",rc);
 		return -1 ;
 	    }		
-	    PlxPciBoardReset(surfHandles[countSurfs]) ;
+	    PlxPci_DeviceReset(&surfHandles[countSurfs]) ;
 	    surfIndex[countSurfs]=surfNum+1;
 	    if(hdPtr) {
 		surfMask|=(1<<surfNum);
@@ -1377,31 +1395,37 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
     }
 	
     //Initialize TURFIO    
-    tempLoc.BusNumber       = turfioPos.bus;
-    tempLoc.SlotNumber      = turfioPos.slot;
-    tempLoc.VendorId        = (U16)-1;
-    tempLoc.DeviceId        = (U16)-1;
-    tempLoc.SerialNumber[0] = '\0';
-    if (PlxPciDeviceFind(&tempLoc, &i) != ApiSuccess) {
+    i=0;
+    tempKey.bus       = turfioPos.bus;
+    tempKey.slot      = turfioPos.slot;
+    tempKey.function      = PCI_FIELD_IGNORE;
+    tempKey.VendorId        = PCI_FIELD_IGNORE;
+    tempKey.DeviceId        = PCI_FIELD_IGNORE;
+    tempKey.SubVendorId = PCI_FIELD_IGNORE;
+    tempKey.SubDeviceId = PCI_FIELD_IGNORE;
+    tempKey.Revision = PCI_FIELD_IGNORE;
+
+
+    if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess) {
 	//syslog
 	printf("Couldn't find TURFIO (Bus %d -- Slot %X)",
 	       turfioPos.bus,turfioPos.slot);
     }
     else {
-	copyPlxLocation(turfioLoc,tempLoc);
+	(*turfioKey)=tempKey;
 	
 	if (verbosity && printToScreen)
-	    printf("TURFIO found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n",
-		   (*turfioLoc).DeviceId, (*turfioLoc).VendorId, 
-		   (*turfioLoc).SerialNumber,
-		   (*turfioLoc).BusNumber, (*turfioLoc).SlotNumber);
-	if (PlxPciDeviceOpen(turfioLoc, turfioHandle) != ApiSuccess) {
+	    printf("TURFIO found, %.4x %.4x [%.4x - bus %.2x  slot %.2x]\n",
+		   (*turfioKey).DeviceId, (*turfioKey).VendorId, 
+		   (*turfioKey).function,
+		   (*turfioKey).bus, (*turfioKey).slot);
+	if (PlxPci_DeviceOpen(turfioKey, turfioHandlePtr) != ApiSuccess) {
 	    syslog(LOG_ERR,"Error opening TURFIO device");
 	    if(printToScreen)
 		fprintf(stderr,"Error opening TURFIO device\n");
 	    return -1 ;
 	}
-	PlxPciBoardReset(turfioHandle);
+	PlxPci_DeviceReset(turfioHandlePtr);
     }
 
     if(verbosity && printToScreen) {
@@ -1411,11 +1435,11 @@ int initializeDevices(PlxHandle_t *surfHandles, PlxHandle_t *turfioHandle, PlxDe
 /*     for(i =0; i<countSurfs+1;i++) */
 /* 	if (verbosity) */
 /* 	    printf("Something found, %.4x %.4x [%s - bus %.2x  slot %.2x]\n", */
-/* 		   tempLoc[i].DeviceId,  */
-/* 		   tempLoc[i].VendorId,  */
-/* 		   tempLoc[i].SerialNumber, */
-/* 		   tempLoc[i].BusNumber,  */
-/* 		   tempLoc[i].SlotNumber); */
+/* 		   tempKey[i].DeviceId,  */
+/* 		   tempKey[i].VendorId,  */
+/* 		   tempKey[i].SerialNumber, */
+/* 		   tempKey[i].bus,  */
+/* 		   tempKey[i].slot); */
  
 
 
@@ -1716,19 +1740,19 @@ int readConfigFile()
 
 
 
-void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) 
+void clearDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr) 
 // Clears boards for start of data taking 
 {
     int testVal=0;
     int i;
-    PlxReturnCode_t  rc ;
+    PlxStatus_t  rc ;
 
     if(verbosity &&printToScreen) printf("*** Clearing devices ***\n");
     
 
     //Added RJN 24/11/06
     trigMode=TrigNone;
-    if (setTurfControl(turfioHandle, SetTrigMode) != ApiSuccess) {
+    if (setTurfControl(turfioHandlePtr, SetTrigMode) != ApiSuccess) {
 	syslog(LOG_ERR,"Failed to set trigger mode to none on TURF\n") ;
 	if(printToScreen)
 	    printf("Failed to set trigger mode to none on SURF\n");
@@ -1736,7 +1760,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
     antTrigMask=0xffffffff;    
     //Mask off all antennas
-    writeAntTrigMask(turfioHandle);
+    writeAntTrigMask(turfioHandlePtr);
 
 
     //Added RJN 29/11/06
@@ -1745,33 +1769,33 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
     // Prepare TURF board
   
     /*  Get PLX Chip Type */
-    /*   PlxChipTypeGet(surfHandles[i], &ChipTypeSelected, &ChipRevision ); */
+    /*   PlxChipTypeGet(&surfHandles[i], &ChipTypeSelected, &ChipRevision ); */
     /*    if (ChipTypeSelected == 0x0) { */
     /*      printf("\n   ERROR: Unable to determine PLX chip type TURFIO\n"); */
-    /*      PlxPciDeviceClose(surfHandles[i] ); */
+    /*      PlxPci_DeviceClose(&surfHandles[i] ); */
     /*      exit(-1); */
     /*    } */
     /*    printf(" TURFIO Chip type:  %04x,  Revision :    %02X\n", */
     /*          ChipTypeSelected, ChipRevision );  */
 
-    testVal=PlxRegisterRead(turfioHandle,PCI9030_GP_IO_CTRL,&rc) ; 
+    testVal=PlxPci_PlxRegisterRead(turfioHandlePtr,PCI9030_GP_IO_CTRL,&rc) ; 
     if(printToScreen) printf(" GPIO register contents TURFIO = %o\n",testVal);
 
     
-    if (setTurfControl(turfioHandle, TurfClearAll) != ApiSuccess) {
+    if (setTurfControl(turfioHandlePtr, TurfClearAll) != ApiSuccess) {
 	syslog(LOG_ERR,"Failed to send clear pulse on TURF \n") ;
 	if(printToScreen)
 	    printf("  failed to send clear pulse on TURF \n") ;
     }
 
 
-    testVal=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc); 
+    testVal=PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc); 
     if(printToScreen) {	
         printf(" Try to read TURFIO GPIO.  %o\n", testVal);
     }
     if (rc != ApiSuccess) printf("  failed to read TURFIO GPIO .\n") ; 
 
-    testVal=PlxRegisterRead(turfioHandle, PCI9030_INT_CTRL_STAT, &rc); 
+    testVal=PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_INT_CTRL_STAT, &rc); 
     if(printToScreen){
 	printf(" Try to test interrupt control register.\n") ;
 	printf(" int reg contents TURFIO = %x\n",testVal);
@@ -1786,19 +1810,19 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	i=surfClearIndex[tempInd];
 	/* init. 9030 I/O descripter (to enable READY# input |= 0x02.) */
 	if(printToScreen) printf("Trying to set Sp0 on SURF %d\n",surfIndex[i]);
-	if(PlxRegisterWrite(surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
+	if(PlxPci_PlxRegisterWrite(&surfHandles[i], PCI9030_DESC_SPACE0, 0x00800000) 
 	   != ApiSuccess)  {
 	    syslog(LOG_ERR,"Failed to set SpO descriptor on SURF %d",surfIndex[i]);
 	    if(printToScreen)
 		printf("Failed to set Sp0 descriptor on SURF %d.\n",surfIndex[i] ) ;    
 	}
 	
-	testVal=PlxRegisterRead(surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
+	testVal=PlxPci_PlxRegisterRead(&surfHandles[i], PCI9030_GP_IO_CTRL, &rc) ; 
 	if(printToScreen)
 	    printf(" GPIO register contents SURF %d = %o\n",surfIndex[i],testVal);
 	
 	
-	if (setSurfControl(surfHandles[i], SurfClearAll) != ApiSuccess) {
+	if (setSurfControl(&surfHandles[i], SurfClearAll) != ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
 	    if(printToScreen)
 		printf("Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]);
@@ -1809,7 +1833,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 	printf(" Try to test interrupt control register.\n") ;
 	for(i=0;i<numSurfs;++i) {
 	    testVal=
-		PlxRegisterRead(surfHandles[i],PCI9030_INT_CTRL_STAT, &rc); 
+		PlxPci_PlxRegisterRead(&surfHandles[i],PCI9030_INT_CTRL_STAT, &rc); 
 	    printf(" Int reg contents SURF %d = %x\n",surfIndex[i],testVal);
 	}
 		   
@@ -1818,7 +1842,7 @@ void clearDevices(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle)
 
     antTrigMask=0xffffffff;    
     //Mask off all antennas
-    writeAntTrigMask(turfioHandle);
+    writeAntTrigMask(turfioHandlePtr);
 
     return;
 }
@@ -1854,9 +1878,9 @@ int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
 }
 
 
-void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) {
+void setGloablDACThreshold(PlxDevObject_t *surfHandles,  unsigned short threshold) {
 
-    PlxReturnCode_t rc;
+    PlxStatus_t rc;
     int dac,surf ;
     int buf ;
     if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
@@ -1864,8 +1888,8 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
     for(surf=0;surf<numSurfs;surf++) {
 	for (dac=0 ; dac<N_RFTRIG ; dac++) {
 	    buf = (dac<<16) + threshold ;
-	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
-			      &buf, 4, BitSize32);
+	    rc=PlxPci_PciBarSpaceWrite(&surfHandles[surf], 2, 0x0, 
+				       &buf, 4, BitSize32, TRUE);
 	    if(rc!=ApiSuccess) {
 		syslog(LOG_ERR,"Error writing DAC Val, SURF %d - DAC %d (%d)",
 		       surfIndex[surf],dac,rc);
@@ -1881,8 +1905,8 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
 	for (dac=N_RFTRIG ; dac<N_RFTRIG+2 ; dac++) {
 	    buf = (dac<<16) + 
 		surfTrigBandMasks[surfIndex[surf]-1][dac-N_RFTRIG];	    
-	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
-			      &buf, 4, BitSize32);
+	    rc=PlxPci_PciBarSpaceWrite(&surfHandles[surf], 2, 0x0, 
+				       &buf, 4, BitSize32,TRUE);
 	    if(rc!=ApiSuccess) {
 		syslog(LOG_ERR,"Error writing Surf Ant Trig Mask, SURF %d - DAC %d (%d)",
 		       surfIndex[surf],dac,rc);
@@ -1895,7 +1919,7 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
 	}
 	
 
-	rc=setSurfControl(surfHandles[surf],DACLoad);
+	rc=setSurfControl(&surfHandles[surf],DACLoad);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surfIndex[surf],rc);
 	    if(printToScreen)
@@ -1910,8 +1934,8 @@ void setGloablDACThreshold(PlxHandle_t *surfHandles,  unsigned short threshold) 
 
 
 
-void setDACThresholds(PlxHandle_t *surfHandles) {
-    PlxReturnCode_t rc;
+void setDACThresholds(PlxDevObject_t *surfHandles) {
+    PlxStatus_t rc;
     int dac,surf ;
     int buf ;
     if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
@@ -1923,8 +1947,8 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 //		       thresholdArray[surfIndex[surf]-1][dac]);
 //	    }
 	    buf = (dac<<16) + (thresholdArray[surfIndex[surf]-1][dac]&0xfff) ;
-	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
-			      &buf, 4, BitSize32);
+	    rc=PlxPci_PciBarSpaceWrite(&surfHandles[surf], 2, 0x0, 
+				       &buf, 4, BitSize32,TRUE);
 	    if(rc!=ApiSuccess) {
 		syslog(LOG_ERR,"Error writing DAC Val, SURF %d - DAC %d (%d)",
 		       surfIndex[surf],dac,rc);
@@ -1939,8 +1963,8 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 	for (dac=N_RFTRIG ; dac<N_RFTRIG+2 ; dac++) {
 	    buf = (dac<<16) + 
 		surfTrigBandMasks[surfIndex[surf]-1][dac-N_RFTRIG];	    
-	    rc=PlxBusIopWrite(surfHandles[surf], IopSpace0, 0x0, TRUE, 
-			      &buf, 4, BitSize32);
+	    rc=PlxPci_PciBarSpaceWrite(&surfHandles[surf], 2, 0x0, 
+				       &buf, 4, BitSize32, TRUE);
 	    if(rc!=ApiSuccess) {
 		syslog(LOG_ERR,"Error writing Surf Ant Trig Mask, SURF %d - DAC %d (%d)",
 		       surfIndex[surf],dac,rc);
@@ -1952,7 +1976,7 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 
 	}
 
-	rc=setSurfControl(surfHandles[surf],DACLoad);
+	rc=setSurfControl(&surfHandles[surf],DACLoad);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Error loading DAC Vals, SURF %d (%d)",surfIndex[surf],rc);
 	    if(printToScreen)
@@ -1968,15 +1992,15 @@ void setDACThresholds(PlxHandle_t *surfHandles) {
 
 
 
-PlxReturnCode_t readPlxDataWord(PlxHandle_t handle, unsigned int *dataInt)
+PlxStatus_t readPlxDataWord(PlxDevObject_t *handle, unsigned int *dataInt)
 {
-    return PlxBusIopRead(handle,IopSpace0,0x0,TRUE, dataInt, 4, BitSize32);
+    return PlxPci_PciBarSpaceRead(handle,2,0x0, dataInt, 4, BitSize32, TRUE);
 }
 
 
-PlxReturnCode_t readPlxDataShort(PlxHandle_t handle, unsigned short *dataWord)
+PlxStatus_t readPlxDataShort(PlxDevObject_t *handle, unsigned short *dataWord)
 {
-    return PlxBusIopRead(handle,IopSpace0,0x0,TRUE, dataWord, 2, BitSize16);
+    return PlxPci_PciBarSpaceRead(handle,2,0x0, dataWord, 2, BitSize16, TRUE);
 }
 
 
@@ -2149,12 +2173,12 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 }
 
 
-AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles) 
+AcqdErrorCode_t readSurfEventData(PlxDevObject_t *surfHandles) 
 /*! This is the code that is executed after we read the EVT_RDY flag */
 /* It is the equivalent of read_LABdata in Shige's crate_test program */
 {
 
-    PlxReturnCode_t rc;
+    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned int  dataInt=0;
 
@@ -2174,19 +2198,19 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 //	sleep(1);
 	if(printToScreen &&verbosity>1) {
 	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
-		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
+		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
 	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
-		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
+		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
 	}
 
 	//Set to read mode
-	rc=setSurfControl(surfHandles[surf],RDMode);
+	rc=setSurfControl(&surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
 	    if(printToScreen)
 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
 	}
-	rc=setSurfControl(surfHandles[surf],DTRead);
+	rc=setSurfControl(&surfHandles[surf],DTRead);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
 	    if(printToScreen)
@@ -2283,14 +2307,14 @@ AcqdErrorCode_t readSurfEventData(PlxHandle_t *surfHandles)
 } 
 
 
-AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles) 
+AcqdErrorCode_t readSurfEventDataVer2(PlxDevObject_t *surfHandles) 
 /*! This is the code that is executed after we read the EVT_RDY flag */
 /* It is the equivalent of read_LABdata in Shige's crate_test program */
 /* And as the name suggests this is the code that expects version 2
    firmware (i.e. double word reads). */
 {
 
-    PlxReturnCode_t rc;
+    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned int  dataInt=0;
 
@@ -2309,19 +2333,19 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 //	sleep(1);
 	if(printToScreen &&verbosity>1) {
 	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
-		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
+		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
 	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
-		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
+		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
 	}
 
 	//Set to read mode
-	rc=setSurfControl(surfHandles[surf],RDMode);
+	rc=setSurfControl(&surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
 	    if(printToScreen)
 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
 	}
-	rc=setSurfControl(surfHandles[surf],DTRead);
+	rc=setSurfControl(&surfHandles[surf],DTRead);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
 	    if(printToScreen)
@@ -2486,11 +2510,11 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxHandle_t *surfHandles)
 } 
 
 
-AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles) 
+AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles) 
 /*! Updated to the latest SURF firmware verison, which I am calling 3 for now */
 {
 
-    PlxReturnCode_t rc;
+    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned int  dataInt=0;
 
@@ -2513,19 +2537,19 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 //	sleep(1);
 	if(printToScreen &&verbosity>1) {
 	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf],
-		   PlxRegisterRead(surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
+		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ;
 	    printf("INT register contents SURF %d = %o\n",surfIndex[surf],
-		   PlxRegisterRead(surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
+		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ;
 	}
 
 	//Set to read mode
-	rc=setSurfControl(surfHandles[surf],RDMode);
+	rc=setSurfControl(&surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
 	    if(printToScreen)
 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf);
 	}
-	rc=setSurfControl(surfHandles[surf],DTRead);
+	rc=setSurfControl(&surfHandles[surf],DTRead);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
 	    if(printToScreen)
@@ -2723,11 +2747,11 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxHandle_t *surfHandles)
 
 
 
-AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles) 
+AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles) 
 // Reads the scaler and RF power data from the SURF board
 {
    
-    PlxReturnCode_t rc;
+    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned int  dataInt=0;
     int surf,rfChan;
@@ -2745,13 +2769,13 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 
 	//Set to read house keeping
 	//Send DTRead first to have a transition on DT/HK line
-//	rc=setSurfControl(surfHandles[surf],DTRead);
+//	rc=setSurfControl(&surfHandles[surf],DTRead);
 //	if(rc!=ApiSuccess) {
 //	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc);
 //	    if(printToScreen)
 //		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
 //	}
-	rc=setSurfControl(surfHandles[surf],RDMode);
+	rc=setSurfControl(&surfHandles[surf],RDMode);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf);
 	    if(printToScreen)
@@ -2828,11 +2852,11 @@ AcqdErrorCode_t readSurfHkData(PlxHandle_t *surfHandles)
 
 
 
-AcqdErrorCode_t readTurfEventDataVer2(PlxHandle_t turfioHandle)
+AcqdErrorCode_t readTurfEventDataVer2(PlxDevObject_t *turfioHandlePtr)
 /*! Reads out the TURF data via the TURFIO */
 {
 
-//    PlxReturnCode_t rc;
+//    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned short  dataWord=0;
     unsigned char upperChar;
@@ -2852,7 +2876,7 @@ AcqdErrorCode_t readTurfEventDataVer2(PlxHandle_t turfioHandle)
     
     //Read out 160 words
     for(wordNum=0;wordNum<160;wordNum++) {
-	if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
+	if (readPlxDataShort(turfioHandlePtr,&dataWord)!= ApiSuccess) {
 	    status=ACQD_E_PLXBUSREAD;
 	    syslog(LOG_ERR,"Failed to read TURFIO word %d",wordNum);
 	    if(printToScreen) 
@@ -3032,11 +3056,11 @@ AcqdErrorCode_t readTurfEventDataVer2(PlxHandle_t turfioHandle)
 
 
 
-AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
+AcqdErrorCode_t readTurfEventDataVer3(PlxDevObject_t *turfioHandlePtr)
 /*! Reads out the TURF data via the TURFIO */
 {
     newTurfRateData=0;
-//    PlxReturnCode_t rc;
+//    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned short  dataWord=0;
     unsigned char upperChar;
@@ -3056,7 +3080,7 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
     
     //Read out 160 words
     for(wordNum=0;wordNum<160;wordNum++) {
-	if (readPlxDataShort(turfioHandle,&dataWord)!= ApiSuccess) {
+	if (readPlxDataShort(turfioHandlePtr,&dataWord)!= ApiSuccess) {
 	    status=ACQD_E_PLXBUSREAD;
 	    syslog(LOG_ERR,"Failed to read TURFIO word %d",wordNum);
 	    if(printToScreen) 
@@ -3253,53 +3277,55 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxHandle_t turfioHandle)
 }
 
 
-PlxReturnCode_t setBarMap(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) {
-    PlxReturnCode_t rc=0;
-    int surf,addrVal=0;
+PlxStatus_t setBarMap(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr) {
+    PlxStatus_t rc=0;
+    int surf;
+    U32 *addrVal;
+
 
     for(surf=0;surf<numSurfs;surf++) {
-	rc=PlxPciBarMap(surfHandles[surf],2,&addrVal);
+	rc=PlxPci_PciBarMap(&surfHandles[surf],2,(VOID**)&addrVal);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Unable to map PCI bar 2 on SURF %d (%d)",surfIndex[surf],rc);
 	}
 	barMapAddr[surf]=(int*)addrVal;
 	if(verbosity && printToScreen) {
-	    printf("Bar Addr[%d] is %x\t%x\n",surfIndex[surf],(int)barMapAddr[surf],addrVal);
+	    printf("Bar Addr[%d] is %x\t%x\n",surfIndex[surf],(int)barMapAddr[surf],*addrVal);
 	}
     }
-    rc=PlxPciBarMap(turfioHandle,2,&addrVal);
+    rc=PlxPci_PciBarMap(turfioHandlePtr,2,(VOID**)&addrVal);
     if(rc!=ApiSuccess) {
 	syslog(LOG_ERR,"Unable to map PCI bar 2 on TURFIO (%d)",rc);
     }
     turfBarMap=(int*)addrVal;
     if(verbosity && printToScreen) {
-	printf("Turf Bar Addr is %x\t%x\n",(int)turfBarMap,addrVal);
+	printf("Turf Bar Addr is %x\t%x\n",(int)turfBarMap,*addrVal);
     }
     return rc;
 }
 
 
-PlxReturnCode_t unsetBarMap(PlxHandle_t *surfHandles, PlxHandle_t turfioHandle) {
+PlxStatus_t unsetBarMap(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr) {
   
-    PlxReturnCode_t rc=0;
+    PlxStatus_t rc=0;
     int surf;
-    unsigned int addrVal=0;
+    unsigned int *addrVal=0;
     for(surf=0;surf<numSurfs;surf++) {    
 	addrVal=(unsigned int)(*barMapAddr[surf]);
-	rc=PlxPciBarUnmap(surfHandles[surf],&addrVal);
+	rc=PlxPci_PciBarUnmap(&surfHandles[surf],(VOID**)&addrVal);
     }
     addrVal=(unsigned int)(*turfBarMap);
-    rc=PlxPciBarUnmap(turfioHandle,&addrVal);
+    rc=PlxPci_PciBarUnmap(turfioHandlePtr,(VOID**)&addrVal);
     return rc;  
     
 }
 
-PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle) 
+PlxStatus_t writeAntTrigMask(PlxDevObject_t *turfioHandlePtr) 
 /*!
   Remember that 0 in the RFCM mask means on
 */
 {
-    PlxReturnCode_t rc;
+    PlxStatus_t rc;
     U32 gpio ;  
     int i=0,j=0,chanBit=1;
     int actualMask[2]={255,0};
@@ -3309,7 +3335,7 @@ PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle)
     syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n",
 	   antTrigMask,actualMask[1],actualMask[0]);
 
-    rc=setTurfControl(turfioHandle,RFCBit);
+    rc=setTurfControl(turfioHandlePtr,RFCBit);
     if(rc!=ApiSuccess) {		
 	syslog(LOG_ERR,"Failed to set 1st RFCBit %d",rc);
 	if(printToScreen)			    
@@ -3321,8 +3347,8 @@ PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle)
 	if (i==32) j=chanBit=1 ;
 	
 //	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,actualMask[j],(actualMask[j]&chanBit));
-	if(actualMask[j]&chanBit) rc=setTurfControl(turfioHandle,RFCBit);
-	else rc=setTurfControl(turfioHandle,RFCClk);
+	if(actualMask[j]&chanBit) rc=setTurfControl(turfioHandlePtr,RFCBit);
+	else rc=setTurfControl(turfioHandlePtr,RFCClk);
 	if (rc != ApiSuccess) {
 	    syslog(LOG_ERR,"Failed to send RFC bit %d to TURF, %x %x",
 		   i,actualMask[1],actualMask[0]);
@@ -3335,7 +3361,7 @@ PlxReturnCode_t writeAntTrigMask(PlxHandle_t turfioHandle)
     }
 
     /* check GPIO8 is set or not. */
-    if((gpio=PlxRegisterRead(turfioHandle, PCI9030_GP_IO_CTRL, &rc )) 
+    if((gpio=PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc )) 
        & 0400000000) {
 	syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1],actualMask[0]) ;
 	if(printToScreen) 
