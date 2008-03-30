@@ -41,7 +41,7 @@ void rgcmOff();
 
 /* global variables for acromag control */
 int carrierHandle;
-struct conf_blk_470 cblk_470;
+struct cblk470 cblk_470;
 
 /* Program mode globals */
 /* Toggle reads the current state of the line, writes the opposite,
@@ -160,10 +160,14 @@ void acromagSetup(int ip470BoardLocation, char *ip470carrier)
   }
   
   /* Connect to Carrier */
-  if(CarrierOpenDev(0, &carrierHandle, ip470carrier) != S_OK) {
-    printf("\nUnable to Open instance of carrier.\n");
-    exit(2);
-  }
+//  if(CarrierOpenDev(0, &carrierHandle, ip470carrier) != S_OK) {
+  //    printf("\nUnable to Open instance of carrier.\n");
+//    exit(2);
+//  }
+ if(CarrierOpen(1, &carrierHandle) != S_OK) {
+     printf("\nUnable to Open instance of carrier.\n");
+   exit(2);
+ }
 
   cblk_470.nHandle = carrierHandle;
   

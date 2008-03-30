@@ -320,7 +320,7 @@ typedef struct {
 } AnalogueDataStruct_t;
 
 typedef struct {
-    long data[CHANS_PER_IP320];
+    int data[CHANS_PER_IP320];
 } AnalogueCorrectedDataStruct_t;
 
 typedef struct {

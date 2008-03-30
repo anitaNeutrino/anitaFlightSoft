@@ -64,7 +64,7 @@ int fdMag; //Magnetometer
 
 /* global variables for acromag control */
 int carrierHandle;
-struct conf_blk_320 config320[NUM_IP320_BOARDS];
+struct cblk320 config320[NUM_IP320_BOARDS];
 
 /* tables for ip320 data and calibration constants */
 /* note sa_size is sort of arbitrary; 
