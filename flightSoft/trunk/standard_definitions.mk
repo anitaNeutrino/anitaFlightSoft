@@ -11,7 +11,7 @@ LD            = gcc
 ObjSuf	      = o
 SrcSuf        = c
 ExeSuf        =
-OPT           = -O3 -Wall  # --debug --pedantic-errors
+OPT           = -O3 -Wall --debug  # --debug --pedantic-errors
 SOFLAGS       = -shared
 DllSuf        = so
 

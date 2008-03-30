@@ -30,7 +30,7 @@ PLX_LIBS = $(PLX_SDK_DIR)/Linux/PlxApi/Library/PlxApi$(DBG).a
 PLX_CFLAGS=$(PLX_OPT) $(PLX_INCLUDES)
 CCFLAGS:= ${CCFLAGS} ${PLX_CFLAGS}
 
-Targets =  Acqd #fakeAcqd barMapTest
+Targets =  Acqd testPlxProg #fakeAcqd barMapTest
 
 all: $(Targets)
 
