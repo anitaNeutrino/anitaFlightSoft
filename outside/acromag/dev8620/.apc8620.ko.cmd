@@ -1,0 +1,1 @@
+cmd_/home/anita/other/acromag/dev8620/apc8620.ko := ld -m elf_i386 -m elf_i386 -r -o /home/anita/other/acromag/dev8620/apc8620.ko /home/anita/other/acromag/dev8620/apc8620.o /home/anita/other/acromag/dev8620/apc8620.mod.o
