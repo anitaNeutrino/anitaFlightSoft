@@ -6,8 +6,8 @@ if [ $# -ne 1 ]; then
     exit 0
 fi
 
-DRIVE=$1
-SERIAL=$(grep $DRIVE /etc/usbLabels/driveNamesAndNumbers | awk '{print $2}')
+#DRIVE=$1
+#SERIAL=$(grep $DRIVE /etc/usbLabels/driveNamesAndNumbers | awk '{print $2}')
 #echo $SERIAL
 
 
@@ -22,21 +22,21 @@ fi
 umount $MOUNT_POINT > /dev/null 2>&1
 
 
-if [ -n "$SERIAL" ]
-then
-    echo "Serial Number is $SERIAL"
+#if [ -n "$SERIAL" ]
+#then
+#    echo "Serial Number is $SERIAL"
 
-    for USB in /proc/scsi/usb-storage-*/*;
-      do
-      if grep $SERIAL $USB; then
-      #echo $USB
-	  SCSI_HOSTNUM=`basename $USB`
-	  echo "Adding $USB to SCSI device list" 
-	  echo "scsi add-single-device $SCSI_HOSTNUM 0 0 0" > /proc/scsi/scsi      
-      fi 
-    done
-else
-    echo "Can't find serial number"
-fi
+#    for USB in /proc/scsi/usb-storage-*/*;
+#      do
+#      if grep $SERIAL $USB; then
+#      #echo $USB
+#	  SCSI_HOSTNUM=`basename $USB`
+#	  echo "Adding $USB to SCSI device list" 
+#	  echo "scsi add-single-device $SCSI_HOSTNUM 0 0 0" > /proc/scsi/scsi      
+#      fi 
+#    done
+#else
+#    echo "Can't find serial number"
+#fi
 
 mount -L $DRIVE -o defaults,sync $MOUNT_POINT

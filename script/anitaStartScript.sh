@@ -22,25 +22,26 @@ sudo -u anita cp /home/anita/flightSoft/config/defaults/Prioritizerd.config.0 /h
 sudo -u anita cp /home/anita/flightSoft/config/defaults/SIPd.config.0 /home/anita/flightSoft/config/SIPd.config
 
 #Start Cmdd and SIPd
+#Will have to change this to move 
 nice -n -20 daemon -u anita -r SIPd -n SIPd
 nice -n -20 daemon -u anita -r Cmdd -n Cmdd
 
-#rm -rf /mnt/usbext/*
+#rm -rf /mnt/usbext/*s
 #rm -rf /mnt/usbint/*
 ###First up try to mount drives
-sleep 40
-removeAllScsiDevices.sh
-sleep 5
-removeAllScsiDevices.sh
-sleep 5
+#sleep 40
+#removeAllScsiDevices.sh
+#sleep 5
+#removeAllScsiDevices.sh
+#sleep 5
 mountPuck.sh &
 sleep 4
 mountCurrentBlade.sh &
 sleep 4
 mountCurrentUsbExt.sh &
-sleep 10
+sleep 4
 mountCurrentUsbInt.sh &
-sleep 40
+sleep 10
 sudo -u anita /home/anita/flightSoft/bin/startNewRun.sh
 #sudo -u anita CmdTest 4
 sleep 10
