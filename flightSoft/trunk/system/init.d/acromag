@@ -1,0 +1,52 @@
+#!/bin/sh
+# Startup script for acromag
+#
+# chkconfig: 12345 06 99
+# description: Load/unload the acromag drivers and make appropriate
+# device nodes
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+driver=acromag
+
+load_acromag() {
+	echo -n $"Loading $driver: "
+	/bin/mknod -m 666 /dev/apc8620_0 c 46 0 #(1st carrier)
+	/bin/mknod -m 666 /dev/apc8620_1 c 46 1 #(2nd carrier)
+	insmod /usr/local/acromag/apc8620.ko
+	RETVAL=$?
+	return $RETVAL
+}
+
+unload_acromag() {
+	echo -n $"Un loading $driver: "
+	rmmod apc8620
+	RETVAL=$?
+	return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	    load_acromag
+	    ;;
+
+	stop)
+	    unload_acromag
+	    ;;
+
+	restart)
+	    load_acromag
+	    unload_acromag
+	    ;;
+
+
+	*)
+	    echo $"Usage: $0 {start|stop|restart}"
+	    exit 1
+
+esac
+
+exit $RETVAL

@@ -1,0 +1,59 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  loadSurfDriver
+#      Abstract     :  Loads Patrick's surf driver and makes characters
+#      Last Revision:  02-01-07
+#-----------------------------------------------------------------------------
+
+
+
+SURF_DRIVER_DIR=/usr/local/surfDriver
+
+# Path to the driver nodes
+deviceName=/dev/surf
+
+
+# Registered name of driver
+name=surfDriver
+
+# Name of module to load
+module=${name}${debug}.ko
+
+# Install the module
+echo "Installing module ($module)...."
+/sbin/insmod ${SURF_DRIVER_DIR}/${module}
+echo
+
+# Get the major number
+echo -n "Getting Module major number..... "
+major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
+
+# Check if valid
+if [ "$major" = "" ]; then
+    echo "ERROR: Module not loaded or no device found"
+    echo
+    exit
+fi
+
+# Display Major ID
+echo "Ok (MajorID = $major)"
+
+
+
+# Create the device nodes (up to 10 by default)
+echo -n "Creating device nodes........... "
+     
+rm -f ${deviceName}*
+
+for i in `seq 0 15`; do
+   mknod ${deviceName}-$i c $major $i
+   echo "mknod ${deviceName}-$i c $major $i"
+done
+
+chmod 777 ${deviceName}*
+echo "Ok ($deviceName)"
+
+echo
+echo Module load complete.
+echo
+echo

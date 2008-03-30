@@ -29,12 +29,12 @@ void dumpArrayValues();
 
 /* global variables for acromag control */
 int carrierHandle;
-struct conf_blk_320 cblk_320;
+struct cblk320 cblk_320;
 struct scan_array ip320_s_array[NUM_ACRO_CHANS]; 
 word ip320_az_data[NUM_ACRO_CHANS];        
 word ip320_cal_data[NUM_ACRO_CHANS];       
 word ip320_raw_data[NUM_ACRO_CHANS];       
-long ip320_cor_data[NUM_ACRO_CHANS];
+int ip320_cor_data[NUM_ACRO_CHANS];
 int useRange=5;
 
 
@@ -154,7 +154,11 @@ void acromagSetup(unsigned int ip320BoardLocation, char *ip320carrier)
   }
   
   /* Connect to Carrier */ 
-  if(CarrierOpenDev(0, &carrierHandle, ip320carrier) != S_OK) {
+/*   if(CarrierOpenDev(0, &carrierHandle, ip320carrier) != S_OK) { */
+/*     printf("\nUnable to Open instance of carrier.\n"); */
+/*     exit(2); */
+/*   } */
+  if(CarrierOpen(0, &carrierHandle) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
     exit(2);
   }
