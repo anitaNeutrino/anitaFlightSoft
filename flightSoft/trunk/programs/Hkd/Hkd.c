@@ -27,7 +27,7 @@
 #include "includes/anitaStructures.h"
 
 /* Vendor includes */
-#include "cr7.h"
+//#include "cr7.h"
 #include "carrier/apc8620.h"
 #include "ip320/ip320.h"
 
@@ -57,6 +57,8 @@ int closeMagnetometer();
 int outputData(AnalogueCode_t code);
 void prepWriterStructs();
 
+/* Signal Handle */
+void handleBadSigs(int sig);
 
 //Magnetometer Stuff
 int fdMag; //Magnetometer
@@ -97,13 +99,14 @@ int hkDiskBitMask;
 AnitaHkWriterStruct_t hkRawWriter;
 AnitaHkWriterStruct_t hkCalWriter;
 
+// Hkd config stuff
+char hkdPidFile[FILENAME_MAX];
 
 int main (int argc, char *argv[])
 {
     int retVal;
 
-// Hkd config stuff
-    char hkdPidFile[FILENAME_MAX];
+
 
 /*     int localSBSTemp,remoteSBSTemp; */
     /* Config file thingies */
@@ -127,8 +130,10 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
-    signal(SIGINT, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
+
     
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -146,6 +151,12 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("hkdPidFile");
 	if(tempString) {
 	    strncpy(hkdPidFile,tempString,FILENAME_MAX-1);
+	    retVal=checkPidFile(hkdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,hkdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
 	    writePidFile(hkdPidFile);
 	}
 	else {
@@ -272,41 +283,45 @@ int readConfigFile()
 
 int readSBSTemps ()
 {
-    API_RESULT main_Api_Result;
+    fprintf(stderr,"Haven't implemented this yet on the new CR11\n");
+    return -1;
 
-    static int errorCounter=0;
-    int gotError=0;
-
-    int localTemp = 0;
-    int remoteTemp = 0;
-    main_Api_Result = 
-	fn_ApiCr7ReadLocalTemperature(&localTemp);
     
-    if (main_Api_Result != API_SUCCESS)
-    {
-	gotError+=1;
-	if(errorCounter<100) {
-	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Local Temp: %d\t%s",
-		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
-	    errorCounter++;
-	}
-    }
+/*     API_RESULT main_Api_Result; */
 
-    main_Api_Result = 
-	fn_ApiCr7ReadRemoteTemperature(&remoteTemp);
+/*     static int errorCounter=0; */
+/*     int gotError=0; */
+
+/*     int localTemp = 0; */
+/*     int remoteTemp = 0; */
+/*     main_Api_Result =  */
+/* 	fn_ApiCr7ReadLocalTemperature(&localTemp); */
     
-    if (main_Api_Result != API_SUCCESS)
-    {
-	gotError+=2;
-	if(errorCounter<100) {
-	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Remote Temp: %d\t%s",
-		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result));
-	    errorCounter++;
-	}
-    }
-    sbsData.temp[0]=(localTemp);
-    sbsData.temp[1]=(remoteTemp);
-    return gotError;
+/*     if (main_Api_Result != API_SUCCESS) */
+/*     { */
+/* 	gotError+=1; */
+/* 	if(errorCounter<100) { */
+/* 	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Local Temp: %d\t%s", */
+/* 		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result)); */
+/* 	    errorCounter++; */
+/* 	} */
+/*     } */
+
+/*     main_Api_Result =  */
+/* 	fn_ApiCr7ReadRemoteTemperature(&remoteTemp); */
+    
+/*     if (main_Api_Result != API_SUCCESS) */
+/*     { */
+/* 	gotError+=2; */
+/* 	if(errorCounter<100) { */
+/* 	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Remote Temp: %d\t%s", */
+/* 		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result)); */
+/* 	    errorCounter++; */
+/* 	} */
+/*     } */
+/*     sbsData.temp[0]=(localTemp); */
+/*     sbsData.temp[1]=(remoteTemp); */
+/*     return gotError; */
 }
 
 
@@ -575,7 +590,7 @@ void dumpValues() {
 	printf("COR:     ");
 	for( i = 0; i < CHANS_PER_IP320; i++ ) 
 	{
-	    printf("%lX ",corDataStruct[count].data[i]);
+	    printf("%X ",corDataStruct[count].data[i]);
 	}
 	printf("\n\n");
     }
@@ -767,4 +782,17 @@ void prepWriterStructs() {
 
 
 
+}
+
+
+void handleBadSigs(int sig)
+{   
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    closeMagnetometer();
+    closeHkFilesAndTidy(&hkRawWriter);
+    closeHkFilesAndTidy(&hkCalWriter);
+    unlink(hkdPidFile);
+    syslog(LOG_INFO,"Hkd terminating");    
+    exit(0);
 }

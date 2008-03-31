@@ -45,6 +45,10 @@ int sendEncodedSurfPackets(int bufSize);
 int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize);
 
+
+/* Signal Handle */
+void handleBadSigs(int sig);
+
 char fakeOutputDir[]="/tmp/fake/los";
 
 /*Config Thingies*/
@@ -108,6 +112,10 @@ int main(int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT,handleBadSigs);
+    signal(SIGSEGV,handleBadSigs);
+
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -122,6 +130,12 @@ int main(int argc, char *argv[])
 	tempString=kvpGetString("losdPidFile");
 	if(tempString) {
 	    strncpy(losdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(losdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,losdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
 	    writePidFile(losdPidFile);
 	}
 	else {
@@ -1138,4 +1152,15 @@ int getLosNumber() {
 
     return losNumber;
 
+}
+
+
+
+void handleBadSigs(int sig)
+{   
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    unlink(losdPidFile);
+    syslog(LOG_INFO,"LOSd terminating");    
+    exit(0);
 }

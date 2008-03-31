@@ -42,6 +42,8 @@ void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, str
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
     return (a>>8)+(a<<8);
 }
+void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 
 //Global Variables
@@ -281,6 +283,11 @@ int main(int argc, char **argv) {
 #ifdef BAD_DEBUG
     printf("Starting %s\n",progName);
 #endif
+    retVal=sortOutPidFile(progName);
+    if(retVal<0)
+	return -1;
+
+
     //Initialize handy pointers
     hdPtr=&(theEvent.header);
     bdPtr=&(theEvent.body);
@@ -298,6 +305,8 @@ int main(int argc, char **argv) {
     signal(SIGUSR2, sigUsr2Handler);
     signal(SIGTERM, sigUsr2Handler);
     signal(SIGINT, sigUsr2Handler);
+    signal(SIGSEGV,handleBadSigs);
+
 
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -1455,6 +1464,43 @@ int initializeDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
     return (int)numDevices ;
 }
 
+int sortOutPidFile(char *progName)
+{
+    /* Config file thingies */
+    int status=0;
+    int retVal=0;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+    char *tempString;
+
+    /* Load Config */
+    kvpReset () ;
+    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+
+    eString = configErrorString (status) ;
+    if (status == CONFIG_E_OK) {
+
+	tempString=kvpGetString("acqdPidFile");
+	if(tempString) {
+	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(acqdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,acqdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
+	    writePidFile(acqdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
+	    fprintf(stderr,"Couldn't get acqdPidFile\n");
+	}
+    }
+    return 0;
+}
+
+
+
 
 int readConfigFile() 
 /* Load Acqd config stuff */
@@ -1505,15 +1551,6 @@ int readConfigFile()
 	useInterrupts=kvpGetInt("useInterrupts",0);
 	firmwareVersion=kvpGetInt("firmwareVersion",2);
 	turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
-	tempString=kvpGetString("acqdPidFile");
-	if(tempString) {
-	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
-	    writePidFile(acqdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
-	    fprintf(stderr,"Couldn't get acqdPidFile\n");
-	}
 
 //	printf("%s\n",acqdEventDir);
 	tempString=kvpGetString ("lastEventNumberFile");
@@ -3565,4 +3602,17 @@ void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, str
 	    syslog(LOG_INFO,"Changing globalThreshold to %d\n",pidGoal);
 	}    
     }
+}
+
+
+void handleBadSigs(int sig)
+{
+    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
+
+    closeHkFilesAndTidy(&surfHkWriter);
+    closeHkFilesAndTidy(&turfHkWriter);
+    unlink(acqdPidFile);
+    syslog(LOG_INFO,"Acqd terminating");
+    exit(0);
 }

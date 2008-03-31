@@ -41,6 +41,8 @@ struct cblk470 cblk_470;
 #define INTERRUPT_LEVEL 10
 
 void prepWriterStructs();
+void handleBadSigs(int sig);
+
 
 // Global (config) variables
 int digitalCarrierNum=1;
@@ -105,8 +107,9 @@ int main (int argc, char *argv[])
     // Set signal handlers 
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
-    signal(SIGSEGV, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
     
     // Load Config 
     kvpReset () ;
@@ -119,6 +122,12 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("calibdPidFile");
 	if(tempString) {
 	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(calibdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,calibdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
 	    writePidFile(calibdPidFile);
 	}
 	else {
@@ -343,13 +352,13 @@ void acromagSetup()
   /* Check for Carrier Library */
   if(InitCarrierLib() != S_OK) {
     printf("\nCarrier library failure");
-    exit(1);
+    handleBadSigs(1000);
   }
   
   /* Connect to Carrier */
   if(CarrierOpen(digitalCarrierNum, &carrierHandle) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
-    exit(2);
+    handleBadSigs(1001);
   }
 
   cblk_470.nHandle = carrierHandle;
@@ -365,7 +374,7 @@ void acromagSetup()
   else 
     {
       printf("\nUnable initialize the carrier %lX", addr);
-      exit(3);
+      handleBadSigs(1002);
     }
 
   cblk_470.bCarrier=TRUE;
@@ -377,7 +386,7 @@ void acromagSetup()
 		     (long *) &cblk_470.brd_ptr) != S_OK)
     {
       printf("\nIpack address failure for IP470\n.");
-      exit(6);
+      handleBadSigs(10003);
     }
   cblk_470.bInitialized = TRUE;
 }
@@ -406,7 +415,7 @@ void ip470Setup()
       printf("\nDriver I.D. (high):          %X",(byte)cblk_470.id_prom[9]);
       printf("\nTotal I.D. Bytes:            %X",(byte)cblk_470.id_prom[10]);
       printf("\nCRC:                         %X\n",(byte)cblk_470.id_prom[11]);
-      exit(0);
+      handleBadSigs(1004);
   }
   else {
       printf("Board ID correct %d\n",(byte)cblk_470.id_prom[5]);
@@ -532,4 +541,16 @@ void prepWriterStructs() {
 
 
 
+}
+
+
+
+void handleBadSigs(int sig)
+{
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    closeHkFilesAndTidy(&calibWriter);
+    unlink(calibdPidFile);
+    syslog(LOG_INFO,"Calibd terminating");
+    exit(0);
 }

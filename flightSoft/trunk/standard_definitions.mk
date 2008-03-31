@@ -63,7 +63,7 @@ INCLUDES      = -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
 CCFLAGS      = $(EXCEPTION) $(OPT) -fPIC $(INCLUDES) -D_BSD_SOURCE $(FAKEFLAG) $(SYSCCFLAGS)
 LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR) 
 ANITA_LIBS    =  -lkvp -lConfig  -lPedestal -lUtil -lSlow -lm -lz#-lSocket
-ANITA_HKD_LIBS = -lAcromag -lcr7
+ANITA_HKD_LIBS = -lAcromag #-lcr7
 ANITA_GPS_LIBS = -lSerial
 ANITA_SIP_LIBS = -lSipcom
 ANITA_LOS_LIBS = -lLos
@@ -71,6 +71,12 @@ ANITA_COMP_LIBS = -lCompress
 ANITA_MAP_LIBS = -lAnitaMap
 BZ_LIB = -L$(ANITA_FLIGHT_SOFT_DIR)/outside/bzip2-1.0.3/ -lbz2
 FFTW_LIB = -L$(ANITA_FLIGHT_SOFT_DIR)/outside/fftw/lib -lfftw3
+
+INSTALL=install
+GROUP=anita
+OWNER=anita
+BINDIR=/usr/bin
+LIBDIR=/usr/lib
 
 all: $(Target)
 
