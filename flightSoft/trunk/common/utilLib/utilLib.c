@@ -2003,3 +2003,29 @@ int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned long num
 	return -1;
     return 0;
 }
+ 
+
+void checkDaemon(int argc, char *argv[])
+{
+    int makeDaemon=0;
+    int retVal=0;
+    int c;    
+    opterr = 0;
+    while ((c = getopt (argc, argv, "d")) != -1)
+	switch (c)
+	{
+	    case 'd':
+		makeDaemon = 1;
+		break;
+	    default:
+		abort ();
+	}    
+    if(makeDaemon) {
+	retVal=daemon(0,0);
+	if(retVal<0) {
+	    fprintf(stderr,"%s daemon failed with %s (%d)\n",basename(argv[0]),strerror(errno),
+		    errno);
+	    exit(0);
+	}
+    }
+}
