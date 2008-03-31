@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
-
+    makeDirectories(REQUEST_TELEM_LINK_DIR);
 
 
     retVal=readConfig();

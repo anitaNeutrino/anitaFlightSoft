@@ -35,7 +35,7 @@
 
 // Global variables for acromag control
 int carrierHandle;
-struct conf_blk_470 cblk_470;
+struct cblk470 cblk_470;
 
 // Acromag constants 
 #define INTERRUPT_LEVEL 10
@@ -43,6 +43,9 @@ struct conf_blk_470 cblk_470;
 void prepWriterStructs();
 
 // Global (config) variables
+int digitalCarrierNum=1;
+
+
 // Relay states
 int stateRFCM1=0;
 int stateRFCM2=0;
@@ -267,7 +270,10 @@ int readConfigFile()
     status |= configLoad ("Calibd.config","relays") ;
     status |= configLoad ("Calibd.config","rfSwitch") ;
 
-    if(status == CONFIG_E_OK) {       
+    if(status == CONFIG_E_OK) {
+	//Which board is the digital acromag?
+	digitalCarrierNum=kvpGetInt("digitalCarrierNum",1);
+
 	//Debug
 	printToScreen=kvpGetInt("printToScreen",-1);
 	
@@ -341,7 +347,7 @@ void acromagSetup()
   }
   
   /* Connect to Carrier */
-  if(CarrierOpenDev(0, &carrierHandle, IP470_CARRIER) != S_OK) {
+  if(CarrierOpen(digitalCarrierNum, &carrierHandle) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
     exit(2);
   }

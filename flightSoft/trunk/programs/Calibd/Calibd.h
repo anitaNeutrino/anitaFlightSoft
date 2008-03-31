@@ -53,7 +53,7 @@ int readConfigFile();
 
 
 //Acromag
-#define IP470_CARRIER "/dev/apc8620dos"
+#define IP470_CARRIER "/dev/apc8620_1"
 #define IP470_SLOT 'A'
 
 

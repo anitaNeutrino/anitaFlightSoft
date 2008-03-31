@@ -85,6 +85,7 @@ SBSTemperatureDataStruct_t sbsData;
 
 /* Configurable thingummies */
 //char carrierDevName[FILENAME_MAX];
+int analogueCarrierNum=0;
 int ip320Ranges[NUM_IP320_BOARDS];
 int numIP320s;
 int printToScreen;
@@ -240,6 +241,7 @@ int readConfigFile()
 
     if(status == CONFIG_E_OK) {       
 //	strncpy(carrierDevName,kvpGetString("ip320carrier"),FILENAME_MAX-1);
+	analogueCarrierNum=kvpGetInt("analogueCarrierNum",0);
 	numIP320s=kvpGetInt("numIP320s",3);
 	printToScreen=kvpGetInt("printToScreen",-1);
 	readoutPeriod=kvpGetInt("readoutPeriod",60);
@@ -332,7 +334,7 @@ void acromagSetup()
     }
   
     /* Connect to Carrier */ 
-    if(CarrierOpen(0, &carrierHandle) != S_OK) {
+    if(CarrierOpen(analogueCarrierNum, &carrierHandle) != S_OK) {
 	printf("\nUnable to Open instance of carrier.\n");
 	exit(2);
     }
