@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
     KvpErrorCode kvpStatus=0;
     char* eString ;
     
+   
     char *progName=basename(argv[0]);
   
     /* Set signal handlers */
@@ -119,6 +120,10 @@ int main(int argc, char *argv[])
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
+
+    //Check if I'm meant to be a daemon
+    syslog(LOG_INFO,"Starting SIPd\n");
+    checkDaemon(argc,argv);
 
     //Zero low rate structs
     memset(&slowRateData,0,sizeof(SlowRateFull_t));
@@ -279,8 +284,9 @@ void highrateHandler(int *ignore)
 	    free(linkList);
 		 
 	}
-	else
+	else {
 	    usleep(1);
+	}
 	orderIndex++;
 	if(orderIndex>=numOrders) orderIndex=0;
 //	int headCount=0;
@@ -1211,9 +1217,11 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 
 void handleBadSigs(int sig)
 {
-    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
     unlink(sipdPidFile);
     syslog(LOG_INFO,"SIPd terminating");
     exit(0);
 }
+
+

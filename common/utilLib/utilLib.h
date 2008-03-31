@@ -163,7 +163,7 @@ extern "C" {
     void sigUsr2Handler(int sig);
     void writePidFile(char *fileName);
     int checkPidFile(char *fileName);
-
+    void checkDaemon(int argc, char *argv[]);
 
 
 //Generic Header Stuff
