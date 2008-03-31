@@ -110,6 +110,12 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("eventdPidFile");
 	if(tempString) {
 	    strncpy(eventdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(eventdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,eventdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
 	    writePidFile(eventdPidFile);
 	}
 	else {
@@ -725,9 +731,9 @@ void handleBadSigs(int sig)
 	clearGpsDir();
 	firstTime=0;
     }	
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
     unlink(eventdPidFile);
-    syslog(LOG_INFO,"Eventd terminating");
-    
+    syslog(LOG_INFO,"Eventd terminating");    
     exit(0);
 }

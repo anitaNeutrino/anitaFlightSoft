@@ -1578,6 +1578,27 @@ void writePidFile(char *fileName)
     fclose(fpPid) ;
 }
 
+
+int checkPidFile(char *fileName)
+{
+    FILE *fpPid ;
+    char tempFileName[FILENAME_MAX];
+    strncpy(tempFileName,fileName,FILENAME_MAX-1);
+    
+//    pid_t thePid;
+    int theNaughtyPid;
+    if (!(fpPid=fopen(fileName, "r"))) {
+	return 0;
+    }
+    else {
+	//There shouldn't be a pidFile here
+	fscanf(fpPid,"%d", &theNaughtyPid) ;
+	fclose(fpPid) ;
+	return theNaughtyPid;
+    }
+}
+
+
 void addDay(struct tm *timeinfo) {
     //Must do leap year check
     int year=timeinfo->tm_year;

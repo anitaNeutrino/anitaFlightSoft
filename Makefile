@@ -6,6 +6,8 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 SUBDIRS = common outside/acromag programs #testing
 
+ANITA_INSTALL_LIBS=libAcromag.a libAnitaMap.a libAnitaMap.so libCompress.a libCompress.so libConfig.a libConfig.so libkvp.a libkvp.so libPedestal.a libPedestal.so libSerial.a libSipcom.a libSlow.a libSlow.so libUtil.a libUtil.so
+
 all: subdirs scripts
 
 configDocs:
@@ -30,9 +32,17 @@ scripts:
 	( chmod a+x $$file; ln -sf $$file bin; ) ; \
 	done	
 
+install:
+	$(INSTALL) -c -o $(OWNER) -g $(GROUP) -m 755 programs/SIPd/SIPd $(BINDIR)
+	@for aLib in $(ANITA_INSTALL_LIBS); do \
+	( echo "Installing $(LIBDIR)/$$aLib"; $(INSTALL) -c -o $(OWNER) -g $(GROUP) -m 755 lib/$$aLib $(LIBDIR) ) ; \
+	done
 
-
-
+uninstall:
+	rm -f $(BINDIR)/SIPd
+	@for aLib in $(ANITA_INSTALL_LIBS); do \
+	( echo "Deleting $(LIBDIR)/$$aLib"; rm -f $(LIBDIR)/$$aLib ) ; \
+	done
 
 
 

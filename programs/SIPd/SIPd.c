@@ -48,6 +48,8 @@ int sendRawWaveformPackets(int bufSize);
 int sendPedSubbedWaveformPackets(int bufSize);
 int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize); 
+void handleBadSigs(int sig);
+
 
 // Config Thingies
 char sipdPidFile[FILENAME_MAX];
@@ -109,11 +111,14 @@ int main(int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
+
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
-
 
     //Zero low rate structs
     memset(&slowRateData,0,sizeof(SlowRateFull_t));
@@ -131,6 +136,12 @@ int main(int argc, char *argv[])
 	tempString=kvpGetString("sipdPidFile");
 	if(tempString) {
 	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(sipdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,sipdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
 	    writePidFile(sipdPidFile);
 	}
 	else {
@@ -1195,4 +1206,14 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
     free(linkList);
     
     return totalBytes;
+}
+
+
+void handleBadSigs(int sig)
+{
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    unlink(sipdPidFile);
+    syslog(LOG_INFO,"SIPd terminating");
+    exit(0);
 }

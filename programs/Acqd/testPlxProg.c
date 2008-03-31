@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
     tempKey.Revision = PCI_FIELD_IGNORE;
 
 
-    tempKey.slot=0xa;
+    tempKey.slot=0xd;
     tempKey.bus=0x8;
     i=0;
     
@@ -366,12 +366,15 @@ int main(int argc, char **argv) {
     printf(" GPIO register contents = %o\n",
 	   PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 
 	
-    beforeRead=readTSC();
+  
     setSurfControl(&surfHandle,RDMode);
-    for(i=0;i<72;i++) {
-	dataWord=*(barMapAddr);	
-//	PlxPci_PciBarSpaceRead(&surfHandle,2,0x0, &dataWord, 4, BitSize32, TRUE);
-	hkVals[i]=dataWord;
+    __volatile__ int *hkData=barMapAddr;
+    beforeRead=readTSC();
+//    memcpy(hkData,hkVals,72*sizeof(int));
+    for(i=0;i<72;i++) {	
+//	dataWord=;	
+//	PlxPci_PciBarSpaceRead(&surfHandle,2,0xi, &dataWord, 4, BitSize32, TRUE);
+	hkVals[i]=*hkData++;
     }
     afterRead=readTSC();
 //        dataWord=*(barAddr);

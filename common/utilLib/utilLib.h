@@ -162,6 +162,9 @@ extern "C" {
     void sigUsr1Handler(int sig); 
     void sigUsr2Handler(int sig);
     void writePidFile(char *fileName);
+    int checkPidFile(char *fileName);
+
+
 
 //Generic Header Stuff
     void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes);

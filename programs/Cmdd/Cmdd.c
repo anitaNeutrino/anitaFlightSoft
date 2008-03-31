@@ -70,6 +70,8 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
 int startNewRun();
 int getRunNumber();
 int getLatestEventNumber();
+void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -139,6 +141,11 @@ int main (int argc, char *argv[])
 
     /* Log stuff */
     char *progName=basename(argv[0]);
+    retVal=sortOutPidFile(progName);
+    if(retVal<0) {
+	return -1; //Already have a Cmdd running
+    }
+
 
      /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -147,6 +154,10 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
+
 
     makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
@@ -245,9 +256,45 @@ int checkCommand(CommandStruct_t *theCmd) {
 
 }
 
+int sortOutPidFile(char *progName)
+{
+    /* Config file thingies */
+    int status=0;
+    int retVal=0;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+    char *tempString;
+
+    /* Load Config */
+    kvpReset () ;
+    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+
+    eString = configErrorString (status) ;
+    if (status == CONFIG_E_OK) {
+	tempString=kvpGetString("cmddPidFile");
+	if(tempString) {
+	    strncpy(cmddPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(cmddPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,cmddPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
+	    writePidFile(cmddPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get cmddPidFile");
+	    fprintf(stderr,"Couldn't get cmddPidFile\n");
+	}
+    }
+    return 0;
+}
+    
+
 int readConfig() {
     /* Config file thingies */
     int status=0;
+    int retVal=0;
     KvpErrorCode kvpStatus=0;
     char* eString ;
     char *tempString;
@@ -316,15 +363,7 @@ int readConfig() {
 	else
 	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
 
-	tempString=kvpGetString("cmddPidFile");
-	if(tempString) {
-	    strncpy(cmddPidFile,tempString,FILENAME_MAX);
-	    writePidFile(cmddPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmddPidFile");
-	    fprintf(stderr,"Couldn't get cmddPidFile\n");
-	}
+
 	tempString=kvpGetString("acqdPidFile");
 	if(tempString) {
 	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
@@ -2632,4 +2671,14 @@ int getLatestEventNumber() {
 	fclose (pFile);
     }
     return eventNumber;
+}
+
+
+void handleBadSigs(int sig)
+{
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    unlink(cmddPidFile);
+    syslog(LOG_INFO,"Cmdd terminating");
+    exit(0);
 }

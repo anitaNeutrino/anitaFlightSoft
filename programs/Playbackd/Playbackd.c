@@ -29,7 +29,8 @@ int checkForRequests();
 void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,PedSubbedEventBody_t *psbPtr,int pri);
 void sendEvent(PlaybackRequest_t *pReq);
 void startPlayback();
-
+void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 // Global Variables
 int printToScreen=0;
@@ -57,6 +58,10 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
     	    
+    retVal=sortOutPidFile(progName);
+    if(retVal<0)
+	return -1;
+
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
@@ -64,7 +69,11 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    
+    signal(SIGINT,handleBadSigs);
+    signal(SIGTERM,handleBadSigs);
+    signal(SIGSEGV,handleBadSigs);
+
+
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
     
@@ -406,4 +415,51 @@ void startPlayback()
     }
 
 
+}
+
+
+
+void handleBadSigs(int sig)
+{   
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);  
+    unlink(playbackdPidFile);
+    syslog(LOG_INFO,"Playbackd terminating");    
+    exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+    /* Config file thingies */
+    int status=0;
+    int retVal=0;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+    char *tempString;
+
+    /* Load Config */
+    kvpReset () ;
+    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+
+    eString = configErrorString (status) ;
+    if (status == CONFIG_E_OK) {
+
+	tempString=kvpGetString("playbackdPidFile");
+	if(tempString) {
+	    strncpy(playbackdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(playbackdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,playbackdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
+	    writePidFile(playbackdPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get playbackdPidFile");
+	    fprintf(stderr,"Couldn't get playbackdPidFile\n");
+	}
+    }
+    return 0;
 }

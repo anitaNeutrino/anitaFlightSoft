@@ -39,6 +39,8 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr);
 int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr);
 void purgeHkDirectory(char *dirName,char *linkDirName);
 int getLatestRunNumber();
+void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 
 // Global Variables
@@ -110,6 +112,10 @@ int main (int argc, char *argv[])
     int usbintMountCmdTime=0;
     int usbextMountCmdTime=0;
 
+    retVal=sortOutPidFile(progName);
+    if(retVal<0)
+	return -1;
+
     	    
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -118,6 +124,9 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
     
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -380,7 +389,6 @@ int readConfigFile()
 	tempString=kvpGetString("monitordPidFile");
 	if(tempString) {
 	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
-	    writePidFile(monitordPidFile);
 	}
 	else {
 	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
@@ -948,4 +956,50 @@ int getLatestRunNumber() {
 	fclose (pFile);
     }
     return runNumber;
+}
+
+
+void handleBadSigs(int sig)
+{   
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);  
+    closeHkFilesAndTidy(&monWriter);
+    unlink(monitordPidFile);
+    syslog(LOG_INFO,"Monitord terminating");    
+    exit(0);
+}
+
+int sortOutPidFile(char *progName)
+{
+    /* Config file thingies */
+    int status=0;
+    int retVal=0;
+    KvpErrorCode kvpStatus=0;
+    char* eString ;
+    char *tempString;
+
+    /* Load Config */
+    kvpReset () ;
+    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+
+    eString = configErrorString (status) ;
+    if (status == CONFIG_E_OK) {
+
+	tempString=kvpGetString("monitordPidFile");
+	if(tempString) {
+	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(monitordPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,monitordPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
+	    writePidFile(monitordPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
+	    fprintf(stderr,"Couldn't get monitordPidFile\n");
+	}
+    }
+    return 0;
 }

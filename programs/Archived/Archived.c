@@ -101,6 +101,8 @@ int main (int argc, char *argv[])
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
     signal(SIGTERM, handleBadSigs);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
 
     //Dont' wait for children
     signal(SIGCHLD, SIG_IGN); 
@@ -111,6 +113,23 @@ int main (int argc, char *argv[])
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
+	tempString=kvpGetString("archivedPidFile");
+	if(tempString) {
+	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(archivedPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,archivedPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
+	    writePidFile(archivedPidFile);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
+	    fprintf(stderr,"Couldn't get archivedPidFile\n");
+	}
+
+
 	tempString=kvpGetString("lastRunNumberFile");
 	if(tempString) {
 	    strncpy(lastRunNumberFile,tempString,FILENAME_MAX);
@@ -123,16 +142,6 @@ int main (int argc, char *argv[])
 	bladeCloneMask=kvpGetInt("bladeCloneMask",0);
 	puckCloneMask=kvpGetInt("puckCloneMask",0);
 	usbintCloneMask=kvpGetInt("usbintCloneMask",0);
-	tempString=kvpGetString("archivedPidFile");
-	if(tempString) {
-	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
-	    writePidFile(archivedPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
-	    fprintf(stderr,"Couldn't get archivedPidFile\n");
-	}
-
 	tempString=kvpGetString("bladeName");
 	if(tempString) {
 	    strncpy(bladeName,tempString,FILENAME_MAX);
@@ -664,6 +673,7 @@ int shouldWeThrowAway(int pri)
 
 void handleBadSigs(int sig)
 {
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
     closeEventFilesAndTidy(&eventWriter);
     closeHkFilesAndTidy(&indexWriter);
@@ -679,6 +689,12 @@ int getRunNumber() {
  
     FILE *pFile;    
     pFile = fopen (lastRunNumberFile, "r");
+    if(!pFile) {
+	syslog (LOG_ERR,"Couldn't open %s",lastRunNumberFile);
+	fprintf(stderr,"Couldn't open %s\n",lastRunNumberFile);
+	return -1;
+    }
+
     retVal=fscanf(pFile,"%d",&runNumber);
     if(retVal<0) {
 	syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),

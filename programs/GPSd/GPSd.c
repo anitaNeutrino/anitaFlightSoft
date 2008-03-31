@@ -47,6 +47,7 @@ void processGpvtgString(char *gpsString, int gpsLength);
 void processPosString(char *gpsString, int gpsLength);
 void processAdu5Sa4String(char *gpsString, int gpsLength);
 int tryToStartNtpd();
+void handleBadSigs(int sig);
 
 // Definitions
 #define LEAP_SECONDS 14 //Need to check
@@ -97,13 +98,14 @@ AnitaHkWriterStruct_t g12SatWriter;
 
 int startedNtpd=0;
 
+// GPSd config stuff
+char gpsdPidFile[FILENAME_MAX];
+
 
 int main (int argc, char *argv[])
 {
     int retVal;
 
-// GPSd config stuff
-    char gpsdPidFile[FILENAME_MAX];
 
     char *tempString;
     /* Config file thingies */
@@ -122,7 +124,9 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
-    signal(SIGTERM, sigUsr2Handler);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
     
     
     //Dont' wait for children
@@ -140,6 +144,12 @@ int main (int argc, char *argv[])
 	tempString=kvpGetString("gpsdPidFile");
 	if(tempString) {
 	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
+	    retVal=checkPidFile(gpsdPidFile);
+	    if(retVal) {
+		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,gpsdPidFile);
+		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+		return -1;
+	    }
 	    writePidFile(gpsdPidFile);
 	}
 	else {
@@ -161,7 +171,7 @@ int main (int argc, char *argv[])
     if(retVal<0) {
 	syslog(LOG_ERR,"Problem reading GPSd.config");
 	printf("Problem reading GPSd.config\n");
-	exit(1);
+	handleBadSigs(1000);
     }
     retVal=openDevices();
     prepWriterStructs();
@@ -173,7 +183,7 @@ int main (int argc, char *argv[])
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading GPSd.config");
 	    printf("Problem reading GPSd.config\n");
-	    exit(1);
+	    handleBadSigs(1000);
 	}
 	if(printToScreen)  
 	    printf("Device fd's: %d %d\nDevices:\t%s\t%s\n",fdG12,fdAdu5A,G12A_DEV_NAME,ADU5A_DEV_NAME);
@@ -208,7 +218,7 @@ int main (int argc, char *argv[])
     unlink(gpsdPidFile);
 
     syslog(LOG_INFO,"GPSd terminating");
-    removeFile(gpsdPidFile);
+//    removeFile(gpsdPidFile);
     
 	
     return 0;
@@ -301,7 +311,7 @@ int openDevices()
     if(retVal<=0) {
 	syslog(LOG_ERR,"Couldn't open: %s\n",G12A_DEV_NAME);
 	if(printToScreen) printf("Couldn't open: %s\n",G12A_DEV_NAME);
-	exit(1);
+	handleBadSigs(1001);
     }
     else fdG12=retVal;
  
@@ -310,7 +320,7 @@ int openDevices()
     if(retVal<=0) {
 	syslog(LOG_ERR,"Couldn't open: %s\n",ADU5A_DEV_NAME);
 	if(printToScreen) printf("Couldn't open: %s\n",ADU5A_DEV_NAME);
-	exit(1);
+	handleBadSigs(1);
     }
     else fdAdu5A=retVal;
 
@@ -1324,3 +1334,20 @@ void prepWriterStructs() {
     
 
 }    
+
+
+void handleBadSigs(int sig)
+{
+   
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    closeHkFilesAndTidy(&adu5PatWriter);
+    closeHkFilesAndTidy(&adu5SatWriter);
+    closeHkFilesAndTidy(&adu5TttWriter);
+    closeHkFilesAndTidy(&adu5VtgWriter);
+    closeHkFilesAndTidy(&g12PosWriter);
+    closeHkFilesAndTidy(&g12SatWriter);
+    unlink(gpsdPidFile);
+    syslog(LOG_INFO,"GPSd terminating");    
+    exit(0);
+}
