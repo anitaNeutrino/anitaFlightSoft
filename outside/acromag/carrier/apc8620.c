@@ -44,7 +44,7 @@
     REVISIONS:
 
     DATE	 BY     PURPOSE
-  --------   -----	---------------------------------------------------
+  --------   -----	-----------------------------------------
   12/22/04   FJM    Fedora core FC3 update.
   01/20/05   FJM    Extended carrier function library interface.
 
@@ -52,6 +52,9 @@
 */
 
 #include "apc8620.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #define DEVNAME "/dev/apc8620_"	/* name of device */
 

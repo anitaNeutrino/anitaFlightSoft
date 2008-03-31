@@ -190,8 +190,8 @@ unsigned int antTrigMask=0;
 //Test of BarMap
 //U32 barMapDataWord[ACTIVE_SURFS];
 //RJN comment should this int be a U32 or a void?
-__volatile__ int *barMapAddr[ACTIVE_SURFS];
-__volatile__ int *turfBarMap;
+__volatile__ unsigned int *barMapAddr[ACTIVE_SURFS];
+__volatile__ unsigned int *turfBarMap;
 
 
 //File writing structures
@@ -1314,14 +1314,6 @@ int initializeDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
 
     //Note that the Plx VendorID is 0x10b5
 
-    tempKey.bus       = PCI_FIELD_IGNORE;
-    tempKey.slot      = PCI_FIELD_IGNORE;
-    tempKey.function      = PCI_FIELD_IGNORE;
-    tempKey.VendorId        = PCI_FIELD_IGNORE;
-    tempKey.DeviceId        = PCI_FIELD_IGNORE;
-    tempKey.SubVendorId = PCI_FIELD_IGNORE;
-    tempKey.SubDeviceId = PCI_FIELD_IGNORE;
-    tempKey.Revision = PCI_FIELD_IGNORE;
    
     //RJN comment not sure this works may have to manually loop through to find number of devices.
     //Will probably change this to actual use the SURF Ids at some point (but not right now)
@@ -1331,6 +1323,15 @@ int initializeDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
 
     numDevices = 0;
     for(i=0;i<20;i++) {
+
+	tempKey.bus       = PCI_FIELD_IGNORE;
+	tempKey.slot      = PCI_FIELD_IGNORE;
+	tempKey.function      = PCI_FIELD_IGNORE;
+	tempKey.VendorId        = PCI_FIELD_IGNORE;
+	tempKey.DeviceId        = PCI_FIELD_IGNORE;
+	tempKey.SubVendorId = PCI_FIELD_IGNORE;
+	tempKey.SubDeviceId = PCI_FIELD_IGNORE;
+	tempKey.Revision = PCI_FIELD_IGNORE;
 	if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess)
 	    break;
 	if(verbosity & printToScreen) {
@@ -1408,7 +1409,7 @@ int initializeDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
 
     if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess) {
 	//syslog
-	printf("Couldn't find TURFIO (Bus %d -- Slot %X)",
+	printf("Couldn't find TURFIO (Bus %d -- Slot %X)\n",
 	       turfioPos.bus,turfioPos.slot);
     }
     else {
@@ -1706,7 +1707,7 @@ int readConfigFile()
 	rateIGain=kvpGetFloat("rateIGain",1);
 	rateDGain=kvpGetFloat("rateDGain",1);
 	rateIMax=kvpGetFloat("rateIMax",100);
-	rateIMin-kvpGetFloat("rateIMin",-100);
+	rateIMin=kvpGetFloat("rateIMin",-100);
     }
     else {
 	eString=configErrorString (status) ;

@@ -36,7 +36,7 @@
 
 // Global variables for acromag control
 int carrierHandle;
-struct conf_blk_470 cblk_470;
+struct cblk470 cblk_470;
 
 // Acromag constants 
 #define INTERRUPT_LEVEL 10
@@ -332,7 +332,7 @@ void acromagSetup()
   }
   
   /* Connect to Carrier */
-  if(CarrierOpenDev(0, &carrierHandle, IP470_CARRIER) != S_OK) {
+  if(CarrierOpen(1, &carrierHandle) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
     exit(2);
   }

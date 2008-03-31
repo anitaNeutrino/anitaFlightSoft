@@ -28,6 +28,7 @@ int ip320_Read();
 void dumpArrayValues();
 
 /* global variables for acromag control */
+int analogueCarrierNum=0;
 int carrierHandle;
 struct cblk320 cblk_320;
 struct scan_array ip320_s_array[NUM_ACRO_CHANS]; 
@@ -85,6 +86,7 @@ int main (int argc, char **argv)
   status += configLoad ("HkReadout.config","hkd") ;
   eString = configErrorString(status);
   if (status == CONFIG_E_OK) {
+      analogueCarrierNum=kvpGetInt("analogueCarrierNum",0);
     char *temp;
     temp = kvpGetString("ip320carrier");
     if (temp != NULL) sprintf(ip320carrier,"%s",temp);

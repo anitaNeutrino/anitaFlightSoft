@@ -288,18 +288,13 @@ void setDACThresholds(PlxDevObject_t *surfHandle) {
 		   	    
 }
 
-inline volatile unsigned long readTSC();
-
+inline unsigned long readTSC();
 
 int main(int argc, char **argv) {
-    int regVal=0;
     PlxDevObject_t surfHandle;
     PlxDevKey_t surfLocation;
-    unsigned int  dataWord=0,dataWord2;
-    int dataArray[50];
-    int j,countSurfs=0;
-    int ret;
-    U32  numDevices,i ;
+    unsigned int  dataWord=0;
+    U32  i ;
     PlxDevKey_t tempKey;
     PlxStatus_t rc;
 
@@ -315,6 +310,9 @@ int main(int argc, char **argv) {
     tempKey.SubDeviceId = PCI_FIELD_IGNORE;
     tempKey.Revision = PCI_FIELD_IGNORE;
 
+
+    tempKey.slot=0xa;
+    tempKey.bus=0x8;
     i=0;
     
     if ((rc=PlxPci_DeviceFind(&tempKey, i)) != ApiSuccess) {
@@ -336,8 +334,6 @@ int main(int argc, char **argv) {
     opened=readTSC();
     
 
-    U16 *sp;
-    U32 total_bytes_read = 0;
     
     setBarMap(&surfHandle);
 
@@ -366,7 +362,6 @@ int main(int argc, char **argv) {
 /*     } */
 
 
-    unsigned int val;
     unsigned int hkVals[72]={0};
     printf(" GPIO register contents = %o\n",
 	   PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 
@@ -388,13 +383,14 @@ int main(int argc, char **argv) {
     printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
     printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
 
+
+    return 0;
 }
 
 
 void readRegisters(PlxDevObject_t *surfHandle) {
 
     PlxStatus_t rc;
-    unsigned int val;
     printf(" GPIO register contents = %o\n",
 	   PlxPci_PlxRegisterRead(surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 
 
@@ -455,7 +451,7 @@ void printBinary(int number) {
     printf("\n");
 }
  
-inline volatile unsigned long readTSC()
+inline unsigned long readTSC()
 {
     unsigned long tsc;
     asm("rdtsc":"=A"(tsc));
