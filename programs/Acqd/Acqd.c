@@ -2258,12 +2258,14 @@ AcqdErrorCode_t readSurfEventData(PlxDevObject_t *surfHandles)
 		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
 	}
 	
+	__volatile__ int *evData=barMapAddr[surf];
+
 	//First read to prime pipe
-	dataInt=*(barMapAddr[surf]);
+	dataInt=*evData++;
 	
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (samp=0 ; samp<N_SAMP_EFF ; samp++) {		
-		dataInt=*(barMapAddr[surf]);
+		dataInt=*evData++;
 
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surfIndex[surf],((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,((dataInt& 0x1000)>>12),(dataInt&DATA_MASK));
@@ -2273,7 +2275,7 @@ AcqdErrorCode_t readSurfEventData(PlxDevObject_t *surfHandles)
 	}
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (samp=N_SAMP_EFF ; samp<N_SAMP ; samp++) {		
-		dataInt=*(barMapAddr[surf]);
+		dataInt=*evData++;
 
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d,CHN %d, SCA %d: %x (HITBUS=%d) %d\n",surfIndex[surf],((dataInt&0xf0000)>>16),((dataInt&0x00c00000)>> 22),chan,samp,dataInt,dataInt & 0x1000,dataInt&DATA_MASK);
@@ -2403,17 +2405,19 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxDevObject_t *surfHandles)
 	   1169 last read; (only lower 16 bits)
 	*/
 
+	__volatile__ int *evData=barMapAddr[surf];
+	
 	//First read header word
-	headerWord=*(barMapAddr[surf]);
+	headerWord=*evData++;
 	
 
 	//Now prime data stream
-	dataInt=*(barMapAddr[surf]);
+	dataInt=*evData++;
 	
 	//Now read first 256 samples per SURF
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (readCount=samp=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {		
-		dataInt=*(barMapAddr[surf]);
+		dataInt=*evData++;
 
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,dataInt);
@@ -2444,7 +2448,7 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxDevObject_t *surfHandles)
 	for(chan=0;chan<N_CHAN; chan++) {
 	    samp=N_SAMP_EFF;
 	    for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
-		dataInt=*(barMapAddr[surf]);
+		dataInt=*evData++;
 		
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,dataInt);
@@ -2467,7 +2471,7 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxDevObject_t *surfHandles)
 	    }
 	}
 	
-	dataInt=*(barMapAddr[surf]);
+	dataInt=*evData++;
 
 	labData[surf][N_CHAN-1][N_SAMP-1]=dataInt&0xffff;
 	labData[surf][N_CHAN-1][N_SAMP-1]|=headerWord&0xffff0000;
@@ -2605,9 +2609,9 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles)
 	   1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
 	   1156:1169 -- Chans 1 through 8 2 reads per chan as above
 	*/
-
+	__volatile__ int *evData=barMapAddr[surf];
 	//First read header word
-	headerWord=*(barMapAddr[surf]);
+	headerWord=*evData++;
 	if(printToScreen && verbosity>2) {
 	    printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord);
 	}
@@ -2629,7 +2633,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles)
 
 
 	//Now prime data stream
-	dataInt=*(barMapAddr[surf]);
+	dataInt=*evData++;
 	if(printToScreen && verbosity>2) {
 	    printf("SURF %d (%d), CHIP %d, CHN %d, Prime: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt);
 	}
@@ -2637,7 +2641,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles)
 	//Now read first 256 samples per SURF
 	for(chan=0;chan<N_CHAN; chan++) {
 	    for (readCount=samp=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {		
-		dataInt=*(barMapAddr[surf]);
+		dataInt=*evData++;
 
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
@@ -2669,7 +2673,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles)
 	for(chan=0;chan<N_CHAN; chan++) {
 	    samp=N_SAMP_EFF;
 	    for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
-		dataInt=*(barMapAddr[surf]);
+		dataInt=*evData++;
 		
 		if(printToScreen && verbosity>2) {
 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
@@ -2697,7 +2701,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles)
 	    }
 	}
 	
-//	dataInt=*(barMapAddr[surf]);
+//	dataInt=*evData++;
 
 //	labData[surf][N_CHAN-1][N_SAMP-1]=dataInt&0xffff;
 //	labData[surf][N_CHAN-1][N_SAMP-1]|=headerWord&0xffff0000;
@@ -2829,10 +2833,10 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
 	    theSurfHk.surfTrigBandMask[surf][rfChan]=surfTrigBandMasks[surf][rfChan];
 	}
 
-	
+	__volatile__ int *hkData=barMapAddr[surf];
 	//First read the scaler data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
-	    dataInt=*(barMapAddr[surf]);
+	    dataInt=*hkData++;
 
 	    theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
 	    if((printToScreen && verbosity>1) || HK_DEBUG) 
@@ -2853,7 +2857,7 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
 
 	//Next comes the threshold (DAC val) data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
-	    dataInt=*(barMapAddr[surf]);
+	    dataInt=*hkData++;
 
 	    theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
 	    theSurfHk.setThreshold[surf][rfChan]=thresholdArray[surf][rfChan];
@@ -2877,7 +2881,7 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
 	
 	//Lastly read the RF Power Data
 	for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
-	    dataInt=*(barMapAddr[surf]);
+	    dataInt=*hkData++;
 	    theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
             if((printToScreen && verbosity>1) || HK_DEBUG)
                 printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]&0xfff);
@@ -2909,8 +2913,10 @@ AcqdErrorCode_t readTurfEventDataVer2(PlxDevObject_t *turfioHandlePtr)
     TurfioTestPattern_t startPat;
     TurfioTestPattern_t endPat;
     
+    __volatile__ int *turfData=turfBarMap;
+
     //First read to prime pipe
-//	dataWord=*(turfBarMap);
+//	dataWord=*turfData++;
 // Do we need prime read (rjn 20/05/06)
     
     SlacTurfioStruct_t *oldTurfioPtr = (SlacTurfioStruct_t*) turfioPtr;
@@ -3115,10 +3121,10 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxDevObject_t *turfioHandlePtr)
     TurfioTestPattern_t endPat;
     
     //First read to prime pipe
-//	dataWord=*(turfBarMap);
+//	dataWord=*turfData++;
 // Do we need prime read (rjn 20/05/06)
     
-    
+    //Why doesn't this use the bar map method??
     //Read out 160 words
     for(wordNum=0;wordNum<160;wordNum++) {
 	if (readPlxDataShort(turfioHandlePtr,&dataWord)!= ApiSuccess) {
