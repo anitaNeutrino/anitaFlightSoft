@@ -160,7 +160,7 @@ void acromagSetup(unsigned int ip320BoardLocation, char *ip320carrier)
 /*     printf("\nUnable to Open instance of carrier.\n"); */
 /*     exit(2); */
 /*   } */
-  if(CarrierOpen(0, &carrierHandle) != S_OK) {
+  if(CarrierOpen(1, &carrierHandle) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
     exit(2);
   }

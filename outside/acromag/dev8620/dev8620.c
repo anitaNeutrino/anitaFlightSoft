@@ -671,8 +671,8 @@ init_module( void )
 	strcat(devnamebuf, devnumbuf);
         board_irq[i] = p8620->irq;
 /*  Used for earlier versions FC3/4/5/6 */
-/*	ret_val = request_irq ( board_irq[i], apc8620_handler, SA_INTERRUPT | SA_SHIRQ, devnamebuf, ( void *)carrier_address[i] ); */
-	ret_val = request_irq ( board_irq[i], (irq_handler_t)apc8620_handler, SA_INTERRUPT | SA_SHIRQ, devnamebuf, ( void *)carrier_address[i] );
+/*	ret_val = request_irq ( board_irq[i], apc8620_handler, IRQF_DISABLED | IRQF_SHARED, devnamebuf, ( void *)carrier_address[i] ); */
+	ret_val = request_irq ( board_irq[i], (irq_handler_t)apc8620_handler, IRQF_DISABLED | IRQF_SHARED, devnamebuf, ( void *)carrier_address[i] );
 
         printk("%s mapped   I/O=%08lX IRQ=%02X Rv=%X\n",devnamebuf,(unsigned long)carrier_address[i], board_irq[i],ret_val);
 
