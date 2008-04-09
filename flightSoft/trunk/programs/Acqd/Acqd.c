@@ -379,7 +379,7 @@ int main(int argc, char **argv) {
     //renice process
     sprintf(reniceCommand,"sudo renice %d -p `cat %s`",niceValue,
 	    acqdPidFile);
-    retVal=system(reniceCommand);
+    //    retVal=system(reniceCommand);
 
     if(doingEvent==0) prepWriterStructs();
 
