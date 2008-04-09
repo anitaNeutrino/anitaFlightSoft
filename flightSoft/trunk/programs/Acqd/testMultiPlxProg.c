@@ -358,7 +358,7 @@ int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs)
       /* 		printf("tempKey[%d] %d %d \t surfPos[%d] %d %d\n", */
       /* 		       i,tempKey[i].bus,tempKey[i].slot,surfNum, */
       /* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */	
-      rc=PlxPci_DeviceOpen(tempKey,&surfHandles[countSurfs]);
+      rc=PlxPci_DeviceOpen(&tempKey,&surfHandles[countSurfs]);
       if ( rc!= ApiSuccess) {
 	fprintf(stderr,"Error opening SURF device %d\n",rc);
 	return -1 ;
@@ -373,9 +373,7 @@ int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs)
 
 int main(int argc, char **argv) {
     PlxDevObject_t surfHandle[12];
-    unsigned int  dataWord=0;
     U32  i ;
-    PlxDevKey_t tempKey;
     PlxStatus_t rc;
     int surf=0;
     int numSurfs=1;
@@ -402,7 +400,7 @@ int main(int argc, char **argv) {
     for(surf=0;surf<numSurfs;surf++) {
       unsigned int hkVals[72]={0};
       printf(" GPIO register contents = %o\n",
-	     PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 	
+	     PlxPci_PlxRegisterRead(&surfHandle[surf], PCI9030_GP_IO_CTRL, &rc)) ; 	
       
       setSurfControl(&surfHandle[surf],RDMode);
       __volatile__ int *hkData=barMapAddr[surf];
