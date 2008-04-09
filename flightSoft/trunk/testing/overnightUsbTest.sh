@@ -2,7 +2,7 @@
 #Script to test writing to disks overnight.
 
 
-LOG_DIR=/home/anita/diskTestLog/morning30Mar08NoSyncMount
+LOG_DIR=/home/anita/diskTestLog/overnight30Mar08NoSyncMount
 TEST_DIR=/mnt/usbdata
 REF_DIR=/tmp
 NUM_EVENTS=20000 

@@ -126,7 +126,7 @@ void acromagSetup(int ip470BoardLocation, char *ip470carrier)
   }
   
   /* Connect to Carrier */
-  if(CarrierOpen(1, &carrierHandle) != S_OK) {
+  if(CarrierOpen(0, &carrierHandle) != S_OK) {
     printf("\nUnable to Open instance of carrier.\n");
     exit(2);
   }
