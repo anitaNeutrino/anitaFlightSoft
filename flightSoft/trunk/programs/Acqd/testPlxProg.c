@@ -218,21 +218,22 @@ PlxStatus_t setSurfControl(PlxDevObject_t *surfHandlePtr, SurfControlAction_t ac
     return PlxPci_PlxRegisterWrite(surfHandlePtr, PCI9030_GP_IO_CTRL, baseVal ) ;
 
 }
-__volatile__ int *barMapAddr;
+__volatile__ int *barMapAddr[MAX_SURFS];
 
 
-PlxStatus_t setBarMap(PlxDevObject_t *surfHandle) {
+PlxStatus_t setBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
     PlxStatus_t rc=0;
     U32 *addrVal;
+    int surf=0;
 
-
-    rc=PlxPci_PciBarMap(surfHandle,2,(VOID**)&addrVal);
-    if(rc!=ApiSuccess) {
+    for(surf=0;surf<numSurfs;surf++) {
+      rc=PlxPci_PciBarMap(&surfHandle[surf],2,(VOID**)&addrVal);
+      if(rc!=ApiSuccess) {
 	fprintf(stderr,"Unable to map PCI bar 2 on SURF  (%d)",rc);
+      }
+      barMapAddr[surf]=(int*)addrVal;
+      printf("Bar Addr is %x\t%x\n",(int)barMapAddr[surf],*addrVal);
     }
-    barMapAddr=(int*)addrVal;
-    printf("Bar Addr is %x\t%x\n",(int)barMapAddr,*addrVal);
-
     return rc;
 }
 
@@ -335,7 +336,7 @@ int main(int argc, char **argv) {
     
 
     
-    setBarMap(&surfHandle);
+    setBarMap(&surfHandle,1);
 
     setSurfControl(&surfHandle,SurfClearAll);
     beforeDac=readTSC();
@@ -368,7 +369,7 @@ int main(int argc, char **argv) {
 	
   
     setSurfControl(&surfHandle,RDMode);
-    __volatile__ int *hkData=barMapAddr;
+    __volatile__ int *hkData=barMapAddr[0];
     beforeRead=readTSC();
 //    memcpy(hkData,hkVals,72*sizeof(int));
     for(i=0;i<72;i++) {	
