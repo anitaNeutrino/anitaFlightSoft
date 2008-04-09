@@ -307,103 +307,127 @@ void setDACThresholds(PlxDevObject_t *surfHandle) {
 
 inline unsigned long readTSC();
 
-int main(int argc, char **argv) {
-    PlxDevObject_t surfHandle;
-    PlxDevKey_t surfLocation;
-    unsigned int  dataWord=0;
-    U32  i ;
-    PlxDevKey_t tempKey;
-    PlxStatus_t rc;
 
-    unsigned long start,opened,beforeDac,afterDac,beforeRead,afterRead;
-    start=readTSC();
-//    exit(0);
-    tempKey.bus=PCI_FIELD_IGNORE;
-    tempKey.slot=PCI_FIELD_IGNORE;
+int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs) 
+{
+  int surfSlots[12]={11,13,14,8,9,11,14,15,8,-1,-1,-1};
+  int surfBuses[12]={10,10,10,10,9,9,9,9,9,-1,-1,-1};
+
+  int surfNum,countSurfs=0;
+  U8  numDevices,i ;
+  PlxDevKey_t tempKey;
+  PlxStatus_t rc;
+  numDevices = 0;
+  for(i=0;i<20;i++) {
+    
+    tempKey.bus       = PCI_FIELD_IGNORE;
+    tempKey.slot      = PCI_FIELD_IGNORE;
     tempKey.function      = PCI_FIELD_IGNORE;
     tempKey.VendorId        = PCI_FIELD_IGNORE;
     tempKey.DeviceId        = PCI_FIELD_IGNORE;
     tempKey.SubVendorId = PCI_FIELD_IGNORE;
     tempKey.SubDeviceId = PCI_FIELD_IGNORE;
     tempKey.Revision = PCI_FIELD_IGNORE;
+    if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess)
+      break;
+    printf("Found device at (Bus %d -- Slot %X)\n",
+	   tempKey.bus,tempKey.slot);  
+    numDevices=i+1;
+  }
+  printf("initializeDevices: found %d PLX devices.\n", numDevices) ;
 
-
-    tempKey.slot=0xb;
-    tempKey.bus=0xa;
+   /* Initialize SURFs */    
+  for(surfNum=0;surfNum<numSurfs;surfNum++) {
+    if(surfPos[surfNum].bus<0 || surfPos[surfNum].slot<0) continue;
     i=0;
-    
-    if ((rc=PlxPci_DeviceFind(&tempKey, i)) != ApiSuccess) {
-	printf("Return code %d\n",rc);
-	return -1 ;
-
+    tempKey.bus       = surfBuses[surfNum];
+    tempKey.slot      = surfSlots[surfNum];
+    tempKey.function      = PCI_FIELD_IGNORE;
+    tempKey.VendorId        = PCI_FIELD_IGNORE;
+    tempKey.DeviceId        = PCI_FIELD_IGNORE;
+    tempKey.SubVendorId = PCI_FIELD_IGNORE;
+    tempKey.SubDeviceId = PCI_FIELD_IGNORE;
+    tempKey.Revision = PCI_FIELD_IGNORE;
+    if (PlxPci_DeviceFind(&tempKey, i) != ApiSuccess) {
+      //syslog
+      printf("Couldn't find SURF %d (Bus %d -- Slot %X)\n",
+	     surfNum+1,surfBuses[surfNum],surfSlots[surfNum]);
     }
-    printf("init_device: device found, %.4x %.4x [bus %.2x  slot %.2x]\n",
-	   tempKey.DeviceId, tempKey.VendorId, 
-	   tempKey.bus, tempKey.slot);
+    else {	    
+      // Got a SURF
+      /* 		printf("tempKey[%d] %d %d \t surfPos[%d] %d %d\n", */
+      /* 		       i,tempKey[i].bus,tempKey[i].slot,surfNum, */
+      /* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */	
+      rc=PlxPci_DeviceOpen(tempKey,&surfHandles[countSurfs]);
+      if ( rc!= ApiSuccess) {
+	syslog(LOG_ERR,"Error opening SURF device %d",rc);
+	if(printToScreen)
+	  fprintf(stderr,"Error opening SURF device %d\n",rc);
+	return -1 ;
+      }		
+      PlxPci_DeviceReset(&surfHandles[countSurfs]) ;
+      countSurfs++;    
+    }
+  }
+
+}
+
+
+int main(int argc, char **argv) {
+    PlxDevObject_t surfHandle[12];
+    unsigned int  dataWord=0;
+    U32  i ;
+    PlxDevKey_t tempKey;
+    PlxStatus_t rc;
+    int surf=0;
+    int numSurfs=1;
+    unsigned long start,opened,beforeDac,afterDac,beforeRead,afterRead;
+    start=readTSC();
 //    exit(0);
-    surfLocation=tempKey;
-    rc=PlxPci_DeviceOpen(&surfLocation,&surfHandle);
-    if(rc!=ApiSuccess) {
-	printf("Failed to Open PLX Device: %d\n",rc);
-	return -1;
-    }       
-    PlxPci_DeviceReset(&surfHandle) ;
+    initializeDevices(surfHandle,1);
     opened=readTSC();
     
 
     
-    setBarMap(&surfHandle,1);
-
-    setSurfControl(&surfHandle,SurfClearAll);
-    beforeDac=readTSC();
-    setDACThresholds(&surfHandle);
-    afterDac=readTSC();
-    setSurfControl(&surfHandle,SurfClearHk);
-    setSurfControl(&surfHandle,SurfClearEvent);
-    setSurfControl(&surfHandle,SurfClearAll);
-
-
-/*     readRegisters(&surfHandle); */
-/*     regVal=PlxPci_PlxRegisterRead(&surfHandle,PCI9030_RANGE_SPACE0,&rc); */
-/*     regVal&=~0x4; */
-/*     regVal|=0x9; */
-/*     PlxPci_PlxRegisterWrite(&surfHandle,PCI9030_RANGE_SPACE0,regVal); */
-/*     readRegisters(&surfHandle); */
+    setBarMap(&surfHandle,numSurfs);
+    for(surf=0;surf<numSurfs;surf++) {
+      setSurfControl(&surfHandle[surf],SurfClearAll);
+      beforeDac=readTSC();
+      setDACThresholds(&surfHandle[surf]);
+      afterDac=readTSC();
+      setSurfControl(&surfHandle[surf],SurfClearHk);
+      setSurfControl(&surfHandle[surf],SurfClearEvent);
+      setSurfControl(&surfHandle[surf],SurfClearAll);
+    }
 
 
-    
-/*     while(1) { */
-/* 	regVal=PlxPci_PlxRegisterRead(&surfHandle,PCI9030_GP_IO_CTRL,&rc); */
-/* 	printf("GPIO %o\n",regVal); */
-/* 	sleep(1); */
-/*     } */
-
-
-    unsigned int hkVals[72]={0};
-    printf(" GPIO register contents = %o\n",
-	   PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 
-	
-  
-    setSurfControl(&surfHandle,RDMode);
-    __volatile__ int *hkData=barMapAddr[0];
-    beforeRead=readTSC();
+    for(surf=0;surf<numSurfs;surf++) {
+      unsigned int hkVals[72]={0};
+      printf(" GPIO register contents = %o\n",
+	     PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 	
+      
+      setSurfControl(&surfHandle,RDMode);
+      __volatile__ int *hkData=barMapAddr[surf];
+      beforeRead=readTSC();
 //    memcpy(hkData,hkVals,72*sizeof(int));
-    for(i=0;i<72;i++) {	
-//	dataWord=;	
-//	PlxPci_PciBarSpaceRead(&surfHandle,2,0xi, &dataWord, 4, BitSize32, TRUE);
+      for(i=0;i<72;i++) {	
+	//	dataWord=;	
+	//	PlxPci_PciBarSpaceRead(&surfHandle,2,0xi, &dataWord, 4, BitSize32, TRUE);
 	hkVals[i]=*hkData++;
-    }
-    afterRead=readTSC();
-//        dataWord=*(barAddr);
-//      dataWord2=*(barAddr+4);
-//        if(i<20)
-    for(i=0;i<72;i++) {
+      }
+      afterRead=readTSC();
+      //        dataWord=*(barAddr);
+      //      dataWord2=*(barAddr+4);
+      //        if(i<20)
+      for(i=0;i<72;i++) {
 	printf("%d\t%0x\n",i,hkVals[i]);
+      }
+      printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
+      printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
     }
-    printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
-    printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
 
-    unsetBarMap(&surfHandle,1);
+    unsetBarMap(&surfHandle,numSurfs);
+
     return 0;
 }
 
