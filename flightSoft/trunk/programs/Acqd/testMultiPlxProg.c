@@ -253,6 +253,32 @@ PlxStatus_t unsetBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
 }
 
 
+PlxStatus_t setSingleBarMap(PlxDevObject_t *surfHandle,int surfNum) {
+    PlxStatus_t rc=0;
+    U32 *addrVal;
+    
+    rc=PlxPci_PciBarMap(&surfHandle[surfNum],2,(VOID**)&addrVal);
+    if(rc!=ApiSuccess) {
+      fprintf(stderr,"Unable to map PCI bar 2 on SURF %d  (%d)",rc,surfNum);
+    }
+    barMapAddr[surfNum]=(int*)addrVal;
+    printf("Bar Addr %d is %x\t%x\n",surfNum,(int)barMapAddr[surf],*addrVal);    
+    return rc;
+}
+
+
+PlxStatus_t unsetSingleBarMap(PlxDevObject_t *surfHandle,int surfNum) {
+    PlxStatus_t rc=0;
+    
+    U32 *addrVal=(U32*)barMapAddr[surfNum];
+    rc=PlxPci_PciBarUnmap(&surfHandle[surfNum],(VOID**)&addrVal);
+    if(rc!=ApiSuccess) {
+      fprintf(stderr,"Unable to unmap PCI bar 2 on SURF %d  (%d)",rc,surfNum);
+    }
+    return rc;
+}
+
+
 void setDACThresholds(PlxDevObject_t *surfHandle) {
     PlxStatus_t rc;
     int dac;
@@ -355,9 +381,6 @@ int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs)
     }
     else {	    
       // Got a SURF
-      /* 		printf("tempKey[%d] %d %d \t surfPos[%d] %d %d\n", */
-      /* 		       i,tempKey[i].bus,tempKey[i].slot,surfNum, */
-      /* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */	
       rc=PlxPci_DeviceOpen(&tempKey,&surfHandles[countSurfs]);
       if ( rc!= ApiSuccess) {
 	fprintf(stderr,"Error opening SURF device %d\n",rc);
@@ -385,7 +408,7 @@ int main(int argc, char **argv) {
     
 
     
-    setBarMap(surfHandle,numSurfs);
+    //    setBarMap(surfHandle,numSurfs);
     for(surf=0;surf<numSurfs;surf++) {
       setSurfControl(&surfHandle[surf],SurfClearAll);
       beforeDac=readTSC();
@@ -398,6 +421,7 @@ int main(int argc, char **argv) {
 
 
     for(surf=0;surf<numSurfs;surf++) {
+      setSingleBarMap(surfHandle,surf);
       unsigned int hkVals[72]={0};
       printf(" GPIO register contents = %o\n",
 	     PlxPci_PlxRegisterRead(&surfHandle[surf], PCI9030_GP_IO_CTRL, &rc)) ; 	
@@ -420,9 +444,10 @@ int main(int argc, char **argv) {
       }
       printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
       printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
+      unsetSingleBarMap(surfHandle,0);
     }
 
-    unsetBarMap(surfHandle,numSurfs);
+    //    unsetBarMap(surfHandle,numSurfs);
 
     return 0;
 }
