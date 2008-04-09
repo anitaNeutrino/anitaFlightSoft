@@ -3334,17 +3334,19 @@ PlxStatus_t setBarMap(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
 	rc=PlxPci_PciBarMap(&surfHandles[surf],2,(VOID**)&addrVal);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Unable to map PCI bar 2 on SURF %d (%d)",surfIndex[surf],rc);
+	    fprintf(stderr,"Unable to map PCI bar 2 on SURF %d (%d)\n",surfIndex[surf],rc);
 	}
-	barMapAddr[surf]=(int*)addrVal;
+	barMapAddr[surf]=(unsigned int*)addrVal;
 	if(verbosity && printToScreen) {
 	    printf("Bar Addr[%d] is %x\t%x\n",surfIndex[surf],(int)barMapAddr[surf],*addrVal);
 	}
     }
     rc=PlxPci_PciBarMap(turfioHandlePtr,2,(VOID**)&addrVal);
     if(rc!=ApiSuccess) {
-	syslog(LOG_ERR,"Unable to map PCI bar 2 on TURFIO (%d)",rc);
+      fprintf(stderr,"Unable to map PCI bar 2 on TURFIO (%d)\n",rc);
+      syslog(LOG_ERR,"Unable to map PCI bar 2 on TURFIO (%d)",rc);
     }
-    turfBarMap=(int*)addrVal;
+    turfBarMap=(unsigned int*)addrVal;
     if(verbosity && printToScreen) {
 	printf("Turf Bar Addr is %x\t%x\n",(int)turfBarMap,*addrVal);
     }
