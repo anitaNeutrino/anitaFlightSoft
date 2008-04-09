@@ -218,7 +218,7 @@ PlxStatus_t setSurfControl(PlxDevObject_t *surfHandlePtr, SurfControlAction_t ac
     return PlxPci_PlxRegisterWrite(surfHandlePtr, PCI9030_GP_IO_CTRL, baseVal ) ;
 
 }
-__volatile__ int *barMapAddr[MAX_SURFS];
+__volatile__ int *barMapAddr[12];
 
 
 PlxStatus_t setBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
