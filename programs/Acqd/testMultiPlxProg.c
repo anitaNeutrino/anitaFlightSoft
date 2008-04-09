@@ -338,7 +338,7 @@ int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs)
 
    /* Initialize SURFs */    
   for(surfNum=0;surfNum<numSurfs;surfNum++) {
-    if(surfPos[surfNum].bus<0 || surfPos[surfNum].slot<0) continue;
+    if(surfSlots[surfNum]<0 || surfBuses[surfNum]<0) continue;
     i=0;
     tempKey.bus       = surfBuses[surfNum];
     tempKey.slot      = surfSlots[surfNum];
@@ -360,9 +360,7 @@ int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs)
       /* 		       surfPos[surfNum].bus,surfPos[surfNum].slot); */	
       rc=PlxPci_DeviceOpen(tempKey,&surfHandles[countSurfs]);
       if ( rc!= ApiSuccess) {
-	syslog(LOG_ERR,"Error opening SURF device %d",rc);
-	if(printToScreen)
-	  fprintf(stderr,"Error opening SURF device %d\n",rc);
+	fprintf(stderr,"Error opening SURF device %d\n",rc);
 	return -1 ;
       }		
       PlxPci_DeviceReset(&surfHandles[countSurfs]) ;
@@ -389,7 +387,7 @@ int main(int argc, char **argv) {
     
 
     
-    setBarMap(&surfHandle,numSurfs);
+    setBarMap(surfHandle,numSurfs);
     for(surf=0;surf<numSurfs;surf++) {
       setSurfControl(&surfHandle[surf],SurfClearAll);
       beforeDac=readTSC();
@@ -406,7 +404,7 @@ int main(int argc, char **argv) {
       printf(" GPIO register contents = %o\n",
 	     PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 	
       
-      setSurfControl(&surfHandle,RDMode);
+      setSurfControl(&surfHandle[surf],RDMode);
       __volatile__ int *hkData=barMapAddr[surf];
       beforeRead=readTSC();
 //    memcpy(hkData,hkVals,72*sizeof(int));
@@ -426,7 +424,7 @@ int main(int argc, char **argv) {
       printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
     }
 
-    unsetBarMap(&surfHandle,numSurfs);
+    unsetBarMap(surfHandle,numSurfs);
 
     return 0;
 }
