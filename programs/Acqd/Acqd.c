@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
     timeFile = fopen("/tmp/testTimeLog.txt","w");
     if(!timeFile) {
 	fprintf(stderr,"Couldn't open time file\n");
-	exit(0);
+	handleBadSigs(1000);
     }
 #endif
 
@@ -326,7 +326,8 @@ int main(int argc, char **argv) {
     if(retVal!=CONFIG_E_OK) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
 	fprintf(stderr,"Error reading config file Acqd.config: bailing\n");
-	return -1;
+	handleBadSigs(1002);
+	//	return -1;
     }    
 
     if(standAloneMode) {
@@ -339,7 +340,8 @@ int main(int argc, char **argv) {
 					surfKey,&turfioKey)) < 0) {
 	if(printToScreen) printf("Problem initializing devices\n");
 	syslog(LOG_ERR,"Error initializing devices");
-	return -1 ;
+	handleBadSigs(1002);
+	//	return -1 ;
     }
 
     
@@ -393,7 +395,8 @@ int main(int argc, char **argv) {
 	    retVal=readConfigFile();
 	    if(retVal!=CONFIG_E_OK) {
 		syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
-		return -1;
+		handleBadSigs(1002);
+		//		return -1;
 	    }
 	}
 	reInitNeeded=0;
@@ -520,7 +523,7 @@ int main(int argc, char **argv) {
 		if(doingDacVal>4095) {
 		    currentState=PROG_STATE_TERMINATE;
 		    continue;
-		    exit(0);//doingDacVal=0;
+		    handleBadSigs(1000);//doingDacVal=0;
 		}
 		if(threshScanCounter>=thresholdScanPointsPerStep) {
 		    doingDacVal+=thresholdScanStepSize;
@@ -594,7 +597,7 @@ int main(int argc, char **argv) {
 			printf("(likely indicates attach failure).\n") ;
 		    case ApiFailed :
 		    default: printf(" API failed for PlxPci_NotificationWait.\n") ;
-			exit(1) ;
+			handleBadSigs(1001) ;
 		}
 	    
 		if(printToScreen && verbosity>1) {		
@@ -1252,7 +1255,7 @@ PlxStatus_t setTurfControl(PlxDevObject_t *turfioHandlePtr, TurfControlAction_t 
 
     static int first=1;
 //    printf("Dec: %d %d %d\nHex: %x %x %x\nOct: %o %o %o\n",base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg);
-//    exit(0);
+//    handleBadSigs(1000);
     if(first) {
 	gpioVal=baseClr;    
 	if ((rc = PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, gpioVal ))
@@ -1458,9 +1461,9 @@ int initializeDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
 	if(printToScreen)
 	    fprintf(stderr,"Expected %d SURFs, but only found %d\n",numSurfs,countSurfs);
 	numSurfs=countSurfs;
-	if(numSurfs==0) exit(0);
+	if(numSurfs==0) handleBadSigs(1000);
     }
-//    exit(0);
+//    handleBadSigs(1000);
     return (int)numDevices ;
 }
 
@@ -1674,7 +1677,7 @@ int readConfigFile()
 	    syslog(LOG_ERR,"Confused config file bus and slot count do not agree");
 	    if(printToScreen)
 		fprintf(stderr,"Confused config file bus and slot count do not agree\n");
-	    exit(0);
+	    handleBadSigs(1000);
 	}
 	
 	tempNum=12;
@@ -3607,12 +3610,15 @@ void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, str
 
 void handleBadSigs(int sig)
 {
-    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
-
+  static int numHere=0;
+  fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+  syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
+  if(numHere==0) {
+    numHere++;    
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);
-    unlink(acqdPidFile);
-    syslog(LOG_INFO,"Acqd terminating");
-    exit(0);
+  }
+  unlink(acqdPidFile);
+  syslog(LOG_INFO,"Acqd terminating");
+  exit(0);
 }
