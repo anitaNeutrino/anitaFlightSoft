@@ -237,6 +237,22 @@ PlxStatus_t setBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
     return rc;
 }
 
+
+PlxStatus_t unsetBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
+    PlxStatus_t rc=0;
+    int surf=0;
+
+    for(surf=0;surf<numSurfs;surf++) {
+      U32 *addrVal=(U32*)barMapAddr[surf];
+      rc=PlxPci_PciBarUnmap(&surfHandle[surf],(VOID**)&addrVal);
+      if(rc!=ApiSuccess) {
+	fprintf(stderr,"Unable to unmap PCI bar 2 on SURF  (%d)",rc);
+      }
+    }
+    return rc;
+}
+
+
 void setDACThresholds(PlxDevObject_t *surfHandle) {
     PlxStatus_t rc;
     int dac;
@@ -292,7 +308,7 @@ void setDACThresholds(PlxDevObject_t *surfHandle) {
 inline unsigned long readTSC();
 
 int main(int argc, char **argv) {
-    PlxDevObject_t surfHandle;
+    PlxDevObject_t surfHandle[12];
     PlxDevKey_t surfLocation;
     unsigned int  dataWord=0;
     U32  i ;
@@ -387,7 +403,7 @@ int main(int argc, char **argv) {
     printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
     printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
 
-
+    unsetBarMap(&surfHandle,1);
     return 0;
 }
 
