@@ -311,8 +311,8 @@ int main(int argc, char **argv) {
     tempKey.Revision = PCI_FIELD_IGNORE;
 
 
-    tempKey.slot=0xd;
-    tempKey.bus=0x8;
+    tempKey.slot=0xb;
+    tempKey.bus=0xa;
     i=0;
     
     if ((rc=PlxPci_DeviceFind(&tempKey, i)) != ApiSuccess) {
