@@ -2258,7 +2258,7 @@ AcqdErrorCode_t readSurfEventData(PlxDevObject_t *surfHandles)
 		fprintf(stderr,"Failed to set RDMode on SURF %d (rc = %d)\n",surfIndex[surf],rc);
 	}
 	
-	__volatile__ int *evData=barMapAddr[surf];
+	__volatile__ unsigned int *evData=barMapAddr[surf];
 
 	//First read to prime pipe
 	dataInt=*evData++;
@@ -2405,7 +2405,7 @@ AcqdErrorCode_t readSurfEventDataVer2(PlxDevObject_t *surfHandles)
 	   1169 last read; (only lower 16 bits)
 	*/
 
-	__volatile__ int *evData=barMapAddr[surf];
+	__volatile__ unsigned int *evData=barMapAddr[surf];
 	
 	//First read header word
 	headerWord=*evData++;
@@ -2609,7 +2609,7 @@ AcqdErrorCode_t readSurfEventDataVer3(PlxDevObject_t *surfHandles)
 	   1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
 	   1156:1169 -- Chans 1 through 8 2 reads per chan as above
 	*/
-	__volatile__ int *evData=barMapAddr[surf];
+	__volatile__ unsigned int *evData=barMapAddr[surf];
 	//First read header word
 	headerWord=*evData++;
 	if(printToScreen && verbosity>2) {
@@ -2833,7 +2833,7 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
 	    theSurfHk.surfTrigBandMask[surf][rfChan]=surfTrigBandMasks[surf][rfChan];
 	}
 
-	__volatile__ int *hkData=barMapAddr[surf];
+	__volatile__ unsigned int *hkData=barMapAddr[surf];
 	//First read the scaler data
 	for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
 	    dataInt=*hkData++;
@@ -2913,7 +2913,7 @@ AcqdErrorCode_t readTurfEventDataVer2(PlxDevObject_t *turfioHandlePtr)
     TurfioTestPattern_t startPat;
     TurfioTestPattern_t endPat;
     
-    __volatile__ int *turfData=turfBarMap;
+    __volatile__ unsigned int *turfData=turfBarMap;
 
     //First read to prime pipe
 //	dataWord=*turfData++;
