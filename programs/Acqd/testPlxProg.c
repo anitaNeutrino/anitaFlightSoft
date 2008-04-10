@@ -314,7 +314,14 @@ int main(int argc, char **argv) {
     U32  i ;
     PlxDevKey_t tempKey;
     PlxStatus_t rc;
+    int slot=0xb;
+    int bus=0xa;
 
+    if(argc>2) {
+	bus=atoi(argv[1]);
+	slot=atoi(argv[2]);
+    }
+    printf("Trying bus 0x%x slot 0x%x\n",bus,slot);
     unsigned long start,opened,beforeDac,afterDac,beforeRead,afterRead;
     start=readTSC();
 //    exit(0);
@@ -328,8 +335,8 @@ int main(int argc, char **argv) {
     tempKey.Revision = PCI_FIELD_IGNORE;
 
 
-    tempKey.slot=0xb;
-    tempKey.bus=0xa;
+    tempKey.slot=slot;
+    tempKey.bus=bus;
     i=0;
     
     if ((rc=PlxPci_DeviceFind(&tempKey, i)) != ApiSuccess) {
@@ -397,9 +404,15 @@ int main(int argc, char **argv) {
 //        dataWord=*(barAddr);
 //      dataWord2=*(barAddr+4);
 //        if(i<20)
-    for(i=0;i<72;i++) {
-	printf("%d\t%0x\n",i,hkVals[i]);
+    int j=0;
+    for(i=0;i<72;i+=8) {
+	printf("%d ",i);
+	for(j=i;j<i+8;j++)
+	    printf("%0x ",hkVals[j]);
+	printf("\n");
     }
+    unsigned int upperWord=(hkVals[0]&0xffff0000)>>16;
+    printf("Upper word %0x (SURF num %d)\n",upperWord,(upperWord&0xf));
     printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
     printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
 

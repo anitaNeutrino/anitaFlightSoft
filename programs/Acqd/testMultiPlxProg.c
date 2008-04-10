@@ -262,7 +262,7 @@ PlxStatus_t setSingleBarMap(PlxDevObject_t *surfHandle,int surfNum) {
       fprintf(stderr,"Unable to map PCI bar 2 on SURF %d  (%d)",rc,surfNum);
     }
     barMapAddr[surfNum]=(int*)addrVal;
-    printf("Bar Addr %d is %x\t%x\n",surfNum,(int)barMapAddr[surf],*addrVal);    
+    printf("Bar Addr %d is %x\t%x\n",surfNum,(int)barMapAddr[surfNum],*addrVal);    
     return rc;
 }
 
@@ -336,7 +336,7 @@ inline unsigned long readTSC();
 
 int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs) 
 {
-  int surfSlots[12]={11,13,14,8,9,11,14,15,8,-1,-1,-1};
+  int surfSlots[12]={13,11,14,8,9,11,14,15,8,-1,-1,-1};
   int surfBuses[12]={10,10,10,10,9,9,9,9,9,-1,-1,-1};
 
   int surfNum,countSurfs=0;
