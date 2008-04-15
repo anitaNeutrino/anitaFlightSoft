@@ -627,8 +627,10 @@ int main(int argc, char **argv) {
 			//			if(tmo && (tmo%100)==0) //Might change tmo%2
 			//			    myUsleep(1); 
 			tmo++;
+		       
 
-			
+
+			gettimeofday(&timeStruct,NULL);
 
 /* 			if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) { */
 /* 			    if(doingEvent) { */
