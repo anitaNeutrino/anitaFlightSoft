@@ -31,7 +31,7 @@ ProgramStateCode currentState;
 
 int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
 char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
-int bufferDisk[DISK_TYPES]={1,0,1,1,0};
+int bufferDisk[DISK_TYPES]={0,0,1,1,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 //    sync();
