@@ -403,7 +403,7 @@ int main(int argc, char **argv) {
     U32  i ;
     PlxStatus_t rc;
     int surf=0;
-    int numSurfs=9;
+    int numSurfs=8;
     unsigned long start,opened,beforeDac,afterDac,beforeRead,afterRead;
     start=readTSC();
 //    exit(0);
