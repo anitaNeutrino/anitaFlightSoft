@@ -653,7 +653,7 @@ int main(int argc, char **argv) {
 			
 			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
 			  
-			  printf("Calculating rate\n");
+			  printf("Calculating rate %d %d %d\n",timeStruct.tv_sec,lastRateCalc.tv_sec,calculateRateAfter);
 
 			    if(enableRateServo) {
 				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
