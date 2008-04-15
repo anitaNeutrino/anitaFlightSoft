@@ -644,9 +644,10 @@ int main(int argc, char **argv) {
 				lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
 				lastSlowRateEvent=doingEvent;
 			    }
-			    else {
-			      
+			    else {			      
 				writeCurrentRFSlowRateObject(0,0);
+				lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
+				lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
 			    }
 			}
 
