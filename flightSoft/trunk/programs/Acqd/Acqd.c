@@ -235,6 +235,7 @@ int main(int argc, char **argv) {
     int numDevices; 
     int tmpGPIO,tmpINTR;
     unsigned short dacVal=2200;
+    short lastDacVal=-1;
     int surf;
     int gotSurfHk=0;
     int threshScanCounter=0;
@@ -502,8 +503,10 @@ int main(int argc, char **argv) {
 		if(printToScreen) 
 		    printf("Setting Threshold -- %d\r",dacVal);
 		if(!doSingleChannelScan) {
+		  if(dacVal!=lastDacVal)
 		    setGloablDACThreshold(surfHandles,dacVal);	
-		    theSurfHk.globalThreshold=dacVal;
+		  theSurfHk.globalThreshold=dacVal;
+		  lastDacVal=dacVal;
 		}
 		else {
 		    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*N_RFTRIG);
