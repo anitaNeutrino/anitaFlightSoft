@@ -436,11 +436,14 @@ int main(int argc, char **argv) {
 	hkVals[i]=*hkData++;
       }
       afterRead=readTSC();
-      //        dataWord=*(barAddr);
-      //      dataWord2=*(barAddr+4);
-      //        if(i<20)
-      for(i=0;i<72;i++) {
-	printf("%d\t%0x\n",i,hkVals[i]);
+      unsigned int upperWord=(hkVals[0]&0xffff0000)>>16;
+      printf("Upper word %0x (SURF num %d)\n",upperWord,(upperWord&0xf));
+      int j=0;
+      for(i=0;i<72;i+=8) {
+	printf("%d ",i);
+	for(j=i;j<i+8;j++)
+	  printf("%0x ",hkVals[j]);
+	printf("\n");
       }
       printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
       printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);

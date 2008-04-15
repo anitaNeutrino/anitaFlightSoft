@@ -393,6 +393,8 @@ int main(int argc, char **argv) {
     //        dataWord=*(barAddr);
     //      dataWord2=*(barAddr+4);
     //        if(i<20)
+    unsigned int upperWord=(hkVals[0]&0xffff0000)>>16;
+    printf("Upper word %0x (SURF num %d)\n",upperWord,(upperWord&0xf));
     int j=0;
     for(i=0;i<72;i+=8) {
       printf("%d ",i);
@@ -400,8 +402,6 @@ int main(int argc, char **argv) {
 	    printf("%0x ",hkVals[j]);
       printf("\n");
     }
-    unsigned int upperWord=(hkVals[0]&0xffff0000)>>16;
-    printf("Upper word %0x (SURF num %d)\n",upperWord,(upperWord&0xf));
     printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
     printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
 
