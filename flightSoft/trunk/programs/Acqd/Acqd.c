@@ -648,51 +648,52 @@ int main(int argc, char **argv) {
 
 
 
+			
+/* 			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) { */
+			  
+/* 			  printf("Calculating rate\n"); */
 
-			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
-			  printf("Calculating rate\n");
-
-			    if(enableRateServo) {
-				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
-				    //Time to servo on rate
-				    servoOnRate(doingEvent,lastRateCalcEvent,&timeStruct,&lastServoRateCalc);
-				    lastRateCalcEvent=doingEvent;
-				    lastServoRateCalc.tv_sec=timeStruct.tv_sec;
-				    lastServoRateCalc.tv_usec=timeStruct.tv_usec;
+/* 			    if(enableRateServo) { */
+/* 				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) { */
+/* 				    //Time to servo on rate */
+/* 				    servoOnRate(doingEvent,lastRateCalcEvent,&timeStruct,&lastServoRateCalc); */
+/* 				    lastRateCalcEvent=doingEvent; */
+/* 				    lastServoRateCalc.tv_sec=timeStruct.tv_sec; */
+/* 				    lastServoRateCalc.tv_usec=timeStruct.tv_usec; */
 				    
-				}				    
-			    }
+/* 				}				     */
+/* 			    } */
 			
 
-			    rateCalcPeriod=0;
-			    //Make rate calculation;
-			    if(lastRateCalc.tv_sec>0) {
-				rateCalcPeriod=
-				    timeStruct.tv_sec-lastRateCalc.tv_sec;
-				rateCalcPeriod+=((float)timeStruct.tv_usec-
-						 lastRateCalc.tv_usec)/1e6;
-				totalTime+=rateCalcPeriod;
+/* 			    rateCalcPeriod=0; */
+/* 			    //Make rate calculation; */
+/* 			    if(lastRateCalc.tv_sec>0) { */
+/* 				rateCalcPeriod= */
+/* 				    timeStruct.tv_sec-lastRateCalc.tv_sec; */
+/* 				rateCalcPeriod+=((float)timeStruct.tv_usec- */
+/* 						 lastRateCalc.tv_usec)/1e6; */
+/* 				totalTime+=rateCalcPeriod; */
 
-				//Deadtime Monitoring
-				totalDeadtime+=intervalDeadtime;
-			    }			   
+/* 				//Deadtime Monitoring */
+/* 				totalDeadtime+=intervalDeadtime; */
+/* 			    }			    */
 
-			    if(rateCalcPeriod) {
-				if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
-				    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
-//		    if(lastEventCounter<200) 
-//			printf("\n");
-				}
-				else {
-				    printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
-				}
+/* 			    if(rateCalcPeriod) { */
+/* 				if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) { */
+/* 				    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod); */
+/* //		    if(lastEventCounter<200)  */
+/* //			printf("\n"); */
+/* 				} */
+/* 				else { */
+/* 				    printf("Event %d -- Current Rate 0 Hz\n",doingEvent); */
+/* 				} */
 			    
 
-				printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime));
-				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
-				intervalDeadtime=0;
-			    }
-			}
+/* 				printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime)); */
+/* 				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod)); */
+/* 				intervalDeadtime=0; */
+/* 			    } */
+/* 			} */
 
 			if(tmo>500) {
 			  if(printToScreen && verbosity)
