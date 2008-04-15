@@ -132,8 +132,6 @@
 #define PMC_DISK_MASK 0x10
 
 
-
-
 //Mount points and fake mount points
 #ifdef USE_FAKE_DATA_DIR
 #define DATA_LINK "/tmp/mnt/data" //Where the index and peds are written
@@ -147,8 +145,8 @@
 #define DATA_LINK "/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
 #define SAFE_DATA_MOUNT "/mnt/bitmicro"
-#define PUCK_DATA_MOUNT "/mnt/puck"
-#define BLADE_DATA_MOUNT "/mnt/blade"
+#define PUCK_DATA_MOUNT "/mnt/satamini"
+#define BLADE_DATA_MOUNT "/mnt/satablade"
 #define USBINT_DATA_MOUNT "/mnt/usbint"
 #define USBEXT_DATA_MOUNT "/mnt/usbext"
 #endif
