@@ -231,6 +231,7 @@ PlxStatus_t setBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
       rc=PlxPci_PciBarMap(&surfHandle[surf],2,(VOID**)&addrVal);
       if(rc!=ApiSuccess) {
 	fprintf(stderr,"Unable to map PCI bar 2 on SURF %d (%d)",surf,rc);
+	exit(0);
       }
       barMapAddr[surf]=(int*)addrVal;
       printf("Bar Addr is %x\t%x\n",(int)barMapAddr[surf],*addrVal);
@@ -409,8 +410,9 @@ int main(int argc, char **argv) {
     
 
     
-    setBarMap(surfHandle,numSurfs);
+    //    setBarMap(surfHandle,numSurfs);
     for(surf=0;surf<numSurfs;surf++) {
+      //      setSingleBarMap(surfHandle,surf);
       setSurfControl(&surfHandle[surf],SurfClearAll);
       beforeDac=readTSC();
       setDACThresholds(&surfHandle[surf]);
@@ -422,7 +424,7 @@ int main(int argc, char **argv) {
 
 
     for(surf=0;surf<numSurfs;surf++) {
-      //      setSingleBarMap(surfHandle,surf);
+      setSingleBarMap(surfHandle,surf);
       unsigned int hkVals[72]={0};
       printf(" GPIO register contents = %o\n",
 	     PlxPci_PlxRegisterRead(&surfHandle[surf], PCI9030_GP_IO_CTRL, &rc)) ; 	
@@ -448,10 +450,10 @@ int main(int argc, char **argv) {
       }
       printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
       printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
-      //      unsetSingleBarMap(surfHandle,0);
+      unsetSingleBarMap(surfHandle,surf);
     }
 
-    unsetBarMap(surfHandle,numSurfs);
+    //    unsetBarMap(surfHandle,numSurfs);
 
     return 0;
 }
