@@ -624,8 +624,8 @@ int main(int argc, char **argv) {
 			if(verbosity>3 && printToScreen) 
 			    printf("SURF %d GPIO: 0x%o %d\n",
 				   surfIndex[0],tmpGPIO,tmpGPIO);
-			if(tmo && (tmo%100)==0) //Might change tmo%2
-			    myUsleep(1); 
+			//			if(tmo && (tmo%100)==0) //Might change tmo%2
+			//			    myUsleep(1); 
 			tmo++;
 
 			
@@ -718,6 +718,8 @@ int main(int argc, char **argv) {
 //				    printf("Time Diff %d, %d.%d and %d.%d\n",
 //					   timeDiff,timeStruct.tv_sec,timeStruct.tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
 				    lastSurfHkRead=timeStruct;
+				    if(printToScreen && verbosity)
+				      printf("Reading surfHk 'cause aint got no events\n");
 				    status=readSurfHkData(surfHandles);
 				    for(surf=0;surf<numSurfs;++surf)
 					if (setSurfControl(&surfHandles[surf], 
