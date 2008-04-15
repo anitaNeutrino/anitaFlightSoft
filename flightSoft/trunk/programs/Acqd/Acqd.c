@@ -629,76 +629,76 @@ int main(int argc, char **argv) {
 			tmo++;
 		       
 
-
+			//This time getting is quite important as the two bits below rely on having a recent time.
 			gettimeofday(&timeStruct,NULL);
 
-/* 			if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) { */
-/* 			    if(doingEvent) { */
-/* 				float slowRate=doingEvent-lastSlowRateEvent; */
-/* 				float slowTime=timeStruct.tv_sec-lastSlowRateCalc.tv_sec; */
-/* 				slowTime+=1e-6*((float)timeStruct.tv_usec); */
-/* 				slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec); */
-/* 				slowRate/=slowTime; */
-/* 				writeCurrentRFSlowRateObject(slowRate,lastEvNum); */
-/* 				lastSlowRateCalc.tv_sec=timeStruct.tv_sec; */
-/* 				lastSlowRateCalc.tv_usec=timeStruct.tv_usec; */
-/* 				lastSlowRateEvent=doingEvent; */
-/* 			    } */
-/* 			    else  */
-/* 				writeCurrentRFSlowRateObject(0,0); */
-/* 			} */
+			if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) {
+			    if(doingEvent) {
+				float slowRate=doingEvent-lastSlowRateEvent;
+				float slowTime=timeStruct.tv_sec-lastSlowRateCalc.tv_sec;
+				slowTime+=1e-6*((float)timeStruct.tv_usec);
+				slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
+				slowRate/=slowTime;
+				writeCurrentRFSlowRateObject(slowRate,lastEvNum);
+				lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
+				lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
+				lastSlowRateEvent=doingEvent;
+			    }
+			    else
+				writeCurrentRFSlowRateObject(0,0);
+			}
 
 
 
 			
-/* 			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) { */
+			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
 			  
-/* 			  printf("Calculating rate\n"); */
+			  printf("Calculating rate\n");
 
-/* 			    if(enableRateServo) { */
-/* 				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) { */
-/* 				    //Time to servo on rate */
-/* 				    servoOnRate(doingEvent,lastRateCalcEvent,&timeStruct,&lastServoRateCalc); */
-/* 				    lastRateCalcEvent=doingEvent; */
-/* 				    lastServoRateCalc.tv_sec=timeStruct.tv_sec; */
-/* 				    lastServoRateCalc.tv_usec=timeStruct.tv_usec; */
+			    if(enableRateServo) {
+				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
+				    //Time to servo on rate
+				    servoOnRate(doingEvent,lastRateCalcEvent,&timeStruct,&lastServoRateCalc);
+				    lastRateCalcEvent=doingEvent;
+				    lastServoRateCalc.tv_sec=timeStruct.tv_sec;
+				    lastServoRateCalc.tv_usec=timeStruct.tv_usec;
 				    
-/* 				}				     */
-/* 			    } */
+				}
+			    }
 			
 
-/* 			    rateCalcPeriod=0; */
-/* 			    //Make rate calculation; */
-/* 			    if(lastRateCalc.tv_sec>0) { */
-/* 				rateCalcPeriod= */
-/* 				    timeStruct.tv_sec-lastRateCalc.tv_sec; */
-/* 				rateCalcPeriod+=((float)timeStruct.tv_usec- */
-/* 						 lastRateCalc.tv_usec)/1e6; */
-/* 				totalTime+=rateCalcPeriod; */
+			    rateCalcPeriod=0;
+			    //Make rate calculation;
+			    if(lastRateCalc.tv_sec>0) {
+				rateCalcPeriod=
+				    timeStruct.tv_sec-lastRateCalc.tv_sec;
+				rateCalcPeriod+=((float)timeStruct.tv_usec-
+						 lastRateCalc.tv_usec)/1e6;
+				totalTime+=rateCalcPeriod;
 
-/* 				//Deadtime Monitoring */
-/* 				totalDeadtime+=intervalDeadtime; */
-/* 			    }			    */
+				//Deadtime Monitoring
+				totalDeadtime+=intervalDeadtime;
+			    }
 
-/* 			    if(rateCalcPeriod) { */
-/* 				if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) { */
-/* 				    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod); */
-/* //		    if(lastEventCounter<200)  */
-/* //			printf("\n"); */
-/* 				} */
-/* 				else { */
-/* 				    printf("Event %d -- Current Rate 0 Hz\n",doingEvent); */
-/* 				} */
+			    if(rateCalcPeriod) {
+				if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
+				    printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
+//		    if(lastEventCounter<200)
+//			printf("\n");
+				}
+				else {
+				    printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
+				}
 			    
 
-/* 				printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime)); */
-/* 				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod)); */
-/* 				intervalDeadtime=0; */
-/* 			    } */
-/* 			} */
+				printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime));
+				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
+				intervalDeadtime=0;
+			    }
+			}
 
 			if(tmo>500) {
-			  if(printToScreen && verbosity)
+			  if(printToScreen && verbosity>3)
 			    printf("Here because tmo is %d\n",tmo);
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
@@ -718,7 +718,7 @@ int main(int argc, char **argv) {
 //				    printf("Time Diff %d, %d.%d and %d.%d\n",
 //					   timeDiff,timeStruct.tv_sec,timeStruct.tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
 				    lastSurfHkRead=timeStruct;
-				    if(printToScreen && verbosity)
+				    if(printToScreen && verbosity>2)
 				      printf("Reading surfHk 'cause aint got no events\n");
 				    status=readSurfHkData(surfHandles);
 				    for(surf=0;surf<numSurfs;++surf)
