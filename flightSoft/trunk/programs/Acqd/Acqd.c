@@ -650,6 +650,7 @@ int main(int argc, char **argv) {
 
 
 			if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
+			  printf("Calculating rate\n");
 
 			    if(enableRateServo) {
 				if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
@@ -691,14 +692,8 @@ int main(int argc, char **argv) {
 				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
 				intervalDeadtime=0;
 			    }
-
-
-
-
-
-			    lastRateCalc=timeStruct;
-			    lastEventCounter=doingEvent;
 			}
+
 			if(tmo>500) {
 			  if(printToScreen && verbosity)
 			    printf("Here because tmo is %d\n",tmo);
