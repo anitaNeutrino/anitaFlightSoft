@@ -535,6 +535,8 @@ int main(int argc, char **argv) {
 	    if(sendSoftTrigger && doingEvent>=0) {
 		if(!softTrigSleepPeriod || (time(NULL)-lastSofTrigTime)>softTrigSleepPeriod) {		    		
 		    setTurfControl(&turfioHandle,SendSoftTrg);
+		    if(printToScreen && verbosity)
+		      printf("Sent software trigger\n");
 		    lastSofTrigTime=time(NULL);
 		}
 	    }
@@ -1292,7 +1294,7 @@ PlxStatus_t setTurfControl(PlxDevObject_t *turfioHandlePtr, TurfControlAction_t 
 	    return ApiFailed ;
     }
 
-    if (verbosity>1 && printToScreen) 
+    if (verbosity && printToScreen) 
 	printf("setTurfControl: action %s, gpioVal = %o\n", 
 	       turfControlActionAsString(action), gpioVal) ; 
 
