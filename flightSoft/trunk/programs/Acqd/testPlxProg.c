@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
     
 
     
-//    setBarMap(&surfHandle,1);
+
 
 //    setSurfControl(&surfHandle,SurfClearAll);
 //    beforeDac=readTSC();
@@ -370,39 +370,42 @@ int main(int argc, char **argv) {
 //    setSurfControl(&surfHandle,SurfClearAll);
 
 
-//    unsigned int hkVals[72]={0};
+    unsigned int hkVals[72]={0};
     printf(" GPIO register contents = %o\n",
 	   PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 
     setSurfControl(&surfHandle,SurfClearAll);
     printf(" GPIO register contents = %o\n",
 	   PlxPci_PlxRegisterRead(&surfHandle, PCI9030_GP_IO_CTRL, &rc)) ; 
-  
-/*     setSurfControl(&surfHandle,RDMode); */
-/*     __volatile__ int *hkData=barMapAddr[0]; */
-/*     beforeRead=readTSC(); */
-/* //    memcpy(hkData,hkVals,72*sizeof(int)); */
-/*     for(i=0;i<72;i++) {	 */
-/* //	dataWord=;	 */
-/* //	PlxPci_PciBarSpaceRead(&surfHandle,2,0xi, &dataWord, 4, BitSize32, TRUE); */
-/* 	hkVals[i]=*hkData++; */
-/*     } */
-/*     afterRead=readTSC(); */
-/* //        dataWord=*(barAddr); */
-/* //      dataWord2=*(barAddr+4); */
-/* //        if(i<20) */
-/*     int j=0; */
-/*     for(i=0;i<72;i+=8) { */
-/* 	printf("%d ",i); */
-/* 	for(j=i;j<i+8;j++) */
-/* 	    printf("%0x ",hkVals[j]); */
-/* 	printf("\n"); */
-/*     } */
-/*     unsigned int upperWord=(hkVals[0]&0xffff0000)>>16; */
-/*     printf("Upper word %0x (SURF num %d)\n",upperWord,(upperWord&0xf)); */
-/*     printf("DAC Setting took %lu cycles\n",afterDac-beforeDac); */
-/*     printf("Hk Reading took %lu cycles\n",afterRead-beforeRead); */
 
-/*     unsetBarMap(&surfHandle,1); */
+    setBarMap(&surfHandle,1);
+    setSurfControl(&surfHandle,SurfClearHk);
+  
+    setSurfControl(&surfHandle,RDMode);
+    __volatile__ int *hkData=barMapAddr[0];
+    beforeRead=readTSC();
+    //    memcpy(hkData,hkVals,72*sizeof(int));
+    for(i=0;i<72;i++) {
+//	dataWord=;
+//	PlxPci_PciBarSpaceRead(&surfHandle,2,0xi, &dataWord, 4, BitSize32, TRUE);
+      hkVals[i]=*hkData++;
+    }
+    afterRead=readTSC();
+    //        dataWord=*(barAddr);
+    //      dataWord2=*(barAddr+4);
+    //        if(i<20)
+    int j=0;
+    for(i=0;i<72;i+=8) {
+      printf("%d ",i);
+      for(j=i;j<i+8;j++)
+	    printf("%0x ",hkVals[j]);
+      printf("\n");
+    }
+    unsigned int upperWord=(hkVals[0]&0xffff0000)>>16;
+    printf("Upper word %0x (SURF num %d)\n",upperWord,(upperWord&0xf));
+    printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
+    printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
+
+  unsetBarMap(&surfHandle,1); 
     return 0;
 }
 
