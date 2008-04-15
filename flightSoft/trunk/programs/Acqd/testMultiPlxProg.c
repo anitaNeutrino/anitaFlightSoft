@@ -383,6 +383,8 @@ int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs)
     }
     else {	    
       // Got a SURF
+      printf("Opening SURF %d (Bus %d -- Slot %X)\n",
+	     surfNum+1,surfBuses[surfNum],surfSlots[surfNum]);
       rc=PlxPci_DeviceOpen(&tempKey,&surfHandles[countSurfs]);
       if ( rc!= ApiSuccess) {
 	fprintf(stderr,"Error opening SURF device %d\n",rc);
@@ -401,7 +403,7 @@ int main(int argc, char **argv) {
     U32  i ;
     PlxStatus_t rc;
     int surf=0;
-    int numSurfs=2;
+    int numSurfs=9;
     unsigned long start,opened,beforeDac,afterDac,beforeRead,afterRead;
     start=readTSC();
 //    exit(0);
