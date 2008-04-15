@@ -401,16 +401,16 @@ int main(int argc, char **argv) {
     U32  i ;
     PlxStatus_t rc;
     int surf=0;
-    int numSurfs=1;
+    int numSurfs=2;
     unsigned long start,opened,beforeDac,afterDac,beforeRead,afterRead;
     start=readTSC();
 //    exit(0);
-    initializeDevices(surfHandle,1);
+    initializeDevices(surfHandle,numSurfs);
     opened=readTSC();
     
 
     
-    //    setBarMap(surfHandle,numSurfs);
+    setBarMap(surfHandle,numSurfs);
     for(surf=0;surf<numSurfs;surf++) {
       //      setSingleBarMap(surfHandle,surf);
       setSurfControl(&surfHandle[surf],SurfClearAll);
@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
 
 
     for(surf=0;surf<numSurfs;surf++) {
-      setSingleBarMap(surfHandle,surf);
+      //      setSingleBarMap(surfHandle,surf);
       unsigned int hkVals[72]={0};
       printf(" GPIO register contents = %o\n",
 	     PlxPci_PlxRegisterRead(&surfHandle[surf], PCI9030_GP_IO_CTRL, &rc)) ; 	
