@@ -230,7 +230,7 @@ PlxStatus_t setBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
       addrVal=0;
       rc=PlxPci_PciBarMap(&surfHandle[surf],2,(VOID**)&addrVal);
       if(rc!=ApiSuccess) {
-	fprintf(stderr,"Unable to map PCI bar 2 on SURF  (%d)",rc);
+	fprintf(stderr,"Unable to map PCI bar 2 on SURF %d (%d)",surf,rc);
       }
       barMapAddr[surf]=(int*)addrVal;
       printf("Bar Addr is %x\t%x\n",(int)barMapAddr[surf],*addrVal);
