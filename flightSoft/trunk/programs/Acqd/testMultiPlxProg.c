@@ -223,10 +223,11 @@ __volatile__ int *barMapAddr[12];
 
 PlxStatus_t setBarMap(PlxDevObject_t *surfHandle,int numSurfs) {
     PlxStatus_t rc=0;
-    U32 *addrVal;
+    U32 *addrVal=0;
     int surf=0;
 
     for(surf=0;surf<numSurfs;surf++) {
+      addrVal=0;
       rc=PlxPci_PciBarMap(&surfHandle[surf],2,(VOID**)&addrVal);
       if(rc!=ApiSuccess) {
 	fprintf(stderr,"Unable to map PCI bar 2 on SURF  (%d)",rc);
