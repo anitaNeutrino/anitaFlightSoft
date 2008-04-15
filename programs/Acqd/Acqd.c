@@ -700,6 +700,8 @@ int main(int argc, char **argv) {
 			    lastEventCounter=doingEvent;
 			}
 			if(tmo>500) {
+			  if(printToScreen && verbosity)
+			    printf("Here because tmo is %d\n",tmo);
 			    if(currentState!=PROG_STATE_RUN) 
 				break;
 //			    //Time out not in self trigger mode
