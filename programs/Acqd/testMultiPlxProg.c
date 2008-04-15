@@ -336,7 +336,7 @@ inline unsigned long readTSC();
 
 int initializeDevices(PlxDevObject_t *surfHandles, int numSurfs) 
 {
-  int surfSlots[12]={13,11,14,8,9,11,14,15,8,-1,-1,-1};
+  int surfSlots[12]={11,13,14,8,9,11,14,15,8,-1,-1,-1};
   int surfBuses[12]={10,10,10,10,9,9,9,9,9,-1,-1,-1};
 
   int surfNum,countSurfs=0;
@@ -408,7 +408,7 @@ int main(int argc, char **argv) {
     
 
     
-    //    setBarMap(surfHandle,numSurfs);
+    setBarMap(surfHandle,numSurfs);
     for(surf=0;surf<numSurfs;surf++) {
       setSurfControl(&surfHandle[surf],SurfClearAll);
       beforeDac=readTSC();
@@ -421,7 +421,7 @@ int main(int argc, char **argv) {
 
 
     for(surf=0;surf<numSurfs;surf++) {
-      setSingleBarMap(surfHandle,surf);
+      //      setSingleBarMap(surfHandle,surf);
       unsigned int hkVals[72]={0};
       printf(" GPIO register contents = %o\n",
 	     PlxPci_PlxRegisterRead(&surfHandle[surf], PCI9030_GP_IO_CTRL, &rc)) ; 	
@@ -444,10 +444,10 @@ int main(int argc, char **argv) {
       }
       printf("DAC Setting took %lu cycles\n",afterDac-beforeDac);
       printf("Hk Reading took %lu cycles\n",afterRead-beforeRead);
-      unsetSingleBarMap(surfHandle,0);
+      //      unsetSingleBarMap(surfHandle,0);
     }
 
-    //    unsetBarMap(surfHandle,numSurfs);
+    unsetBarMap(surfHandle,numSurfs);
 
     return 0;
 }
