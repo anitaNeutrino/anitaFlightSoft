@@ -675,7 +675,7 @@ int main(int argc, char **argv) {
 				rateCalcPeriod+=((float)timeStruct.tv_usec-
 						 lastRateCalc.tv_usec)/1e6;
 				totalTime+=rateCalcPeriod;
-
+				
 				//Deadtime Monitoring
 				totalDeadtime+=intervalDeadtime;
 			    }
@@ -694,7 +694,10 @@ int main(int argc, char **argv) {
 				printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime));
 				printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
 				intervalDeadtime=0;
-			    }
+			    }			    
+			    lastRateCalc=timeStruct;
+			    lastEventCounter=doingEvent;
+
 			}
 
 			if(tmo>500) {
