@@ -630,21 +630,21 @@ int main(int argc, char **argv) {
 
 			
 
-			if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) {
-			    if(doingEvent) {
-				float slowRate=doingEvent-lastSlowRateEvent;
-				float slowTime=timeStruct.tv_sec-lastSlowRateCalc.tv_sec;
-				slowTime+=1e-6*((float)timeStruct.tv_usec);
-				slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
-				slowRate/=slowTime;
-				writeCurrentRFSlowRateObject(slowRate,lastEvNum);
-				lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
-				lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
-				lastSlowRateEvent=doingEvent;
-			    }
-			    else 
-				writeCurrentRFSlowRateObject(0,0);
-			}
+/* 			if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) { */
+/* 			    if(doingEvent) { */
+/* 				float slowRate=doingEvent-lastSlowRateEvent; */
+/* 				float slowTime=timeStruct.tv_sec-lastSlowRateCalc.tv_sec; */
+/* 				slowTime+=1e-6*((float)timeStruct.tv_usec); */
+/* 				slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec); */
+/* 				slowRate/=slowTime; */
+/* 				writeCurrentRFSlowRateObject(slowRate,lastEvNum); */
+/* 				lastSlowRateCalc.tv_sec=timeStruct.tv_sec; */
+/* 				lastSlowRateCalc.tv_usec=timeStruct.tv_usec; */
+/* 				lastSlowRateEvent=doingEvent; */
+/* 			    } */
+/* 			    else  */
+/* 				writeCurrentRFSlowRateObject(0,0); */
+/* 			} */
 
 
 
