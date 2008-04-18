@@ -209,14 +209,10 @@ int main(int argc, char **argv) {
     int retVal=0;
     int i=0,tmo=0; 
     int numDevices; 
-    int tmpGPIO;
     int eventReadyFlag=0;
     unsigned short dacVal=2200;
-    short lastDacVal=-1;
     int surf;
     int gotSurfHk=0;
-    int threshScanCounter=0;
-    unsigned short doingDacVal=1;//2100;
     unsigned long lastEvNum=0;
     struct timeval timeStruct;
     struct timeval lastRateCalc;
@@ -229,7 +225,6 @@ int main(int argc, char **argv) {
     unsigned long lastSlowSurfHk=0;
 //    unsigned long lastSlowTurfRate=0;
     float rateCalcPeriod;
-    int firstLoop=1;
     int reInitNeeded=0;
     int lastSofTrigTime=0;
 
@@ -1715,7 +1710,7 @@ AcqdErrorCode_t doGlobalThresholdScan() {
   AcqdErrorCode_t status=ACQD_E_OK;
   int threshScanCounter=0;
   int dacVal=0,lastDacVal=-1;
-  int done=0;
+  int done=0,surf=0;
   int firstLoop=1;
   struct timeval timeStruct;
   do {
@@ -1757,7 +1752,7 @@ AcqdErrorCode_t doGlobalThresholdScan() {
       done=1;
       continue;
     }
-  } while(!done)
+  } while(!done);
     //This is single dacVal stuff
     //
     //    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*N_RFTRIG);
@@ -1769,7 +1764,7 @@ AcqdErrorCode_t doGlobalThresholdScan() {
     //    thresholdArray[surfForSingle][dacForSingle]=doingDacVal;
     //  setDACThresholds();
     
-    return status;
+  return status;
 }
 
 int getEventNumber() {
