@@ -11,7 +11,7 @@
 //Flight software includes
 #include "AcqdSd.h"
 #include "surfDriver_ioctl.h"
-#include "turfDriver_ioctl.h"
+#include "turfioDriver_ioctl.h"
 
 #include <stdio.h>
 #include <memory.h>
@@ -1536,7 +1536,7 @@ int readConfigFile()
 
 
 
-void clearDevices() 
+AcqdErrorCode_t clearDevices() 
 // Clears boards for start of data taking 
 {
     int testVal=0;
