@@ -1615,7 +1615,7 @@ AcqdErrorCode_t clearDevices()
 	i=surfClearIndex[tempInd];
 	//Here was the strange SP0 thing do we still need this??
 	if(verbosity && printToScreen)
-	  fprintf(stderr,"Sending clearAll to SURF %d\n",surf);
+	  fprintf(stderr,"Sending clearAll to SURF %d\n",i);
 	if (setSurfControl(i, SurfClearAll) != ACQD_E_OK) {
 	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
 	    fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
