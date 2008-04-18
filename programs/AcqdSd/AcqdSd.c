@@ -1179,8 +1179,8 @@ AcqdErrorCode_t closeDevices()
   for(surf=0;surf<numSurfs;surf++) {
     retVal=close(surfFds[surf]);
     if(retVal<0) {
-      syslog(LOG_ERR,"Error closing SURF %D -- %s\n",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error closing SURF %D -- %s\n",surfIndex[surf],strerror(errno));
+      syslog(LOG_ERR,"Error closing SURF %d -- %s\n",surfIndex[surf],strerror(errno));
+      fprintf(stderr,"Error closing SURF %d -- %s\n",surfIndex[surf],strerror(errno));
       status=ACQD_E_CLOSE;
     }
   }
