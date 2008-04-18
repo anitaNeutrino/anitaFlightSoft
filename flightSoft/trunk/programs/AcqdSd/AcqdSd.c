@@ -400,6 +400,7 @@ int main(int argc, char **argv) {
 	//Now we either breakout in threshold scan or pedestal mode
 	//or we stary the main event loop
 	if(doThresholdScan) {
+	  printf("About to enter threshold scan function\n");
 	  status=doGlobalThresholdScan();
 	  if(status!=ACQD_E_OK) {
 	    syslog(LOG_ERR,"Error running threshold scan\n");
@@ -1713,6 +1714,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
   int done=0,surf=0;
   int firstLoop=1;
   struct timeval timeStruct;
+  fprintf(stderr,"Inside doGlobalThresholdScan\n");
   do {
     threshScanCounter++;
     theScalers.threshold=dacVal;
