@@ -42,8 +42,8 @@ void calculateStatistics();
 int getEventNumber();
 int getChanIndex(int surf, int chan);
 void myUsleep(int usec);
-void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][], unsigned short val);
-void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][]);
+void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short val);
+void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
 
 
 //Output functions
