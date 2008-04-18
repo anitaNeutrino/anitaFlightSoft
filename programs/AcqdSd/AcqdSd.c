@@ -1575,6 +1575,8 @@ AcqdErrorCode_t clearDevices()
     
     //Added RJN 24/11/06
     trigMode=TrigNone;
+    if(verbosity && printToScreen)
+      fprintf(stderr,"Setting trigMode to TrigNone\n");
     if (setTurfControl(SetTrigMode) != ACQD_E_OK) {
 	syslog(LOG_ERR,"Failed to set trigger mode to none on TURF\n") ;
 	fprintf(stderr,"Failed to set trigger mode to none on TURF\n");
@@ -1582,6 +1584,8 @@ AcqdErrorCode_t clearDevices()
 
     antTrigMask=0xffffffff;    
     //Mask off all antennas
+    if(verbosity && printToScreen)
+      fprintf(stderr,"Masking off antennas\n");
     status=writeAntTrigMask();
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
@@ -1589,6 +1593,8 @@ AcqdErrorCode_t clearDevices()
     }
 
     //Added RJN 29/11/06
+    if(verbosity && printToScreen)
+      fprintf(stderr,"Setting surf thresholds to 1\n");
     status=setGloablDACThreshold(1); 
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"Failed to set global DAC thresholds\n");
@@ -1608,6 +1614,8 @@ AcqdErrorCode_t clearDevices()
     for(tempInd=0;tempInd<numSurfs;tempInd++) {
 	i=surfClearIndex[tempInd];
 	//Here was the strange SP0 thing do we still need this??
+	if(verbosity && printToScreen)
+	  fprintf(stderr,"Sending clearAll to SURF %d\n",surf);
 	if (setSurfControl(i, SurfClearAll) != ACQD_E_OK) {
 	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
 	    fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
@@ -1615,6 +1623,8 @@ AcqdErrorCode_t clearDevices()
     }
 
     //Re mask all antennas
+    if(verbosity && printToScreen)
+      fprintf(stderr,"Masking off antennas\n");
     antTrigMask=0xffffffff;    
     status=writeAntTrigMask();
     if(status!=ACQD_E_OK) {
