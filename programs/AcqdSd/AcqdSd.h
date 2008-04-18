@@ -43,7 +43,7 @@ int getChanIndex(int surf, int chan);
 void myUsleep(int usec);
 void fillDacValBufferGlobal(unsigned int *obuffer, unsigned short val);
 void fillDacValBuffer(unsigned int *obuffer);
-void writeDacValBuffer(int surfId, unsigned int *obuffer) 
+void writeDacValBuffer(int surfId, unsigned int *obuffer) ;
 
 
 //Output functions

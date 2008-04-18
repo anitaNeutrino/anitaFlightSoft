@@ -11,6 +11,7 @@
 //Flight software includes
 #include "AcqdSd.h"
 #include "surfDriver_ioctl.h"
+#include "turfDriver_ioctl.h"
 
 #include <stdio.h>
 #include <memory.h>
