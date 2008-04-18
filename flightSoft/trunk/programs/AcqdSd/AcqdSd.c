@@ -1603,6 +1603,8 @@ AcqdErrorCode_t clearDevices()
 
 
     // Prepare TURF board
+    if(verbosity && printToScreen)
+      fprintf(stderr,"Sending Clear All pulse to TURF\n");
     if (setTurfControl(TurfClearAll) != ACQD_E_OK) {
 	syslog(LOG_ERR,"Failed to send clear pulse on TURF \n") ;
 	fprintf(stderr,"Failed to send clear pulse on TURF \n") ;
