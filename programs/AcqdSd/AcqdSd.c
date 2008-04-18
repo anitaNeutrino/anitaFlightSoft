@@ -381,6 +381,7 @@ int main(int argc, char **argv) {
 
 	if(doThresholdScan) {
 	  //If we're doing a threshold disable all antennas
+	  printf("Trying to do a thresholdScan\n");
 	  antTrigMask=0xffffffff;
 	}
 
@@ -485,11 +486,10 @@ int main(int argc, char **argv) {
 		  fprintf(stderr,"Error reading GPIO value from SURF 0\n");
 		  syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
 		  //Do what??
-		}
-		
-		if(verbosity>3 && printToScreen) 
-		  printf("SURF %d GPIO: 0x%o %d\n",
-			 surfIndex[0],tmpGPIO,tmpGPIO);
+		}		
+		if(verbosity && printToScreen) 
+		  printf("SURF %d Event Ready Flag %d\n",
+			 surfIndex[0],eventReadyFlag);
 		
 		//			if(tmo && (tmo%100)==0) //Might change tmo%2
 		//			    myUsleep(1); 
@@ -525,7 +525,7 @@ int main(int argc, char **argv) {
 		//This is all about calculating the rate and could again be moved to a separate function
 		if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
 		  
-		  printf("Calculating rate %d %d %d\n",(int)timeStruct.tv_sec,(int)lastRateCalc.tv_sec,calculateRateAfter);
+		  //		  printf("Calculating rate %d %d %d\n",(int)timeStruct.tv_sec,(int)lastRateCalc.tv_sec,calculateRateAfter);
 
 		  if(enableRateServo) {
 		    if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
