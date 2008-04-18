@@ -499,7 +499,7 @@ int main(int argc, char **argv) {
 		  syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
 		  //Do what??
 		}		
-		if(verbosity && printToScreen) 
+		if(verbosity>3 && printToScreen) 
 		  printf("SURF %d Event Ready Flag %d\n",
 			 surfIndex[0],eventReadyFlag);
 		
