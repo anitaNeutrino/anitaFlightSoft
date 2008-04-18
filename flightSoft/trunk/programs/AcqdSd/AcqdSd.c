@@ -399,8 +399,20 @@ int main(int argc, char **argv) {
 	    setDACThresholds();
 	}
 
-	
 	currentState=PROG_STATE_RUN;
+
+
+	//Now we either breakout in threshold scan or pedestal mode
+	//or we stary the main event loop
+	if(doThresholdScan) {
+	  status=doGlobalThresholdScan();
+	  if(status!=ACQD_E_OK) {
+	    syslog(LOG_ERR,"Error running threshold scan\n");
+	    fprintf(stderr,"Error running threshold scan\n");
+	  }
+	  currentState=PROG_STATE_TERMINATE
+	}
+	
 	while (currentState==PROG_STATE_RUN) {
 	  //This is the start of the main event loop
 	    gotSurfHk=0;
@@ -1740,6 +1752,10 @@ AcqdErrorCode_t setDACThresholds() {
   return ACQD_E_OK;
 }
 
+AcqdErrorCode_t doGlobalThresholdScan() {
+  return ACQD_E_OK;
+}
+
 int getEventNumber() {
     int retVal=0;
     static int firstTime=1;
@@ -2002,10 +2018,11 @@ AcqdErrorCode_t readSurfEventData()
       //Now we get the first 256 samples per channel
       for(chan=0;chan<N_CHAN; chan++) {
 	for (samp=readCount=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {
-	  dataInt=eventBuf[2+ chan*(N_SAMP_EFF/2) + readCount];
+	  i=2+ chan*(N_SAMP_EFF/2) + readCount
+	  dataInt=eventBuf[i];
 	  
-	  if(printToScreen && verbosity>2) {
-	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
+	  if(printToScreen && verbosity) {
+	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d  (i==%d): %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,i,
 		   GetUpper16(dataInt),
 		   GetLower16(dataInt),
 		   GetStartBit(GetUpper16(dataInt)),
