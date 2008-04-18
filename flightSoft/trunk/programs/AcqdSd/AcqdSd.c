@@ -1982,7 +1982,7 @@ AcqdErrorCode_t readSurfEventData()
 	syslog(LOG_ERR,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
 	fprintf(stderr,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
       }
-      if(printToScreen && verbosity) {	
+      if(printToScreen && verbosity>2) {	
 	for(i=0;i<1170;i++) {
 	  printf("SURF %d, %d == 0x%x\n",surfIndex[surf],i,eventBuf[i]);
 	}
@@ -2021,7 +2021,7 @@ AcqdErrorCode_t readSurfEventData()
 	  i=2+ chan*(N_SAMP_EFF/2) + readCount;
 	  dataInt=eventBuf[i];
 	  
-	  if(printToScreen && verbosity) {
+	  if(printToScreen && verbosity>2) {
 	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d  (i==%d): %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,i,
 		   GetUpper16(dataInt),
 		   GetLower16(dataInt),
@@ -2052,7 +2052,7 @@ AcqdErrorCode_t readSurfEventData()
 	samp=N_SAMP_EFF;
 	for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
 	  dataInt=eventBuf[1154 + (chan*2) +(readCount-N_SAMP_EFF/2)];	  
-	  if(printToScreen && verbosity) {
+	  if(printToScreen && verbosity>2) {
 	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
 		   GetUpper16(dataInt),
 		   GetLower16(dataInt),
@@ -2068,12 +2068,15 @@ AcqdErrorCode_t readSurfEventData()
 	    
 	  }
 	  //Store in array (will move to 16bit array when bothered
-	  
+
+	  //Lower word 
 	  labData[surf][chan][samp]=dataInt&0xffff;
 	  labData[surf][chan][samp++]|=headerWord&0xffff0000;
+
+	  //Upper word
+	  labData[surf][chan][samp]=(dataInt>>16);
+	  labData[surf][chan][samp++]|=headerWord&0xffff0000;	
 	}
-	labData[surf][chan][samp]=(dataInt>>16);
-	labData[surf][chan][samp++]|=headerWord&0xffff0000;	
       }
       //Now we've stuffed the event data into 32bit arrays ordered by sample
       //it is time to put it into the format we actually want
@@ -2084,7 +2087,7 @@ AcqdErrorCode_t readSurfEventData()
 	wrappedHitbus=0;
 	for (samp=0 ; samp<N_SAMP ; samp++) {
 	  dataInt=labData[surf][chan][samp];
-	  if(printToScreen && verbosity) {
+	  if(printToScreen && verbosity>2) {
 	    printf("SURF %d, Chan %d, Samp %d -- %d (%x)\n",surfIndex[surf],chan,samp,dataInt,dataInt);
 	  }
 	  if(samp==0) upperWord=GetUpper16(dataInt);
@@ -2092,8 +2095,7 @@ AcqdErrorCode_t readSurfEventData()
 	  if(upperWord!=GetUpper16(dataInt)) {
 	    //Will add an error flag to the channel header
 	    syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt));
-	    if(printToScreen)
-	      fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));
+	    fprintf(stderr,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt));	    
 	  }
 		    
 	  theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt);
