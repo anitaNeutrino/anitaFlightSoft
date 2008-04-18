@@ -1929,7 +1929,7 @@ AcqdErrorCode_t readSurfEventData()
     unsigned int eventBuf[1170];
 
     unsigned char tempVal;
-    int count=0;
+    int count=0,i=0;
     int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
     int rcoSamp;
     unsigned int headerWord,samp=0;
@@ -1965,6 +1965,11 @@ AcqdErrorCode_t readSurfEventData()
       if (count < 0) {
 	syslog(LOG_ERR,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
 	fprintf(stderr,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
+      }
+      if(printToScreen && verbosity) {	
+	for(i=0;i<1170;i++) {
+	  printf("SURF %d, %d == 0x%x\n",surfIndex[surf],i,eventBuf[i]);
+	}
       }
             
       //First is the header word
