@@ -12,7 +12,7 @@
 //Forward Declarations
 
 //Hardware functions
-AcqdErrorCode_t initilizeDevices(int *numDevPtr);
+AcqdErrorCode_t initializeDevices(int *numDevPtr);
 AcqdErrorCode_t clearDevices();
 AcqdErrorCode_t closeDevices();
 AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action);

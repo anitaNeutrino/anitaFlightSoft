@@ -525,7 +525,7 @@ int main(int argc, char **argv) {
 		//This is all about calculating the rate and could again be moved to a separate function
 		if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
 		  
-		  printf("Calculating rate %d %d %d\n",timeStruct.tv_sec,lastRateCalc.tv_sec,calculateRateAfter);
+		  printf("Calculating rate %d %d %d\n",(int)timeStruct.tv_sec,(int)lastRateCalc.tv_sec,calculateRateAfter);
 
 		  if(enableRateServo) {
 		    if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
@@ -887,7 +887,7 @@ AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
   int retVal=0;
   *value=0;
   if(surfFd<=0) {
-    fprintf(sterr,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    fprintf(stderr,"SURF FD %d is not a valid file descriptor\n",surfFd);
     syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
     return ACQD_E_BADFD;
   }
@@ -924,7 +924,7 @@ AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal)
   if(turfioFd<=0) {
     return ACQD_E_NO_TURFIO;
   }
-  int retVal=ioctl(turfioFd, TURFIO_IOCGETGPIO, gpioval);
+  int retVal=ioctl(turfioFd, TURFIO_IOCGETGPIO, gpioVal);
   if(retVal<0) {
     syslog(LOG_ERR,"Error reading TURFIO GPIO -- %s\n",strerror(errno));
     fprintf(stderr,"Error reading TURFIO GPIO -- %s\n",strerror(errno));
@@ -939,7 +939,7 @@ AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal)
   if(turfioFd<=0) {
     return ACQD_E_NO_TURFIO;
   }
-  int retVal=ioctl(turfioFd, TURFIO_IOCSETGPIO, &gpioval);
+  int retVal=ioctl(turfioFd, TURFIO_IOCSETGPIO, &gpioVal);
   if(retVal<0) {
     syslog(LOG_ERR,"Error setting TURFIO GPIO -- %s\n",strerror(errno));
     fprintf(stderr,"Error setting TURFIO GPIO -- %s\n",strerror(errno));
@@ -1047,7 +1047,7 @@ AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action)
   }  
   int surfFd=surfFds[surfId];
   if(surfFd<=0) {
-    fprintf(sterr,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    fprintf(stderr,"SURF FD %d is not a valid file descriptor\n",surfFd);
     syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
     return ACQD_E_BADFD;
   }
@@ -1157,7 +1157,7 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
     
     if ((status=setTurfGPIOValue(gpioVal))!= ACQD_E_OK) {
       syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
-	fprint(stderr,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
+	fprintf(stderr,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
 	return ACQD_E_TURFIO_GPIO ;
     }
     
@@ -1560,21 +1560,21 @@ AcqdErrorCode_t clearDevices()
     status=writeAntTrigMask();
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
-      fprint(stderr,"Failed to write antenna trigger mask\n");
+      fprintf(stderr,"Failed to write antenna trigger mask\n");
     }
 
     //Added RJN 29/11/06
     status=setGloablDACThreshold(1); 
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"Failed to set global DAC thresholds\n");
-      fprint(stderr,"Failed to set global DAC thresholds\n");
+      fprintf(stderr,"Failed to set global DAC thresholds\n");
     }   
 
 
     // Prepare TURF board
     if (setTurfControl(TurfClearAll) != ACQD_E_OK) {
 	syslog(LOG_ERR,"Failed to send clear pulse on TURF \n") ;
-	fprint(stderr,"Failed to send clear pulse on TURF \n") ;
+	fprintf(stderr,"Failed to send clear pulse on TURF \n") ;
     }
 
 
@@ -1594,7 +1594,7 @@ AcqdErrorCode_t clearDevices()
     status=writeAntTrigMask();
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
-      fprint(stderr,"Failed to write antenna trigger mask\n");
+      fprintf(stderr,"Failed to write antenna trigger mask\n");
     }
     return ACQD_E_OK;
 }
@@ -1658,8 +1658,8 @@ void writeDacValBuffer(int surfId, unsigned int *obuffer) {
   unsigned int count;
   count = write(surfFds[surfId], obuffer, 34*sizeof(int));
   if (count < 0) {
-    syslog(LOG_ERR,"Error writing thresholds -- SURF %d  (%s)\n",strerror(errno));
-    fprint(stderr,"Error writing thresholds -- SURF %d  (%s)\n",strerror(errno));
+    syslog(LOG_ERR,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
+    fprintf(stderr,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
   }
   ioctl(surfFD, SURF_IOCCLEARHK);
 }
@@ -1684,11 +1684,11 @@ AcqdErrorCode_t setDACThresholds() {
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
   
-  fillDacValBuffer(outBuffer,threshold);  
+  fillDacValBuffer(outBuffer);
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
-  return AcqdErrorCode_t;
+  return ACQD_E_OK;
 }
 
 int getEventNumber() {
@@ -1912,7 +1912,7 @@ AcqdErrorCode_t readSurfEventData()
 	   1156:1169 -- Chans 1 through 8 2 reads per chan as above
 	*/
       //Read the Event data
-      count = read(surfFd[surf], eventBuf, 1170*sizeof(int));
+      count = read(surfFds[surf], eventBuf, 1170*sizeof(int));
       if (count < 0) {
 	syslog(LOG_ERR,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
 	fprintf(stderr,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
@@ -2108,7 +2108,7 @@ AcqdErrorCode_t readSurfHkData()
       //Persist anyhow
     }
     //Read the Hk data
-    count = read(surfFd[surf], buffer, 72*sizeof(int));
+    count = read(surfFds[surf], buffer, 72*sizeof(int));
     if (count < 0) {
       syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
@@ -2453,8 +2453,8 @@ AcqdErrorCode_t writeAntTrigMask()
       printf("writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1], actualMask[0]) ;
   }   
   else {
-    syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpio);
-    fprintf(stderr,"writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpio);
+    syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpioVal);
+    fprintf(stderr,"writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpioVal);
     return ACQD_E_TURFIO_GPIO;
   }
   return ACQD_E_OK;
