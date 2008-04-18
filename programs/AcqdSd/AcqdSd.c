@@ -2084,6 +2084,9 @@ AcqdErrorCode_t readSurfEventData()
 	wrappedHitbus=0;
 	for (samp=0 ; samp<N_SAMP ; samp++) {
 	  dataInt=labData[surf][chan][samp];
+	  if(printToScreen && verbosity) {
+	    printf("SURF %d, Chan %d, Samp %d -- %d (%x)\n",surfIndex[surf],chan,samp,dataInt,dataInt);
+	  }
 	  if(samp==0) upperWord=GetUpper16(dataInt);
 	  //Below is constructed to be true
 	  if(upperWord!=GetUpper16(dataInt)) {
