@@ -1712,6 +1712,7 @@ AcqdErrorCode_t doGlobalThresholdScan() {
   //write out the corresponding scaler values
   //should be fairly trivial
   //Ha!
+  AcqdErrorCode_t status=ACQD_E_OK;
   int threshScanCounter=0;
   int dacVal=0,lastDacVal=-1;
   int done=0;
@@ -1728,7 +1729,10 @@ AcqdErrorCode_t doGlobalThresholdScan() {
     }
     theSurfHk.globalThreshold=dacVal;
     lastDacVal=dacVal;
-    usleep(30000);
+    if(firstLoop) {
+      usleep(30000);
+      firstLoop=0;
+    }
 
     gettimeofday(&timeStruct,NULL);
     //Actually read and write surfHk here
@@ -1749,7 +1753,7 @@ AcqdErrorCode_t doGlobalThresholdScan() {
       dacVal+=thresholdScanStepSize;
       threshScanCounter=0;
     }  
-    if(doingDacVal>4095) {
+    if(dacVal>4095) {
       done=1;
       continue;
     }
@@ -1764,8 +1768,8 @@ AcqdErrorCode_t doGlobalThresholdScan() {
     //  else  
     //    thresholdArray[surfForSingle][dacForSingle]=doingDacVal;
     //  setDACThresholds();
- 
-  return ACQD_E_OK;
+    
+    return status;
 }
 
 int getEventNumber() {
