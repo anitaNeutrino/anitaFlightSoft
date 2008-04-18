@@ -1969,7 +1969,7 @@ AcqdErrorCode_t readSurfEventData()
             
       //First is the header word
       headerWord=eventBuf[0];
-      if(printToScreen && verbosity>2) {
+      if(printToScreen && verbosity) {
 	printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord);
       }      
       if(surf==0) {
@@ -2030,7 +2030,7 @@ AcqdErrorCode_t readSurfEventData()
 	samp=N_SAMP_EFF;
 	for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
 	  dataInt=eventBuf[1154 + (chan*2) +(readCount-N_SAMP_EFF/2)];	  
-	  if(printToScreen && verbosity>2) {
+	  if(printToScreen && verbosity) {
 	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
 		   GetUpper16(dataInt),
 		   GetLower16(dataInt),
