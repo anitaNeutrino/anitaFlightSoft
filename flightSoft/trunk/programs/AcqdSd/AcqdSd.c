@@ -1630,7 +1630,7 @@ int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
     return 0;
 }
 
-void fillDacValBufferGlobal(unsigned int *obuffer[], unsigned short val)
+void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][], unsigned short val)
 {
   int dac,surf;
   for(surf=0;surf<numSurfs;surf++) {
@@ -1643,7 +1643,7 @@ void fillDacValBufferGlobal(unsigned int *obuffer[], unsigned short val)
 }
 
 
-void fillDacValBuffer(unsigned int *obuffer[])
+void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][])
 {
   int dac,surf;
   for(surf=0;surf<numSurfs;surf++) {
