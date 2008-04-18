@@ -27,6 +27,7 @@ AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
 AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
 AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);
 AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) ;
+AcqdErrorCode_t doGlobalThresholdScan();
 
 
 //Configuration functions
