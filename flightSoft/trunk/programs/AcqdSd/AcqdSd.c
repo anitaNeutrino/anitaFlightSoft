@@ -14,10 +14,11 @@
 #include "turfioDriver_ioctl.h"
 
 #include <stdio.h>
-#include <memory.h>
-#include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <memory.h>
+#include <math.h>
 #include <errno.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -294,7 +295,9 @@ int main(int argc, char **argv) {
     }
 
     // Initialize devices
-    if ((numDevices = initializeDevices()) < 0) {
+    
+    status=initializeDevices(&numDevices);
+    if (status!=ACQD_E_OK || numDevices < 0) {
       if(printToScreen) printf("Problem initializing devices\n");
       syslog(LOG_ERR,"Error initializing devices");
       handleBadSigs(1002);
@@ -1662,7 +1665,7 @@ void writeDacValBuffer(int surfId, unsigned int *obuffer) {
 }
 
 
-void setGloablDACThreshold(unsigned short threshold) {
+AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold) {
   unsigned int outBuffer[MAX_SURFS][N_RFTRIG+2];
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
@@ -1671,11 +1674,12 @@ void setGloablDACThreshold(unsigned short threshold) {
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
+  return ACQD_E_OK;
 }
 
 
 
-void setDACThresholds() {
+AcqdErrorCode_t setDACThresholds() {
   unsigned int outBuffer[MAX_SURFS][N_RFTRIG+2];
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
@@ -1684,6 +1688,7 @@ void setDACThresholds() {
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
+  return AcqdErrorCode_t;
 }
 
 int getEventNumber() {
