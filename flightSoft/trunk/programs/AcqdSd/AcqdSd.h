@@ -23,7 +23,9 @@ AcqdErrorCode_t readTurfEventData();
 AcqdErrorCode_t setDACThresholds();
 AcqdErrorCode_t writeAntTrigMask();
 AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold);
-AcqdErrorCode_t readGPIOValue(int surfId, int *gpioVal);
+AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value) ;
+AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
+AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);
 
 
 //Configuration functions
@@ -31,6 +33,7 @@ int readConfigFile();
 int init_param(int argn, char **argv,  int *n, unsigned short *dacVal);
 
 //Misclaneous Functions
+char *surfStatusFlagAsString(SurfStatusFlag_t flag);
 char *surfControlActionAsString(SurfControlAction_t action);
 char *turfControlActionAsString(TurfControlAction_t action);
 int updateThresholdsUsingPID();

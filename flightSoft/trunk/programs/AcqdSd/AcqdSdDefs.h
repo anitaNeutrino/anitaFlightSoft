@@ -43,13 +43,18 @@ typedef enum __SURF_control_act {
     SurfClearAll,
     SurfClearEvent,
     SurfClearHk,
-    RDMode,
-    WTMode,
-    DTRead,
-    IntEnb,
-    DACLoad,
-    CHGChp
+    SurfHkMode,
+    SurfDataMode,
+    SurfEnableInt,
+    SurfDisableInt
 } SurfControlAction_t ;
+
+
+typedef enum __SURF_status_flag {  
+    SurfEventReady,
+    SurfIntState,
+    SurfBusInfo
+} SurfStatusFlag_t ;
 
 typedef enum __TURF_control_act { 
     SetTrigMode,
@@ -86,6 +91,8 @@ typedef enum {
     ACQD_E_SET_ERR,
     ACQD_E_NO_TURFIO,
     ACQD_E_MISSING_SURF,
+    ACQD_E_TURFIO_GPIO,
+    ACQD_E_SURF_GPIO,
     ACQD_E_UNNAMED
 } AcqdErrorCode_t ;
 

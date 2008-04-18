@@ -208,6 +208,7 @@ int main(int argc, char **argv) {
     int i=0,tmo=0; 
     int numDevices; 
     int tmpGPIO;
+    int eventReadyFlag=0;
     unsigned short dacVal=2200;
     short lastDacVal=-1;
     int surf;
@@ -474,7 +475,8 @@ int main(int argc, char **argv) {
 	      do {
 		//Need to make the SURF that we read the GPIO value from
 		//somehow changeable
-		status=readGPIOValue(0,&tmpGPIO);
+		eventReadyFlag=0;
+		status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
 		if(status!=ACQD_E_OK) {
 		  fprintf(stderr,"Error reading GPIO value from SURF 0\n");
 		  syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
@@ -632,7 +634,7 @@ int main(int argc, char **argv) {
 		    }		    
 		  }
 		}
-	      } while(!(tmpGPIO & EVT_RDY));
+	      } while(!(eventReadyFlag));
 	      
 	      //Check if we are trying to leave the event loop
 	      if(currentState!=PROG_STATE_RUN) 
@@ -873,8 +875,94 @@ int main(int argc, char **argv) {
     return 1 ;
 }
 
+//Reading and Writing GPIO Values
+AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
+{
+  int surfFd=surfFds[surfId];
+  unsigned short svalue;
+  int retVal=0;
+  *value=0;
+  if(surfFd<=0) {
+    fprintf(sterr,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    return ACQD_E_BADFD;
+  }
+  switch(flag) {
+  case SurfEventReady : 
+    retVal=ioctl(surfFd, SURF_IOCEVENTREADY);
+    *value=retVal;
+    break ; 
+  case SurfIntState:
+    retVal=ioctl(surfFd,SURF_IOCQUERYINT);
+    *value=retVal;
+    break;
+  case SurfBusInfo:
+    retVal=ioctl(surfFd,SURF_IOCGETSLOT,&svalue);
+    *value=value;
+    break;
+  default:
+    if(printToScreen)
+      fprintf(stderr,"getSurfStatusFlag: undefined status flag, %d\n", flag) ;
+    return ACQD_E_UNKNOWN_CMD ;
+  } 
+  if(retVal<0) {
+    fprintf(stderr,"getSurfStatusFlag %s (%d) had error: %s\n",surfStatusFlagAsString(flag),flag,strerror(errno));
+    syslog(LOG_ERR,"getSurfStatusFlag %s (%d) had error: %s\n",surfStatusFlagAsString(flag),flag,strerror(errno));
+    return ACQD_E_SURF_GPIO;
+  }        
+  return ACQD_E_OK;
 
-//Control Fucntions
+}
+
+AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal) 
+{
+  AcqdErrorCode_t status=ACQD_E_OK;
+  if(turfioFd<=0) {
+    return ACQD_E_NO_TURFIO;
+  }
+  int retVal=ioctl(turfioFd, TURFIO_IOCGETGPIO, gpioval);
+  if(retVal<0) {
+    syslog(LOG_ERR,"Error reading TURFIO GPIO -- %s\n",strerror(errno));
+    fprintf(stderr,"Error reading TURFIO GPIO -- %s\n",strerror(errno));
+    status=ACQD_E_TURFIO_GPIO;
+  }
+  return status;
+}
+
+AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal) 
+{
+  AcqdErrorCode_t status=ACQD_E_OK;
+  if(turfioFd<=0) {
+    return ACQD_E_NO_TURFIO;
+  }
+  int retVal=ioctl(turfioFd, TURFIO_IOCSETGPIO, &gpioval);
+  if(retVal<0) {
+    syslog(LOG_ERR,"Error setting TURFIO GPIO -- %s\n",strerror(errno));
+    fprintf(stderr,"Error setting TURFIO GPIO -- %s\n",strerror(errno));
+    status=ACQD_E_TURFIO_GPIO;
+  }
+  return status;
+}
+
+char *surfStatusFlagAsString(SurfStatusFlag_t flag) {
+    char* string ;
+    switch(flag) {
+	case SurfEventReady :
+	    string = "SurfEventReady" ;
+	    break ;
+	case SurfIntState :
+	    string = "SurfIntState" ;
+	    break ;
+	case SurfBusInfo :
+	    string = "SurfBusInfo" ;
+	    break ;
+	default :
+	    string = "Unknown" ;
+	    break ;
+    }
+    return string;
+}
+
 char *surfControlActionAsString(SurfControlAction_t action) {
     char* string ;
     switch(action) {
@@ -887,23 +975,17 @@ char *surfControlActionAsString(SurfControlAction_t action) {
 	case SurfClearHk :
 	    string = "SurfClearHk" ;
 	    break ;
-	case RDMode :
-	    string = "RDMode" ;
+	case SurfDataMode :
+	    string = "SurfDataMode" ;
 	    break ;
-	case WTMode :
-	    string = "WTMode" ;
+	case SurfHkMode :
+	    string = "SurfHkMode" ;
 	    break ;
-	case DTRead :
-	    string = "DTRead" ;
+	case SurfDisableInt :
+	    string = "SurfDisableInt" ;
 	    break ;
-	case DACLoad :
-	    string = "DACLoad" ;
-	    break ;
-	case CHGChp :
-	    string = "CHGChp" ;
-	    break ;
-	case IntEnb :
-	    string = "IntEnb" ;
+	case SurfEnableInt :
+	    string = "SurfEnableInt" ;
 	    break ;
 	default :
 	    string = "Unknown" ;
@@ -911,6 +993,7 @@ char *surfControlActionAsString(SurfControlAction_t action) {
     }
     return string;
 }
+
 
 char *turfControlActionAsString(TurfControlAction_t action) {
     char* string ;
@@ -1005,78 +1088,80 @@ AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action)
 
 
 AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
-  //Can't do this right now
-  return ACQD_E_OK;
     //These numbers are octal
-/*     U32 baseClr          = 0022222222 ; */
-/*     U32 rprgTurf         = 0000000004 ; */
-/*     U32 loadRam          = 0000000040 ;  */
-/*     U32 sendSoftTrig     = 0000000400 ; */
-/*     U32 rfcDbit          = 0004000000 ; */
-/*     U32 rfcClk           = 0000004000 ; */
-/*     U32 enablePPS1Trig   = 0000040000 ; //Real PPS from ADU5 */
-/*     U32 enablePPS2Trig   = 0000400000 ; //Burst PPS up to 20Hz from G123 */
-/*     U32 clearAll         = 0040000000 ; */
+    unsigned int baseClr          = 0022222222 ;
+    unsigned int rprgTurf         = 0000000004 ;
+    unsigned int loadRam          = 0000000040 ;
+    unsigned int sendSoftTrig     = 0000000400 ;
+    unsigned int rfcDbit          = 0004000000 ;
+    unsigned int rfcClk           = 0000004000 ;
+    unsigned int enablePPS1Trig   = 0000040000 ; //Real PPS from ADU5
+    unsigned int enablePPS2Trig   = 0000400000 ; //Burst PPS up to 20Hz from G123
+    unsigned int clearAll         = 0040000000 ;
 
-/*     U32           gpioVal,baseVal ; */
-/*     PlxStatus_t   rc ; */
-/*     int i ; */
+     unsigned int           gpioVal,baseVal ; 
+     AcqdErrorCode_t status=ACQD_E_OK;
+    int i ;
 
-/*     static int first=1; */
-/* //    printf("Dec: %d %d %d\nHex: %x %x %x\nOct: %o %o %o\n",base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg); */
-/* //    handleBadSigs(1000); */
-/*     if(first) { */
-/* 	gpioVal=baseClr;     */
-/* 	if ((rc = PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, gpioVal )) */
-/* 	    != ACQD_E_OK) { */
-/* 	    syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%d).\n", gpioVal,rc); */
-/* 	    if(printToScreen) */
-/* 		printf(" setTurfControl : failed to set GPIO to %o\t (%d).\n", gpioVal,rc) ; */
-/* 	    return rc ; */
-/* 	} */
-/* 	if(printToScreen) printf("First read of TURF GPIO: %o\n", PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc)); */
-/* 	first=0; */
-/*     } */
-/*     // Read current GPIO state */
-/*     baseVal=PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc) ;  */
-    
-/*     if(trigMode&TrigPPS1) baseVal |= enablePPS1Trig; */
-/*     if(trigMode&TrigPPS2) baseVal |= enablePPS2Trig; */
+    static int first=1;
+//    printf("Dec: %d %d %d\nHex: %x %x %x\nOct: %o %o %o\n",base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg);
+//    handleBadSigs(1000);
+    if(first) {
+	gpioVal=baseClr;
+	status=setTurfGPIOValue(gpioVal);
+	if(status!=ACQD_E_OK) {
+	  syslog(LOG_ERR,"Error setting TURFIO gpio to %o --%s",gpioVal,strerror(errno));
+	  fprintf(stderr,"Error setting TURFIO gpio to %o --%s",gpioVal,strerror(errno));
+	  return ACQD_E_TURFIO_GPIO;
+	}
+	if(printToScreen) {
+	  status=readTurfGPIOValue(&gpioVal);
+	  printf("First read of TURF GPIO: %o\n", status);
+	}	
+	first=0;
+    }
+    // Read current GPIO state
+    status=readTurfGPIOValue(&baseVal);
+    if(status!=ACQD_E_OK) {
+      syslog(LOG_ERR,"Error reading TURFIO gpio -- %s",strerror(errno));
+      fprintf(stderr,"Error reading TURFIO gpio -- %s",strerror(errno));
+    }
+        
+    if(trigMode&TrigPPS1) baseVal |= enablePPS1Trig;
+    if(trigMode&TrigPPS2) baseVal |= enablePPS2Trig;
 
-/*     switch (action) { */
-/* 	case SetTrigMode : gpioVal =baseVal; break; */
-/* 	case RprgTurf : gpioVal = baseVal | rprgTurf ; break ; */
-/* 	case TurfLoadRam : gpioVal = baseVal | loadRam ; break ;  */
-/* 	case SendSoftTrg : gpioVal = baseVal | sendSoftTrig ; break ; */
-/* 	case RFCBit : gpioVal = (baseVal |= rfcDbit) | rfcClk ; break ; */
-/* 	case RFCClk : gpioVal = (baseVal &= ~rfcDbit) | rfcClk ; break ; */
-/* 	case EnablePPS1Trig : gpioVal = baseVal | enablePPS1Trig ; break ; */
-/* 	case EnablePPS2Trig : gpioVal = baseVal | enablePPS2Trig ; break ; */
-/* 	case TurfClearAll : gpioVal = baseVal | clearAll ; break ; */
+    switch (action) {
+	case SetTrigMode : gpioVal =baseVal; break;
+	case RprgTurf : gpioVal = baseVal | rprgTurf ; break ;
+	case TurfLoadRam : gpioVal = baseVal | loadRam ; break ;
+	case SendSoftTrg : gpioVal = baseVal | sendSoftTrig ; break ;
+	case RFCBit : gpioVal = (baseVal |= rfcDbit) | rfcClk ; break ;
+	case RFCClk : gpioVal = (baseVal &= ~rfcDbit) | rfcClk ; break ;
+	case EnablePPS1Trig : gpioVal = baseVal | enablePPS1Trig ; break ;
+	case EnablePPS2Trig : gpioVal = baseVal | enablePPS2Trig ; break ;
+	case TurfClearAll : gpioVal = baseVal | clearAll ; break ;
 	    
-/* 	default : */
-/* 	    syslog(LOG_WARNING,"setTurfControl: undefined action %d",action); */
-/* 	    if(printToScreen) */
-/* 		printf(" setTurfControl: undfined action, %d\n", action) ; */
-/* 	    return ApiFailed ; */
-/*     } */
-
-/*     if (verbosity && printToScreen)  */
-/* 	printf("setTurfControl: action %s, gpioVal = %o\n",  */
-/* 	       turfControlActionAsString(action), gpioVal) ;  */
-
-/*     if ((rc = PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, gpioVal )) */
-/* 	!= ACQD_E_OK) { */
-/* 	syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%d).\n", gpioVal,rc); */
-/* 	if(printToScreen) */
-/* 	    printf(" setTurfControl : failed to set GPIO to %o\t (%d).\n", gpioVal,rc) ; */
-/* 	return rc ; */
-/*     } */
-/*     if (action > TurfClearAll) return rc ; */
-/*     if (action == RprgTurf)  /\* wait a while in case of RprgTurf. *\/ */
-/* 	for(i=0 ; i++<10 ; usleep(1)) ; */
-
-/*     return PlxPci_PlxRegisterWrite(turfioHandlePtr, PCI9030_GP_IO_CTRL, baseVal ) ; */
+	default :
+	    syslog(LOG_WARNING,"setTurfControl: undefined action %d",action);
+	    fprintf(stderr,"setTurfControl: undfined action, %d\n", action) ;
+	    return ACQD_E_UNKNOWN_CMD;
+    }
+    
+    if (verbosity && printToScreen)
+      printf("setTurfControl: action %s, gpioVal = %o\n",
+	     turfControlActionAsString(action), gpioVal) ;
+    
+    if ((status=setTurfGPIOValue(gpioVal))!= ACQD_E_OK) {
+      syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
+	fprint(stderr,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
+	return ACQD_E_TURFIO_GPIO ;
+    }
+    
+    if (action > TurfClearAll) return ACQD_E_OK ;
+    if (action == RprgTurf)  /* wait a while in case of RprgTurf. */
+      for(i=0 ; i++<10 ; usleep(1)) ;
+              
+    return setTurfGPIOValue(baseVal);
 
 }
 
@@ -1450,7 +1535,7 @@ int readConfigFile()
 
 
 
-void clearDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr) 
+void clearDevices() 
 // Clears boards for start of data taking 
 {
     int testVal=0;
@@ -1475,7 +1560,7 @@ void clearDevices(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr)
     }
 
     //Added RJN 29/11/06
-    status=setGloablDACThreshold(surfHandles,1); 
+    status=setGloablDACThreshold(1); 
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"Failed to set global DAC thresholds\n");
       fprint(stderr,"Failed to set global DAC thresholds\n");
@@ -1589,7 +1674,7 @@ void setGloablDACThreshold(unsigned short threshold) {
 
 
 
-void setDACThresholds(PlxDevObject_t *surfHandles) {
+void setDACThresholds() {
   unsigned int outBuffer[MAX_SURFS][N_RFTRIG+2];
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
@@ -1786,8 +1871,10 @@ AcqdErrorCode_t readSurfEventData()
 
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned int  dataInt=0;
+    unsigned int eventBuf[1170];
 
     unsigned char tempVal;
+    int count=0;
     int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
     int rcoSamp;
     unsigned int headerWord,samp=0;
@@ -1801,222 +1888,195 @@ AcqdErrorCode_t readSurfEventData()
 	printf("Triggered, event %d (by software counter).\n",doingEvent);
 
   	
-/*     //Loop over SURFs and read out data */
-/*     for(surf=0;surf<numSurfs;surf++){   */
-/* //	sleep(1); */
-/* 	if(printToScreen &&verbosity>1) { */
-/* 	    printf("GPIO register contents SURF %d = %o\n",surfIndex[surf], */
-/* 		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_GP_IO_CTRL, &rc)) ; */
-/* 	    printf("INT register contents SURF %d = %o\n",surfIndex[surf], */
-/* 		   PlxPci_PlxRegisterRead(&surfHandles[surf], PCI9030_INT_CTRL_STAT, &rc)) ; */
-/* 	} */
-
-/* 	//Set to read mode */
-/* 	rc=setSurfControl(&surfHandles[surf],RDMode); */
-/* 	if(rc!=ACQD_E_OK) { */
-/* 	    syslog(LOG_ERR,"Failed to set RDMode on SURF %d",surf); */
-/* 	    if(printToScreen) */
-/* 		fprintf(stderr,"Failed to set RDMode on SURF %d\n",surf); */
-/* 	} */
-/* 	rc=setSurfControl(&surfHandles[surf],DTRead); */
-/* 	if(rc!=ACQD_E_OK) { */
-/* 	    syslog(LOG_ERR,"Failed to set DTRead on SURF %d (rc = %d)",surfIndex[surf],rc); */
-/* 	    if(printToScreen) */
-/* 		fprintf(stderr,"Failed to set DTRead on SURF %d (rc = %d)\n",surfIndex[surf],rc); */
-/* 	} */
+    //Loop over SURFs and read out data
+    for(surf=0;surf<numSurfs;surf++){
+      count=0;
+      //Set to Data mode
+      status=setSurfControl(surf,SurfDataMode);
+      if(status!=ACQD_E_OK) {
+	//Persist anyhow
+      }
+      
+	//In version 3 data is read as 32 bit words:
+	/* 0 -- Header Word
+	   1 -- Prime Word
+	   2:129 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read)
+	   130:1153 -- Chans 1 through 8 128 reads per chan as above
+	   1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
+	   1156:1169 -- Chans 1 through 8 2 reads per chan as above
+	*/
+      //Read the Event data
+      count = read(surfFd[surf], eventBuf, 1170*sizeof(int));
+      if (count < 0) {
+	syslog(LOG_ERR,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
+	fprintf(stderr,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
+      }
+            
+      //First is the header word
+      headerWord=eventBuf[0];
+      if(printToScreen && verbosity>2) {
+	printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord);
+      }      
+      if(surf==0) {
+	hdPtr->otherFlag=0;
+	hdPtr->otherFlag2=0;
+      }
 	
-/* 	//In version 3 data is read as 32 bit words: */
-/* 	/\* 0 -- Header Word */
-/* 	   1 -- Prime Word */
-/* 	   2:129 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read) */
-/* 	   130:1153 -- Chans 1 through 8 128 reads per chan as above */
-/* 	   1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read) */
-/* 	   1156:1169 -- Chans 1 through 8 2 reads per chan as above */
-/* 	*\/ */
-/* 	__Volatile__ unsigned int *evData=barMapAddr[surf]; */
-/* 	//First read header word */
-/* 	headerWord=*evData++; */
-/* 	if(printToScreen && verbosity>2) { */
-/* 	    printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord); */
-/* 	} */
-	
-/* 	if(surf==0) { */
-/* 	    hdPtr->otherFlag=0; */
-/* 	    hdPtr->otherFlag2=0; */
-/* 	} */
-	
-/* 	int surfEvNum=((headerWord&0xf000000)>>24); */
-/* 	if(surf==0) { */
-/* 	    hdPtr->otherFlag=surfEvNum; */
-/* 	} */
-/* 	if(surf==1) { */
-/* 	    hdPtr->otherFlag|=(surfEvNum<<4); */
-/* 	} */
-/* 	if(printToScreen && verbosity>2) */
-/* 	    printf("surf %d\tsurfEvNum %d\theaderWord %#x\nhdPtr->otherFlag %d\n",surf,surfEvNum,headerWord,hdPtr->otherFlag); */
+      int surfEvNum=((headerWord&0xf000000)>>24);
+      if(surf==0) {
+	hdPtr->otherFlag=surfEvNum;
+      }
+      if(surf==1) {
+	hdPtr->otherFlag|=(surfEvNum<<4);
+	}
+      if(printToScreen && verbosity>2)
+	printf("surf %d\tsurfEvNum %d\theaderWord %#x\nhdPtr->otherFlag %d\n",surf,surfEvNum,headerWord,hdPtr->otherFlag);
+      
+      
+      //Next is the junk prime word 
+      dataInt=eventBuf[1];
+      if(printToScreen && verbosity>2) {
+	printf("SURF %d (%d), CHIP %d, CHN %d, Prime: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt);
+      }
 
+      //Now we get the first 256 samples per channel
+      for(chan=0;chan<N_CHAN; chan++) {
+	for (samp=readCount=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {
+	  dataInt=eventBuf[2+ chan*(N_SAMP_EFF/2) + readCount];
+	  
+	  if(printToScreen && verbosity>2) {
+	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
+		   GetUpper16(dataInt),
+		   GetLower16(dataInt),
+		   GetStartBit(GetUpper16(dataInt)),
+		   GetStartBit(GetLower16(dataInt)),
+		   GetStopBit(GetUpper16(dataInt)),
+		   GetStopBit(GetLower16(dataInt)),
+		   GetHitBus(GetUpper16(dataInt)),
+		   GetHitBus(GetLower16(dataInt)),
+		   GetUpper16(dataInt)&0x1,
+		   GetLower16(dataInt)&0x1
+		   );
+	  }
+	  
+	  //Upper word
+	  labData[surf][chan][samp]=dataInt&0xffff;
+	  labData[surf][chan][samp++]|=headerWord&0xffff0000;
+	  
+	  //Lower word
+	  labData[surf][chan][samp]=(dataInt>>16);
+	  labData[surf][chan][samp++]|=headerWord&0xffff0000;
+	  
+	}
+      }
 
-/* 	//Now prime data stream */
-/* 	dataInt=*evData++; */
-/* 	if(printToScreen && verbosity>2) { */
-/* 	    printf("SURF %d (%d), CHIP %d, CHN %d, Prime: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt); */
-/* 	} */
-
-/* 	//Now read first 256 samples per SURF */
-/* 	for(chan=0;chan<N_CHAN; chan++) { */
-/* 	    for (readCount=samp=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {		 */
-/* 		dataInt=*evData++; */
-
-/* 		if(printToScreen && verbosity>2) { */
-/* 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount, */
-/* 			   GetUpper16(dataInt), */
-/* 			   GetLower16(dataInt), */
-/* 			   GetStartBit(GetUpper16(dataInt)), */
-/* 			   GetStartBit(GetLower16(dataInt)), */
-/* 			   GetStopBit(GetUpper16(dataInt)), */
-/* 			   GetStopBit(GetLower16(dataInt)), */
-/* 			   GetHitBus(GetUpper16(dataInt)), */
-/* 			   GetHitBus(GetLower16(dataInt)), */
-/* 			   GetUpper16(dataInt)&0x1, */
-/* 			   GetLower16(dataInt)&0x1 */
-/* 			); */
-/* 		} */
-
-/* 		//Upper word */
-/* 		labData[surf][chan][samp]=dataInt&0xffff; */
-/* 		labData[surf][chan][samp++]|=headerWord&0xffff0000; */
-
-/* 		//Lower word */
-/* 		labData[surf][chan][samp]=(dataInt>>16); */
-/* 		labData[surf][chan][samp++]|=headerWord&0xffff0000; */
-		
-/* 	    } */
-/* 	} */
-
-/* 	//Now read last 4 samples */
-/* 	for(chan=0;chan<N_CHAN; chan++) { */
-/* 	    samp=N_SAMP_EFF; */
-/* 	    for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) { */
-/* 		dataInt=*evData++; */
-		
-/* 		if(printToScreen && verbosity>2) { */
-/* 		    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount, */
-/* 			   GetUpper16(dataInt), */
-/* 			   GetLower16(dataInt), */
-/* 			   GetStartBit(GetUpper16(dataInt)), */
-/* 			   GetStartBit(GetLower16(dataInt)), */
-/* 			   GetStopBit(GetUpper16(dataInt)), */
-/* 			   GetStopBit(GetLower16(dataInt)), */
-/* 			   GetHitBus(GetUpper16(dataInt)), */
-/* 			   GetHitBus(GetLower16(dataInt)), */
-/* 			   GetUpper16(dataInt)&0x1, */
-/* 			   GetLower16(dataInt)&0x1 */
-/* 			); */
-
-/* 		} */
-/* 		//Store in array (will move to 16bit array when bothered */
-		
-/* 		labData[surf][chan][samp]=dataInt&0xffff; */
-/* 		labData[surf][chan][samp++]|=headerWord&0xffff0000; */
-/* //		} */
-/* 		labData[surf][chan][samp]=(dataInt>>16); */
-/* 		labData[surf][chan][samp++]|=headerWord&0xffff0000; */
-
-/* 	    } */
-/* 	} */
-	
-/* //	dataInt=*evData++; */
-
-/* //	labData[surf][N_CHAN-1][N_SAMP-1]=dataInt&0xffff; */
-/* //	labData[surf][N_CHAN-1][N_SAMP-1]|=headerWord&0xffff0000; */
-	
-/*     } */
-/*     //Read out SURFs */
-
-/*     if(!oldStyleFiles) { */
-/* 	for(surf=0;surf<numSurfs;surf++){   */
-/* 	    for (chan=0 ; chan<N_CHAN ; chan++) { */
-/* 		chanId=chan+surf*CHANNELS_PER_SURF; */
-/* 		firstHitbus=-1; */
-/* 		lastHitbus=-1; */
-/* 		wrappedHitbus=0; */
-/* 		for (samp=0 ; samp<N_SAMP ; samp++) {		 */
-/* 		    dataInt=labData[surf][chan][samp]; */
-/* 		    if(samp==0) upperWord=GetUpper16(dataInt); */
-/* /\* 		    if(upperWord!=GetUpper16(dataInt)) { *\/ */
-/* /\* 			//Will add an error flag to the channel header *\/ */
-/* /\* 			syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt)); *\/ */
-/* /\* 			if(printToScreen) *\/ */
-/* /\* 			    fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));			 *\/ */
-/* /\* 		    } *\/ */
+      /* 	Now read last 4 samples */
+      for(chan=0;chan<N_CHAN; chan++) {
+	samp=N_SAMP_EFF;
+	for(readCount=N_SAMP_EFF/2;readCount<N_SAMP/2;readCount++) {
+	  dataInt=eventBuf[1154 + (chan*2) +(readCount-N_SAMP_EFF/2)];	  
+	  if(printToScreen && verbosity>2) {
+	    printf("SURF %d (%d), CHIP %d, CHN %d, Read %d: %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,
+		   GetUpper16(dataInt),
+		   GetLower16(dataInt),
+		   GetStartBit(GetUpper16(dataInt)),
+		   GetStartBit(GetLower16(dataInt)),
+		   GetStopBit(GetUpper16(dataInt)),
+		   GetStopBit(GetLower16(dataInt)),
+		   GetHitBus(GetUpper16(dataInt)),
+		   GetHitBus(GetLower16(dataInt)),
+		   GetUpper16(dataInt)&0x1,
+		   GetLower16(dataInt)&0x1
+		   );
+	    
+	  }
+	  //Store in array (will move to 16bit array when bothered
+	  
+	  labData[surf][chan][samp]=dataInt&0xffff;
+	  labData[surf][chan][samp++]|=headerWord&0xffff0000;
+	}
+	labData[surf][chan][samp]=(dataInt>>16);
+	labData[surf][chan][samp++]|=headerWord&0xffff0000;	
+      }
+      //Now we've stuffed the event data into 32bit arrays ordered by sample
+      //it is time to put it into the format we actually want
+      for (chan=0 ; chan<N_CHAN ; chan++) {
+	chanId=chan+surf*CHANNELS_PER_SURF;
+	firstHitbus=-1;
+	lastHitbus=-1;
+	wrappedHitbus=0;
+	for (samp=0 ; samp<N_SAMP ; samp++) {
+	  dataInt=labData[surf][chan][samp];
+	  if(samp==0) upperWord=GetUpper16(dataInt);
+	  //Below is constructed to be true
+	  if(upperWord!=GetUpper16(dataInt)) {
+	    //Will add an error flag to the channel header
+	    syslog(LOG_WARNING,"Upper 16bits don't match: SURF %d Chan %d Samp %d (%x %x)",surfIndex[surf],chan,samp,upperWord,GetUpper16(dataInt));
+	    if(printToScreen)
+	      fprintf(stderr,"Upper word changed %x -- %x\n",upperWord,GetUpper16(dataInt));
+	  }
 		    
-/* 		    theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt); */
-		    
-/* 		    //Now check for HITBUS */
-/* 		    if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS))  */
-/* 			firstHitbus=samp; */
-/* 		    if(GetLower16(dataInt)&HITBUS) { */
-/* 			if(!wrappedHitbus) { */
-/* 			    if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) { */
-/* 				//Wrapped hitbus */
-/* 				wrappedHitbus=1; */
-/* 				firstHitbus=lastHitbus; */
-/* 			    } */
-/* 			    lastHitbus=samp; */
-/* 			}		     */
-/* 		    }				 */
-/* 		} */
-/* 		rcoSamp=firstHitbus-1; */
-/* 		if(wrappedHitbus) */
-/* 		    rcoSamp=lastHitbus-1; */
-/* 		if(rcoSamp<0 || rcoSamp>255) rcoSamp=100; */
+	  theEvent.body.channel[chanId].data[samp]=GetLower16(dataInt);
+	  
+	  //Now check for HITBUS
+	  if(firstHitbus<0 && (GetLower16(dataInt)&HITBUS))
+	    firstHitbus=samp;
+	  if(GetLower16(dataInt)&HITBUS) {
+	    if(!wrappedHitbus) {
+	      if(lastHitbus>-1 && (samp-lastHitbus)>20 && (260-samp)<20) {
+		//Wrapped hitbus
+		wrappedHitbus=1;
+		firstHitbus=lastHitbus;
+	      }
+	      lastHitbus=samp;
+	    }
+	  }
+	}
+	//	End of sample loop
+	//Now check which RCO is flagged
+	rcoSamp=firstHitbus-1;
+	if(wrappedHitbus)
+	  rcoSamp=lastHitbus-1;
+	if(rcoSamp<0 || rcoSamp>255) rcoSamp=100;		
+	rcoBit=((labData[surf][chan][rcoSamp]&0x2000)>>13);
+	tempVal=chan+N_CHAN*surf;
+	theEvent.body.channel[chanId].header.chanId=tempVal;
+	theEvent.body.channel[chanId].header.firstHitbus=firstHitbus;
+	tempVal=((upperWord&0xc0)>>6)+(rcoBit<<2)+(wrappedHitbus<<3);
+	if(lastHitbus>255) {
+	  tempVal+=((lastHitbus-255)<<4);
+	  lastHitbus=255;
+	}
+	theEvent.body.channel[chanId].header.chipIdFlag=tempVal;
+	theEvent.body.channel[chanId].header.lastHitbus=lastHitbus;
 		
-/* 		rcoBit=((labData[surf][chan][rcoSamp]&0x2000)>>13); */
-/* 		//End of sample loop */
-/* 		tempVal=chan+N_CHAN*surf; */
-/* 		theEvent.body.channel[chanId].header.chanId=tempVal; */
-/* 		theEvent.body.channel[chanId].header.firstHitbus=firstHitbus; */
-/* 		tempVal=((upperWord&0xc0)>>6)+(rcoBit<<2)+(wrappedHitbus<<3); */
-/* 		if(lastHitbus>255) { */
-/* 		    tempVal+=((lastHitbus-255)<<4); */
-/* 		    lastHitbus=255; */
-/* 		} */
-/* 		theEvent.body.channel[chanId].header.chipIdFlag=tempVal; */
-/* 		theEvent.body.channel[chanId].header.lastHitbus=lastHitbus; */
-		
-
-/* 		if(printToScreen && verbosity>1) { */
-/* 		    printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %x\n\tLabchip %d\n\tchipIdFlag %d\n", */
-/* 			   surfIndex[surf],chan, */
-/* 			   theEvent.body.channel[chanId].header.chanId, */
-/* 			   theEvent.body.channel[chanId].header.firstHitbus, */
-/* 			   theEvent.body.channel[chanId].header.lastHitbus, */
-/* 			   wrappedHitbus,upperWord,((upperWord&0xc0)>>6), */
-/* 			   theEvent.body.channel[chanId].header.chipIdFlag); */
-/* 		} */
-			   
-			   
-/* 	    } */
-/* 	} */
-/*     }    */
-/*     if(printToScreen && verbosity>1) { */
+	if(printToScreen && verbosity>1) {
+	  printf("SURF %d, Chan %d, chanId %d\n\tFirst Hitbus %d\n\tLast Hitbus %d\n\tWrapped Hitbus %d\n\tUpper Word %x\n\tLabchip %d\n\tchipIdFlag %d\n",
+		 surfIndex[surf],chan,
+		 theEvent.body.channel[chanId].header.chanId,
+		 theEvent.body.channel[chanId].header.firstHitbus,
+		 theEvent.body.channel[chanId].header.lastHitbus,
+		 wrappedHitbus,upperWord,((upperWord&0xc0)>>6),
+		 theEvent.body.channel[chanId].header.chipIdFlag);
+	}		
+      }	 
+    }  
 	
-/* 	for(surf=0;surf<numSurfs;surf++){   */
-/* 	    for(chan=0;chan<N_CHAN;chan++) { */
-/* 		for(samp=0;samp<5;samp++) { */
-/* 		    printf("SURF %d, chan %d, samp %d, data %d\n",surf,chan,samp,labData[surf][chan][samp]&0xfff); */
-/* 		} */
-/* 	    } */
-/* 	} */
-
-
-/*     } */
-/*     return status; */
+    if(printToScreen && verbosity>1) {	
+      for(surf=0;surf<numSurfs;surf++){
+	for(chan=0;chan<N_CHAN;chan++) {
+	  for(samp=0;samp<5;samp++) {
+	    printf("SURF %d, chan %d, samp %d, data %d\n",surf,chan,samp,labData[surf][chan][samp]&0xfff);
+	  }
+	}
+      }
+    }
+    return status; 
 } 
 
 
 
-AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles) 
+AcqdErrorCode_t readSurfHkData() 
 // Reads the scaler and RF power data from the SURF board
 {
   AcqdErrorCode_t status=ACQD_E_OK;
@@ -2037,13 +2097,10 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
   for(surf=0;surf<numSurfs;surf++){  
     count=0;
     //Set the SURF to Hk mode
-    retVal=ioctl(surfFD, SURF_IOCHK);
-    if(retVal<0) {
-      syslog(LOG_ERR,"Error setting housekeeping mode on SURF %d (%s)",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error setting housekeeping mode on SURF %d (%s)",surfIndex[surf],strerror(errno));
+    status=setSurfControl(surf,SurfHkMode);
+    if(status!=ACQD_E_OK) {
+      //Persist anyhow
     }
-    //    usleep(30000); Don't know why this was here
-
     //Read the Hk data
     count = read(surfFd[surf], buffer, 72*sizeof(int));
     if (count < 0) {
@@ -2052,12 +2109,10 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
     }
     
     //Set it back to data mode -- maybe
-    retVal=ioctl(surfFd[surf], SURF_IOCDATA);
-    if(retVal<0) {
-      syslog(LOG_ERR,"Error setting data mode on SURF %d (%s)",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error setting data mode on SURF %d (%s)",surfIndex[surf],strerror(errno));
+    status=setSurfControl(surf,SurfDataMode);
+    if(status!=ACQD_E_OK) {
+      //Persist anyhow
     }
-
 
     //First just fill in antMask in SURF
     for(rfChan=0;rfChan<2;rfChan++) {
@@ -2120,13 +2175,11 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
   return status;
 }
 
-//Up to here in my surfDriver-ifying
 
 AcqdErrorCode_t readTurfEventData()
 /*! Reads out the TURF data via the TURFIO */
 {
     newTurfRateData=0;
-//    PlxStatus_t rc;
     AcqdErrorCode_t status=ACQD_E_OK;
     unsigned short  dataWord=0;
     unsigned char upperChar;
@@ -2135,211 +2188,208 @@ AcqdErrorCode_t readTurfEventData()
     unsigned long dataLong;
     static unsigned short lastPPSNum=0;
 
-    int wordNum,surf,ant,errCount=0;
+    int wordNum,surf,ant,errCount=0,count=0;
     TurfioTestPattern_t startPat;
     TurfioTestPattern_t endPat;
-    
-    //First read to prime pipe
-//	dataWord=*turfData++;
-// Do we need prime read (rjn 20/05/06)
+    unsigned short turfBuf[160];
     
     //Why doesn't this use the bar map method??
     //Read out 160 words and shorts not ints
 
-    //They'll be some read statement here
+    //They'll be some read statement here    
+    //Read the Hk data
+    count = read(turfioFd, turfBuf, 160*sizeof(short));
+    if (count < 0) {
+      syslog(LOG_ERR,"Error reading TURF data from TURFIO (%s)",strerror(errno));
+      fprintf(stderr,"Error reading TURF data from TURFIO (%s)",strerror(errno));
+    }
     
     for(wordNum=0;wordNum<160;wordNum++) {
-/* 	if (readPlxDataShort(turfioHandlePtr,&dataWord)!= ACQD_E_OK) { */
-/* 	    status=ACQD_E_PLXBUSREAD; */
-/* 	    syslog(LOG_ERR,"Failed to read TURFIO word %d",wordNum); */
-/* 	    if(printToScreen)  */
-/* 		printf("Failed to read TURFIO word %d\n",wordNum) ; */
-/* 	    continue; */
-/* 	} */
-	dataChar=0;
-	dataShort=0;
-	dataLong=0;
-	dataChar=dataWord&0xff;
-	dataShort=dataWord&0xff;
-	dataLong=dataWord&0xff;
-	upperChar=(dataWord&0xff00)>>8;
-	if(printToScreen && verbosity>1) {
-	    printf("TURFIO -- Word %d  -- %x -- %x + %x\n",wordNum,dataWord,
-		   dataShort,upperChar);
-	}
-	if(wordNum==0) 
-	    hdPtr->turfUpperWord=upperChar;
-
-	if(wordNum<7) {
-	    startPat.test[wordNum]=dataChar; 
-	} 
-	else if(wordNum<8) {
-	    startPat.test[wordNum]=dataChar; 
-	    turfioPtr->bufferDepth=((dataChar&CUR_BUF_MASK_READ)>>(CUR_BUF_SHIFT_READ-CUR_BUF_SHIFT_FINAL));
-	}
-	    
-	else if(wordNum<24) {
-	    switch(wordNum) {
-		case 8:
-		    turfioPtr->trigType=dataChar; 
-		    turfioPtr->bufferDepth|=((dataChar&TRIG_BUF_MASK_READ)>>(TRIG_BUF_SHIFT_READ-TRIG_BUF_SHIFT_FINAL));
+      dataWord=turfBuf[wordNum];
+      dataChar=0;
+      dataShort=0;
+      dataLong=0;
+      dataChar=dataWord&0xff;
+      dataShort=dataWord&0xff;
+      dataLong=dataWord&0xff;
+      upperChar=(dataWord&0xff00)>>8;
+      if(printToScreen && verbosity>1) {
+	printf("TURFIO -- Word %d  -- %x -- %x + %x\n",wordNum,dataWord,
+	       dataShort,upperChar);
+      }
+      if(wordNum==0) 
+	hdPtr->turfUpperWord=upperChar;
+      
+      if(wordNum<7) {
+	startPat.test[wordNum]=dataChar; 
+      } 
+      else if(wordNum<8) {
+	startPat.test[wordNum]=dataChar; 
+	turfioPtr->bufferDepth=((dataChar&CUR_BUF_MASK_READ)>>(CUR_BUF_SHIFT_READ-CUR_BUF_SHIFT_FINAL));
+      }
+      
+      else if(wordNum<24) {
+	switch(wordNum) {
+	case 8:
+	  turfioPtr->trigType=dataChar; 
+	  turfioPtr->bufferDepth|=((dataChar&TRIG_BUF_MASK_READ)>>(TRIG_BUF_SHIFT_READ-TRIG_BUF_SHIFT_FINAL));
 		    
-		    break;
-		case 9:
-		    turfioPtr->l3Type1Count=dataChar; break;
-		case 10:
-		    turfioPtr->trigNum=dataShort; break;
-		case 11:
-		    turfioPtr->trigNum+=(dataShort<<8); break;
-		case 12:
-		    turfioPtr->trigTime=dataLong; break;
-		case 13:
-		    turfioPtr->trigTime+=(dataLong<<8); break;
-		case 14:
-		    turfioPtr->trigTime+=(dataLong<<16); break;
-		case 15:
-		    turfioPtr->trigTime+=(dataLong<<24); break;
-		case 16:
-		    turfioPtr->ppsNum=dataShort; break;
-		case 17:
-		    turfioPtr->ppsNum+=(dataShort<<8); break;
-		case 18:
-		    turfioPtr->deadTime=(dataShort); break;
-		case 19:
-		    turfioPtr->deadTime+=(dataShort<<8); break;
-		case 20:
-		    turfioPtr->c3poNum=dataLong; break;
-		case 21:
-		    turfioPtr->c3poNum+=(dataLong<<8); break;
-		case 22:
-		    turfioPtr->c3poNum+=(dataLong<<16); break;
-		case 23:
-		    turfioPtr->c3poNum+=(dataLong<<24); break;
-		default:
-		    // Can't get here
-		    break;
-	    }
+	  break;
+	case 9:
+	  turfioPtr->l3Type1Count=dataChar; break;
+	case 10:
+	  turfioPtr->trigNum=dataShort; break;
+	case 11:
+	  turfioPtr->trigNum+=(dataShort<<8); break;
+	case 12:
+	  turfioPtr->trigTime=dataLong; break;
+	case 13:
+	  turfioPtr->trigTime+=(dataLong<<8); break;
+	case 14:
+	  turfioPtr->trigTime+=(dataLong<<16); break;
+	case 15:
+	  turfioPtr->trigTime+=(dataLong<<24); break;
+	case 16:
+	  turfioPtr->ppsNum=dataShort; break;
+	case 17:
+	  turfioPtr->ppsNum+=(dataShort<<8); break;
+	case 18:
+	  turfioPtr->deadTime=(dataShort); break;
+	case 19:
+	  turfioPtr->deadTime+=(dataShort<<8); break;
+	case 20:
+	  turfioPtr->c3poNum=dataLong; break;
+	case 21:
+	  turfioPtr->c3poNum+=(dataLong<<8); break;
+	case 22:
+	  turfioPtr->c3poNum+=(dataLong<<16); break;
+	case 23:
+	  turfioPtr->c3poNum+=(dataLong<<24); break;
+	default:
+	  // Can't get here
+	  break;
 	}
-	else if(wordNum<88) {
-	    //Surf Antenna counters
-	    surf=(wordNum-24)/8;
-	    ant=(wordNum%8)/2;
-	    if(wordNum%2==0) {
-		//First word
-		turfRates.l1Rates[surf][ant]=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-		turfRates.l1Rates[surf][ant]+=(dataShort<<8);
-	    }	    
+      }
+      else if(wordNum<88) {
+	//Surf Antenna counters
+	surf=(wordNum-24)/8;
+	ant=(wordNum%8)/2;
+	if(wordNum%2==0) {
+	  //First word
+	  turfRates.l1Rates[surf][ant]=dataShort;
 	}
-	else if(wordNum<104) {
-	    turfRates.upperL2Rates[wordNum-88]=dataChar;
+	else if(wordNum%2==1) {
+	  //Second word
+	  turfRates.l1Rates[surf][ant]+=(dataShort<<8);
+	}	    
+      }
+      else if(wordNum<104) {
+	turfRates.upperL2Rates[wordNum-88]=dataChar;
+      }
+      else if(wordNum<120) {
+	turfRates.lowerL2Rates[wordNum-104]=dataChar;
+      }
+      else if(wordNum<136) {
+	turfRates.l3Rates[wordNum-120]=dataChar;
+      }
+      else if(wordNum<138) {
+	if(wordNum%2==0) {
+	  //First word
+	  turfioPtr->upperL1TrigPattern=dataShort;
 	}
-	else if(wordNum<120) {
-	    turfRates.lowerL2Rates[wordNum-104]=dataChar;
+	else if(wordNum%2==1) {
+	  //Second word
+	  turfioPtr->upperL1TrigPattern+=(dataShort<<8);
 	}
-	else if(wordNum<136) {
-	    turfRates.l3Rates[wordNum-120]=dataChar;
+      }
+      else if(wordNum<140) {
+	if(wordNum%2==0) {
+	  //First word
+	  turfioPtr->lowerL1TrigPattern=dataShort;
 	}
-	else if(wordNum<138) {
-	    if(wordNum%2==0) {
-		//First word
-		turfioPtr->upperL1TrigPattern=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-		turfioPtr->upperL1TrigPattern+=(dataShort<<8);
-	    }
+	else if(wordNum%2==1) {
+	  //Second word
+	  turfioPtr->lowerL1TrigPattern+=(dataShort<<8);
 	}
-	else if(wordNum<140) {
-	    if(wordNum%2==0) {
-		//First word
-		turfioPtr->lowerL1TrigPattern=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-		turfioPtr->lowerL1TrigPattern+=(dataShort<<8);
-	    }
+      }
+      else if(wordNum<142) {
+	if(wordNum%2==0) {
+	  //First word
+	  turfioPtr->upperL2TrigPattern=dataShort;
 	}
-	else if(wordNum<142) {
-	    if(wordNum%2==0) {
-		//First word
-		turfioPtr->upperL2TrigPattern=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-		turfioPtr->upperL2TrigPattern+=(dataShort<<8);
-	    }
+	else if(wordNum%2==1) {
+	  //Second word
+	  turfioPtr->upperL2TrigPattern+=(dataShort<<8);
 	}
-	else if(wordNum<144) {
-	    if(wordNum%2==0) {
-		//First word
-		turfioPtr->lowerL2TrigPattern=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-		turfioPtr->lowerL2TrigPattern+=(dataShort<<8);
-	    }
+      }
+      else if(wordNum<144) {
+	if(wordNum%2==0) {
+	  //First word
+	  turfioPtr->lowerL2TrigPattern=dataShort;
 	}
-	else if(wordNum<146) {
-	    if(wordNum%2==0) {
-		//First word
-		turfioPtr->l3TrigPattern=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-		turfioPtr->l3TrigPattern+=(dataShort<<8);
-	    }
+	else if(wordNum%2==1) {
+	  //Second word
+	  turfioPtr->lowerL2TrigPattern+=(dataShort<<8);
 	}
-	else if(wordNum<148) {
-	    if(wordNum%2==0) {
-		//First word
-//		turfioPtr->l3TrigPattern2=dataShort;
-	    }
-	    else if(wordNum%2==1) {
-		//Second word
-//		turfioPtr->l3TrigPattern2+=(dataShort<<8);
-	    }
-	}	    	    	
-	else if(wordNum<152) {
-	    //do nothing
+      }
+      else if(wordNum<146) {
+	if(wordNum%2==0) {
+	  //First word
+	  turfioPtr->l3TrigPattern=dataShort;
 	}
-	else if(wordNum<160) {
-	    endPat.test[wordNum-152]=dataChar; 
+	else if(wordNum%2==1) {
+	  //Second word
+	  turfioPtr->l3TrigPattern+=(dataShort<<8);
 	}
+      }
+      else if(wordNum<148) {
+	if(wordNum%2==0) {
+	  //First word
+	  //		turfioPtr->l3TrigPattern2=dataShort;
+	}
+	else if(wordNum%2==1) {
+	  //Second word
+	  //		turfioPtr->l3TrigPattern2+=(dataShort<<8);
+	}
+      }	    	    	
+      else if(wordNum<152) {
+	//do nothing
+      }
+      else if(wordNum<160) {
+	endPat.test[wordNum-152]=dataChar; 
+      }
 	    
 	
     }
     for(wordNum=0;wordNum<8;wordNum++) {
-	if(startPat.test[wordNum]!=endPat.test[wordNum]) 
-	    errCount++;
-	if(verbosity && printToScreen) {
-	    printf("Test Pattern %d -- %x -- %x\n",wordNum,startPat.test[wordNum],
-		   endPat.test[wordNum]);
-	}
+      if(startPat.test[wordNum]!=endPat.test[wordNum]) 
+	errCount++;
+      if(verbosity && printToScreen) {
+	printf("Test Pattern %d -- %x -- %x\n",wordNum,startPat.test[wordNum],
+	       endPat.test[wordNum]);
+      }
     }
 
     if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {
-	intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
-	if(printToScreen && verbosity>1)
-	    printf("Deadtime %d counts %f fraction\n",turfioPtr->deadTime,
-		   ((float)turfioPtr->deadTime)/64400.);
+      intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
+      if(printToScreen && verbosity>1)
+	printf("Deadtime %d counts %f fraction\n",turfioPtr->deadTime,
+	       ((float)turfioPtr->deadTime)/64400.);
     }
 
     
     if(verbosity && printToScreen) {
-	printf("TURF Data\n\tEvent (software):\t%lu\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%u\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\n",
-	       hdPtr->eventNumber,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime);
-	printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\n",
-	       turfioPtr->upperL1TrigPattern,
-	       turfioPtr->lowerL2TrigPattern,
-	       turfioPtr->upperL2TrigPattern,
-	       turfioPtr->lowerL2TrigPattern,
-	       turfioPtr->l3TrigPattern);
+      printf("TURF Data\n\tEvent (software):\t%lu\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%u\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\n",
+	     hdPtr->eventNumber,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime);
+      printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\n",
+	     turfioPtr->upperL1TrigPattern,
+	     turfioPtr->lowerL2TrigPattern,
+	     turfioPtr->upperL2TrigPattern,
+	     turfioPtr->lowerL2TrigPattern,
+	     turfioPtr->l3TrigPattern);
     }
     if(turfioPtr->ppsNum!=lastPPSNum) {
-	newTurfRateData=1;
+      newTurfRateData=1;
     }
     lastPPSNum=turfioPtr->ppsNum;
     return status;	
@@ -2352,54 +2402,56 @@ AcqdErrorCode_t writeAntTrigMask()
   Remember that 0 in the RFCM mask means on
 */
 {
-    PlxStatus_t rc;
-    U32 gpio ;  
-    int i=0,j=0,chanBit=1;
-    int actualMask[2]={255,0};
-    
-    actualMask[0]|=((antTrigMask&0xffffff)<<8);
-    actualMask[1]=(antTrigMask&0xff000000)>>24;
-    syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n",
-	   antTrigMask,actualMask[1],actualMask[0]);
-
-    rc=setTurfControl(turfioHandlePtr,RFCBit);
-    if(rc!=ACQD_E_OK) {		
-	syslog(LOG_ERR,"Failed to set 1st RFCBit %d",rc);
-	if(printToScreen)			    
-	    printf("Failed to set 1st RFCBit %d.\n",rc) ;
+  AcqdErrorCode_t status;
+  int i=0,j=0,chanBit=1;
+  unsigned int gpioVal;
+  int actualMask[2]={255,0};
+  
+  actualMask[0]|=((antTrigMask&0xffffff)<<8);
+  actualMask[1]=(antTrigMask&0xff000000)>>24;
+  syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n",
+	 antTrigMask,actualMask[1],actualMask[0]);
+  
+  status=setTurfControl(RFCBit);
+  if(status!=ACQD_E_OK) {		
+    syslog(LOG_ERR,"Failed to set 1st RFCBit %d",status);		    
+    fprintf(stderr,"Failed to set 1st RFCBit %d.\n",status) ;
+  }	
+  
+  //Now send bit pattern to TURF using RFCBit and RFCClk
+  while(i<40) {
+    if (i==32) j=chanBit=1 ;	
+    //	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,actualMask[j],(actualMask[j]&chanBit));
+    if(actualMask[j]&chanBit) status=setTurfControl(RFCBit);
+    else status=setTurfControl(RFCClk);
+    if (status != ACQD_E_OK) {
+      syslog(LOG_ERR,"Failed to send RFC bit %d to TURF, %x %x",
+	     i,actualMask[1],actualMask[0]);
+      fprintf(stderr,"Failed to send RFC bit %d to TURF, %x %x\n",
+	      i,actualMask[1],actualMask[0]);
     }	
+    chanBit<<=1;
+    i++;
+  }
 
-    //Now send bit pattern to TURF using RFCBit and RFCClk
-    while(i<40) {
-	if (i==32) j=chanBit=1 ;
-	
-//	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,actualMask[j],(actualMask[j]&chanBit));
-	if(actualMask[j]&chanBit) rc=setTurfControl(turfioHandlePtr,RFCBit);
-	else rc=setTurfControl(turfioHandlePtr,RFCClk);
-	if (rc != ACQD_E_OK) {
-	    syslog(LOG_ERR,"Failed to send RFC bit %d to TURF, %x %x",
-		   i,actualMask[1],actualMask[0]);
-	    if(printToScreen)
-		fprintf(stderr,"Failed to send RFC bit %d to TURF, %x %x\n",
-			i,actualMask[1],actualMask[0]);
-	}	
-	chanBit<<=1;
-	i++;
-    }
-
-    /* check GPIO8 is set or not. */
-    if((gpio=PlxPci_PlxRegisterRead(turfioHandlePtr, PCI9030_GP_IO_CTRL, &rc )) 
-       & 0400000000) {
-	syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1],actualMask[0]) ;
-	if(printToScreen) 
-	    printf("writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1], actualMask[0]) ;
-    }   
-    else {
-	syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpio);
-	if(printToScreen) 
-	    printf("writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpio);
-    }
-    return ACQD_E_OK;
+  // check GPIO8 is set or not. 
+  status=readTurfGPIOValue(&gpioVal);
+  if(status!=ACQD_E_OK) {
+    syslog(LOG_ERR,"Error reading TURFIO GPIO Val -- %s\n",strerror(errno));
+    fprintf(stderr,"Error reading TURFIO GPIO Val -- %s\n",strerror(errno));
+  }
+  
+  if(gpioVal & 0400000000) {
+    syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1],actualMask[0]) ;
+    if(printToScreen) 
+      printf("writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1], actualMask[0]) ;
+  }   
+  else {
+    syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpio);
+    fprintf(stderr,"writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpio);
+    return ACQD_E_TURFIO_GPIO;
+  }
+  return ACQD_E_OK;
     
 }
 
