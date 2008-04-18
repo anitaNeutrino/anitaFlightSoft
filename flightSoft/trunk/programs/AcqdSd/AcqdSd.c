@@ -410,7 +410,7 @@ int main(int argc, char **argv) {
 	    syslog(LOG_ERR,"Error running threshold scan\n");
 	    fprintf(stderr,"Error running threshold scan\n");
 	  }
-	  currentState=PROG_STATE_TERMINATE
+	  currentState=PROG_STATE_TERMINATE;
 	}
 	
 	while (currentState==PROG_STATE_RUN) {
