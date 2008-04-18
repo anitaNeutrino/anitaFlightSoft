@@ -429,49 +429,7 @@ int main(int argc, char **argv) {
 		theSurfHk.globalThreshold=globalThreshold;
 
 
-	    //Will move threshold scan to independent function	    
-	THRESH_SCAN:
-	    if(doThresholdScan || doSingleChannelScan) {		
-		sendSoftTrigger=0;
-		enableChanServo=0;
-//		if(dacVal<=500) dacVal=4095;
-//		else if(dacVal>=4000) dacVal=0;
-		dacVal=doingDacVal;
-		threshScanCounter++;
-		theScalers.threshold=dacVal;
-		if(printToScreen) 
-		    printf("Setting Threshold -- %d\r",dacVal);
-		if(!doSingleChannelScan) {
-		  if(dacVal!=lastDacVal)
-		    setGloablDACThreshold(dacVal);	
-		  theSurfHk.globalThreshold=dacVal;
-		  lastDacVal=dacVal;
-		}
-		else {
-		    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*N_RFTRIG);
-		    if(surfForSingle==100) {
-			for(surf=0;surf<numSurfs;surf++)
-			    thresholdArray[surf][dacForSingle]=doingDacVal;
-		    }
-		    else  
-			thresholdArray[surfForSingle][dacForSingle]=doingDacVal;
-		    setDACThresholds();
-		}
-		if(firstLoop) {
-		    usleep(30000);
-		    firstLoop=0;
-		}
 
-		if(doingDacVal>4095) {
-		    currentState=PROG_STATE_TERMINATE;
-		    continue;
-		    handleBadSigs(1000);//doingDacVal=0;
-		}
-		if(threshScanCounter>=thresholdScanPointsPerStep) {
-		    doingDacVal+=thresholdScanStepSize;
-		    threshScanCounter=0;
-		}
-	    }
 
 	    //Send software trigger if we want to
 	    if(sendSoftTrigger && doingEvent>=0) {
@@ -643,10 +601,6 @@ int main(int argc, char **argv) {
 			  writeSurfHousekeeping(1);
 			}						
 		      }
-		      //Again threshold scan will move to it's own 
-		      //little piece of heaven shortly
-		      if(doThresholdScan || doSingleChannelScan)
-			goto THRESH_SCAN;
 		    }		    
 		  }
 		}
@@ -1753,6 +1707,64 @@ AcqdErrorCode_t setDACThresholds() {
 }
 
 AcqdErrorCode_t doGlobalThresholdScan() {
+{		
+  //Here the name of the game is simply to loop over all the thresholds and
+  //write out the corresponding scaler values
+  //should be fairly trivial
+  //Ha!
+  int threshScanCounter=0;
+  int dacVal=0,lastDacVal=-1;
+  int done=0;
+  int firstLoop=1;
+  struct timeval timeStruct;
+  do {
+    threshScanCounter++;
+    theScalers.threshold=dacVal;
+
+    if(dacVal!=lastDacVal) {
+      if(printToScreen) 
+	printf("Setting Threshold -- %d\r",dacVal);
+      setGloablDACThreshold(dacVal);	
+    }
+    theSurfHk.globalThreshold=dacVal;
+    lastDacVal=dacVal;
+    usleep(30000);
+
+    gettimeofday(&timeStruct,NULL);
+    //Actually read and write surfHk here
+    status=readSurfHkData();
+    //check it
+    //Then send clear hk pulse
+    for(surf=0;surf<numSurfs;++surf) {
+      if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
+	fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+	syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+      }	
+    }
+    theSurfHk.unixTime=timeStruct.tv_sec;
+    theSurfHk.unixTimeUs=timeStruct.tv_usec;
+    writeSurfHousekeeping(1);
+
+    if(threshScanCounter>=thresholdScanPointsPerStep) {
+      dacVal+=thresholdScanStepSize;
+      threshScanCounter=0;
+    }  
+    if(doingDacVal>4095) {
+      done=1;
+      continue;
+    }
+  } while(!done)
+    //This is single dacVal stuff
+    //
+    //    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*N_RFTRIG);
+    //  if(surfForSingle==100) {
+    //    for(surf=0;surf<numSurfs;surf++)
+    //      thresholdArray[surf][dacForSingle]=doingDacVal;
+    //  }
+    //  else  
+    //    thresholdArray[surfForSingle][dacForSingle]=doingDacVal;
+    //  setDACThresholds();
+ 
   return ACQD_E_OK;
 }
 
