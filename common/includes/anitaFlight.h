@@ -35,7 +35,7 @@
 
 // Hardware stuff
 
-#define ACTIVE_SURFS 9
+#define ACTIVE_SURFS 10
 #define MAX_SURFS 12
 #define CHANNELS_PER_SURF 9
 #define LABRADORS_PER_SURF 4 /*jjb 2006-04-19 */
