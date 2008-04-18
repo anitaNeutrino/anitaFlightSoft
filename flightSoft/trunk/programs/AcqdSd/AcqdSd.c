@@ -1701,7 +1701,7 @@ AcqdErrorCode_t setDACThresholds() {
   return ACQD_E_OK;
 }
 
-AcqdErrorCode_t doGlobalThresholdScan() {
+AcqdErrorCode_t doGlobalThresholdScan() 
 {		
   //Here the name of the game is simply to loop over all the thresholds and
   //write out the corresponding scaler values
