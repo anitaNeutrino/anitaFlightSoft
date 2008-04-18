@@ -2018,7 +2018,7 @@ AcqdErrorCode_t readSurfEventData()
       //Now we get the first 256 samples per channel
       for(chan=0;chan<N_CHAN; chan++) {
 	for (samp=readCount=0 ; readCount<N_SAMP_EFF/2 ; readCount++) {
-	  i=2+ chan*(N_SAMP_EFF/2) + readCount
+	  i=2+ chan*(N_SAMP_EFF/2) + readCount;
 	  dataInt=eventBuf[i];
 	  
 	  if(printToScreen && verbosity) {
