@@ -13,6 +13,14 @@
 #include "includes/anitaStructures.h"
 
 //Definitions
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
 #define EVT_RDY  0004
 #define LAB_F 0x4000
 #define START_B 0x4000

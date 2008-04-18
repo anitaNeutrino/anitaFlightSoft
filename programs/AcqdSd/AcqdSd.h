@@ -26,6 +26,7 @@ AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold);
 AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value) ;
 AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
 AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);
+AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) ;
 
 
 //Configuration functions
@@ -41,9 +42,8 @@ void calculateStatistics();
 int getEventNumber();
 int getChanIndex(int surf, int chan);
 void myUsleep(int usec);
-void fillDacValBufferGlobal(unsigned int *obuffer, unsigned short val);
-void fillDacValBuffer(unsigned int *obuffer);
-void writeDacValBuffer(int surfId, unsigned int *obuffer) ;
+void fillDacValBufferGlobal(unsigned int *obuffer[], unsigned short val);
+void fillDacValBuffer(unsigned int *obuffer[]);
 
 
 //Output functions

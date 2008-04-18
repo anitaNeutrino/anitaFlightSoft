@@ -902,7 +902,7 @@ AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
     break;
   case SurfBusInfo:
     retVal=ioctl(surfFd,SURF_IOCGETSLOT,&svalue);
-    *value=value;
+    *value=svalue;
     break;
   default:
     if(printToScreen)
@@ -1177,7 +1177,7 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
 {
   int surf,countSurfs=0;
   int countDevices=0;
-  int i=0,testFd=0;
+  int testFd=0;
   char devName[FILENAME_MAX];
   int errorCounter=0;
 
@@ -1206,7 +1206,8 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
   countDevices=countSurfs;
   
   //Now try and open TURFIO
-  if(turfioPos.bus<0 || turfioPos.slot<0) continue;
+  if(turfioPos.bus<0 || turfioPos.slot<0) 
+    return ACQD_E_NO_TURFIO;
   sprintf(devName,"/dev/%02d:%02d",turfioPos.bus,turfioPos.slot);
   testFd = open(devName, O_RDWR);
   if (testFd < 0) {
@@ -1230,7 +1231,7 @@ int sortOutPidFile(char *progName)
     /* Config file thingies */
     int status=0;
     int retVal=0;
-    KvpErrorCode kvpStatus=0;
+    //    KvpErrorCode kvpStatus=0;
     char* eString ;
     char *tempString;
 
@@ -1542,7 +1543,7 @@ int readConfigFile()
 AcqdErrorCode_t clearDevices() 
 // Clears boards for start of data taking 
 {
-    int testVal=0;
+  //    int testVal=0;
     int i;
     AcqdErrorCode_t status;
 
@@ -1654,14 +1655,26 @@ void fillDacValBuffer(unsigned int *obuffer[])
   }
 }
 
-void writeDacValBuffer(int surfId, unsigned int *obuffer) {
+AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
+  if(surfId>=numSurfs) {
+    fprintf(stderr,"SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
+    syslog(LOG_ERR,"SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
+    return ACQD_E_CANTCOUNT;
+  }  
+  int surfFd=surfFds[surfId];
+  if(surfFd<=0) {
+    fprintf(stderr,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    return ACQD_E_BADFD;
+  }
   unsigned int count;
-  count = write(surfFds[surfId], obuffer, 34*sizeof(int));
+  count = write(surfFd, obuffer, 34*sizeof(int));
   if (count < 0) {
     syslog(LOG_ERR,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
     fprintf(stderr,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
   }
-  ioctl(surfFD, SURF_IOCCLEARHK);
+  ioctl(surfFd, SURF_IOCCLEARHK);
+  return ACQD_E_OK;
 }
 
 
@@ -2086,7 +2099,7 @@ AcqdErrorCode_t readSurfHkData()
 // Reads the scaler and RF power data from the SURF board
 {
   AcqdErrorCode_t status=ACQD_E_OK;
-  int surf,rfChan,retVal=0;
+  int surf,rfChan;
   unsigned int buffer[72];
   unsigned int count=0;
   unsigned int dataInt;
