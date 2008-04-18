@@ -1169,6 +1169,30 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 
 }
 
+AcqdErrorCode_t closeDevices() 
+/*!
+  Closes the SURF and TURFIO devices
+*/
+{
+  AcqdErrorCode_t status=ACQD_E_OK;
+  int surf=0,retVal=0;
+  for(surf=0;surf<numSurfs;surf++) {
+    retVal=close(surfFds[surf]);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error closing SURF %D -- %s\n",surfIndex[surf],strerror(errno));
+      fprintf(stderr,"Error closing SURF %D -- %s\n",surfIndex[surf],strerror(errno));
+      status=ACQD_E_CLOSE;
+    }
+  }
+  retVal=close(turfioFd);
+  if(retVal<0) {
+    syslog(LOG_ERR,"Error closing TURFIO -- %s\n",strerror(errno));
+    fprintf(stderr,"Error closing TURFIO -- %s\n",strerror(errno));
+    status=ACQD_E_CLOSE;
+  }
+  return status;
+}
+
 
 AcqdErrorCode_t initializeDevices(int *numDevPtr)
 /*! 
