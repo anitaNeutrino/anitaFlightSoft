@@ -1232,7 +1232,7 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
   //Now try and open TURFIO
   if(turfioPos.bus<0 || turfioPos.slot<0) 
     return ACQD_E_NO_TURFIO;
-  sprintf(devName,"/dev/%02d:%02d",turfioPos.bus,turfioPos.slot);
+  sprintf(devName,"/dev/turfio");
   testFd = open(devName, O_RDWR);
   if (testFd < 0) {
     fprintf(stderr,"Couldn't open TURFIO -- Device %s (%s)\n ",devName,strerror(errno));
