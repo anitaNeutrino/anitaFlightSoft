@@ -137,7 +137,7 @@
 #define DATA_LINK "/tmp/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
 #define SAFE_DATA_MOUNT "/tmp/mnt/bitmicro"
-#define PUCK_DATA_MOUNT "/tmp/mnt/puck"
+#define PUCK_DATA_MOUNT "/tmp/mnt/satamini"
 #define BLADE_DATA_MOUNT "/tmp/mnt/blade"
 #define USBINT_DATA_MOUNT "/tmp/mnt/usbint"
 #define USBEXT_DATA_MOUNT "/tmp/mnt/usbext"

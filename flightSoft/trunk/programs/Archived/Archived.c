@@ -411,9 +411,10 @@ void processEvent()
 	thisBitMask |= 0x10;
     eventWriter.writeBitMask=thisBitMask;
     if(printToScreen) {
-      printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
       printf("\nEvent %lu, priority %d\n",theHead.eventNumber,
 	     theHead.priority);
+      printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
+
     }
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -481,7 +482,7 @@ void processEvent()
 		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
 		//Make sub dir
 		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
-		sprintf(puckDirName,"/mnt/puck/current/event/ev%d/ev%d",dirNum,otherDirNum);
+		sprintf(puckDirName,"%s/current/event/ev%d/ev%d",PUCK_DATA_MOUNT,dirNum,otherDirNum);
 		makeDirectories(puckDirName);
 		
 		//Make files
