@@ -17,11 +17,11 @@ echo "Making new directories"
 #CmdTest 4
 #sleep 2
 /home/anita/flightSoft/bin/startNewRun.sh
-ls /mnt/blade/current -l
+ls /mnt/satamini/current -l
 mkdir /mnt/data/current/log
 /home/anita/flightSoft/bin/simpleLog /mnt/data/current/log/simpleLog.txt
-mkdir /mnt/blade/current/log
-cp /mnt/data/current/log/simpleLog.txt /mnt/blade/current/log/simpleLog.txt
+mkdir /mnt/satamini/current/log
+cp /mnt/data/current/log/simpleLog.txt /mnt/satamini/current/log/simpleLog.txt
 
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
@@ -39,4 +39,4 @@ daemon -r SIPd -n SIPd
 
 sleep 10
 
-Acqd 
+AcqdSd 

@@ -31,7 +31,7 @@ ProgramStateCode currentState;
 
 int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
 char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
-int bufferDisk[DISK_TYPES]={0,0,1,1,0};
+int bufferDisk[DISK_TYPES]={0,0,0,0,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 //    sync();
@@ -284,7 +284,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 	closeEventFilesAndTidy(awsPtr);
 	awsPtr->gotData=0;
     }
-    printf("cleverEncEventWrite %lu -- %#x %d %lu\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
+    printf("cleverEventWrite %lu -- %#x %d %lu\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 	if(!awsPtr->currentHeaderFilePtr[diskInd]) {
