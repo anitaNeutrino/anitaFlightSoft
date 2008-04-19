@@ -1184,6 +1184,8 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
       errorCounter++;
     }
     else {
+      if(printToScreen && verbosity) 
+	printf("Opened SURF %d -- Device %s\n",surf+1,devName);
       surfFds[countSurfs]=testFd;
       surfIndex[countSurfs]=surf+1;
       if(hdPtr) {
