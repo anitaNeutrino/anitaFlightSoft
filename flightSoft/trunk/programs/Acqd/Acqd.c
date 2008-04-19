@@ -377,7 +377,9 @@ int main(int argc, char **argv) {
 	setTurfControl(&turfioHandle,RprgTurf) ;
 	for(i=9 ; i++<100 ; usleep(1000)) ;
     }
-    //renice process
+
+
+    //renice process -- don't ever do this I hope
     sprintf(reniceCommand,"sudo renice %d -p `cat %s`",niceValue,
 	    acqdPidFile);
     //    retVal=system(reniceCommand);
@@ -624,8 +626,8 @@ int main(int argc, char **argv) {
 			if(verbosity>3 && printToScreen) 
 			    printf("SURF %d GPIO: 0x%o %d\n",
 				   surfIndex[0],tmpGPIO,tmpGPIO);
-			//			if(tmo && (tmo%100)==0) //Might change tmo%2
-			//			    myUsleep(1); 
+			if(tmo && (tmo%100)==0) //Might change tmo%2
+			    myUsleep(1); 
 			tmo++;
 		       
 
@@ -2858,6 +2860,7 @@ AcqdErrorCode_t readSurfHkData(PlxDevObject_t *surfHandles)
 	    if(rfChan==0) {
 		//Do something with upperWord
 		theSurfHk.upperWords[surf]=GetUpper16(dataInt);
+		printf("Upper word %0x (SURF num %d)\n",theSurfHk.upperWords[surf],(theSurfHk.upperWords[surf]&0xf));
 	    }
 	    else if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
 		theSurfHk.errorFlag|=(1>>surf);
@@ -3340,10 +3343,11 @@ AcqdErrorCode_t readTurfEventDataVer3(PlxDevObject_t *turfioHandlePtr)
 PlxStatus_t setBarMap(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandlePtr) {
     PlxStatus_t rc=0;
     int surf;
-    U32 *addrVal;
+    U32 *addrVal=0;
 
 
     for(surf=0;surf<numSurfs;surf++) {
+	addrVal=0;
 	rc=PlxPci_PciBarMap(&surfHandles[surf],2,(VOID**)&addrVal);
 	if(rc!=ApiSuccess) {
 	    syslog(LOG_ERR,"Unable to map PCI bar 2 on SURF %d (%d)",surfIndex[surf],rc);
@@ -3354,6 +3358,7 @@ PlxStatus_t setBarMap(PlxDevObject_t *surfHandles, PlxDevObject_t *turfioHandleP
 	    printf("Bar Addr[%d] is %x\t%x\n",surfIndex[surf],(int)barMapAddr[surf],*addrVal);
 	}
     }
+    addrVal=0;
     rc=PlxPci_PciBarMap(turfioHandlePtr,2,(VOID**)&addrVal);
     if(rc!=ApiSuccess) {
       fprintf(stderr,"Unable to map PCI bar 2 on TURFIO (%d)\n",rc);

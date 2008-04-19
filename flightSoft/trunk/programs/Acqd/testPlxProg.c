@@ -361,11 +361,11 @@ int main(int argc, char **argv) {
     
 
 
-//    setSurfControl(&surfHandle,SurfClearAll);
-//    beforeDac=readTSC();
-//    setDACThresholds(&surfHandle);
-//    afterDac=readTSC();
-//    setSurfControl(&surfHandle,SurfClearHk);
+    setSurfControl(&surfHandle,SurfClearAll);
+    beforeDac=readTSC();
+    setDACThresholds(&surfHandle);
+    afterDac=readTSC();
+    setSurfControl(&surfHandle,SurfClearHk);
 //    setSurfControl(&surfHandle,SurfClearEvent);
 //    setSurfControl(&surfHandle,SurfClearAll);
 
@@ -384,10 +384,12 @@ int main(int argc, char **argv) {
     __volatile__ int *hkData=barMapAddr[0];
     beforeRead=readTSC();
     //    memcpy(hkData,hkVals,72*sizeof(int));
+    
     for(i=0;i<72;i++) {
 //	dataWord=;
-//	PlxPci_PciBarSpaceRead(&surfHandle,2,0xi, &dataWord, 4, BitSize32, TRUE);
-      hkVals[i]=*hkData++;
+	PlxPci_PciBarSpaceRead(&surfHandle,2,0, &dataWord, 4, BitSize32, TRUE);
+//      hkVals[i]=*hkData++;
+	hkVals[i]=dataWord;
     }
     afterRead=readTSC();
     //        dataWord=*(barAddr);
