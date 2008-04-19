@@ -11,7 +11,8 @@ daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 
 echo "Sleeping while files are written and zipped"
-sleep 20
+sleep 2
+rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
 
 echo "Making new directories"
 #CmdTest 4
