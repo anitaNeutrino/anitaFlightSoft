@@ -790,12 +790,22 @@ int main(int argc, char **argv) {
 	    // Clear boards
 	    int tempInd;
 	    for(tempInd=0;tempInd<numSurfs;tempInd++) {
-	      surf=surfClearIndex[tempInd];
-	      if (setSurfControl(surf, SurfClearEvent) != ACQD_E_OK) {
-		fprintf(stderr,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-		syslog(LOG_ERR,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+	      surf=tempInd;
+	      //Send clear pulse to SURF 2 last
+	      if(surf!=surfBusyWatch) {
+		if (setSurfControl(surf, SurfClearEvent) != ACQD_E_OK) {
+		  fprintf(stderr,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+		  syslog(LOG_ERR,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+		}
 	      }
 	    }
+	    //Now send clear pulse to SURF 2
+	    surf=surfBusyWatch;
+	    if (setSurfControl(surf, SurfClearEvent) != ACQD_E_OK) {
+		  fprintf(stderr,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+		  syslog(LOG_ERR,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
+	    }
+	    
 	}  //while(currentState==PROG_STATE_RUN
 	
 	//Once agin pedestal mode should become it's own function
@@ -1581,16 +1591,25 @@ AcqdErrorCode_t clearDevices()
     // Prepare SURF boards
     int tempInd;
     for(tempInd=0;tempInd<numSurfs;tempInd++) {
-	i=surfClearIndex[tempInd];
+      //	i=surfClearIndex[tempInd];
+      i=tempInd;
+      if(i!=surfBusyWatch) {
 	//Here was the strange SP0 thing do we still need this??
 	if(verbosity && printToScreen)
 	  fprintf(stderr,"Sending clearAll to SURF %d\n",surfIndex[i]);
 	if (setSurfControl(i, SurfClearAll) != ACQD_E_OK) {
-	    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-	    fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+	  syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+	  fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
 	}
+      }
     }
-
+    i=surfBusyWatch;
+    if(verbosity && printToScreen)
+      fprintf(stderr,"Sending clearAll to SURF %d\n",surfIndex[i]);
+    if (setSurfControl(i, SurfClearAll) != ACQD_E_OK) {
+      syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+      fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+    }
     //Re mask all antennas
     if(verbosity && printToScreen)
       fprintf(stderr,"Masking off antennas\n");
