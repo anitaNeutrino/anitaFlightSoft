@@ -1895,7 +1895,7 @@ int writeTurfHousekeeping(int dataOrTelem)
 
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr)
 {
-//    printf("writeEventAndMakeLink(%s,%s,%d",theEventDir,theLinkDir,(int)theEventPtr);
+    printf("writeEventAndMakeLink(%s,%s,%d",theEventDir,theLinkDir,(int)theEventPtr);
     char theFilename[FILENAME_MAX];
     int retVal;
     AnitaEventHeader_t *theHeader=&(theEventPtr->header);
@@ -1952,9 +1952,15 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	    retVal=makeLink(theFilename,theLinkDir);
     }
     else {
+      if(printToScreen && verbosity) {
+	printf("Trying to write event %d to dir %s\n",
+	       theBody->eventNumber,theEventDir);
+      }
+	
 	retVal=cleverEventWrite((unsigned char*)theBody,sizeof(AnitaEventBody_t),theHeader,&eventWriter);
-	if(retVal<0) {
-	    //Do something
+      if(retVal<0) {
+	
+	//Do something
 	}
     }
 
