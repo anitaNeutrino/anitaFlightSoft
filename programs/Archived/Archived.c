@@ -410,9 +410,11 @@ void processEvent()
     if((eventDiskBitMask&0x10) && (priDiskEventMask[priority]&0x10))
 	thisBitMask |= 0x10;
     eventWriter.writeBitMask=thisBitMask;
-//    printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
-//    printf("\nEvent %lu, priority %d\n",theHead.eventNumber,
-//	   theHead.priority);
+    if(printToScreen) {
+      printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
+      printf("\nEvent %lu, priority %d\n",theHead.eventNumber,
+	     theHead.priority);
+    }
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
