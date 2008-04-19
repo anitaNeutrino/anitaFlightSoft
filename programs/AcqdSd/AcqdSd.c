@@ -431,9 +431,12 @@ int main(int argc, char **argv) {
 	    if(sendSoftTrigger && doingEvent>=0) {
 		if(!softTrigSleepPeriod || (time(NULL)-lastSofTrigTime)>softTrigSleepPeriod) {		    		
 		    setTurfControl(SendSoftTrg);
-		    if(printToScreen && verbosity)
-		      printf("Sent software trigger\n");
 		    lastSofTrigTime=time(NULL);
+		    if(printToScreen && verbosity)
+		      printf("Sent software trigger at %d: next at %d\n",
+			     lastSofTrigTime, 
+			     lastSofTrigTime+softTrigSleepPeriod);
+
 		}
 	    }
 
@@ -1174,7 +1177,7 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
     //Do we wnat this SURF??
     if(surfPos[surf].bus<0 || surfPos[surf].slot<0) continue;
     sprintf(devName,"/dev/%02d:%02d",surfPos[surf].bus,surfPos[surf].slot);
-    testFd = open(devName, O_RDWR);
+    testFd = open(devName, O_RDWR | O_NONBLOCK);
     if (testFd < 0) {
       fprintf(stderr,"Couldn't open SURF %d -- Device %s (%s)\n ",surf+1,devName,strerror(errno));
       syslog(LOG_ERR,"Couldn't open SURF %d -- Device %s (%s)\n",surf+1,devName,strerror(errno));

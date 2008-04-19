@@ -21,14 +21,14 @@ if [ -d /mnt/satamini/current ] ; then
 fi
 ln -sf /mnt/satamini/run${run} /mnt/satamini/current
 
-mkdir /mnt/satablade/run${run}
-rm -f /mnt/satablade/current
-if [ -d /mnt/satablade/current ] ; then
-	echo "Moving /mnt/satablade/current"
-	mv /mnt/satablade/current /mnt/satablade/current.run${run}
+#mkdir /mnt/satablade/run${run}
+#rm -f /mnt/satablade/current
+#if [ -d /mnt/satablade/current ] ; then
+#	echo "Moving /mnt/satablade/current"
+#	mv /mnt/satablade/current /mnt/satablade/current.run${run}
 	    
-fi
-ln -sf /mnt/satablade/run${run} /mnt/satablade/current
+#fi
+#ln -sf /mnt/satablade/run${run} /mnt/satablade/current
 
 #mkdir /mnt/usbint/run${run}
 #rm -f /mnt/usbint/current
