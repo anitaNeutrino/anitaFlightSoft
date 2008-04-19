@@ -462,64 +462,64 @@ void processEvent()
     else numBytes=0;
 
     if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
-	if(eventWriter.writeBitMask & PUCK_DISK_MASK) {
-	    //Now write to puck
-	    if(pedSubBody.eventNumber>fileEpoch) {
-		if(fileEpoch) {
-		    //Close file and zip
-		    if(fpHead) {
-			fclose(fpHead);
-			zipFileInPlace(puckHeaderFileName);
-			fpHead=NULL;
-		    }
-		    if(fpEvent) {
-			fclose(fpEvent);
-			zipFileInPlace(puckEventFileName);
-			fpEvent=NULL;
-		    }			
-		}
-		//Need to make files
-		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
-		//Make sub dir
-		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
-		sprintf(puckDirName,"%s/current/event/ev%d/ev%d",PUCK_DATA_MOUNT,dirNum,otherDirNum);
-		makeDirectories(puckDirName);
+/* 	if(eventWriter.writeBitMask & PUCK_DISK_MASK) { */
+/* 	    //Now write to puck */
+/* 	    if(pedSubBody.eventNumber>fileEpoch) { */
+/* 		if(fileEpoch) { */
+/* 		    //Close file and zip */
+/* 		    if(fpHead) { */
+/* 			fclose(fpHead); */
+/* 			zipFileInPlace(puckHeaderFileName); */
+/* 			fpHead=NULL; */
+/* 		    } */
+/* 		    if(fpEvent) { */
+/* 			fclose(fpEvent); */
+/* 			zipFileInPlace(puckEventFileName); */
+/* 			fpEvent=NULL; */
+/* 		    }			 */
+/* 		} */
+/* 		//Need to make files */
+/* 		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)); */
+/* 		//Make sub dir */
+/* 		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)); */
+/* 		sprintf(puckDirName,"%s/current/event/ev%d/ev%d",PUCK_DATA_MOUNT,dirNum,otherDirNum); */
+/* 		makeDirectories(puckDirName); */
 		
-		//Make files
-		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE);
-		sprintf(puckEventFileName,"%s/psev_%d.dat",puckDirName,fileNum);
-		sprintf(puckHeaderFileName,"%s/hd_%d.dat",puckDirName,fileNum);
-		fileEpoch=fileNum+EVENTS_PER_FILE;
-		fpHead=fopen(puckHeaderFileName,"ab");
-		fpEvent=fopen(puckEventFileName,"ab");
-	    }
+/* 		//Make files */
+/* 		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE); */
+/* 		sprintf(puckEventFileName,"%s/psev_%d.dat",puckDirName,fileNum); */
+/* 		sprintf(puckHeaderFileName,"%s/hd_%d.dat",puckDirName,fileNum); */
+/* 		fileEpoch=fileNum+EVENTS_PER_FILE; */
+/* 		fpHead=fopen(puckHeaderFileName,"ab"); */
+/* 		fpEvent=fopen(puckEventFileName,"ab"); */
+/* 	    } */
 	    
-	    if(fpHead) {
-		retVal=fwrite(&theHead,sizeof(AnitaEventHeader_t),1,fpHead);
-		if(retVal<0) {
-		    errorCounter++;
-		    printf("Error (%d of 100) writing to file -- %s (%d)\n",
-			   errorCounter,
-			   strerror(errno),retVal);
-		}
-		else 
-		    fflush(fpHead);
-	    } 
-	    if(fpEvent) {
-		retVal=fwrite(&pedSubBody,sizeof(PedSubbedEventBody_t),1,fpEvent);
-		if(retVal<0) {
-		    errorCounter++;
-		    printf("Error (%d of 100) writing to file -- %s (%d)\n",
-			   errorCounter,
-			   strerror(errno),retVal);
-		}
-		else 
-		    fflush(fpEvent);
-	    }     
+/* 	    if(fpHead) { */
+/* 		retVal=fwrite(&theHead,sizeof(AnitaEventHeader_t),1,fpHead); */
+/* 		if(retVal<0) { */
+/* 		    errorCounter++; */
+/* 		    printf("Error (%d of 100) writing to file -- %s (%d)\n", */
+/* 			   errorCounter, */
+/* 			   strerror(errno),retVal); */
+/* 		} */
+/* 		else  */
+/* 		    fflush(fpHead); */
+/* 	    }  */
+/* 	    if(fpEvent) { */
+/* 		retVal=fwrite(&pedSubBody,sizeof(PedSubbedEventBody_t),1,fpEvent); */
+/* 		if(retVal<0) { */
+/* 		    errorCounter++; */
+/* 		    printf("Error (%d of 100) writing to file -- %s (%d)\n", */
+/* 			   errorCounter, */
+/* 			   strerror(errno),retVal); */
+/* 		} */
+/* 		else  */
+/* 		    fflush(fpEvent); */
+/* 	    }      */
 	    
 
-	}
-	eventWriter.writeBitMask &= ~PUCK_DISK_MASK;
+/* 	} */
+/* 	eventWriter.writeBitMask &= ~PUCK_DISK_MASK; */
 	writeOutputToDisk(numBytes);
     }
     else {
