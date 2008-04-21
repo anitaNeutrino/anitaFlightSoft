@@ -1,27 +1,27 @@
 #-----------------------------------------------------------------------------
 #
-#      File         :  loadSurfDriver
-#      Abstract     :  Loads Patrick's surf driver and makes characters
+#      File         :  loadTurfioDriver
+#      Abstract     :  Loads Patrick's turfio driver and makes characters
 #      Last Revision:  02-01-07
 #-----------------------------------------------------------------------------
 
 
 
-SURF_DRIVER_DIR=/usr/local/surfDriver
+TURFIO_DRIVER_DIR=/usr/local/turfioDriver
 
 # Path to the driver nodes
-deviceName=/dev/surf
+deviceName=/dev/turfio
 
 
 # Registered name of driver
-name=surfDriver
+name=turfioDriver
 
 # Name of module to load
 module=${name}${debug}.ko
 
 # Install the module
 echo "Installing module ($module)...."
-/sbin/insmod ${SURF_DRIVER_DIR}/${module} 
+/sbin/insmod ${TURFIO_DRIVER_DIR}/${module} 
 echo
 
 # Get the major number
@@ -44,15 +44,10 @@ echo "Ok (MajorID = $major)"
 echo -n "Creating device nodes........... "
      
 rm -f ${deviceName}*
-
-for i in `seq 0 15`; do
-   mknod ${deviceName}-$i c $major $i
-   echo "mknod ${deviceName}-$i c $major $i"
-done
+mknod ${deviceName} c $major 0
+echo "mknod ${deviceName} c $major 0"
 
 chmod 777 ${deviceName}*
-sleep 2
-chmod a+rw /dev/??:??
 echo "Ok ($deviceName)"
 
 echo
