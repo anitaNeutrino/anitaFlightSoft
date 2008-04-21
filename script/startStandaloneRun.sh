@@ -27,16 +27,16 @@ cp /mnt/data/current/log/simpleLog.txt /mnt/satamini/current/log/simpleLog.txt
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
 daemon -r Archived -n Archived
-daemon -r Hkd -n Hkd
-daemon -r GPSd -n GPSd
-daemon -r Monitord -n Monitord
-daemon -r Calibd -n Calibd
+#daemon -r Hkd -n Hkd
+#daemon -r GPSd -n GPSd
+#daemon -r Monitord -n Monitord
+#daemon -r Calibd -n Calibd
 
 #Just to make sure
 daemon -r Prioritizerd -n Prioritizerd 
 daemon -r Eventd -n Eventd
-daemon -r LOSd -n LOSd
-daemon -r SIPd -n SIPd
+#daemon -r LOSd -n LOSd
+#daemon -r SIPd -n SIPd
 
 sleep 10
 
