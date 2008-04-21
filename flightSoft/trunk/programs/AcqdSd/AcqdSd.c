@@ -2316,14 +2316,13 @@ AcqdErrorCode_t readTurfEventData()
     int wordNum,surf,ant,errCount=0,count=0;
     TurfioTestPattern_t startPat;
     TurfioTestPattern_t endPat;
-    unsigned int turfBuf[160];
+    unsigned short turfBuf[160];
     
-    //Why doesn't this use the bar map method??
     //Read out 160 words and shorts not ints
 
     //They'll be some read statement here    
     //Read the Hk data
-    count = read(turfioFd, turfBuf, 160*sizeof(int));
+    count = read(turfioFd, turfBuf, 160*sizeof(short));
     if (count < 0) {
       syslog(LOG_ERR,"Error reading TURF data from TURFIO (%s)",strerror(errno));
       fprintf(stderr,"Error reading TURF data from TURFIO (%s)",strerror(errno));
