@@ -138,7 +138,7 @@ int threshSwitchConfigAtEnd=1;
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
 int sendSoftTrigger = FALSE;
-int softTrigSleepPeriod = 0;
+int softTrigPeriod = 0;
 int reprogramTurf = FALSE;
 
 //Trigger Modes
@@ -355,7 +355,7 @@ int main(int argc, char **argv) {
 	    writeData=writeDebugData;
 	    numEvents=numPedEvents;
 	    sendSoftTrigger=1;
-	    softTrigSleepPeriod=0;
+	    softTrigPeriod=0;
 	    writeFullHk=0;	
 	    resetPedCalc();
 	}
@@ -427,19 +427,6 @@ int main(int argc, char **argv) {
 
 
 
-	    //Send software trigger if we want to
-	    if(sendSoftTrigger && doingEvent>=0) {
-		if(!softTrigSleepPeriod || (time(NULL)-lastSofTrigTime)>softTrigSleepPeriod) {		    		
-		    setTurfControl(SendSoftTrg);
-		    lastSofTrigTime=time(NULL);
-		    if(printToScreen && verbosity)
-		      printf("Sent software trigger at %d: next at %d\n",
-			     lastSofTrigTime, 
-			     lastSofTrigTime+softTrigSleepPeriod);
-
-		}
-	    }
-
 
 	    // Wait for ready to read (EVT_RDY) 
 	    tmo=0;	    
@@ -447,6 +434,23 @@ int main(int argc, char **argv) {
 	      if(verbosity && printToScreen) 
 		printf("Wait for EVT_RDY on SURF %d\n",surfIndex[0]);
 	      do {
+
+
+		//Send software trigger if we want to
+		if(sendSoftTrigger && doingEvent>=0) {
+		  if(!softTrigPeriod || (time(NULL)-lastSofTrigTime)>softTrigPeriod) {		    		
+		    setTurfControl(SendSoftTrg);
+		    lastSofTrigTime=time(NULL);
+		    if(printToScreen && verbosity)
+		      printf("Sent software trigger at %d: next at %d\n",
+			     lastSofTrigTime, 
+			     lastSofTrigTime+softTrigPeriod);
+		    
+		  }
+		}
+
+
+
 		//Need to make the SURF that we read the GPIO value from
 		//somehow changeable
 		eventReadyFlag=0;
@@ -1337,7 +1341,7 @@ int readConfigFile()
 	dontWaitForEvtF=kvpGetInt("dontWaitForEvtF",0);
 	dontWaitForLabF=kvpGetInt("dontWaitForLabF",0);
 	sendSoftTrigger=kvpGetInt("sendSoftTrigger",0);
-	softTrigSleepPeriod=kvpGetInt("softTrigSleepPeriod",0);
+	softTrigPeriod=kvpGetInt("softTrigPeriod",0);
 	reprogramTurf=kvpGetInt("reprogramTurf",0);
 //	printf("dontWaitForEvtF: %d\n",dontWaitForEvtF);
 	standAloneMode=kvpGetInt("standAloneMode",0);
