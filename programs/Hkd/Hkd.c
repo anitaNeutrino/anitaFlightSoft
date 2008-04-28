@@ -634,7 +634,7 @@ int setupMagnetometer()
 //	if(printToScreen)
 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
     }
-    usleep(1);
+    usleep(1000);
     retVal=isThereDataNow(fdMag);
     if(retVal) {
 	retVal=read(fdMag,tempData,256);
@@ -653,7 +653,7 @@ int setupMagnetometer()
 //	if(printToScreen)
 //	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
     }
-    usleep(1);
+    usleep(1000);
     retVal=isThereDataNow(fdMag);
     if(retVal) {
 	retVal=read(fdMag,tempData,256);
