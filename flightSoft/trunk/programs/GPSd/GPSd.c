@@ -199,7 +199,7 @@ int main (int argc, char *argv[])
 	    checkAdu5A();
 	    if(!startedNtpd && g12StartNtp && loopCounter>60) startedNtpd=tryToStartNtpd();
 	    loopCounter++;
-	    usleep(1);
+	    usleep(1000);
 	}
 	printf("currentState == %d\n",currentState);
 

@@ -203,7 +203,7 @@ int main (int argc, char *argv[])
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	    checkEvents();
-	    usleep(100);
+	    usleep(1000);
 	}
     } while(currentState==PROG_STATE_INIT);    
 
