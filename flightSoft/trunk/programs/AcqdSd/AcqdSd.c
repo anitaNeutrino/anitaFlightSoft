@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
 //    unsigned long lastSlowTurfRate=0;
     float rateCalcPeriod;
     int reInitNeeded=0;
-    int lastSofTrigTime=0;
+    int lastSoftTrigTime=0;
 
     //Initialize some of the timing variables
     lastSlowRateCalc.tv_sec=time(NULL);
@@ -428,13 +428,13 @@ int main(int argc, char **argv) {
 
 	    //Send software trigger if we want to
 	    if(sendSoftTrigger && doingEvent>=0) {
-	      if(!softTrigPeriod || (time(NULL)-lastSofTrigTime)>softTrigPeriod) {		    		
+	      if(!softTrigPeriod || (time(NULL)-lastSoftTrigTime)>softTrigPeriod) {		    		
 		setTurfControl(SendSoftTrg);
-		lastSofTrigTime=time(NULL);
+		lastSoftTrigTime=time(NULL);
 		if(printToScreen && verbosity)
 		  printf("Sent software trigger at %d: next at %d\n",
-			     lastSofTrigTime, 
-			 lastSofTrigTime+softTrigPeriod);
+			     lastSoftTrigTime, 
+			 lastSoftTrigTime+softTrigPeriod);
 		
 	      }
 	    }
@@ -552,13 +552,13 @@ int main(int argc, char **argv) {
 
 		  //Send software trigger if we want to
 		  if(sendSoftTrigger && doingEvent>=0) {
-		    if(!softTrigPeriod || (time(NULL)-lastSofTrigTime)>softTrigPeriod) {		    		
+		    if(!softTrigPeriod || (time(NULL)-lastSoftTrigTime)>=softTrigPeriod) {		    		
 		      setTurfControl(SendSoftTrg);
-		      lastSofTrigTime=time(NULL);
+		      lastSoftTrigTime=time(NULL);
 		      if(printToScreen && verbosity)
 			printf("Sent software trigger at %d: next at %d\n",
-			     lastSofTrigTime, 
-			       lastSofTrigTime+softTrigPeriod);
+			       lastSoftTrigTime, 
+			       lastSoftTrigTime+softTrigPeriod);
 		      
 		    }
 		  }
