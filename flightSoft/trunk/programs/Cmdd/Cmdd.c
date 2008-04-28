@@ -207,7 +207,7 @@ int main (int argc, char *argv[])
 		}
 		
 	    }
-	    usleep(1);
+	    usleep(1000);
 	}
 	
     } while(currentState==PROG_STATE_INIT);
