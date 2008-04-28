@@ -2530,7 +2530,8 @@ AcqdErrorCode_t readTurfEventData()
 	     turfioPtr->lowerL2TrigPattern,
 	     turfioPtr->l3TrigPattern);
     }
-    if(turfioPtr->ppsNum!=lastPPSNum) {
+    //RJN hack for no PPS mode
+    if(1 || turfioPtr->ppsNum!=lastPPSNum) {
       newTurfRateData=1;
     }
     lastPPSNum=turfioPtr->ppsNum;
