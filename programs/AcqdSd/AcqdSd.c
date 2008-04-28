@@ -426,6 +426,18 @@ int main(int argc, char **argv) {
 
 
 
+	    //Send software trigger if we want to
+	    if(sendSoftTrigger && doingEvent>=0) {
+	      if(!softTrigPeriod || (time(NULL)-lastSofTrigTime)>softTrigPeriod) {		    		
+		setTurfControl(SendSoftTrg);
+		lastSofTrigTime=time(NULL);
+		if(printToScreen && verbosity)
+		  printf("Sent software trigger at %d: next at %d\n",
+			     lastSofTrigTime, 
+			 lastSofTrigTime+softTrigPeriod);
+		
+	      }
+	    }
 
 
 	    // Wait for ready to read (EVT_RDY) 
@@ -436,18 +448,6 @@ int main(int argc, char **argv) {
 	      do {
 
 
-		//Send software trigger if we want to
-		if(sendSoftTrigger && doingEvent>=0) {
-		  if(!softTrigPeriod || (time(NULL)-lastSofTrigTime)>softTrigPeriod) {		    		
-		    setTurfControl(SendSoftTrg);
-		    lastSofTrigTime=time(NULL);
-		    if(printToScreen && verbosity)
-		      printf("Sent software trigger at %d: next at %d\n",
-			     lastSofTrigTime, 
-			     lastSofTrigTime+softTrigPeriod);
-		    
-		  }
-		}
 
 
 
@@ -548,7 +548,21 @@ int main(int argc, char **argv) {
 		  if(printToScreen && verbosity>3)
 		    printf("Here because tmo is %d\n",tmo);
 		  if(currentState!=PROG_STATE_RUN) 
-		    break;		  
+		    break;
+
+		  //Send software trigger if we want to
+		  if(sendSoftTrigger && doingEvent>=0) {
+		    if(!softTrigPeriod || (time(NULL)-lastSofTrigTime)>softTrigPeriod) {		    		
+		      setTurfControl(SendSoftTrg);
+		      lastSofTrigTime=time(NULL);
+		      if(printToScreen && verbosity)
+			printf("Sent software trigger at %d: next at %d\n",
+			     lastSofTrigTime, 
+			       lastSofTrigTime+softTrigPeriod);
+		      
+		    }
+		  }
+		  
 		  tmo=0;
 		  //Give us a chance to servo thresholds
 		  if(surfFirmwareVersion>=3) {
