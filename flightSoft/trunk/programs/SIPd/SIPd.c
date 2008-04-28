@@ -285,7 +285,7 @@ void highrateHandler(int *ignore)
 		 
 	}
 	else {
-	    usleep(1);
+	    usleep(1000);
 	}
 	orderIndex++;
 	if(orderIndex>=numOrders) orderIndex=0;
