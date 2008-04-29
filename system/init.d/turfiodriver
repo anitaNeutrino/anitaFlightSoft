@@ -14,7 +14,7 @@ TURFIO_DRIVER_DIR=/usr/local/turfioDriver
 
 
 load_turfioDriver() {
-	echo -n $"Loading $driver: "
+#	echo -n $"Loading $driver: "
 	# Registered name of driver
 	name=turfioDriver
 	
