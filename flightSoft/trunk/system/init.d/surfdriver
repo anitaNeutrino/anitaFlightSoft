@@ -1,0 +1,91 @@
+#!/bin/sh
+# Startup script for surfDriver
+#
+# description: Load/unload the surfDriver  and make appropriate
+# device nodes
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+driver=surfDriver
+deviceName=/dev/surf
+SURF_DRIVER_DIR=/usr/local/surfDriver
+
+
+load_surfDriver() {
+	echo -n $"Loading $driver: "
+	# Registered name of driver
+	name=surfDriver
+	
+        # Name of module to load
+        module=${name}${debug}.ko
+
+        # Install the module
+        #echo "Installing module ($module)...."
+        /sbin/insmod ${SURF_DRIVER_DIR}/${module} 
+	RETVAL=$?
+        #echo
+
+	 #Get the major number
+         #echo -n "Getting Module major number..... "
+         major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
+
+         # Check if valid
+         if [ "$major" = "" ]; then
+              echo "ERROR: Module not loaded or no device found"
+              echo
+	      exit
+	 fi
+
+# Display Major ID
+	 #echo "Ok (MajorID = $major)"
+
+# Create the device nodes (up to 15 by default)
+#echo -n "Creating device nodes........... "
+     
+	 rm -f ${deviceName}*
+	 for i in `seq 0 15`; do
+	     mknod ${deviceName}-$i c $major $i
+	     #echo "mknod ${deviceName}-$i c $major $i"
+	 done
+
+	 chmod 777 ${deviceName}*
+	 sleep 2
+	 chmod 777 /dev/??:??
+	 #echo "Ok ($deviceName)"
+
+	return $RETVAL
+}
+
+unload_surfDriver() {
+	echo -n $"Unloading $driver: "
+	rmmod ${driver}	
+	RETVAL=$?
+	rm -f ${deviceName}*
+	return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	    load_surfDriver
+	    ;;
+
+	stop)
+	    unload_surfDriver
+	    ;;
+
+	restart)
+	    load_surfDriver
+	    unload_surfDriver
+	    ;;
+
+
+	*)
+	    echo $"Usage: $0 {start|stop|restart}"
+	    exit 1
+
+esac
+
+exit $RETVAL
