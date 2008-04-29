@@ -55,7 +55,7 @@ load_surfDriver() {
 	 chmod 777 /dev/??:??
 	 #echo "Ok ($deviceName)"
 #	 echo
-	return $RETVAL
+	return /bin/true
 }
 
 unload_surfDriver() {
