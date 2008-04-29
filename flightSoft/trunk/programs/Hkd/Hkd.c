@@ -118,7 +118,7 @@ int main (int argc, char *argv[])
     milliWait.tv_sec=0;
 
 
-    long lastCal=0;
+    int lastCal=0;
     time_t rawTime;
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -497,19 +497,19 @@ int outputData(AnalogueCode_t code)
     theHkData.unixTimeUs=timeStruct.tv_usec;;
     switch(code) {
 	case (IP320_RAW):
-	    sprintf(theFilename,"hk_%ld_%ld.raw.dat",theHkData.unixTime,
+	    sprintf(theFilename,"hk_%d_%d.raw.dat",theHkData.unixTime,
 		theHkData.unixTimeUs);
 	    theHkData.ip320=rawDataStruct;
 	    wrPtr=&hkRawWriter;
 	    break;
 	case(IP320_CAL):
-	    sprintf(theFilename,"hk_%ld_%ld.cal.dat",theHkData.unixTime,
+	    sprintf(theFilename,"hk_%d_%d.cal.dat",theHkData.unixTime,
 		    theHkData.unixTimeUs);
 	    theHkData.ip320=calDataStruct;
 	    wrPtr=&hkCalWriter;
 	    break;
 	case(IP320_AVZ):
-	    sprintf(theFilename,"hk_%ld_%ld.avz.dat",theHkData.unixTime,
+	    sprintf(theFilename,"hk_%d_%d.avz.dat",theHkData.unixTime,
 		    theHkData.unixTimeUs);
 	    theHkData.ip320=autoZeroStruct;
 //	    printf("First two %d %d\n",theHkData.ip320.board[0].data[0]&0xfff,

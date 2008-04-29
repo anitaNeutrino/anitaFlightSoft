@@ -53,8 +53,8 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
 
 
 //Output functions
-void writeSurfData(char *directory, unsigned short *wv_data,unsigned long evNum);
-void writeTurf(char *directory, TurfioStruct_t *data_turf,unsigned long evNum);
+void writeSurfData(char *directory, unsigned short *wv_data,unsigned int evNum);
+void writeTurf(char *directory, TurfioStruct_t *data_turf,unsigned int evNum);
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
 int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);

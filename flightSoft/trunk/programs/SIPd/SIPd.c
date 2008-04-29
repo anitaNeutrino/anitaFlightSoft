@@ -77,8 +77,8 @@ int priorityOrder[NUM_PRIORITIES*100];
 int numOrders=1000;
 int orderIndex=0;
 int currentPri=0;
-unsigned long eventDataSent=0;
-unsigned long hkDataSent=0;
+unsigned int eventDataSent=0;
+unsigned int hkDataSent=0;
 
 //Data buffer
 unsigned char theBuffer[MAX_EVENT_SIZE*5];
@@ -394,7 +394,7 @@ void comm1Handler()
 
     slowRateData.unixTime=time(NULL);
     fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
-    printf("SlowRateFull_t %lu\n",slowRateData.unixTime);
+    printf("SlowRateFull_t %u\n",slowRateData.unixTime);
     ret = sipcom_slowrate_write(COMM1, (unsigned char*)&slowRateData, sizeof(SlowRateFull_t));
 
     if (ret) {
@@ -545,16 +545,16 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     char headerFilename[FILENAME_MAX];
 //    char crapBuffer[FILENAME_MAX];
     char justFile[FILENAME_MAX];
-    unsigned long thisEventNumber;
+    unsigned int thisEventNumber;
 
     sprintf(justFile,"%s",basename(headerLinkFilename));
-    sscanf(justFile,"hd_%lu.dat",&thisEventNumber);
+    sscanf(justFile,"hd_%u.dat",&thisEventNumber);
     if(thisEventNumber==0) {
 	printf("Why is this zero -- %s\n",headerLinkFilename);
     }
-    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 	    thisEventNumber);
-    sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(waveFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 	    thisEventNumber);
     sprintf(currentTouchname,"%s.sipd",headerFilename);
     sprintf(currentLOSTouchname,"%s.losd",headerFilename);
@@ -572,7 +572,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
         
     if(retVal<0) {
 	syslog(LOG_ERR,"Problem with %s",headerFilename);
-	sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+	sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 		thisEventNumber);
 	
 	removeFile(headerFilename);
@@ -597,9 +597,9 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     
 
     //Now get event file
-    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
  	    thisEventNumber);
-    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], 
  	    thisEventNumber);
 
 
@@ -694,10 +694,10 @@ int sendEncodedSurfPackets(int bufSize)
 	    if(retVal<0) {
 		//Problem sending data
 		if(errorCounter<100) {
-		    syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+		    syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
 		    errorCounter++;
 		}
-		fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());	
+		fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());	
 	    }
 	    count+=numBytes;
 	    eventDataSent+=numBytes;
@@ -727,10 +727,10 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 	    if(retVal<0) {
 		//Problem sending data
 		if(errorCounter<100) {
-		    syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+		    syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
 		    errorCounter++;
 		}
-		fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+		fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
 	    }
 	    count+=numBytes;
 	    eventDataSent+=numBytes;
@@ -780,10 +780,10 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 		if(retVal<0) {
 		    //Problem sending data
 		    if(errorCounter<100) {
-			syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+			syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
 			errorCounter++;
 		    }
-		    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
+		    fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",surfHdPtr->eventNumber,sipcom_strerror());
 		}
 	    }		
 	    count+=numBytes;
@@ -802,8 +802,8 @@ int sendRawWaveformPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(AnitaEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -822,10 +822,10 @@ int sendRawWaveformPackets(int bufSize)
 	if(retVal<0) {
 	    //Problem sending data
 	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+		syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 		errorCounter++;
 	    }
-	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+	    fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 	}
     }
     return retVal;
@@ -838,8 +838,8 @@ int sendRawSurfPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(AnitaEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -859,10 +859,10 @@ int sendRawSurfPackets(int bufSize)
 	if(retVal<0) {
 	    //Problem sending data
 	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+		syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 		errorCounter++;
 	    }
-	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+	    fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 	}
     }
     return retVal;
@@ -875,8 +875,8 @@ int sendPedSubbedWaveformPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -897,10 +897,10 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	if(retVal<0) {
 	    //Problem sending data
 	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+		syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 		errorCounter++;
 	    }
-	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+	    fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 	}
 
     }
@@ -914,8 +914,8 @@ int sendPedSubbedSurfPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -936,10 +936,10 @@ int sendPedSubbedSurfPackets(int bufSize)
 	if(retVal<0) {
 	    //Problem sending data
 	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+		syslog(LOG_ERR,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 		errorCounter++;
 	    }
-	    fprintf(stderr,"Problem sending event %lu over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
+	    fprintf(stderr,"Problem sending event %u over TDRSS high rate -- %s\n",bdPtr->eventNumber,sipcom_strerror());
 	}
     }
     return retVal;

@@ -33,7 +33,7 @@ int doWrite();
 int readConfig();
 int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void fillBufferWithHk();
-void readAndSendEvent(char *headerFilename, unsigned long eventNumber);
+void readAndSendEvent(char *headerFilename, unsigned int eventNumber);
 void readAndSendEventRamdisk(char *headerFilename);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 int getLosNumber();
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 {
     int pri,retVal,firstTime=1;
     char *tempString;
-//    unsigned long eventNumber=0;
+//    unsigned int eventNumber=0;
     /* Config file thingies */
     int status=0;
 //    KvpErrorCode kvpStatus=0;
@@ -236,10 +236,10 @@ int main(int argc, char *argv[])
 /* 			count++) { */
 			
 /* 			sscanf(linkList[currentPri][count]->d_name, */
-/* 			       "hd_%lu.dat",&eventNumber); */
+/* 			       "hd_%u.dat",&eventNumber); */
 
 /* #ifdef SPEED_UP_LOSD */
-/* 			sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[currentPri],  */
+/* 			sprintf(currentHeader,"%s/hd_%d.dat",eventTelemDirs[currentPri],  */
 /* 				eventNumber); */
 /* 			sprintf(currentTouchname,"%s.sipd",currentHeader); */
 /* 			if(checkFileExists(currentTouchname)) */
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 
 /* 			removeFile(currentHeader); */
 
-/* 			sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[currentPri],  */
+/* 			sprintf(currentHeader,"%s/ev_%d.dat",eventTelemDirs[currentPri],  */
 /* 				eventNumber); */
 /* 			removeFile(currentHeader);			 */
 /* 		    } */
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 //		printf("Here1:\t%s\n",currentHeader);
 #else
 		sscanf(linkList[currentPri][numLinks[currentPri]-1]->d_name,
-		       "hd_%lu.dat",&eventNumber);
+		       "hd_%u.dat",&eventNumber);
 		sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
 			linkList[currentPri][numLinks[currentPri]-1]->d_name);
 		readAndSendEvent(currentHeader,eventNumber); //Also deletes
@@ -650,7 +650,7 @@ void fillBufferWithHk()
 }
 
 
-void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
+void readAndSendEvent(char *headerFilename, unsigned int eventNumber) {
     AnitaEventHeader_t *theHeader;
     EncodedSurfPacketHeader_t *surfHdPtr;
     int numBytes,count=0,surf=0,retVal;//,useGzip=0;
@@ -675,8 +675,8 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
      numBytesInBuffer+=sizeof(AnitaEventHeader_t);
      
      if(eventNumber!=theHeader->eventNumber) {
-	 printf("Trying event %lu file %s\n",eventNumber,headerFilename);
-	 printf("Have event %lu (wanted %lu) -- retVal %d\n",
+	 printf("Trying event %u file %s\n",eventNumber,headerFilename);
+	 printf("Have event %u (wanted %u) -- retVal %d\n",
 		theHeader->eventNumber,
 		eventNumber,retVal);
      }
@@ -685,7 +685,7 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
      
      if(retVal<0) {
 	 removeFile(headerFilename);
-	 sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+	 sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], 
 	     theHeader->eventNumber);
 	 removeFile(waveFilename);
 	 
@@ -694,23 +694,23 @@ void readAndSendEvent(char *headerFilename, unsigned long eventNumber) {
      }
 
      //Now get event file
-     sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+     sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], 
  	    eventNumber);
      numBytes=readEncodedEventFromFile(eventBuffer,waveFilename,
 				       eventNumber);
 
      
-//     printf("Read %d bytes of event %lu from file %s\n",
+//     printf("Read %d bytes of event %u from file %s\n",
 //	    numBytes,eventNumber,waveFilename);
 	   
 //     exit(0);
 
 /*     //Now get event file */
-/*     sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], */
+/*     sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], */
 /* 	    theHeader->eventNumber); */
 /*     eventFile = fopen(waveFilename,"r"); */
 /*     if(!eventFile) { */
-/* 	sprintf(waveFilename,"%s/ev_%ld.dat.gz",eventTelemDirs[currentPri], */
+/* 	sprintf(waveFilename,"%s/ev_%d.dat.gz",eventTelemDirs[currentPri], */
 /* 		theHeader->eventNumber); */
 /* 	gzippedEventFile = gzopen(waveFilename,"rb"); */
 /* 	if(!gzippedEventFile) { */
@@ -768,13 +768,13 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     char currentTouchname[FILENAME_MAX];
     char currentLOSTouchname[FILENAME_MAX];
     char justFile[FILENAME_MAX];
-    unsigned long thisEventNumber;
+    unsigned int thisEventNumber;
     
     sprintf(justFile,"%s",basename(headerLinkFilename));
-    sscanf(justFile,"hd_%lu.dat",&thisEventNumber);
-    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+    sscanf(justFile,"hd_%u.dat",&thisEventNumber);
+    sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 	    thisEventNumber);
-    sprintf(waveFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(waveFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 		thisEventNumber);
     
     sprintf(currentTouchname,"%s.sipd",headerFilename);
@@ -811,9 +811,9 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     
 
     //Now get event file
-    sprintf(headerFilename,"%s/hd_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
  	    thisEventNumber);
-    sprintf(waveFilename,"%s/ev_%ld.dat",eventTelemDirs[currentPri], 
+    sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], 
  	    thisEventNumber);
 
 
@@ -923,7 +923,7 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &eventBuffer[count];
 	surfHdPtr->gHdr.packetNumber=getLosNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
-//	printf("surfHdPtr.eventNumber %lu, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
+//	printf("surfHdPtr.eventNumber %u, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
 	count2=count+sizeof(EncodedPedSubbedSurfPacketHeader_t);
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    chanHdPtr = (EncodedSurfChannelHeader_t*)&eventBuffer[count2];
@@ -964,7 +964,7 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
     // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	surfHdPtr = (EncodedPedSubbedSurfPacketHeader_t*) &eventBuffer[count];
-//	printf("surfHdPtr.eventNumber %lu, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
+//	printf("surfHdPtr.eventNumber %u, numBytes %d (%d)\n",surfHdPtr->eventNumber,numBytes,numBytesInBuffer);
 	count2=count+sizeof(EncodedPedSubbedSurfPacketHeader_t);
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	    chanHdPtr = (EncodedSurfChannelHeader_t*)&eventBuffer[count2];

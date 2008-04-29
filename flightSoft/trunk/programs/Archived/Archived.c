@@ -341,16 +341,16 @@ void checkEvents()
 	sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,
 		linkList[count]->d_name);
 	retVal=fillHeader(&theHead,currentHeadname);
-	sprintf(currentBodyname,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+	sprintf(currentBodyname,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHead.eventNumber);
 	if(!shouldWeThrowAway(theHead.priority&0xf) ) {
 	    
 	    
 	    retVal=fillBody(&theBody,currentBodyname);
-//	sprintf(currentPSBodyname,"%s/psev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+//	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 //		theHead.eventNumber);
 //	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
-//	printf("Event %lu, Body %lu, PS Body %lu\n",theHead.eventNumber,
+//	printf("Event %u, Body %u, PS Body %u\n",theHead.eventNumber,
 //	       theBody.eventNumber,pedSubBody.eventNumber);
 
 	//Subtract Pedestals
@@ -411,7 +411,7 @@ void processEvent()
 	thisBitMask |= 0x10;
     eventWriter.writeBitMask=thisBitMask;
     if(printToScreen) {
-      printf("\nEvent %lu, priority %d\n",theHead.eventNumber,
+      printf("\nEvent %u, priority %d\n",theHead.eventNumber,
 	     theHead.priority);
       printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
 
@@ -523,8 +523,8 @@ void processEvent()
 	writeOutputToDisk(numBytes);
     }
     else {
-	syslog(LOG_ERR,"Error compressing event %lu\n",theBody.eventNumber);
-	fprintf(stderr,"Error compressing event %lu\n",theBody.eventNumber);
+	syslog(LOG_ERR,"Error compressing event %u\n",theBody.eventNumber);
+	fprintf(stderr,"Error compressing event %u\n",theBody.eventNumber);
     }
 
     //3) Pack Event For Telemetry
@@ -556,8 +556,8 @@ void processEvent()
 	if(retVal==COMPRESS_E_OK)
 	    writeOutputForTelem(numBytes);
 	else {
-	    syslog(LOG_ERR,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
-	    fprintf(stderr,"Error compressing event %lu for telemetry\n",theBody.eventNumber);
+	    syslog(LOG_ERR,"Error compressing event %u for telemetry\n",theBody.eventNumber);
+	    fprintf(stderr,"Error compressing event %u for telemetry\n",theBody.eventNumber);
 	}
     }
 }
@@ -569,7 +569,7 @@ void writeOutputToDisk(int numBytes) {
 
     retVal=cleverEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
     if(printToScreen && verbosity>1) {
-	printf("Event %lu, (%d bytes)  %s \t%s\n",theHead.eventNumber,
+	printf("Event %u, (%d bytes)  %s \t%s\n",theHead.eventNumber,
 	       numBytes,eventWriter.currentEventFileName[0],
 	       eventWriter.currentHeaderFileName[0]);
     }
@@ -599,8 +599,8 @@ void writeOutputForTelem(int numBytes) {
     //this step is now done in Prioritizerd
 //    theHead.priority=(16*theHead.priority)+pri;
     if(!eventWriter.justHeader) {
-	sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
-	sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],theHead.eventNumber);
+	sprintf(bodyName,"%s/ev_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
+	sprintf(headName,"%s/hd_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
 	retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
 	if(retVal<0) {
 	    printf("Something wrong while writing %s\n",bodyName);
