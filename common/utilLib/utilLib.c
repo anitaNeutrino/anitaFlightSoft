@@ -70,7 +70,7 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 }
 
 
-int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned long unixTime, AnitaHkWriterStruct_t *awsPtr)
+int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, AnitaHkWriterStruct_t *awsPtr)
 {
     int diskInd;
     int retVal=0;
@@ -284,7 +284,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 	closeEventFilesAndTidy(awsPtr);
 	awsPtr->gotData=0;
     }
-    printf("cleverEventWrite %lu -- %#x %d %lu\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
+    printf("cleverEventWrite %u -- %#x %d %u\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
 	if(!awsPtr->currentHeaderFilePtr[diskInd]) {
@@ -536,33 +536,33 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
 
 
 
-char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime)
+char *getCurrentHkDir(char *baseHkDir,unsigned int unixTime)
 {
     char *newDir;   
     int ext=0;
     newDir=malloc(FILENAME_MAX);
-    sprintf(newDir,"%s/sub_%lu",baseHkDir,unixTime);
+    sprintf(newDir,"%s/sub_%u",baseHkDir,unixTime);
     while(is_dir(newDir)) {
 	ext++;
-	sprintf(newDir,"%s/sub_%lu_%d",baseHkDir,unixTime,ext);
+	sprintf(newDir,"%s/sub_%u_%d",baseHkDir,unixTime,ext);
     }
     makeDirectories(newDir);
     return newDir;    
 }
 
 char *getCurrentHkFilename(char *currentDir, char *prefix, 
-			   unsigned long unixTime) 
+			   unsigned int unixTime) 
 {
     char *newFile;
     int ext=0;
     FILE *fpTest;
     newFile=malloc(FILENAME_MAX);
-    sprintf(newFile,"%s/%s_%lu.dat",currentDir,prefix,unixTime);
+    sprintf(newFile,"%s/%s_%u.dat",currentDir,prefix,unixTime);
     fpTest=fopen(newFile,"r");   
     while(fpTest) {
 	fclose(fpTest);
 	ext++;
-	sprintf(newFile,"%s/%s_%lu.dat_%d",currentDir,prefix,unixTime,ext);
+	sprintf(newFile,"%s/%s_%u.dat_%d",currentDir,prefix,unixTime,ext);
 	fpTest=fopen(newFile,"r");
     }
     return newFile;
@@ -658,7 +658,7 @@ int moveFile(const char *theFile, const char *theDir)
 }
 
 
-char *readFile(const char *theFile, unsigned long *numBytes)
+char *readFile(const char *theFile, unsigned int *numBytes)
 {
     static int errorCounter=0;
     char *buffer;
@@ -690,7 +690,7 @@ int copyFile(const char *theFile, const char *theDir)
     //Only works on relative small files (will write a better version)
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
-    unsigned long numBytes=0;
+    unsigned int numBytes=0;
     char *buffer=readFile(theFile,&numBytes);
 
     //Open the output file
@@ -756,7 +756,7 @@ int copyFile(const char *theFile, const char *theDir)
  { 
      static int errorCounter=0; 
      //Only works on relative small files (will write a better version) 
-     unsigned long numBytes=0; 
+     unsigned int numBytes=0; 
      char *buffer=readFile(theFile,&numBytes); 
 
      //Open the output file 
@@ -780,15 +780,16 @@ int copyFile(const char *theFile, const char *theDir)
 
 int removeFile(const char *theFile)
 {
+  
     static int errorCounter=0;
     int retVal=unlink(theFile);
-/*     if(retVal!=0) { */
-/* 	if(errorCounter<100) { */
-/* 	    syslog(LOG_ERR,"Error (%d of 100) removing %s:\t%s",errorCounter,theFile,strerror(errno)); */
-/* 	    fprintf(stderr,"Error (%d of 100) removing %s:\t%s\n",errorCounter,theFile,strerror(errno)); */
-/* 	    errorCounter++; */
-/* 	} */
-/*     } */
+    if(retVal!=0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) removing %s:\t%s",errorCounter,theFile,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) removing %s:\t%s\n",errorCounter,theFile,strerror(errno));
+	    errorCounter++;
+	}
+    }
     return retVal;
 }
 
@@ -842,7 +843,7 @@ int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist)
 }
 
 
-unsigned long getDiskSpace(char *dirName) {
+unsigned int getDiskSpace(char *dirName) {
     struct statvfs diskStat;
     static int errorCounter=0;
     int retVal=statvfs(dirName,&diskStat); 
@@ -854,19 +855,19 @@ unsigned long getDiskSpace(char *dirName) {
 //	if(printToScreen) fprintf(stderr,"Unable to get disk space %s: %s\n",dirName,strerror(errno));       
 	return 0;
     }    
-    unsigned long megabytesAvailable=(diskStat.f_bavail/1024)*(diskStat.f_bsize/1024);
+    unsigned int megabytesAvailable=(diskStat.f_bavail/1024)*(diskStat.f_bsize/1024);
     return megabytesAvailable;
-//    printf("%lu\n",megabytesAvailable);
+//    printf("%u\n",megabytesAvailable);
 //    if(printToScreen) {
 	printf("Dir: %s\n",dirName);
 	printf("Ret Val: %d\n",retVal);
-	printf("MegaBytes Available: %lu\n",megabytesAvailable);
-	printf("Available Blocks: %ld\n",diskStat.f_bavail);
-	printf("Free Blocks: %ld\n",diskStat.f_bfree);
-	printf("Total Blocks: %ld\n",diskStat.f_blocks);
-	printf("Block Size: %lu\n",diskStat.f_bsize);
-//	printf("Free File Nodes: %ld\n",diskStat.f_ffree);
-//	printf("Total File Nodes: %ld\n",diskStat.f_files);
+	printf("MegaBytes Available: %u\n",megabytesAvailable);
+	printf("Available Blocks: %d\n",diskStat.f_bavail);
+	printf("Free Blocks: %d\n",diskStat.f_bfree);
+	printf("Total Blocks: %d\n",diskStat.f_blocks);
+	printf("Block Size: %u\n",diskStat.f_bsize);
+//	printf("Free File Nodes: %d\n",diskStat.f_ffree);
+//	printf("Total File Nodes: %d\n",diskStat.f_files);
 //	printf("Type Of Info: %d\n",diskStat.f_type);
 //    printf("File System Id: %d\n",diskStat.f_fsid);
 //    }
@@ -979,7 +980,7 @@ int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename)
 
 
 int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
-			    unsigned long eventNumber)
+			    unsigned int eventNumber)
 {
     static int errorCounter=0;
     int numBytes;  
@@ -1011,14 +1012,14 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 
     if(abs(((int)eventNumber-(int)hdPtr->eventNumber))>1000) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,hdPtr->eventNumber,filename);
-	    fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,hdPtr->eventNumber,filename);
+	    syslog(LOG_ERR,"Events %u and %u can not both be in file %s\n",eventNumber,hdPtr->eventNumber,filename);
+	    fprintf(stderr,"Events %u and %u can not both be in file %s\n",eventNumber,hdPtr->eventNumber,filename);
 	    errorCounter++;
 	}	
 	return -3;
     }
 
-//    printf("Looking for %lu (first read %lu)\n",eventNumber,hdPtr->eventNumber);
+//    printf("Looking for %u (first read %u)\n",eventNumber,hdPtr->eventNumber);
 	
     readNum=(eventNumber-hdPtr->eventNumber);
     if(readNum) {	    
@@ -1028,7 +1029,7 @@ int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
 	}
 
 	numBytes=gzread(infile,hdPtr,sizeof(AnitaEventHeader_t));
-//	printf("Sought %d bytes got event %lu\n",sizeof(AnitaEventHeader_t)*(readNum-1),hdPtr->eventNumber);
+//	printf("Sought %d bytes got event %u\n",sizeof(AnitaEventHeader_t)*(readNum-1),hdPtr->eventNumber);
 
 	if(numBytes!=sizeof(AnitaEventHeader_t)) {
 	    gzclose(infile);
@@ -1116,7 +1117,7 @@ int readSingleEncodedEvent(unsigned char *buffer, char *filename)
 }
 
 int readEncodedEventFromFile(unsigned char *buffer, char *filename,
-			     unsigned long eventNumber) 
+			     unsigned int eventNumber) 
 {
     EncodedEventWrapper_t *encEvWrap = (EncodedEventWrapper_t*) &buffer[0];
 
@@ -1148,12 +1149,12 @@ int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 	return -2;
     }
 
-//    printf("First read %lu (want %lu)\n\t%s\n",encEvWrap->eventNumber,eventNumber,filename);
+//    printf("First read %u (want %u)\n\t%s\n",encEvWrap->eventNumber,eventNumber,filename);
 
     if(abs(((int)eventNumber-(int)encEvWrap->eventNumber))>1000) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
-	    fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
+	    syslog(LOG_ERR,"Events %u and %u can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
+	    fprintf(stderr,"Events %u and %u can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
 	    errorCounter++;
 	}	
 	gzclose(infile);
@@ -1177,8 +1178,8 @@ int readEncodedEventFromFile(unsigned char *buffer, char *filename,
 	if(abs(((int)eventNumber-(int)encEvWrap->eventNumber))>1000) {
 
 	    if(errorCounter<100) {
-		syslog(LOG_ERR,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
-		fprintf(stderr,"Events %lu and %lu can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
+		syslog(LOG_ERR,"Events %u and %u can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
+		fprintf(stderr,"Events %u and %u can not both be in file %s\n",eventNumber,encEvWrap->eventNumber,filename);
 		errorCounter++;
 	    }	
 	    gzclose(infile);
@@ -1618,15 +1619,15 @@ void addDay(struct tm *timeinfo) {
 }
 
 
-unsigned long simpleLongCrc(unsigned long *p, unsigned long n)
+unsigned int simpleIntCrc(unsigned int *p, unsigned int n)
 {
-    unsigned long sum = 0;
-    unsigned long i;
+    unsigned int sum = 0;
+    unsigned int i;
     for (i=0L; i<n; i++) {
 //
 	sum += *p++;
     }
-//    printf("%lu %lu\n",*p,sum);
+//    printf("%u %u\n",*p,sum);
     return ((0xffffffff - sum) + 1);
 }
 
@@ -1634,9 +1635,9 @@ unsigned long simpleLongCrc(unsigned long *p, unsigned long n)
 
 
 void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes) {
-    unsigned long longBytes=(numBytes-sizeof(GenericHeader_t))/4;
+    unsigned int intBytes=(numBytes-sizeof(GenericHeader_t))/4;
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
-    unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t));
+    unsigned int *dataPtr=(unsigned int*) (thePtr+sizeof(GenericHeader_t));
     gHdr->code=code;
     gHdr->numBytes=numBytes;
     gHdr->feByte=0xfe;
@@ -1671,8 +1672,8 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	default: 
 	    gHdr->verId=0; break;
     }
-    gHdr->checksum=simpleLongCrc(dataPtr,longBytes);
-//    printf("Long bytes %lu\t checksum %lu\n",longBytes,gHdr->checksum);
+    gHdr->checksum=simpleIntCrc(dataPtr,intBytes);
+//    printf("Int bytes %u\t checksum %u\n",intBytes,gHdr->checksum);
 }
 
 #define PKT_E_CHECKSUM 0x1
@@ -1689,15 +1690,15 @@ int checkPacket(void *thePtr)
 {
     int retVal=0,packetSize=0;
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
-    unsigned long longBytes=(gHdr->numBytes-sizeof(GenericHeader_t))/4;
-    unsigned long *dataPtr=(unsigned long*) (thePtr+sizeof(GenericHeader_t)); 
-    unsigned long checksum=0;
-    if(longBytes<4000)
-	checksum=simpleLongCrc(dataPtr,longBytes);
+    unsigned int intBytes=(gHdr->numBytes-sizeof(GenericHeader_t))/4;
+    unsigned int *dataPtr=(unsigned int*) (thePtr+sizeof(GenericHeader_t)); 
+    unsigned int checksum=0;
+    if(intBytes<4000)
+	checksum=simpleIntCrc(dataPtr,intBytes);
     PacketCode_t code=gHdr->code;
     if(checksum!=gHdr->checksum) {
-	printf("Checksum Mismatch (possibly %s (%d)) (%lu bytes) %lu -- %lu \n",
-	       packetCodeAsString(code),code,longBytes,checksum,gHdr->checksum);	
+	printf("Checksum Mismatch (possibly %s (%d)) (%u bytes) %u -- %u \n",
+	       packetCodeAsString(code),code,intBytes,checksum,gHdr->checksum);	
 	retVal+=PKT_E_CHECKSUM;
     }
     switch(code) {
@@ -1800,14 +1801,14 @@ int writeCommandAndLink(CommandStruct_t *theCmd) {
     int retVal=0;
     char filename[FILENAME_MAX];
 
-    sprintf(filename,"%s/cmd_%ld.dat",CMDD_COMMAND_DIR,unixTime);
+    sprintf(filename,"%s/cmd_%d.dat",CMDD_COMMAND_DIR,unixTime);
     {
 	FILE *pFile;
 	int fileTag=1;
 	pFile = fopen(filename,"rb");
 	while(pFile!=NULL) {
 	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",CMDD_COMMAND_DIR,unixTime,fileTag);
+	    sprintf(filename,"%s/cmd_%d_%d.dat",CMDD_COMMAND_DIR,unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
 	}
     }
@@ -1839,7 +1840,7 @@ int checkFileExists(char *filename) {
     return 1;
 }
 
-int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes)
+int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
 {
     static int errorCounter=0;
     int retVal=compress((unsigned char*)output,outputBytes,(unsigned char*)input,inputBytes);
@@ -1856,7 +1857,7 @@ int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long
 }
 
 
-int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes)
+int unzipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
 {
     static int errorCounter=0;
     int retVal=uncompress((unsigned char*)output,outputBytes,(unsigned char*)input,inputBytes);
@@ -1876,7 +1877,7 @@ int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned lo
 int zipFileInPlace(char *filename) {
     int retVal;
     char outputFilename[FILENAME_MAX];
-    unsigned long numBytesIn=0;
+    unsigned int numBytesIn=0;
     char *buffer=readFile(filename,&numBytesIn);
     if(!buffer || !numBytesIn) {
 	free(buffer);
@@ -1897,7 +1898,7 @@ int zipFileInPlaceAndClone(char *filename,unsigned int cloneMask,int baseInd) {
     char outputFilename[FILENAME_MAX];
     char cloneFilename[FILENAME_MAX];
     int diskInd;
-    unsigned long numBytesIn=0;
+    unsigned int numBytesIn=0;
     char *buffer=readFile(filename,&numBytesIn);
     if(!buffer || !numBytesIn) {
 	free(buffer);
@@ -1925,7 +1926,7 @@ int zipBufferedFileAndMove(char *filename) {
     char bufferFilename[FILENAME_MAX];
     char bufferZippedFilename[FILENAME_MAX];
     char outputFilename[FILENAME_MAX];
-    unsigned long numBytesIn=0;
+    unsigned int numBytesIn=0;
     sprintf(bufferFilename,"%s/%s",DISK_BUFFER_DIR,filename);
     char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
@@ -1956,7 +1957,7 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     char outputFilename[FILENAME_MAX];
     char cloneFilename[FILENAME_MAX];
     int diskInd;
-    unsigned long numBytesIn=0;
+    unsigned int numBytesIn=0;
     sprintf(bufferFilename,"%s/%s",DISK_BUFFER_DIR,filename);
     char *buffer=readFile(bufferFilename,&numBytesIn);
     if(!buffer || !numBytesIn) {
@@ -1983,7 +1984,7 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     return retVal;
 }
 
-int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned long numBytesOut) {
+int makeZippedPacket(char *input, unsigned int numBytes, char *output, unsigned int numBytesOut) {
     ZippedPacket_t *zipPacket = (ZippedPacket_t*)output;
     zipPacket->numUncompressedBytes=numBytes;
     int retVal=zipBuffer(input,&output[sizeof(ZippedPacket_t)],numBytes,&numBytesOut);
@@ -1993,9 +1994,9 @@ int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned
     return sizeof(ZippedPacket_t)+numBytesOut;   
 }
 
-int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned long numBytesOut) {
+int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned int numBytesOut) {
     char *input = (char*) zipPacket;
-    unsigned long returnBytes=numBytesOut;
+    unsigned int returnBytes=numBytesOut;
     int retVal=unzipBuffer(&input[sizeof(ZippedPacket_t)],output,zipPacket->gHdr.numBytes-sizeof(ZippedPacket_t),&returnBytes);
     if(retVal!=0) 
 	return retVal;

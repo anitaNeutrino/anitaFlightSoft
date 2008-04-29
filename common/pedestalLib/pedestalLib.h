@@ -17,16 +17,16 @@ extern "C" {
 //Pedestal calculation routines
 void addEventToPedestals(AnitaEventBody_t *bdPtr);
 void resetPedCalc();
-void resetPedCalcWithTime(unsigned long unixTime);
+void resetPedCalcWithTime(unsigned int unixTime);
 void writePedestals();
-void writePedestalsWithTime(unsigned long unixTime);
+void writePedestalsWithTime(unsigned int unixTime);
 
 //Pedestal subtraction routines
 int subtractCurrentPeds(AnitaEventBody_t *rawBdPtr,
 			PedSubbedEventBody_t *pedSubBdPtr);
 int subtractThesePeds(AnitaEventBody_t *rawBdPtr,
 		      PedSubbedEventBody_t *pedSubBdPtr,
-		      unsigned long whichPeds);
+		      unsigned int whichPeds);
 int subtractPedsFromFile(AnitaEventBody_t *rawBdPtr,
 			 PedSubbedEventBody_t *pedSubBdPtr,
 			 char *filename);
@@ -45,7 +45,7 @@ int addPeds(PedSubbedEventBody_t *pedSubBdPtr,
 	    AnitaEventBody_t *rawBdPtr);
 int addThesePeds(PedSubbedEventBody_t *pedSubBdPtr,
 		 AnitaEventBody_t *rawBdPtr,
-		 unsigned long whichPeds);
+		 unsigned int whichPeds);
 int addPedsFromFile(PedSubbedEventBody_t *pedSubBdPtr,
 		    AnitaEventBody_t *rawBdPtr,
 		    char *filename);
@@ -57,7 +57,7 @@ int doPedAddition(PedSubbedEventBody_t *pedSubBdPtr,
 //File management etc
 int checkCurrentPedLink();
 int loadCurrentPeds();
-int loadThesePeds(unsigned long whichPeds);
+int loadThesePeds(unsigned int whichPeds);
 int loadPedsFromFile(char *filename);
 
 void dumpPeds();
