@@ -25,45 +25,44 @@ load_surfDriver() {
         #echo "Installing module ($module)...."
         /sbin/insmod ${SURF_DRIVER_DIR}/${module} 
 	RETVAL=$?
-        #echo
 
 	 #Get the major number
          #echo -n "Getting Module major number..... "
-         major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
-
+        major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
+	
          # Check if valid
-         if [ "$major" = "" ]; then
-              echo "ERROR: Module not loaded or no device found"
-              echo
-	      exit
-	 fi
-
+        if [ "$major" = "" ]; then
+            echo "ERROR: Module not loaded or no device found"
+            echo
+	    exit
+	fi
+	
 # Display Major ID
 	 #echo "Ok (MajorID = $major)"
-
+	
 # Create the device nodes (up to 15 by default)
 #echo -n "Creating device nodes........... "
-     
+	
 	 rm -f ${deviceName}*
 	 for i in `seq 0 15`; do
 	     mknod ${deviceName}-$i c $major $i
 	     #echo "mknod ${deviceName}-$i c $major $i"
 	 done
-
+	 
 	 chmod 777 ${deviceName}*
 	 sleep 2
 	 chmod 777 /dev/??:??
 	 #echo "Ok ($deviceName)"
 #	 echo
-	return /bin/true
+	 return $RETVAL
 }
 
 unload_surfDriver() {
-	echo -n $"Unloading $driver: "
+#	echo -n $"Unloading $driver: "
 	rmmod ${driver}	
 	RETVAL=$?
 	rm -f ${deviceName}*
-	echo
+#	echo
 	return $RETVAL
 }
 
@@ -74,12 +73,12 @@ case "$1" in
 	    ;;
 
 	stop)
-	    unload_surfDriver
+	    action $"Unloading surfDriver..." unload_surfDriver
 	    ;;
 
 	restart)
-	    unload_surfDriver
-	    load_surfDriver
+	    action $"Loading surfDriver..." unload_surfDriver
+	    action $"Loading surfDriver..." load_surfDriver
 	    ;;
 
 
