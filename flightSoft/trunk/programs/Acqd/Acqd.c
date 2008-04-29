@@ -736,7 +736,7 @@ int main(int argc, char **argv) {
 	//hdPtr->calibStatus;
 
 	if(printToScreen && verbosity) 
-	  printf("Event:\t%lu\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+	  printf("Event:\t%u\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
 
 	// Save data if we want to
 	outputEventData();
@@ -1766,7 +1766,7 @@ AcqdErrorCode_t runPedestalMode()
       //hdPtr->calibStatus;
       
       if(printToScreen && verbosity) 
-	printf("Event:\t%lu\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%lu\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+	printf("Event:\t%u\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
       
 
       //Add the events to the pedestals
@@ -2087,7 +2087,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
   }
   else {
     if(printToScreen && verbosity) {
-      printf("Trying to write event %d to dir %s\n",
+      printf("Trying to write event %u to dir %s\n",
 	     theBody->eventNumber,theEventDir);
     }
 	
@@ -2637,7 +2637,7 @@ AcqdErrorCode_t readTurfEventData()
 
     
   if(verbosity && printToScreen) {
-    printf("TURF Data\n\tEvent (software):\t%lu\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%lu\n\tppsNum:\t\t%u\n\tc3p0Num:\t%lu\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\n",
+    printf("TURF Data\n\tEvent (software):\t%u\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%u\n\tppsNum:\t\t%u\n\tc3p0Num:\t%u\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\n",
 	   hdPtr->eventNumber,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime);
     printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\n",
 	   turfioPtr->upperL1TrigPattern,

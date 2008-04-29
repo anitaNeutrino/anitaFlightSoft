@@ -214,20 +214,20 @@ typedef enum {
 
 typedef struct {
     PacketCode_t code;    
-    unsigned long packetNumber; //Especially for Ped
+    unsigned int packetNumber; //Especially for Ped
     unsigned short numBytes;
     unsigned char feByte;
     unsigned char verId;
-    unsigned long checksum;
+    unsigned int checksum;
 } GenericHeader_t;
 
 typedef struct {
     unsigned char trigType; //Trig type bit masks
     unsigned char l3Type1Count; //L3 counter
     unsigned short trigNum; //turf trigger counter
-    unsigned long trigTime;
-    unsigned long ppsNum;     // 1PPS
-    unsigned long c3poNum;     // 1 number of trigger time ticks per PPS
+    unsigned int trigTime;
+    unsigned int ppsNum;     // 1PPS
+    unsigned int c3poNum;     // 1 number of trigger time ticks per PPS
     unsigned short upperL1TrigPattern;
     unsigned short lowerL1TrigPattern;
     unsigned short upperL2TrigPattern;
@@ -244,10 +244,10 @@ typedef struct {
     // 0=RF, 1=PPS1, 2=PPS2, 3=Soft/Ext, 4=L3Type1, 5,6 buffer depth at trig
     unsigned char l3Type1Count; //L3 counter
     unsigned short trigNum; //turf trigger counter
-    unsigned long trigTime;
+    unsigned int trigTime;
     unsigned short ppsNum;     // 1PPS
     unsigned short deadTime; // fraction = deadTime/64400
-    unsigned long c3poNum;     // 1 number of trigger time ticks per PPS
+    unsigned int c3poNum;     // 1 number of trigger time ticks per PPS
     unsigned short upperL1TrigPattern;
     unsigned short lowerL1TrigPattern;
     unsigned short upperL2TrigPattern;
@@ -311,8 +311,8 @@ typedef struct {
 } SurfChannelPedSubbed_t;
 
 typedef struct {
-    unsigned long unixTime;
-    unsigned long status;
+    unsigned int unixTime;
+    unsigned int status;
 } CalibStruct_t;
 
 typedef struct {
@@ -342,7 +342,7 @@ typedef struct {
 typedef struct {    
     unsigned short threshold;
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
-} SimpleScalerStruct_t; //No longer used
+} SimpleScalerStruct_t; //No inter used
 
 
 typedef struct {
@@ -380,8 +380,8 @@ typedef struct {
 } LabChipChannelPedStruct_t;
 
 typedef struct {
-    unsigned long eventNumber;
-    unsigned long runNumber;
+    unsigned int eventNumber;
+    unsigned int runNumber;
     int eventDiskBitMask; //Which disks was it written to?
     char bladeLabel[10];
     char usbIntLabel[10];
@@ -389,12 +389,12 @@ typedef struct {
 } IndexEntry_t;
 
 typedef struct {
-    unsigned long eventNumber;
+    unsigned int eventNumber;
     int pri;
 } PlaybackRequest_t;
 
 typedef struct {
-    unsigned long eventNumber;
+    unsigned int eventNumber;
     unsigned char rfPwrAvg[ACTIVE_SURFS][RFCHAN_PER_SURF];
     unsigned char avgScalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; // * 2^7
     unsigned char rmsScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];
@@ -409,7 +409,7 @@ typedef struct {
 
 typedef struct {
     float latitude;
-    float longitude;
+    float intitude;
     float altitude;
     unsigned char temps[8];  //{SBS,SURF,TURF,RAD,RFCM1,RFCM5,RFCM12,RFCM15}
     unsigned char powers[4]; //{PV V, +24V, BAT I, 24 I}
@@ -423,17 +423,17 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long lastEventNumber;
+    unsigned int unixTime;
+    unsigned int lastEventNumber;
     float latitude;
-    float longitude;
+    float intitude;
     float altitude;
     unsigned short sbsTemp[2];
 } SlowRateType1_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
+    unsigned int unixTime;
     SlowRateRFStruct_t rf;
     SlowRateHkStruct_t hk;
 } SlowRateFull_t;
@@ -441,8 +441,8 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;    
+    unsigned int unixTime;
+    unsigned int unixTimeUs;    
     unsigned short l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
     unsigned char upperL2Rates[PHI_SECTORS];
     unsigned char lowerL2Rates[PHI_SECTORS];
@@ -452,68 +452,68 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;       /* unix UTC sec*/
-    unsigned long unixTimeUs;     /* unix UTC microsec */
-    long gpsSubTime;     /* the GPS fraction of second (in ns) 
+    unsigned int unixTime;       /* unix UTC sec*/
+    unsigned int unixTimeUs;     /* unix UTC microsec */
+    int gpsSubTime;     /* the GPS fraction of second (in ns) 
 			   (for the X events per second that get 
 			   tagged with it, note it now includes
 			   second offset from unixTime)*/
-    unsigned long eventNumber;    /* Global event number */
+    unsigned int eventNumber;    /* Global event number */
     unsigned short surfMask;
     unsigned short calibStatus;   /* Were we flashing the pulser? */
     unsigned char priority; // priority and other
     unsigned char turfUpperWord; // The upper 8 bits from the TURF
     unsigned char otherFlag; //Currently unused 
     unsigned char otherFlag2; //Currently unused 
-    unsigned long antTrigMask; // What was the ant trigger mask
+    unsigned int antTrigMask; // What was the ant trigger mask
     TurfioStruct_t turfio; /*The X byte TURFIO data*/
 } AnitaEventHeader_t;
 
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;
+    unsigned int eventNumber;
     SurfChannelFull_t waveform;
 } RawWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;
-    unsigned long whichPeds;
+    unsigned int eventNumber;
+    unsigned int whichPeds;
     SurfChannelPedSubbed_t waveform;
 } PedSubbedWaveformPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;
+    unsigned int eventNumber;
     SurfChannelFull_t waveform[CHANNELS_PER_SURF];
 } RawSurfPacket_t;
 
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;
-    unsigned long whichPeds;
+    unsigned int eventNumber;
+    unsigned int whichPeds;
     SurfChannelPedSubbed_t waveform[CHANNELS_PER_SURF];
 } PedSubbedSurfPacket_t;
 
 
 // typedef struct {
 //      GenericHeader_t gHdr;
-//      unsigned long eventNumber;
-//      unsigned long whichPeds;
+//      unsigned int eventNumber;
+//      unsigned int whichPeds;
 //      EncodedSurfChannelHeader_t chanHead;
 // } EncodedWaveformPacket_t; //0x101
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;
+    unsigned int eventNumber;
 } EncodedSurfPacketHeader_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;
-    unsigned long whichPeds;
+    unsigned int eventNumber;
+    unsigned int whichPeds;
 } BaseWavePacketHeader_t;
 
 typedef BaseWavePacketHeader_t EncodedPedSubbedSurfPacketHeader_t;
@@ -521,18 +521,18 @@ typedef BaseWavePacketHeader_t EncodedPedSubbedChannelPacketHeader_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;
-    unsigned long timeOfDay;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
+    unsigned int timeOfDay;
     float heading;
     float pitch;
     float roll;
     float mrms;
     float brms;
     float latitude;
-    float longitude;
+    float intitude;
     float altitude;
-    unsigned long attFlag;
+    unsigned int attFlag;
 } GpsAdu5PatStruct_t;
 
 typedef struct {
@@ -545,22 +545,22 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long numSats;
+    unsigned int unixTime;
+    unsigned int numSats;
     GpsSatInfo_t sat[MAX_SATS];
 } GpsG12SatStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
+    unsigned int unixTime;
     unsigned char numSats[4];
     GpsSatInfo_t sat[4][MAX_SATS];
 } GpsAdu5SatStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
     float trueCourse;
     float magneticCourse;
     float speedInKnots;
@@ -569,12 +569,12 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;
-    unsigned long timeOfDay;
-    unsigned long numSats;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
+    unsigned int timeOfDay;
+    unsigned int numSats;
     float latitude;
-    float longitude;
+    float intitude;
     float altitude;
     float trueCourse;
     float verticalVelocity;
@@ -588,8 +588,8 @@ typedef struct {
 
 typedef struct {    
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
     FullAnalogueStruct_t ip320;
     MagnetometerDataStruct_t mag;
     SBSTemperatureDataStruct_t sbs;
@@ -597,8 +597,8 @@ typedef struct {
 
 typedef struct { 
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long unixTimeUs;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
     unsigned short globalThreshold; //set to zero if there isn't one
     unsigned short errorFlag; //Will define at some point    
     unsigned short scalerGoal; //What are we aiming for with the scaler rate
@@ -612,7 +612,7 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
+    unsigned int unixTime;
     unsigned short goodFlag; // 0 is bad, 1 is good
     unsigned short numCmdBytes; // number of cmd bytes (upto 10)
     unsigned char cmd[MAX_CMD_LENGTH]; // the cmd bytes
@@ -620,18 +620,18 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
+    unsigned int unixTime;
     DiskSpaceStruct_t diskInfo;
     QueueStruct_t queueInfo;
 } MonitorStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long ramDiskInodes;
-    unsigned long runStartTime;
-    unsigned long runStartEventNumber; //Start eventNumber
-    unsigned long runNumber; //Run number
+    unsigned int unixTime;
+    unsigned int ramDiskInodes;
+    unsigned int runStartTime;
+    unsigned int runStartEventNumber; //Start eventNumber
+    unsigned int runNumber; //Run number
     unsigned short dirFiles[3]; // /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
     unsigned short dirLinks[3]; // /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
     unsigned short otherFlag;
@@ -639,28 +639,28 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTimeStart;
-    unsigned long unixTimeEnd;
+    unsigned int unixTimeStart;
+    unsigned int unixTimeEnd;
     LabChipChannelPedStruct_t pedChan[CHANNELS_PER_SURF];
 } FullLabChipPedStruct_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long numUncompressedBytes;
+    unsigned int numUncompressedBytes;
 } ZippedPacket_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime;
-    unsigned long numUncompressedBytes;
+    unsigned int unixTime;
+    unsigned int numUncompressedBytes;
     char filename[60];
 } ZippedFile_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long unixTime; //Start time
-    unsigned long eventNumber; //Start eventNumber
-    unsigned long runNumber; //Run number
+    unsigned int unixTime; //Start time
+    unsigned int eventNumber; //Start eventNumber
+    unsigned int runNumber; //Run number
 } RunStart_t;
 
 
@@ -669,14 +669,14 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;    /* Global event number */
+    unsigned int eventNumber;    /* Global event number */
     SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
 } AnitaEventBody_t;
 
 typedef struct {
     GenericHeader_t gHdr;
-    unsigned long eventNumber;    /* Global event number */
-    unsigned long whichPeds; //whichPedestals did we subtract
+    unsigned int eventNumber;    /* Global event number */
+    unsigned int whichPeds; //whichPedestals did we subtract
     SurfChannelPedSubbed_t channel[NUM_DIGITZED_CHANNELS];
 } PedSubbedEventBody_t;
 
@@ -687,13 +687,13 @@ typedef struct {
 
 typedef struct {
     GenericHeader_t gHdr; //gHdr.numBytes includes EncodedEventWrapper_t
-    unsigned long eventNumber;
+    unsigned int eventNumber;
     unsigned numBytes; //Not including the EncodedEventWrapper_t;
 } EncodedEventWrapper_t; //Not implemented
 
 typedef struct {
-    unsigned long unixTime;
-    unsigned long subTime;
+    unsigned int unixTime;
+    unsigned int subTime;
     int fromAdu5; //1 is yes , 0 is g12
 } GpsSubTime_t;
 
@@ -703,7 +703,7 @@ typedef struct {
 //Utility Structures
 //////////////////////////////////////////////////////////////////////
 typedef struct {
-    unsigned long pedUnixTime;
+    unsigned int pedUnixTime;
     ChannelEncodingType_t encTypes[ACTIVE_SURFS][CHANNELS_PER_SURF];
 } EncodeControlStruct_t;
 
@@ -782,26 +782,26 @@ typedef struct {
 ////Pedestal Calculation and Storage  Structs
 //////////////////////////////////////////////////////////////////////////////
 typedef struct {
-    unsigned long unixTimeStart;
-    unsigned long unixTimeEnd;
+    unsigned int unixTimeStart;
+    unsigned int unixTimeEnd;
     LabChipChannelPedStruct_t pedChan[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF];
 } FullPedStruct_t;
 
 typedef struct {
-    unsigned long unixTimeStart;
-    unsigned long unixTimeEnd;
+    unsigned int unixTimeStart;
+    unsigned int unixTimeEnd;
     unsigned short chipEntries[ACTIVE_SURFS][LABRADORS_PER_SURF];
-    unsigned long mean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-    unsigned long meanSq[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-    unsigned long entries[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    unsigned int mean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    unsigned int meanSq[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+    unsigned int entries[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
     float fmean[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
     float frms[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 } PedCalcStruct_t;
 
 
 typedef struct {
-    unsigned long unixTime; // Corresponds to unixTimeEnd above
-    unsigned long nsamples; // What was the mean occupancy
+    unsigned int unixTime; // Corresponds to unixTimeEnd above
+    unsigned int nsamples; // What was the mean occupancy
     unsigned short thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; /* mean pedestal */
     unsigned short pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; 
     /* 10 x RMS of the samples (not of mean)*/
