@@ -45,7 +45,7 @@ load_turfioDriver() {
 #echo -n "Creating device nodes........... "
      
 	 rm -f ${deviceName}
-	 mknod ${deviceName}-$i c $major $0
+	 mknod ${deviceName} c $major 0
 	 chmod 777 ${deviceName}
 	 return $RETVAL
 }
@@ -69,8 +69,8 @@ case "$1" in
 	    ;;
 
 	restart)
-	    load_turfioDriver
 	    unload_turfioDriver
+	    load_turfioDriver
 	    ;;
 
 
