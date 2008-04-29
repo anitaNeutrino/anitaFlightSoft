@@ -41,7 +41,7 @@
 #define HK_DEBUG 0
 
 
-void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
+void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
 
 inline unsigned short byteSwapUnsignedShort(unsigned short a){
   return (a>>8)+(a<<8);
@@ -214,17 +214,17 @@ int main(int argc, char **argv) {
   unsigned short dacVal=2200;
   int surf;
   int gotSurfHk=0;
-  unsigned long lastEvNum=0;
+  unsigned int lastEvNum=0;
   struct timeval timeStruct;
   struct timeval lastRateCalc;
   struct timeval lastServoRateCalc;
   struct timeval lastSurfHkRead;
   struct timeval lastSlowRateCalc; //Every 60sec
   int timeDiff=0;
-  unsigned long lastRateCalcEvent=0;    
-  unsigned long lastSlowRateEvent=0; 
-  unsigned long lastSlowSurfHk=0;
-  //    unsigned long lastSlowTurfRate=0;
+  unsigned int lastRateCalcEvent=0;    
+  unsigned int lastSlowRateEvent=0; 
+  unsigned int lastSlowSurfHk=0;
+  //    unsigned int lastSlowTurfRate=0;
   float rateCalcPeriod;
   int reInitNeeded=0;
   int lastSoftTrigTime=0;
@@ -2444,7 +2444,7 @@ AcqdErrorCode_t readTurfEventData()
   unsigned char upperChar;
   unsigned char dataChar;
   unsigned short dataShort;
-  unsigned long dataLong;
+  unsigned int dataInt;
   static unsigned short lastPPSNum=0;
 
   int wordNum,surf,ant,errCount=0,count=0;
@@ -2466,10 +2466,10 @@ AcqdErrorCode_t readTurfEventData()
     dataWord=turfBuf[wordNum]&0xffff;
     dataChar=0;
     dataShort=0;
-    dataLong=0;
+    dataInt=0;
     dataChar=dataWord&0xff;
     dataShort=dataWord&0xff;
-    dataLong=dataWord&0xff;
+    dataInt=dataWord&0xff;
     upperChar=(dataWord&0xff00)>>8;
     if(printToScreen && verbosity>1) {
       printf("TURFIO -- Word %d  -- %x -- %x + %x\n",wordNum,dataWord,
@@ -2500,13 +2500,13 @@ AcqdErrorCode_t readTurfEventData()
       case 11:
 	turfioPtr->trigNum+=(dataShort<<8); break;
       case 12:
-	turfioPtr->trigTime=dataLong; break;
+	turfioPtr->trigTime=dataInt; break;
       case 13:
-	turfioPtr->trigTime+=(dataLong<<8); break;
+	turfioPtr->trigTime+=(dataInt<<8); break;
       case 14:
-	turfioPtr->trigTime+=(dataLong<<16); break;
+	turfioPtr->trigTime+=(dataInt<<16); break;
       case 15:
-	turfioPtr->trigTime+=(dataLong<<24); break;
+	turfioPtr->trigTime+=(dataInt<<24); break;
       case 16:
 	turfioPtr->ppsNum=dataShort; break;
       case 17:
@@ -2516,13 +2516,13 @@ AcqdErrorCode_t readTurfEventData()
       case 19:
 	turfioPtr->deadTime+=(dataShort<<8); break;
       case 20:
-	turfioPtr->c3poNum=dataLong; break;
+	turfioPtr->c3poNum=dataInt; break;
       case 21:
-	turfioPtr->c3poNum+=(dataLong<<8); break;
+	turfioPtr->c3poNum+=(dataInt<<8); break;
       case 22:
-	turfioPtr->c3poNum+=(dataLong<<16); break;
+	turfioPtr->c3poNum+=(dataInt<<16); break;
       case 23:
-	turfioPtr->c3poNum+=(dataLong<<24); break;
+	turfioPtr->c3poNum+=(dataInt<<24); break;
       default:
 	// Can't get here
 	break;
@@ -2847,7 +2847,7 @@ void myUsleep(int usec)
 }
 
 
-void servoOnRate(unsigned long eventNumber, unsigned long lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime)
+void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime)
 {
   static float dState=0;  // Last position input
   static float iState=0;  // Integrator state
