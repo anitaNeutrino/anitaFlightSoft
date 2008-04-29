@@ -27,7 +27,12 @@ AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
 AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
 AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);
 AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) ;
+AcqdErrorCode_t sendClearEvent();
+
+
+//Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
+AcqdErrorCode_t runPedestalMode();
 
 
 //Configuration functions
@@ -55,5 +60,9 @@ int writeSurfHousekeeping(int dataOrTelem);
 int writeTurfHousekeeping(int dataOrTelem);
 void makeSubAltDir();
 void prepWriterStructs();
+void outputEventData();
+void outputSurfHkData();
+void outputTurfRateData();
+		     
 
 #endif //ACQD_H
