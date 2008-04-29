@@ -40,4 +40,4 @@ daemon -r Eventd -n Eventd
 
 sleep 10
 
-AcqdSd 
+Acqd 
