@@ -77,8 +77,8 @@ case "$1" in
 	    ;;
 
 	restart)
-	    load_surfDriver
 	    unload_surfDriver
+	    load_surfDriver
 	    ;;
 
 
