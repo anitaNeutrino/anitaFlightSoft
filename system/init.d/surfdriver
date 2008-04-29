@@ -77,7 +77,7 @@ case "$1" in
 	    ;;
 
 	restart)
-	    action $"Loading surfDriver..." unload_surfDriver
+	    action $"Unloading surfDriver..." unload_surfDriver
 	    action $"Loading surfDriver..." load_surfDriver
 	    ;;
 

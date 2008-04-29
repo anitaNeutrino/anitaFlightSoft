@@ -12,7 +12,7 @@
 driver=acromag
 
 load_acromag() {
-	echo -n $"Loading $driver: "
+#	echo -n $"Loading $driver: "
 	/bin/mknod -m 666 /dev/apc8620_0 c 46 0 #(1st carrier)
 	/bin/mknod -m 666 /dev/apc8620_1 c 46 1 #(2nd carrier)
 	insmod /usr/local/acromag/apc8620.ko
@@ -21,7 +21,7 @@ load_acromag() {
 }
 
 unload_acromag() {
-	echo -n $"Un loading $driver: "
+#	echo -n $"Un loading $driver: "
 	rmmod apc8620
 	RETVAL=$?
 	return $RETVAL
@@ -30,16 +30,16 @@ unload_acromag() {
 
 case "$1" in
 	start)
-	    load_acromag
+	     action $"Loading acromag driver..." load_acromag
 	    ;;
 
 	stop)
-	    unload_acromag
+	    action $"Unoading acromag driver..."  unload_acromag
 	    ;;
 
 	restart)
-	    load_acromag
-	    unload_acromag
+	    action $"Unoading acromag driver..."  unload_acromag
+	    action $"Loading acromag driver..." load_acromag
 	    ;;
 
 
