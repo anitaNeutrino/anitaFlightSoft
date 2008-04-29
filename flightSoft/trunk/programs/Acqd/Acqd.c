@@ -727,6 +727,7 @@ int main(int argc, char **argv) {
       else if(doingEvent>=0) { //RJN changed 24/11/06 for test
 	hdPtr->eventNumber=getEventNumber();
 	bdPtr->eventNumber=hdPtr->eventNumber;
+	lastEvNum=hdPtr->eventNumber;
 	hdPtr->surfMask=surfMask;
 	hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
 		
@@ -1757,7 +1758,6 @@ AcqdErrorCode_t runPedestalMode()
     else if(doingEvent>=0) { //RJN changed 24/11/06 for test
       hdPtr->eventNumber=getEventNumber();
       bdPtr->eventNumber=hdPtr->eventNumber;
-      lastEvNum=hdPtr->eventNumber;
       hdPtr->surfMask=surfMask;
       hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
       
