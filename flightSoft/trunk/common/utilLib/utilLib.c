@@ -862,10 +862,10 @@ unsigned int getDiskSpace(char *dirName) {
 	printf("Dir: %s\n",dirName);
 	printf("Ret Val: %d\n",retVal);
 	printf("MegaBytes Available: %u\n",megabytesAvailable);
-	printf("Available Blocks: %d\n",diskStat.f_bavail);
-	printf("Free Blocks: %d\n",diskStat.f_bfree);
-	printf("Total Blocks: %d\n",diskStat.f_blocks);
-	printf("Block Size: %u\n",diskStat.f_bsize);
+	printf("Available Blocks: %ld\n",diskStat.f_bavail);
+	printf("Free Blocks: %ld\n",diskStat.f_bfree);
+	printf("Total Blocks: %ld\n",diskStat.f_blocks);
+	printf("Block Size: %lu\n",diskStat.f_bsize);
 //	printf("Free File Nodes: %d\n",diskStat.f_ffree);
 //	printf("Total File Nodes: %d\n",diskStat.f_files);
 //	printf("Type Of Info: %d\n",diskStat.f_type);
@@ -1801,14 +1801,14 @@ int writeCommandAndLink(CommandStruct_t *theCmd) {
     int retVal=0;
     char filename[FILENAME_MAX];
 
-    sprintf(filename,"%s/cmd_%d.dat",CMDD_COMMAND_DIR,unixTime);
+    sprintf(filename,"%s/cmd_%ld.dat",CMDD_COMMAND_DIR,unixTime);
     {
 	FILE *pFile;
 	int fileTag=1;
 	pFile = fopen(filename,"rb");
 	while(pFile!=NULL) {
 	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%d_%d.dat",CMDD_COMMAND_DIR,unixTime,fileTag);
+	    sprintf(filename,"%s/cmd_%ld_%d.dat",CMDD_COMMAND_DIR,unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
 	}
     }
@@ -1843,7 +1843,7 @@ int checkFileExists(char *filename) {
 int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
 {
     static int errorCounter=0;
-    int retVal=compress((unsigned char*)output,outputBytes,(unsigned char*)input,inputBytes);
+    int retVal=compress((unsigned char*)output,(unsigned long)outputBytes,(unsigned char*)input,(unsigned long)inputBytes);
     if(retVal==Z_OK)
 	return 0;
     else {
