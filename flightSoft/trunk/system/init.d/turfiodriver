@@ -47,33 +47,35 @@ load_turfioDriver() {
 	 rm -f ${deviceName}
 	 mknod ${deviceName} c $major 0
 	 chmod 777 ${deviceName}
-	 echo
+#	 echo
 	 return $RETVAL
 }
 
 unload_turfioDriver() {
-	echo -n $"Unloading $driver: "
+#	echo -n $"Unloading $driver: "
 	rmmod ${driver}	
 	RETVAL=$?
 	rm -f ${deviceName}
-	 echo
+#	 echo
 	return $RETVAL
 }
 
 
 case "$1" in
 	start)
-	    load_turfioDriver
+	    action $"Loading turfioDriver..." load_turfioDriver
 	    ;;
 
 	stop)
-	    unload_turfioDriver
+	    action $"Unloading turfioDriver..." unload_turfioDriver
 	    ;;
 
 	restart)
-	    unload_turfioDriver
-	    load_turfioDriver
+	    action $"Unloading turfioDriver..." unload_turfioDriver
+	    action $"Loading turfioDriver..." load_turfioDriver
 	    ;;
+
+    
 
 
 	*)
