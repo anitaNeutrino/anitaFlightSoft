@@ -154,7 +154,7 @@ int readConfigFile()
 
 int checkForRequests() {
     int count,retVal;
-//    unsigned long eventNumber;
+//    unsigned int eventNumber;
     char fileName[FILENAME_MAX];
     char linkName[FILENAME_MAX];
     struct dirent **linkList;
@@ -205,9 +205,9 @@ void sendEvent(PlaybackRequest_t *pReq)
 
     sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",subDirNum,dirNum,fileNum);
     
-    syslog(LOG_INFO,"Trying to send event %lu, with priority %d\n",
+    syslog(LOG_INFO,"Trying to send event %u, with priority %d\n",
 	   pReq->eventNumber,pReq->pri);
-    fprintf(stderr,"Trying to send event %lu, with priority %d\n",
+    fprintf(stderr,"Trying to send event %u, with priority %d\n",
 	   pReq->eventNumber,pReq->pri);
     
     int numSeek=pReq->eventNumber-fileNum;
@@ -232,16 +232,16 @@ void sendEvent(PlaybackRequest_t *pReq)
 	    gzclose(indFile);
 	    return;
 	}
-//	printf("count %d, index %lu\n",count,indEntry.eventNumber);
+//	printf("count %d, index %u\n",count,indEntry.eventNumber);
 	count++;
     } while (indEntry.eventNumber!=pReq->eventNumber);
     gzclose(indFile);
-//    printf("index: %lu -- %#x\n",indEntry.eventNumber,indEntry.eventDiskBitMask);
+//    printf("index: %u -- %#x\n",indEntry.eventNumber,indEntry.eventDiskBitMask);
 
     //Now have index
     if(1) {
 	//Read it from puck
-	sprintf(headerFileName,"%s/run%lu/event/ev%d/ev%d/hd_%d.dat.gz",
+	sprintf(headerFileName,"%s/run%u/event/ev%d/ev%d/hd_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
 	gzFile headFile = gzopen(headerFileName,"rb");
 	if(!headFile) {
@@ -258,17 +258,17 @@ void sendEvent(PlaybackRequest_t *pReq)
 	int test=0;
 	do {
 	    retVal=gzread(headFile,&theHead,sizeof(AnitaEventHeader_t));
-	    printf("try %d, head %lu\n",test,theHead.eventNumber);
+	    printf("try %d, head %u\n",test,theHead.eventNumber);
 	    test++;
 	}
 	while(retVal>0 && theHead.eventNumber!=pReq->eventNumber);
 	gzclose(headFile);
 	if(retVal<0) {
-	    fprintf(stderr,"Couldn't find header %lu\n",pReq->eventNumber);	    
+	    fprintf(stderr,"Couldn't find header %u\n",pReq->eventNumber);	    
 	    return;
 	}
 
-	sprintf(eventFileName,"%s/run%lu/event/ev%d/ev%d/psev_%d.dat.gz",
+	sprintf(eventFileName,"%s/run%u/event/ev%d/ev%d/psev_%d.dat.gz",
 		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
 	gzFile eventFile = gzopen(eventFileName,"rb");
 	if(!eventFile) {
@@ -286,14 +286,14 @@ void sendEvent(PlaybackRequest_t *pReq)
 	while(retVal>0 && psBody.eventNumber!=pReq->eventNumber);	
 	gzclose(eventFile);
 	if(retVal<0) {
-	    fprintf(stderr,"Couldn't find event %lu\n",pReq->eventNumber);	    
+	    fprintf(stderr,"Couldn't find event %u\n",pReq->eventNumber);	    
 	    return;
 	}
     }
 
     theHead.priority=((pReq->pri&0xf) | (theHead.priority&0xf0));
     fillGenericHeader(&theHead,PACKET_HD,sizeof(AnitaEventHeader_t));
-    printf("head: %lu, event: %lu\n",theHead.eventNumber,psBody.eventNumber);
+    printf("head: %u, event: %u\n",theHead.eventNumber,psBody.eventNumber);
 //    int samp=0;
 //    for(samp=0;samp<260;samp++) {
 //	printf("%d --%d\n",samp,psBody.channel[0].data[samp]);
@@ -323,8 +323,8 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
     printf("retVal %d, numBytes %d\n",retVal,numBytes);
     char headName[FILENAME_MAX];
     char bodyName[FILENAME_MAX];
-    sprintf(bodyName,"%s/ev_%lu.dat",eventTelemDirs[pri],hdPtr->eventNumber);
-    sprintf(headName,"%s/hd_%lu.dat",eventTelemDirs[pri],hdPtr->eventNumber);
+    sprintf(bodyName,"%s/ev_%u.dat",eventTelemDirs[pri],hdPtr->eventNumber);
+    sprintf(headName,"%s/hd_%u.dat",eventTelemDirs[pri],hdPtr->eventNumber);
     retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
     if(retVal<0) {
 	printf("Something wrong while writing %s\n",bodyName);
@@ -376,7 +376,7 @@ void startPlayback()
 			    if(test==Z_NULL) break;
 //			    printf("%d %d\n",test,evNumAsString);
 			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
-			    printf("Got string: %s num: %lu\n",
+			    printf("Got string: %s num: %u\n",
 				   evNumAsString,pReq.eventNumber);
 			    pReq.pri=0;
 //			    printf("Freda\n");

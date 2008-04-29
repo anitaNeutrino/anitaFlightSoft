@@ -107,7 +107,7 @@ int main (int argc, char *argv[])
 
     /* Log stuff */
     char *progName=basename(argv[0]);
-    unsigned long startTime=time(NULL);
+    unsigned int startTime=time(NULL);
     int bladeMountCmdTime=0;
     int usbintMountCmdTime=0;
     int usbextMountCmdTime=0;
@@ -165,7 +165,7 @@ int main (int argc, char *argv[])
 	    //Something
 //	    checkDiskSpace("/home/rjn/flightSoft/programs/Monitord/");
 	    memset(&monData,0,sizeof(MonitorStruct_t));
-	    monData.unixTime=(long)time(NULL);
+	    monData.unixTime=(int)time(NULL);
 	    retVal=checkDisks(&(monData.diskInfo));	    
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
@@ -187,7 +187,7 @@ int main (int argc, char *argv[])
 		}
 		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd || 
 			otherData.ramDiskInodes<inodesKillAcqd) {
-		    syslog(LOG_WARNING,"Killing Acqd -- ramDisk %d MB, %lu inodes",monData.diskInfo.diskSpace[0],otherData.ramDiskInodes); 
+		    syslog(LOG_WARNING,"Killing Acqd -- ramDisk %d MB, %u inodes",monData.diskInfo.diskSpace[0],otherData.ramDiskInodes); 
 		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_KILL_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
@@ -275,7 +275,7 @@ int writeFileAndLink(MonitorStruct_t *monitorPtr) {
     
     fillGenericHeader(monitorPtr,PACKET_MONITOR,sizeof(MonitorStruct_t));
     
-    sprintf(theFilename,"%s/mon_%ld.dat",
+    sprintf(theFilename,"%s/mon_%d.dat",
 	    MONITOR_TELEM_DIR,monitorPtr->unixTime);
     retVal=writeMonitor(monitorPtr,theFilename);
     retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
@@ -468,11 +468,11 @@ int readConfigFile()
 int checkDisks(DiskSpaceStruct_t *dsPtr) {
     int errFlag=0; 
     int diskNum;   
-    unsigned long megaBytes=0;
+    unsigned int megaBytes=0;
     unsigned short megaBytes_short=0;
     for(diskNum=0;diskNum<8;diskNum++) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
-//	printf("%lu\n",megaBytes);
+//	printf("%u\n",megaBytes);
 	if(megaBytes>0) {
 	    if(diskNum==4)
 		megaBytes/=16;
@@ -650,7 +650,7 @@ void purgeHkDirectory(char *dirName,char *linkDirName)
 
 void purgeDirectory(int priority) {    
     int count;
-    unsigned long eventNumber;
+    unsigned int eventNumber;
     char currentTouchname[FILENAME_MAX];
     char currentHeader[FILENAME_MAX];
     char purgeFile[FILENAME_MAX];
@@ -664,18 +664,18 @@ void purgeDirectory(int priority) {
 	
 	
 	sscanf(linkList[0]->d_name,
-	       "hd_%lu.dat",&eventNumber);
-	sprintf(purgeFile,"%s/purged_%lu.txt.gz",priorityPurgeDirs[priority],eventNumber);
+	       "hd_%u.dat",&eventNumber);
+	sprintf(purgeFile,"%s/purged_%u.txt.gz",priorityPurgeDirs[priority],eventNumber);
 	gzFile Purge=gzopen(purgeFile,"w");
 
 	for(count=0;count<numLinks-100;
 	    count++) {
 	    
 	    sscanf(linkList[count]->d_name,
-		   "hd_%lu.dat",&eventNumber);
+		   "hd_%u.dat",&eventNumber);
 
 
-	    sprintf(currentHeader,"%s/hd_%ld.dat",eventTelemDirs[priority], 
+	    sprintf(currentHeader,"%s/hd_%d.dat",eventTelemDirs[priority], 
 		    eventNumber);	    
 	    sprintf(currentTouchname,"%s.sipd",currentHeader);
 	    if(checkFileExists(currentTouchname))
@@ -688,7 +688,7 @@ void purgeDirectory(int priority) {
 	    //Now need to add something here that archived the event numbers 
 	    //to be deleted, so that Playbackd can resurrect them.
 	    if(Purge) {
-		sprintf(purgeString,"%lu\n",eventNumber);
+		sprintf(purgeString,"%u\n",eventNumber);
 		gzputs(Purge,purgeString);
 	    }
 
@@ -698,7 +698,7 @@ void purgeDirectory(int priority) {
 		    linkList[count]->d_name);	    	    
 	    removeFile(currentHeader);
 	    
-	    sprintf(currentHeader,"%s/ev_%ld.dat",eventTelemDirs[priority], 
+	    sprintf(currentHeader,"%s/ev_%d.dat",eventTelemDirs[priority], 
 		    eventNumber);
 	    removeFile(currentHeader);			
 	}
@@ -838,7 +838,7 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
     otherPtr->unixTime=time(NULL);
     otherPtr->ramDiskInodes=getRamdiskInodes();
     if(printToScreen)
-	printf("Ramdisk inodes: %lu\n",otherPtr->ramDiskInodes);
+	printf("Ramdisk inodes: %u\n",otherPtr->ramDiskInodes);
     otherPtr->runStartTime=0;
     otherPtr->runStartEventNumber=0;
     otherPtr->runNumber=0;
@@ -907,7 +907,7 @@ int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr) {
 //    syslog(LOG_INFO,"Other packet code: %d, numBytes %d, checkSum %d, feByte %d\n",
 //	   otherPtr->gHdr.code,otherPtr->gHdr.numBytes,otherPtr->gHdr.checksum,otherPtr->gHdr.feByte);
 
-    sprintf(theFilename,"%s/othermon_%ld.dat",
+    sprintf(theFilename,"%s/othermon_%d.dat",
 	    OTHER_MONITOR_TELEM_DIR,otherPtr->unixTime);
     retVal=normalSingleWrite((unsigned char*)otherPtr,theFilename,sizeof(OtherMonitorStruct_t));
     retVal=makeLink(theFilename,OTHER_MONITOR_TELEM_LINK_DIR);

@@ -193,7 +193,7 @@ int main (int argc, char *argv[])
 //	printf("Here\n");
 	currentState=PROG_STATE_RUN;
 //	currentState=PROG_STATE_TERMINATE;
-	unsigned long loopCounter=0;
+	unsigned int loopCounter=0;
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
 	    checkAdu5A();
@@ -615,7 +615,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
            
     //Write file and link for sipd
-    sprintf(theFilename,"%s/vtg_%ld.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime);
+    sprintf(theFilename,"%s/vtg_%d.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime);
     retVal=writeGpsVtg(&theVtg,theFilename);  
     retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR);  
 
@@ -629,7 +629,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
 
 
 //    if(useUsbDisks) {
-//	sprintf(theFilename,"%s/vtg_%ld.dat",
+//	sprintf(theFilename,"%s/vtg_%d.dat",
 //		gpsAdu5VtgUsbArchiveDir,theVtg.unixTime);
 //	retVal=writeGpsVtg(&theVtg,theFilename);  
 //    }
@@ -669,7 +669,7 @@ void processPosString(char *gpsString, int gpsLength) {
     //Scan string
     subString = strtok (gpsCopy,"*");
 /*    printf("%s\n",subString); */
-    sscanf(subString,"$PASHR,POS,%d,%lu,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,,%f,%f,%f,%f,%f,%f,%f,%s",
+    sscanf(subString,"$PASHR,POS,%d,%u,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,,%f,%f,%f,%f,%f,%f,%f,%s",
 	   &posType,&(thePos.numSats),&hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
 	   &(thePos.altitude),&(thePos.trueCourse),
@@ -693,7 +693,7 @@ void processPosString(char *gpsString, int gpsLength) {
     thePos.timeOfDay+=(float)(1000*60*60*hour);  
 
     //Debugging
-  /*   printf("Time:\t %ld\t%ld\t%ld\nNum Sats:\t%d\nPosition:\t%f\t%f\t%f\nCourse/Speed:\t%f\t%f\t%f\nDOP:\t\t%f\t%f\t%f\t%f\n", */
+  /*   printf("Time:\t %d\t%d\t%d\nNum Sats:\t%d\nPosition:\t%f\t%f\t%f\nCourse/Speed:\t%f\t%f\t%f\nDOP:\t\t%f\t%f\t%f\t%f\n", */
 /* 	   thePos.unixTime,thePos.unixTimeUs,thePos.timeOfDay, */
 /* 	   thePos.numSats, */
 /* 	   thePos.latitude,thePos.longitude,thePos.altitude, */
@@ -704,7 +704,7 @@ void processPosString(char *gpsString, int gpsLength) {
 
     fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%ld.dat",G12_POS_TELEM_DIR,thePos.unixTime);
+    sprintf(theFilename,"%s/pos_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime);
     retVal=writeGpsPos(&thePos,theFilename);  
     retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR);  
 
@@ -719,7 +719,7 @@ void processPosString(char *gpsString, int gpsLength) {
     }
 
 //    if(useUsbDisks) {
-//	sprintf(theFilename,"%s/pos_%ld.dat",
+//	sprintf(theFilename,"%s/pos_%d.dat",
 //		gpsG12PosUsbArchiveDir,thePos.unixTime);
 //	retVal=writeGpsPos(&thePos,theFilename);  
 //    }
@@ -814,7 +814,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     gpstime-=LEAP_SECONDS;
 //    strncpy(unixString,ctime(&rawtime),127);
 //    strncpy(otherString,ctime(&gpstime),127);
-//    printf("%ld %ld\n",rawtime,gpstime);
+//    printf("%d %d\n",rawtime,gpstime);
 //    printf("Seconds: %d %d\n",oldSec,sec);
 //    printf("***************************\n%s%s**********************\n",unixString,otherString);
     theTTT.unixTime=gpstime;
@@ -822,7 +822,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     theTTT.fromAdu5=fromAdu5;
 
     //Write file for eventd
-    sprintf(filename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
     writeGpsTtt(&theTTT,filename);
     retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
 
@@ -836,7 +836,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     
 //    if(useUsbDisks) {
 //	//Write file to usb disk
-//	sprintf(filename,"%s/gps_%lu_%lu.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
+//	sprintf(filename,"%s/gps_%u_%u.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
 //	writeGpsTtt(&theTTT,filename);
 //    }
     
@@ -905,7 +905,7 @@ void processG12SatString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/sat_%ld.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%d.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsG12Sat(&theSat,theFilename);  
     retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);  
 
@@ -994,7 +994,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	else {
 	    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
 	    //Write file and link for sipd
-	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
+	    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
 	    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
 	    retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);  
 
@@ -1044,7 +1044,7 @@ void processGppatString(char *gpsString, int gpsLength) {
      //Scan string
     subString = strtok (gpsCopy,"*");
 //    printf("%s\n",subString);
-    sscanf(subString,"$GPPAT,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%lu",
+    sscanf(subString,"$GPPAT,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%u",
 	   &hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
 	   &(thePat.altitude),&(thePat.heading),&(thePat.pitch),
@@ -1068,7 +1068,7 @@ void processGppatString(char *gpsString, int gpsLength) {
     thePat.timeOfDay+=(float)(1000*60*60*hour);  
 
 /*     printf("%s\n",gpsTest); */
-/*     printf("unixTime: %ld\ntimeOfDay: %ld\nheading: %lf\npitch: %lf\nroll: %lf\nmrms: %lf\nbrms: %lf\nattFlag: %d\nlatitude: %lf\nlongitude: %lf\naltitute: %lf\n",  */
+/*     printf("unixTime: %d\ntimeOfDay: %d\nheading: %lf\npitch: %lf\nroll: %lf\nmrms: %lf\nbrms: %lf\nattFlag: %d\nlatitude: %lf\nlongitude: %lf\naltitute: %lf\n",  */
 /* 	   thePat.unixTime, */
 /* 	   thePat.timeOfDay, */
 /* 	   thePat.heading, */
@@ -1086,7 +1086,7 @@ void processGppatString(char *gpsString, int gpsLength) {
     fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
 
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime);
+    sprintf(theFilename,"%s/pat_%d.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime);
     retVal=writeGpsPat(&thePat,theFilename);  
     retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR);  
 
@@ -1129,8 +1129,8 @@ int updateClockFromG12(time_t gpsRawTime)
     }
     else if(childPid<0) {
 	//Something wrong
-	syslog(LOG_ERR,"Problem updating clock, %ld: %s ",gpsRawTime,strerror(errno));
-	fprintf(stderr,"Problem updating clock, %ld: %s ",gpsRawTime,strerror(errno));
+	syslog(LOG_ERR,"Problem updating clock, %d: %s ",gpsRawTime,strerror(errno));
+	fprintf(stderr,"Problem updating clock, %d: %s ",gpsRawTime,strerror(errno));
 	return 0;
     }
 

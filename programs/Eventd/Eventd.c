@@ -62,7 +62,7 @@ struct timeval timeStruct2;
 int main (int argc, char *argv[])
 {
     int retVal,count,filledSubTime;
-    unsigned long tempNum;
+    unsigned int tempNum;
     char currentFilename[FILENAME_MAX];
     char *tempString;
     /* Config file thingies */
@@ -145,7 +145,7 @@ int main (int argc, char *argv[])
 
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"0 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"0 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    numEventLinks=getListofLinks(ACQD_EVENT_LINK_DIR,&eventLinkList);
 /* 	printf("Got %d event links\n",numEventLinks); */
@@ -161,14 +161,14 @@ int main (int argc, char *argv[])
 	    
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"1 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"1 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    /* What to do with our events? */	
 	    for(count=0;count<numEventLinks;count++) {
  
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"2 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"2 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 		filledSubTime=0;
 //		printf("%s\n",eventLinkList[count]->d_name);
@@ -177,11 +177,11 @@ int main (int argc, char *argv[])
 
 		
 		retVal=fillHeader(&theAcqdEventHeader,currentFilename);
-//		printf("%s\t%lu\t%d\n",currentFilename,theAcqdEventHeader.eventNumber,retVal); 
+//		printf("%s\t%u\t%d\n",currentFilename,theAcqdEventHeader.eventNumber,retVal); 
 //		exit(0);
 #ifdef TIME_DEBUG
 		gettimeofday(&timeStruct2,NULL);
-		fprintf(timeFile,"3 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(timeFile,"3 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 //		printf("RetVal %d\n",retVal;
 		if(retVal<0) {
@@ -192,9 +192,9 @@ int main (int argc, char *argv[])
 		    removeFile(currentFilename);	
 	    
 		    sscanf(eventLinkList[count]->d_name,
-			   "hd_%lu.dat",&tempNum);
+			   "hd_%u.dat",&tempNum);
 		    if(tempNum>0) {
-			sprintf(currentFilename,"%s/ev_%lu.dat",ACQD_EVENT_DIR,
+			sprintf(currentFilename,"%s/ev_%u.dat",ACQD_EVENT_DIR,
 				tempNum);
 		    }		    
 		    continue;
@@ -202,7 +202,7 @@ int main (int argc, char *argv[])
 	    
 		int tryCount=0;
 		do {
-//		    printf("Here %lu (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
+//		    printf("Here %u (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
 		    if(tryToMatchGps) {
 			filledSubTime=setGpsTime(&theAcqdEventHeader);
 		    }
@@ -222,20 +222,20 @@ int main (int argc, char *argv[])
 				
 #ifdef TIME_DEBUG
 		gettimeofday(&timeStruct2,NULL);
-		fprintf(timeFile,"4 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+		fprintf(timeFile,"4 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 		if(!filledSubTime) {
 		    theAcqdEventHeader.gpsSubTime=-1;
 //		    syslog (LOG_WARNING,"No GPS sub time for event %d",
 //			    theAcqdEventHeader.eventNumber);
 		    if(printToScreen)
-			fprintf(stdout,"No GPS sub time for event %lu\t%ld\t%ld\n",
+			fprintf(stdout,"No GPS sub time for event %u\t%d\t%d\n",
 			       theAcqdEventHeader.eventNumber,
 			       theAcqdEventHeader.unixTime,
 			       theAcqdEventHeader.unixTimeUs);
 		}
 		else if(printToScreen) 
-		    fprintf(stdout,"Match: Event %lu\t Time:\t%ld\t%ld\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
+		    fprintf(stdout,"Match: Event %u\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
 		
 		    theAcqdEventHeader.calibStatus
 			=getCalibStatus(theAcqdEventHeader.unixTime);
@@ -247,7 +247,7 @@ int main (int argc, char *argv[])
 	    
 #ifdef TIME_DEBUG
 	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"11 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	    fprintf(timeFile,"11 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 	    
 	    
@@ -299,9 +299,9 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 /*     static float lastDiff=0; */ 
     int haveMatch=0;
 //May implement a dynamic monitoring of the tim offset
-    long newGpsSubTime;
+    int newGpsSubTime;
     static unsigned short lastPPSNum=0;
-    static unsigned long turfPPSOffset=0;
+    static unsigned int turfPPSOffset=0;
 
 
     if(lastPPSNum>theHeaderPtr->turfio.ppsNum) {
@@ -377,15 +377,15 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	fracGps+=(((float)gpsArray[count].unixTime)
 		  -((float)theHeaderPtr->unixTime));
 	if(printToScreen&&verbosity>=0) {
-	    printf("Event %lu\tUnix: %ld.%ld\tTURF:%u (%lu) %lu\n\tGPS %ld.%lu\n", 
+	    printf("Event %u\tUnix: %d.%d\tTURF:%u (%u) %u\n\tGPS %d.%u\n", 
 		   theHeaderPtr->eventNumber,theHeaderPtr->unixTime, 
 		   theHeaderPtr->unixTimeUs,theHeaderPtr->turfio.ppsNum,
-		   (unsigned long)(theHeaderPtr->turfio.ppsNum)+turfPPSOffset,
+		   (unsigned int)(theHeaderPtr->turfio.ppsNum)+turfPPSOffset,
 		   theHeaderPtr->turfio.trigTime, 
 		   gpsArray[count].unixTime,gpsArray[count].subTime); 
 	}
 	if(printToScreen && verbosity>=0)
-	    printf("Event %ld\tUnix: %f\tTurf: %f\tGps: %f\n",theHeaderPtr->eventNumber,
+	    printf("Event %d\tUnix: %f\tTurf: %f\tGps: %f\n",theHeaderPtr->eventNumber,
 		   fracUnix,fracTurf,fracGps);
 
 	if(fabsf(fracTurf-fracGps)<TIME_MATCH) {
@@ -409,9 +409,9 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 		turfPPSOffset=gpsArray[count].unixTime-theHeaderPtr->turfio.ppsNum;	    
 	    newGpsSubTime=gpsArray[count].subTime;
 	    if(theHeaderPtr->unixTime>gpsArray[count].unixTime)
-		newGpsSubTime-=(long)(theHeaderPtr->unixTime-gpsArray[count].unixTime);
+		newGpsSubTime-=(int)(theHeaderPtr->unixTime-gpsArray[count].unixTime);
 	    else if(theHeaderPtr->unixTime<gpsArray[count].unixTime)
-		newGpsSubTime+=(long)(gpsArray[count].unixTime-theHeaderPtr->unixTime);
+		newGpsSubTime+=(int)(gpsArray[count].unixTime-theHeaderPtr->unixTime);
 				      
 
 //	    theHeaderPtr->unixTime=gpsArray[count].unixTime;    
@@ -448,11 +448,11 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 		 
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"5 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"5 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
     
 //    /* Move ev_ file first */
-//    sprintf(theFilename,"%s/ev_%ld.dat",ACQD_EVENT_DIR,
+//    sprintf(theFilename,"%s/ev_%d.dat",ACQD_EVENT_DIR,
 //	    theHeaderPtr->eventNumber);
 //    testfp=fopen(theFilename,"rb");
 //    if(testfp) {
@@ -465,11 +465,11 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 		 
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"6 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"6 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
     /* Should probably do something with retVal */
        
-    sprintf(theFilename,"%s/hd_%ld.dat",EVENTD_EVENT_DIR,
+    sprintf(theFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
     retVal=writeHeader(theHeaderPtr,theFilename);
@@ -477,7 +477,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 		 
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"7 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"7 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
     /* Make links, not sure what to do with return value here */
@@ -487,11 +487,11 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 		 
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"8 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"8 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
 
     /* Delete previous hd_ file */
-    sprintf(theFilename,"%s/hd_%ld.dat",ACQD_EVENT_DIR,
+    sprintf(theFilename,"%s/hd_%d.dat",ACQD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
@@ -500,11 +500,11 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 		 
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"9 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"9 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
    
     /* And the link */
-    sprintf(theFilename,"%s/hd_%ld.dat",ACQD_EVENT_LINK_DIR,
+    sprintf(theFilename,"%s/hd_%d.dat",ACQD_EVENT_LINK_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity>2) printf("Deleting %s\n",theFilename);
     retVal=removeFile(theFilename);
@@ -512,7 +512,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
 		 
 #ifdef TIME_DEBUG
 	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"10 %ld %ld\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
+	fprintf(timeFile,"10 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
 #endif
     
     return retVal;
@@ -587,9 +587,9 @@ int getCalibStatus(int unixTime)
 int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int forceReset) 
 {
 
-    static unsigned long lastUnixTime=0;
-    static unsigned long lastPPSNum=0;
-    static unsigned long lastTrigTime=0;
+    static unsigned int lastUnixTime=0;
+    static unsigned int lastPPSNum=0;
+    static unsigned int lastTrigTime=0;
     static int addedOneLastTime=0;
     static int subtractedOneLastTime=0;
     double computerTime=(double)theHeaderPtr->unixTime;
@@ -646,11 +646,11 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
 	
     double diff=computerTime-gpsTime;
     if(verbosity>2 && printToScreen) { 
-	printf("Old:\t%lu\t%lu\t%lu\n",lastUnixTime,lastTrigTime,lastPPSNum);
-	printf("New:\t%ld\t%lu\t%u\n",theHeaderPtr->unixTime,
+	printf("Old:\t%u\t%u\t%u\n",lastUnixTime,lastTrigTime,lastPPSNum);
+	printf("New:\t%d\t%u\t%u\n",theHeaderPtr->unixTime,
 	       theHeaderPtr->turfio.trigTime,theHeaderPtr->turfio.ppsNum);
 	
-	printf("Raw:\t%ld\t%ld\n",theHeaderPtr->unixTime,theGpsPtr->unixTime);
+	printf("Raw:\t%d\t%d\n",theHeaderPtr->unixTime,theGpsPtr->unixTime);
 	printf("Here:\t%9.2lf\t%9.2lf\t%9.9lf\n",computerTime,gpsTime,diff);
     }
     lastUnixTime=theHeaderPtr->unixTime;
@@ -667,12 +667,12 @@ int deleteGPSFiles(GpsSubTime_t *theGpsPtr)
     char theFilename[FILENAME_MAX];
     int retVal;
 
-    sprintf(theFilename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_LINK_DIR,
+    sprintf(theFilename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_LINK_DIR,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity>2) 
 	printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
-    sprintf(theFilename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_DIR,
+    sprintf(theFilename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_DIR,
 	    theGpsPtr->unixTime,theGpsPtr->subTime);
     if(printToScreen && verbosity>2) printf("Deleting: %s\n",theFilename);
     retVal=removeFile(theFilename);
@@ -712,7 +712,7 @@ int readConfigFile()
 int compareGpsTimes(const void *ptr1, const void *ptr2) {
     GpsSubTime_t *gps1 = (GpsSubTime_t*) ptr1;
     GpsSubTime_t *gps2 = (GpsSubTime_t*) ptr2;
-//    printf("gps1 %lu \t gps 2 %lu\n",gps1->unixTime,gps2->unixTime);
+//    printf("gps1 %u \t gps 2 %u\n",gps1->unixTime,gps2->unixTime);
 
     if(gps1->unixTime<gps2->unixTime) return -1;
     else if(gps1->unixTime>gps2->unixTime) return 1;

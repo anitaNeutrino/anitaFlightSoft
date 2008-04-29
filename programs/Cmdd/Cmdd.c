@@ -466,7 +466,7 @@ int executeCommand(CommandStruct_t *theCmd)
     int ivalue3;
     short svalue;
     float fvalue;
-    unsigned long ulvalue,ultemp;
+    unsigned int uvalue,utemp;
     char theCommand[FILENAME_MAX];
 
     int index;
@@ -981,18 +981,18 @@ int executeCommand(CommandStruct_t *theCmd)
 	    if(retVal) return 0;
 	    return rawtime;
 	case ACQD_SET_ANT_TRIG_MASK: 	    
-	    ultemp=(theCmd->cmd[1]);	    
-	    ulvalue=ultemp;
-	    ultemp=(theCmd->cmd[2]);
-	    ulvalue|=(ultemp<<8);
-	    ultemp=(theCmd->cmd[3]);
-	    ulvalue|=(ultemp<<16);
-	    ultemp=(theCmd->cmd[4]);
-	    ulvalue|=(ultemp<<24);
-	    syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %lu -- %#x\n",theCmd->cmd[1],theCmd->cmd[2],
-		   theCmd->cmd[3],theCmd->cmd[4],ulvalue,(unsigned int)ulvalue);
+	    utemp=(theCmd->cmd[1]);	    
+	    uvalue=utemp;
+	    utemp=(theCmd->cmd[2]);
+	    uvalue|=(utemp<<8);
+	    utemp=(theCmd->cmd[3]);
+	    uvalue|=(utemp<<16);
+	    utemp=(theCmd->cmd[4]);
+	    uvalue|=(utemp<<24);
+	    syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",theCmd->cmd[1],theCmd->cmd[2],
+		   theCmd->cmd[3],theCmd->cmd[4],uvalue,(unsigned int)uvalue);
 
-	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",ulvalue,&rawtime);
+	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",uvalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
@@ -1170,16 +1170,16 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return executePrioritizerdCommand(ivalue,ivalue2);
 	case PLAYBACKD_COMMAND:
 	    ivalue=theCmd->cmd[1]; //Command num	    
-	    ultemp=(theCmd->cmd[2]);	    
-	    ulvalue=ultemp;
-	    ultemp=(theCmd->cmd[3]);
-	    ulvalue|=(ultemp<<8);
-	    ultemp=(theCmd->cmd[4]);
-	    ulvalue|=(ultemp<<16);
-	    ultemp=(theCmd->cmd[5]);
-	    ulvalue|=(ultemp<<24);	    
+	    utemp=(theCmd->cmd[2]);	    
+	    uvalue=utemp;
+	    utemp=(theCmd->cmd[3]);
+	    uvalue|=(utemp<<8);
+	    utemp=(theCmd->cmd[4]);
+	    uvalue|=(utemp<<16);
+	    utemp=(theCmd->cmd[5]);
+	    uvalue|=(utemp<<24);	    
 	    ivalue2=theCmd->cmd[6];//+(theCmd->cmd[3]<<8); //command value
-	    return executePlaybackCommand(ivalue,ulvalue,ivalue2);		    
+	    return executePlaybackCommand(ivalue,uvalue,ivalue2);		    
 	case EVENTD_MATCH_GPS:
 	    ivalue=theCmd->cmd[1];
 	    if(ivalue<0 || ivalue>1) return -1;
@@ -1748,8 +1748,8 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
 	case PLAY_GET_EVENT:
 	    pReq.eventNumber=value1;
 	    pReq.pri=value2;
-//	    printf("event %lu, pri %d\n",value1,value2);
-	    sprintf(filename,"%s/play_%lu.dat",PLAYBACK_DIR,pReq.eventNumber);
+//	    printf("event %u, pri %d\n",value1,value2);
+	    sprintf(filename,"%s/play_%u.dat",PLAYBACK_DIR,pReq.eventNumber);
 	    normalSingleWrite((unsigned char*)&pReq,filename,sizeof(PlaybackRequest_t));
 	    makeLink(filename,PLAYBACK_LINK_DIR);
 	    rawtime=time(NULL);
@@ -2039,7 +2039,7 @@ int makeZippedFilePacket(char *filename,int fileTag)
     char outputName[FILENAME_MAX];
     char *inputBuffer;
     char *outputBuffer;
-    unsigned long numBytesIn=0,numBytesOut=0;
+    unsigned int numBytesIn=0,numBytesOut=0;
     
     inputBuffer=readFile(filename,&numBytesIn);
     if(!inputBuffer || !numBytesIn) return 0;
@@ -2052,7 +2052,7 @@ int makeZippedFilePacket(char *filename,int fileTag)
     retVal=zipBuffer(inputBuffer,&outputBuffer[sizeof(ZippedFile_t)],numBytesIn,&numBytesOut);
     if(retVal==0) {		
 	fillGenericHeader(zipFilePtr,PACKET_ZIPPED_FILE,numBytesOut+sizeof(ZippedFile_t));
-	sprintf(outputName,"%s/zipFile_%d_%lu.dat",REQUEST_TELEM_DIR,
+	sprintf(outputName,"%s/zipFile_%d_%u.dat",REQUEST_TELEM_DIR,
 		fileTag,zipFilePtr->unixTime);
 	normalSingleWrite((unsigned char*)outputBuffer,
 			  outputName,numBytesOut+sizeof(ZippedFile_t));
@@ -2104,14 +2104,14 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
 
 
     //Write cmd echo for losd
-    sprintf(filename,"%s/cmd_%ld.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
+    sprintf(filename,"%s/cmd_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
     {
 	FILE *pFile;
 	int fileTag=1;
 	pFile = fopen(filename,"rb");
 	while(pFile!=NULL) {
 	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
+	    sprintf(filename,"%s/cmd_%d_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
 	    fileTag++;
 	}
@@ -2123,14 +2123,14 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
 
 
     //Write cmd echo for sipd
-    sprintf(filename,"%s/cmd_%ld.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
+    sprintf(filename,"%s/cmd_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
     {
 	FILE *pFile;
 	int fileTag=1;
 	pFile = fopen(filename,"rb");
 	while(pFile!=NULL) {
 	    fclose(pFile);
-	    sprintf(filename,"%s/cmd_%ld_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
+	    sprintf(filename,"%s/cmd_%d_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
 	    pFile=fopen(filename,"rb");
 	    fileTag++;
 	}
@@ -2570,11 +2570,11 @@ int startNewRun() {
     //Write file for Monitord
     normalSingleWrite((unsigned char*)&runStart,RUN_START_FILE,sizeof(RunStart_t));
     
-    sprintf(filename,"%s/run_%lu.dat",LOSD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
+    sprintf(filename,"%s/run_%u.dat",LOSD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
     normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
     makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
     
-    sprintf(filename,"%s/run_%lu.dat",SIPD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
+    sprintf(filename,"%s/run_%u.dat",SIPD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
     normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
     makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
 
