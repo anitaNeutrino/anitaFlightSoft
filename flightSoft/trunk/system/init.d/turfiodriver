@@ -47,6 +47,7 @@ load_turfioDriver() {
 	 rm -f ${deviceName}
 	 mknod ${deviceName} c $major 0
 	 chmod 777 ${deviceName}
+	 echo
 	 return $RETVAL
 }
 
@@ -55,6 +56,7 @@ unload_turfioDriver() {
 	rmmod ${driver}	
 	RETVAL=$?
 	rm -f ${deviceName}
+	 echo
 	return $RETVAL
 }
 

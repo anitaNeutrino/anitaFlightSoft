@@ -14,7 +14,7 @@ SURF_DRIVER_DIR=/usr/local/surfDriver
 
 
 load_surfDriver() {
-	echo -n $"Loading $driver: "
+#	echo -n $"Loading $driver: "
 	# Registered name of driver
 	name=surfDriver
 	
@@ -54,7 +54,7 @@ load_surfDriver() {
 	 sleep 2
 	 chmod 777 /dev/??:??
 	 #echo "Ok ($deviceName)"
-
+#	 echo
 	return $RETVAL
 }
 
@@ -63,13 +63,14 @@ unload_surfDriver() {
 	rmmod ${driver}	
 	RETVAL=$?
 	rm -f ${deviceName}*
+	echo
 	return $RETVAL
 }
 
 
 case "$1" in
 	start)
-	    load_surfDriver
+	    action $"Loading surfDriver..." load_surfDriver
 	    ;;
 
 	stop)
