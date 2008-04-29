@@ -1,5 +1,5 @@
-/*  \file AcqdSdDefs.h
-    \brief Header for AcqdSd Definitions
+/*  \file AcqdDefs.h
+    \brief Header for Acqd Definitions
     It's a header file what are you expecting? 
     March 2008 rjn@hep.ucl.ac.uk
 */

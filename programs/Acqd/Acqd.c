@@ -1,5 +1,5 @@
-/*  \file AcqdSd.c
-    \brief The AcqdSd program 
+/*  \file Acqd.c
+    \brief The Acqd program 
     The first version of Acqd that will work (hopefully) with Patrick's new 
     surfDriver.
     April 2008 rjn@hep.ucl.ac.uk
@@ -9,7 +9,7 @@
 #define _GNU_SOURCE
 
 //Flight software includes
-#include "AcqdSd.h"
+#include "Acqd.h"
 #include "surfDriver_ioctl.h"
 #include "turfioDriver_ioctl.h"
 
