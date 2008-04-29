@@ -1,5 +1,5 @@
-/*  \file AcqdSd.h
-    \brief Header for AcqdSd
+/*  \file Acqd.h
+    \brief Header for Acqd
     It's a header file what are you expecting? 
     April 2008 rjn@hep.ucl.ac.uk
 */
@@ -7,7 +7,7 @@
 #ifndef ACQDSD_H
 #define ACQDSD_H
 
-#include "AcqdSdDefs.h"
+#include "AcqdDefs.h"
       
 //Forward Declarations
 
