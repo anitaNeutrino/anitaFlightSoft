@@ -44,10 +44,10 @@ int main(int argc, char *argv[]){
 // indices 1..81 are surf records
      rawDumpFile=fopen(rawDumpName,"w");
      fprintf(rawDumpFile,"#ANITA Event Raw Dumpfile for event %d\n",theEvent);
-     fprintf(rawDumpFile,"%lu #UTC Unix Time (s)\n",theHeader.unixTime);
-     fprintf(rawDumpFile,"%lu #Unix microsec\n",theHeader.unixTimeUs);
-     fprintf(rawDumpFile,"%lu #GPS SubTime (ns)\n",theHeader.gpsSubTime);
-     fprintf(rawDumpFile,"%lu #Event Number\n",theHeader.eventNumber);
+     fprintf(rawDumpFile,"%u #UTC Unix Time (s)\n",theHeader.unixTime);
+     fprintf(rawDumpFile,"%u #Unix microsec\n",theHeader.unixTimeUs);
+     fprintf(rawDumpFile,"%u #GPS SubTime (ns)\n",theHeader.gpsSubTime);
+     fprintf(rawDumpFile,"%u #Event Number\n",theHeader.eventNumber);
      fprintf(rawDumpFile,"%hhu #Priority\n",theHeader.priority);
      fprintf(rawDumpFile,"%hu #Calib Status\n",theHeader.calibStatus);
      fprintf(rawDumpFile,"\n\n");// end index 0

@@ -802,8 +802,8 @@ int sendRawWaveformPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(AnitaEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -838,8 +838,8 @@ int sendRawSurfPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(AnitaEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -875,8 +875,8 @@ int sendPedSubbedWaveformPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
@@ -914,8 +914,8 @@ int sendPedSubbedSurfPackets(int bufSize)
     int retVal;
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
 	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
-	    fprintf(stderr,"Buffer size %d, expected %lu -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    syslog(LOG_ERR,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	    fprintf(stderr,"Buffer size %d, expected %u -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
 	    errorCounter++;
 	}
 	return -1;
