@@ -51,9 +51,9 @@ extern "C" {
 	unsigned int bladeCloneMask;
 	unsigned int puckCloneMask;
 	unsigned int usbintCloneMask;
-	unsigned long fileEpoch;
-	unsigned long gotData;
-	unsigned long justHeader;
+	unsigned int fileEpoch;
+	unsigned int gotData;
+	unsigned int justHeader;
 	char filePrefix[FILENAME_MAX];
 	char relBaseName[FILENAME_MAX];
 	char currentEventFileName[DISK_TYPES][FILENAME_MAX];
@@ -68,7 +68,7 @@ extern "C" {
     int moveFile(const char *theFile, const char *theDir);
     int copyFile(const char *theFile, const char *theDir);
     int copyFileToFile(const char *theFile, const char *newFile);
-    char *readFile(const char *theFile, unsigned long *numBytes);
+    char *readFile(const char *theFile, unsigned int *numBytes);
     int removeFile(const char *theFile);
 
 #ifndef __CINT__
@@ -78,7 +78,7 @@ extern "C" {
     int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
     int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist);
 #endif
-    unsigned long getDiskSpace(char *dirName);
+    unsigned int getDiskSpace(char *dirName);
     unsigned short countFilesInDir(char *dirName);
 
 /* Time stuff */
@@ -87,7 +87,7 @@ extern "C" {
 /* IO routines for inter-process communication */
     int fillHeader(AnitaEventHeader_t *theEventHdPtr, char *filename);
     int fillHeaderWithThisEvent(AnitaEventHeader_t *hdPtr, char *filename,
-				unsigned long eventNumber);
+				unsigned int eventNumber);
     int fillBody(AnitaEventBody_t *theEventBodyPtr, char *filename);
     int fillPedSubbedBody(PedSubbedEventBody_t *theEventBodyPtr, char *filename);
     int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
@@ -96,7 +96,7 @@ extern "C" {
     int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
     int fillLabChipPedstruct(FullLabChipPedStruct_t *pedPtr, char *filename);
     int readEncodedEventFromFile(unsigned char *buffer, char *filename,
-				 unsigned long eventNumber);
+				 unsigned int eventNumber);
     int readSingleEncodedEvent(unsigned char *buffer, char *filename);
 
 
@@ -128,30 +128,30 @@ extern "C" {
     int genericReadOfFile(unsigned char *buffer, char *filename, int maxBytes);
 
 
-    char *getCurrentHkDir(char *baseHkDir,unsigned long unixTime);
+    char *getCurrentHkDir(char *baseHkDir,unsigned int unixTime);
     char *getCurrentHkFilename(char *currentDir, char *prefix, 
-			       unsigned long unixTime);
+			       unsigned int unixTime);
 
     int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes);
     int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes);
     int touchFile(char *filename);
     int checkFileExists(char *filename);
 
-    int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned long unixTime, AnitaHkWriterStruct_t *awsPtr);
+    int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned int unixTime, AnitaHkWriterStruct_t *awsPtr);
     int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
     int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);
     int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr);
     int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr);
 
 //Zipping packets and files
-    int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
-    int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
+    int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes);
+    int unzipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes);
     int zipFileInPlace(char *filename);
     int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask,int baseInd);
     int zipBufferedFileAndMove(char *nonBufFilename);
     int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask,int baseInd);
-    int makeZippedPacket(char *input, unsigned long numBytes, char *output, unsigned long numBytesOut);
-    int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned long numBytesOut);
+    int makeZippedPacket(char *input, unsigned int numBytes, char *output, unsigned int numBytesOut);
+    int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned int numBytesOut);
 // Signal handling routines
 
 // Signal handling stuff
@@ -169,7 +169,7 @@ extern "C" {
 //Generic Header Stuff
     void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes);
     int checkPacket(void *thePtr);
-    unsigned long simpleLongCrc(unsigned long *p, unsigned long n);
+    unsigned int simpleIntCrc(unsigned int *p, unsigned int n);
 
 
     char *packetCodeAsString(PacketCode_t code);
