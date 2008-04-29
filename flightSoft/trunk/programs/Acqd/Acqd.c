@@ -727,7 +727,6 @@ int main(int argc, char **argv) {
       else if(doingEvent>=0) { //RJN changed 24/11/06 for test
 	hdPtr->eventNumber=getEventNumber();
 	bdPtr->eventNumber=hdPtr->eventNumber;
-	lastEvNum=hdPtr->eventNumber;
 	hdPtr->surfMask=surfMask;
 	hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
 		
@@ -1458,7 +1457,6 @@ AcqdErrorCode_t sendClearEvent()
   AcqdErrorCode_t status=ACQD_E_OK;
   int surf;
   for(surf=0;surf<numSurfs;surf++) {
-    surf=tempInd;
     //Send clear pulse to SURF 2 last
     if(surf!=surfBusyWatch) {
       if (setSurfControl(surf, SurfClearEvent) != ACQD_E_OK) {
@@ -1670,7 +1668,7 @@ AcqdErrorCode_t runPedestalMode()
   //and uses the accumulated waveforms to write out a new pedestal file
   AcqdErrorCode_t status=ACQD_E_OK;
   unsigned int tmo=0;
-  unsigned int eventReadyFlag=0;
+  int eventReadyFlag=0;
   struct timeval timeStruct;
   doingEvent=0;
   writeData=writeDebugData;
@@ -1684,9 +1682,8 @@ AcqdErrorCode_t runPedestalMode()
   if(printToScreen)
     printf("Running pedestal mode with %d events\n",numEvents);
 
-  while(currentState=PROG_STATE_RUN && doingEvent<numEvents) {
+  while(currentState==PROG_STATE_RUN && doingEvent<numEvents) {
     //This is the start of the main event loop
-
     //Fill theEvent with zeros 
     bzero(&theEvent, sizeof(theEvent)) ;
     
