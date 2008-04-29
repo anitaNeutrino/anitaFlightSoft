@@ -1843,7 +1843,7 @@ int checkFileExists(char *filename) {
 int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
 {
     static int errorCounter=0;
-    int retVal=compress((unsigned char*)output,(unsigned long)outputBytes,(unsigned char*)input,(unsigned long)inputBytes);
+    int retVal=compress((unsigned char*)output,(unsigned long*)outputBytes,(unsigned char*)input,(unsigned long)inputBytes);
     if(retVal==Z_OK)
 	return 0;
     else {
@@ -1860,7 +1860,7 @@ int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *
 int unzipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
 {
     static int errorCounter=0;
-    int retVal=uncompress((unsigned char*)output,outputBytes,(unsigned char*)input,inputBytes);
+    int retVal=uncompress((unsigned char*)output,(unsigned long*)outputBytes,(unsigned char*)input,(unsigned long)inputBytes);
     if(retVal==Z_OK)
 	return 0;
     else {
