@@ -736,7 +736,7 @@ int main(int argc, char **argv) {
 	//hdPtr->calibStatus;
 
 	if(printToScreen && verbosity) 
-	  printf("Event:\t%u\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+	  printf("Event:\t%u\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
 
 	// Save data if we want to
 	outputEventData();
@@ -1766,7 +1766,7 @@ AcqdErrorCode_t runPedestalMode()
       //hdPtr->calibStatus;
       
       if(printToScreen && verbosity) 
-	printf("Event:\t%u\nSec:\t%ld\nMicrosec:\t%ld\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+	printf("Event:\t%u\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
       
 
       //Add the events to the pedestals
@@ -1942,7 +1942,7 @@ void outputSurfHkData() {
     surfHkCounter=0;
   }
   else {
-    //			    printf("\tSURF HK %ld %ld\n",theSurfHk.unixTime,lastSurfHk);
+    //			    printf("\tSURF HK %d %d\n",theSurfHk.unixTime,lastSurfHk);
     writeSurfHousekeeping(1);
   }
 }
@@ -1981,7 +1981,7 @@ int writeSurfHousekeeping(int dataOrTelem)
   fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
   //Write data to disk
   if(dataOrTelem!=2) {
-    //	sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",surfHkArchiveDir,
+    //	sprintf(theFilename,"%s/surfhk_%d_%d.dat.gz",surfHkArchiveDir,
     //		theSurfHk.unixTime,theSurfHk.unixTimeUs);
     //	retVal+=writeSurfHk(&theSurfHk,theFilename);
     retVal=cleverHkWrite((unsigned char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
@@ -1989,7 +1989,7 @@ int writeSurfHousekeeping(int dataOrTelem)
   }
   if(dataOrTelem!=1) {
     // Write data for Telem
-    sprintf(theFilename,"%s/surfhk_%ld_%ld.dat.gz",SURFHK_TELEM_DIR,
+    sprintf(theFilename,"%s/surfhk_%d_%d.dat.gz",SURFHK_TELEM_DIR,
 	    theSurfHk.unixTime,theSurfHk.unixTimeUs);
     retVal+=writeSurfHk(&theSurfHk,theFilename);
     makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
@@ -2018,7 +2018,7 @@ int writeTurfHousekeeping(int dataOrTelem)
   }
   if(dataOrTelem!=1) {
     // Write data for Telem
-    sprintf(theFilename,"%s/turfhk_%ld_%ld.dat.gz",TURFHK_TELEM_DIR,
+    sprintf(theFilename,"%s/turfhk_%d_%d.dat.gz",TURFHK_TELEM_DIR,
 	    turfRates.unixTime,turfRates.unixTimeUs);
     writeTurfRate(&turfRates,theFilename);
     retVal+=makeLink(theFilename,TURFHK_TELEM_LINK_DIR);
@@ -2047,7 +2047,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 
   if(!useAltDir) {
     if(justWriteHeader==0 && writeData) {
-      sprintf(theFilename,"%s/ev_%ld.dat",theEventDir,
+      sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
 	      theEventPtr->header.eventNumber);
       if(!oldStyleFiles) {
 	//		if(!compressWavefile) 
@@ -2059,7 +2059,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	//		printf("%s\n",theFilename);
       }
       else {
-	sprintf(theFilename,"%s/surf_data.%ld",theEventDir,
+	sprintf(theFilename,"%s/surf_data.%d",theEventDir,
 		theEventPtr->header.eventNumber);
 	FILE *eventFile;
 	int n;
@@ -2076,7 +2076,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     }
 	
     if(writeData) {
-      sprintf(theFilename,"%s/hd_%ld.dat",theEventDir,
+      sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
 	      theEventPtr->header.eventNumber);
       retVal=writeHeader(theHeader,theFilename);
     }
