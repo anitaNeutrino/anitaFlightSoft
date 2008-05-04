@@ -1,0 +1,70 @@
+#!/bin/sh
+# Startup script for anitamount
+#
+# description: Mounts the ANITA data disks, for now just the satamini disk
+#
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+
+mount_anitadisks() {
+    mount_satamini
+    RETVAL=$?
+    return $RETVAL
+}
+
+unmount_anitadisks() {
+    umount_satamini
+    RETVAL=$?
+    return $RETVAL
+}
+
+umount_satamini() {
+    umount /mnt/satamini
+    RETVAL=$?
+    return $RETVAL
+}
+
+mount_satamini() {
+    if df -h | grep -q "satamini"
+    then
+	umount /mnt/satamini
+    fi
+
+    disabled=`getConfigValue anitaSoft.config global disableSatamini`
+    if [ $disabled -eq 1 ] ; then
+	echo "Satamini disk disabled"
+	return /bin/false
+    fi
+
+
+    sudo chmod a-w /mnt/satamini
+    label=`getConfigString anitaSoft.config global sataminiName`
+#    echo "Trying to mount $label on /mnt/satamini"
+    RETVAL=mount -L $label -o defaults /mnt/satamini
+    if df -h | grep -q "satamini"
+    then
+	chmod a+wrx /mnt/satamini
+    fi
+    return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	     action $"Mounting Data Disks..." mount_anitadisks
+	    ;;
+
+	stop)
+	    action $"Unmounting Data Disks..."  unmount_anitadisks
+	    ;;
+
+	*)
+	    echo $"Usage: $0 {start|stop}"
+	    exit 1
+
+esac
+
+exit $RETVAL
