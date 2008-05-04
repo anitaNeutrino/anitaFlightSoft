@@ -25,8 +25,8 @@
 #include <signal.h>
 #include <wait.h>
 
-#define COMM1_PORT	"/dev/ttySTDRV002_0"
-#define COMM2_PORT	"/dev/ttyS1"
+#define COMM1_PORT	"/dev/ttyS1"
+#define COMM2_PORT	"/dev/ttySTDRV002_7"
 #define HIGHRATE_PORT	"/dev/ttyS0"
 
 // SLOWRATE_BAUD - line speed for the slow rate ports COMM1 and COMM2.
