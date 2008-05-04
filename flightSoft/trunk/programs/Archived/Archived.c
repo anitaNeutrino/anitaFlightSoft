@@ -12,6 +12,7 @@
 #include <time.h>
 #include <signal.h>
 #include <zlib.h>
+#include <libgen.h> //For Mac OS X
 
 #include "Archived.h"
 
@@ -388,14 +389,14 @@ void processEvent()
     int surf,chan,numBytes;
 
     //Stuff for puck
-    static int errorCounter=0;
-    static int fileEpoch=0;
-    static int fileNum=0;
-    static int dirNum=0;
-    static int otherDirNum=0;
-    static char puckDirName[FILENAME_MAX];
-    static char puckHeaderFileName[FILENAME_MAX];
-    static char puckEventFileName[FILENAME_MAX];
+    //    static int errorCounter=0;
+    //    static int fileEpoch=0;
+    //    static int fileNum=0;
+    //    static int dirNum=0;
+    //    static int otherDirNum=0;
+    //    static char puckDirName[FILENAME_MAX];
+    //    static char puckHeaderFileName[FILENAME_MAX];
+    //    static char puckEventFileName[FILENAME_MAX];
     
 
     int priority=(theHead.priority&0xf);

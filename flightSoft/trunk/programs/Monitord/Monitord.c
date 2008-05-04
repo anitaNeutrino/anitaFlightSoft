@@ -15,8 +15,9 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <libgen.h> //For Mac OS X
 
-
+//Flightsoft Includes
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
@@ -974,7 +975,7 @@ int sortOutPidFile(char *progName)
     /* Config file thingies */
     int status=0;
     int retVal=0;
-    KvpErrorCode kvpStatus=0;
+    //    KvpErrorCode kvpStatus=0;
     char* eString ;
     char *tempString;
 

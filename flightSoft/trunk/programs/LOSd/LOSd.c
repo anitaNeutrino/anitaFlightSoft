@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <zlib.h>
 #include <sys/time.h>
+#include <libgen.h> //For Mac OS X
 
 /* Flight soft includes */
 #include "includes/anitaFlight.h"
@@ -1005,8 +1006,8 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 int sendRawWaveformPackets(int bufSize) 
 {
     if(bufSize!=sizeof(AnitaEventBody_t)) {
-	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
-	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(AnitaEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(AnitaEventBody_t));
 	return -1;
     }
     AnitaEventBody_t *bdPtr = (AnitaEventBody_t*) eventBuffer;
@@ -1031,8 +1032,8 @@ int sendRawWaveformPackets(int bufSize)
 int sendRawSurfPackets(int bufSize) 
 {
     if(bufSize!=sizeof(AnitaEventBody_t)) {
-	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
-	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(AnitaEventBody_t));
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(AnitaEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(AnitaEventBody_t));
 	return -1;
     }
     AnitaEventBody_t *bdPtr = (AnitaEventBody_t*) eventBuffer;
@@ -1058,8 +1059,8 @@ int sendRawSurfPackets(int bufSize)
 int sendPedSubbedWaveformPackets(int bufSize) 
 {
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
-	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
-	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(PedSubbedEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(PedSubbedEventBody_t));
     }
     PedSubbedEventBody_t *bdPtr = (PedSubbedEventBody_t*) eventBuffer;
     int chan;
@@ -1085,8 +1086,8 @@ int sendPedSubbedWaveformPackets(int bufSize)
 int sendPedSubbedSurfPackets(int bufSize) 
 {
     if(bufSize!=sizeof(PedSubbedEventBody_t)) {
-	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
-	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,sizeof(PedSubbedEventBody_t));
+	syslog(LOG_ERR,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(PedSubbedEventBody_t));
+	fprintf(stderr,"Buffer size %d, expected %d -- Bailing\n",bufSize,(unsigned int)sizeof(PedSubbedEventBody_t));
 	return -1;
     }
     PedSubbedEventBody_t *bdPtr = (PedSubbedEventBody_t*) eventBuffer;

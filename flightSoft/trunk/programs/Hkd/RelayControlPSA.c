@@ -12,6 +12,7 @@
 #include <sys/dir.h>
 /* PSA for toggle, multibit */
 #include <getopt.h>
+#include <libgen.h> //For Mac OS X
 
 /* Flight soft includes */
 #include "includes/anitaFlight.h"

@@ -22,7 +22,7 @@ $(Targets): % : %.o ${Objs}
 	ln -sf $(shell pwd)/$@ ${ANITA_FLIGHT_SOFT_DIR}/bin
 
 Pdebug:	Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o
-	@$(LD) Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o -static $(LDFLAGS) $(ANITA_LIBS)  -o Pdebug
+	$(LD) Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o  $(LDFLAGS) $(ANITA_LIBS)  -o Pdebug
 
 clean: objclean
 	@-rm -f $(Targets) Pdebug

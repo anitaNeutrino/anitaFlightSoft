@@ -46,25 +46,25 @@ int main (int argc, char *argv[])
 	gettimeofday(&timeStruct,NULL);
 /* 	printf("%d %d\n",timeStruct.tv_sec,timeStruct.tv_usec); */
 	if(writeGpsThisTime(timeStruct.tv_usec)) {
-	    sprintf(filename,"%s/gps_%ld_%ld.dat",gpsdDir,timeStruct.tv_sec,timeStruct.tv_usec*10);
+	  sprintf(filename,"%s/gps_%d_%d.dat",gpsdDir,(int)timeStruct.tv_sec,(int)timeStruct.tv_usec*10);
 	    pFile=fopen(filename,"w");
 	    if(pFile == NULL) {
 		syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 		exit(0);
 	    }	
-	    fprintf(pFile,"%ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec*10);
+	    fprintf(pFile,"%d %d\n",(int)timeStruct.tv_sec,(int)timeStruct.tv_usec*10);
 	    fclose(pFile);
 	    makeLink(filename,gpsdLinkDir);
 	}
 
 	//Acqd file
-	sprintf(filename,"%s/acqd_%ld_%ld.dat",acqdDir,timeStruct.tv_sec,timeStruct.tv_usec);
+	sprintf(filename,"%s/acqd_%d_%d.dat",acqdDir,(int)timeStruct.tv_sec,(int)timeStruct.tv_usec);
 	pFile=fopen(filename,"w");
 	if(pFile == NULL) {
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	    exit(0);
 	}	
-	fprintf(pFile,"%ld %ld\n",timeStruct.tv_sec,timeStruct.tv_usec*10);
+	fprintf(pFile,"%d %d\n",(int)timeStruct.tv_sec,(int)timeStruct.tv_usec*10);
 	fclose(pFile);
 	makeLink(filename,acqdLinkDir);
 	
