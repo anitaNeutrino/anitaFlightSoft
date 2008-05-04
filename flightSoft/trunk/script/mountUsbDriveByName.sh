@@ -39,4 +39,4 @@ umount $MOUNT_POINT > /dev/null 2>&1
 #    echo "Can't find serial number"
 #fi
 
-mount -L $DRIVE -o defaults,sync $MOUNT_POINT
+mount -L $DRIVE -o defaults $MOUNT_POINT
