@@ -409,7 +409,7 @@ typedef struct {
 
 typedef struct {
     float latitude;
-    float intitude;
+    float longitude;
     float altitude;
     unsigned char temps[8];  //{SBS,SURF,TURF,RAD,RFCM1,RFCM5,RFCM12,RFCM15}
     unsigned char powers[4]; //{PV V, +24V, BAT I, 24 I}
@@ -426,7 +426,7 @@ typedef struct {
     unsigned int unixTime;
     unsigned int lastEventNumber;
     float latitude;
-    float intitude;
+    float longitude;
     float altitude;
     unsigned short sbsTemp[2];
 } SlowRateType1_t;
@@ -530,7 +530,7 @@ typedef struct {
     float mrms;
     float brms;
     float latitude;
-    float intitude;
+    float longitude;
     float altitude;
     unsigned int attFlag;
 } GpsAdu5PatStruct_t;
@@ -574,7 +574,7 @@ typedef struct {
     unsigned int timeOfDay;
     unsigned int numSats;
     float latitude;
-    float intitude;
+    float longitude;
     float altitude;
     float trueCourse;
     float verticalVelocity;
