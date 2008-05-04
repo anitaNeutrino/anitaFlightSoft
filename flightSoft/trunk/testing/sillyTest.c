@@ -37,7 +37,9 @@ int main (void)
 //    AnitaEventHeader_t header;
 
     printf("Size of int %d  (long %d)\n",sizeof(int),sizeof(long)); 
-    printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t)); 
+    printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t));
+    printf("Size of SlowRateHkStruct_t: %d\n",sizeof(SlowRateHkStruct_t)); 
+    printf("Size of SlowRateRFStruct_t: %d\n",sizeof(SlowRateRFStruct_t));  
     printf("Size of SlowRateFull_t: %d\n",sizeof(SlowRateFull_t)); 
     printf("Size of TurfioStruct_t: %d\n",sizeof(TurfioStruct_t));  
     printf("Size of SlacTurfioStruct_t: %d\n",sizeof(SlacTurfioStruct_t)); 

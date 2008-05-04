@@ -25,7 +25,7 @@
 #include <signal.h>
 #include <wait.h>
 
-#define COMM1_PORT	"/dev/ttyS2"
+#define COMM1_PORT	"/dev/ttySTDRV002_0"
 #define COMM2_PORT	"/dev/ttyS1"
 #define HIGHRATE_PORT	"/dev/ttyS0"
 
