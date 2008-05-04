@@ -41,14 +41,48 @@ mount_satamini() {
     return $RETVAL
 }
 
+
+unmount_satablade() {
+    umount /mnt/satablade
+    RETVAL=$?
+    return $RETVAL
+}
+
+mount_satablade() {
+    if df -h | grep -q "satablade"
+    then
+	umount /mnt/satablade
+    fi
+
+    disabled=`getConfigValue anitaSoft.config global disableSatablade`
+    if [ $disabled -eq 1 ] ; then
+	echo "Satablade disk disabled"
+	return /bin/false
+    fi
+
+
+    sudo chmod a-w /mnt/satablade
+    label=`getConfigString anitaSoft.config global satabladeName`
+#    echo "Trying to mount $label on /mnt/satablade"
+    mount -L $label -o defaults /mnt/satablade
+    RETVAL=$?
+    if df -h | grep -q "satablade"
+    then
+	chmod a+wrx /mnt/satablade
+    fi
+    return $RETVAL
+}
+
 mount_anitadisks() {
     action $"Mounting /mnt/satamini..." mount_satamini
+    action $"Mounting /mnt/satablade..." mount_satablade
     RETVAL=$?
     return $RETVAL
 }
 
 unmount_anitadisks() {
     action $"Unmounting /mnt/satamini..." unmount_satamini
+    action $"Unmounting /mnt/satablade..." unmount_satablade
     RETVAL=$?
     return $RETVAL
 }
