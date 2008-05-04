@@ -34,7 +34,7 @@ start() {
 
 stop() {
 #	echo -n $"Shutting down SIPd: "
-	/usr/local/bin/daemon --stop -n SIPd 
+	/usr/local/bin/daemon -u anita --stop -n SIPd 
 #	killproc SIPd
 #	echo
 	RETVAL=$?
