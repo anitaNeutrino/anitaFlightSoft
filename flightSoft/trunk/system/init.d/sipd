@@ -3,7 +3,6 @@
 # SIPd        Starts SIPd
 #
 #
-# chkconfig: 2345 12 88
 # description: SIPd is the program that talks to the SIP. It is 
 #              quite important. 
 ### BEGIN INIT INFO
@@ -25,20 +24,21 @@ umask $SIPD_UMASK
 SIPD_OPTIONS=-d
 
 start() {
- 	echo -n $"Starting SIPd: "
-	daemon --user=anita SIPd $SIPD_OPTIONS
+# 	echo -n $"Starting SIPd: "
+	/usr/local/bin/daemon -u anita -r SIPd -n SIPd 
 	RETVAL=$?
-	echo
+#	echo
 	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/SIPd
 	return $RETVAL
 }	
 
 stop() {
-	echo -n $"Shutting down SIPd: "
-	killproc SIPd
-	echo
+#	echo -n $"Shutting down SIPd: "
+	/usr/local/bin/daemon --stop -n SIPd 
+#	killproc SIPd
+#	echo
 	RETVAL=$?
-	echo
+#	echo
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/SIPd
 	return $RETVAL
 }
@@ -52,38 +52,19 @@ restart() {
 	start
 }	
 
-reload()  {
-    RETVAL=1
-    SIPd=`cat /var/run/SIPd.pid 2>/dev/null`
-    echo -n "Reloading SIPd..."
-    if [ -n ${SIPd} ] && [ -e /proc/${SIPd} ]; then
-	kill -HUP $SIPd;
-	RETVAL=$?
-    fi
-    if [ $RETVAL -ne 0 ]; then
-	fail
-    else
-	success
-    fi
-    echo
-    return $RETVAL
-}
-
 case "$1" in
   start)
-  	start
+  	action $"Starting SIPd..." start
 	;;
   stop)
-  	stop
+  	action $"Stoping SIPd..." stop
 	;;
   status)
   	rhstatus
 	;;
   restart)
-  	restart
-	;;
-  reload)
-	reload
+  	action $"Stoping SIPd..." stop
+  	action $"Starting SIPd..." start
 	;;
   condrestart)
   	[ -f /var/lock/subsys/SIPd ] && restart || :
