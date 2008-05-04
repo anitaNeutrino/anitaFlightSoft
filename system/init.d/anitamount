@@ -42,13 +42,11 @@ mount_satamini() {
 }
 
 mount_anitadisks() {
-    action $"Mounting /mnt/satamini..." mount_satamini
     RETVAL=$?
     return $RETVAL
 }
 
 unmount_anitadisks() {
-    action $"Unmounting /mnt/satamini..." unmount_satamini
     RETVAL=$?
     return $RETVAL
 }
@@ -56,11 +54,11 @@ unmount_anitadisks() {
 
 case "$1" in
 	start)
-	     mount_anitadisks
+	    action $"Mounting /mnt/satamini..." mount_satamini
 	    ;;
 
 	stop)
-	    unmount_anitadisks
+	    action $"Unmounting /mnt/satamini..." unmount_satamini
 	    ;;
 
 	*)
