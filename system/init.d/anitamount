@@ -25,7 +25,7 @@ mount_satamini() {
     disabled=`getConfigValue anitaSoft.config global disableSatamini`
     if [ $disabled -eq 1 ] ; then
 	echo "Satamini disk disabled"
-	return 0
+	return 1
     fi
 
 
@@ -57,7 +57,7 @@ mount_satablade() {
     disabled=`getConfigValue anitaSoft.config global disableSatablade`
     if [ $disabled -eq 1 ] ; then
 	echo "Satablade disk disabled"
-	return 0
+	return 1
     fi
 
 
