@@ -6,7 +6,7 @@ daemon --stop -n GPSd
 daemon --stop -n Monitord
 daemon --stop -n Cmdd
 daemon --stop -n Calibd
-daemon --stop -n Acqd
+#daemon --stop -n Acqd
 daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 
@@ -24,6 +24,8 @@ mkdir /mnt/data/current/log
 mkdir /mnt/satamini/current/log
 cp /mnt/data/current/log/simpleLog.txt /mnt/satamini/current/log/simpleLog.txt
 
+sleep 2
+
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
 daemon -r Archived -n Archived
@@ -38,6 +40,6 @@ daemon -r Eventd -n Eventd
 #daemon -r LOSd -n LOSd
 #daemon -r SIPd -n SIPd
 
-sleep 10
+sleep 2
 
 Acqd 
