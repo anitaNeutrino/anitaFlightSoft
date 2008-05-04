@@ -9,17 +9,6 @@
 . /etc/rc.d/init.d/functions
 
 
-mount_anitadisks() {
-    action $"Mounting /mnt/satamini..." mount_satamini
-    RETVAL=$?
-    return $RETVAL
-}
-
-unmount_anitadisks() {
-    action $"Unmounting /mnt/satamini..." unmount_satamini
-    RETVAL=$?
-    return $RETVAL
-}
 
 umount_satamini() {
     umount /mnt/satamini
@@ -49,6 +38,18 @@ mount_satamini() {
     then
 	chmod a+wrx /mnt/satamini
     fi
+    return $RETVAL
+}
+
+mount_anitadisks() {
+    action $"Mounting /mnt/satamini..." mount_satamini
+    RETVAL=$?
+    return $RETVAL
+}
+
+unmount_anitadisks() {
+    action $"Unmounting /mnt/satamini..." unmount_satamini
+    RETVAL=$?
     return $RETVAL
 }
 
