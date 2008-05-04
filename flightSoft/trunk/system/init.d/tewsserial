@@ -1,0 +1,49 @@
+#!/bin/sh
+# Startup script for tewsSerial
+#
+# chkconfig: 12345 06 99
+# description: Load/unload the tewsSerial drivers and make appropriate
+# device nodes
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+
+load_tewsSerial() {
+#	echo -n $"Loading $driver: "
+        modprobe tdrv002serialdrv
+	RETVAL=$?
+	return $RETVAL
+}
+
+unload_tewsSerial() {
+#	echo -n $"Un loading $driver: "
+        modprobe -r tdrv002serialdrv
+	RETVAL=$?
+	return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	     action $"Loading TEWS Serial driver..." load_tewsSerial
+	    ;;
+
+	stop)
+	    action $"Unoading TEWS Serial driver..."  unload_tewsSerial
+	    ;;
+
+	restart)
+	    action $"Unoading TEWS Serial driver..."  unload_tewsSerial
+	    action $"Loading TEWS Serial driver..." load_tewsSerial
+	    ;;
+
+
+	*)
+	    echo $"Usage: $0 {start|stop|restart}"
+	    exit 1
+
+esac
+
+exit $RETVAL
