@@ -72,8 +72,8 @@
 #define HILBERT_ORDER 5 /*order used for Hilbert transforms in Stokes S3 */
 
 //Whiteheat things
-#define G12A_DEV_NAME "/dev/ttySTDRV002_5"
-#define G12B_DEV_NAME "/dev/ttySTDRV002_6"
+#define G12A_DEV_NAME "/dev/ttySTDRV002_6"
+#define G12B_DEV_NAME "/dev/ttySTDRV002_5"
 #define ADU5A_DEV_NAME "/dev/ttySTDRV002_4"
 #define MAGNETOMETER_DEV_NAME "/dev/ttyUSB1"
 
