@@ -28,7 +28,6 @@ mount_satamini() {
 	return 1
     fi
 
-
     sudo chmod a-w /mnt/satamini
     label=`getConfigString anitaSoft.config global sataminiName`
 #    echo "Trying to mount $label on /mnt/satamini"
