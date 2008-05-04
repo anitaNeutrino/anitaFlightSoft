@@ -4,14 +4,17 @@
   Reads the event objects written by Eventd, assigns a priority to each event based on the likelihood that it is an interesting event. Events with the highest priority will be transmitted to the ground first.
   March 2005 rjn@mps.ohio-state.edu
 */
+#include <sys/time.h>
+#include <signal.h>
+#include <libgen.h> //For Mac OS X
+
+//Flightsoft Includes
 #include "Prioritizerd.h"
 #include "AnitaInstrument.h"
 #include "GenerateScore.h"
 #include "Filters.h"
 #include "pedestalLib/pedestalLib.h"
 #include "utilLib/utilLib.h"
-#include <sys/time.h>
-#include <signal.h>
 
 //#define TIME_DEBUG 1
 //#define WRITE_DEBUG_FILE

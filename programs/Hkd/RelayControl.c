@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/dir.h>
+#include <libgen.h> //For Mac OS X
 
 /* Flight soft includes */
 #include "includes/anitaFlight.h"

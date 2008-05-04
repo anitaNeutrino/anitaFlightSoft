@@ -14,7 +14,7 @@
 #include <time.h>
 #include <errno.h>
 #include <signal.h>
-
+#include <libgen.h> //For Mac OS X
 
 /* Flight soft includes */
 #include "includes/anitaFlight.h"
@@ -386,7 +386,7 @@ int setupG12()
 
 
     if(printToScreen) 
-	fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",G12A_DEV_NAME,g12Command,strlen(g12Command));
+      fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",G12A_DEV_NAME,g12Command,(int)strlen(g12Command));
     retVal=write(fdG12, g12Command, strlen(g12Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
@@ -649,7 +649,7 @@ void processPosString(char *gpsString, int gpsLength) {
     char eastOrWest=0,northOrSouth=0;
     int latDeg=0,longDeg=0;
     float latMin=0,longMin=0;
-    float reserved;
+    //    float reserved;
     char firmware[5];
     struct timeval timeStruct;
 	
@@ -1130,7 +1130,7 @@ int updateClockFromG12(time_t gpsRawTime)
     else if(childPid<0) {
 	//Something wrong
 	syslog(LOG_ERR,"Problem updating clock, %d: %s ",gpsRawTime,strerror(errno));
-	fprintf(stderr,"Problem updating clock, %d: %s ",gpsRawTime,strerror(errno));
+	fprintf(stderr,"Problem updating clock, %d: %s ",(int)gpsRawTime,strerror(errno));
 	return 0;
     }
 

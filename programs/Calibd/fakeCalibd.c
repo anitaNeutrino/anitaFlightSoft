@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
+#include <libgen.h> //For Mac OS X
 
 // Flight Software includes
 #include "Calibd.h"
@@ -235,7 +236,7 @@ void writeStatus()
     //Might change the below when we have any idea what it is doing
     theStatus.status |= (((attenState)&0xf)<<ATTEN_SHIFT); 
     
-    sprintf(filename,"%s/calib_%ld.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
+    sprintf(filename,"%s/calib_%u.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
     writeCalibStatus(&theStatus,filename);
     makeLink(filename,CALIBD_STATUS_LINK_DIR);
 

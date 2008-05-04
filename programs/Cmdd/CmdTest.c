@@ -14,6 +14,10 @@
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
+#include <libgen.h> //For Mac OS X
+
+
+//Flightsoft Includes
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"

@@ -862,10 +862,10 @@ unsigned int getDiskSpace(char *dirName) {
 	printf("Dir: %s\n",dirName);
 	printf("Ret Val: %d\n",retVal);
 	printf("MegaBytes Available: %u\n",megabytesAvailable);
-	printf("Available Blocks: %ld\n",diskStat.f_bavail);
-	printf("Free Blocks: %ld\n",diskStat.f_bfree);
-	printf("Total Blocks: %ld\n",diskStat.f_blocks);
-	printf("Block Size: %lu\n",diskStat.f_bsize);
+	printf("Available Blocks: %ld\n",(long)diskStat.f_bavail);
+	printf("Free Blocks: %ld\n",(long)diskStat.f_bfree);
+	printf("Total Blocks: %ld\n",(long)diskStat.f_blocks);
+	printf("Block Size: %lu\n",(long)diskStat.f_bsize);
 //	printf("Free File Nodes: %d\n",diskStat.f_ffree);
 //	printf("Total File Nodes: %d\n",diskStat.f_files);
 //	printf("Type Of Info: %d\n",diskStat.f_type);

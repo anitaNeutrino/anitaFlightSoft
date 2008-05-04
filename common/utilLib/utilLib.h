@@ -22,7 +22,12 @@ extern "C" {
 #include <time.h>
 #include <zlib.h>
 #include <stdio.h>
+#include <signal.h>
 
+  //Hack for SIGCLD name change
+#ifndef SIGCLD
+#define SIGCLD SIGCHLD
+#endif
 
     typedef enum {
 	PROG_STATE_INIT=0,

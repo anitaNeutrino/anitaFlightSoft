@@ -21,6 +21,7 @@
 #include <math.h>
 #include <errno.h>
 #include <signal.h>
+#include <libgen.h> //For Mac OS X
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <linux/pci.h>

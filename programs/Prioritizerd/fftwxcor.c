@@ -16,7 +16,7 @@ Sun Nov 26 05:11:19 2006
 
 
 #include <stdio.h>
-#include <values.h>
+//#include <values.h>
 #include <math.h>
 #include <stdlib.h>
 #include <malloc.h>
