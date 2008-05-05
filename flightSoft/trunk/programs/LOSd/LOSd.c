@@ -16,6 +16,7 @@
 #include <zlib.h>
 #include <sys/time.h>
 #include <libgen.h> //For Mac OS X
+#include <poll.h>
 
 /* Flight soft includes */
 #include "includes/anitaFlight.h"
@@ -23,7 +24,10 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "includes/anitaStructures.h"
-#include "losLib/los.h"
+#include "losLib/telemwrap.h"
+
+#define LOS_MAX_BYTES 8000
+#define TIMEOUT_IN_MILLISECONDS 1000
 
 int initDevice();
 void sendWakeUpBuffer();
@@ -46,7 +50,7 @@ int sendEncodedSurfPackets(int bufSize);
 int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize);
 int sortOutPidFile(char *progName);
-
+int writeLosData(unsigned char *buffer, int numBytes);
 
 /* Signal Handle */
 void handleBadSigs(int sig);
@@ -82,9 +86,12 @@ int currentPri=0;
 /*Global Variables*/
 unsigned char eventBuffer[MAX_EVENT_SIZE];
 unsigned char losBuffer[LOS_MAX_BYTES];
+unsigned char wrappedBuffer[LOS_MAX_BYTES];
 int numBytesInBuffer=0;
 int sendData=0;
 int sendWavePackets=0;
+int fdLos=0;
+
 
 #define MAX_ATTEMPTS 50
 
@@ -307,17 +314,13 @@ int main(int argc, char *argv[])
 
 
 int initDevice() {
-    int retVal=los_init((unsigned char)losBus,(unsigned char)losSlot,0,1,100);
-    if(retVal!=0) {
-	syslog(LOG_ERR,"Problem opening LOS board: %s",los_strerror());	
-	fprintf(stderr,"Problem opening LOS board: %s\n",los_strerror()); 
-    }
-    else if(verbosity) {
-	printf("Succesfully opened board: Bus %d, Slot %d\n",losBus,losSlot);
-    }
-
-
-    return retVal;
+  int retVal=0;
+  if(fdLos==0) {
+    //First time
+    fdLos = open("/dev/los", O_WRONLY | O_NONBLOCK);
+    telemwrap_init(TW_LOS);
+  }
+  return retVal;
 }
 
 int doWrite() {
@@ -326,28 +329,22 @@ int doWrite() {
     static struct timeval lastTime;
     struct timeval newTime;
     float timeDiff;
+    int retVal;
     if(first) {
 	gettimeofday(&lastTime,0);
 	first=0;
     }
 //    if(numBytesInBuffer%2==1) numBytesInBuffer++;
-//    printf("Trying to write %d bytes\n",numBytesInBuffer);
-    int retVal;
-    int attempts=0;
+//    printf("Trying to write %d bytes\n",
     if(!laptopDebug) {
-	while(attempts<MAX_ATTEMPTS) {
-	    retVal=los_write(losBuffer,numBytesInBuffer);
-	    if(retVal==0) break;
-	    attempts++;
-	}
-	if(attempts>30) {
-	    printf("Took %d attempts to write %d bytes\n",attempts,numBytesInBuffer);
-	    syslog(LOG_ERR,"Took %d attempts to write %d bytes\n",attempts,numBytesInBuffer);
-
-	}
+      retVal=writeLosData(losBuffer,numBytesInBuffer);
+      if(retVal!=0) {
+	syslog(LOG_ERR,"Error sending los buffer\n");
+	fprintf(stderr,"Error sending los buffer\n");
+      }
     }
     else {
-	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
+      //	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
     }	
 
     dataCounter+=numBytesInBuffer;
@@ -1169,5 +1166,39 @@ int sortOutPidFile(char *progName)
     return -1;
   }
   writePidFile(LOSD_PID_FILE);
+  return 0;
+}
+
+int writeLosData(unsigned char *buffer, int numBytesSci)
+{
+
+  unsigned int nbytes, retVal,ret;
+  
+  nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci);
+  if (nbytes < 0) {
+    syslog(LOG_ERR,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
+    fprintf(stderr,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
+    return -1;
+  } else {
+    struct pollfd writepoll;    
+    writepoll.fd = fdLos;
+    writepoll.events = POLLOUT;
+    retVal = poll(&writepoll, 1, TIMEOUT_IN_MILLISECONDS);
+    if (retVal > 0) {
+      // write will now not block
+      ret = write(fdLos, wrappedBuffer, nbytes);
+    } else if (retVal == 0) {
+      // timeout, do something else, maybe check LOS status using
+      // status = ioctl(fd, LOS_IOCSTATUS);
+      //
+      // probably put this into a loop above to guarantee that this
+     // packet is sent
+    } else { // retVal < 0
+      // Probably caught a signal - if so, errno will be EINTR
+      syslog(LOG_ERR,"Error sending los data -- %s\n",strerror(errno));
+      fprintf(stderr,"Error sending los data -- %s\n",strerror(errno));
+      return -1;
+    }
+  }
   return 0;
 }
