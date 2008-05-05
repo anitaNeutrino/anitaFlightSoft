@@ -13,6 +13,7 @@ driver=acromag
 
 load_acromag() {
 #	echo -n $"Loading $driver: "
+        modprobe coretemp
 	/bin/mknod -m 666 /dev/apc8620_0 c 46 0 #(1st carrier)
 	/bin/mknod -m 666 /dev/apc8620_1 c 46 1 #(2nd carrier)
 	insmod /usr/local/acromag/apc8620.ko
@@ -22,6 +23,9 @@ load_acromag() {
 
 unload_acromag() {
 #	echo -n $"Un loading $driver: "
+        modprobe -r coretemp
+	rm /dev/apc8620_0
+	rm /dev/apc8620_1
 	rmmod apc8620
 	RETVAL=$?
 	return $RETVAL
