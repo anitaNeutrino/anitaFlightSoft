@@ -111,7 +111,7 @@ typedef struct {
   int active;
 } ip320_desc; /* IP320 descriptor structure */
 ip320_desc desc[CHANS_PER_IP320];
-char *header = NULL;
+char header[180];
 int isTemp=0;
 int prettyFormat = 0;
 /* Advanced prettyprinting stuff */
@@ -853,7 +853,8 @@ void readHkReadoutConfig()
 	//		 rowaddr[i][2], rowaddr[i][3], rowaddr[i][4]);
       }
     temp = kvpGetString("headername");
-    if (temp != NULL) header=temp;
+    if (temp != NULL) 
+      strncpy(headername,temp,179);
     for (i=0;i<CHANS_PER_IP320;i++)
       {
 	char configstring[50];
@@ -879,6 +880,8 @@ void readHkReadoutConfig()
 void prettyPrintLookupFile()
 {
   //For now just try and print power values
+  time_t rawTime;
+  time(&rawTime);
   int board=1;
   int useRange=ip320Ranges[board];
   int i, linecount=0;
@@ -888,7 +891,7 @@ void prettyPrintLookupFile()
     fprintf(outFile,"%s:\n", header);
   else
     fprintf(outFile,"No description available!\n");
-  
+  fprintf("Date: %s\n",ctime(rawTime));
   if (!numRows || !prettyFormat) {
       for (i=0;i<CHANS_PER_IP320;i++)
       {
