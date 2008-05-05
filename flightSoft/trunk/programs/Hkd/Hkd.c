@@ -854,7 +854,7 @@ void readHkReadoutConfig()
       }
     temp = kvpGetString("headername");
     if (temp != NULL) 
-      strncpy(headername,temp,179);
+      strncpy(header,temp,179);
     for (i=0;i<CHANS_PER_IP320;i++)
       {
 	char configstring[50];
