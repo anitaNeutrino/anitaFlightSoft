@@ -59,17 +59,6 @@ int maxAcqdWaitPeriod=180;
 int maxEventQueueSize=300;
 int maxHkQueueSize=200;
 
-char acqdPidFile[FILENAME_MAX];
-char archivedPidFile[FILENAME_MAX];
-char calibdPidFile[FILENAME_MAX];
-char cmddPidFile[FILENAME_MAX];
-char eventdPidFile[FILENAME_MAX];
-char gpsdPidFile[FILENAME_MAX];
-char hkdPidFile[FILENAME_MAX];
-char losdPidFile[FILENAME_MAX];
-char prioritizerdPidFile[FILENAME_MAX];
-char sipdPidFile[FILENAME_MAX];
-char monitordPidFile[FILENAME_MAX];
 char lastRunNumberFile[FILENAME_MAX];
 
 
@@ -266,7 +255,7 @@ int main (int argc, char *argv[])
 	}
     } while(currentState==PROG_STATE_INIT);    
     closeHkFilesAndTidy(&monWriter);
-    unlink(monitordPidFile);
+    unlink(MONITORD_PID_FILE);
     return 0;
 }
 
@@ -307,94 +296,6 @@ int readConfigFile()
 	watchProcesses=kvpGetInt("watchProcesses",0);
 	maxEventQueueSize=kvpGetInt("maxEventQueueSize",300);
 	maxHkQueueSize=kvpGetInt("maxHkQueueSize",200);
-	tempString=kvpGetString("acqdPidFile");
-	if(tempString) {
-	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
-	    fprintf(stderr,"Couldn't get acqdPidFile\n");
-	}
-	tempString=kvpGetString("calibdPidFile");
-	if(tempString) {
-	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
-	    fprintf(stderr,"Couldn't get calibdPidFile\n");
-	}
-	tempString=kvpGetString("cmddPidFile");
-	if(tempString) {
-	    strncpy(cmddPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmddPidFile");
-	    fprintf(stderr,"Couldn't get cmddPidFile\n");
-	}
-	tempString=kvpGetString("archivedPidFile");
-	if(tempString) {
-	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
-	    fprintf(stderr,"Couldn't get archivedPidFile\n");
-	}
-	tempString=kvpGetString("eventdPidFile");
-	if(tempString) {
-	    strncpy(eventdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventdPidFile");
-	    fprintf(stderr,"Couldn't get eventdPidFile\n");
-	}
-	tempString=kvpGetString("gpsdPidFile");
-	if(tempString) {
-	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
-	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
-	}
-	tempString=kvpGetString("hkdPidFile");
-	if(tempString) {
-	    strncpy(hkdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkdPidFile");
-	    fprintf(stderr,"Couldn't get hkdPidFile\n");
-	}
-	tempString=kvpGetString("losdPidFile");
-	if(tempString) {
-	    strncpy(losdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get losdPidFile");
-	    fprintf(stderr,"Couldn't get losdPidFile\n");
-	}
-	tempString=kvpGetString("prioritizerdPidFile");
-	if(tempString) {
-	    strncpy(prioritizerdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdPidFile");
-	    fprintf(stderr,"Couldn't get prioritizerdPidFile\n");
-	}
-	tempString=kvpGetString("sipdPidFile");
-	if(tempString) {
-	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
-	    fprintf(stderr,"Couldn't get sipdPidFile\n");
-	}
-	tempString=kvpGetString("monitordPidFile");
-	if(tempString) {
-	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
-	    fprintf(stderr,"Couldn't get monitordPidFile\n");
-	}
 
 	tempString=kvpGetString("bladeName");
 	if(tempString) {
@@ -811,21 +712,21 @@ char *getProgName(ProgramId_t prog) {
 }
 
 char *getPidFile(ProgramId_t prog) {
-    switch(prog) {
-	case ID_ACQD: return acqdPidFile;
-	case ID_ARCHIVED: return archivedPidFile;
-	case ID_CALIBD: return calibdPidFile;
-	case ID_CMDD: return cmddPidFile;
-	case ID_EVENTD: return eventdPidFile;
-	case ID_GPSD: return gpsdPidFile;
-	case ID_HKD: return hkdPidFile;
-	case ID_LOSD: return losdPidFile;
-	case ID_PRIORITIZERD: return prioritizerdPidFile;
-	case ID_SIPD: return sipdPidFile;
-	case ID_MONITORD: return monitordPidFile;
-	default: break;
-    }
-    return NULL;
+  switch(prog) {
+  case ID_ACQD: return ACQD_PID_FILE;
+  case ID_ARCHIVED: return ARCHIVED_PID_FILE;
+  case ID_CALIBD: return CALIBD_PID_FILE;
+  case ID_CMDD: return CMDD_PID_FILE;
+  case ID_EVENTD: return EVENTD_PID_FILE;
+  case ID_GPSD: return GPSD_PID_FILE;
+  case ID_HKD: return HKD_PID_FILE;
+  case ID_LOSD: return LOSD_PID_FILE;
+  case ID_PRIORITIZERD: return PRIORITIZERD_PID_FILE;
+  case ID_SIPD: return SIPD_PID_FILE;
+  case ID_MONITORD: return MONITORD_PID_FILE;
+  default: break;
+  }
+  return NULL;
 }
 
 
@@ -965,42 +866,20 @@ void handleBadSigs(int sig)
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);  
     closeHkFilesAndTidy(&monWriter);
-    unlink(monitordPidFile);
+    unlink(MONITORD_PID_FILE);
     syslog(LOG_INFO,"Monitord terminating");    
     exit(0);
 }
 
 int sortOutPidFile(char *progName)
 {
-    /* Config file thingies */
-    int status=0;
-    int retVal=0;
-    //    KvpErrorCode kvpStatus=0;
-    char* eString ;
-    char *tempString;
-
-    /* Load Config */
-    kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-
-    eString = configErrorString (status) ;
-    if (status == CONFIG_E_OK) {
-
-	tempString=kvpGetString("monitordPidFile");
-	if(tempString) {
-	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(monitordPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,monitordPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(monitordPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
-	    fprintf(stderr,"Couldn't get monitordPidFile\n");
-	}
-    }
-    return 0;
+  int retVal=0;
+  retVal=checkPidFile(MONITORD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,MONITORD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(MONITORD_PID_FILE);  
+  return 0;
 }

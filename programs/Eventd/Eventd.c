@@ -41,10 +41,9 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
 int readConfigFile();
 int compareGpsTimes(const void *ptr1, const void *ptr2);
 void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 /* Directories and gubbins */
-char eventdPidFile[FILENAME_MAX];
-
 int printToScreen=0;
 int verbosity=0;
 int tryToMatchGps=0;
@@ -78,19 +77,11 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
 
-    /*Event object*/
-
-
-
-#ifdef TIME_DEBUG
-
-    timeFile = fopen("/tmp/evTimeLog.txt","w");
-    if(!timeFile) {
-	fprintf(stderr,"Couldn't open time file\n");
-	exit(0);
+    // Sort out PID File
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
     }
-#endif
-
     
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
@@ -103,29 +94,6 @@ int main (int argc, char *argv[])
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
    
-    /* Load Config */
-    kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
-
-    if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("eventdPidFile");
-	if(tempString) {
-	    strncpy(eventdPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(eventdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,eventdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(eventdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventdPidFile");
-	    fprintf(stderr,"Couldn't get eventdPidFile\n");
-	}
-
-    }
     
     makeDirectories(ACQD_EVENT_LINK_DIR);
     makeDirectories(EVENTD_EVENT_LINK_DIR);
@@ -265,7 +233,7 @@ int main (int argc, char *argv[])
 	    
 	}
     } while(currentState==PROG_STATE_INIT); 
-    unlink(eventdPidFile);
+    unlink(EVENTD_PID_FILE);
     syslog(LOG_INFO,"Eventd terminating");
     return 0;
 }
@@ -735,7 +703,21 @@ void handleBadSigs(int sig)
     }	
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
-    unlink(eventdPidFile);
+    unlink(EVENTD_PID_FILE);
     syslog(LOG_INFO,"Eventd terminating");    
     exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(EVENTD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,EVENTD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(EVENTD_PID_FILE);
+  return 0;
 }

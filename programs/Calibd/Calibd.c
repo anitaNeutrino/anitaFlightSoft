@@ -43,7 +43,7 @@ struct cblk470 cblk_470;
 
 void prepWriterStructs();
 void handleBadSigs(int sig);
-
+int sortOutPidFile(char *progName);
 
 // Global (config) variables
 int digitalCarrierNum=1;
@@ -75,7 +75,6 @@ int attenLoopMap[8]={1,1,1,1,1,1,1,1};
 //Debug
 int printToScreen=1;
 
-char calibdPidFile[FILENAME_MAX];
 
 int writePeriod=60;
 
@@ -112,6 +111,13 @@ int main (int argc, char *argv[])
     signal(SIGINT, handleBadSigs);
     signal(SIGSEGV, handleBadSigs);
     
+    //Sort out PID File
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
+    }
+
+
     // Load Config 
     kvpReset () ;
     status = configLoad (globalConfFile,"global") ;
@@ -120,21 +126,6 @@ int main (int argc, char *argv[])
     // Get Calibd output dirs
     if (status == CONFIG_E_OK) {
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
-	tempString=kvpGetString("calibdPidFile");
-	if(tempString) {
-	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(calibdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,calibdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(calibdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
-	    fprintf(stderr,"Couldn't get calibdPidFile\n");
-	}
     }
 
     makeDirectories(CALIBD_STATUS_LINK_DIR);
@@ -215,7 +206,7 @@ int main (int argc, char *argv[])
 	}
     } while(currentState==PROG_STATE_INIT);
     closeHkFilesAndTidy(&calibWriter);
-    unlink(calibdPidFile);
+    unlink(CALIBD_PID_FILE);
     syslog(LOG_INFO,"Calibd Terminating");
     return 0;
     
@@ -551,7 +542,21 @@ void handleBadSigs(int sig)
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
     closeHkFilesAndTidy(&calibWriter);
-    unlink(calibdPidFile);
+    unlink(CALIBD_PID_FILE);
     syslog(LOG_INFO,"Calibd terminating");
     exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(CALIBD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,CALIBD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(CALIBD_PID_FILE);
+  return 0;
 }

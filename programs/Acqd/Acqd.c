@@ -108,7 +108,6 @@ unsigned int avgScalerData[MAX_SURFS][N_RFTRIG];
 //char acqdEventDir[FILENAME_MAX];
 char altOutputdir[FILENAME_MAX];
 char subAltOutputdir[FILENAME_MAX];
-char acqdPidFile[FILENAME_MAX];
 //char acqdEventLinkDir[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 
@@ -763,7 +762,7 @@ int main(int argc, char **argv) {
 
   closeHkFilesAndTidy(&surfHkWriter);
   closeHkFilesAndTidy(&turfHkWriter);
-  unlink(acqdPidFile);
+  unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating");
   return 1 ;
 }
@@ -1143,36 +1142,14 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
 
 int sortOutPidFile(char *progName)
 {
-  /* Config file thingies */
-  int status=0;
-  int retVal=0;
-  //    KvpErrorCode kvpStatus=0;
-  char* eString ;
-  char *tempString;
-
-  /* Load Config */
-  kvpReset () ;
-  status = configLoad (GLOBAL_CONF_FILE,"global") ;
-
-  eString = configErrorString (status) ;
-  if (status == CONFIG_E_OK) {
-
-    tempString=kvpGetString("acqdPidFile");
-    if(tempString) {
-      strncpy(acqdPidFile,tempString,FILENAME_MAX);
-      retVal=checkPidFile(acqdPidFile);
-      if(retVal) {
-	fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,acqdPidFile);
-	syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-	return -1;
-      }
-      writePidFile(acqdPidFile);
-    }
-    else {
-      syslog(LOG_ERR,"Couldn't get acqdPidFile");
-      fprintf(stderr,"Couldn't get acqdPidFile\n");
-    }
+  
+  int retVal=checkPidFile(ACQD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,ACQD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
   }
+  writePidFile(ACQD_PID_FILE);
   return 0;
 }
 
@@ -2917,7 +2894,7 @@ void handleBadSigs(int sig)
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);
   }
-  unlink(acqdPidFile);
+  unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating");
   exit(0);
 }

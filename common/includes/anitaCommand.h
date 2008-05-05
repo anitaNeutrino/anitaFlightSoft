@@ -24,6 +24,7 @@
 #define PRIORITIZERD_ID_MASK 0x100
 #define SIPD_ID_MASK 0x200
 #define MONITORD_ID_MASK 0x400
+#define PLAYBACKD_ID_MASK 0x800
 #define ALL_ID_MASK 0xfff
 
 typedef enum {
@@ -39,6 +40,7 @@ typedef enum {
     ID_PRIORITIZERD,
     ID_SIPD,
     ID_MONITORD,
+    ID_PLAYBACKD,
     ID_NOT_AN_ID
 } ProgramId_t;
 

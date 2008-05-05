@@ -27,8 +27,6 @@
 
 
 // Directories and gubbins 
-char archivedPidFile[FILENAME_MAX];
-
 
 int onboardStorageType;
 int telemType;
@@ -81,6 +79,7 @@ FILE *fpEvent=NULL;
 int shouldWeThrowAway(int pri);
 void handleBadSigs(int sig);
 int getRunNumber();
+int sortOutPidFile(char *progName);
 
 int main (int argc, char *argv[])
 {
@@ -107,6 +106,13 @@ int main (int argc, char *argv[])
 
     //Dont' wait for children
     signal(SIGCHLD, SIG_IGN); 
+
+    //sortOutPidFile
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
+    }
+
    
     /* Load Config */
     readConfigFile();
@@ -114,22 +120,6 @@ int main (int argc, char *argv[])
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("archivedPidFile");
-	if(tempString) {
-	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(archivedPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,archivedPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(archivedPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
-	    fprintf(stderr,"Couldn't get archivedPidFile\n");
-	}
-
 
 	tempString=kvpGetString("lastRunNumberFile");
 	if(tempString) {
@@ -212,7 +202,7 @@ int main (int argc, char *argv[])
     closeHkFilesAndTidy(&indexWriter);
     if(fpHead) fclose(fpHead);
     if(fpEvent) fclose(fpEvent);
-    unlink(archivedPidFile);
+    unlink(ARCHIVED_PID_FILE);
     syslog(LOG_INFO,"Archived terminating");
     return 0;
 }
@@ -641,7 +631,19 @@ void prepWriterStructs() {
     indexWriter.writeBitMask=0x12;
 }
 
-
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(ARCHIVED_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,ARCHIVED_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(ARCHIVED_PID_FILE);
+  return 0;
+}
+w
 
 char *getFilePrefix(ArchivedDataType_t dataType)
 {
@@ -681,7 +683,7 @@ void handleBadSigs(int sig)
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
     closeEventFilesAndTidy(&eventWriter);
     closeHkFilesAndTidy(&indexWriter);
-    unlink(archivedPidFile);
+    unlink(ARCHIVED_PID_FILE);
     syslog(LOG_INFO,"Archived terminating");
     exit(0);
 }

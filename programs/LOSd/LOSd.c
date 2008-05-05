@@ -45,6 +45,7 @@ int sendEncodedPedSubbedSurfPackets(int bufSize);
 int sendEncodedSurfPackets(int bufSize);
 int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize);
+int sortOutPidFile(char *progName);
 
 
 /* Signal Handle */
@@ -53,7 +54,6 @@ void handleBadSigs(int sig);
 char fakeOutputDir[]="/tmp/fake/los";
 
 /*Config Thingies*/
-char losdPidFile[FILENAME_MAX];
 char lastLosNumberFile[FILENAME_MAX];
 
 //Packet Dirs
@@ -100,6 +100,13 @@ int main(int argc, char *argv[])
     
     char *progName=basename(argv[0]);
 
+    //Sort out PID File
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
+    }
+
+
     //Directory listing tools
 //    char currentTouchname[FILENAME_MAX];
     char currentHeader[FILENAME_MAX];
@@ -128,21 +135,6 @@ int main(int argc, char *argv[])
     eString = configErrorString (status) ;
 
     if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("losdPidFile");
-	if(tempString) {
-	    strncpy(losdPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(losdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,losdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(losdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get losdPidFile");
-	    fprintf(stderr,"Couldn't get losdPidFile\n");
-	}
 	tempString=kvpGetString("lastLosNumberFile");
 	if(tempString) {
 	    strncpy(lastLosNumberFile,tempString,FILENAME_MAX);
@@ -307,7 +299,7 @@ int main(int argc, char *argv[])
 	    if(orderIndex>=numOrders) orderIndex=0;
 	}
     } while(currentState==PROG_STATE_INIT);
-    unlink(losdPidFile);
+    unlink(LOSD_PID_FILE);
     syslog(LOG_INFO,"LOSd terminating");
 //    fprintf(stderr, "Bye bye\n");
     return 0;
@@ -1161,7 +1153,21 @@ void handleBadSigs(int sig)
 {   
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
-    unlink(losdPidFile);
+    unlink(LOSD_PID_FILE);
     syslog(LOG_INFO,"LOSd terminating");    
     exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(LOSD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,LOSD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(LOSD_PID_FILE);
+  return 0;
 }

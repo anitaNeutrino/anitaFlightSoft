@@ -84,17 +84,6 @@ CommandStruct_t theCmds[MAX_COMMANNDS];
 int numCmds=256;
 
 /* PID Files */
-char acqdPidFile[FILENAME_MAX];
-char archivedPidFile[FILENAME_MAX];
-char calibdPidFile[FILENAME_MAX];
-char cmddPidFile[FILENAME_MAX];
-char eventdPidFile[FILENAME_MAX];
-char gpsdPidFile[FILENAME_MAX];
-char hkdPidFile[FILENAME_MAX];
-char losdPidFile[FILENAME_MAX];
-char prioritizerdPidFile[FILENAME_MAX];
-char sipdPidFile[FILENAME_MAX];
-char monitordPidFile[FILENAME_MAX];
 char lastRunNumberFile[FILENAME_MAX];
 char lastEventNumberFile[FILENAME_MAX];
 
@@ -213,7 +202,7 @@ int main (int argc, char *argv[])
 	
     } while(currentState==PROG_STATE_INIT);
     closeHkFilesAndTidy(&cmdWriter);
-    unlink(cmddPidFile);
+    unlink(CMDD_PID_FILE);
     syslog(LOG_INFO,"Cmdd terminating");
     return 0;
 }
@@ -259,36 +248,14 @@ int checkCommand(CommandStruct_t *theCmd) {
 
 int sortOutPidFile(char *progName)
 {
-    /* Config file thingies */
-    int status=0;
-    int retVal=0;
-    //    KvpErrorCode kvpStatus=0;
-    char* eString ;
-    char *tempString;
-
-    /* Load Config */
-    kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-
-    eString = configErrorString (status) ;
-    if (status == CONFIG_E_OK) {
-	tempString=kvpGetString("cmddPidFile");
-	if(tempString) {
-	    strncpy(cmddPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(cmddPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,cmddPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(cmddPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get cmddPidFile");
-	    fprintf(stderr,"Couldn't get cmddPidFile\n");
-	}
-    }
-    return 0;
+  int retVal=checkPidFile(CMDD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,CMDD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(CMDD_PID_FILE);
+  return 0;
 }
     
 
@@ -365,88 +332,6 @@ int readConfig() {
 	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
 
 
-	tempString=kvpGetString("acqdPidFile");
-	if(tempString) {
-	    strncpy(acqdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get acqdPidFile");
-	    fprintf(stderr,"Couldn't get acqdPidFile\n");
-	}
-	tempString=kvpGetString("calibdPidFile");
-	if(tempString) {
-	    strncpy(calibdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get calibdPidFile");
-	    fprintf(stderr,"Couldn't get calibdPidFile\n");
-	}
-	tempString=kvpGetString("archivedPidFile");
-	if(tempString) {
-	    strncpy(archivedPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get archivedPidFile");
-	    fprintf(stderr,"Couldn't get archivedPidFile\n");
-	}
-	tempString=kvpGetString("eventdPidFile");
-	if(tempString) {
-	    strncpy(eventdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get eventdPidFile");
-	    fprintf(stderr,"Couldn't get eventdPidFile\n");
-	}
-	tempString=kvpGetString("gpsdPidFile");
-	if(tempString) {
-	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
-	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
-	}
-	tempString=kvpGetString("hkdPidFile");
-	if(tempString) {
-	    strncpy(hkdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get hkdPidFile");
-	    fprintf(stderr,"Couldn't get hkdPidFile\n");
-	}
-	tempString=kvpGetString("losdPidFile");
-	if(tempString) {
-	    strncpy(losdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get losdPidFile");
-	    fprintf(stderr,"Couldn't get losdPidFile\n");
-	}
-	tempString=kvpGetString("prioritizerdPidFile");
-	if(tempString) {
-	    strncpy(prioritizerdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get prioritizerdPidFile");
-	    fprintf(stderr,"Couldn't get prioritizerdPidFile\n");
-	}
-	tempString=kvpGetString("sipdPidFile");
-	if(tempString) {
-	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
-	    fprintf(stderr,"Couldn't get sipdPidFile\n");
-	}
-	tempString=kvpGetString("monitordPidFile");
-	if(tempString) {
-	    strncpy(monitordPidFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get monitordPidFile");
-	    fprintf(stderr,"Couldn't get monitordPidFile\n");
-	}
-
-
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -476,9 +361,9 @@ int executeCommand(CommandStruct_t *theCmd)
 			  CALIBD_ID_MASK,MONITORD_ID_MASK,
 			  PRIORITIZERD_ID_MASK,EVENTD_ID_MASK,ACQD_ID_MASK};
     
-    char *dataPidFiles[8]={hkdPidFile,gpsdPidFile,archivedPidFile,
-			   calibdPidFile,monitordPidFile,prioritizerdPidFile,
-			   eventdPidFile,acqdPidFile};
+    char *dataPidFiles[8]={HKD_PID_FILE,GPSD_PID_FILE,ARCHIVED_PID_FILE,
+			   CALIBD_PID_FILE,MONITORD_PID_FILE,PRIORITIZERD_PID_FILE,
+			   EVENTD_PID_FILE,ACQD_PID_FILE};
     
 
     switch(theCmd->cmd[0]) {
@@ -529,6 +414,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    //Halt
 	    time(&rawtime);
 	    killPrograms(MONITORD_ID_MASK);
+	    killPrograms(PLAYBACKD_ID_MASK);
 	    killPrograms(HKD_ID_MASK);
 	    killPrograms(GPSD_ID_MASK);
 	    killPrograms(ARCHIVED_ID_MASK);
@@ -544,6 +430,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	case CMD_REBOOT:
 	    //Reboot
 	    killPrograms(MONITORD_ID_MASK);
+	    killPrograms(PLAYBACKD_ID_MASK);
 	    killPrograms(HKD_ID_MASK);
 	    killPrograms(GPSD_ID_MASK);
 	    killPrograms(ARCHIVED_ID_MASK);
@@ -578,6 +465,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return retVal;
 	case CMD_MOUNT:
 	    //Mount -a
+	  killPrograms(PLAYBACKD_ID_MASK);
 	    killPrograms(MONITORD_ID_MASK);
 	    killPrograms(HKD_ID_MASK);
 	    killPrograms(GPSD_ID_MASK);
@@ -598,6 +486,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    startPrograms(MONITORD_ID_MASK);
 	    startPrograms(PRIORITIZERD_ID_MASK);
 	    startPrograms(EVENTD_ID_MASK);
+	    startPrograms(PLAYBACKD_ID_MASK);
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
 	    return rawtime;
@@ -1223,34 +1112,34 @@ int sendSignal(ProgramId_t progId, int theSignal)
     pid_t thePid;
     switch(progId) {
 	case ID_ACQD:
-	    sprintf(fileName,"%s",acqdPidFile);
+	    sprintf(fileName,"%s",ACQD_PID_FILE);
 	    break;
 	case ID_ARCHIVED:
-	    sprintf(fileName,"%s",archivedPidFile);
+	    sprintf(fileName,"%s",ARCHIVED_PID_FILE);
 	    break;
 	case ID_EVENTD:
-	    sprintf(fileName,"%s",eventdPidFile);
+	    sprintf(fileName,"%s",EVENTD_PID_FILE);
 	    break;
 	case ID_CALIBD:
-	    sprintf(fileName,"%s",calibdPidFile);
+	    sprintf(fileName,"%s",CALIBD_PID_FILE);
 	    break;
 	case ID_GPSD:
-	    sprintf(fileName,"%s",gpsdPidFile);
+	    sprintf(fileName,"%s",GPSD_PID_FILE);
 	    break;
 	case ID_HKD:
-	    sprintf(fileName,"%s",hkdPidFile);
+	    sprintf(fileName,"%s",HKD_PID_FILE);
 	    break;
 	case ID_LOSD:
-	    sprintf(fileName,"%s",losdPidFile);
+	    sprintf(fileName,"%s",LOSD_PID_FILE);
 	    break;
 	case ID_PRIORITIZERD:
-	    sprintf(fileName,"%s",prioritizerdPidFile);
+	    sprintf(fileName,"%s",PRIORITIZERD_PID_FILE);
 	    break;
 	case ID_MONITORD:
-	    sprintf(fileName,"%s",monitordPidFile);
+	    sprintf(fileName,"%s",MONITORD_PID_FILE);
 	    break;
 	case ID_SIPD:
-	    sprintf(fileName,"%s",sipdPidFile);
+	    sprintf(fileName,"%s",SIPD_PID_FILE);
 	    break;    
 //	case ID_MONITORD:
 //	    sprintf(fileName,"%s",monitord);
@@ -1426,6 +1315,7 @@ int getIdMask(ProgramId_t prog) {
 	case ID_PRIORITIZERD: return PRIORITIZERD_ID_MASK;
 	case ID_SIPD: return SIPD_ID_MASK;
 	case ID_MONITORD: return MONITORD_ID_MASK;
+	case ID_PLAYBACKD: return PLAYBACKD_ID_MASK;
 	default: break;
     }
     return 0;
@@ -1447,6 +1337,7 @@ char *getProgName(ProgramId_t prog) {
 	case ID_PRIORITIZERD: string="Prioritizerd"; break;
 	case ID_SIPD: string="SIPd"; break;
 	case ID_MONITORD: string="Monitord"; break;
+	case ID_PLAYBACKD: string="Playbackd"; break;
 	default: string=NULL; break;
     }
     return string;
@@ -1454,17 +1345,18 @@ char *getProgName(ProgramId_t prog) {
 
 char *getPidFile(ProgramId_t prog) {
     switch(prog) {
-	case ID_ACQD: return acqdPidFile;
-	case ID_ARCHIVED: return archivedPidFile;
-	case ID_CALIBD: return calibdPidFile;
-	case ID_CMDD: return cmddPidFile;
-	case ID_EVENTD: return eventdPidFile;
-	case ID_GPSD: return gpsdPidFile;
-	case ID_HKD: return hkdPidFile;
-	case ID_LOSD: return losdPidFile;
-	case ID_PRIORITIZERD: return prioritizerdPidFile;
-	case ID_SIPD: return sipdPidFile;
-	case ID_MONITORD: return monitordPidFile;
+	case ID_ACQD: return ACQD_PID_FILE;
+	case ID_ARCHIVED: return ARCHIVED_PID_FILE;
+	case ID_CALIBD: return CALIBD_PID_FILE;
+	case ID_CMDD: return CMDD_PID_FILE;
+	case ID_EVENTD: return EVENTD_PID_FILE;
+	case ID_GPSD: return GPSD_PID_FILE;
+	case ID_HKD: return HKD_PID_FILE;
+	case ID_LOSD: return LOSD_PID_FILE;
+	case ID_PRIORITIZERD: return PRIORITIZERD_PID_FILE;
+	case ID_SIPD: return SIPD_PID_FILE;
+	case ID_MONITORD: return MONITORD_PID_FILE;
+	case ID_PLAYBACKD: return PLAYBACKD_PID_FILE;
 	default: break;
     }
     return NULL;
@@ -1900,6 +1792,7 @@ int mountNextBlade(int whichZeus) {
 
     //Kill all programs that write to disk
     killPrograms(MONITORD_ID_MASK);
+    killPrograms(PLAYBACKD_ID_MASK);
     killPrograms(HKD_ID_MASK);
     killPrograms(GPSD_ID_MASK);
     killPrograms(ARCHIVED_ID_MASK);
@@ -1927,6 +1820,7 @@ int mountNextBlade(int whichZeus) {
     startPrograms(ACQD_ID_MASK);
     startPrograms(CALIBD_ID_MASK);
     startPrograms(MONITORD_ID_MASK);
+    startPrograms(PLAYBACKD_ID_MASK);
     startPrograms(PRIORITIZERD_ID_MASK);
     startPrograms(EVENTD_ID_MASK);
     return rawtime;
@@ -1983,6 +1877,7 @@ int mountNextUsb(int intExtFlag, int whichUsb) {
     killPrograms(ACQD_ID_MASK);
     killPrograms(CALIBD_ID_MASK);
     killPrograms(PRIORITIZERD_ID_MASK);
+    killPrograms(PLAYBACKD_ID_MASK);
     killPrograms(EVENTD_ID_MASK);
     closeHkFilesAndTidy(&cmdWriter);    
     sleep(5); //Let them gzip their data
@@ -2006,6 +1901,7 @@ int mountNextUsb(int intExtFlag, int whichUsb) {
 
     prepWriterStructs();
     startPrograms(HKD_ID_MASK);
+    startPrograms(PLAYBACKD_ID_MASK);
     startPrograms(GPSD_ID_MASK);
     startPrograms(ARCHIVED_ID_MASK);
     startPrograms(ACQD_ID_MASK);
@@ -2638,6 +2534,7 @@ int clearRamdisk()
     progMask|=HKD_ID_MASK;
     progMask|=LOSD_ID_MASK;
     progMask|=PRIORITIZERD_ID_MASK;
+    progMask|=PLAYBACKD_ID_MASK;
     progMask|=SIPD_ID_MASK;
     progMask|=MONITORD_ID_MASK;
     killPrograms(progMask);
@@ -2679,7 +2576,7 @@ void handleBadSigs(int sig)
 {
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
-    unlink(cmddPidFile);
+    unlink(CMDD_PID_FILE);
     syslog(LOG_INFO,"Cmdd terminating");
     exit(0);
 }
