@@ -891,7 +891,7 @@ void prettyPrintLookupFile()
     fprintf(outFile,"%s:\n", header);
   else
     fprintf(outFile,"No description available!\n");
-  fprintf("Date: %s\n",ctime(rawTime));
+  fprintf("Date: %s\n",ctime(&rawTime));
   if (!numRows || !prettyFormat) {
       for (i=0;i<CHANS_PER_IP320;i++)
       {
