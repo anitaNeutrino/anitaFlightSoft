@@ -65,10 +65,7 @@ int main (int argc, char *argv[])
     int retVal,count,filledSubTime;
     unsigned int tempNum;
     char currentFilename[FILENAME_MAX];
-    char *tempString;
-    /* Config file thingies */
-    int status=0;
-    char* eString ;
+
 
     /* Directory reading things */
     struct dirent **eventLinkList;

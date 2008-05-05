@@ -105,8 +105,6 @@ int main (int argc, char *argv[])
 {
     int retVal;
 
-
-    char *tempString;
     /* Config file thingies */
     int status=0;
 //    KvpErrorCode kvpStatus=0;
@@ -1118,7 +1116,7 @@ int updateClockFromG12(time_t gpsRawTime)
     }
     else if(childPid<0) {
 	//Something wrong
-	syslog(LOG_ERR,"Problem updating clock, %d: %s ",gpsRawTime,strerror(errno));
+      syslog(LOG_ERR,"Problem updating clock, %d: %s ",(int)gpsRawTime,strerror(errno));
 	fprintf(stderr,"Problem updating clock, %d: %s ",(int)gpsRawTime,strerror(errno));
 	return 0;
     }

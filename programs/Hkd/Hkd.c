@@ -222,7 +222,7 @@ int main (int argc, char *argv[])
     closeMagnetometer();
     closeHkFilesAndTidy(&hkRawWriter);
     closeHkFilesAndTidy(&hkCalWriter);
-    unlink(hkdPidFile);
+    unlink(HKD_PID_FILE);
     syslog(LOG_INFO,"Hkd Terminating");
     return 0;
 }
@@ -781,7 +781,7 @@ void handleBadSigs(int sig)
     closeMagnetometer();
     closeHkFilesAndTidy(&hkRawWriter);
     closeHkFilesAndTidy(&hkCalWriter);
-    unlink(hkdPidFile);
+    unlink(HKD_PID_FILE);
     syslog(LOG_INFO,"Hkd terminating");    
     exit(0);
 }

@@ -118,12 +118,10 @@ int main (int argc, char *argv[])
      char archiveHdFilename[FILENAME_MAX];
      char archiveBodyFilename[FILENAME_MAX];
 
-     char *tempString;
 //     int priority,score,score3,score4;
 //    float probWriteOut9=0.03; /* Will become a config file thingy */
 
      /* Config file thingies */
-     int status=0;
      int doingEvent=0;
      //    char* eString ;
 

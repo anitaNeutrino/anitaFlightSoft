@@ -95,7 +95,6 @@ int main (int argc, char *argv[])
     // Config file thingies 
     int status=0;
     char* eString;
-    char *tempString=0;
     char *globalConfFile="anitaSoft.config";
     // Log stuff 
     char *progName=basename(argv[0]);

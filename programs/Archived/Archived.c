@@ -643,7 +643,7 @@ int sortOutPidFile(char *progName)
   writePidFile(ARCHIVED_PID_FILE);
   return 0;
 }
-w
+
 
 char *getFilePrefix(ArchivedDataType_t dataType)
 {
