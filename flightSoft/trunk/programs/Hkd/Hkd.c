@@ -38,6 +38,7 @@ int sortOutPidFile(char *progName);
 /* SBS Temperature Reading Functions */
 void printSBSTemps (void);
 int readSBSTemps ();
+int readSBSTemperatureFile(const char *tempFile)
 
 /* Acromag Functions */
 void acromagSetup();
@@ -111,7 +112,6 @@ int main (int argc, char *argv[])
     /* Config file thingies */
     int status=0;
     char* eString ;
-    char *tempString;
     int millisecs=0;
     struct timespec milliWait;
     milliWait.tv_sec=0;
@@ -270,47 +270,40 @@ int readConfigFile()
 }
 
 
-int readSBSTemps ()
+int readSBSTemperatureFile(const char *tempFile)
 {
-    fprintf(stderr,"Haven't implemented this yet on the new CR11\n");
-    return -1;
+  static int errorCounter=0;
+  int fd,retVal=0;
+  char temp[6];
+  int temp_con;
+  fd = open(tempFile, O_RDONLY);
+  if(fd<0) {
+    if(errorCounter<100) {
+      fprintf(stderr,"Error opening %s -- %s (Error %d of 100)",tempFile,strerror(errno),errorCounter);
+      syslog(LOG_ERR,"Error opening %s -- %s (Error %d of 100)",tempFile,strerror(errno),errorCounter);
+    }
+  }
+  else {    
+    retVal=read(fd, temp, 6);   
+    temp[5] = 0x0;
+    temp_con = atoi(temp);
+    close(fd);
+    return temp_con;
+  }
+  return 0;
+}
 
-    
-/*     API_RESULT main_Api_Result; */
-
-/*     static int errorCounter=0; */
-/*     int gotError=0; */
-
-/*     int localTemp = 0; */
-/*     int remoteTemp = 0; */
-/*     main_Api_Result =  */
-/* 	fn_ApiCr7ReadLocalTemperature(&localTemp); */
-    
-/*     if (main_Api_Result != API_SUCCESS) */
-/*     { */
-/* 	gotError+=1; */
-/* 	if(errorCounter<100) { */
-/* 	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Local Temp: %d\t%s", */
-/* 		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result)); */
-/* 	    errorCounter++; */
-/* 	} */
-/*     } */
-
-/*     main_Api_Result =  */
-/* 	fn_ApiCr7ReadRemoteTemperature(&remoteTemp); */
-    
-/*     if (main_Api_Result != API_SUCCESS) */
-/*     { */
-/* 	gotError+=2; */
-/* 	if(errorCounter<100) { */
-/* 	    syslog(LOG_WARNING,"Couldn't read (%d of 100) SBS Remote Temp: %d\t%s", */
-/* 		   errorCounter,main_Api_Result,fn_ApiGetErrorMsg(main_Api_Result)); */
-/* 	    errorCounter++; */
-/* 	} */
-/*     } */
-/*     sbsData.temp[0]=(localTemp); */
-/*     sbsData.temp[1]=(remoteTemp); */
-/*     return gotError; */
+int readSBSTemps ()
+{  
+  sbsData.temp[0]=readSBSTemperatureFile("/sys/class/hwmon/hwmon0/device/temp1_input");
+  sbsData.temp[1]=readSBSTemperatureFile("/sys/class/hwmon/hwmon0/device/temp2_input");
+  sbsData.temp[2]=readSBSTemperatureFile("/sys/class/hwmon/hwmon1/device/temp1_input");
+  sbsData.temp[3]=readSBSTemperatureFile("/sys/class/hwmon/hwmon2/device/temp1_input");
+  if(printToScreen) {
+    printf("SBS Temps:\t%d %d %d %d\n",sbsData.temp[0],sbsData.temp[1],
+	   sbsData.temp[2],sbsData.temp[3]);
+  }
+  return 0;
 }
 
 
@@ -320,7 +313,8 @@ void printSBSTemps (void)
     retVal=readSBSTemps();
     unixTime=time(NULL);
     if(!retVal) 
-	printf("%d %d %d\n",unixTime,sbsData.temp[0],sbsData.temp[1]);
+      printf("%d %d %d %d %d\n",unixTime,sbsData.temp[0],sbsData.temp[1],
+	     sbsData.temp[2],sbsData.temp[3]);
     /* Don't know what to do if it doesn't work */
 }
 

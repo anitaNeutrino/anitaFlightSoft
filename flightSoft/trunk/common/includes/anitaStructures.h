@@ -42,8 +42,8 @@
 #define VER_SLOW_FULL 1
 #define VER_SLOW_1 1
 #define VER_SLOW_2 1
-#else
-//Current ones
+#elif ANITA_1_DATA
+//ANITA 1 (2006/7) Data
 #define VER_EVENT_BODY 7
 #define VER_PEDSUBBED_EVENT_BODY 7
 #define VER_EVENT_HEADER 9
@@ -71,6 +71,34 @@
 #define VER_ZIPPED_PACKET 1
 #define VER_RUN_START 1
 #define VER_OTHER_MON 1
+#else
+#define VER_EVENT_BODY 10
+#define VER_PEDSUBBED_EVENT_BODY 10
+#define VER_EVENT_HEADER 10
+#define SLAC_VER_EVENT_HEADER 10
+#define VER_WAVE_PACKET 10
+#define VER_SURF_PACKET 10
+#define VER_ENC_WAVE_PACKET 10
+#define VER_ENC_SURF_PACKET 10
+#define VER_SURF_HK 10
+#define VER_ADU5_PAT 10
+#define VER_ADU5_SAT 10
+#define VER_ADU5_VTG 10
+#define VER_G12_POS 10
+#define VER_G12_SAT 10
+#define VER_HK_FULL 10
+#define VER_CMD_ECHO 10
+#define VER_MONITOR 10
+#define VER_TURF_RATE 10
+#define VER_LAB_PED 10
+#define VER_FULL_PED 10
+#define VER_SLOW_1 10
+#define VER_SLOW_2 10
+#define VER_SLOW_FULL 10
+#define VER_ZIPPED_FILE 10
+#define VER_ZIPPED_PACKET 10
+#define VER_RUN_START 10
+#define VER_OTHER_MON 10
 #endif
 
 
@@ -328,9 +356,16 @@ typedef struct {
     AnalogueDataStruct_t board[NUM_IP320_BOARDS];
 } FullAnalogueStruct_t;
 
+
+#ifdef ANITA_1_DATA
 typedef struct {
     unsigned short temp[2];
 } SBSTemperatureDataStruct_t;
+#else
+typedef struct {
+  int temp[4]; //in milli deg C
+} SBSTemperatureDataStruct_t;
+#endif
 
 typedef struct {
     float x;
