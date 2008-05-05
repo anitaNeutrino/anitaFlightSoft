@@ -1,0 +1,64 @@
+telemwrap
+
+Marty Olevitch, May '08
+
+Copy telemwrap.c, telemwrap.h, crc_simple.c, and crc_simple.h to a
+convenient place. Compile them to object files and link them with your
+application.
+
+See telemwrap.h for documentation on the functions.
+
+Simple minded usage:
+
+	unsigned short databuf[3000];
+	unsigned short wrapbuf[3020];
+	int num_science_bytes;
+	int num_wrapped_bytes;
+
+	...
+
+	num_science_bytes = acquire_science_data_in(databuf);
+	num_wrapped_bytes = telemwrap(databuf, wrapbuf, num_science_bytes);
+	write(losfd, wrapbuf, num_wrapped_bytes);
+
+
+Data format:
+
+> byte    length
+> offset  (bytes)  value    description
+> ------  ------   -----    -----------
+>    0       2     0xF00D   START_HDR
+>    2       2     0xD0CC   AUX_HDR
+>    4       2     0xAE0x   ID_HDR (See below)
+>    6       4     -        Sequential buffer count (32 bits)
+>   10       2     NB       Number of bytes of science data
+>   12      NB     -        Science data
+>   12+NB    2     -        Checksum (See below)
+>   14+NB    2     0xAEFF   SW_END_HDR
+>   16+NB    2     0xC0FE   END_HDR
+>   18+NB    2     0xD0CC   AUX_HDR
+> 
+> ID_HDR:
+>     bit 0 = 0 LOS data
+>     bit 0 = 1 SIP high-rate data
+> 
+>     bit 1 = 0 Even number of science bytes.
+>     bit 1 = 1 Odd number of science bytes. NB must be
+> 	decremented and 0xDA pad byte at end of data removed. But see
+> 	below about the checksum and the pad byte.
+
+The checksum is calculated over the science bytes only; that is bytes
+12 through (12+NB)-1 using the following function. It is found in the file
+crc_simple.c. Note that the checksum includes the 0xDA pad byte, if any.
+
+>   unsigned short
+>   crc_short(unsigned short *p, unsigned long n)
+>   {
+>       unsigned short sum = 0;
+>       unsigned long i;
+>       for (i=0L; i<n; i++) {
+>   	sum += *p++;
+>       }
+>       return ((0xffff - sum) + 1);
+>   }
+
