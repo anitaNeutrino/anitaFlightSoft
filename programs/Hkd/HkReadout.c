@@ -140,7 +140,7 @@ int main (int argc, char **argv)
   ip320_GetCal();
   ip320_Read();
 
-  dumpArrayValues(); 
+  //  dumpArrayValues(); 
   prettyprint();
   return 0;
 }
