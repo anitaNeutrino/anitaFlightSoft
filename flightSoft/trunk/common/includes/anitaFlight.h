@@ -249,5 +249,8 @@
 #define SLOW_RF_FILE "/tmp/anita/latestSlowRf.dat"
 #define RUN_START_FILE "/tmp/anita/latestRunStart.dat"
 
+//Hk Power Lookup
+#define HK_POWER_LOOKUP "/tmp/anita/currentPower"
+
 #endif /* ANITA_FLIGHT_H */
 

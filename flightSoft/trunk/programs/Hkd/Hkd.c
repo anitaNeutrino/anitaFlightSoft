@@ -882,10 +882,12 @@ void prettyPrintLookupFile()
   int board=1;
   int useRange=ip320Ranges[board];
   int i, linecount=0;
+  FILE *outFile=fopen(HK_POWER_LOOKUP,"w")
+  
   if (header)
-    printf("%s:\n", header);
+    fprintf(outFile,"%s:\n", header);
   else
-    printf("No description available!\n");
+    fprintf(outFile,"No description available!\n");
   
   if (!numRows || !prettyFormat) {
       for (i=0;i<CHANS_PER_IP320;i++)
@@ -895,20 +897,20 @@ void prettyPrintLookupFile()
 	      if (desc[i].active)
 	      {
 		  /* RJN HACK */
-		  printf("%5.5s: %+7.3f ", desc[i].description, (corDataStruct[board].data[i]*10.0/4095.-5.0*desc[i].conversion+desc[i].offset));
-//	  printf("%5.5s: %+7.2f ", desc[i].description, (corDataStruct[board].data[i]*20.0/4095.-10.0));
-//	  printf("%5.5s: %+7.2f ", desc[i].description,corDataStruct[board].data[i]);
+		  fprintf(outFile,"%5.5s: %+7.3f ", desc[i].description, (corDataStruct[board].data[i]*10.0/4095.-5.0*desc[i].conversion+desc[i].offset));
+//	  fprintf(outFile,"%5.5s: %+7.2f ", desc[i].description, (corDataStruct[board].data[i]*20.0/4095.-10.0));
+//	  fprintf(outFile,"%5.5s: %+7.2f ", desc[i].description,corDataStruct[board].data[i]);
 		  linecount++;
-		  if (!(linecount%5)) printf("\n");
+		  if (!(linecount%5)) fprintf(outFile,"\n");
 	      }
 	  }
 	  else
 	  {
-	      printf("CH%2.2d: %5.3f ", i+1, (corDataStruct[board].data[i]*10.0/4095.-5.0));
-	      if (!((i+1)%5)) printf("\n");
+	      fprintf(outFile,"CH%2.2d: %5.3f ", i+1, (corDataStruct[board].data[i]*10.0/4095.-5.0));
+	      if (!((i+1)%5)) fprintf(outFile,"\n");
 	  }
       }
-      printf("\n");
+      fprintf(outFile,"\n");
   }
   else {
       for (i=0;i<numRows;i++) {
@@ -919,23 +921,24 @@ void prettyPrintLookupFile()
 	      /* RJN HACK */
 	      if(isTemp) {
 		  if(useRange==10)
-		      printf("%4.4s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%4.4s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
 		  else 
-		      printf("%4.4s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%4.4s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
 	      }
 	      else {
 		  if(useRange==10)
-		      printf("%7.7s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%7.7s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
 		  else 
-		      printf("%7.7s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%7.7s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
 	      }
 	      	  
 	  }
-	  else printf("               ");
+	  else fprintf(outFile,"               ");
       }
-      printf("\n");
+      fprintf(outFile,"\n");
       }
   }
+  fclose(outFile);
   
 }
 
