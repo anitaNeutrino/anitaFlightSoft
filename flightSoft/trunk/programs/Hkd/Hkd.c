@@ -105,7 +105,7 @@ AnitaHkWriterStruct_t hkCalWriter;
 //Pretty printing stuff for debugging
 
 typedef struct {
-  char *description;
+  char description[20];
   float conversion;
   float offset;
   int active;
@@ -861,7 +861,8 @@ void readHkReadoutConfig()
 	sprintf(configstring, "chan%dname", i+1);
 	temp = kvpGetString(configstring);
 	if (temp != NULL) {
-	  desc[i].description = temp;
+	  strncpy(desc[i].description,temp,19);
+	  //	  desc[i].description = temp;
 	  desc[i].active = 1;
 	  sprintf(configstring, "chan%dconvert", i+1);
 	  desc[i].conversion = kvpGetFloat(configstring, 1.0);
@@ -886,12 +887,12 @@ void prettyPrintLookupFile()
   int useRange=ip320Ranges[board];
   int i, linecount=0;
   FILE *outFile=fopen(HK_POWER_LOOKUP,"w");
-  
+
+  fprintf(outFile,"Date: %s\n",ctime(&rawTime));  
   if (header)
     fprintf(outFile,"%s:\n", header);
   else
     fprintf(outFile,"No description available!\n");
-  fprintf(outFile,"Date: %s\n",ctime(&rawTime));
   if (!numRows || !prettyFormat) {
       for (i=0;i<CHANS_PER_IP320;i++)
       {
