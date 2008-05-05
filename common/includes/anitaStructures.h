@@ -363,7 +363,7 @@ typedef struct {
 } SBSTemperatureDataStruct_t;
 #else
 typedef struct {
-  int temp[4]; //in milli deg C
+  short temp[4]; // (4/100) * milli deg C
 } SBSTemperatureDataStruct_t;
 #endif
 

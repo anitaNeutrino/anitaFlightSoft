@@ -286,7 +286,7 @@ int readSBSTemperatureFile(const char *tempFile)
   else {    
     retVal=read(fd, temp, 6);   
     temp[5] = 0x0;
-    temp_con = atoi(temp);
+    temp_con = (atoi(temp)*4)/100;  // Reflects the accuracy of the temperature
     close(fd);
     return temp_con;
   }
@@ -300,8 +300,8 @@ int readSBSTemps ()
   sbsData.temp[2]=readSBSTemperatureFile("/sys/class/hwmon/hwmon1/device/temp1_input");
   sbsData.temp[3]=readSBSTemperatureFile("/sys/class/hwmon/hwmon2/device/temp1_input");
   if(printToScreen) {
-    printf("SBS Temps:\t%d %d %d %d\n",sbsData.temp[0],sbsData.temp[1],
-	   sbsData.temp[2],sbsData.temp[3]);
+    printf("SBS Temps:\t%d %d %d %d\n",25*sbsData.temp[0],25*sbsData.temp[1],
+	   25*sbsData.temp[2],25*sbsData.temp[3]);
   }
   return 0;
 }
