@@ -48,6 +48,7 @@ void processPosString(char *gpsString, int gpsLength);
 void processAdu5Sa4String(char *gpsString, int gpsLength);
 int tryToStartNtpd();
 void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 // Definitions
 #define LEAP_SECONDS 14 //Need to check
@@ -98,8 +99,6 @@ AnitaHkWriterStruct_t g12SatWriter;
 
 int startedNtpd=0;
 
-// GPSd config stuff
-char gpsdPidFile[FILENAME_MAX];
 
 
 int main (int argc, char *argv[])
@@ -116,6 +115,12 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
 
+
+    //Sort out pid File
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
+    }
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -141,22 +146,6 @@ int main (int argc, char *argv[])
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
-	tempString=kvpGetString("gpsdPidFile");
-	if(tempString) {
-	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(gpsdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,gpsdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(gpsdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
-	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
-	}
-
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
     makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
@@ -215,10 +204,10 @@ int main (int argc, char *argv[])
     closeHkFilesAndTidy(&adu5VtgWriter);
     closeHkFilesAndTidy(&g12PosWriter);
     closeHkFilesAndTidy(&g12SatWriter);
-    unlink(gpsdPidFile);
+    unlink(GPSD_PID_FILE);
 
     syslog(LOG_INFO,"GPSd terminating");
-//    removeFile(gpsdPidFile);
+//    removeFile(GPSD_PID_FILE);
     
 	
     return 0;
@@ -1347,7 +1336,21 @@ void handleBadSigs(int sig)
     closeHkFilesAndTidy(&adu5VtgWriter);
     closeHkFilesAndTidy(&g12PosWriter);
     closeHkFilesAndTidy(&g12SatWriter);
-    unlink(gpsdPidFile);
+    unlink(GPSD_PID_FILE);
     syslog(LOG_INFO,"GPSd terminating");    
     exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(GPSD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,GPSD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(GPSD_PID_FILE);
+  return 0;
 }

@@ -72,8 +72,8 @@
 #define HILBERT_ORDER 5 /*order used for Hilbert transforms in Stokes S3 */
 
 //Whiteheat things
-#define G12A_DEV_NAME "/dev/ttySTDRV002_6"
-#define G12B_DEV_NAME "/dev/ttySTDRV002_5"
+#define G12A_DEV_NAME "/dev/ttySTDRV002_5"
+#define G12B_DEV_NAME "/dev/ttySTDRV002_6"
 #define ADU5A_DEV_NAME "/dev/ttySTDRV002_4"
 #define MAGNETOMETER_DEV_NAME "/dev/ttyUSB1"
 
@@ -216,6 +216,20 @@
 #define GPSD_SUBTIME_LINK_DIR "/tmp/anita/gpsd/ttt/link"
 #define PLAYBACK_DIR "/tmp/anita/playbackd"
 #define PLAYBACK_LINK_DIR "/tmp/anita/playbackd/link"
+
+//PID Files
+#define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
+#define ARCHIVED_PID_FILE "/tmp/anita/pid/archived.pid"
+#define CMDD_PID_FILE "/tmp/anita/pid/cmdd.pid"
+#define CALIBD_PID_FILE "/tmp/anita/pid/calibd.pid"
+#define EVENTD_PID_FILE "/tmp/anita/pid/eventd.pid"
+#define GPSD_PID_FILE "/tmp/anita/pid/gpsd.pid"
+#define HKD_PID_FILE "/tmp/anita/pid/hkd.pid"
+#define LOSD_PID_FILE "/tmp/anita/pid/losd.pid"
+#define MONITORD_PID_FILE "/tmp/anita/pid/monitord.pid"
+#define PRIORITIZERD_PID_FILE "/tmp/anita/pid/prioritizerd.pid"
+#define SIPD_PID_FILE "/tmp/anita/pid/sipd.pid"
+#define PLAYBACKD_PID_FILE "/tmp/anita/pid/playbackd.pid"
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 

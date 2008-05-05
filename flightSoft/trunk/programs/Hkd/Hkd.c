@@ -33,7 +33,7 @@
 
 /*Config stuff*/
 int readConfigFile();
-
+int sortOutPidFile(char *progName);
 
 /* SBS Temperature Reading Functions */
 void printSBSTemps (void);
@@ -99,8 +99,7 @@ int hkDiskBitMask;
 AnitaHkWriterStruct_t hkRawWriter;
 AnitaHkWriterStruct_t hkCalWriter;
 
-// Hkd config stuff
-char hkdPidFile[FILENAME_MAX];
+
 
 int main (int argc, char *argv[])
 {
@@ -122,6 +121,12 @@ int main (int argc, char *argv[])
     time_t rawTime;
     /* Log stuff */
     char *progName=basename(argv[0]);
+
+    //Sort out PID File
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
+    }
 
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
@@ -148,22 +153,6 @@ int main (int argc, char *argv[])
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
-	tempString=kvpGetString("hkdPidFile");
-	if(tempString) {
-	    strncpy(hkdPidFile,tempString,FILENAME_MAX-1);
-	    retVal=checkPidFile(hkdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,hkdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(hkdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Error getting hkdPidFile");
-	    fprintf(stderr,"Error getting hkdPidFile\n");
-	}
-       	    
     }
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;
@@ -795,4 +784,17 @@ void handleBadSigs(int sig)
     unlink(hkdPidFile);
     syslog(LOG_INFO,"Hkd terminating");    
     exit(0);
+}
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(HKD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,HKD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(HKD_PID_FILE);
+  return 0;
 }

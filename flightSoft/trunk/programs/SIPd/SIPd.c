@@ -50,10 +50,10 @@ int sendPedSubbedWaveformPackets(int bufSize);
 int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize); 
 void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 
 // Config Thingies
-char sipdPidFile[FILENAME_MAX];
 char lastTdrssNumberFile[FILENAME_MAX];
 int cmdLengths[256];
 
@@ -109,6 +109,12 @@ int main(int argc, char *argv[])
     
    
     char *progName=basename(argv[0]);
+
+    //
+    retVal=sortOutPidFile(progName);
+    if(retVal<0)
+      return -1;
+
   
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
@@ -138,23 +144,6 @@ int main(int argc, char *argv[])
     if (status == CONFIG_E_OK) {
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
 	
-	//Get PID File location
-	tempString=kvpGetString("sipdPidFile");
-	if(tempString) {
-	    strncpy(sipdPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(sipdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,sipdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(sipdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get sipdPidFile");
-	    fprintf(stderr,"Couldn't get sipdPidFile\n");
-	}
-
 	//Get TDRSS number file
 	tempString=kvpGetString("lastTdrssNumberFile");
 	if(tempString) {
@@ -239,7 +228,7 @@ int main(int argc, char *argv[])
     sipcom_wait();
     pthread_cancel(Hr_thread);
     fprintf(stderr, "Bye bye\n");
-    unlink(sipdPidFile);
+    unlink(SIPD_PID_FILE);
     syslog(LOG_INFO,"SIPd terminating");
     return 0;
 }
@@ -1220,9 +1209,22 @@ void handleBadSigs(int sig)
 {
     fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
-    unlink(sipdPidFile);
+    unlink(SIPD_PID_FILE);
     syslog(LOG_INFO,"SIPd terminating");
     exit(0);
 }
 
 
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(SIPD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,SIPD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(SIPD_PID_FILE);
+  return 0;
+}

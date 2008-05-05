@@ -38,7 +38,6 @@ int sortOutPidFile(char *progName);
 int printToScreen=0;
 int verbosity=0;
 int sendData=0;
-char playbackdPidFile[FILENAME_MAX];
 
 
 //Link Directories
@@ -118,7 +117,7 @@ int main (int argc, char *argv[])
 		printf("sleep\n");sleep(10);
 	}
     } while(currentState==PROG_STATE_INIT);    
-    unlink(playbackdPidFile);
+    unlink(PLAYBACKD_PID_FILE);
     return 0;
 }
 
@@ -135,13 +134,13 @@ int readConfigFile()
 
     if(status == CONFIG_E_OK) {
 	sendData=kvpGetInt("sendData",0);
-	tempString=kvpGetString("playbackdPidFile");
+	tempString=kvpGetString("PLAYBACKD_PID_FILE");
 	if(tempString) {
-	    strncpy(playbackdPidFile,tempString,FILENAME_MAX);
+	    strncpy(PLAYBACKD_PID_FILE,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get playbackdPidFile");
-	    fprintf(stderr,"Couldn't get playbackdPidFile\n");
+	    syslog(LOG_ERR,"Couldn't get PLAYBACKD_PID_FILE");
+	    fprintf(stderr,"Couldn't get PLAYBACKD_PID_FILE\n");
 	}
     }
     else {
@@ -425,7 +424,7 @@ void handleBadSigs(int sig)
 {   
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);  
-    unlink(playbackdPidFile);
+    unlink(PLAYBACKD_PID_FILE);
     syslog(LOG_INFO,"Playbackd terminating");    
     exit(0);
 }
@@ -433,35 +432,13 @@ void handleBadSigs(int sig)
 
 int sortOutPidFile(char *progName)
 {
-    /* Config file thingies */
-    int status=0;
-    int retVal=0;
-    //    KvpErrorCode kvpStatus=0;
-    char* eString ;
-    char *tempString;
-
-    /* Load Config */
-    kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-
-    eString = configErrorString (status) ;
-    if (status == CONFIG_E_OK) {
-
-	tempString=kvpGetString("playbackdPidFile");
-	if(tempString) {
-	    strncpy(playbackdPidFile,tempString,FILENAME_MAX);
-	    retVal=checkPidFile(playbackdPidFile);
-	    if(retVal) {
-		fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,playbackdPidFile);
-		syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
-		return -1;
-	    }
-	    writePidFile(playbackdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get playbackdPidFile");
-	    fprintf(stderr,"Couldn't get playbackdPidFile\n");
-	}
-    }
-    return 0;
+  
+  int retVal=checkPidFile(PLAYBACKD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,PLAYBACKD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(PLAYBACKD_PID_FILE);
+  return 0;
 }

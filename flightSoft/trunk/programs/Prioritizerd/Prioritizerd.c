@@ -19,12 +19,11 @@
 //#define TIME_DEBUG 1
 //#define WRITE_DEBUG_FILE
 
-char prioritizerdPidFile[FILENAME_MAX];
 
 void wasteTime(AnitaEventBody_t *bdPtr);
 int readConfig();
 void handleBadSigs(int sig);
-
+int sortOutPidFile(char *progName);
 
 #ifdef TIME_DEBUG
 FILE *timeFile;
@@ -135,6 +134,10 @@ int main (int argc, char *argv[])
      /* Log stuff */
      char *progName=basename(argv[0]);
 
+     retVal=sortOutPidFile(progName);
+     if(retVal<0)
+       return retVal;
+
 //event thingees were formerly here; now are globals
 
 #ifdef TIME_DEBUG
@@ -167,27 +170,6 @@ int main (int argc, char *argv[])
      setlogmask(LOG_UPTO(LOG_INFO));
      openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
    
-     /* Load Config */
-     kvpReset () ;
-     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-/*     eString = configErrorString (status) ; */
-
-     if (status == CONFIG_E_OK) {
-	  tempString=kvpGetString("prioritizerdPidFile");
-	  if(tempString) {\
-			       strncpy(prioritizerdPidFile,tempString,FILENAME_MAX-1);
-	  writePidFile(prioritizerdPidFile);
-	  }
-	  else {
-	       syslog(LOG_ERR,"Error getting prioritizerdPidFile");
-	       fprintf(stderr,"Error getting prioritizerdPidFile\n");
-	  }
-
-
-	  //Output and Link Directories
-
-     }
-
      makeDirectories(HEADER_TELEM_LINK_DIR);
      makeDirectories(HEADER_TELEM_DIR);
      makeDirectories(EVENTD_EVENT_LINK_DIR);
@@ -358,7 +340,7 @@ int main (int argc, char *argv[])
 //	usleep(10000);
 	  }
      } while(currentState==PROG_STATE_INIT); 
-     unlink(prioritizerdPidFile);    
+     unlink(PRIORITIZERD_PID_FILE);    
      return 0;
 }
 
@@ -448,7 +430,21 @@ int readConfig()
 void handleBadSigs(int sig)
 {
      syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
-     unlink(prioritizerdPidFile);
+     unlink(PRIORITIZERD_PID_FILE);
      syslog(LOG_INFO,"Prioritizerd terminating");
      exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(PRIORITIZERD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,PRIORITIZERD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(PRIORITIZERD_PID_FILE);
+  return 0;
 }
