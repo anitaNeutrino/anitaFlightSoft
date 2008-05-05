@@ -882,7 +882,7 @@ void prettyPrintLookupFile()
   int board=1;
   int useRange=ip320Ranges[board];
   int i, linecount=0;
-  FILE *outFile=fopen(HK_POWER_LOOKUP,"w")
+  FILE *outFile=fopen(HK_POWER_LOOKUP,"w");
   
   if (header)
     fprintf(outFile,"%s:\n", header);
