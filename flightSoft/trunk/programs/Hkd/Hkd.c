@@ -38,7 +38,7 @@ int sortOutPidFile(char *progName);
 /* SBS Temperature Reading Functions */
 void printSBSTemps (void);
 int readSBSTemps ();
-int readSBSTemperatureFile(const char *tempFile)
+int readSBSTemperatureFile(const char *tempFile);
 
 /* Acromag Functions */
 void acromagSetup();
