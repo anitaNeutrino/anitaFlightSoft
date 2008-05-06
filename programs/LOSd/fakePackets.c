@@ -335,24 +335,24 @@ void fakeEvent(int trigType)
 //    writePackets(&theBody,&theHeader);
     
     //Write body and header for Archived
-    sprintf(archiveFilename,"%s/ev_%lu.dat",PRIORITIZERD_EVENT_DIR,
+    sprintf(archiveFilename,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	    theHeader.eventNumber);
     writeBody(&theBody,archiveFilename);
-    sprintf(archiveFilename,"%s/hd_%lu.dat",PRIORITIZERD_EVENT_DIR,
+    sprintf(archiveFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
 	    theHeader.eventNumber);
     writeHeader(&theHeader,archiveFilename);
     makeLink(archiveFilename,PRIORITIZERD_EVENT_LINK_DIR);
     
     
     //Move and link header
-    sprintf(sipdHdFilename,"%s/hd_%lu.dat",HEADER_TELEM_DIR,
+    sprintf(sipdHdFilename,"%s/hd_%u.dat",HEADER_TELEM_DIR,
 	    theHeader.eventNumber);
     writeHeader(&theHeader,sipdHdFilename);
     makeLink(sipdHdFilename,HEADER_TELEM_LINK_DIR);
 
 
     if(evNum%100==0)
-	printf("Event %d, sec %ld, millisec %ld\n",evNum,theHeader.unixTime,theHeader.unixTimeUs);
+	printf("Event %d, sec %d, millisec %d\n",evNum,theHeader.unixTime,theHeader.unixTimeUs);
        
 }
 
@@ -396,7 +396,7 @@ void fakeSurfHk(struct timeval *currentTime) {
     retVal=checkPacket(&theSurfHk);
     if(retVal) 
 	printf("Problem with FullSurfHkStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/surfhk_%ld.dat",
+    sprintf(theFilename,"%s/surfhk_%d.dat",
 	    SURFHK_TELEM_DIR,theSurfHk.unixTime);
     int numBytes=makeZippedPacket((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 				  buffer,10000);
@@ -437,7 +437,7 @@ void fakeTurfRate(struct timeval *currentTime) {
     retVal=checkPacket(&theTurfRates);
     if(retVal) 
 	printf("Problem with TurfRateStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/turfrate_%ld.dat",
+    sprintf(theFilename,"%s/turfrate_%d.dat",
 	    TURFHK_TELEM_DIR,theTurfRates.unixTime);
     retVal=writeTurfRate(&theTurfRates,theFilename);
     retVal=makeLink(theFilename,TURFHK_TELEM_LINK_DIR);
@@ -496,7 +496,7 @@ void fakeSlowPackets(struct timeval *currentTime) {
     retVal=checkPacket(&slowRate);
     if(retVal) 
 	printf("Problem with SlowRateFull_t %d\n",retVal);
-    sprintf(theFilename,"%s/slowrate_%ld.dat",
+    sprintf(theFilename,"%s/slowrate_%d.dat",
 	    SURFHK_TELEM_DIR,slowRate.unixTime);
     retVal=writeSlowRate(&slowRate,theFilename);
     retVal=makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
@@ -531,7 +531,7 @@ void fakeMonitor(struct timeval *currentTime) {
     retVal=checkPacket(&theMon);
     if(retVal) 
 	printf("Problem with MonitorStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/mon_%ld.dat",
+    sprintf(theFilename,"%s/mon_%d.dat",
 	    MONITOR_TELEM_DIR,theMon.unixTime);
     retVal=writeMonitor(&theMon,theFilename);
     retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
@@ -563,7 +563,7 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     retVal=checkPacket(&thePat);
     if(retVal) 
 	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/pat_%ld_%ld.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
+    sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
 //    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
     retVal=writeGpsPat(&thePat,theFilename);  
     retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR); 
@@ -590,7 +590,7 @@ void fakeAdu5Vtg(struct timeval *currentTime) {
     retVal=checkPacket(&theVtg);
     if(retVal) 
 	printf("Problem with GpsAdu5VtgStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/vtg_%ld_%ld.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
+    sprintf(theFilename,"%s/vtg_%d_%d.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
     retVal=writeGpsVtg(&theVtg,theFilename);  
     retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR); 
 }
@@ -621,7 +621,7 @@ void fakeAdu5Sat(struct timeval *currentTime) {
     retVal=checkPacket(&theSat);
     if(retVal) 
 	printf("Problem with GpsAdu5SatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/sat_adu5_%ld.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsAdu5Sat(&theSat,theFilename);  
     retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);
 }
@@ -653,7 +653,7 @@ void fakeG12Pos(struct timeval *currentTime) {
     if(retVal) 
 	printf("Problem with GpsG12PosStruct_t %d\n",retVal);
     //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%ld_%ld.dat",G12_POS_TELEM_DIR,thePos.unixTime,thePos.unixTimeUs);
+    sprintf(theFilename,"%s/pos_%d_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime,thePos.unixTimeUs);
     retVal=writeGpsPos(&thePos,theFilename);  
     retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR); 
 }
@@ -683,7 +683,7 @@ void fakeG12Sat(struct timeval *currentTime) {
     retVal=checkPacket(&theSat);
     if(retVal) 
 	printf("Problem with GpsG12SatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/sat_%ld.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_%d.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsG12Sat(&theSat,theFilename);  
     retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);
 }
@@ -715,7 +715,7 @@ void fakeHkCal(struct timeval *currentTime)
     theHkData.sbs.temp[0]=25.5;
     theHkData.sbs.temp[1]=25.5;   
      	
-    sprintf(theFilename,"hk_%ld_%ld.cal.dat",theHkData.unixTime,theHkData.unixTimeUs);    
+    sprintf(theFilename,"hk_%d_%d.cal.dat",theHkData.unixTime,theHkData.unixTimeUs);    
     //Write file and make link for SIPd
     fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
     retVal=checkPacket(&theHkData);
@@ -725,7 +725,7 @@ void fakeHkCal(struct timeval *currentTime)
     retVal=writeHk(&theHkData,fullFilename);     
     retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);
 
-    sprintf(theFilename,"hk_%ld_%ld.avz.dat",theHkData.unixTime,theHkData.unixTimeUs);
+    sprintf(theFilename,"hk_%d_%d.avz.dat",theHkData.unixTime,theHkData.unixTimeUs);
     theHkData.ip320.code=IP320_AVZ;
     for(board=0;board<NUM_IP320_BOARDS;board++) {
 	for(chan=0;chan<CHANS_PER_IP320;chan++) {
@@ -773,7 +773,7 @@ void fakeHkRaw(struct timeval *currentTime)
     retVal=checkPacket(&theHkData);
     if(retVal) 
 	printf("Problem with HkDataStruct_t %d\n",retVal);
-    sprintf(theFilename,"hk_%ld_%ld.raw.dat",theHkData.unixTime,theHkData.unixTimeUs);
+    sprintf(theFilename,"hk_%d_%d.raw.dat",theHkData.unixTime,theHkData.unixTimeUs);
     
     //Write file and make link for SIPd
     sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);

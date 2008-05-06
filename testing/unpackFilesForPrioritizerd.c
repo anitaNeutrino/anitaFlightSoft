@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <string.h>
+#include <dirent.h>
 
 #include <sys/types.h>
 #include <time.h>
@@ -14,6 +15,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 
 #define READ_NEW_DATA
 

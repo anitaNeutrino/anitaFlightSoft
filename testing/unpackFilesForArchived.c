@@ -16,6 +16,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "pedestalLib/pedestalLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 
 
 //#define READ_NEW_DATA

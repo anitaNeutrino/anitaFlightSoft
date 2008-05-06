@@ -19,6 +19,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"
@@ -155,17 +156,33 @@ int readConfigFile()
 
 int checkForRequests() {
     int count,retVal;
+    static int wd=0;
+    char *tempString=0;
 //    unsigned int eventNumber;
     char fileName[FILENAME_MAX];
-    char linkName[FILENAME_MAX];
-    struct dirent **linkList;
+    char linkName[FILENAME_MAX];    
     PlaybackRequest_t pReq;
-    int numLinks=getListofLinks(PLAYBACK_LINK_DIR,&linkList);
-    if(numLinks>0) {
-	fprintf(stderr,"Playbackd has received %d requests\n",numLinks);
+    int numLinks=0;
+     if(wd==0) {
+      //First time need to prep the watcher directory
+       wd=setupLinkWatchDir(PLAYBACK_LINK_DIR);
+       if(wd<=0) {
+	 fprintf(stderr,"Unable to watch %s\n",PLAYBACK_LINK_DIR);
+	 syslog(LOG_ERR,"Unable to watch %s\n",PLAYBACK_LINK_DIR);
+	 exit(0);
+       }
+       numLinks=getNumLinks(wd);
+     }
+     //Check for new inotify events
+     retVal=checkLinkDirs(1); //Should probably check
+     if(retVal || numLinks)
+       numLinks=getNumLinks(wd); //Current events waiting
+     if(numLinks>0) {
+       fprintf(stderr,"Playbackd has received %d requests\n",numLinks);
 	for(count=0;count<numLinks;count++) {
-	    sprintf(linkName,"%s/%s",PLAYBACK_LINK_DIR,linkList[count]->d_name);
-	    sprintf(fileName,"%s/%s",PLAYBACK_DIR,linkList[count]->d_name);
+	  tempString=getFirstLink(wd);
+	  sprintf(linkName,"%s/%s",PLAYBACK_LINK_DIR,tempString);
+	  sprintf(fileName,"%s/%s",PLAYBACK_DIR,tempString);
 
 	    
 	    FILE *fp=fopen(fileName,"rb");
@@ -185,10 +202,6 @@ int checkForRequests() {
 	    removeFile(linkName);
 	    removeFile(fileName);
 	}
-	for(count=0;count<numLinks;
-	    count++) 
-	    free(linkList[count]);		    
-	free(linkList);		
     }
     return 0;
 }
