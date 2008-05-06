@@ -5,6 +5,7 @@
 */
 
 #include "linkWatchLib/linkWatchLib.h"
+#include <linkWatchLib/inotify.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,7 +19,7 @@
 
 //inotify includes
 //#include <inotifytools/inotifytools.h>
-#include <inotifytools/inotify.h>
+
 
 extern  int versionsort(const void *a, const void *b);
 
