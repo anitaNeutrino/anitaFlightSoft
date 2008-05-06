@@ -4,7 +4,8 @@
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-SUBDIRS = configLib kvpLib socketLib utilLib serialLib sipcomLib compressLib pedestalLib mapLib slowLib losLib
+
+SUBDIRS = configLib kvpLib socketLib utilLib serialLib losLib sipcomLib compressLib pedestalLib mapLib slowLib linkWatchLib
 
 all: subdirs
 
