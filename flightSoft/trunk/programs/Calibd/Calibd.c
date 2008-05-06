@@ -129,6 +129,8 @@ int main (int argc, char *argv[])
 
     makeDirectories(CALIBD_STATUS_LINK_DIR);
 
+    //Need to set digital carrier num
+    retVal=readConfigFile();
     //Setup acromag
     acromagSetup();
     ip470Setup();
