@@ -20,6 +20,9 @@
 //#include <inotifytools/inotifytools.h>
 #include <inotifytools/inotify.h>
 
+extern  int versionsort(const void *a, const void *b);
+
+
 #define MAX_WATCHES 100
 #define MAX_LINKS 1000
 #define MAX_LINK_NAME 100
@@ -27,10 +30,56 @@
 static unsigned int numWatches=0;
 static int inotify_fd=0;
 static int wdArray[MAX_WATCHES]={0};
+static char watchDirArray[MAX_WATCHES][FILENAME_MAX];
 static int numLinkArray[MAX_WATCHES]={0};
 //static int linkNameArray[MAX_WATCHES][MAX_LINKS][MAX_LINK_NAME];
 
+struct listItem {
+  int watchIndex;
+  char linkName[100];
+  struct listItem *prev;
+  struct listItem *next;
+};
 
+struct listItem *firstLink[MAX_WATCHES]={0};
+struct listItem *lastLink[MAX_WATCHES]={0};
+
+
+int getWatchIndex(int watchNumber)
+{
+  static int i=-1;
+  static int wd=0;
+  if(wd==watchNumber)
+    return i;
+
+  for(i=0;i<numWatches;i++) {
+    if(watchNumber==wdArray[i]) {
+      wd=wdArray[i];
+      return i;
+    }
+  }
+  return -1;
+}
+
+void prepLinkList(int watchIndex)
+//Checks the directory as is and fills in the linkList
+{
+  int i=0;
+  struct dirent **linkList;    
+  int numLinks=getListofLinks(watchDirArray[watchIndex],&linkList);
+  fprintf(stderr,"There are %d links in %s\n",numLinks,watchDirArray[watchIndex]);
+  if(numLinks) {
+    for(i=0;i<numLinks;i++) {
+      addLink(watchIndex,linkList[i]->d_name);
+    }    
+    while(numLinks) {
+      free(linkList[numLinks-1]);
+      numLinks--;
+    }
+    free(linkList);    
+  }
+  
+}
 
 int setupLinkWatchDir(char *linkDir)
 //returns -1 for failure otherwise it returns the watch index number
@@ -65,8 +114,11 @@ int setupLinkWatchDir(char *linkDir)
   }
 
   wdArray[numWatches]=wd;
-  printf("Setting up wd %d on linkDir: %s\n",wd,linkDir);
+  strncpy(watchDirArray[numWatches],linkDir,FILENAME_MAX);
+  printf("Setting up wd %d on linkDir: %s %s\n",wd,linkDir,watchDirArray[numWatches]);
   numWatches++;
+  prepLinkList(numWatches-1);
+  //There's a race condition here and it's possible that the same file will be included twice. Lets see if it actually happens. I'll probably add something that checks if a new link is identical to the old one.
   return wd;
 }    
 
@@ -84,7 +136,7 @@ int checkLinkDirs(int timeout)
   char buffer[1000];
   struct inotify_event *event=(struct inotify_event*)&buffer[0];
   static ssize_t this_bytes;
-  static unsigned int bytes_to_read;
+  //  static unsigned int bytes_to_read;
   static int rc;
   static fd_set read_fds;
   
@@ -134,11 +186,11 @@ int checkLinkDirs(int timeout)
     int upto_byte=0;
     while(upto_byte<this_bytes) {
       //Who knows how many events we just read
-      event = &buffer[upto_byte];
+      event = (struct inotify_event*)&buffer[upto_byte];
       for(i=0;i<numWatches;i++) {
 	if(event->wd==wdArray[i]) {
 	//Got a match
-	  numLinkArray[i]++;
+	  addLink(i,event->name);
 	//Should now copy the filename from event->name in to some 
 	//list of links thingy
 	  break;
@@ -169,5 +221,149 @@ int getNumLinks(int wd)
   return -1;
 }
 
-char *getFirstLink(int wd); //returns the filename of the first link
-char *getLastLink(int wd); //returns the filename of the most recent link (no idea how)
+void addLink(int watchIndex, char *linkName)
+{
+  //Check if watchIndex is in range, for now assume it is
+  if(!lastLink[watchIndex]) {
+    //Then this is our first link
+    lastLink[watchIndex]=(struct listItem*) malloc(sizeof(struct listItem));
+    memset(lastLink[watchIndex],0,sizeof(struct listItem));
+    
+    firstLink[watchIndex]=lastLink[watchIndex];
+    firstLink[watchIndex]->watchIndex=watchIndex;
+    strncpy(firstLink[watchIndex]->linkName,linkName,99);
+    firstLink[watchIndex]->prev=0; //It's the first
+    firstLink[watchIndex]->next=0; //It's also the last    
+  }
+  else {
+    // We have other links in our list
+    struct listItem *newLink = (struct listItem*) malloc(sizeof(struct listItem));
+    lastLink[watchIndex]->next=newLink;
+    newLink->prev=lastLink[watchIndex];
+    lastLink[watchIndex]=newLink;
+    lastLink[watchIndex]->watchIndex=watchIndex;
+    strncpy(lastLink[watchIndex]->linkName,linkName,99);
+    lastLink[watchIndex]->next=0; //It's the last    
+  }
+  numLinkArray[watchIndex]++;
+	  
+}
+
+char *getLastLink(int watchNumber) 
+{
+  //The returnend string is a static variable that will be over written
+  int watchIndex=getWatchIndex(watchNumber);
+  static char linkName[FILENAME_MAX];
+  if(!lastLink[watchIndex])
+    return NULL;
+
+  //  strncpy(linkName,watchDirArray[watchIndex],FILENAME_MAX);
+  //  strncat(linkName,lastLink[watchIndex]->linkName,100);
+  strncpy(linkName,firstLink[watchIndex]->linkName,100);
+  struct listItem *nextToLast=lastLink[watchIndex]->prev;
+  if(nextToLast) {
+    nextToLast->next=0;
+    free(lastLink[watchIndex]);
+    lastLink[watchIndex]=nextToLast;
+  }
+  else {
+    //This is the only item in the list
+    free(lastLink[watchIndex]);
+    lastLink[watchIndex]=firstLink[watchIndex]=0;
+  }
+  numLinkArray[watchIndex]--;
+  return linkName;
+}
+
+
+char *getFirstLink(int watchNumber) 
+{
+  //For now assume watchIndex is just wd-1 
+  //The returnend string is a static variable that will be over written
+  int watchIndex=getWatchIndex(watchNumber);
+  static char linkName[FILENAME_MAX];
+  if(!firstLink[watchIndex])
+    return NULL;
+
+  //  strncpy(linkName,watchDirArray[watchIndex],FILENAME_MAX);
+  //  strncat(linkName,firstLink[watchIndex]->linkName,100);
+  strncpy(linkName,firstLink[watchIndex]->linkName,100);
+  //  printf("%s %s %s\n",linkName,watchDirArray[watchIndex],firstLink[watchIndex]->linkName);
+  struct listItem *nextToFirst=firstLink[watchIndex]->next;
+  if(nextToFirst) {
+    //Remove the first item and carry on
+    nextToFirst->prev=0;
+    free(firstLink[watchIndex]);
+    firstLink[watchIndex]=nextToFirst;
+  }
+  else {
+    //This is the only item in the list
+    free(firstLink[watchIndex]);
+    firstLink[watchIndex]=lastLink[watchIndex]=0;
+  }
+  numLinkArray[watchIndex]--;
+  return linkName;
+}
+
+
+int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
+{
+/*     int count; */
+    static int errorCounter=0;
+    int n = scandir(theEventLinkDir, namelist, filterOnDats, versionsort);
+    if (n < 0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
+	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
+	    errorCounter++;
+	}
+	    
+    }	
+ /*    for(count=0;count<n;count++)  */
+/* 	printf("%s\n",(*namelist)[count]->d_name); */
+    return n;	    
+}
+
+int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist)
+{
+/*     int count; */
+    static int errorCounter=0;
+    int n = scandir(theEventLinkDir, namelist, filterOnGzs, versionsort);
+    if (n < 0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
+	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
+	    errorCounter++;
+	}
+	    
+    }	
+ /*    for(count=0;count<n;count++)  */
+/* 	printf("%s\n",(*namelist)[count]->d_name); */
+    return n;	    
+}
+
+
+int filterHeaders(const struct dirent *dir)
+{
+    if(strncmp(dir->d_name,"hd",2)==0)
+	return 1;
+    return 0;
+}
+
+
+int filterOnDats(const struct dirent *dir)
+{
+
+    if(strstr(dir->d_name,".dat")!=NULL)
+	return 1;
+    return 0;
+}
+
+
+int filterOnGzs(const struct dirent *dir)
+{
+
+    if(strstr(dir->d_name,".gz")!=NULL)
+	return 1;
+    return 0;
+}

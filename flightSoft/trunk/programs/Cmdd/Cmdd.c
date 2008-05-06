@@ -20,6 +20,8 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "linkWatchLib/linkWatchLib.h"
+
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"
@@ -209,31 +211,42 @@ int main (int argc, char *argv[])
 
 
 int checkForNewCommand() {
-    struct dirent **cmdLinkList;
-    int numCmdLinks=getListofLinks(CMDD_COMMAND_LINK_DIR,&cmdLinkList);
-    int uptoCmd;
-    char currentFilename[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    if(numCmdLinks) {
-	for(uptoCmd=0;uptoCmd<numCmdLinks;uptoCmd++) {
-	    if(uptoCmd==MAX_COMMANNDS) break;
-	    sprintf(currentFilename,"%s/%s",CMDD_COMMAND_DIR,
-		    cmdLinkList[uptoCmd]->d_name);
-	    sprintf(currentLinkname,"%s/%s",CMDD_COMMAND_LINK_DIR,
-		    cmdLinkList[uptoCmd]->d_name);
-	    fillCommand(&theCmds[uptoCmd],currentFilename);
-	    removeFile(currentFilename);
-	    removeFile(currentLinkname);
-	}
-    }    
-    if(numCmdLinks>0) {
-	for(uptoCmd=0;uptoCmd<numCmdLinks;uptoCmd++) {
-	    free(cmdLinkList[uptoCmd]);
-	}
-	free(cmdLinkList);
+  static int wd=0;
+  int uptoCmd,retVal=0;
+  char currentFilename[FILENAME_MAX];
+  char currentLinkname[FILENAME_MAX];
+  int numCmdLinks=0;
+  char *tempString;
+
+  if(wd==0) {
+    //First time need to prep the watcher directory
+    wd=setupLinkWatchDir(CMDD_COMMAND_LINK_DIR);
+    if(wd<=0) {
+      fprintf(stderr,"Unable to watch %s\n",CMDD_COMMAND_LINK_DIR);
+      syslog(LOG_ERR,"Unable to watch %s\n",CMDD_COMMAND_LINK_DIR);
+      exit(0);
     }
-	    
-    return numCmdLinks;
+    numCmdLinks=getNumLinks(wd);
+  }
+    
+  //Check for new inotify events
+  retVal=checkLinkDirs(1);
+  if(retVal || numCmdLinks)
+    numCmdLinks=getNumLinks(wd);
+  
+  if(numCmdLinks) {
+    //    printf("There are %d cmd links\n",numCmdLinks);
+    for(uptoCmd=0;uptoCmd<numCmdLinks;uptoCmd++) {
+      if(uptoCmd==MAX_COMMANNDS) break;
+      tempString=getFirstLink(wd);
+      sprintf(currentFilename,"%s/%s",CMDD_COMMAND_DIR,tempString);
+      sprintf(currentLinkname,"%s/%s",CMDD_COMMAND_LINK_DIR,tempString);
+      fillCommand(&theCmds[uptoCmd],currentFilename);
+      removeFile(currentFilename);
+      removeFile(currentLinkname);
+    }
+  }    
+  return numCmdLinks;
 }
     
 int checkCommand(CommandStruct_t *theCmd) {

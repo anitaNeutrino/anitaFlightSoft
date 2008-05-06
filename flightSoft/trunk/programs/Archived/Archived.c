@@ -21,6 +21,7 @@
 #include "utilLib/utilLib.h"
 #include "compressLib/compressLib.h"
 #include "pedestalLib/pedestalLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
@@ -187,6 +188,7 @@ int main (int argc, char *argv[])
 	retVal=readConfigFile();
 	prepWriterStructs();
 
+
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading Archived.config");
 	    printf("Problem reading Archived.config\n");
@@ -314,59 +316,66 @@ int readConfigFile()
 void checkEvents() 
 {
     int count,retVal;
+    static int wd=0;
     /* Directory reading things */
-    struct dirent **linkList;
-    int numLinks;
-
+    int numLinks=0;
+    char *tempString;
     char currentHeadname[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
     char currentBodyname[FILENAME_MAX];
 //    char currentPSBodyname[FILENAME_MAX];
 
-    numLinks=getListofLinks(PRIORITIZERD_EVENT_LINK_DIR,&linkList);
+    if(wd==0) {
+      //First time need to prep the watcher directory
+      wd=setupLinkWatchDir(PRIORITIZERD_EVENT_LINK_DIR);
+      if(wd<=0) {
+	fprintf(stderr,"Unable to watch %s\n",PRIORITIZERD_EVENT_LINK_DIR);
+	syslog(LOG_ERR,"Unable to watch %s\n",PRIORITIZERD_EVENT_LINK_DIR);
+	exit(0);
+      }
+      numLinks=getNumLinks(wd);
+    }
+    //Check for new inotify events
+    retVal=checkLinkDirs(1); //Should probably check
+    if(retVal || numLinks)
+      numLinks=getNumLinks(wd); //Current events waiting
     if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
     eventWriter.justHeader=0;
     for(count=0;count<numLinks;count++) {
-	sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,
-		linkList[count]->d_name);
-	sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,
-		linkList[count]->d_name);
-	retVal=fillHeader(&theHead,currentHeadname);
-	sprintf(currentBodyname,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
-		theHead.eventNumber);
-	if(!shouldWeThrowAway(theHead.priority&0xf) ) {
+      tempString=getFirstLink(wd);
+      
+      
+      sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,tempString);
+      sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,tempString);
+      retVal=fillHeader(&theHead,currentHeadname);
+      sprintf(currentBodyname,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
+	      theHead.eventNumber);
+      if(!shouldWeThrowAway(theHead.priority&0xf) ) {
 	    
-	    
-	    retVal=fillBody(&theBody,currentBodyname);
-//	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
-//		theHead.eventNumber);
-//	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
-//	printf("Event %u, Body %u, PS Body %u\n",theHead.eventNumber,
-//	       theBody.eventNumber,pedSubBody.eventNumber);
-
-	//Subtract Pedestals
-	    subtractCurrentPeds(&theBody,&pedSubBody);
-	    
-
-	    processEvent();
-	}
-	else {
-	    eventWriter.justHeader=1;
-	    processEvent();
-	    
-	}
-
-	removeFile(currentLinkname);
-	removeFile(currentBodyname);
-//	removeFile(currentPSBodyname);
-	removeFile(currentHeadname);
-    }
 	
-    /* Free up the space used by dir queries */
-    for(count=0;count<numLinks;count++)
-	free(linkList[count]);
-    free(linkList);
-	    
+	retVal=fillBody(&theBody,currentBodyname);
+	//	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
+	//		theHead.eventNumber);
+	//	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
+	//	printf("Event %u, Body %u, PS Body %u\n",theHead.eventNumber,
+	//	       theBody.eventNumber,pedSubBody.eventNumber);
+	
+	//Subtract Pedestals
+	subtractCurrentPeds(&theBody,&pedSubBody);
+	
+	
+	processEvent();
+      }
+      else {
+	eventWriter.justHeader=1;
+	processEvent();	
+      }
+
+      removeFile(currentLinkname);
+      removeFile(currentBodyname);
+      //	removeFile(currentPSBodyname);
+      removeFile(currentHeadname);
+    }
 }
 
 void processEvent() 

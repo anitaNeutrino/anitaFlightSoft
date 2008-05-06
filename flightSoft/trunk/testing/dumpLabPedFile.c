@@ -15,6 +15,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "pedestalLib/pedestalLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 
 void dumpLabPeds(FullLabChipPedStruct_t *pedPtr);
 

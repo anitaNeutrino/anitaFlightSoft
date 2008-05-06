@@ -20,6 +20,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 
@@ -55,10 +56,10 @@ GpsSubTime_t gpsArray[MAX_GPS_TIMES];
 /*Will think about handling this better*/
 
 
-#ifdef TIME_DEBUG
-FILE *timeFile;
-struct timeval timeStruct2;
-#endif    
+
+int wdEvent=0;
+int wdGps=0;
+int wdCalib=0;
 
 int main (int argc, char *argv[])
 {
@@ -68,9 +69,10 @@ int main (int argc, char *argv[])
 
 
     /* Directory reading things */
-    struct dirent **eventLinkList;
+
     int numEventLinks;
-    
+    char *tempString=0;
+
     /* Log stuff */
     char *progName=basename(argv[0]);
 
@@ -97,6 +99,17 @@ int main (int argc, char *argv[])
     makeDirectories(CALIBD_STATUS_LINK_DIR);
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
 
+    if(wdEvent==0) {
+      wdEvent=setupLinkWatchDir(ACQD_EVENT_LINK_DIR);
+      if(wdEvent<=0) {
+	fprintf(stderr,"Unable to watch %s\n",ACQD_EVENT_LINK_DIR);
+	syslog(LOG_ERR,"Unable to watch %s\n",ACQD_EVENT_LINK_DIR);
+	exit(0);
+      }
+      numEventLinks=getNumLinks(wdEvent);
+    }   
+
+
     do {
 	retVal=readConfigFile();
 	if(printToScreen) 
@@ -109,124 +122,90 @@ int main (int argc, char *argv[])
 	int numEvents=0;
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
+	  retVal=checkLinkDirs(1);
+	  if(retVal || numEventLinks)
+	    numEventLinks=getNumLinks(wdEvent);
+	  /* 	printf("Got %d event links\n",numEventLinks); */
+	  if(numEventLinks<1) {
+	    usleep(1000);
+	    continue;
+	  }
+	  if(verbosity>2 && printToScreen) 
+	    fprintf(stderr,"There are %d event links.\n",numEventLinks);
 
-#ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"0 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
-	    numEventLinks=getListofLinks(ACQD_EVENT_LINK_DIR,&eventLinkList);
-/* 	printf("Got %d event links\n",numEventLinks); */
-	    if(numEventLinks<1) {
-		usleep(1000);
-		continue;
-	    }
-	    if(verbosity>2 && printToScreen) 
-		fprintf(stderr,"There are %d event links.\n",numEventLinks);
+	  //This is just to make sure the GPS sub times are up to date
+	  //	    sleep(1);
+	  
+	  /* What to do with our events? */	
+	  for(count=0;count<numEventLinks;count++) {
+	    tempString=getFirstLink(wdEvent);
+	    filledSubTime=0;
+	    //		printf("%s\n",eventLinkList[count]->d_name);
+	    sprintf(currentFilename,"%s/%s",ACQD_EVENT_LINK_DIR,tempString);
 
-	    //This is just to make sure the GPS sub times are up to date
-//	    sleep(1);
 	    
-#ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"1 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
-	    /* What to do with our events? */	
-	    for(count=0;count<numEventLinks;count++) {
- 
-#ifdef TIME_DEBUG
-	gettimeofday(&timeStruct2,NULL);
-	fprintf(timeFile,"2 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
+	    retVal=fillHeader(&theAcqdEventHeader,currentFilename);
+	    //		printf("%s\t%u\t%d\n",currentFilename,theAcqdEventHeader.eventNumber,retVal); 
+	    //		exit(0);
+	    //		printf("RetVal %d\n",retVal;
+	    if(retVal<0) {
+	      removeFile(currentFilename);
+	      
+	      sprintf(currentFilename,"%s/%s",ACQD_EVENT_DIR,tempString);
+	      removeFile(currentFilename);	
+	      
+	      sscanf(tempString,"hd_%u.dat",&tempNum);
+	      if(tempNum>0) {
+		sprintf(currentFilename,"%s/ev_%u.dat",ACQD_EVENT_DIR,
+			tempNum);
+	      }		    
+	      continue;
+	    }	
+	    
+	    int tryCount=0;
+	    do {
+	      //		    printf("Here %u (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
+	      if(tryToMatchGps) {
+		filledSubTime=setGpsTime(&theAcqdEventHeader);
+	      }
+	      else {
 		filledSubTime=0;
-//		printf("%s\n",eventLinkList[count]->d_name);
-		sprintf(currentFilename,"%s/%s",ACQD_EVENT_LINK_DIR,
-			eventLinkList[count]->d_name);
-
-		
-		retVal=fillHeader(&theAcqdEventHeader,currentFilename);
-//		printf("%s\t%u\t%d\n",currentFilename,theAcqdEventHeader.eventNumber,retVal); 
-//		exit(0);
-#ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
-		fprintf(timeFile,"3 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
-//		printf("RetVal %d\n",retVal;
-		if(retVal<0) {
-		    removeFile(currentFilename);
-
-		    sprintf(currentFilename,"%s/%s",ACQD_EVENT_DIR,
-			    eventLinkList[count]->d_name);
-		    removeFile(currentFilename);	
-	    
-		    sscanf(eventLinkList[count]->d_name,
-			   "hd_%u.dat",&tempNum);
-		    if(tempNum>0) {
-			sprintf(currentFilename,"%s/ev_%u.dat",ACQD_EVENT_DIR,
-				tempNum);
-		    }		    
-		    continue;
-		}	
-	    
-		int tryCount=0;
-		do {
-//		    printf("Here %u (filledSubTime %d)\n",theAcqdEventHeader.eventNumber,filledSubTime);
-		    if(tryToMatchGps) {
-			filledSubTime=setGpsTime(&theAcqdEventHeader);
-		    }
-		    else {
-			filledSubTime=0;
-			clearGpsDir();
-			break;
-		    }
+		clearGpsDir();
+		break;
+	      }
 		    if(!filledSubTime) {
-			if((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT) sleep(1);
-			else break;
+		      if((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT) sleep(1);
+		      else break;
 		    }
 		    else break;
 		    tryCount++;
-		} while((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT
-			&& !filledSubTime && tryCount<20);
-				
-#ifdef TIME_DEBUG
-		gettimeofday(&timeStruct2,NULL);
-		fprintf(timeFile,"4 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
-		if(!filledSubTime) {
-		    theAcqdEventHeader.gpsSubTime=-1;
-//		    syslog (LOG_WARNING,"No GPS sub time for event %d",
-//			    theAcqdEventHeader.eventNumber);
-		    if(printToScreen)
-			fprintf(stdout,"No GPS sub time for event %u\t%d\t%d\n",
-			       theAcqdEventHeader.eventNumber,
-			       theAcqdEventHeader.unixTime,
-			       theAcqdEventHeader.unixTimeUs);
-		}
-		else if(printToScreen) 
-		    fprintf(stdout,"Match: Event %u\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
-		
-		    theAcqdEventHeader.calibStatus
-			=getCalibStatus(theAcqdEventHeader.unixTime);
-		writeHeaderAndMakeLink(&theAcqdEventHeader);
-		numEvents++;
-		
-		    
+	    } while((time(NULL)-theAcqdEventHeader.unixTime)<EVENT_TIMEOUT
+		    && !filledSubTime && tryCount<20);
+	    
+	    if(!filledSubTime) {
+	      theAcqdEventHeader.gpsSubTime=-1;
+	      //		    syslog (LOG_WARNING,"No GPS sub time for event %d",
+	      //			    theAcqdEventHeader.eventNumber);
+	      if(printToScreen)
+		fprintf(stdout,"No GPS sub time for event %u\t%d\t%d\n",
+			theAcqdEventHeader.eventNumber,
+			theAcqdEventHeader.unixTime,
+			theAcqdEventHeader.unixTimeUs);
 	    }
+	    else if(printToScreen) 
+	      fprintf(stdout,"Match: Event %u\t Time:\t%d\t%d\n",theAcqdEventHeader.eventNumber,theAcqdEventHeader.unixTime,theAcqdEventHeader.gpsSubTime);
 	    
-#ifdef TIME_DEBUG
-	    gettimeofday(&timeStruct2,NULL);
-	    fprintf(timeFile,"11 %d %d\n",timeStruct2.tv_sec,timeStruct2.tv_usec);  
-#endif
+	    theAcqdEventHeader.calibStatus
+	      =getCalibStatus(theAcqdEventHeader.unixTime);
+	    writeHeaderAndMakeLink(&theAcqdEventHeader);
+	    numEvents++;
 	    
 	    
-	    
-	    /* Free up the space used by dir queries */
-	    for(count=0;count<numEventLinks;count++)
-		free(eventLinkList[count]);
-	    free(eventLinkList);
-	    
-//	usleep(10000);
-/* 	break; */
-//	sleep(2);
+	  }
+	  	    
+	  //	usleep(10000);
+	  /* 	break; */
+	  //	sleep(2);
 	    
 	}
     } while(currentState==PROG_STATE_INIT); 
@@ -239,37 +218,48 @@ int main (int argc, char *argv[])
 void clearGpsDir() 
 {
     int  count;
-    struct dirent **gpsSubTimeLinkList;
+    char *tempString=0;
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-
-    int numGpsTimeLinks=getListofLinks(GPSD_SUBTIME_LINK_DIR,&gpsSubTimeLinkList);
-
+    checkLinkDirs(1);
+    int numGpsTimeLinks=getNumLinks(wdGps);
     for(count=0;count<numGpsTimeLinks;count++) {
-	sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
-		gpsSubTimeLinkList[count]->d_name);   
-	sprintf(currentLinkname,"%s/%s",GPSD_SUBTIME_DIR,
-		gpsSubTimeLinkList[count]->d_name);     
-	removeFile(currentFilename);
-	removeFile(currentLinkname);
-	
+      tempString=getFirstLink(wdGps);
+      sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,tempString);
+      sprintf(currentLinkname,"%s/%s",GPSD_SUBTIME_DIR,tempString);
+      removeFile(currentFilename);
+      removeFile(currentLinkname);      
     }
 }
 
 int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 {
     int retVal,count;
+    char *tempString=0;
     char currentFilename[FILENAME_MAX];
-    struct dirent **gpsSubTimeLinkList;
 /*     static float avgDiff=0; */
 /*     static int numDiffs=0; */
 /*     static float lastDiff=0; */ 
     int haveMatch=0;
-//May implement a dynamic monitoring of the tim offset
+//May implement a dynamic monitoring of the time offset
     int newGpsSubTime;
     static unsigned short lastPPSNum=0;
     static unsigned int turfPPSOffset=0;
+    int numGpsTimeLinks=0;
+    static int numGpsStored=0;
+    float fracUnix,fracTurf,fracGps;
 
+
+    if(wdGps==0) {
+       //First time need to prep the watcher directory
+      wdGps=setupLinkWatchDir(GPSD_SUBTIME_LINK_DIR);
+      if(wdGps<=0) {
+	fprintf(stderr,"Unable to watch %s\n",GPSD_SUBTIME_LINK_DIR);
+	syslog(LOG_ERR,"Unable to watch %s\n",GPSD_SUBTIME_LINK_DIR);
+	//	exit(0);
+      }
+      numGpsTimeLinks=getNumLinks(wdGps);
+    }
 
     if(lastPPSNum>theHeaderPtr->turfio.ppsNum) {
 	turfPPSOffset=0;
@@ -278,16 +268,14 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	
 
 // GPS subTime stuff
-    static int numGpsStored=0;
-    int numGpsTimeLinks;
-    float fracUnix,fracTurf,fracGps;
-    numGpsTimeLinks=getListofLinks(GPSD_SUBTIME_LINK_DIR,&gpsSubTimeLinkList);
+    retVal=checkLinkDirs(1);
+    if(retVal || numGpsTimeLinks)
+      numGpsTimeLinks=getNumLinks(wdGps);
     int loadGpsLinks=numGpsTimeLinks;
-
+    
     if(verbosity>2 && printToScreen) 	
-	fprintf(stderr,"There are %d gps links.\n",numGpsTimeLinks);
-    
-    
+      fprintf(stderr,"There are %d gps links.\n",numGpsTimeLinks);
+        
     /* need to do something if we ever have more 
        than MAX_GPS_TIMES subTimes.*/
     if(numGpsStored+numGpsTimeLinks>MAX_GPS_TIMES-100) {
@@ -296,33 +284,28 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	numGpsStored=0;
 	bzero(gpsArray, sizeof(GpsSubTime_t)*MAX_GPS_TIMES) ;	
 	for(count=0;count<numGpsTimeLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
-		    gpsSubTimeLinkList[count]->d_name); 
-	    removeFile(currentFilename);
-	    sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_DIR,
-		    gpsSubTimeLinkList[count]->d_name); 
-	    removeFile(currentFilename);
+	  tempString=getFirstLink(wdGps);
+	  sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,tempString);
+	  removeFile(currentFilename);
+	  sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_DIR,tempString);
+	  removeFile(currentFilename);
 	}
-	return 0;
-	    
+	return 0;	
     }
+
     if(loadGpsLinks>MAX_GPS_TIMES)
-	loadGpsLinks=MAX_GPS_TIMES-10;
+      loadGpsLinks=MAX_GPS_TIMES-10;
     
     for(count=0;count<loadGpsLinks;count++) {
-	sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,
-		gpsSubTimeLinkList[count]->d_name);     
-	retVal=fillGpsStruct(&gpsArray[numGpsStored],currentFilename);	
-	if(retVal==0) {
-	    /* Got One */
-	    numGpsStored++;
-	}
-	deleteGPSFiles(&gpsArray[numGpsStored-1]);
+      tempString=getFirstLink(wdGps);
+      sprintf(currentFilename,"%s/%s",GPSD_SUBTIME_LINK_DIR,tempString);
+      retVal=fillGpsStruct(&gpsArray[numGpsStored],currentFilename);	
+      if(retVal==0) {
+	/* Got One */
+	numGpsStored++;
+      }
+      deleteGPSFiles(&gpsArray[numGpsStored-1]);
     }    
-
-    for(count=0;count<numGpsTimeLinks;count++)
-	free(gpsSubTimeLinkList[count]);
-    free(gpsSubTimeLinkList);
     
     // As we are reading out two GPS units there is a chance that the times
     // will come out of time order.
@@ -491,13 +474,27 @@ int getCalibStatus(int unixTime)
 {
     static CalibStruct_t calibArray[MAX_CALIB_TIMES];
     static int numStored=0;
-    
-    struct dirent **calibList;
-    int numCalibLinks=getListofLinks(CALIBD_STATUS_LINK_DIR,&calibList);
-    int count;
+    char *tempString=0;
+    int numCalibLinks=0;
+    int count,retVal=0;
     char currentFilename[FILENAME_MAX];
     char otherFilename[FILENAME_MAX];
     int currentStatus=0, gotStatus=0;
+
+    if(wdCalib==0) {
+      wdCalib=setupLinkWatchDir(CALIBD_STATUS_LINK_DIR);
+      if(wdCalib<=0) {	
+	fprintf(stderr,"Unable to watch %s\n",CALIBD_STATUS_LINK_DIR);
+	syslog(LOG_ERR,"Unable to watch %s\n",CALIBD_STATUS_LINK_DIR);
+	exit(0);
+      }
+      numCalibLinks=getNumLinks(wdCalib);    
+    }
+    
+
+    retVal=checkLinkDirs(1); //Will have to update to sue a smaller timeout
+    if(retVal || numCalibLinks)
+      numCalibLinks=getNumLinks(wdCalib);
 
     if(printToScreen && verbosity)
 	fprintf(stderr,"There are %d calibs stored\n",numStored);
@@ -505,26 +502,27 @@ int getCalibStatus(int unixTime)
     if(numCalibLinks>1 || (numCalibLinks>0 && numStored==0)) {
 	/* Read out calib status, and delete all but the most recent link */
 	for(count=0;count<numCalibLinks;count++) {
-	    sprintf(currentFilename,"%s/%s",CALIBD_STATUS_LINK_DIR,
-		    calibList[count]->d_name);	
-	    sprintf(otherFilename,"%s/%s",CALIBD_STATUS_DIR,
-		    calibList[count]->d_name);	       
-	    if(count==0) {
-		if(numStored==0) {
-		    fillCalibStruct(&calibArray[numStored],currentFilename); 
-		    numStored++;
-		}
-		removeFile(currentFilename);
-		removeFile(otherFilename);
+	  tempString=getFirstLink(wdCalib);
+	  sprintf(currentFilename,"%s/%s",CALIBD_STATUS_LINK_DIR,tempString);
+	  sprintf(otherFilename,"%s/%s",CALIBD_STATUS_DIR,tempString);
+	  if(count==0) {
+	    if(numStored==0) {
+	      fillCalibStruct(&calibArray[numStored],currentFilename); 
+	      numStored++;
 	    }
-	    else {
-		fillCalibStruct(&calibArray[numStored],currentFilename); 
-		numStored++;
-		if(count!=(numCalibLinks-1)) {
-		    removeFile(currentFilename);
-		    removeFile(otherFilename);
-		}
+	    removeFile(currentFilename);
+	    removeFile(otherFilename);
+	  }
+	  else {
+	    fillCalibStruct(&calibArray[numStored],currentFilename); 
+	    numStored++;
+	    //Not sure what's going on here may have to revisit,
+	    //of course I might be doing the right thing
+	    if(count!=(numCalibLinks-1)) {
+	      removeFile(currentFilename);
+	      removeFile(otherFilename);
 	    }
+	  }
 	}
     }
     for(count=numStored-1;count>=0;count--) {
@@ -541,11 +539,6 @@ int getCalibStatus(int unixTime)
 	}
     }
 
-    if(numCalibLinks>0) {
-	for(count=0;count<numCalibLinks;count++)
-	    free(calibList[count]);
-	free(calibList);
-    }
     if(gotStatus) return currentStatus;
     return -1;
     

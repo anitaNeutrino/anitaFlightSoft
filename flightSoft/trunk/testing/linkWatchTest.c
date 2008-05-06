@@ -23,12 +23,22 @@
 
 int main (int argc, char **argv)
 {    
+  int i=0;
   int wd=setupLinkWatchDir("/tmp/testDir/");
+  int numLinks=getNumLinks(wd);
+  if(numLinks)
+    fprintf(stderr,"There are %d links\n",numLinks);
   while(1) {
     int retVal=checkLinkDirs(1); //Timeout of 1 second
     if(retVal) { //New stuff
-      int numLinks=getNumLinks(wd);
+      numLinks=getNumLinks(wd);
       fprintf(stderr,"There are %d links\n",numLinks);
+      if(numLinks>=1000) {
+	for(i=0;i<numLinks;i++) {
+	  printf("Link %d is %s\n",i,getFirstLink(wd));
+	}
+
+      }
     }
     usleep(30000);
   }

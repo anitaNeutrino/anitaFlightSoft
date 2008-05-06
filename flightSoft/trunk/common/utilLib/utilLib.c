@@ -27,7 +27,7 @@
 ProgramStateCode currentState;
 
 
-//extern  int versionsort(const void *a, const void *b);
+//
 
 int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
 char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
@@ -804,45 +804,6 @@ int is_dir(const char *path)
 }
 
 
-int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist)
-{
-/*     int count; */
-    static int errorCounter=0;
-    //RJN hack for testing on Mac OS X
-    int n = scandir(theEventLinkDir, namelist, filterOnDats, alphasort);
-    if (n < 0) {
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
-	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
-	    errorCounter++;
-	}
-	    
-    }	
- /*    for(count=0;count<n;count++)  */
-/* 	printf("%s\n",(*namelist)[count]->d_name); */
-    return n;	    
-}
-
-int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist)
-{
-/*     int count; */
-    static int errorCounter=0;
-    //RJN hack for testing on Mac OS X
-    int n = scandir(theEventLinkDir, namelist, filterOnGzs, alphasort);
-    if (n < 0) {
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"scandir %s: %s",theEventLinkDir,strerror(errno));
-	    fprintf(stderr,"scandir %s: %s\n",theEventLinkDir,strerror(errno));
-	    errorCounter++;
-	}
-	    
-    }	
- /*    for(count=0;count<n;count++)  */
-/* 	printf("%s\n",(*namelist)[count]->d_name); */
-    return n;	    
-}
-
-
 unsigned int getDiskSpace(char *dirName) {
     struct statvfs diskStat;
     static int errorCounter=0;
@@ -912,30 +873,6 @@ unsigned short countFilesInDir(char *dirName) {
 
 
 
-int filterHeaders(const struct dirent *dir)
-{
-    if(strncmp(dir->d_name,"hd",2)==0)
-	return 1;
-    return 0;
-}
-
-
-int filterOnDats(const struct dirent *dir)
-{
-
-    if(strstr(dir->d_name,".dat")!=NULL)
-	return 1;
-    return 0;
-}
-
-
-int filterOnGzs(const struct dirent *dir)
-{
-
-    if(strstr(dir->d_name,".gz")!=NULL)
-	return 1;
-    return 0;
-}
 
 
 int fillCalibStruct(CalibStruct_t *theStruct, char *filename)

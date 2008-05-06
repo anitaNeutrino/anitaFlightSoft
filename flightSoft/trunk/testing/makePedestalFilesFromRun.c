@@ -15,6 +15,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "pedestalLib/pedestalLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 
 extern  int versionsort(const void *a, const void *b);
 int getListofHeaders(const char *theEventLinkDir, struct dirent ***namelist);

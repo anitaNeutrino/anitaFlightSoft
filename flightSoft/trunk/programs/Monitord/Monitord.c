@@ -21,6 +21,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"

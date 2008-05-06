@@ -15,9 +15,7 @@ extern "C" {
 #endif
 
 /* Includes */
-#ifndef __CINT__
-#include <dirent.h>
-#endif
+
 #include "includes/anitaStructures.h"
 #include <time.h>
 #include <zlib.h>
@@ -76,13 +74,7 @@ extern "C" {
     char *readFile(const char *theFile, unsigned int *numBytes);
     int removeFile(const char *theFile);
 
-#ifndef __CINT__
-    int filterHeaders(const struct dirent *dir);
-    int filterOnDats(const struct dirent *dir);
-    int filterOnGzs(const struct dirent *dir);
-    int getListofLinks(const char *theEventLinkDir, struct dirent ***namelist);
-    int getListofPurgeFiles(const char *theEventLinkDir, struct dirent ***namelist);
-#endif
+
     unsigned int getDiskSpace(char *dirName);
     unsigned short countFilesInDir(char *dirName);
 
