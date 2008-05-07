@@ -21,6 +21,7 @@
 //#include "socketLib/socketLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 
 #define DEFAULT_C3PO 200453324
@@ -45,7 +46,6 @@ int main (int argc, char *argv[])
     /* Ports and directories */
     char acqdEventDir[FILENAME_MAX];
     char acqdEventLinkDir[FILENAME_MAX];
-    char lastEventNumberFile[FILENAME_MAX];
 
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -67,8 +67,6 @@ int main (int argc, char *argv[])
     if (status == CONFIG_E_OK) {
 	strncpy(acqdEventDir,kvpGetString ("acqdEventDir"),FILENAME_MAX-1);
 	sprintf(acqdEventLinkDir,"%s/link",acqdEventDir);
-	strncpy(lastEventNumberFile,kvpGetString ("lastEventNumberFile"),
-		FILENAME_MAX-1);
     }
 
 
@@ -80,8 +78,8 @@ int main (int argc, char *argv[])
   
 /* Main event getting loop */
     while(1) {
-	if(getEvent(&theEvent,lastEventNumberFile)) {
-	    syslog(LOG_INFO,"Got new event: %d, time %ld",
+	if(getEvent(&theEvent,LAST_EVENT_NUMBER_FILE)) {
+	    syslog(LOG_INFO,"Got new event: %d, time %d",
 		   theEvent.header.eventNumber,theEvent.header.unixTime);
 	    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
 	}
@@ -119,25 +117,27 @@ int getEvent(AnitaEventFull_t *theEventPtr, const char *lastEventNumberFile) {
     /* At the moment have to get fake (random) waveforms  */
     if(waitForFakeTrigger()) {
 	fakeEvent(theEventPtr);
-	printf("Event %d, Time %ld %ld\n",theEventPtr->header.eventNumber,
+	printf("Event %d, Time %d %d\n",theEventPtr->header.eventNumber,
 	       theEventPtr->header.unixTime,theEventPtr->header.unixTimeUs);
 	/* Need to increment eventNumber and write out the last eventNumber to 
 	   a file. */
 	eventNumber++;
 	theEventPtr->header.eventNumber=eventNumber;
 	
-	pFile = fopen (lastEventNumberFile, "w");
-	if(pFile == NULL) {
+	if(eventNumber%100) {
+	  pFile = fopen (lastEventNumberFile, "w");
+	  if(pFile == NULL) {
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
 		    lastEventNumberFile);
-	}
-	else {
+	  }
+	  else {
 	    retVal=fprintf(pFile,"%d\n",eventNumber);
 	    if(retVal<0) {
-		syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
-			lastEventNumberFile);
+	      syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+		      lastEventNumberFile);
 	    }
 	    fclose (pFile);
+	  }
 	}
 	return 1;
     }

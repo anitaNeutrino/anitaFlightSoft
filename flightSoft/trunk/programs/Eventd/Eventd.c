@@ -122,7 +122,7 @@ int main (int argc, char *argv[])
 	int numEvents=0;
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
-	  retVal=checkLinkDirs(1);
+	  retVal=checkLinkDirs(1,0);
 	  if(retVal || numEventLinks)
 	    numEventLinks=getNumLinks(wdEvent);
 	  /* 	printf("Got %d event links\n",numEventLinks); */
@@ -221,7 +221,7 @@ void clearGpsDir()
     char *tempString=0;
     char currentFilename[FILENAME_MAX];
     char currentLinkname[FILENAME_MAX];
-    checkLinkDirs(1);
+    checkLinkDirs(0,1);
     int numGpsTimeLinks=getNumLinks(wdGps);
     for(count=0;count<numGpsTimeLinks;count++) {
       tempString=getFirstLink(wdGps);
@@ -268,7 +268,7 @@ int setGpsTime(AnitaEventHeader_t *theHeaderPtr)
 	
 
 // GPS subTime stuff
-    retVal=checkLinkDirs(1);
+    retVal=checkLinkDirs(0,1);
     if(retVal || numGpsTimeLinks)
       numGpsTimeLinks=getNumLinks(wdGps);
     int loadGpsLinks=numGpsTimeLinks;
@@ -492,7 +492,7 @@ int getCalibStatus(int unixTime)
     }
     
 
-    retVal=checkLinkDirs(1); //Will have to update to sue a smaller timeout
+    retVal=checkLinkDirs(0,1); //Will have to update to sue a smaller timeout
     if(retVal || numCalibLinks)
       numCalibLinks=getNumLinks(wdCalib);
 

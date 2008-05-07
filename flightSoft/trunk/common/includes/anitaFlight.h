@@ -141,6 +141,10 @@
 #define BLADE_DATA_MOUNT "/tmp/mnt/blade"
 #define USBINT_DATA_MOUNT "/tmp/mnt/usbint"
 #define USBEXT_DATA_MOUNT "/tmp/mnt/usbext"
+#define LAST_EVENT_NUMBER_FILE "/tmp/mnt/data/numbers/lastEventNumber"
+#define LAST_LOS_NUMBER_FILE "/tmp/mnt/data/numbers/lastLosNumber"
+#define LAST_TDRSS_NUMBER_FILE "/tmp/mnt/data/numbers/lastTdrssNumber"
+#define LAST_RUN_NUMBER_FILE "/tmp/mnt/data/numbers/lastRunNumber"
 #else
 #define DATA_LINK "/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
@@ -149,6 +153,10 @@
 #define BLADE_DATA_MOUNT "/mnt/satablade"
 #define USBINT_DATA_MOUNT "/mnt/usbint"
 #define USBEXT_DATA_MOUNT "/mnt/usbext"
+#define LAST_EVENT_NUMBER_FILE "/mnt/data/numbers/lastEventNumber"
+#define LAST_LOS_NUMBER_FILE "/mnt/data/numbers/lastLosNumber"
+#define LAST_TDRSS_NUMBER_FILE "/mnt/data/numbers/lastTdrssNumber"
+#define LAST_RUN_NUMBER_FILE "/mnt/data/numbers/lastRunNumber"
 #endif
 
 
@@ -196,6 +204,8 @@
 #define HEADER_TELEM_LINK_DIR "/tmp/anita/telem/head/link"
 #define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
 #define OTHER_MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/other/link"
+
+
 
 //Event telemetry dirs
 #define BASE_EVENT_TELEM_DIR "/tmp/anita/telem/event"

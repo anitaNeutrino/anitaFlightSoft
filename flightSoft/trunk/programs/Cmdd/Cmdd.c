@@ -71,7 +71,7 @@ int setSipdPriorityBandwidth(int pri, int bw);
 int executePrioritizerdCommand(int command, int value);
 int executePlaybackCommand(int command, unsigned int value1, unsigned int value2);
 int startNewRun();
-int getRunNumber();
+int getNewRunNumber();
 int getLatestEventNumber();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
@@ -85,9 +85,6 @@ CommandStruct_t theCmds[MAX_COMMANNDS];
 
 int numCmds=256;
 
-/* PID Files */
-char lastRunNumberFile[FILENAME_MAX];
-char lastEventNumberFile[FILENAME_MAX];
 
 //Debugging Output
 int printToScreen=1;
@@ -230,7 +227,7 @@ int checkForNewCommand() {
   }
     
   //Check for new inotify events
-  retVal=checkLinkDirs(1);
+  retVal=checkLinkDirs(1,0);
   if(retVal || numCmdLinks)
     numCmdLinks=getNumLinks(wd);
   
@@ -329,22 +326,6 @@ int readConfig() {
 		    kvpErrorString(kvpStatus));
 	}
 	
-	tempString=kvpGetString("lastRunNumberFile");
-	if(tempString) {
-	    strncpy(lastRunNumberFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get lastRunNumberFile");
-	    fprintf(stderr,"Couldn't get lastRunNumberFile\n");
-	}
-
-	tempString=kvpGetString ("lastEventNumberFile");
-	if(tempString)
-	    strncpy(lastEventNumberFile,tempString,FILENAME_MAX-1);
-	else
-	    fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
-
-
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -2443,13 +2424,16 @@ int startNewRun() {
     RunStart_t runStart;
     int diskInd=0;
     int retVal=0;
-    int runNum=getRunNumber();
+    int runNum=getNewRunNumber();
     char newRunDir[FILENAME_MAX];
     char currentDirLink[FILENAME_MAX];
     char mistakeDirName[FILENAME_MAX];
     runStart.runNumber=runNum;
     runStart.unixTime=time(NULL);
     runStart.eventNumber=getLatestEventNumber();
+    runStart.eventNumber/=100;
+    runStart.eventNumber++;
+    runStart.eventNumber*=100; //Roughly
 
     //First make dirs
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
@@ -2492,45 +2476,33 @@ int startNewRun() {
 }
 
 
-int getRunNumber() {
-	int retVal=0;
+int getNewRunNumber() {
     static int firstTime=1;
     static int runNumber=0;
+    int retVal=0;
     /* This is just to get the lastRunNumber in case of program restart. */
-    FILE *pFile;
     if(firstTime) {
-	pFile = fopen (lastRunNumberFile, "r");
-	if(pFile == NULL) {
-	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		    lastRunNumberFile);
-	}
-	else {	    	    
-	    retVal=fscanf(pFile,"%d",&runNumber);
-	    if(retVal<0) {
-		syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-			lastRunNumberFile);
-	    }
-	    fclose (pFile);
-	}
-	if(printToScreen) printf("The last run number is %d\n",runNumber);
-	firstTime=0;
+      runNumber=getRunNumber();
     }
     runNumber++;
 
-    pFile = fopen (lastRunNumberFile, "w");
+    FILE *pFile = fopen (LAST_RUN_NUMBER_FILE, "w");
     if(pFile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		lastRunNumberFile);
+		LAST_RUN_NUMBER_FILE);
+	fprintf(stderr,"fopen: %s ---  %s\n",strerror(errno),
+		LAST_RUN_NUMBER_FILE);
     }
     else {
 	retVal=fprintf(pFile,"%d\n",runNumber);
 	if(retVal<0) {
 	    syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
-		    lastRunNumberFile);
-	    }
+		    LAST_RUN_NUMBER_FILE);
+	    fprintf(stderr,"fprintf: %s ---  %s\n",strerror(errno),
+		    LAST_RUN_NUMBER_FILE);
+	}
 	fclose (pFile);
     }
-
     return runNumber;
     
 }
@@ -2568,16 +2540,16 @@ int getLatestEventNumber() {
     int eventNumber=0;
 
     FILE *pFile;
-    pFile = fopen (lastEventNumberFile, "r");
+    pFile = fopen (LAST_EVENT_NUMBER_FILE, "r");
     if(pFile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		lastEventNumberFile);
+		LAST_EVENT_NUMBER_FILE);
     }
     else {	    	    
 	retVal=fscanf(pFile,"%d",&eventNumber);
 	if(retVal<0) {
 	    syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-		    lastEventNumberFile);
+		    LAST_EVENT_NUMBER_FILE);
 	}
 	fclose (pFile);
     }

@@ -31,7 +31,32 @@
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
 
+//#define COMPLETELY_FAKE 1
+
+
 #define SEND_REAL_SLOW_DATA 1
+#define NUM_HK_TELEM_DIRS 14 
+
+typedef enum {
+  TDRSS_TELEM_FIRST=0,
+  TDRSS_TELEM_CMD_ECHO=0,
+  TDRSS_TELEM_MONITOR,
+  TDRSS_TELEM_HEADER,
+  TDRSS_TELEM_HK,
+  TDRSS_TELEM_ADU5_SAT,
+  TDRSS_TELEM_G12_SAT,
+  TDRSS_TELEM_ADU5_PAT,
+  TDRSS_TELEM_G12_POS,
+  TDRSS_TELEM_ADU5_VTG,
+  TDRSS_TELEM_SURFHK,
+  TDRSS_TELEM_TURFRATE,
+  TDRSS_TELEM_OTHER,
+  TDRSS_TELEM_PEDESTAL,
+  TDRSS_TELEM_REQUEST,
+  TDRSS_TELEM_NOT_A_TELEM
+} TDRSSTelemType_t;
+
+
 
 int getTdrssNumber();
 void commandHandler(unsigned char *cmd);
@@ -41,6 +66,7 @@ void highrateHandler(int *ignore);
 int readConfig();
 void readAndSendEventRamdisk(char *headerLinkFilename);
 int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
+int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize);
 void sendWakeUpBuffer();
 void sendSomeHk(int maxBytes);
 int sendEncodedPedSubbedSurfPackets(int bufSize);
@@ -52,10 +78,9 @@ int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize); 
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
-
+int highRateWrite(unsigned char *buf, unsigned short nbytes);
 
 // Config Thingies
-char lastTdrssNumberFile[FILENAME_MAX];
 int cmdLengths[256];
 
 
@@ -73,6 +98,11 @@ int sendData;
 
 // Bandwidth variables
 int headersPerEvent=30;
+int echoesPerEvent=100;
+int hkPerEvent=5;
+int monitorPerEvent=3;
+
+
 int eventBandwidth=5;
 int priorityBandwidths[NUM_PRIORITIES];
 int priorityOrder[NUM_PRIORITIES*100];
@@ -95,13 +125,65 @@ int sendWavePackets=0;
 //Low Rate Struct
 SlowRateFull_t slowRateData;
 
+static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
+  {SIPD_CMD_ECHO_TELEM_LINK_DIR,
+     MONITOR_TELEM_LINK_DIR,
+     HEADER_TELEM_LINK_DIR,
+     HK_TELEM_LINK_DIR,
+     ADU5_SAT_TELEM_LINK_DIR,
+     G12_SAT_TELEM_LINK_DIR,
+     ADU5_PAT_TELEM_LINK_DIR,
+     G12_POS_TELEM_LINK_DIR,
+     ADU5_VTG_TELEM_LINK_DIR,
+     SURFHK_TELEM_LINK_DIR,
+     TURFHK_TELEM_LINK_DIR,
+     OTHER_MONITOR_TELEM_LINK_DIR,
+     PEDESTAL_TELEM_LINK_DIR,
+     REQUEST_TELEM_LINK_DIR};
+  static char *telemDirs[NUM_HK_TELEM_DIRS]=
+    {LOSD_CMD_ECHO_TELEM_DIR,
+     MONITOR_TELEM_DIR,
+     HEADER_TELEM_DIR,
+     HK_TELEM_DIR,
+     ADU5_SAT_TELEM_DIR,
+     G12_SAT_TELEM_DIR,
+     ADU5_PAT_TELEM_DIR,
+     G12_POS_TELEM_DIR,
+     ADU5_VTG_TELEM_DIR,
+     SURFHK_TELEM_DIR,
+     TURFHK_TELEM_DIR,
+     OTHER_MONITOR_TELEM_DIR,
+     PEDESTAL_TELEM_DIR,
+     REQUEST_TELEM_DIR};
+static int maxPacketSize[NUM_HK_TELEM_DIRS]=
+  {sizeof(CommandEcho_t),
+   sizeof(MonitorStruct_t),
+   sizeof(AnitaEventHeader_t),
+   sizeof(HkDataStruct_t),
+   sizeof(GpsAdu5SatStruct_t),
+   sizeof(GpsG12SatStruct_t),
+   sizeof(GpsAdu5PatStruct_t),
+   sizeof(GpsG12PosStruct_t),
+   sizeof(GpsAdu5VtgStruct_t),
+   sizeof(FullSurfHkStruct_t),
+   sizeof(TurfRateStruct_t),
+   sizeof(OtherMonitorStruct_t),
+   sizeof(FullLabChipPedStruct_t),
+   2000 //Who knows why
+  };
 
+//Will make these configurable soon
+int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,13,1,2,3,4,5,6,7,8,9,11,12,10};
+int hkTelemMaxCopy[NUM_HK_TELEM_DIRS]={10,1,3,3,5,1,1,3,3,3,5,3,1,3};
+
+//Lazinesss
+int wdEvents[NUM_PRIORITIES]={0};
+int wdHks[NUM_HK_TELEM_DIRS]={0};
 
 int main(int argc, char *argv[])
 {
     //Temporary variables
     int retVal,numCmds=256,count,pri;
-    char *tempString;
 
     /* Config file thingies */
     int status=0;
@@ -129,9 +211,8 @@ int main(int argc, char *argv[])
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
 
-    //Check if I'm meant to be a daemon
+
     syslog(LOG_INFO,"Starting SIPd\n");
-    checkDaemon(argc,argv);
 
     //Zero low rate structs
     memset(&slowRateData,0,sizeof(SlowRateFull_t));
@@ -143,18 +224,7 @@ int main(int argc, char *argv[])
     eString = configErrorString (status) ;
 
     if (status == CONFIG_E_OK) {
-	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
-	
-	//Get TDRSS number file
-	tempString=kvpGetString("lastTdrssNumberFile");
-	if(tempString) {
-	    strncpy(lastTdrssNumberFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get lastLosNumberFile");
-	    fprintf(stderr,"Couldn't get lastLosNumberFile\n");
-	}
-
+	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);	
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -186,7 +256,7 @@ int main(int argc, char *argv[])
 
 
     retVal=readConfig();
-            
+#ifndef COMPLETELY_FAKE
     retVal = sipcom_set_slowrate_callback(COMM1, comm1Handler);
     if (retVal) {
 	char *s = sipcom_strerror();
@@ -213,14 +283,14 @@ int main(int argc, char *argv[])
 	    sipcom_set_cmd_length(count,cmdLengths[count]);
 	}
     }
+
     printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
     retVal = sipcom_init(MAX_WRITE_RATE);
     if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
-	exit(1);
+	handleBadSigs(1);
     }
-    
      // Start the high rate writer process. 
     pthread_create(&Hr_thread, NULL, (void *)highrateHandler, NULL);
     pthread_detach(Hr_thread);
@@ -231,6 +301,10 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Bye bye\n");
     unlink(SIPD_PID_FILE);
     syslog(LOG_INFO,"SIPd terminating");
+#else
+    highrateHandler(&retVal);
+#endif
+
     return 0;
 }
 
@@ -238,8 +312,16 @@ int main(int argc, char *argv[])
 void highrateHandler(int *ignore)
 {
     char currentHeader[FILENAME_MAX];
-    int numLinks=0;
-    struct dirent **linkList;    
+    static int numLinks[NUM_PRIORITIES]={0};
+    static int numHkLinks[NUM_HK_TELEM_DIRS]={0};
+    int totalEventLinks=0;
+    int totalHkLinks=0;
+
+    int pri=0,hkInd=0;
+    char *tempString=0;
+    int retVal=0;
+
+
 
     {
         // We make this thread cancellable by any thread, at any time. This
@@ -250,52 +332,109 @@ void highrateHandler(int *ignore)
         pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
     }
-
+    
+    //First let the world know we're alive
     sendWakeUpBuffer();
+    
+    //Setup inotify watches
+    for(pri=0;pri<NUM_PRIORITIES;pri++) {
+      //Setup inotify watches
+      if(wdEvents[pri]==0) {
+       wdEvents[pri]=setupLinkWatchDir(eventTelemLinkDirs[pri]);
+       if(wdEvents[pri]<=0) {
+	 fprintf(stderr,"Unable to watch %s\n",eventTelemLinkDirs[pri]);
+	 syslog(LOG_ERR,"Unable to watch %s\n",eventTelemLinkDirs[pri]);
+	 handleBadSigs(0);
+       }
+       numLinks[pri]=getNumLinks(wdEvents[pri]);
+      }
+    }
+        
+    for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
+      if(wdHks[hkInd]==0) {	
+	wdHks[hkInd]=setupLinkWatchDir(telemLinkDirs[hkInd]);
+	if(wdHks[hkInd]<=0) {
+	  fprintf(stderr,"Unable to watch %s\n",telemLinkDirs[hkInd]);
+	  syslog(LOG_ERR,"Unable to watch %s\n",telemLinkDirs[hkInd]);
+	  //	handleBadSigs(0);
+	}
+	numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+      }      
+    }
+
     int hkCount=0;
+   
     while(1) {
 	if(!sendData) {
 	    sleep(1);
 	    continue;
 	}
+	//Update the link lists
+	//or some time has passed
+	retVal=checkLinkDirs(0,1);
+	totalEventLinks=0;
+	for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	  numLinks[pri]=getNumLinks(wdEvents[pri]);
+	  totalEventLinks+=numLinks[pri];
+	}
+       
+	totalHkLinks=0;
+	for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
+	  numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+	  totalHkLinks+=numHkLinks[hkInd];
+	}
+	if(!retVal && totalHkLinks==0 && totalEventLinks==0) {
+	  //No data
+	  sleep(1);
+	  continue;
+	}
+	printf("%d %d %d\n",totalEventLinks,totalHkLinks,retVal);
+	
+	//Which priority are we sending
 	currentPri=priorityOrder[orderIndex];	
-	numLinks=getListofLinks(eventTelemLinkDirs[currentPri],&linkList);
+	
+	if(numLinks[currentPri]) {
+	  //Got an event	    
+	  tempString=getLastLink(wdEvents[currentPri]);
+	  sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+		  tempString);
+	  //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
+	  readAndSendEventRamdisk(currentHeader); //Also deletes
+	  numLinks[currentPri]--;
+	  totalEventLinks--;
 
-	if(numLinks) {
-	    //Got an event	    
-	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
-		    linkList[numLinks-1]->d_name);
-//	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
-	    readAndSendEventRamdisk(currentHeader); //Also deletes
+	  //Now try to send some stuff I like
+	  if(numHkLinks[TDRSS_TELEM_HEADER])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_HEADER],
+			   headersPerEvent,HEADER_TELEM_DIR,
+			   HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+	  
+	  if(numHkLinks[TDRSS_TELEM_CMD_ECHO])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_CMD_ECHO],echoesPerEvent,
+			   SIPD_CMD_ECHO_TELEM_DIR,
+			   SIPD_CMD_ECHO_TELEM_LINK_DIR,
+			   sizeof(CommandEcho_t)); 
+	  
+	  if(numHkLinks[TDRSS_TELEM_HK])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
+			   HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t));
+	  
+	  if(numHkLinks[TDRSS_TELEM_MONITOR])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_MONITOR],monitorPerEvent,
+			   MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
+			   sizeof(MonitorStruct_t)); 
+	  
+	}
+	//	else if(totalEventLinks==0) {
+	//	  usleep(1000);
+	//	}
 
-	    while(numLinks) {
-		free(linkList[numLinks-1]);
-		numLinks--;
-	    }
-	    free(linkList);
-		 
-	}
-	else {
-	    usleep(1000);
-	}
 	orderIndex++;
 	if(orderIndex>=numOrders) orderIndex=0;
-//	int headCount=0;
 
-	if(numLinks) {
-	    checkLinkDirAndTdrss(headersPerEvent,HEADER_TELEM_DIR,
-				 HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-	    checkLinkDirAndTdrss(10,
-		     SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR,
-				 sizeof(CommandEcho_t)); 
-	    checkLinkDirAndTdrss(5,HK_TELEM_DIR,
-				 HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t));
-	    checkLinkDirAndTdrss(3,
-				 MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
-				 sizeof(MonitorStruct_t)); 
-	    
-	}
-	//Need to think about housekeeping and add something here
+
+	//Now we try and send some data
+	//I'm going to try and modify this but for now
 	if(hkCount%eventBandwidth==0)
 	    sendSomeHk(10000);
 	hkCount++;
@@ -575,7 +714,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 
 
     theHeader->gHdr.packetNumber=getTdrssNumber();
-    retVal = sipcom_highrate_write((unsigned char*)theHeader,sizeof(AnitaEventHeader_t));
+    retVal = highRateWrite((unsigned char*)theHeader,sizeof(AnitaEventHeader_t));
     if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
@@ -681,7 +820,7 @@ int sendEncodedSurfPackets(int bufSize)
 	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
-	    retVal = sipcom_highrate_write(&theBuffer[count],numBytes);
+	    retVal = highRateWrite(&theBuffer[count],numBytes);
 	    if(retVal<0) {
 		//Problem sending data
 		if(errorCounter<100) {
@@ -714,7 +853,7 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
-	    retVal = sipcom_highrate_write(&theBuffer[count],numBytes);
+	    retVal = highRateWrite(&theBuffer[count],numBytes);
 	    if(retVal<0) {
 		//Problem sending data
 		if(errorCounter<100) {
@@ -766,7 +905,7 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 		memcpy(&chanBuffer[chanNumBytes],&theBuffer[count2],chanHdPtr->numBytes);
 		chanNumBytes+=chanHdPtr->numBytes;
 		fillGenericHeader(waveHdPtr,PACKET_ENC_WV_PEDSUB,chanNumBytes);
-		retVal = sipcom_highrate_write(chanBuffer,chanNumBytes);
+		retVal = highRateWrite(chanBuffer,chanNumBytes);
 		eventDataSent+=chanNumBytes;
 		if(retVal<0) {
 		    //Problem sending data
@@ -808,7 +947,7 @@ int sendRawWaveformPackets(int bufSize)
 	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelFull_t));
 	wvPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(wvPtr,PACKET_WV,sizeof(RawWaveformPacket_t));
-	retVal = sipcom_highrate_write(chanBuffer,sizeof(RawWaveformPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(RawWaveformPacket_t));
 	eventDataSent+=sizeof(RawWaveformPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -845,7 +984,7 @@ int sendRawSurfPackets(int bufSize)
 
 	surfPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(RawSurfPacket_t));
-	retVal = sipcom_highrate_write(chanBuffer,sizeof(RawSurfPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(RawSurfPacket_t));
 	eventDataSent+=sizeof(RawSurfPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -883,7 +1022,7 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	wvPtr->whichPeds=bdPtr->whichPeds;
 	fillGenericHeader(wvPtr,PACKET_PEDSUB_WV,sizeof(PedSubbedWaveformPacket_t));
 
-	retVal = sipcom_highrate_write(chanBuffer,sizeof(PedSubbedWaveformPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(PedSubbedWaveformPacket_t));
 	eventDataSent+=sizeof(PedSubbedWaveformPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -922,7 +1061,7 @@ int sendPedSubbedSurfPackets(int bufSize)
 
 	surfPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(PedSubbedSurfPacket_t));
-	retVal = sipcom_highrate_write(chanBuffer,sizeof(PedSubbedSurfPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(PedSubbedSurfPacket_t));
 	eventDataSent+=sizeof(PedSubbedSurfPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -946,36 +1085,43 @@ int getTdrssNumber() {
     /* This is just to get the lastTdrssNumber in case of program restart. */
     FILE *pFile;
     if(firstTime) {
-	pFile = fopen (lastTdrssNumberFile, "r");
+	pFile = fopen (LAST_TDRSS_NUMBER_FILE, "r");
 	if(pFile == NULL) {
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		    lastTdrssNumberFile);
+		    LAST_TDRSS_NUMBER_FILE);
 	}
 	else {	    	    
 	    retVal=fscanf(pFile,"%d",&tdrssNumber);
 	    if(retVal<0) {
 		syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-			lastTdrssNumberFile);
+			LAST_TDRSS_NUMBER_FILE);
 	    }
 	    fclose (pFile);
 	}
 	if(printToScreen) printf("The last tdrss number is %d\n",tdrssNumber);
 	firstTime=0;
+	//Only write out every 100th number, so always start from a 100
+	tdrssNumber/=100;
+	tdrssNumber++;
+	tdrssNumber*=100;
     }
     tdrssNumber++;
 
-    pFile = fopen (lastTdrssNumberFile, "w");
-    if(pFile == NULL) {
+    
+    if(tdrssNumber%100==0) {
+      pFile = fopen (LAST_TDRSS_NUMBER_FILE, "w");
+      if(pFile == NULL) {
 	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		lastTdrssNumberFile);
-    }
-    else {
+		LAST_TDRSS_NUMBER_FILE);
+      }
+      else {
 	retVal=fprintf(pFile,"%d\n",tdrssNumber);
 	if(retVal<0) {
-	    syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
-		    lastTdrssNumberFile);
-	    }
+	  syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
+		    LAST_TDRSS_NUMBER_FILE);
+	}
 	fclose (pFile);
+      }
     }
 
     return tdrssNumber;
@@ -991,7 +1137,7 @@ void sendWakeUpBuffer()
     }
     fillGenericHeader(gHdr,PACKET_WAKEUP_HIGHRATE,WAKEUP_TDRSS_BUFFER_SIZE);
     gHdr->packetNumber=getTdrssNumber();
-    retVal = sipcom_highrate_write(theBuffer, count);
+    retVal = highRateWrite(theBuffer, count);
     if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
@@ -1003,66 +1149,22 @@ void sendWakeUpBuffer()
 void sendSomeHk(int maxBytes) 
 {
     int hkCount=0;
-    if((maxBytes-hkCount)>2000) {	
-	hkCount+=checkLinkDirAndTdrss(1,REQUEST_TELEM_DIR,
-		     REQUEST_TELEM_LINK_DIR,2000);
-    }   
-    if((maxBytes-hkCount)>sizeof(CommandEcho_t)) {
-	hkCount+=checkLinkDirAndTdrss(10,
-		     SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR,
-		     sizeof(CommandEcho_t)); 
-    }  
-    if((maxBytes-hkCount)>sizeof(FullLabChipPedStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(1,PEDESTAL_TELEM_DIR,
-				      PEDESTAL_TELEM_LINK_DIR,
-				      sizeof(FullLabChipPedStruct_t)); 
-    }   
-    if((maxBytes-hkCount)>sizeof(MonitorStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(3,
-		     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
-		     sizeof(MonitorStruct_t)); 
-    }    
+    int hkInd=0,i;
+    int numHkLinks[NUM_HK_TELEM_DIRS];
 
-    if((maxBytes-hkCount)>sizeof(HkDataStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(5,HK_TELEM_DIR,
-		     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(GpsAdu5SatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(1,ADU5_SAT_TELEM_DIR,
-		     ADU5_SAT_TELEM_LINK_DIR,sizeof(GpsAdu5SatStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(GpsG12SatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(1,G12_SAT_TELEM_DIR,
-		     G12_SAT_TELEM_LINK_DIR,sizeof(GpsG12SatStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(GpsAdu5PatStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(3,ADU5_PAT_TELEM_DIR,
-		     ADU5_PAT_TELEM_LINK_DIR,sizeof(GpsAdu5PatStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(GpsG12PosStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(3,G12_POS_TELEM_DIR,
-		     G12_POS_TELEM_LINK_DIR,sizeof(GpsG12PosStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(GpsAdu5VtgStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(3,ADU5_VTG_TELEM_DIR,
-		     ADU5_VTG_TELEM_LINK_DIR,sizeof(GpsAdu5VtgStruct_t)); 
-    }
-    if((maxBytes-hkCount)>sizeof(TurfRateStruct_t)) {	
-	hkCount+=checkLinkDirAndTdrss(5,TURFHK_TELEM_DIR,
-		     TURFHK_TELEM_LINK_DIR,sizeof(TurfRateStruct_t)); 
+    for(i=0;i<NUM_HK_TELEM_DIRS;i++) {
+      hkInd=hkTelemOrder[i];
+      //      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
+      numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+      //      fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
+      if(numHkLinks[hkInd] && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
+	//Can try and send it
+	hkCount+=readHkAndTdrss(wdHks[hkInd],hkTelemMaxCopy[hkInd],
+				telemDirs[hkInd],
+				telemLinkDirs[hkInd],maxPacketSize[hkInd]);
+      }
     }   
-    if((maxBytes-hkCount)>sizeof(OtherMonitorStruct_t)) {	
-	hkCount+=checkLinkDirAndTdrss(3,OTHER_MONITOR_TELEM_DIR,
-		     OTHER_MONITOR_TELEM_LINK_DIR,sizeof(OtherMonitorStruct_t));
-    }
-    if((maxBytes-hkCount)>sizeof(FullSurfHkStruct_t)) {
-	hkCount+=checkLinkDirAndTdrss(3,SURFHK_TELEM_DIR,
-		     SURFHK_TELEM_LINK_DIR,sizeof(FullSurfHkStruct_t)); 
-    } 
-
-
-    hkDataSent+=hkCount;
-    
+    hkDataSent+=hkCount;   
 }
 
 
@@ -1128,7 +1230,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 //	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
 //	}
 	gHdr->packetNumber=getTdrssNumber();
-	retVal = sipcom_highrate_write(theBuffer, numBytes);
+	retVal = highRateWrite(theBuffer, numBytes);
 	if(retVal<0) {
 	    //Problem sending data
 	    syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
@@ -1206,6 +1308,142 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 }
 
 
+int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize) 
+/* Looks in the specified directroy and TDRSS's up to maxCopy bytes of data */
+/* fileSize is the maximum size of a packet in the directory */
+{
+    char currentFilename[FILENAME_MAX];
+    char currentTouchname[FILENAME_MAX];
+    char currentLOSTouchname[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+    int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
+    char *tempString;
+    GenericHeader_t *gHdr;    
+    GpsAdu5PatStruct_t *patPtr;
+    HkDataStruct_t *hkPtr;
+    
+    numLinks=getNumLinks(wd);
+    if(numLinks<=0) {
+	return 0;
+    }
+    int counter=0;
+    for(count=numLinks-1;count>=0;count--) {
+      //Get last link name
+      tempString=getLastLink(wd);
+      sprintf(currentFilename,"%s/%s",telemDir,tempString);
+      sprintf(currentTouchname,"%s.sipd",currentFilename);
+      sprintf(currentLOSTouchname,"%s.losd",currentFilename);
+      sprintf(currentLinkname,"%s/%s",linkDir,tempString);
+
+      if(checkFileExists(currentLOSTouchname)) 
+	continue;
+      touchFile(currentTouchname);
+
+      retVal=genericReadOfFile((unsigned char*)theBuffer,
+			       currentFilename,
+			       MAX_EVENT_SIZE);
+      syslog(LOG_DEBUG,"Trying %s",currentFilename);
+      if(retVal<=0) {
+	//	    syslog(LOG_ERR,"Error opening file, will delete: %s",
+	//		   currentFilename);
+	//	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
+	removeFile(currentFilename);
+	
+	removeFile(currentLinkname);
+	removeFile(currentTouchname);
+	continue;
+      }
+      numBytes=retVal;
+
+      if(printToScreen && verbosity>1) {
+	printf("Read File: %s -- (%d bytes)\n",currentFilename,numBytes);
+      }
+      
+
+      //	printf("Read %d bytes from file\n",numBytes);
+      //	Maybe I'll add a packet check here
+      gHdr = (GenericHeader_t*)theBuffer;
+      //	checkVal=checkPacket(gHdr);
+      //	if(checkVal!=0 ) {
+      //	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
+      //	}
+      gHdr->packetNumber=getTdrssNumber();
+      retVal = highRateWrite(theBuffer, numBytes);
+      if(retVal<0) {
+	//Problem sending data
+	syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
+	fprintf(stderr,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());	
+      }
+      
+      totalBytes+=numBytes;
+      
+      if(!checkFileExists(currentLOSTouchname)) {
+	removeFile(currentLinkname);
+	removeFile(currentFilename);
+	removeFile(currentTouchname);
+      }
+      else {
+	sleep(1);
+	removeFile(currentLinkname);
+	removeFile(currentFilename);
+	removeFile(currentTouchname);
+	removeFile(currentLOSTouchname);
+      }
+
+      //This bit here is just for the slow rate data
+      int j;
+      int tempInds[7]={1,3,6,37,19,15,36};
+      int powerInds[4]={37,36,15,16};
+      float powerCal[4]={18.252,10.1377,20,20};
+      float tempVal;
+      //Now fill low rate structs
+      switch (gHdr->code) {
+      case PACKET_GPS_ADU5_PAT:
+	patPtr=(GpsAdu5PatStruct_t*)gHdr;
+	slowRateData.hk.altitude=patPtr->altitude;
+	slowRateData.hk.longitude=patPtr->longitude;
+	slowRateData.hk.latitude=patPtr->latitude;
+	break;
+      case PACKET_HKD:
+	hkPtr=(HkDataStruct_t*)gHdr;
+	slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
+	for(j=0;j<7;j++) {
+	  tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
+	  //tempVal*=10;
+	  //tempVal/=4096;
+	  //tempVal-=5;
+	  //tempVal*=100;
+	  //tempVal+=273.15;
+	  //if(tempVal<-127) tempVal=-127;
+	  //if(tempVal>127) tempVal=127;
+	  slowRateData.hk.temps[j+1]=(char)tempVal;
+	}
+	for(j=0;j<4;j++) {		    
+	  tempVal=((hkPtr->ip320.board[1].data[powerInds[j]])>>8);
+	  //tempVal*=10;
+	  //tempVal/=4096;
+	  //tempVal-=5;
+	  //tempVal*=powerCal[j];
+	  //if(tempVal<-127) tempVal=-127;
+	  //if(tempVal>127) tempVal=127;
+	  slowRateData.hk.powers[j]=(char)tempVal;
+	}
+	
+	
+      default:
+	break;
+      }
+      
+      //	if((totalBytes+fileSize)>maxCopy) break;
+      counter++;
+      if(counter>=maxCopy) break;
+      //	break;
+    }
+    
+    return totalBytes;
+}
+
+
 void handleBadSigs(int sig)
 {
     fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
@@ -1228,4 +1466,17 @@ int sortOutPidFile(char *progName)
   }
   writePidFile(SIPD_PID_FILE);
   return 0;
+}
+
+int highRateWrite(unsigned char *buf, unsigned short nbytes)
+{
+#ifndef COMPLETELY_FAKE
+  return sipcom_highrate_write(buf,nbytes);
+#else
+  int fd=open("/tmp/sipdDump", O_CREAT | O_WRONLY);
+  write(fd,buf,nbytes);
+  close(fd);
+  return 0;
+#endif
+
 }

@@ -1943,27 +1943,25 @@ int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned int numB
 }
  
 
-void checkDaemon(int argc, char *argv[])
-{
-    int makeDaemon=0;
+
+int getRunNumber() {
     int retVal=0;
-    int c;    
-    opterr = 0;
-    while ((c = getopt (argc, argv, "d")) != -1)
-	switch (c)
-	{
-	    case 'd':
-		makeDaemon = 1;
-		break;
-	    default:
-		abort ();
-	}    
-    if(makeDaemon) {
-	retVal=daemon(0,0);
-	if(retVal<0) {
-	    fprintf(stderr,"%s daemon failed with %s (%d)\n",basename(argv[0]),strerror(errno),
-		    errno);
-	    exit(0);
-	}
+    int runNumber=0;
+ 
+    FILE *pFile;    
+    pFile = fopen (LAST_RUN_NUMBER_FILE, "r");
+    if(!pFile) {
+	syslog (LOG_ERR,"Couldn't open %s",LAST_RUN_NUMBER_FILE);
+	fprintf(stderr,"Couldn't open %s\n",LAST_RUN_NUMBER_FILE);
+	return -1;
     }
+
+    retVal=fscanf(pFile,"%d",&runNumber);
+    if(retVal<0) {
+	syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
+		LAST_RUN_NUMBER_FILE);
+    }
+    fclose (pFile);
+    return runNumber;
+    
 }

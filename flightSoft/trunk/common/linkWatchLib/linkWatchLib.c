@@ -126,7 +126,7 @@ int setupLinkWatchDir(char *linkDir)
 
 
 
-int checkLinkDirs(int timeout)
+int checkLinkDirs(int timeoutSec, int timeOutUSec)
 {
   //Checks all link dirs
   // returns 1 if there are new links
@@ -142,10 +142,13 @@ int checkLinkDirs(int timeout)
   static fd_set read_fds;
   
   static struct timeval read_timeout;
-  read_timeout.tv_sec = timeout;
+  read_timeout.tv_sec = timeoutSec;
   read_timeout.tv_usec = 0;
   static struct timeval * read_timeout_ptr;
-  read_timeout_ptr = ( timeout <= 0 ? NULL : &read_timeout );
+  if(timeoutSec==0 && timeOutUSec==0)
+    read_timeout_ptr = NULL;
+  else
+    read_timeout_ptr= &read_timeout;
   
  
   do {
@@ -260,7 +263,7 @@ char *getLastLink(int watchNumber)
 
   //  strncpy(linkName,watchDirArray[watchIndex],FILENAME_MAX);
   //  strncat(linkName,lastLink[watchIndex]->linkName,100);
-  strncpy(linkName,firstLink[watchIndex]->linkName,100);
+  strncpy(linkName,lastLink[watchIndex]->linkName,100);
   struct listItem *nextToLast=lastLink[watchIndex]->prev;
   if(nextToLast) {
     nextToLast->next=0;
