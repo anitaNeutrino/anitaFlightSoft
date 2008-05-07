@@ -19,7 +19,10 @@
 
 
 int setupLinkWatchDir(char *linkDir); //returns -1 for failure otherwise it returns the watch index number
-int checkLinkDirs(int timeout); //Returns 1 if there is new data, zero otherwise
+
+//Returns 1 if there is new data, zero otherwise
+int checkLinkDirs(int timeoutSec, int timeOutUSec);
+
 int getNumLinks(int watchNumber); //returns number of links, zero, -1 for failure
 
 char *getFirstLink(int watchNumber); //returns the filename of the first link

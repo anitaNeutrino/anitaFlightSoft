@@ -109,7 +109,6 @@ unsigned int avgScalerData[MAX_SURFS][N_RFTRIG];
 char altOutputdir[FILENAME_MAX];
 char subAltOutputdir[FILENAME_MAX];
 //char acqdEventLinkDir[FILENAME_MAX];
-char lastEventNumberFile[FILENAME_MAX];
 
 #define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
 #define N_TMO_INT 10000 //Millisec to wait for interrupt
@@ -1169,7 +1168,6 @@ int readConfigFile()
   int surfBusCount=0;
   KvpErrorCode kvpStatus=0;
   char* eString ;
-  char *tempString;
 
   kvpReset();
   status = configLoad (GLOBAL_CONF_FILE,"global") ;
@@ -1207,11 +1205,7 @@ int readConfigFile()
     turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
 
     //	printf("%s\n",acqdEventDir);
-    tempString=kvpGetString ("lastEventNumberFile");
-    if(tempString)
-      strncpy(lastEventNumberFile,tempString,FILENAME_MAX-1);
-    else
-      fprintf(stderr,"Coudn't fetch lastEventNumberFile\n");
+
 
     //	printf("Debug rc2\n");
     printToScreen=kvpGetInt("printToScreen",0);
@@ -1863,40 +1857,49 @@ int getEventNumber() {
   /* This is just to get the lastEventNumber in case of program restart. */
   FILE *pFile;
   if(firstTime && !standAloneMode) {
-    pFile = fopen (lastEventNumberFile, "r");
+    pFile = fopen (LAST_EVENT_NUMBER_FILE, "r");
     if(pFile == NULL) {
       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-	      lastEventNumberFile);
+	      LAST_EVENT_NUMBER_FILE);
     }
     else {	    	    
       retVal=fscanf(pFile,"%d",&eventNumber);
       if(retVal<0) {
 	syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-		lastEventNumberFile);
+		LAST_EVENT_NUMBER_FILE);
+	fprintf(stderr,"fscanff: %s ---  %s\n",strerror(errno),
+		LAST_EVENT_NUMBER_FILE);
       }
       fclose (pFile);
     }
+    //Only write out every 100th number, so always start from a 100
+    eventNumber/=100;
+    eventNumber++;
+    eventNumber*=100;
     if(printToScreen) printf("The last event number is %d\n",eventNumber);
     firstTime=0;
   }
   eventNumber++;
-  if(!standAloneMode) {
-    pFile = fopen (lastEventNumberFile, "w");
+  if(!standAloneMode && eventNumber%100==0) {
+    pFile = fopen (LAST_EVENT_NUMBER_FILE, "w");
     if(pFile == NULL) {
       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-	      lastEventNumberFile);
+	      LAST_EVENT_NUMBER_FILE);
+      fprintf(stderr,"fopen: %s ---  %s\n",strerror(errno),
+	      LAST_EVENT_NUMBER_FILE);
     }
     else {
       retVal=fprintf(pFile,"%d\n",eventNumber);
       if(retVal<0) {
 	syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
-		lastEventNumberFile);
+		LAST_EVENT_NUMBER_FILE);
+	fprintf(stderr,"fprintf: %s ---  %s\n",strerror(errno),
+		LAST_EVENT_NUMBER_FILE);
       }
       fclose (pFile);
     }
   }
   return eventNumber;
-
 }
 
 void outputEventData() {

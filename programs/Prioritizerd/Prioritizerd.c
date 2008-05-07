@@ -193,7 +193,7 @@ int main (int argc, char *argv[])
     while(currentState==PROG_STATE_RUN) {
 
       //	usleep(1);
-      retVal=checkLinkDirs(1);
+      retVal=checkLinkDirs(1,0);
       if(retVal || numEventLinks)
 	numEventLinks=getNumLinks(wd);
 	       

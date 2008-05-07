@@ -40,7 +40,6 @@ int getRamdiskInodes();
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr);
 int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr);
 void purgeHkDirectory(char *dirName,char *linkDirName);
-int getLatestRunNumber();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 
@@ -60,7 +59,6 @@ int maxAcqdWaitPeriod=180;
 int maxEventQueueSize=300;
 int maxHkQueueSize=200;
 
-char lastRunNumberFile[FILENAME_MAX];
 
 
 //
@@ -324,16 +322,6 @@ int readConfigFile()
 	    syslog(LOG_ERR,"Couldn't get usbExtName");
 	    fprintf(stderr,"Couldn't get usbExtName\n");
 	}
-
-	tempString=kvpGetString("lastRunNumberFile");
-	if(tempString) {
-	    strncpy(lastRunNumberFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get lastRunNumberFile");
-	    fprintf(stderr,"Couldn't get lastRunNumberFile\n");
-	}
-
 
 
 	printToScreen=kvpGetInt("printToScreen",0);
@@ -758,9 +746,9 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 	fclose(fp);
     }	    
     else {
-	otherPtr->runNumber=getLatestRunNumber();	
+	otherPtr->runNumber=getRunNumber();	
 	struct stat buf;
-	int retVal2=stat(lastRunNumberFile,&buf);
+	int retVal2=stat(LAST_RUN_NUMBER_FILE,&buf);
 	if(retVal2==0)
 	    otherPtr->runStartTime=buf.st_mtime;
 
@@ -840,26 +828,6 @@ int getRamdiskInodes() {
     return diskStat.f_favail;
 }
 
-int getLatestRunNumber() {
-    int retVal=0;
-    int runNumber=0;
-
-    FILE *pFile;
-    pFile = fopen (lastRunNumberFile, "r");
-    if(pFile == NULL) {
-	syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-		lastRunNumberFile);
-    }
-    else {	    	    
-	retVal=fscanf(pFile,"%d",&runNumber);
-	if(retVal<0) {
-	    syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-		    lastRunNumberFile);
-	}
-	fclose (pFile);
-    }
-    return runNumber;
-}
 
 
 void handleBadSigs(int sig)

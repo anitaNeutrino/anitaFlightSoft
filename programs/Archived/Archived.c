@@ -38,7 +38,6 @@ float priorityFractionDelete[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
 int currentUsb[NUM_PRIORITIES]; // 0 is int, 1 is ext;
-char lastRunNumberFile[FILENAME_MAX];
 int currentRun;
 
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -79,7 +78,6 @@ FILE *fpEvent=NULL;
 
 int shouldWeThrowAway(int pri);
 void handleBadSigs(int sig);
-int getRunNumber();
 int sortOutPidFile(char *progName);
 
 int main (int argc, char *argv[])
@@ -121,15 +119,6 @@ int main (int argc, char *argv[])
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
-
-	tempString=kvpGetString("lastRunNumberFile");
-	if(tempString) {
-	    strncpy(lastRunNumberFile,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get lastRunNumberFile");
-	    fprintf(stderr,"Couldn't get lastRunNumberFile\n");
-	}
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 	bladeCloneMask=kvpGetInt("bladeCloneMask",0);
 	puckCloneMask=kvpGetInt("puckCloneMask",0);
@@ -336,7 +325,7 @@ void checkEvents()
       numLinks=getNumLinks(wd);
     }
     //Check for new inotify events
-    retVal=checkLinkDirs(1); //Should probably check
+    retVal=checkLinkDirs(1,0); //Should probably check
     if(retVal || numLinks)
       numLinks=getNumLinks(wd); //Current events waiting
     if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
@@ -698,26 +687,5 @@ void handleBadSigs(int sig)
 }
 
 
-int getRunNumber() {
-    int retVal=0;
-    int runNumber=0;
- 
-    FILE *pFile;    
-    pFile = fopen (lastRunNumberFile, "r");
-    if(!pFile) {
-	syslog (LOG_ERR,"Couldn't open %s",lastRunNumberFile);
-	fprintf(stderr,"Couldn't open %s\n",lastRunNumberFile);
-	return -1;
-    }
 
-    retVal=fscanf(pFile,"%d",&runNumber);
-    if(retVal<0) {
-	syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-		lastRunNumberFile);
-    }
-    fclose (pFile);
-
-    return runNumber;
-    
-}
 

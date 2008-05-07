@@ -73,7 +73,7 @@ extern "C" {
     int copyFileToFile(const char *theFile, const char *newFile);
     char *readFile(const char *theFile, unsigned int *numBytes);
     int removeFile(const char *theFile);
-
+  int getRunNumber();
 
     unsigned int getDiskSpace(char *dirName);
     unsigned short countFilesInDir(char *dirName);
@@ -160,7 +160,6 @@ extern "C" {
     void sigUsr2Handler(int sig);
     void writePidFile(char *fileName);
     int checkPidFile(char *fileName);
-    void checkDaemon(int argc, char *argv[]);
 
 
 //Generic Header Stuff

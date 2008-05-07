@@ -127,7 +127,7 @@ void otherThreholdScan(int surfFd);
 int simpleReadHk(int surfFd, unsigned int hkVals[]);
 void quickTimeTest(int surfFd);
 void printSlotAndBus(int surfFd);
- volatile inline unsigned long readTSC();
+inline unsigned long readTSC();
 
 
 //Global Variables
@@ -434,7 +434,7 @@ void printBinary(int number) {
     printf("\n");
 }
  
- volatile inline unsigned long readTSC()
+inline unsigned long readTSC()
 {
     unsigned long tsc;
     asm("rdtsc":"=A"(tsc));

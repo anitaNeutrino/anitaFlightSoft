@@ -412,14 +412,16 @@ int checkCurrentPedLink() {
     char linkname[FILENAME_MAX];
     char pedname[FILENAME_MAX];
     unsigned int pedUnixTime;
+    static int errorCounter=0;
     sprintf(linkname,"%s/%s",DATA_LINK,CURRENT_PEDESTALS);
     int retVal=readlink(linkname,pedname,FILENAME_MAX);
-    if(retVal==-1) {
-	syslog(LOG_ERR,"Error reading current pedestals link: %s\n",
-	       strerror(errno));
-	fprintf(stderr,"Error reading current pedestals link: %s\n",
-	       strerror(errno));
-	return 0;
+    if(retVal==-1 && errorCounter<100) {
+      syslog(LOG_ERR,"Error reading current pedestals link: %s (%d of 100)\n",
+	     strerror(errno),errorCounter);
+      fprintf(stderr,"Error reading current pedestals link: %s (%d of 100)\n",
+	      strerror(errno),errorCounter);
+      errorCounter++;
+      return 0;
     }
     pedname[retVal]='\0';
     char *justFile=basename((char *)pedname);
@@ -474,15 +476,15 @@ int loadPedsFromFile(char *filename) {
     retVal=fillUsefulPedStruct(&currentPeds,filename);
     if(retVal) {
 	//Can't load pedestals
-	if(errorCounter<100) {
-	    syslog(LOG_ERR,"Can't load (retVal %d) pedestals from %s defaulting to %d\n",
-		   retVal,filename,
-		   PED_DEFAULT_VALUE);
-	    fprintf(stderr,"Can't load (retVal %d) pedestals from %s defaulting to %d\n",
-		    retVal,filename,
-		    PED_DEFAULT_VALUE);
-	    errorCounter++;
-	}
+      if(errorCounter<100) {
+	syslog(LOG_ERR,"Can't load (retVal %d) pedestals from %s defaulting to %d\n",
+	       retVal,filename,
+	       PED_DEFAULT_VALUE);
+	fprintf(stderr,"Can't load (retVal %d) pedestals from %s defaulting to %d\n",
+		retVal,filename,
+		PED_DEFAULT_VALUE);
+	errorCounter++;
+      }
 	currentPeds.unixTime=PED_DEFAULT_VALUE;
 	currentPeds.nsamples=0;
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {

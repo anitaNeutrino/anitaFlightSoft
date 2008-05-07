@@ -174,7 +174,7 @@ int checkForRequests() {
        numLinks=getNumLinks(wd);
      }
      //Check for new inotify events
-     retVal=checkLinkDirs(1); //Should probably check
+     retVal=checkLinkDirs(1,0); //Should probably check
      if(retVal || numLinks)
        numLinks=getNumLinks(wd); //Current events waiting
      if(numLinks>0) {
