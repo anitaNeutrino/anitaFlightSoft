@@ -67,7 +67,7 @@ void highrateHandler(int *ignore);
 int readConfig();
 void readAndSendEventRamdisk(char *headerLinkFilename);
 int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
-int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize);
+int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize, int *numSent);
 void sendWakeUpBuffer();
 void sendSomeHk(int maxBytes);
 int sendEncodedPedSubbedSurfPackets(int bufSize);
@@ -181,6 +181,8 @@ int hkTelemMaxCopy[NUM_HK_TELEM_DIRS]={10,1,3,3,5,1,1,3,3,3,5,3,1,3};
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
 int wdHks[NUM_HK_TELEM_DIRS]={0};
+int numEventsSent[NUM_PRIORITIES]={0};
+int numHksSent[NUM_HK_TELEM_DIRS]={0};
 
 int main(int argc, char *argv[])
 {
@@ -318,11 +320,12 @@ void highrateHandler(int *ignore)
     static int numHkLinks[NUM_HK_TELEM_DIRS]={0};
     int totalEventLinks=0;
     int totalHkLinks=0;
+    int totalEventsSent=0;
 
     int pri=0,hkInd=0;
     char *tempString=0;
     int retVal=0;
-
+    int numSent=0;
 
 
     {
@@ -371,6 +374,17 @@ void highrateHandler(int *ignore)
 	    sleep(1);
 	    continue;
 	}
+	if(totalEventsSent%10==0) {
+	  printf("Data sent\nEvents:\t");
+	  for(pri=0;pri<NUM_PRIORITIES;pri++)
+	    printf("%d ",numEventsSent[pri]);
+	  printf("\nHk:\t");
+	  for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) 
+	    printf("%d ",numHksSent[hkInd]);
+	  printf("\n");
+	}
+
+
 	//Update the link lists
 	//or some time has passed
 	retVal=checkLinkDirs(0,1);
@@ -408,29 +422,39 @@ void highrateHandler(int *ignore)
 		    tempString);
 	    //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
 	    readAndSendEventRamdisk(currentHeader); //Also deletes
+	    numEventsSent[currentPri]++;
+	    totalEventsSent++;
 	    numLinks[currentPri]--;
 	    totalEventLinks--;
 	    
 	    //Now try to send some stuff I like
+	    numSent=0;
 	    if(numHkLinks[TDRSS_TELEM_HEADER])
 	      readHkAndTdrss(wdHks[TDRSS_TELEM_HEADER],
 			     headersPerEvent,HEADER_TELEM_DIR,
-			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
-	    
+			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t),&numSent);
+	    numHksSent[TDRSS_TELEM_HEADER]+=numSent;
+
+	    numSent=0;
 	    if(numHkLinks[TDRSS_TELEM_CMD_ECHO])
 	      readHkAndTdrss(wdHks[TDRSS_TELEM_CMD_ECHO],echoesPerEvent,
 			     SIPD_CMD_ECHO_TELEM_DIR,
 			     SIPD_CMD_ECHO_TELEM_LINK_DIR,
-			     sizeof(CommandEcho_t)); 
+			     sizeof(CommandEcho_t),&numSent);
+	    numHksSent[TDRSS_TELEM_CMD_ECHO]+=numSent;
 	    
+	    numSent=0;
 	    if(numHkLinks[TDRSS_TELEM_HK])
 	      readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
-			     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t));
+			     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t),&numSent);
+	    numHksSent[TDRSS_TELEM_HK]+=numSent;
 	    
+	    numSent=0;
 	    if(numHkLinks[TDRSS_TELEM_MONITOR])
 	      readHkAndTdrss(wdHks[TDRSS_TELEM_MONITOR],monitorPerEvent,
 			     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
-			     sizeof(MonitorStruct_t)); 
+			     sizeof(MonitorStruct_t),&numSent); 
+	    numHksSent[TDRSS_TELEM_MONITOR]+=numSent;
 	    
 	  }
 	  //	else if(totalEventLinks==0) {
@@ -1159,6 +1183,7 @@ void sendSomeHk(int maxBytes)
     int hkCount=0;
     int hkInd=0,i;
     int numHkLinks[NUM_HK_TELEM_DIRS];
+    int numSent=0;
 
     for(i=0;i<NUM_HK_TELEM_DIRS;i++) {
       hkInd=hkTelemOrder[i];
@@ -1167,9 +1192,12 @@ void sendSomeHk(int maxBytes)
       //      fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
       if(numHkLinks[hkInd] && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
 	//Can try and send it
+	numSent=0;
 	hkCount+=readHkAndTdrss(wdHks[hkInd],hkTelemMaxCopy[hkInd],
 				telemDirs[hkInd],
-				telemLinkDirs[hkInd],maxPacketSize[hkInd]);
+				telemLinkDirs[hkInd],maxPacketSize[hkInd],
+				&numSent);
+	numHksSent[hkInd]+=numSent;
       }
     }   
     hkDataSent+=hkCount;   
