@@ -101,8 +101,8 @@ int sendData;
 // Bandwidth variables
 int headersPerEvent=30;
 int echoesPerEvent=100;
-int hkPerEvent=5;
-int monitorPerEvent=3;
+int hkPerEvent=1;
+int monitorPerEvent=1;
 
 
 int eventBandwidth=5;
