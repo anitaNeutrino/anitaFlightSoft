@@ -78,7 +78,8 @@ int sendRawSurfPackets(int bufSize);
 int sendPedSubbedSurfPackets(int bufSize); 
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
-int highRateWrite(unsigned char *buf, unsigned short nbytes);
+int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk);
+float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 
 // Config Thingies
 int cmdLengths[256];
@@ -714,7 +715,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 
 
     theHeader->gHdr.packetNumber=getTdrssNumber();
-    retVal = highRateWrite((unsigned char*)theHeader,sizeof(AnitaEventHeader_t));
+    retVal = highRateWrite((unsigned char*)theHeader,sizeof(AnitaEventHeader_t),0);
     if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending file %s over TDRSS high rate -- %s\n",headerFilename,sipcom_strerror());
@@ -820,7 +821,7 @@ int sendEncodedSurfPackets(int bufSize)
 	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
-	    retVal = highRateWrite(&theBuffer[count],numBytes);
+	  retVal = highRateWrite(&theBuffer[count],numBytes,0);
 	    if(retVal<0) {
 		//Problem sending data
 		if(errorCounter<100) {
@@ -853,7 +854,7 @@ int sendEncodedPedSubbedSurfPackets(int bufSize)
 	surfHdPtr->gHdr.packetNumber=getTdrssNumber();
 	numBytes = surfHdPtr->gHdr.numBytes;
 	if(numBytes) {
-	    retVal = highRateWrite(&theBuffer[count],numBytes);
+	  retVal = highRateWrite(&theBuffer[count],numBytes,0);
 	    if(retVal<0) {
 		//Problem sending data
 		if(errorCounter<100) {
@@ -905,7 +906,7 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
 		memcpy(&chanBuffer[chanNumBytes],&theBuffer[count2],chanHdPtr->numBytes);
 		chanNumBytes+=chanHdPtr->numBytes;
 		fillGenericHeader(waveHdPtr,PACKET_ENC_WV_PEDSUB,chanNumBytes);
-		retVal = highRateWrite(chanBuffer,chanNumBytes);
+		retVal = highRateWrite(chanBuffer,chanNumBytes,0);
 		eventDataSent+=chanNumBytes;
 		if(retVal<0) {
 		    //Problem sending data
@@ -947,7 +948,7 @@ int sendRawWaveformPackets(int bufSize)
 	memcpy(&(wvPtr->waveform),&(bdPtr->channel[chan]),sizeof(SurfChannelFull_t));
 	wvPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(wvPtr,PACKET_WV,sizeof(RawWaveformPacket_t));
-	retVal = highRateWrite(chanBuffer,sizeof(RawWaveformPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(RawWaveformPacket_t),0);
 	eventDataSent+=sizeof(RawWaveformPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -984,7 +985,7 @@ int sendRawSurfPackets(int bufSize)
 
 	surfPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(RawSurfPacket_t));
-	retVal = highRateWrite(chanBuffer,sizeof(RawSurfPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(RawSurfPacket_t),0);
 	eventDataSent+=sizeof(RawSurfPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -1022,7 +1023,7 @@ int sendPedSubbedWaveformPackets(int bufSize)
 	wvPtr->whichPeds=bdPtr->whichPeds;
 	fillGenericHeader(wvPtr,PACKET_PEDSUB_WV,sizeof(PedSubbedWaveformPacket_t));
 
-	retVal = highRateWrite(chanBuffer,sizeof(PedSubbedWaveformPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(PedSubbedWaveformPacket_t),0);
 	eventDataSent+=sizeof(PedSubbedWaveformPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -1061,7 +1062,7 @@ int sendPedSubbedSurfPackets(int bufSize)
 
 	surfPtr->gHdr.packetNumber=getTdrssNumber();
 	fillGenericHeader(surfPtr,PACKET_SURF,sizeof(PedSubbedSurfPacket_t));
-	retVal = highRateWrite(chanBuffer,sizeof(PedSubbedSurfPacket_t));
+	retVal = highRateWrite(chanBuffer,sizeof(PedSubbedSurfPacket_t),0);
 	eventDataSent+=sizeof(PedSubbedSurfPacket_t);
 	if(retVal<0) {
 	    //Problem sending data
@@ -1137,7 +1138,7 @@ void sendWakeUpBuffer()
     }
     fillGenericHeader(gHdr,PACKET_WAKEUP_HIGHRATE,WAKEUP_TDRSS_BUFFER_SIZE);
     gHdr->packetNumber=getTdrssNumber();
-    retVal = highRateWrite(theBuffer, count);
+    retVal = highRateWrite(theBuffer, count,1);
     if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
@@ -1230,7 +1231,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 //	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
 //	}
 	gHdr->packetNumber=getTdrssNumber();
-	retVal = highRateWrite(theBuffer, numBytes);
+	retVal = highRateWrite(theBuffer, numBytes,1);
 	if(retVal<0) {
 	    //Problem sending data
 	    syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
@@ -1368,7 +1369,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       //	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
       //	}
       gHdr->packetNumber=getTdrssNumber();
-      retVal = highRateWrite(theBuffer, numBytes);
+      retVal = highRateWrite(theBuffer, numBytes,1);
       if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
@@ -1468,15 +1469,52 @@ int sortOutPidFile(char *progName)
   return 0;
 }
 
-int highRateWrite(unsigned char *buf, unsigned short nbytes)
+int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
 {
+  static unsigned int dataCounter=0;
+  static unsigned int hkCounter=0;
+  static unsigned int eventCounter=0;
+  static int first=1;
+  static struct timeval lastTime;
+  struct timeval newTime;
+  float timeDiff;
+  int retVal=0;
+  if(first) {
+    gettimeofday(&lastTime,0);
+    first=0;
+  }
+
+
+  //Now send the data
 #ifndef COMPLETELY_FAKE
-  return sipcom_highrate_write(buf,nbytes);
+  retVal=sipcom_highrate_write(buf,nbytes);
 #else
   int fd=open("/tmp/sipdDump", O_CREAT | O_WRONLY);
   write(fd,buf,nbytes);
   close(fd);
-  return 0;
+  retVal=0;
 #endif
+  //Now some accounting
+  dataCounter+=nbytes;
+  if(isHk) hkCounter+=nbytes;
+  else eventCounter+=nbytes;
+  if(dataCounter>100000) {
+    
+    gettimeofday(&newTime,0);
+    timeDiff=getTimeDiff(lastTime,newTime);
+    printf("Transferred %u bytes (%u hk, %u event) in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,hkCounter,eventCounter,timeDiff,((float)dataCounter)/timeDiff);
+    dataCounter=0;
+    hkCounter=0;
+    eventCounter=0;
+    lastTime=newTime;
+  }
 
+  return retVal;
+}
+
+
+float getTimeDiff(struct timeval oldTime, struct timeval currentTime) {
+  float timeDiff=currentTime.tv_sec-oldTime.tv_sec;
+  timeDiff+=1e-6*(float)(currentTime.tv_usec-oldTime.tv_usec);
+  return timeDiff;
 }
