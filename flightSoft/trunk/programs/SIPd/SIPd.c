@@ -392,48 +392,53 @@ void highrateHandler(int *ignore)
 	}
 	printf("%d %d %d\n",totalEventLinks,totalHkLinks,retVal);
 	
-	//Which priority are we sending
-	currentPri=priorityOrder[orderIndex];	
-	printf("Trying priority %d -- numLinks %d\n",currentPri,numLinks[currentPri]);
-	if(numLinks[currentPri]) {
-	  //Got an event	    
-	  tempString=getLastLink(wdEvents[currentPri]);
-	  sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
-		  tempString);
-	  //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
-	  readAndSendEventRamdisk(currentHeader); //Also deletes
-	  numLinks[currentPri]--;
-	  totalEventLinks--;
-
-	  //Now try to send some stuff I like
-	  if(numHkLinks[TDRSS_TELEM_HEADER])
-	    readHkAndTdrss(wdHks[TDRSS_TELEM_HEADER],
-			   headersPerEvent,HEADER_TELEM_DIR,
-			   HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+	if(totalEventLinks) {
+	  //Which priority are we sending
+	  currentPri=priorityOrder[orderIndex];	
+	  while(numLinks[currentPri]==0) {
+	    orderIndex++;
+	    if(orderIndex>=numOrders) orderIndex=0;
+	  }
+	  printf("Trying priority %d -- numLinks %d\n",currentPri,numLinks[currentPri]);
+	  if(numLinks[currentPri]) {
+	    //Got an event	    
+	    tempString=getLastLink(wdEvents[currentPri]);
+	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
+		    tempString);
+	    //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
+	    readAndSendEventRamdisk(currentHeader); //Also deletes
+	    numLinks[currentPri]--;
+	    totalEventLinks--;
+	    
+	    //Now try to send some stuff I like
+	    if(numHkLinks[TDRSS_TELEM_HEADER])
+	      readHkAndTdrss(wdHks[TDRSS_TELEM_HEADER],
+			     headersPerEvent,HEADER_TELEM_DIR,
+			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t));
+	    
+	    if(numHkLinks[TDRSS_TELEM_CMD_ECHO])
+	      readHkAndTdrss(wdHks[TDRSS_TELEM_CMD_ECHO],echoesPerEvent,
+			     SIPD_CMD_ECHO_TELEM_DIR,
+			     SIPD_CMD_ECHO_TELEM_LINK_DIR,
+			     sizeof(CommandEcho_t)); 
+	    
+	    if(numHkLinks[TDRSS_TELEM_HK])
+	      readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
+			     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t));
+	    
+	    if(numHkLinks[TDRSS_TELEM_MONITOR])
+	      readHkAndTdrss(wdHks[TDRSS_TELEM_MONITOR],monitorPerEvent,
+			     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
+			     sizeof(MonitorStruct_t)); 
+	    
+	  }
+	  //	else if(totalEventLinks==0) {
+	  //	  usleep(1000);
+	  //	}
 	  
-	  if(numHkLinks[TDRSS_TELEM_CMD_ECHO])
-	    readHkAndTdrss(wdHks[TDRSS_TELEM_CMD_ECHO],echoesPerEvent,
-			   SIPD_CMD_ECHO_TELEM_DIR,
-			   SIPD_CMD_ECHO_TELEM_LINK_DIR,
-			   sizeof(CommandEcho_t)); 
-	  
-	  if(numHkLinks[TDRSS_TELEM_HK])
-	    readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
-			   HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t));
-	  
-	  if(numHkLinks[TDRSS_TELEM_MONITOR])
-	    readHkAndTdrss(wdHks[TDRSS_TELEM_MONITOR],monitorPerEvent,
-			   MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
-			   sizeof(MonitorStruct_t)); 
-	  
+	  orderIndex++;
+	  if(orderIndex>=numOrders) orderIndex=0;
 	}
-	//	else if(totalEventLinks==0) {
-	//	  usleep(1000);
-	//	}
-
-	orderIndex++;
-	if(orderIndex>=numOrders) orderIndex=0;
-
 
 	//Now we try and send some data
 	//I'm going to try and modify this but for now
