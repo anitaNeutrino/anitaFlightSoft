@@ -87,7 +87,7 @@ float adu5PatPeriod=10;
 float adu5VtgPeriod=10;
 int adu5SatTelemEvery=1;
 int adu5PatTelemEvery=10;
-intt adu5VtgTelemEvery=10;
+int adu5VtgTelemEvery=10;
 
 float adu5RelV12[3]={0};
 float adu5RelV13[3]={0};
