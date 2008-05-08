@@ -1505,7 +1505,7 @@ int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   dataCounter+=nbytes;
   if(isHk) hkCounter+=nbytes;
   else eventCounter+=nbytes;
-  if(dataCounter>100000) {
+  if(dataCounter>10000) {
     
     gettimeofday(&newTime,0);
     timeDiff=getTimeDiff(lastTime,newTime);
