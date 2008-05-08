@@ -398,6 +398,7 @@ void highrateHandler(int *ignore)
 	  while(numLinks[currentPri]==0) {
 	    orderIndex++;
 	    if(orderIndex>=numOrders) orderIndex=0;
+	    currentPri=priorityOrder[orderIndex];	
 	  }
 	  printf("Trying priority %d -- numLinks %d\n",currentPri,numLinks[currentPri]);
 	  if(numLinks[currentPri]) {
