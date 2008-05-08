@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <libgen.h>
 #include <signal.h>
@@ -393,7 +394,7 @@ void highrateHandler(int *ignore)
 	
 	//Which priority are we sending
 	currentPri=priorityOrder[orderIndex];	
-	
+	printf("Trying priority %d -- numLinks %d\n",currentPri,numLinks[currentPri]);
 	if(numLinks[currentPri]) {
 	  //Got an event	    
 	  tempString=getLastLink(wdEvents[currentPri]);
