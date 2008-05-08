@@ -1344,7 +1344,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 }
 
 
-int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize) 
+int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize, int *numSent) 
 /* Looks in the specified directroy and TDRSS's up to maxCopy bytes of data */
 /* fileSize is the maximum size of a packet in the directory */
 {
@@ -1357,6 +1357,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
     GenericHeader_t *gHdr;    
     GpsAdu5PatStruct_t *patPtr;
     HkDataStruct_t *hkPtr;
+    *numSent=0;
     
     numLinks=getNumLinks(wd);
     if(numLinks<=0) {
@@ -1425,6 +1426,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 	removeFile(currentTouchname);
 	removeFile(currentLOSTouchname);
       }
+      (*numSent)++;
 
       //This bit here is just for the slow rate data
       int j;
