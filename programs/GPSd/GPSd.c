@@ -72,6 +72,8 @@ int g12NtpPort=2;
 int g12ZdaPeriod=5;
 float g12PosPeriod=10;
 int g12SatPeriod=600;
+int g12PosTelemEvery=10;
+int g12SatTelemEvery=1;
 int g12StartNtp=0;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
@@ -83,6 +85,10 @@ int adu5EnableTtt=0;
 int adu5SatPeriod=600;
 float adu5PatPeriod=10;
 float adu5VtgPeriod=10;
+int adu5SatTelemEvery=1;
+int adu5PatTelemEvery=10;
+intt adu5VtgTelemEvery=10;
+
 float adu5RelV12[3]={0};
 float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
@@ -252,6 +258,8 @@ int readConfigFile()
 	g12ZdaPeriod=kvpGetInt("zdaPeriod",10); // in seconds
 	g12PosPeriod=kvpGetFloat("posPeriod",10); // in seconds
 	g12SatPeriod=kvpGetInt("satPeriod",600); // in seconds
+	g12PosTelemEvery=kvpGetInt("posTelemEvery",10); // send every nth one
+	g12SatTelemEvery=kvpGetInt("satTelemEvery",1);// send every nth one
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12StartNtp=kvpGetInt("startNtp",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
@@ -267,6 +275,9 @@ int readConfigFile()
 	adu5SatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	adu5PatPeriod=kvpGetFloat("patPeriod",10); // in seconds
 	adu5VtgPeriod=kvpGetFloat("vtgPeriod",10); // in seconds
+	adu5SatTelemEvery=kvpGetInt("satTelemEvery",1); // send every nth one
+	adu5PatTelemEvery=kvpGetInt("patTelemEvery",10); // send every nth one
+	adu5VtgTelemEvery=kvpGetInt("vtgTelemEvery",10);// send every nth one
 	adu5RelV12[0]=kvpGetFloat("calibV12_1",0);
 	adu5RelV12[1]=kvpGetFloat("calibV12_2",0);
 	adu5RelV12[2]=kvpGetFloat("calibV12_3",0);
@@ -579,6 +590,7 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData)
 
 
 void processGpvtgString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;   
     char theFilename[FILENAME_MAX];
@@ -602,10 +614,13 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
            
     //Write file and link for sipd
-    sprintf(theFilename,"%s/vtg_%d.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime);
-    retVal=writeGpsVtg(&theVtg,theFilename);  
-    retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR);  
-
+    telemCount++;
+    if(telemCount>=adu5VtgTelemEvery) {
+      sprintf(theFilename,"%s/vtg_%d.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime);
+      retVal=writeGpsVtg(&theVtg,theFilename);  
+      retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
 			 theVtg.unixTime,&adu5VtgWriter);
@@ -626,6 +641,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
 
 
 void processPosString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;   
     char theFilename[FILENAME_MAX];
@@ -690,12 +706,15 @@ void processPosString(char *gpsString, int gpsLength) {
 
 
     fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
-    //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime);
-    retVal=writeGpsPos(&thePos,theFilename);  
-    retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR);  
 
-    //Write file to main disk
+    telemCount++;
+    if(telemCount>=g12PosTelemEvery) {
+      //Write file and link for sipd
+      sprintf(theFilename,"%s/pos_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime);
+      retVal=writeGpsPos(&thePos,theFilename);  
+      retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
 
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&thePos,sizeof(GpsG12PosStruct_t),
@@ -717,7 +736,7 @@ void processPosString(char *gpsString, int gpsLength) {
 
 void processAdu5Output(char *tempBuffer, int length)
 /* Processes each ADU5 output string and acts accordingly */
-{
+{  
     char gpsString[ADU5_DATA_SIZE];
     char gpsCopy[ADU5_DATA_SIZE];
     int gpsLength=0;
@@ -834,6 +853,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
 
 
 void processG12SatString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;
     char theFilename[FILENAME_MAX];
@@ -890,11 +910,15 @@ void processG12SatString(char *gpsString, int gpsLength) {
 /*     } */
 
     fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
-
-    //Write file and link for sipd
-    sprintf(theFilename,"%s/sat_%d.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
-    retVal=writeGpsG12Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);  
+    
+    telemCount++;
+    if(telemCount>=g12SatTelemEvery) {
+      //Write file and link for sipd
+      sprintf(theFilename,"%s/sat_%d.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
+      retVal=writeGpsG12Sat(&theSat,theFilename);  
+      retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
 
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsG12SatStruct_t),
@@ -908,6 +932,7 @@ void processG12SatString(char *gpsString, int gpsLength) {
 
 
 void processAdu5Sa4String(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;
     char theFilename[FILENAME_MAX];
@@ -980,10 +1005,15 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	}
 	else {
 	    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
+
+	    telemCount++;
+	    if(telemCount>=adu5SatTelemEvery) {
 	    //Write file and link for sipd
-	    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
-	    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-	    retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);  
+	      sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
+	      retVal=writeGpsAdu5Sat(&theSat,theFilename);  
+	      retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);  
+	      telemCount=0;
+	    }
 
 	    //Write file to main disk
 	    retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsAdu5SatStruct_t),
@@ -1000,6 +1030,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 
 
 void processGppatString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;
     
@@ -1072,10 +1103,14 @@ void processGppatString(char *gpsString, int gpsLength) {
 
     fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
 
-    //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%d.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime);
-    retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR);  
+    telemCount++;
+    if(telemCount>=adu5PatTelemEvery) {
+      //Write file and link for sipd
+      sprintf(theFilename,"%s/pat_%d.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime);
+      retVal=writeGpsPat(&thePat,theFilename);  
+      retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
 
 
     //Write file to main disk
