@@ -131,7 +131,7 @@ byte input_byte(int nHandle, byte *p)
 
 	pCarrier = GetCarrier(nHandle);
 	if(pCarrier == NULL)
-		return;
+		return((byte)0);
 
 	if( p )
 	{
@@ -151,8 +151,8 @@ word input_word(int nHandle, word *p)
 
 	pCarrier = GetCarrier(nHandle);
 	if(pCarrier == NULL)
-		return;
-
+	  return((word)0);
+	
 	if( p )
 	{
            /* place address to read word from in data [0]; */
