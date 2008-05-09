@@ -459,7 +459,7 @@ int main(int argc, char **argv) {
 		   surfIndex[0],eventReadyFlag);
 		
 	  //			if(tmo && (tmo%100)==0) //Might change tmo%2
-	  //			    myUsleep(1); 
+	  myUsleep(1); 
 	  tmo++;
 		       		
 	  //This time getting is quite important as the two bits below rely on having a recent time.
