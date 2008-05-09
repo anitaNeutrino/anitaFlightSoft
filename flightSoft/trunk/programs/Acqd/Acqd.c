@@ -2931,12 +2931,12 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 		  
     if(rateCalcPeriod) {
       if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
-	printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
+	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 	//		    if(lastEventCounter<200)
 	//			printf("\n");
       }
       else {
-	printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
+	printf("Event %d -- Current Rate 0 Hz\n",lastEvNum);
       }
 		    
 		    
