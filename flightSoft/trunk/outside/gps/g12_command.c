@@ -34,7 +34,7 @@ int main() {
     char tempBuffer[DATA_SIZE]={' '};
     
 /* Silly hack for reboot problem*/
- toggleCRTCTS(devName);
+// toggleCRTCTS(devName);
 /* open a serial port */
 fd = open(devName, O_RDWR | O_NOCTTY);
 if(fd<0)
@@ -57,39 +57,23 @@ else
 /*  printf("%d %d %d %d %s %d %d\n",options.c_iflag,options.c_oflag,options.c_cflag,options.c_lflag,options.c_cc,options.c_ispeed,options.c_ospeed); */
 /*  printf("Here1\n"); */
 
- options.c_iflag=1;
- options.c_oflag=0;
- options.c_cflag=3261;
- options.c_lflag=0;
- strncpy(options.c_cc,"",2);
- options.c_ispeed=13;
- options.c_ospeed=13;
-
- cfmakeraw(&options);
- cfsetispeed(&options, BAUDRATE);    /* set input speed  */
- cfsetospeed(&options, BAUDRATE);    /* set output speed */
-
-options.c_cflag &= ~PARENB;         /* clear the parity bit  */
-options.c_cflag &= ~CSTOPB;         /* clear the stop bit  */
-options.c_cflag &= ~CSIZE;          /* clear the character size  */
-options.c_cflag |= CHARACTER_SIZE;  /* set charater size to 8 bits  */
-options.c_cflag &= ~CRTSCTS;        /* clear the flow control bits  */
-//options.c_cflag |= CRTSCTS;        /* set the flow control bits  */
-options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
-//options.c_cflag |= (CLOCAL | CREAD); //was like this
-// options.c_cflag &= ~CLOCAL;
-options.c_cflag |= (CREAD);
-/*  printf("%d %d %d %d %s %d %d\n",options.c_iflag,options.c_oflag,options.c_cflag,options.c_lflag,options.c_cc,options.c_ispeed,options.c_ospeed); */
-
- 
-tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
-/*  printf("%d %d %d %d %s %d %d\n",options.c_iflag,options.c_oflag,options.c_cflag,options.c_lflag,options.c_cc,options.c_ispeed,options.c_ospeed); */
+cfsetispeed(&options, BAUDRATE); //Set input speed 
+cfsetospeed(&options, BAUDRATE); //Set output speed 
+options.c_cflag &= ~PARENB; //Clear the parity bit 
+options.c_cflag &= ~CSTOPB; //Clear the stop bit 
+options.c_cflag &= ~CSIZE; //Clear the character size 
+options.c_cflag |= CHARACTER_SIZE; //Set charater size to 8 bits 
+options.c_cflag &= ~CRTSCTS; //Clear the flow control bits 
+options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); //Raw input mode 
+options.c_cflag |= (CLOCAL | CREAD); 
+//options.c_oflag |= 0; 
+tcsetattr(fd, TCSANOW, &options);
 
 
 /* send the commands to G12 */
  strcat(buff, "$PASHQ,PRT\r\n"); 
  strcat(buff, "$PASHQ,RIO\r\n"); 
- strcat(buff, "$PASHS,RCI,000.05\n"); 
+ //strcat(buff, "$PASHS,RCI,000.05\r\n"); 
 // strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
 //strcat(buff, "$PASHS,PPS,0.2,3,R\n");
@@ -97,15 +81,15 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 /* strcat(buff, "$PASHQ,POS\n"); */
 /* strcat(buff, "$PASHQ,PPS\n"); */
 // strcat(buff, "$PASHS,SPD,B,4\n");
- strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
- strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
+// strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
+ //strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
 // strcat(buff, "$PASHS,NME,RMC,B,ON\n");
- strcat(buff, "$PASHS,LTZ,0,0\n");
- strcat(buff, "$PASHS,UTS,ON\n");
+ //strcat(buff, "$PASHS,LTZ,0,0\n");
+ //strcat(buff, "$PASHS,UTS,ON\n");
 // strcat(buff, "$PASHS,PPS,1,3,R\n");
- strcat(buff, "$PASHQ,SAT\n");
- strcat(buff, "$PASHQ,POS\n");
- strcat(buff, "$PASHQ,CLK\n");
+ //strcat(buff, "$PASHQ,SAT\n");
+ //strcat(buff, "$PASHQ,POS\n");
+ //strcat(buff, "$PASHQ,CLK\n");
 
 
 // strcat(buff, "$PASHS,NME,ZDA,B,ON,5\n");
@@ -113,7 +97,7 @@ tcsetattr(fd, TCSANOW, &options);   /* activate the settings */
 
 printf("buff -- %s\n",buff);
 write(fd, buff, strlen(buff));
-printf("wrote buff -- %s\n",buff);
+//printf("wrote buff -- %s\n",buff);
 
 
 /* for(i=0; i < COMMAND_SIZE; i++) printf("%c", buff[i]); */
