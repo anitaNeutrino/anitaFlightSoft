@@ -165,7 +165,6 @@ int pidPanicVal;
 int pidAverage;
 int numEvents=0;
 //time_t lastRateTime;
-int lastEventCounter=0;
 int calculateRateAfter=5;
 
 //Rate servo stuff
@@ -448,8 +447,9 @@ int main(int argc, char **argv) {
 	    printf("SURF %d Event Ready Flag %d\n",
 		   surfIndex[0],eventReadyFlag);
 		
-	  //			if(tmo && (tmo%100)==0) //Might change tmo%2
-	  myUsleep(1); 
+	  //
+	  if(tmo && (tmo%2)==0) //Might change tmo%2
+	    myUsleep(1); 
 	  tmo++;
 		       		
 	  //This time getting is quite important as the two bits below rely on having a recent time.
@@ -673,7 +673,7 @@ int main(int argc, char **argv) {
       // Clear boards
       sendClearEvent();     
 	    
-    }  //while(currentState==PROG_STATE_RUN
+    }  //while(currentState==PROG_STATE_RUN)
 
 	
 
@@ -2869,6 +2869,8 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
   static struct timeval lastServoRateCalc;
   static unsigned int lastRateCalcEvent=0; 
   static int firstTime=1;
+  static int lastEventCounter=0;
+
 
   float rateCalcPeriod;
   
@@ -2877,6 +2879,7 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
     lastRateCalc.tv_usec=0;
     lastServoRateCalc.tv_sec=0;
     lastServoRateCalc.tv_usec=0;
+    lastEventCounter=lastEvNum;
     totalDeadtime=0;
     intervalDeadtime=0;
     firstTime=0;
