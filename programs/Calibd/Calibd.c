@@ -275,7 +275,7 @@ int readConfigFile()
     if(status == CONFIG_E_OK) {
 	//Which board is the digital acromag?
 	digitalCarrierNum=kvpGetInt("digitalCarrierNum",1);
-
+      	printf("digitalCarrierNum %d\n",digitalCarrierNum);
 	//Debug
 	printToScreen=kvpGetInt("printToScreen",-1);
 	

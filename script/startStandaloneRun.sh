@@ -29,16 +29,16 @@ sleep 2
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
 daemon -r Archived -n Archived
-#daemon -r Hkd -n Hkd
-#daemon -r GPSd -n GPSd
+daemon -r Hkd -n Hkd
+daemon -r GPSd -n GPSd
 #daemon -r Monitord -n Monitord
-#daemon -r Calibd -n Calibd
+daemon -r Calibd -n Calibd
 
 #Just to make sure
 daemon -r Prioritizerd -n Prioritizerd 
 daemon -r Eventd -n Eventd
 #daemon -r LOSd -n LOSd
-#daemon -r SIPd -n SIPd
+daemon -r SIPd -n SIPd
 
 sleep 2
 
