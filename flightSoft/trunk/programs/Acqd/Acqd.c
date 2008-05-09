@@ -535,7 +535,7 @@ int main(int argc, char **argv) {
 	  }
 
 
-	  if(tmo>500) {
+	  if(tmo>30) {
 	    if(printToScreen && verbosity>3)
 	      printf("Here because tmo is %d\n",tmo);
 	    if(currentState!=PROG_STATE_RUN) 
