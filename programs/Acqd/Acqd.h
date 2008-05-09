@@ -10,6 +10,8 @@
 #include "AcqdDefs.h"
       
 //Forward Declarations
+struct timeval;
+
 
 //Hardware functions
 AcqdErrorCode_t initializeDevices(int *numDevPtr);
@@ -50,7 +52,8 @@ int getChanIndex(int surf, int chan);
 void myUsleep(int usec);
 void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short val);
 void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
-
+void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum);
+void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
 
 //Output functions
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned int evNum);

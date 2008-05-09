@@ -110,7 +110,7 @@ char altOutputdir[FILENAME_MAX];
 char subAltOutputdir[FILENAME_MAX];
 //char acqdEventLinkDir[FILENAME_MAX];
 
-#define N_TMO 100    /* number of msec wait for Evt_f before timed out. */
+#define N_TMO 500    /* number of msec wait for Evt_f before timed out. */
 #define N_TMO_INT 10000 //Millisec to wait for interrupt
 #define EVTF_TIMEOUT 10000000 /* in microseconds */
 
@@ -215,30 +215,20 @@ int main(int argc, char **argv) {
   int gotSurfHk=0;
   unsigned int lastEvNum=0;
   struct timeval timeStruct;
-  struct timeval lastRateCalc;
-  struct timeval lastServoRateCalc;
+
+ 
+
   struct timeval lastSurfHkRead;
-  struct timeval lastSlowRateCalc; //Every 60sec
   int timeDiff=0;
-  unsigned int lastRateCalcEvent=0;    
-  unsigned int lastSlowRateEvent=0; 
-  unsigned int lastSlowSurfHk=0;
-  //    unsigned int lastSlowTurfRate=0;
-  float rateCalcPeriod;
+
+
   int reInitNeeded=0;
-  int lastSoftTrigTime=0;
+  int lastSoftTrigTime=0;  
+  unsigned int lastSlowSurfHk=0;
 
   //Initialize some of the timing variables
-  lastSlowRateCalc.tv_sec=time(NULL);
-  lastSlowRateCalc.tv_usec=0;
-  lastRateCalc.tv_sec=time(NULL);
-  lastRateCalc.tv_usec=0;
-  lastServoRateCalc.tv_sec=0;
-  lastServoRateCalc.tv_usec=0;
   lastSurfHkRead.tv_sec=0;
   lastSurfHkRead.tv_usec=0;
-  totalDeadtime=0;
-  intervalDeadtime=0;
 
   /* Log stuff */
   char *progName=basename(argv[0]);
@@ -465,74 +455,11 @@ int main(int argc, char **argv) {
 	  //This time getting is quite important as the two bits below rely on having a recent time.
 	  gettimeofday(&timeStruct,NULL);
 
-	  //Will move this bit into fucntion to deal with the slow rate
-	  if((timeStruct.tv_sec-lastSlowRateCalc.tv_sec)>60) {
-	    if(doingEvent) {
-	      float slowRate=doingEvent-lastSlowRateEvent;
-	      float slowTime=timeStruct.tv_sec-lastSlowRateCalc.tv_sec;
-	      slowTime+=1e-6*((float)timeStruct.tv_usec);
-	      slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
-	      slowRate/=slowTime;
-	      writeCurrentRFSlowRateObject(slowRate,lastEvNum);
-	      lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
-	      lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
-	      lastSlowRateEvent=doingEvent;
-	    }
-	    else {			      
-	      writeCurrentRFSlowRateObject(0,0);
-	      lastSlowRateCalc.tv_sec=timeStruct.tv_sec;
-	      lastSlowRateCalc.tv_usec=timeStruct.tv_usec;
-	    }
-	  }
-
-		
-	  //This is all about calculating the rate and could again be moved to a separate function
-	  if((timeStruct.tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
-		  
-	    //		  printf("Calculating rate %d %d %d\n",(int)timeStruct.tv_sec,(int)lastRateCalc.tv_sec,calculateRateAfter);
-
-	    if(enableRateServo) {
-	      if(((timeStruct.tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
-		//Time to servo on rate
-		servoOnRate(doingEvent,lastRateCalcEvent,&timeStruct,&lastServoRateCalc);
-		lastRateCalcEvent=doingEvent;
-		lastServoRateCalc.tv_sec=timeStruct.tv_sec;
-		lastServoRateCalc.tv_usec=timeStruct.tv_usec;
-		      
-	      }
-	    }
-		  		  
-	    rateCalcPeriod=0;
-	    //Make rate calculation;
-	    if(lastRateCalc.tv_sec>0) {
-	      rateCalcPeriod=
-		timeStruct.tv_sec-lastRateCalc.tv_sec;
-	      rateCalcPeriod+=((float)timeStruct.tv_usec-
-			       lastRateCalc.tv_usec)/1e6;
-	      totalTime+=rateCalcPeriod;
-		    
-	      //Deadtime Monitoring
-	      totalDeadtime+=intervalDeadtime;
-	    }
-		  
-	    if(rateCalcPeriod) {
-	      if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
-		printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
-		//		    if(lastEventCounter<200)
-		//			printf("\n");
-	      }
-	      else {
-		printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
-	      }
-		    
-		    
-	      printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime));
-	      printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
-	      intervalDeadtime=0;
-	    }			    
-	    lastRateCalc=timeStruct;
-	    lastEventCounter=doingEvent;		  
-	  }
+	  //Now we have a couple of functions that work out rates and such
+	  //Writes slow rate if approrpriate
+	  handleSlowRate(&timeStruct,lastEvNum); 
+	  //Calculates rate and servos on it if we wish
+	  rateCalcAndServo(&timeStruct,lastEvNum); 
 
 
 	  if(tmo>500) {
@@ -2900,4 +2827,105 @@ void handleBadSigs(int sig)
   unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating");
   exit(0);
+}
+
+
+void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum)
+{
+  static struct timeval lastSlowRateCalc; //Every 60sec   
+  static unsigned int lastSlowRateEvent=0; 
+  static int firstTime=1;
+  //    unsigned int lastSlowTurfRate=0;
+  if(firstTime) {
+    lastSlowRateCalc.tv_sec=time(NULL);
+    lastSlowRateCalc.tv_usec=0;
+    firstTime=0;
+  }
+  if((tvPtr->tv_sec-lastSlowRateCalc.tv_sec)>60) {
+    if(lastEvNum) {
+      float slowRate=lastEvNum-lastSlowRateEvent;
+      float slowTime=tvPtr->tv_sec-lastSlowRateCalc.tv_sec;
+      slowTime+=1e-6*((float)tvPtr->tv_usec);
+      slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
+      slowRate/=slowTime;
+      writeCurrentRFSlowRateObject(slowRate,lastEvNum);
+      lastSlowRateCalc.tv_sec=tvPtr->tv_sec;
+      lastSlowRateCalc.tv_usec=tvPtr->tv_usec;
+      lastSlowRateEvent=lastEvNum;
+    }
+    else {			      
+      writeCurrentRFSlowRateObject(0,0);
+      lastSlowRateCalc.tv_sec=tvPtr->tv_sec;
+      lastSlowRateCalc.tv_usec=tvPtr->tv_usec;
+    }
+  }
+}
+
+
+void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
+//Calculates the rate and maybe servos thresholds
+{
+  static struct timeval lastRateCalc;
+  static struct timeval lastServoRateCalc;
+  static unsigned int lastRateCalcEvent=0; 
+  static int firstTime=1;
+
+  float rateCalcPeriod;
+  
+  if(firstTime) {
+    lastRateCalc.tv_sec=tvPtr->tv_sec;
+    lastRateCalc.tv_usec=0;
+    lastServoRateCalc.tv_sec=0;
+    lastServoRateCalc.tv_usec=0;
+    totalDeadtime=0;
+    intervalDeadtime=0;
+    firstTime=0;
+  }
+  
+  if((tvPtr->tv_sec-lastRateCalc.tv_sec)>calculateRateAfter) {
+    
+    //		  printf("Calculating rate %d %d %d\n",(int)tvPtr->tv_sec,(int)lastRateCalc.tv_sec,calculateRateAfter);
+    
+    if(enableRateServo) {
+      if(((tvPtr->tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((lastEvNum-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
+	//Time to servo on rate
+	servoOnRate(lastEvNum,lastRateCalcEvent,tvPtr,&lastServoRateCalc);
+	lastRateCalcEvent=lastEvNum;
+	lastServoRateCalc.tv_sec=tvPtr->tv_sec;
+	lastServoRateCalc.tv_usec=tvPtr->tv_usec;
+	
+      }
+    }
+    
+    rateCalcPeriod=0;
+    //Make rate calculation;
+    if(lastRateCalc.tv_sec>0) {
+      rateCalcPeriod=
+	tvPtr->tv_sec-lastRateCalc.tv_sec;
+      rateCalcPeriod+=((float)tvPtr->tv_usec-
+		       lastRateCalc.tv_usec)/1e6;
+      totalTime+=rateCalcPeriod;
+		    
+      //Deadtime Monitoring
+      totalDeadtime+=intervalDeadtime;
+    }
+		  
+    if(rateCalcPeriod) {
+      if((lastEvNum-lastEventCounter)>0 && rateCalcPeriod) {
+	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,((float)(lastEvNum-lastEventCounter))/rateCalcPeriod);
+	//		    if(lastEventCounter<200)
+	//			printf("\n");
+      }
+      else {
+	printf("Event %d -- Current Rate 0 Hz\n",lastEvNum);
+      }
+		    
+		    
+      printf("\tTotal Time %3.1f (s)\t Total Deadtime %3.1f (s) (%3.2f %%)\n",totalTime,totalDeadtime,100.*(totalDeadtime/totalTime));
+      printf("\tInterval Time %3.1f (s)\t Interval Deadtime %3.1f (s) (%3.2f %%)\n",rateCalcPeriod,intervalDeadtime,100.*(intervalDeadtime/rateCalcPeriod));
+      intervalDeadtime=0;
+    }			    
+    lastRateCalc=(*tvPtr);
+    lastEventCounter=lastEvNum;		  
+  }
 }
