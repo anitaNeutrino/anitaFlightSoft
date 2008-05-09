@@ -92,7 +92,8 @@ int analogueCarrierNum=0;
 int writeLookupFile=0;
 int ip320Ranges[NUM_IP320_BOARDS];
 int numIP320s;
-int printToScreen;
+int printToScreen=0;
+int adcAverage=1;
 int readoutPeriod;
 int telemEvery;
 int calibrationPeriod;
@@ -274,6 +275,7 @@ int readConfigFile()
 	writeLookupFile=kvpGetInt("writeLookupFile",-1);
 	readoutPeriod=kvpGetInt("readoutPeriod",60);
 	telemEvery=kvpGetInt("telemEvery",60);
+	adcAverage=kvpGetInt("adcAverage",5);
 	calibrationPeriod=kvpGetInt("calibrationPeriod",1200);
        	kvpStatus = kvpGetIntArray("ip320Ranges",ip320Ranges,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
@@ -443,7 +445,7 @@ int ip320Setup()
 	config320[count].trigger = STRIG; /* 0 = software triggering */
 	config320[count].mode = SEI;      /* differential input */
 	config320[count].gain = GAIN_X1;  /* gain for analog input */
-	config320[count].average = 1;     /* number of samples to average */
+	config320[count].average = adcAverage;     /* number of samples to average */
 	config320[count].channel = 0;     /* default channel */
 	config320[count].data_mask = BIT12; /* A/D converter data mask */
 	config320[count].bit_constant = CON12; /* constant for data correction */
