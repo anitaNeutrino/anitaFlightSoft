@@ -91,7 +91,8 @@ int eventsBeforeClear=1000;
 
 //Pedestal stuff
 int pedestalMode=0;
-int usePPS2Trig=0;
+int pedUsePPS2Trig=0;
+int pedSoftTrigSleepMs=100;
 int writeDebugData=0;
 int numPedEvents=4000;
 int pedSwitchConfigAtEnd=1; //Need to work out exactly what this does
@@ -334,7 +335,7 @@ int main(int argc, char **argv) {
     // quite remember that explains why the line below is commented out
     //	setTurfControl(SetTrigMode);
 
-    if(pedestalMode && usePPS2Trig) {
+    if(pedestalMode && pedUsePPS2Trig) {
       trigMode=TrigPPS2;
       sendSoftTrigger=0;
     }
@@ -358,7 +359,6 @@ int main(int argc, char **argv) {
 
     if(doThresholdScan || pedestalMode) {
       //If we're doing a threshold or a pedestal scan disable all antennas
-      printf("Trying to do a thresholdScan\n");
       antTrigMask=0xffffffff;
     }
 
@@ -1134,7 +1134,8 @@ int readConfigFile()
     hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
     niceValue=kvpGetInt("niceValue",-20);
     pedestalMode=kvpGetInt("pedestalMode",0);
-    usePPS2Trig=kvpGetInt("usePPS2Trig",0);
+    pedUsePPS2Trig=kvpGetInt("pedUsePPS2Trig",0);
+    pedSoftTrigSleepMs=kvpGetInt("pedSoftTrigSleepMs",0);
     useInterrupts=kvpGetInt("useInterrupts",0);
     surfFirmwareVersion=kvpGetInt("surfFirmwareVersion",2);
     turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
@@ -1581,7 +1582,7 @@ AcqdErrorCode_t runPedestalMode()
   doingEvent=0;
   writeData=writeDebugData;
   numEvents=numPedEvents;
-  if(!usePPS2Trig) {
+  if(!pedUsePPS2Trig) {
     sendSoftTrigger=1;
     softTrigPeriod=0;
   }
@@ -1598,8 +1599,11 @@ AcqdErrorCode_t runPedestalMode()
     bzero(&theEvent, sizeof(theEvent)) ;
     
     //Send software trigger 	
-    if(!usePPS2Trig)
+    if(!pedUsePPS2Trig) {
       setTurfControl(SendSoftTrg);
+      if(pedSoftTrigSleepMs)
+	myUsleep(1000*pedSoftTrigSleepMs);
+    }
    
     // Wait for ready to read (EVT_RDY) 
     tmo=0;	    
@@ -2854,8 +2858,8 @@ void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum)
     firstTime=0;
   }
   if((tvPtr->tv_sec-lastSlowRateCalc.tv_sec)>60) {
-    if(lastEvNum) {
-      float slowRate=lastEvNum-lastSlowRateEvent;
+    if(doingEvent) {
+      float slowRate=doingEvent-lastSlowRateEvent;
       float slowTime=tvPtr->tv_sec-lastSlowRateCalc.tv_sec;
       slowTime+=1e-6*((float)tvPtr->tv_usec);
       slowTime-=1e-6*((float)lastSlowRateCalc.tv_usec);
@@ -2863,7 +2867,7 @@ void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum)
       writeCurrentRFSlowRateObject(slowRate,lastEvNum);
       lastSlowRateCalc.tv_sec=tvPtr->tv_sec;
       lastSlowRateCalc.tv_usec=tvPtr->tv_usec;
-      lastSlowRateEvent=lastEvNum;
+      lastSlowRateEvent=doingEvent;
     }
     else {			      
       writeCurrentRFSlowRateObject(0,0);
@@ -2891,7 +2895,7 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
     lastRateCalc.tv_usec=0;
     lastServoRateCalc.tv_sec=0;
     lastServoRateCalc.tv_usec=0;
-    lastEventCounter=lastEvNum;
+    lastEventCounter=doingEvent;
     totalDeadtime=0;
     intervalDeadtime=0;
     firstTime=0;
@@ -2902,10 +2906,10 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
     //		  printf("Calculating rate %d %d %d\n",(int)tvPtr->tv_sec,(int)lastRateCalc.tv_sec,calculateRateAfter);
     
     if(enableRateServo) {
-      if(((tvPtr->tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((lastEvNum-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
+      if(((tvPtr->tv_sec-lastServoRateCalc.tv_sec)>servoRateCalcPeriod) || ((doingEvent-lastRateCalcEvent)>(servoRateCalcPeriod*rateGoal))) {
 	//Time to servo on rate
-	servoOnRate(lastEvNum,lastRateCalcEvent,tvPtr,&lastServoRateCalc);
-	lastRateCalcEvent=lastEvNum;
+	servoOnRate(doingEvent,lastRateCalcEvent,tvPtr,&lastServoRateCalc);
+	lastRateCalcEvent=doingEvent;
 	lastServoRateCalc.tv_sec=tvPtr->tv_sec;
 	lastServoRateCalc.tv_usec=tvPtr->tv_usec;
 	
@@ -2926,13 +2930,13 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
     }
 		  
     if(rateCalcPeriod) {
-      if((lastEvNum-lastEventCounter)>0 && rateCalcPeriod) {
-	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,((float)(lastEvNum-lastEventCounter))/rateCalcPeriod);
+      if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
+	printf("Event %d -- Current Rate %3.2f Hz\n",doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 	//		    if(lastEventCounter<200)
 	//			printf("\n");
       }
       else {
-	printf("Event %d -- Current Rate 0 Hz\n",lastEvNum);
+	printf("Event %d -- Current Rate 0 Hz\n",doingEvent);
       }
 		    
 		    
@@ -2941,6 +2945,6 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
       intervalDeadtime=0;
     }			    
     lastRateCalc=(*tvPtr);
-    lastEventCounter=lastEvNum;		  
+    lastEventCounter=doingEvent;		  
   }
 }
