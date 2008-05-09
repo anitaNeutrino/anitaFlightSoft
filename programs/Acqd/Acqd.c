@@ -1684,7 +1684,8 @@ AcqdErrorCode_t runPedestalMode()
 
       if(writeData) outputEventData();
 		    
-
+      if(doingEvent%100==0)
+	printf("Done %d events\n");
     }		    
     // Clear boards
     sendClearEvent();
