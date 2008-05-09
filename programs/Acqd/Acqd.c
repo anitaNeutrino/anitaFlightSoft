@@ -91,6 +91,7 @@ int eventsBeforeClear=1000;
 
 //Pedestal stuff
 int pedestalMode=0;
+int usePPS2Trig=0;
 int writeDebugData=0;
 int numPedEvents=4000;
 int pedSwitchConfigAtEnd=1; //Need to work out exactly what this does
@@ -322,7 +323,8 @@ int main(int argc, char **argv) {
     //Send software trigger
     //Take a forced trigger to get rid of any junk
     setTurfControl(SendSoftTrg);
-
+    
+      
     // Set trigger modes
     //RF and Software Triggers enabled by default
     trigMode=TrigNone;
@@ -331,6 +333,11 @@ int main(int argc, char **argv) {
     // RJN debugging -- what the heck there's some subtlety I can't
     // quite remember that explains why the line below is commented out
     //	setTurfControl(SetTrigMode);
+
+    if(pedestalMode && usePPS2Trig) {
+      trigMode=TrigPPS2;
+      sendSoftTrigger=0;
+    }
 
 
     theSurfHk.globalThreshold=0;
@@ -1127,6 +1134,7 @@ int readConfigFile()
     hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
     niceValue=kvpGetInt("niceValue",-20);
     pedestalMode=kvpGetInt("pedestalMode",0);
+    usePPS2Trig=kvpGetInt("usePPS2Trig",0);
     useInterrupts=kvpGetInt("useInterrupts",0);
     surfFirmwareVersion=kvpGetInt("surfFirmwareVersion",2);
     turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
@@ -1573,8 +1581,10 @@ AcqdErrorCode_t runPedestalMode()
   doingEvent=0;
   writeData=writeDebugData;
   numEvents=numPedEvents;
-  sendSoftTrigger=1;
-  softTrigPeriod=0;
+  if(!usePPS2Trig) {
+    sendSoftTrigger=1;
+    softTrigPeriod=0;
+  }
   resetPedCalc();
 
   //Now have an event loop
@@ -1588,7 +1598,8 @@ AcqdErrorCode_t runPedestalMode()
     bzero(&theEvent, sizeof(theEvent)) ;
     
     //Send software trigger 	
-    setTurfControl(SendSoftTrg);
+    if(!usePPS2Trig)
+      setTurfControl(SendSoftTrg);
    
     // Wait for ready to read (EVT_RDY) 
     tmo=0;	    
