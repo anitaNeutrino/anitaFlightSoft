@@ -239,7 +239,7 @@ struct cblk320 *c_blk;
     float sum_data;             /* sum of all conversions */
     word i, temp;               /* loop control */
     word control_reg;           /* storage for control word of next channel */
-
+    float temp_data;
 /*
     ENTRY POINT OF ROUTINE:
     Initialize local storage.
@@ -292,8 +292,11 @@ struct cblk320 *c_blk;
           output_word( c_blk->nHandle, (word*)&c_blk->brd_ptr->strt_reg, 0xFFFF ); /* start conversion (recommended value) */
 
 
-        for(temp = 0; temp != 11; temp++)	/* no flag to poll, kill some time */
-	   input_word( c_blk->nHandle, (word*)&c_blk->brd_ptr->cntl_reg );
+	//What the heck, we just sit and waste time reading many times
+        for(temp = 0; temp != 11; temp++) {	/* no flag to poll, kill some time */
+	   temp_data=input_word( c_blk->nHandle, (word*)&c_blk->brd_ptr->cntl_reg ) & c_blk->data_mask;
+	   printf("%d %d --%f\n",i,temp,temp_data);
+	}
 
 /*
         Read and sum the data samples
