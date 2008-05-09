@@ -94,7 +94,7 @@ int ip320Ranges[NUM_IP320_BOARDS];
 int numIP320s;
 int printToScreen=0;
 int adcAverage=1;
-int readoutPeriod;
+int readoutPeriod; //in ms
 int telemEvery;
 int calibrationPeriod;
 
@@ -200,8 +200,7 @@ int main (int argc, char *argv[])
 	retVal=readConfigFile();
 	
 	//    milliWait.tv_nsec=100000000;
-	milliWait.tv_nsec=10000000;
-	readoutPeriod*=2;
+
 	ip320Setup();
 	currentState=PROG_STATE_RUN;
 	millisecs=0;
@@ -239,10 +238,9 @@ int main (int argc, char *argv[])
 		//Send down data
 		millisecs=1;
 	    }
+	    //Just for safety we'll reset the sleep time
+	    milliWait.tv_nsec=1000000;
 	    nanosleep(&milliWait,NULL);
-//	    sleep(1);
-//	    usleep(50000);
-//	    usleep(1);
 	    millisecs++;
 //	    printf("%d\n",millisecs);
 	}
