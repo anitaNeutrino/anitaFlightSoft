@@ -36,10 +36,12 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData);
 void processGpvtgString(char *gpsString, int gpsLength);
 void processPosString(char *gpsString, int gpsLength);
 void processAdu5Sa4String(char *gpsString, int gpsLength);
-
+int tryToStartNtpd();
+void handleBadSigs(int sig);
+int sortOutPidFile(char *progName);
 
 // Definitions
-#define LEAP_SECONDS 13 //Need to check
+#define LEAP_SECONDS 14 //Need to check
 #define G12_DATA_SIZE 1024
 #define ADU5_DATA_SIZE 1024
 
@@ -60,6 +62,8 @@ int g12NtpPort=2;
 int g12ZdaPeriod=5;
 float g12PosPeriod=10;
 int g12SatPeriod=600;
+int g12PosTelemEvery=10;
+int g12SatTelemEvery=1;
 int g12StartNtp=0;
 int g12UpdateClock=0;
 int g12ClockSkew=0;
@@ -71,45 +75,30 @@ int adu5EnableTtt=0;
 int adu5SatPeriod=600;
 float adu5PatPeriod=10;
 float adu5VtgPeriod=10;
+int adu5SatTelemEvery=1;
+int adu5PatTelemEvery=10;
+int adu5VtgTelemEvery=10;
+
 float adu5RelV12[3]={0};
 float adu5RelV13[3]={0};
 float adu5RelV14[3]={0};
 
 //Output stuff
-int useUsbDisks=0;
-char mainDataDisk[FILENAME_MAX];
-char usbDataDiskLink[FILENAME_MAX];
-char baseHouseArchiveDir[FILENAME_MAX];
+int hkDiskBitMask;
 
-char gpsAdu5PatArchiveDir[FILENAME_MAX];
-char gpsAdu5SatArchiveDir[FILENAME_MAX];
-char gpsAdu5TttArchiveDir[FILENAME_MAX];
-char gpsAdu5VtgArchiveDir[FILENAME_MAX];
-char gpsG12PosArchiveDir[FILENAME_MAX];
-char gpsG12SatArchiveDir[FILENAME_MAX];
-char gpsAdu5PatUsbArchiveDir[FILENAME_MAX];
-char gpsAdu5SatUsbArchiveDir[FILENAME_MAX];
-char gpsAdu5TttUsbArchiveDir[FILENAME_MAX];
-char gpsAdu5VtgUsbArchiveDir[FILENAME_MAX];
-char gpsG12PosUsbArchiveDir[FILENAME_MAX];
-char gpsG12SatUsbArchiveDir[FILENAME_MAX];
-
-AnitaWriterStruct_t adu5PatWriter;
-AnitaWriterStruct_t adu5SatWriter;
-AnitaWriterStruct_t adu5TttWriter;
-AnitaWriterStruct_t adu5VtgWriter;
-AnitaWriterStruct_t g12PosWriter;
-AnitaWriterStruct_t g12SatWriter;
+AnitaHkWriterStruct_t adu5PatWriter;
+AnitaHkWriterStruct_t adu5SatWriter;
+AnitaHkWriterStruct_t adu5TttWriter;
+AnitaHkWriterStruct_t adu5VtgWriter;
+AnitaHkWriterStruct_t g12PosWriter;
+AnitaHkWriterStruct_t g12SatWriter;
 
 
 int main (int argc, char *argv[])
 {
     int retVal,startedNtpd=0;
 
-// GPSd config stuff
-    char gpsdPidFile[FILENAME_MAX];
 
-    char *tempString;
     /* Config file thingies */
     int status=0;
 //    KvpErrorCode kvpStatus=0;
@@ -118,6 +107,13 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
 
+
+    //Sort out pid File
+    retVal=sortOutPidFile(progName);
+    if(retVal!=0) {
+      return retVal;
+    }
+
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
@@ -125,6 +121,10 @@ int main (int argc, char *argv[])
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
+    signal(SIGINT, handleBadSigs);
+    signal(SIGTERM, handleBadSigs);
+    signal(SIGSEGV, handleBadSigs);
+    
     
     //Dont' wait for children
     signal(SIGCLD, SIG_IGN); 
@@ -136,107 +136,22 @@ int main (int argc, char *argv[])
 
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
-	useUsbDisks=kvpGetInt("useUsbDisks",0);
-	tempString=kvpGetString("gpsdPidFile");
-	if(tempString) {
-	    strncpy(gpsdPidFile,tempString,FILENAME_MAX);
-	    writePidFile(gpsdPidFile);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsdPidFile");
-	    fprintf(stderr,"Couldn't get gpsdPidFile\n");
-	}
-
-	
-	//Disk locations
-	tempString=kvpGetString("mainDataDisk");
-	if(tempString) {
-	    strncpy(mainDataDisk,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get mainDataDisk");
-	    fprintf(stderr,"Couldn't get mainDataDisk\n");
-	}	
-	tempString=kvpGetString("usbDataDiskLink");
-	if(tempString) {
-	    strncpy(usbDataDiskLink,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get usbDataDiskLink");
-	    fprintf(stderr,"Couldn't get usbDataDiskLink\n");
-	}	
-
-	tempString=kvpGetString("baseHouseArchiveDir");
-	if(tempString) {
-	    strncpy(baseHouseArchiveDir,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get baseHouseArchiveDir");
-	    fprintf(stderr,"Couldn't get baseHouseArchiveDir\n");
-	}	
-
-
-
-	tempString=kvpGetString("gpsArchiveSubDir");
-	if(tempString) {
-	    sprintf(gpsAdu5PatArchiveDir,"%s/%s/%s/adu5/pat",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsAdu5SatArchiveDir,"%s/%s/%s/adu5/sat",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsAdu5TttArchiveDir,"%s/%s/%s/adu5/ttt",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsAdu5VtgArchiveDir,"%s/%s/%s/adu5/vtg",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsG12PosArchiveDir,"%s/%s/%s/g12/pos",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-	    sprintf(gpsG12SatArchiveDir,"%s/%s/%s/g12/sat",
-		    mainDataDisk,baseHouseArchiveDir,tempString);
-
-	    makeDirectories(gpsAdu5PatArchiveDir);
-	    makeDirectories(gpsAdu5SatArchiveDir);
-	    makeDirectories(gpsAdu5TttArchiveDir);
-	    makeDirectories(gpsAdu5VtgArchiveDir);
-	    makeDirectories(gpsG12PosArchiveDir);
-	    makeDirectories(gpsG12SatArchiveDir);
-
-	    if(useUsbDisks) {
-		sprintf(gpsAdu5PatUsbArchiveDir,"%s/%s/%s/adu5/pat/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsAdu5SatUsbArchiveDir,"%s/%s/%s/adu5/sat/link",
-		    usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsAdu5TttUsbArchiveDir,"%s/%s/%s/adu5/ttt/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsAdu5VtgUsbArchiveDir,"%s/%s/%s/adu5/vtg/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsG12PosUsbArchiveDir,"%s/%s/%s/g12/pos/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		sprintf(gpsG12SatUsbArchiveDir,"%s/%s/%s/g12/sat/link",
-			usbDataDiskLink,baseHouseArchiveDir,tempString);
-		
-		
-		makeDirectories(gpsAdu5PatUsbArchiveDir);
-		makeDirectories(gpsAdu5SatUsbArchiveDir);
-		makeDirectories(gpsAdu5TttUsbArchiveDir);
-		makeDirectories(gpsAdu5VtgUsbArchiveDir);
-		makeDirectories(gpsG12PosUsbArchiveDir);
-		makeDirectories(gpsG12SatUsbArchiveDir);
-	    }
-
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get gpsArchiveSubDir");
-	    fprintf(stderr,"Couldn't get gpsArchiveSubDir\n");
-	}
-
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
-
+    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
+    makeDirectories(G12_POS_TELEM_LINK_DIR);
+    makeDirectories(G12_SAT_TELEM_LINK_DIR);
     
+    printf("hkDiskBitMask %d\n",hkDiskBitMask);
+
     retVal=readConfigFile();
     if(retVal<0) {
 	syslog(LOG_ERR,"Problem reading GPSd.config");
 	printf("Problem reading GPSd.config\n");
-	exit(1);
+	handleBadSigs(1000);
     }
     retVal=openDevices();
     prepWriterStructs();
@@ -248,7 +163,7 @@ int main (int argc, char *argv[])
 	if(retVal<0) {
 	    syslog(LOG_ERR,"Problem reading GPSd.config");
 	    printf("Problem reading GPSd.config\n");
-	    exit(1);
+	    handleBadSigs(1000);
 	}
 	if(printToScreen)  
 	    printf("Device fd's: %d %d\nDevices:\t%s\t%s\n",fdG12,fdAdu5A,G12A_DEV_NAME,ADU5A_DEV_NAME);
@@ -266,7 +181,19 @@ int main (int argc, char *argv[])
     } while(currentState==PROG_STATE_INIT);
 
     if(printToScreen) printf("Terminating GPSd\n");
-    removeFile(gpsdPidFile);
+    if(fdG12) close(fdG12);
+    if(fdAdu5A) close(fdAdu5A);
+
+    closeHkFilesAndTidy(&adu5PatWriter);
+    closeHkFilesAndTidy(&adu5SatWriter);
+    closeHkFilesAndTidy(&adu5TttWriter);
+    closeHkFilesAndTidy(&adu5VtgWriter);
+    closeHkFilesAndTidy(&g12PosWriter);
+    closeHkFilesAndTidy(&g12SatWriter);
+    unlink(GPSD_PID_FILE);
+
+    syslog(LOG_INFO,"GPSd terminating");
+//    removeFile(GPSD_PID_FILE);
     
 	
     return 0;
@@ -313,6 +240,8 @@ int readConfigFile()
 	g12ZdaPeriod=kvpGetInt("zdaPeriod",10); // in seconds
 	g12PosPeriod=kvpGetFloat("posPeriod",10); // in seconds
 	g12SatPeriod=kvpGetInt("satPeriod",600); // in seconds
+	g12PosTelemEvery=kvpGetInt("posTelemEvery",10); // send every nth one
+	g12SatTelemEvery=kvpGetInt("satTelemEvery",1);// send every nth one
 	g12UpdateClock=kvpGetInt("updateClock",0); // 1 is yes, 0 is no
 	g12StartNtp=kvpGetInt("startNtp",0); // 1 is yes, 0 is no
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
@@ -328,6 +257,9 @@ int readConfigFile()
 	adu5SatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	adu5PatPeriod=kvpGetFloat("patPeriod",10); // in seconds
 	adu5VtgPeriod=kvpGetFloat("vtgPeriod",10); // in seconds
+	adu5SatTelemEvery=kvpGetInt("satTelemEvery",1); // send every nth one
+	adu5PatTelemEvery=kvpGetInt("patTelemEvery",10); // send every nth one
+	adu5VtgTelemEvery=kvpGetInt("vtgTelemEvery",10);// send every nth one
 	adu5RelV12[0]=kvpGetFloat("calibV12_1",0);
 	adu5RelV12[1]=kvpGetFloat("calibV12_2",0);
 	adu5RelV12[2]=kvpGetFloat("calibV12_3",0);
@@ -359,7 +291,7 @@ int openDevices()
     if(retVal<=0) {
 	syslog(LOG_ERR,"Couldn't open: %s\n",G12A_DEV_NAME);
 	if(printToScreen) printf("Couldn't open: %s\n",G12A_DEV_NAME);
-	exit(1);
+	handleBadSigs(1001);
     }
     else fdG12=retVal;
  
@@ -368,7 +300,7 @@ int openDevices()
     if(retVal<=0) {
 	syslog(LOG_ERR,"Couldn't open: %s\n",ADU5A_DEV_NAME);
 	if(printToScreen) printf("Couldn't open: %s\n",ADU5A_DEV_NAME);
-	exit(1);
+	handleBadSigs(1);
     }
     else fdAdu5A=retVal;
 
@@ -424,8 +356,8 @@ int setupG12()
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);
     strcat(g12Command,tempCommand);
-    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%d,%c\n",g12PpsPeriod,
-	    (int)g12PpsOffset,ppsEdge);
+    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%3.2f,%c\n",g12PpsPeriod,
+	    g12PpsOffset,ppsEdge);
     strcat(g12Command,tempCommand);    
     if(g12EnableTtt) {
 	sprintf(tempCommand,"$PASHS,NME,TTT,%c,ON,%1.2f\n",dataPort,1.0/((float)g12TttEpochRate));
@@ -434,7 +366,7 @@ int setupG12()
 
 
     if(printToScreen) 
-	fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",G12A_DEV_NAME,g12Command,strlen(g12Command));
+      fprintf(stderr,"G12:\n%s\n%s\nLength: %d\n",G12A_DEV_NAME,g12Command,(int)strlen(g12Command));
     retVal=write(fdG12, g12Command, strlen(g12Command));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
@@ -639,6 +571,7 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData)
 
 
 void processGpvtgString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;   
     char theFilename[FILENAME_MAX];
@@ -662,12 +595,15 @@ void processGpvtgString(char *gpsString, int gpsLength) {
     fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
            
     //Write file and link for sipd
-    sprintf(theFilename,"%s/vtg_%ld.dat",GPS_TELEM_DIR,theVtg.unixTime);
-    retVal=writeGpsVtg(&theVtg,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
-
+    telemCount++;
+    if(telemCount>=adu5VtgTelemEvery) {
+      sprintf(theFilename,"%s/vtg_%d.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime);
+      retVal=writeGpsVtg(&theVtg,theFilename);  
+      retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&theVtg,sizeof(GpsAdu5VtgStruct_t),
 			 theVtg.unixTime,&adu5VtgWriter);
     if(retVal<0) {
 	//Had an error
@@ -676,7 +612,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
 
 
 //    if(useUsbDisks) {
-//	sprintf(theFilename,"%s/vtg_%ld.dat",
+//	sprintf(theFilename,"%s/vtg_%d.dat",
 //		gpsAdu5VtgUsbArchiveDir,theVtg.unixTime);
 //	retVal=writeGpsVtg(&theVtg,theFilename);  
 //    }
@@ -686,6 +622,7 @@ void processGpvtgString(char *gpsString, int gpsLength) {
 
 
 void processPosString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;   
     char theFilename[FILENAME_MAX];
@@ -696,7 +633,7 @@ void processPosString(char *gpsString, int gpsLength) {
     char eastOrWest=0,northOrSouth=0;
     int latDeg=0,longDeg=0;
     float latMin=0,longMin=0;
-    float reserved;
+    //    float reserved;
     char firmware[5];
     struct timeval timeStruct;
 	
@@ -707,8 +644,7 @@ void processPosString(char *gpsString, int gpsLength) {
     
     //Copy string
     strncpy(gpsCopy,gpsString,gpsLength);
-//    sprintf(gpsCopy,"$PASHR,POS,0,06,183805.00,3722.36221,N,12159.82742,W,+00016.06,179.22,021.21,+003.96,+34,06.1,04.2,03.2,01.4,GA00*cc");
-    
+//    sprintf(gpsCopy,"$PASHR,POS,0,03,003821.00,7751.70766,S,16703.78078,E,-00039.33,,007.64,000.17,+000.00,03.6,03.6,00.0,01.4,YM06*38");
     //Get unix Timestamp
     gettimeofday(&timeStruct,NULL);
     thePos.unixTime=timeStruct.tv_sec;
@@ -716,11 +652,11 @@ void processPosString(char *gpsString, int gpsLength) {
 
     //Scan string
     subString = strtok (gpsCopy,"*");
-//    printf("%s\n",subString);
-    sscanf(subString,"$PASHR,POS,%d,%lu,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%f,%f,%f,%s",
+/*    printf("%s\n",subString); */
+    sscanf(subString,"$PASHR,POS,%d,%u,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,,%f,%f,%f,%f,%f,%f,%f,%s",
 	   &posType,&(thePos.numSats),&hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
-	   &(thePos.altitude),&reserved,&(thePos.trueCourse),
+	   &(thePos.altitude),&(thePos.trueCourse),
 	   &(thePos.speedInKnots),&(thePos.verticalVelocity),
 	   &(thePos.pdop),&(thePos.hdop),&(thePos.vdop),&(thePos.tdop),
 	   firmware);
@@ -741,7 +677,7 @@ void processPosString(char *gpsString, int gpsLength) {
     thePos.timeOfDay+=(float)(1000*60*60*hour);  
 
     //Debugging
-/*     printf("Time:\t %ld\t%ld\t%ld\nNum Sats:\t%d\nPosition:\t%f\t%f\t%f\nCourse/Speed:\t%f\t%f\t%f\nDOP:\t\t%f\t%f\t%f\t%f\n", */
+  /*   printf("Time:\t %d\t%d\t%d\nNum Sats:\t%d\nPosition:\t%f\t%f\t%f\nCourse/Speed:\t%f\t%f\t%f\nDOP:\t\t%f\t%f\t%f\t%f\n", */
 /* 	   thePos.unixTime,thePos.unixTimeUs,thePos.timeOfDay, */
 /* 	   thePos.numSats, */
 /* 	   thePos.latitude,thePos.longitude,thePos.altitude, */
@@ -751,15 +687,18 @@ void processPosString(char *gpsString, int gpsLength) {
 
 
     fillGenericHeader(&thePos,PACKET_GPS_G12_POS,sizeof(GpsG12PosStruct_t));
-    //Write file and link for sipd
-    sprintf(theFilename,"%s/pos_%ld.dat",GPS_TELEM_DIR,thePos.unixTime);
-    retVal=writeGpsPos(&thePos,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+
+    telemCount++;
+    if(telemCount>=g12PosTelemEvery) {
+      //Write file and link for sipd
+      sprintf(theFilename,"%s/pos_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime);
+      retVal=writeGpsPos(&thePos,theFilename);  
+      retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
 
     //Write file to main disk
-
-    //Write file to main disk
-    retVal=cleverHkWrite((char*)&thePos,sizeof(GpsG12PosStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&thePos,sizeof(GpsG12PosStruct_t),
 			 thePos.unixTime,&g12PosWriter);
     if(retVal<0) {
 	//Had an error
@@ -767,7 +706,7 @@ void processPosString(char *gpsString, int gpsLength) {
     }
 
 //    if(useUsbDisks) {
-//	sprintf(theFilename,"%s/pos_%ld.dat",
+//	sprintf(theFilename,"%s/pos_%d.dat",
 //		gpsG12PosUsbArchiveDir,thePos.unixTime);
 //	retVal=writeGpsPos(&thePos,theFilename);  
 //    }
@@ -778,7 +717,7 @@ void processPosString(char *gpsString, int gpsLength) {
 
 void processAdu5Output(char *tempBuffer, int length)
 /* Processes each ADU5 output string and acts accordingly */
-{
+{  
     char gpsString[ADU5_DATA_SIZE];
     char gpsCopy[ADU5_DATA_SIZE];
     int gpsLength=0;
@@ -862,7 +801,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     gpstime-=LEAP_SECONDS;
 //    strncpy(unixString,ctime(&rawtime),127);
 //    strncpy(otherString,ctime(&gpstime),127);
-//    printf("%ld %ld\n",rawtime,gpstime);
+//    printf("%d %d\n",rawtime,gpstime);
 //    printf("Seconds: %d %d\n",oldSec,sec);
 //    printf("***************************\n%s%s**********************\n",unixString,otherString);
     theTTT.unixTime=gpstime;
@@ -870,12 +809,12 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     theTTT.fromAdu5=fromAdu5;
 
     //Write file for eventd
-    sprintf(filename,"%s/gps_%lu_%lu.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
+    sprintf(filename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
     writeGpsTtt(&theTTT,filename);
     retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theTTT,sizeof(GpsSubTime_t),
+    retVal=cleverHkWrite((unsigned char*)&theTTT,sizeof(GpsSubTime_t),
 			 theTTT.unixTime,&adu5TttWriter);
     if(retVal<0) {
 	//Had an error
@@ -884,7 +823,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
     
 //    if(useUsbDisks) {
 //	//Write file to usb disk
-//	sprintf(filename,"%s/gps_%lu_%lu.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
+//	sprintf(filename,"%s/gps_%u_%u.dat",gpsAdu5TttUsbArchiveDir,theTTT.unixTime,theTTT.subTime);
 //	writeGpsTtt(&theTTT,filename);
 //    }
     
@@ -895,6 +834,7 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
 
 
 void processG12SatString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;
     char theFilename[FILENAME_MAX];
@@ -951,14 +891,18 @@ void processG12SatString(char *gpsString, int gpsLength) {
 /*     } */
 
     fillGenericHeader(&theSat,PACKET_GPS_G12_SAT,sizeof(GpsG12SatStruct_t));
-
-    //Write file and link for sipd
-    sprintf(theFilename,"%s/sat_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
-    retVal=writeGpsG12Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+    
+    telemCount++;
+    if(telemCount>=g12SatTelemEvery) {
+      //Write file and link for sipd
+      sprintf(theFilename,"%s/sat_%d.dat",G12_SAT_TELEM_DIR,theSat.unixTime);
+      retVal=writeGpsG12Sat(&theSat,theFilename);  
+      retVal=makeLink(theFilename,G12_SAT_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&theSat,sizeof(GpsG12SatStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsG12SatStruct_t),
 			 theSat.unixTime,&g12SatWriter);
     if(retVal<0) {
 	//Had an error
@@ -969,6 +913,7 @@ void processG12SatString(char *gpsString, int gpsLength) {
 
 
 void processAdu5Sa4String(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;
     char theFilename[FILENAME_MAX];
@@ -1007,12 +952,12 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 		theSat.sat[doingAnt][doingSat].prn=atoi(subString);
 		break;
 	    case 3:
-		theSat.sat[doingAnt][doingSat].azimuth=atoi(subString);
-		break;
-	    case 4:
-		theSat.sat[doingAnt][doingSat].elevation=atoi(subString);
-		break;
-	    case 5:
+//		theSat.sat[doingAnt][doingSat].azimuth=atoi(subString);
+//		break;
+//	    case 4:
+//		theSat.sat[doingAnt][doingSat].elevation=atoi(subString);
+//		break;
+//	    case 5:
 		theSat.sat[doingAnt][doingSat].snr=atoi(subString);
 		doingSat++;
 		count=1;
@@ -1041,13 +986,18 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 	}
 	else {
 	    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
+
+	    telemCount++;
+	    if(telemCount>=adu5SatTelemEvery) {
 	    //Write file and link for sipd
-	    sprintf(theFilename,"%s/sat_adu5_%ld.dat",GPS_TELEM_DIR,theSat.unixTime);
-	    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-	    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+	      sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
+	      retVal=writeGpsAdu5Sat(&theSat,theFilename);  
+	      retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);  
+	      telemCount=0;
+	    }
 
 	    //Write file to main disk
-	    retVal=cleverHkWrite((char*)&theSat,sizeof(GpsAdu5SatStruct_t),
+	    retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsAdu5SatStruct_t),
 				 theSat.unixTime,&adu5SatWriter);
 	    if(retVal<0) {
 		//Had an error
@@ -1061,6 +1011,7 @@ void processAdu5Sa4String(char *gpsString, int gpsLength) {
 
 
 void processGppatString(char *gpsString, int gpsLength) {
+  static int telemCount=0;
     char gpsCopy[ADU5_DATA_SIZE];
     char *subString;
     
@@ -1092,7 +1043,7 @@ void processGppatString(char *gpsString, int gpsLength) {
      //Scan string
     subString = strtok (gpsCopy,"*");
 //    printf("%s\n",subString);
-    sscanf(subString,"$GPPAT,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%lu",
+    sscanf(subString,"$GPPAT,%02d%02d%02d.%02d,%02d%f,%c,%03d%f,%c,%f,%f,%f,%f,%f,%f,%u",
 	   &hour,&minute,&second,&subSecond,
 	   &latDeg,&latMin,&northOrSouth,&longDeg,&longMin,&eastOrWest,
 	   &(thePat.altitude),&(thePat.heading),&(thePat.pitch),
@@ -1116,7 +1067,7 @@ void processGppatString(char *gpsString, int gpsLength) {
     thePat.timeOfDay+=(float)(1000*60*60*hour);  
 
 /*     printf("%s\n",gpsTest); */
-/*     printf("unixTime: %ld\ntimeOfDay: %ld\nheading: %lf\npitch: %lf\nroll: %lf\nmrms: %lf\nbrms: %lf\nattFlag: %d\nlatitude: %lf\nlongitude: %lf\naltitute: %lf\n",  */
+/*     printf("unixTime: %d\ntimeOfDay: %d\nheading: %lf\npitch: %lf\nroll: %lf\nmrms: %lf\nbrms: %lf\nattFlag: %d\nlatitude: %lf\nlongitude: %lf\naltitute: %lf\n",  */
 /* 	   thePat.unixTime, */
 /* 	   thePat.timeOfDay, */
 /* 	   thePat.heading, */
@@ -1133,14 +1084,18 @@ void processGppatString(char *gpsString, int gpsLength) {
 
     fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
 
-    //Write file and link for sipd
-    sprintf(theFilename,"%s/pat_%ld.dat",GPS_TELEM_DIR,thePat.unixTime);
-    retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,GPS_TELEM_LINK_DIR);  
+    telemCount++;
+    if(telemCount>=adu5PatTelemEvery) {
+      //Write file and link for sipd
+      sprintf(theFilename,"%s/pat_%d.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime);
+      retVal=writeGpsPat(&thePat,theFilename);  
+      retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR);  
+      telemCount=0;
+    }
 
 
     //Write file to main disk
-    retVal=cleverHkWrite((char*)&thePat,sizeof(GpsAdu5PatStruct_t),
+    retVal=cleverHkWrite((unsigned char*)&thePat,sizeof(GpsAdu5PatStruct_t),
 			 thePat.unixTime,&adu5PatWriter);
     if(retVal<0) {
 	//Had an error
@@ -1154,16 +1109,34 @@ void processGppatString(char *gpsString, int gpsLength) {
 int updateClockFromG12(time_t gpsRawTime)
 /*!Just updates the clock, using sudo date */
 {
-    int retVal;
-    char writeString[180];
+    int retVal=0;//,len;
+    pid_t childPid;
+//    char writeString[180];
     char dateCommand[180];
+    struct tm *ptm;
     gpsRawTime++; /*Silly*/	
-    strncpy(writeString,ctime(&gpsRawTime),179);
-    sprintf(dateCommand,"sudo date -s \"%s\"",writeString);
-    retVal=system(dateCommand);
-    if(retVal<0) {
-	syslog(LOG_ERR,"Problem updating clock, %ld: %s ",gpsRawTime,strerror(errno));
+    ptm = gmtime(&gpsRawTime);
+    sprintf(dateCommand,"%02d%02d%02d%02d%04d.%02d",
+	    ptm->tm_mon+1,ptm->tm_mday,ptm->tm_hour,ptm->tm_min,
+	    ptm->tm_year+1900,ptm->tm_sec);
+
+    char *setDateArg[]={"/usr/bin/sudo","/bin/date",dateCommand,(char*)0};
+//    retVal=system(dateCommand);
+    printf("Trying to set clock using date to %s\n",dateCommand);
+    childPid=fork();
+    if(childPid==0) {
+	//Child
+//          awsPtr->currentFileName;
+	execv("/usr/bin/sudo",setDateArg);
+	exit(0);
     }
+    else if(childPid<0) {
+	//Something wrong
+      syslog(LOG_ERR,"Problem updating clock, %d: %s ",(int)gpsRawTime,strerror(errno));
+	fprintf(stderr,"Problem updating clock, %d: %s ",(int)gpsRawTime,strerror(errno));
+	return 0;
+    }
+
     return retVal;
     
 }
@@ -1222,7 +1195,7 @@ int setupAdu5()
     strcat(adu5Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,SA4,A,ON,%d\r\n",adu5SatPeriod);
     strcat(adu5Command,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\n",adu5VtgPeriod);
+    sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\r\n",adu5VtgPeriod);
     strcat(adu5Command,tempCommand);
     strcat(adu5Command,"$PASHQ,PRT\r\n");
     if(adu5EnableTtt) strcat(adu5Command,"$PASHS,NME,TTT,A,ON\r\n");
@@ -1282,8 +1255,9 @@ int tryToStartNtpd()
 {
     static int donePort=0;
     int retVal=0;
+    pid_t childPid;    
     time_t theTime=time(NULL);
-    char ntpdCommand[]="sudo /etc/init.d/ntpd restart";
+    char *startNtpArg[]={"/bin/bash","/home/anita/flightSoft/bin/startNtp.sh",(char*)0};
     if(!donePort) {
 	retVal=openGpsDevice(G12B_DEV_NAME);
 	//May put something here to read message
@@ -1292,74 +1266,105 @@ int tryToStartNtpd()
 	donePort=1;
     }
     if(theTime>1e9) {
-//	printf("Need to start ntpd here %ld\n",theTime);
-	retVal=system(ntpdCommand);
-	if(retVal<0) {
+	childPid=fork();
+	if(childPid==0) {
+	    //Child
+//	    awsPtr->currentFileName;
+	    execv("/bin/bash",startNtpArg);
+	    exit(0);
+	}
+	else if(childPid<0) {
+	    //Something wrong
 	    syslog(LOG_ERR,"Problem starting ntpd");
 	    fprintf(stderr,"Problem starting ntpd\n");
 	    return 0;
 	}
-	else {
-	    syslog(LOG_INFO,"Restarted ntpd");
-	    fprintf(stderr,"Restarted ntpd\n");
-	    return 1;
-	}
+	syslog(LOG_INFO,"Restarted ntpd");
+	fprintf(stderr,"Restarted ntpd\n");
+	return 1;
     }
     return 0;
 }
 
 void prepWriterStructs() {
+    int diskInd;
     if(printToScreen) 
 	printf("Preparing Writer Structs\n");
 
     //Adu5 Pat
-    strncpy(adu5PatWriter.baseDirname,gpsAdu5PatArchiveDir,FILENAME_MAX-1);
+    sprintf(adu5PatWriter.relBaseName,"%s/adu5/pat/",GPS_ARCHIVE_DIR);
     sprintf(adu5PatWriter.filePrefix,"pat");
-    adu5PatWriter.currentFilePtr=0;
-    adu5PatWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5PatWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5PatWriter.maxWritesPerFile=HK_PER_FILE;
-//    printf("Adu5 Pat Archive %s\n%s\n",adu5PatWriter.baseDirname,gpsAdu5PatArchiveDir);
-//    exit(0);
+    adu5PatWriter.writeBitMask=hkDiskBitMask;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5PatWriter.currentFilePtr[diskInd]=0;
+
 
     //Adu5 Sat
-    strncpy(adu5SatWriter.baseDirname,gpsAdu5SatArchiveDir,FILENAME_MAX-1);
+    sprintf(adu5SatWriter.relBaseName,"%s/adu5/sat/",GPS_ARCHIVE_DIR);
     sprintf(adu5SatWriter.filePrefix,"sat_adu5");
-    adu5SatWriter.currentFilePtr=0;
-    adu5SatWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5SatWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5SatWriter.maxWritesPerFile=HK_PER_FILE;
-
-    //Adu5 Ttt
-    strncpy(adu5TttWriter.baseDirname,gpsAdu5TttArchiveDir,FILENAME_MAX-1);
-    sprintf(adu5TttWriter.filePrefix,"ttt");
-    adu5TttWriter.currentFilePtr=0;
-    adu5TttWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5TttWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5TttWriter.maxWritesPerFile=HK_PER_FILE;
+    adu5SatWriter.writeBitMask=hkDiskBitMask;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5SatWriter.currentFilePtr[diskInd]=0;
 
     //Adu5 Vtg
-    strncpy(adu5VtgWriter.baseDirname,gpsAdu5VtgArchiveDir,FILENAME_MAX-1);
+    sprintf(adu5VtgWriter.relBaseName,"%s/adu5/vtg/",GPS_ARCHIVE_DIR);
     sprintf(adu5VtgWriter.filePrefix,"vtg");
-    adu5VtgWriter.currentFilePtr=0;
-    adu5VtgWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    adu5VtgWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    adu5VtgWriter.maxWritesPerFile=HK_PER_FILE;
-        
+    adu5VtgWriter.writeBitMask=hkDiskBitMask;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5VtgWriter.currentFilePtr[diskInd]=0;
+
+    //Adu5 Ttt
+    sprintf(adu5TttWriter.relBaseName,"%s/adu5/ttt/",GPS_ARCHIVE_DIR);
+    sprintf(adu5TttWriter.filePrefix,"ttt");
+    adu5TttWriter.writeBitMask=hkDiskBitMask;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	adu5TttWriter.currentFilePtr[diskInd]=0;
+
+
     //G12 Pos
-    strncpy(g12PosWriter.baseDirname,gpsG12PosArchiveDir,FILENAME_MAX-1);
+    sprintf(g12PosWriter.relBaseName,"%s/g12/pos/",GPS_ARCHIVE_DIR);
     sprintf(g12PosWriter.filePrefix,"pos");
-    g12PosWriter.currentFilePtr=0;
-    g12PosWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    g12PosWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    g12PosWriter.maxWritesPerFile=HK_PER_FILE;   
- 
+    g12PosWriter.writeBitMask=hkDiskBitMask;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	g12PosWriter.currentFilePtr[diskInd]=0;
+
     //G12 Sat
-    strncpy(g12SatWriter.baseDirname,gpsG12SatArchiveDir,FILENAME_MAX-1);
+    sprintf(g12SatWriter.relBaseName,"%s/g12/sat/",GPS_ARCHIVE_DIR);
     sprintf(g12SatWriter.filePrefix,"sat");
-    g12SatWriter.currentFilePtr=0;
-    g12SatWriter.maxSubDirsPerDir=HK_FILES_PER_DIR;
-    g12SatWriter.maxFilesPerDir=HK_FILES_PER_DIR;
-    g12SatWriter.maxWritesPerFile=HK_PER_FILE;
+    g12SatWriter.writeBitMask=hkDiskBitMask;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+	g12SatWriter.currentFilePtr[diskInd]=0;
+    
 
 }    
+
+
+void handleBadSigs(int sig)
+{
+   
+    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    closeHkFilesAndTidy(&adu5PatWriter);
+    closeHkFilesAndTidy(&adu5SatWriter);
+    closeHkFilesAndTidy(&adu5TttWriter);
+    closeHkFilesAndTidy(&adu5VtgWriter);
+    closeHkFilesAndTidy(&g12PosWriter);
+    closeHkFilesAndTidy(&g12SatWriter);
+    unlink(GPSD_PID_FILE);
+    syslog(LOG_INFO,"GPSd terminating");    
+    exit(0);
+}
+
+
+int sortOutPidFile(char *progName)
+{
+  
+  int retVal=checkPidFile(GPSD_PID_FILE);
+  if(retVal) {
+    fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,GPSD_PID_FILE);
+    syslog(LOG_ERR,"%s already running (%d)\n",progName,retVal);
+    return -1;
+  }
+  writePidFile(GPSD_PID_FILE);
+  return 0;
+}

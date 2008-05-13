@@ -24,8 +24,10 @@
 #include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 
-#define DEFAULT_C3PO 200453324
 
+#define DEFAULT_C3PO 133000000
+
+int hadASyncSlip();
 void fakeEvent(AnitaEventFull_t *theEventPtr);
 int getEvent(AnitaEventFull_t *theEventPtr, const char *lastEventNumberFile);
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr);
@@ -39,13 +41,7 @@ int main (int argc, char *argv[])
   //    int retVal;
 
 
-    /* Config file thingies */
-    int status=0;
-    char* eString ;
     
-    /* Ports and directories */
-    char acqdEventDir[FILENAME_MAX];
-    char acqdEventLinkDir[FILENAME_MAX];
 
     /* Log stuff */
     char *progName=basename(argv[0]);
@@ -58,31 +54,23 @@ int main (int argc, char *argv[])
     setlogmask(LOG_UPTO(LOG_DEBUG));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
 
-    /* Load Config */
-    kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
+  
 
-    /* Read config file*/
-    if (status == CONFIG_E_OK) {
-	strncpy(acqdEventDir,kvpGetString ("acqdEventDir"),FILENAME_MAX-1);
-	sprintf(acqdEventLinkDir,"%s/link",acqdEventDir);
-    }
+    makeDirectories("/tmp/anita/trigAcqd/link");
+    makeDirectories(ACQD_EVENT_DIR);
+    makeDirectories(ACQD_EVENT_LINK_DIR);
 
-
-    makeDirectories(acqdEventDir);
-    makeDirectories(acqdEventLinkDir);
-
-    printf("\nThe Event Dir is: %s\n\n",acqdEventDir);
+    printf("\nThe Event Dir is: %s\n\n",ACQD_EVENT_DIR);
 
   
 /* Main event getting loop */
     while(1) {
 	if(getEvent(&theEvent,LAST_EVENT_NUMBER_FILE)) {
-	    syslog(LOG_INFO,"Got new event: %d, time %d",
-		   theEvent.header.eventNumber,theEvent.header.unixTime);
-	    writeEventAndMakeLink(acqdEventDir,acqdEventLinkDir,&theEvent);
+	  //	    syslog(LOG_INFO,"Got new event: %d, time %d",
+	  //		   theEvent.header.eventNumber,theEvent.header.unixTime);
+	    writeEventAndMakeLink(ACQD_EVENT_DIR,ACQD_EVENT_LINK_DIR,&theEvent);
 	}
+	else usleep(1);
 
 
     }
@@ -168,13 +156,19 @@ int waitForFakeTrigger()
 
 void fakeEvent(AnitaEventFull_t *theEventPtr)
 {
-    int chan,samp,value;
-    struct timeval timeStruct;
-    gettimeofday(&timeStruct,NULL);
-    theEventPtr->header.unixTime=timeStruct.tv_sec;
-    theEventPtr->header.unixTimeUs=timeStruct.tv_usec;
-    double fracTime=((double)timeStruct.tv_usec)/1e6;
-    theEventPtr->header.turfio.trigTime=(int)(fracTime*200453324.0);
+  static unsigned int ppsOffset=0;
+  int chan,samp,value;
+  struct timeval timeStruct;
+  if(hadASyncSlip())
+    ppsOffset=0;
+  gettimeofday(&timeStruct,NULL);
+  theEventPtr->header.unixTime=timeStruct.tv_sec;
+  theEventPtr->header.unixTimeUs=timeStruct.tv_usec;
+  double fracTime=((double)timeStruct.tv_usec)/1e6;
+  theEventPtr->header.turfio.trigTime=(int)(fracTime*DEFAULT_C3PO);
+  if(ppsOffset==0)
+    ppsOffset=timeStruct.tv_sec;
+  theEventPtr->header.turfio.ppsNum=timeStruct.tv_sec-ppsOffset;
 
 //    theEventPtr->header.unixTime=time(NULL);
 /*     theEventPtr->header.trigDelay=64; */
@@ -228,3 +222,10 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     retVal=makeLink(theFilename,theLinkDir);
 }
 
+
+int hadASyncSlip() {
+    double randomNumber=drand48();
+    if(randomNumber<0.05) return 1;
+    return 0;
+
+}
