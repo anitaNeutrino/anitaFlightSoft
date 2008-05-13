@@ -13,6 +13,7 @@
 #ifndef ANITA_COMMAND_H
 #define ANITA_COMMAND_H
 
+
 #define ACQD_ID_MASK 0x001
 #define ARCHIVED_ID_MASK 0x002
 #define CALIBD_ID_MASK 0x004
@@ -26,6 +27,7 @@
 #define MONITORD_ID_MASK 0x400
 #define PLAYBACKD_ID_MASK 0x800
 #define ALL_ID_MASK 0xfff
+
 
 typedef enum {
     ID_FIRST =100,
@@ -44,6 +46,8 @@ typedef enum {
     ID_NOT_AN_ID
 } ProgramId_t;
 
+
+
 typedef enum {
     CMD_TAIL_VAR_LOG_MESSAGES = 1,
     CMD_TAIL_VAR_LOG_ANITA = 2,
@@ -59,7 +63,7 @@ typedef enum {
     CMD_MOUNT = 134,
     CMD_WHITEHEAT= 135,
     CMD_MOUNT_NEXT_USB = 136,
-    CMD_MOUNT_NEXT_BLADE = 137,
+    CMD_MOUNT_NEXT_SATA = 137, //Switch for blade v mini
     CMD_EVENT_DISKTYPE = 138,
     CMD_HK_DISKTYPE = 139,
     ARCHIVE_STORAGE_TYPE = 140,
@@ -117,7 +121,7 @@ typedef enum {
     MONITORD_MAX_ACQD_WAIT = 222,
     MONITORD_PERIOD = 223,
     MONITORD_USB_THRESH = 224,
-    MONITORD_BLADE_THRESH = 225,
+    MONITORD_SATA_THRESH = 225,
     MONITORD_MAX_QUEUE = 226, 
     MONITORD_INODES_KILL_ACQD = 227, 
     MONITORD_INODES_DUMP_DATA = 228,          

@@ -127,11 +127,11 @@ int main (int argc, char *argv[])
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	  retVal=checkLinkDirs(1,0);
-	  if(retVal || numEventLinks)
-	    numEventLinks=getNumLinks(wdEvent);
+	  //	  if(retVal || numEventLinks)
+	  numEventLinks=getNumLinks(wdEvent);
 	  /* 	printf("Got %d event links\n",numEventLinks); */
 	  if(numEventLinks<1) {
-	    usleep(1000);
+	    //	    usleep(1000);
 	    continue;
 	  }
 	  if(verbosity>2 && printToScreen) 

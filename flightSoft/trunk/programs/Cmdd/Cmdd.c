@@ -45,10 +45,9 @@ int killPrograms(int progMask);
 int reallyKillPrograms(int progMask);
 int startPrograms(int progMask);
 int respawnPrograms(int progMask);
-char *getProgName(ProgramId_t prog);
-int getIdMask(ProgramId_t prog);
-char *getPidFile(ProgramId_t prog);
-int mountNextBlade(int whichZeus);
+int mountNextSata(int bladeOrMini, int whichNumber);
+int mountNextSatablade(int whichSatablade);
+int mountNextSatamini(int whichSatamini);
 int mountNextUsb(int intExtFlag,int whichUsb);
 void prepWriterStructs();
 int tailFile(char *filename, int numLines);
@@ -90,12 +89,12 @@ int numCmds=256;
 int printToScreen=1;
 int verbosity=1;
 
-int disableBlade;
-int disableUsbInt;
-int disableUsbExt;
-char bladeName[FILENAME_MAX];
-char usbIntName[FILENAME_MAX];
-char usbExtName[FILENAME_MAX];
+int disableSatablade;
+int disableUsb;
+int disableSatamini;
+char satabladeName[FILENAME_MAX];
+char usbName[FILENAME_MAX];
+char sataminiName[FILENAME_MAX];
 
 //Needed for commands
 int surfTrigBandMasks[ACTIVE_SURFS][2];
@@ -115,9 +114,9 @@ int hkDiskBitMask;
 int eventDiskBitMask;
 AnitaHkWriterStruct_t cmdWriter;
 
-int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
+int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK};
 
-char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
+char *diskNames[DISK_TYPES]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT};
 
 int main (int argc, char *argv[])
 {
@@ -286,36 +285,55 @@ int readConfig() {
     
     if (status == CONFIG_E_OK) {
 
-	tempString=kvpGetString("bladeName");
+	tempString=kvpGetString("satabladeName");
 	if(tempString) {
-	    strncpy(bladeName,tempString,FILENAME_MAX);
+	    strncpy(satabladeName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get bladeName");
-	    fprintf(stderr,"Couldn't get bladeName\n");
+	    syslog(LOG_ERR,"Couldn't get satabladeName");
+	    fprintf(stderr,"Couldn't get satabladeName\n");
 	}
 
-	tempString=kvpGetString("usbIntName");
+	tempString=kvpGetString("usbName");
 	if(tempString) {
-	    strncpy(usbIntName,tempString,FILENAME_MAX);
+	    strncpy(usbName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get usbIntName");
-	    fprintf(stderr,"Couldn't get usbIntName\n");
+	    syslog(LOG_ERR,"Couldn't get usbName");
+	    fprintf(stderr,"Couldn't get usbName\n");
 	}
 
-	tempString=kvpGetString("usbExtName");
+	tempString=kvpGetString("sataminiName");
 	if(tempString) {
-	    strncpy(usbExtName,tempString,FILENAME_MAX);
+	    strncpy(sataminiName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get usbExtName");
-	    fprintf(stderr,"Couldn't get usbExtName\n");
+	    syslog(LOG_ERR,"Couldn't get sataminiName");
+	    fprintf(stderr,"Couldn't get sataminiName\n");
 	}
+	
 	
 	
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
+
+	disableSatablade=kvpGetInt("disableSatablade",0);
+	if(disableSatablade) {
+	  hkDiskBitMask&=(~SATABLADE_DISK_MASK);
+	  eventDiskBitMask&=(~SATABLADE_DISK_MASK);
+	}
+	disableSatamini=kvpGetInt("disableSatamini",0);
+	if(disableSatamini) {
+	  hkDiskBitMask&=(~SATAMINI_DISK_MASK);
+	  eventDiskBitMask&=(~SATAMINI_DISK_MASK);
+	}
+	disableUsb=kvpGetInt("disableUsb",0);
+	if(disableUsb) {
+	  hkDiskBitMask&=(~USB_DISK_MASK);
+	  eventDiskBitMask&=(~USB_DISK_MASK);
+	}
+
+
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
@@ -484,9 +502,10 @@ int executeCommand(CommandStruct_t *theCmd)
 	    if(retVal==-1) return 0;	    
 	    time(&rawtime);
 	    return rawtime;
-	case CMD_MOUNT_NEXT_BLADE:
+	case CMD_MOUNT_NEXT_SATA:
 	    ivalue=theCmd->cmd[1];	    
-	    return mountNextBlade(ivalue);
+	    ivalue=theCmd->cmd[2];	    
+	    return mountNextSata(ivalue,ivalue2);
 	case CMD_MOUNT_NEXT_USB:
 	    ivalue=theCmd->cmd[1];
 	    ivalue2=theCmd->cmd[2];
@@ -1028,9 +1047,15 @@ int executeCommand(CommandStruct_t *theCmd)
 	    configModifyInt("Monitord.config","monitord","usbSwitchMB",ivalue,&rawtime);	
 	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
 	    return rawtime;		    
-	case MONITORD_BLADE_THRESH:
+	case MONITORD_SATA_THRESH:
 	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Monitord.config","monitord","bladeSwitchMB",ivalue,&rawtime);	
+	    ivalue2=theCmd->cmd[2];
+	    if(ivalue==0) 
+	      configModifyInt("Monitord.config","monitord","satabladeSwitchMB",ivalue2,&rawtime);	
+	    else if(ivalue==1) 
+	      configModifyInt("Monitord.config","monitord","sataminiSwitchMB",ivalue2,&rawtime);	
+	    else
+	      return -1;
 	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
 	    return rawtime;
 	case MONITORD_MAX_QUEUE:
@@ -1296,65 +1321,8 @@ int lastConfig(int progMask)
 }
 
 
-int getIdMask(ProgramId_t prog) {
-    switch(prog) {
-	case ID_ACQD: return ACQD_ID_MASK;
-	case ID_ARCHIVED: return ARCHIVED_ID_MASK;
-	case ID_CALIBD: return CALIBD_ID_MASK;
-	case ID_CMDD: return CMDD_ID_MASK;
-	case ID_EVENTD: return EVENTD_ID_MASK;
-	case ID_GPSD: return GPSD_ID_MASK;
-	case ID_HKD: return HKD_ID_MASK;
-	case ID_LOSD: return LOSD_ID_MASK;
-	case ID_PRIORITIZERD: return PRIORITIZERD_ID_MASK;
-	case ID_SIPD: return SIPD_ID_MASK;
-	case ID_MONITORD: return MONITORD_ID_MASK;
-	case ID_PLAYBACKD: return PLAYBACKD_ID_MASK;
-	default: break;
-    }
-    return 0;
-}
 
 
-
-char *getProgName(ProgramId_t prog) {
-    char *string;
-    switch(prog) {
-	case ID_ACQD: string="Acqd"; break;
-	case ID_ARCHIVED: string="Archived"; break;
-	case ID_CALIBD: string="Calibd"; break;
-	case ID_CMDD: string="Cmdd"; break;
-	case ID_EVENTD: string="Eventd"; break;
-	case ID_GPSD: string="GPSd"; break;
-	case ID_HKD: string="Hkd"; break;
-	case ID_LOSD: string="LOSd"; break;
-	case ID_PRIORITIZERD: string="Prioritizerd"; break;
-	case ID_SIPD: string="SIPd"; break;
-	case ID_MONITORD: string="Monitord"; break;
-	case ID_PLAYBACKD: string="Playbackd"; break;
-	default: string=NULL; break;
-    }
-    return string;
-}
-
-char *getPidFile(ProgramId_t prog) {
-    switch(prog) {
-	case ID_ACQD: return ACQD_PID_FILE;
-	case ID_ARCHIVED: return ARCHIVED_PID_FILE;
-	case ID_CALIBD: return CALIBD_PID_FILE;
-	case ID_CMDD: return CMDD_PID_FILE;
-	case ID_EVENTD: return EVENTD_PID_FILE;
-	case ID_GPSD: return GPSD_PID_FILE;
-	case ID_HKD: return HKD_PID_FILE;
-	case ID_LOSD: return LOSD_PID_FILE;
-	case ID_PRIORITIZERD: return PRIORITIZERD_PID_FILE;
-	case ID_SIPD: return SIPD_PID_FILE;
-	case ID_MONITORD: return MONITORD_PID_FILE;
-	case ID_PLAYBACKD: return PLAYBACKD_PID_FILE;
-	default: break;
-    }
-    return NULL;
-}
 
 
 int killPrograms(int progMask) 
@@ -1769,20 +1737,29 @@ int setPidGoalScaleFactor(int surf, int dac, float scaleFactor)
 }
 
 
-int mountNextBlade(int whichZeus) {
+int mountNextSata(int bladeOrMini,int whichNumber) {
+  //0 is blade, 1 is mini
+  if(bladeOrMini==0)
+    return mountNextSatablade(whichNumber);
+  else if(bladeOrMini==1)
+    return mountNextSatamini(whichNumber);
+  return -1;
+}
+
+int mountNextSatablade(int whichSatablade) {
     int retVal;
     time_t rawtime;
     int currentNum=0;
     readConfig(); // Get latest names and status
-    if(disableBlade) return -1;
-    sscanf(bladeName,"zeus%02d",&currentNum);
-    if(whichZeus==0)
+    //    if(disableSatablade) return -1;
+    sscanf(satabladeName,"satablade%d",&currentNum);
+    if(whichSatablade==0)
 	currentNum++;
     else {
-	currentNum=whichZeus;
+	currentNum=whichSatablade;
     }
        
-    if(currentNum>NUM_BLADES) return -1;
+    if(currentNum>NUM_SATABLADES) return -1;
 
     //Kill all programs that write to disk
     killPrograms(MONITORD_ID_MASK);
@@ -1801,9 +1778,9 @@ int mountNextBlade(int whichZeus) {
 //    exit(0);
     
     //Change to new drive
-    sprintf(bladeName,"zeus%02d",currentNum);
-    configModifyString("anitaSoft.config","global","bladeName",bladeName,&rawtime);
-    retVal=system("/home/anita/flightSoft/bin/mountCurrentBlade.sh");
+    sprintf(satabladeName,"satablade%d",currentNum);
+    configModifyString("anitaSoft.config","global","satabladeName",satabladeName,&rawtime);
+    retVal=system("/home/anita/flightSoft/bin/mountCurrentSatablade.sh");
     sleep(5);
     startNewRun();
     sleep(10);
@@ -1818,50 +1795,97 @@ int mountNextBlade(int whichZeus) {
     startPrograms(PRIORITIZERD_ID_MASK);
     startPrograms(EVENTD_ID_MASK);
     return rawtime;
+}
 
+
+int mountNextSatamini(int whichSatamini) {
+    int retVal;
+    time_t rawtime;
+    int currentNum=0;
+    readConfig(); // Get latest names and status
+    //    if(disableSatamini) return -1;
+    sscanf(sataminiName,"satamini%d",&currentNum);
+    if(whichSatamini==0)
+	currentNum++;
+    else {
+	currentNum=whichSatamini;
+    }
+       
+    if(currentNum>NUM_SATAMINIS) return -1;
+
+    //Kill all programs that write to disk
+    killPrograms(MONITORD_ID_MASK);
+    killPrograms(PLAYBACKD_ID_MASK);
+    killPrograms(HKD_ID_MASK);
+    killPrograms(GPSD_ID_MASK);
+    killPrograms(ARCHIVED_ID_MASK);
+    killPrograms(ACQD_ID_MASK);
+    killPrograms(CALIBD_ID_MASK);
+    killPrograms(PRIORITIZERD_ID_MASK);
+    killPrograms(EVENTD_ID_MASK);
+    closeHkFilesAndTidy(&cmdWriter);    
+    sleep(5); //Let them gzip their data
+
+
+//    exit(0);
+    
+    //Change to new drive
+    sprintf(sataminiName,"satamini%d",currentNum);
+    configModifyString("anitaSoft.config","global","sataminiName",sataminiName,&rawtime);
+    retVal=system("/home/anita/flightSoft/bin/mountCurrentSatamini.sh");
+    sleep(5);
+    startNewRun();
+    sleep(10);
+    prepWriterStructs();
+    startPrograms(HKD_ID_MASK);
+    startPrograms(GPSD_ID_MASK);
+    startPrograms(ARCHIVED_ID_MASK);
+    startPrograms(ACQD_ID_MASK);
+    startPrograms(CALIBD_ID_MASK);
+    startPrograms(MONITORD_ID_MASK);
+    startPrograms(PLAYBACKD_ID_MASK);
+    startPrograms(PRIORITIZERD_ID_MASK);
+    startPrograms(EVENTD_ID_MASK);
+    return rawtime;
 }
 
 int mountNextUsb(int intExtFlag, int whichUsb) {
     int retVal;
     time_t rawtime;
     int currentNum[2]={0};
-
+    intExtFlag=1; //No externals anymore
     readConfig(); // Get latest names and status
 
-    disableUsbInt=1;
-    disableUsbExt=1;
-    
-    if(hkDiskBitMask&USBINT_DISK_MASK) disableUsbInt=0;
-    if(eventDiskBitMask&USBINT_DISK_MASK) disableUsbInt=0;
+    //    if(hkDiskBitMask&USB_DISK_MASK) disableUsb=0;
+    //    if(eventDiskBitMask&USB_DISK_MASK) disableUsb=0;
 
-    if(hkDiskBitMask&USBEXT_DISK_MASK) disableUsbExt=0;
-    if(eventDiskBitMask&USBEXT_DISK_MASK) disableUsbExt=0;
+    //    if(hkDiskBitMask&USBEXT_DISK_MASK) disableUsbExt=0;
+    //    if(eventDiskBitMask&USBEXT_DISK_MASK) disableUsbExt=0;
 
+    //    if(intExtFlag<1 || intExtFlag>3) return 0;
 
-    if(intExtFlag<1 || intExtFlag>3) return 0;
+    //    if(intExtFlag==1 && disableUsb) return 0;
+    //    else if(intExtFlag==2 && disableUsbExt) return 0;
+    //    else if(intExtFlag==3 && disableUsbExt && disableUsb) return 0;
+    //    else if(intExtFlag==3 && disableUsb) intExtFlag=2;
+    //    else if(intExtFlag==3 && disableUsbExt) intExtFlag=1;
 
-    if(intExtFlag==1 && disableUsbInt) return 0;
-    else if(intExtFlag==2 && disableUsbExt) return 0;
-    else if(intExtFlag==3 && disableUsbExt && disableUsbInt) return 0;
-    else if(intExtFlag==3 && disableUsbInt) intExtFlag=2;
-    else if(intExtFlag==3 && disableUsbExt) intExtFlag=1;
-
-    sscanf(usbIntName,"usbint%02d",&currentNum[0]);
+    sscanf(usbName,"usbint%02d",&currentNum[0]);
     if(whichUsb==0)
 	currentNum[0]++;
     else 
 	currentNum[0]=whichUsb;
-    if(currentNum[0]>NUM_USBINTS) {
+    if(currentNum[0]>NUM_USBS) {
 	if(intExtFlag==1) return 0;
 	else intExtFlag=2;
     }
 
-    sscanf(usbExtName,"usbext%02d",&currentNum[1]);
-    if(whichUsb==0)
-	currentNum[1]++;
-    else 
-	currentNum[1]=whichUsb;
-    if(currentNum[1]>NUM_USBEXTS && intExtFlag>1) return 0;
+    //    sscanf(usbExtName,"usbext%02d",&currentNum[1]);
+    //    if(whichUsb==0)
+    //	currentNum[1]++;
+    //    else 
+    //	currentNum[1]=whichUsb;
+    //    if(currentNum[1]>NUM_USBEXTS && intExtFlag>1) return 0;
 
     //Kill all programs that write to disk
     killPrograms(MONITORD_ID_MASK);
@@ -1879,15 +1903,9 @@ int mountNextUsb(int intExtFlag, int whichUsb) {
 //    exit(0);
     //Change to new drive
     if(intExtFlag&0x1) {
-	sprintf(usbIntName,"usbint%02d",currentNum[0]);
-	configModifyString("anitaSoft.config","global","usbIntName",usbIntName,&rawtime);
-	retVal=system("/home/anita/flightSoft/bin/mountCurrentUsbInt.sh");
-    }
-    sleep(2);
-    if(intExtFlag&0x2) {
-	sprintf(usbExtName,"usbext%02d",currentNum[1]);
-	configModifyString("anitaSoft.config","global","usbExtName",usbExtName,&rawtime);
-	retVal=system("/home/anita/flightSoft/bin/mountCurrentUsbExt.sh");
+      sprintf(usbName,"usbint%02d",currentNum[0]);
+      configModifyString("anitaSoft.config","global","usbName",usbName,&rawtime);
+      retVal=system("/home/anita/flightSoft/bin/mountCurrentUsb.sh");
     }
     sleep(5);
     startNewRun();

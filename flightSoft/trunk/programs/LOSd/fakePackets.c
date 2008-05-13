@@ -519,10 +519,9 @@ void fakeMonitor(struct timeval *currentTime) {
     for(i=0;i<8;i++) {
 	theMon.diskInfo.diskSpace[i]=100-i;
     }
-    theMon.queueInfo.cmdLinksLOS=0;
-    theMon.queueInfo.hkLinks=10;
-    theMon.queueInfo.gpsLinks=30;
-    theMon.queueInfo.monitorLinks=20;
+    for(i=0;i<15;i++) {
+      theMon.queueInfo.hkLinks[i]=i*5;
+    }
     for(i=0;i<10;i++) {
 	theMon.queueInfo.eventLinks[i]=i*10;
     }
