@@ -57,9 +57,9 @@ int verbosity=0;
 int writeTelem=0;
 
 int eventDiskBitMask;
-int bladeCloneMask;
-int puckCloneMask;
-int usbintCloneMask;
+int satabladeCloneMask;
+int sataminiCloneMask;
+int usbCloneMask;
 int priorityPPS1;
 int priorityPPS2;
 float pps1FractionDelete=0;
@@ -67,9 +67,9 @@ float pps2FractionDelete=0;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
-char bladeName[FILENAME_MAX];
-char usbIntName[FILENAME_MAX];
-char usbExtName[FILENAME_MAX];
+char satabladeName[FILENAME_MAX];
+char usbName[FILENAME_MAX];
+char sataminiName[FILENAME_MAX];
 
 int usbBitMasks[2]={0x4,0x8};
 
@@ -120,37 +120,37 @@ int main (int argc, char *argv[])
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
-	bladeCloneMask=kvpGetInt("bladeCloneMask",0);
-	puckCloneMask=kvpGetInt("puckCloneMask",0);
-	usbintCloneMask=kvpGetInt("usbintCloneMask",0);
-	tempString=kvpGetString("bladeName");
+	satabladeCloneMask=kvpGetInt("satabladeCloneMask",0);
+	sataminiCloneMask=kvpGetInt("sataminiCloneMask",0);
+	usbCloneMask=kvpGetInt("usbCloneMask",0);
+	tempString=kvpGetString("satabladeName");
 	if(tempString) {
-	    strncpy(bladeName,tempString,FILENAME_MAX);
+	    strncpy(satabladeName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get bladeName");
-	    fprintf(stderr,"Couldn't get bladeName\n");
+	    syslog(LOG_ERR,"Couldn't get satabladeName");
+	    fprintf(stderr,"Couldn't get satabladeName\n");
 	}
 
 
-	tempString=kvpGetString("usbIntName");
+	tempString=kvpGetString("usbName");
 	if(tempString) {
-	    strncpy(usbIntName,tempString,FILENAME_MAX);
+	    strncpy(usbName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get usbIntName");
-	    fprintf(stderr,"Couldn't get usbIntName\n");
+	    syslog(LOG_ERR,"Couldn't get usbName");
+	    fprintf(stderr,"Couldn't get usbName\n");
 	}
 
 
 
-	tempString=kvpGetString("usbExtName");
+	tempString=kvpGetString("sataminiName");
 	if(tempString) {
-	    strncpy(usbExtName,tempString,FILENAME_MAX);
+	    strncpy(sataminiName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get usbExtName");
-	    fprintf(stderr,"Couldn't get usbExtName\n");
+	    syslog(LOG_ERR,"Couldn't get sataminiName");
+	    fprintf(stderr,"Couldn't get sataminiName\n");
 	}
 
 
@@ -376,15 +376,15 @@ void processEvent()
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
 
-    //Stuff for puck
+    //Stuff for satamini
     //    static int errorCounter=0;
     //    static int fileEpoch=0;
     //    static int fileNum=0;
     //    static int dirNum=0;
     //    static int otherDirNum=0;
-    //    static char puckDirName[FILENAME_MAX];
-    //    static char puckHeaderFileName[FILENAME_MAX];
-    //    static char puckEventFileName[FILENAME_MAX];
+    //    static char sataminiDirName[FILENAME_MAX];
+    //    static char sataminiHeaderFileName[FILENAME_MAX];
+    //    static char sataminiEventFileName[FILENAME_MAX];
     
 
     int priority=(theHead.priority&0xf);
@@ -451,19 +451,19 @@ void processEvent()
     else numBytes=0;
 
     if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
-/* 	if(eventWriter.writeBitMask & PUCK_DISK_MASK) { */
-/* 	    //Now write to puck */
+/* 	if(eventWriter.writeBitMask & SATAMINI_DISK_MASK) { */
+/* 	    //Now write to satamini */
 /* 	    if(pedSubBody.eventNumber>fileEpoch) { */
 /* 		if(fileEpoch) { */
 /* 		    //Close file and zip */
 /* 		    if(fpHead) { */
 /* 			fclose(fpHead); */
-/* 			zipFileInPlace(puckHeaderFileName); */
+/* 			zipFileInPlace(sataminiHeaderFileName); */
 /* 			fpHead=NULL; */
 /* 		    } */
 /* 		    if(fpEvent) { */
 /* 			fclose(fpEvent); */
-/* 			zipFileInPlace(puckEventFileName); */
+/* 			zipFileInPlace(sataminiEventFileName); */
 /* 			fpEvent=NULL; */
 /* 		    }			 */
 /* 		} */
@@ -471,16 +471,16 @@ void processEvent()
 /* 		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)); */
 /* 		//Make sub dir */
 /* 		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)); */
-/* 		sprintf(puckDirName,"%s/current/event/ev%d/ev%d",PUCK_DATA_MOUNT,dirNum,otherDirNum); */
-/* 		makeDirectories(puckDirName); */
+/* 		sprintf(sataminiDirName,"%s/current/event/ev%d/ev%d",SATAMINI_DATA_MOUNT,dirNum,otherDirNum); */
+/* 		makeDirectories(sataminiDirName); */
 		
 /* 		//Make files */
 /* 		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE); */
-/* 		sprintf(puckEventFileName,"%s/psev_%d.dat",puckDirName,fileNum); */
-/* 		sprintf(puckHeaderFileName,"%s/hd_%d.dat",puckDirName,fileNum); */
+/* 		sprintf(sataminiEventFileName,"%s/psev_%d.dat",sataminiDirName,fileNum); */
+/* 		sprintf(sataminiHeaderFileName,"%s/hd_%d.dat",sataminiDirName,fileNum); */
 /* 		fileEpoch=fileNum+EVENTS_PER_FILE; */
-/* 		fpHead=fopen(puckHeaderFileName,"ab"); */
-/* 		fpEvent=fopen(puckEventFileName,"ab"); */
+/* 		fpHead=fopen(sataminiHeaderFileName,"ab"); */
+/* 		fpEvent=fopen(sataminiEventFileName,"ab"); */
 /* 	    } */
 	    
 /* 	    if(fpHead) { */
@@ -508,7 +508,7 @@ void processEvent()
 	    
 
 /* 	} */
-/* 	eventWriter.writeBitMask &= ~PUCK_DISK_MASK; */
+/* 	eventWriter.writeBitMask &= ~SATAMINI_DISK_MASK; */
 	writeOutputToDisk(numBytes);
     }
     else {
@@ -567,9 +567,9 @@ void writeOutputToDisk(int numBytes) {
     indEnt.runNumber=currentRun;
     indEnt.eventNumber=theHead.eventNumber;
     indEnt.eventDiskBitMask=eventWriter.writeBitMask;
-    strncpy(indEnt.bladeLabel,bladeName,9);
-    strncpy(indEnt.usbIntLabel,usbIntName,9);
-    strncpy(indEnt.usbExtLabel,usbExtName,9);
+    strncpy(indEnt.satabladeLabel,satabladeName,11);
+    strncpy(indEnt.usbLabel,usbName,11);
+    strncpy(indEnt.sataminiLabel,sataminiName,11);
     cleverIndexWriter(&indEnt,&indexWriter);
 
  
@@ -615,9 +615,9 @@ void prepWriterStructs() {
 	eventWriter.currentHeaderFilePtr[diskInd]=0;
 	eventWriter.currentEventFilePtr[diskInd]=0;
     }
-    eventWriter.bladeCloneMask=bladeCloneMask;
-    eventWriter.puckCloneMask=puckCloneMask;
-    eventWriter.usbintCloneMask=usbintCloneMask;   
+    eventWriter.satabladeCloneMask=satabladeCloneMask;
+    eventWriter.sataminiCloneMask=sataminiCloneMask;
+    eventWriter.usbCloneMask=usbCloneMask;   
     eventWriter.gotData=0;
     eventWriter.writeBitMask=eventDiskBitMask;
 

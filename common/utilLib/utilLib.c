@@ -29,9 +29,9 @@ ProgramStateCode currentState;
 
 //
 
-int diskBitMasks[DISK_TYPES]={BLADE_DISK_MASK,PUCK_DISK_MASK,USBINT_DISK_MASK,USBEXT_DISK_MASK,PMC_DISK_MASK};
-char *diskNames[DISK_TYPES]={BLADE_DATA_MOUNT,PUCK_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT,SAFE_DATA_MOUNT};
-int bufferDisk[DISK_TYPES]={0,0,0,0,0};
+int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK};
+char *diskNames[DISK_TYPES]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT};
+int bufferDisk[DISK_TYPES]={0,0,0,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 //    sync();
@@ -210,9 +210,9 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 //    sync();
     int diskInd;
     pid_t childPid;    
-    int cloneMasks[DISK_TYPES]={awsPtr->bladeCloneMask,
-				awsPtr->puckCloneMask,
-				awsPtr->usbintCloneMask,0,0};
+    int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
+				awsPtr->sataminiCloneMask,
+				awsPtr->usbCloneMask,0};
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
 	if(awsPtr->currentHeaderFilePtr[diskInd]) {
@@ -276,9 +276,9 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
     char fullBasename[FILENAME_MAX];
     char bufferName[FILENAME_MAX];
 
-    int cloneMasks[DISK_TYPES]={awsPtr->bladeCloneMask,
-				awsPtr->puckCloneMask,
-				awsPtr->usbintCloneMask,0,0};
+    int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
+				awsPtr->sataminiCloneMask,
+				awsPtr->usbCloneMask,0};
     
     if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {
 	closeEventFilesAndTidy(awsPtr);
@@ -1964,4 +1964,64 @@ int getRunNumber() {
     fclose (pFile);
     return runNumber;
     
+}
+
+
+int getIdMask(ProgramId_t prog) {
+    switch(prog) {
+	case ID_ACQD: return ACQD_ID_MASK;
+	case ID_ARCHIVED: return ARCHIVED_ID_MASK;
+	case ID_CALIBD: return CALIBD_ID_MASK;
+	case ID_CMDD: return CMDD_ID_MASK;
+	case ID_EVENTD: return EVENTD_ID_MASK;
+	case ID_GPSD: return GPSD_ID_MASK;
+	case ID_HKD: return HKD_ID_MASK;
+	case ID_LOSD: return LOSD_ID_MASK;
+	case ID_PRIORITIZERD: return PRIORITIZERD_ID_MASK;
+	case ID_SIPD: return SIPD_ID_MASK;
+	case ID_MONITORD: return MONITORD_ID_MASK;
+	case ID_PLAYBACKD: return PLAYBACKD_ID_MASK;
+	default: break;
+    }
+    return 0;
+}
+
+
+char *getProgName(ProgramId_t prog) {
+    char *string;
+    switch(prog) {
+	case ID_ACQD: string="Acqd"; break;
+	case ID_ARCHIVED: string="Archived"; break;
+	case ID_CALIBD: string="Calibd"; break;
+	case ID_CMDD: string="Cmdd"; break;
+	case ID_EVENTD: string="Eventd"; break;
+	case ID_GPSD: string="GPSd"; break;
+	case ID_HKD: string="Hkd"; break;
+	case ID_LOSD: string="LOSd"; break;
+	case ID_PRIORITIZERD: string="Prioritizerd"; break;
+	case ID_SIPD: string="SIPd"; break;
+	case ID_MONITORD: string="Monitord"; break;
+	case ID_PLAYBACKD: string="Playbackd"; break;
+	default: string=NULL; break;
+    }
+    return string;
+}
+
+char *getPidFile(ProgramId_t prog) {
+    switch(prog) {
+	case ID_ACQD: return ACQD_PID_FILE;
+	case ID_ARCHIVED: return ARCHIVED_PID_FILE;
+	case ID_CALIBD: return CALIBD_PID_FILE;
+	case ID_CMDD: return CMDD_PID_FILE;
+	case ID_EVENTD: return EVENTD_PID_FILE;
+	case ID_GPSD: return GPSD_PID_FILE;
+	case ID_HKD: return HKD_PID_FILE;
+	case ID_LOSD: return LOSD_PID_FILE;
+	case ID_PRIORITIZERD: return PRIORITIZERD_PID_FILE;
+	case ID_SIPD: return SIPD_PID_FILE;
+	case ID_MONITORD: return MONITORD_PID_FILE;
+	case ID_PLAYBACKD: return PLAYBACKD_PID_FILE;
+	default: break;
+    }
+    return NULL;
 }

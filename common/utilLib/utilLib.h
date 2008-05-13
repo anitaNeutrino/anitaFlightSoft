@@ -17,6 +17,7 @@ extern "C" {
 /* Includes */
 
 #include "includes/anitaStructures.h"
+#include "includes/anitaCommand.h"
 #include <time.h>
 #include <zlib.h>
 #include <stdio.h>
@@ -36,7 +37,7 @@ extern "C" {
 
     typedef struct {
 	FILE *currentFilePtr[DISK_TYPES]; //For the 5 disk types
-	unsigned int writeBitMask; //1-blade, 2-puck,3-usbint,4-usbext,5-pmc
+	unsigned int writeBitMask; //1-satablade, 2-satamini,3-usb,4-neobrick,5-pmc
 	int writeCount[DISK_TYPES];
 	int fileCount[DISK_TYPES];
 	int dirCount[DISK_TYPES];
@@ -50,10 +51,10 @@ extern "C" {
     typedef struct {
 	FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
 	FILE* currentHeaderFilePtr[DISK_TYPES];
-	unsigned int writeBitMask; //1-blade, 2-puck,3-usbint,4-usbext,5-pmc
-	unsigned int bladeCloneMask;
-	unsigned int puckCloneMask;
-	unsigned int usbintCloneMask;
+	unsigned int writeBitMask; //1-satablade, 2-satamini,3-usb,4-neobrick,5-pmc
+	unsigned int satabladeCloneMask;
+	unsigned int sataminiCloneMask;
+	unsigned int usbCloneMask;
 	unsigned int fileEpoch;
 	unsigned int gotData;
 	unsigned int justHeader;
@@ -73,7 +74,11 @@ extern "C" {
     int copyFileToFile(const char *theFile, const char *newFile);
     char *readFile(const char *theFile, unsigned int *numBytes);
     int removeFile(const char *theFile);
-    int getRunNumber();
+  int getRunNumber();
+  int getIdMask(ProgramId_t prog);
+  char *getPidFile(ProgramId_t prog);
+  char *getProgName(ProgramId_t prog);
+
 
     unsigned int getDiskSpace(char *dirName);
     unsigned short countFilesInDir(char *dirName);

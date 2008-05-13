@@ -34,11 +34,19 @@ void sendEvent(PlaybackRequest_t *pReq);
 void startPlayback();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
+int cleverMountPlaybackDisk(char *diskLabel);
 
 // Global Variables
 int printToScreen=0;
 int verbosity=0;
 int sendData=0;
+int useDisk=0;
+
+char satabladeName[FILENAME_MAX];
+char sataminiName[FILENAME_MAX];
+char usbName[FILENAME_MAX];
+char playbackName[FILENAME_MAX];
+int playbackMounted=0;
 
 
 //Link Directories
@@ -50,8 +58,8 @@ unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
 char priorityPurgeDirs[NUM_PRIORITIES][FILENAME_MAX];
 
-
-
+int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK};
+char *diskNames[DISK_TYPES+1]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,PLAYBACK_MOUNT};
 
 int main (int argc, char *argv[])
 {
@@ -115,7 +123,7 @@ int main (int argc, char *argv[])
 	    if(sendData) startPlayback();
 	    retVal=checkForRequests();
 	    if(!retVal)
-		printf("sleep\n");sleep(10);
+	      printf("sleep\n");sleep(10);
 	}
     } while(currentState==PROG_STATE_INIT);    
     unlink(PLAYBACKD_PID_FILE);
@@ -135,13 +143,32 @@ int readConfigFile()
 
     if(status == CONFIG_E_OK) {
 	sendData=kvpGetInt("sendData",0);
-	tempString=kvpGetString("PLAYBACKD_PID_FILE");
+	useDisk=kvpGetInt("useDisk",0);
+	tempString=kvpGetString("satabladeName");
 	if(tempString) {
-	    strncpy(PLAYBACKD_PID_FILE,tempString,FILENAME_MAX);
+	    strncpy(satabladeName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get PLAYBACKD_PID_FILE");
-	    fprintf(stderr,"Couldn't get PLAYBACKD_PID_FILE\n");
+	    syslog(LOG_ERR,"Couldn't get satabladeName");
+	    fprintf(stderr,"Couldn't get satabladeName\n");
+	}
+
+	tempString=kvpGetString("sataminiName");
+	if(tempString) {
+	    strncpy(sataminiName,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get sataminiName");
+	    fprintf(stderr,"Couldn't get sataminiName\n");
+	}
+
+	tempString=kvpGetString("usbName");
+	if(tempString) {
+	    strncpy(usbName,tempString,FILENAME_MAX);
+	}
+	else {
+	    syslog(LOG_ERR,"Couldn't get usbName");
+	    fprintf(stderr,"Couldn't get usbName\n");
 	}
     }
     else {
@@ -208,6 +235,7 @@ int checkForRequests() {
 
 void sendEvent(PlaybackRequest_t *pReq)
 {
+  int retVal=0;
     AnitaEventHeader_t theHead;
     PedSubbedEventBody_t psBody;
     char indexName[FILENAME_MAX];
@@ -253,10 +281,57 @@ void sendEvent(PlaybackRequest_t *pReq)
 //    printf("index: %u -- %#x\n",indEntry.eventNumber,indEntry.eventDiskBitMask);
 
     //Now have index
-    if(1) {
+    //Here we're going to have to add something that checks if the file we want is on one of the already mounted disks. If it is we'll go ahead and read it from there, if not we'll have to mount the disk specified by usedisk on /mnt/playback and read the file from there
+    int diskInd=0;
+    int gotDisk=-1;
+    //    char *currentNames[3]={satabladeName,sataminiName,usbName};
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+      if(indEntry.eventDiskBitMask & diskBitMasks[diskInd]) {
+	//So the event was allegedly written to this disk type
+	if(diskInd==0) {
+	  if(strncmp(satabladeName,indEntry.satabladeLabel,12)==0) {
+	    gotDisk=0;
+	    break;
+	  }
+	}
+	else if(diskInd==1) {
+	  if(strncmp(sataminiName,indEntry.sataminiLabel,12)==0) {
+	    gotDisk=1;
+	    break;
+	  }
+	}
+	else if(diskInd==2) {
+	  if(strncmp(usbName,indEntry.usbLabel,12)==0) {
+	    gotDisk=2;
+	    break;
+	  }
+	}
+	else if(diskInd==3) {
+	  gotDisk=3;
+	  break;
+	}
+      }      
+    }
+
+    if(gotDisk==-1) {
+      //The file isn't on one of the mounted disks will try and mount
+      //a disk on /mnt/playback 
+      if(useDisk==0) 
+	retVal=cleverMountPlaybackDisk(indEntry.satabladeLabel);
+      else if(useDisk==1) 
+	retVal=cleverMountPlaybackDisk(indEntry.sataminiLabel);
+      else if(useDisk==2) 
+	retVal=cleverMountPlaybackDisk(indEntry.usbLabel);
+      
+      if(retVal>=0)
+	gotDisk=4;
+    }
+
+
+    if(gotDisk>=0 && gotDisk<=4) {
 	//Read it from puck
 	sprintf(headerFileName,"%s/run%u/event/ev%d/ev%d/hd_%d.dat.gz",
-		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
+		diskNames[gotDisk],indEntry.runNumber,subDirNum,dirNum,fileNum);
 	gzFile headFile = gzopen(headerFileName,"rb");
 	if(!headFile) {
 	    fprintf(stderr,"Couldn't open: %s\n",headerFileName);	    
@@ -283,7 +358,7 @@ void sendEvent(PlaybackRequest_t *pReq)
 	}
 
 	sprintf(eventFileName,"%s/run%u/event/ev%d/ev%d/psev_%d.dat.gz",
-		PUCK_DATA_MOUNT,indEntry.runNumber,subDirNum,dirNum,fileNum);
+		diskNames[gotDisk],indEntry.runNumber,subDirNum,dirNum,fileNum);
 	gzFile eventFile = gzopen(eventFileName,"rb");
 	if(!eventFile) {
 	    fprintf(stderr,"Couldn't open: %s\n",eventFileName);	    
@@ -454,4 +529,37 @@ int sortOutPidFile(char *progName)
   }
   writePidFile(PLAYBACKD_PID_FILE);
   return 0;
+}
+
+
+int cleverMountPlaybackDisk(char *diskLabel)
+{
+  char theCommand[180];
+  int retVal=0;
+  if(playbackMounted) {
+    if(strncmp(diskLabel,playbackName,12)==0) {
+      //As luck would have it that disk is mounted
+      return 0;
+    }
+
+    //unmount playback
+    sprintf(theCommand,"sudo umount %s",PLAYBACK_MOUNT);
+    retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process
+    sleep(2); //For luck
+    playbackMounted=0;
+  }
+      
+  //Try to mount playback
+  sprintf(theCommand,"sudo mount -L %s %s",diskLabel,PLAYBACK_MOUNT);
+  retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process
+  sleep(2); //For luck
+  playbackMounted=1;
+  strncpy(playbackName,diskLabel,11);
+
+  //Should really check that it is mounted will probably open /proc/mounts and oparse it for /mnt/playback but I'll do this later
+
+
+  return 1;
+
+
 }

@@ -382,23 +382,21 @@ typedef struct {
 
 typedef struct {
     unsigned short diskSpace[8]; //In units of 10 MegaBytes
-    char bladeLabel[10];
-    char usbIntLabel[10];
-    char usbExtLabel[10];
+    char sataminiLabel[12];
+    char satabladeLabel[12];
+    char usbLabel[12];
 } DiskSpaceStruct_t;
 
 typedef struct {
-    unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
-    unsigned short cmdLinksLOS;
-    unsigned short cmdLinksSIP;
-    unsigned short headLinks;
-    unsigned short gpsLinks;
-    unsigned short hkLinks;
-    unsigned short monitorLinks;
-    unsigned short surfHkLinks;
-    unsigned short turfHkLinks;
-    unsigned short pedestalLinks;
+  unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
+  unsigned short hkLinks[15]; //Needs to be finalised once everything is settled
 } QueueStruct_t;
+
+typedef struct {
+  unsigned long utime[NUM_PROCESSES];
+  unsigned long stime[NUM_PROCESSES];
+  unsigned long vsize[NUM_PROCESSES];
+} ProcessInfo_t;
 
 typedef struct {    
     unsigned char numCmdBytes;
@@ -418,9 +416,9 @@ typedef struct {
     unsigned int eventNumber;
     unsigned int runNumber;
     int eventDiskBitMask; //Which disks was it written to?
-    char bladeLabel[10];
-    char usbIntLabel[10];
-    char usbExtLabel[10];
+    char satabladeLabel[12];
+    char sataminiLabel[12];
+    char usbLabel[12];
 } IndexEntry_t;
 
 typedef struct {
@@ -654,10 +652,11 @@ typedef struct {
 } CommandEcho_t;
 
 typedef struct {
-    GenericHeader_t gHdr;
-    unsigned int unixTime;
-    DiskSpaceStruct_t diskInfo;
-    QueueStruct_t queueInfo;
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  DiskSpaceStruct_t diskInfo;
+  QueueStruct_t queueInfo;
+  ProcessInfo_t procInfo;
 } MonitorStruct_t;
 
 typedef struct {
@@ -669,7 +668,7 @@ typedef struct {
     unsigned int runNumber; //Run number
     unsigned short dirFiles[3]; // /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
     unsigned short dirLinks[3]; // /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
-    unsigned short otherFlag;
+    unsigned short processBitMask;
 } OtherMonitorStruct_t;
 
 typedef struct {

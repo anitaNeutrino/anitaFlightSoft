@@ -50,6 +50,9 @@
 #define PED_DEFAULT_VALUE 650
 
 
+//Process Stuff
+#define NUM_PROCESSES 12
+
 //GPS stuff
 #define MAX_SATS 12
 #define MAX_CMD_LENGTH 20
@@ -78,9 +81,9 @@
 #define MAGNETOMETER_DEV_NAME "/dev/ttyUSB1"
 
 #define NUM_PRIORITIES 10
-#define NUM_BLADES 8
-#define NUM_USBINTS 30
-#define NUM_USBEXTS 31
+#define NUM_SATABLADES 8
+#define NUM_SATAMINIS 4
+#define NUM_USBS 31
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
@@ -91,7 +94,7 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 #define EVENTS_PER_INDEX 10000
-#define DISK_TYPES 5
+#define DISK_TYPES 4 //neobrick not included in this list
 
 
 
@@ -125,10 +128,10 @@
 #define TRIG_BUF_SHIFT_FINAL 0
 
 //Disk Bit Masks
-#define BLADE_DISK_MASK 0x1
-#define PUCK_DISK_MASK 0x2
-#define USBINT_DISK_MASK 0x4
-#define USBEXT_DISK_MASK 0x8
+#define SATABLADE_DISK_MASK 0x1
+#define SATAMINI_DISK_MASK 0x2
+#define USB_DISK_MASK 0x4
+#define NEOBRICK_DISK_MASK 0x8
 #define PMC_DISK_MASK 0x10
 
 
@@ -137,10 +140,10 @@
 #define DATA_LINK "/tmp/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
 #define SAFE_DATA_MOUNT "/tmp/mnt/bitmicro"
-#define PUCK_DATA_MOUNT "/tmp/mnt/satamini"
-#define BLADE_DATA_MOUNT "/tmp/mnt/blade"
-#define USBINT_DATA_MOUNT "/tmp/mnt/usbint"
-#define USBEXT_DATA_MOUNT "/tmp/mnt/usbext"
+#define SATAMINI_DATA_MOUNT "/tmp/mnt/satamini"
+#define SATABLADE_DATA_MOUNT "/tmp/mnt/satablade"
+#define USB_DATA_MOUNT "/tmp/mnt/usbint"
+#define PLAYBACK_MOUNT "/tmp/mnt/playback"
 #define LAST_EVENT_NUMBER_FILE "/tmp/mnt/data/numbers/lastEventNumber"
 #define LAST_LOS_NUMBER_FILE "/tmp/mnt/data/numbers/lastLosNumber"
 #define LAST_TDRSS_NUMBER_FILE "/tmp/mnt/data/numbers/lastTdrssNumber"
@@ -149,10 +152,10 @@
 #define DATA_LINK "/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
 #define SAFE_DATA_MOUNT "/mnt/bitmicro"
-#define PUCK_DATA_MOUNT "/mnt/satamini"
-#define BLADE_DATA_MOUNT "/mnt/satablade"
-#define USBINT_DATA_MOUNT "/mnt/usbint"
-#define USBEXT_DATA_MOUNT "/mnt/usbext"
+#define SATAMINI_DATA_MOUNT "/mnt/satamini"
+#define SATABLADE_DATA_MOUNT "/mnt/satablade"
+#define USB_DATA_MOUNT "/mnt/usbint"
+#define PLAYBACK_MOUNT "/mnt/playback"
 #define LAST_EVENT_NUMBER_FILE "/mnt/data/numbers/lastEventNumber"
 #define LAST_LOS_NUMBER_FILE "/mnt/data/numbers/lastLosNumber"
 #define LAST_TDRSS_NUMBER_FILE "/mnt/data/numbers/lastTdrssNumber"
@@ -169,7 +172,6 @@
 #define CURRENT_PEDESTALS "anita/pedestal/current"
 
 #define MAX_EVENT_SIZE NUM_DIGITZED_CHANNELS*MAX_NUMBER_SAMPLES*4
-
 
 //Inter process and telem dirs.
 //Housekeeping Telem Dirs

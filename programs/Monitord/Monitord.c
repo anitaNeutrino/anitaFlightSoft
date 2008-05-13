@@ -26,29 +26,50 @@
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"
 
+#define NUM_HK_TELEM_DIRS 15
+
+typedef enum {
+  MON_TELEM_FIRST=0,
+  MON_TELEM_CMD_ECHO_LOS=0,
+  MON_TELEM_CMD_ECHO_SIP,
+  MON_TELEM_MONITOR,
+  MON_TELEM_HEADER,
+  MON_TELEM_HK,
+  MON_TELEM_ADU5_SAT,
+  MON_TELEM_G12_SAT,
+  MON_TELEM_ADU5_PAT,
+  MON_TELEM_G12_POS,
+  MON_TELEM_ADU5_VTG,
+  MON_TELEM_SURFHK,
+  MON_TELEM_TURFRATE,
+  MON_TELEM_OTHER,
+  MON_TELEM_PEDESTAL,
+  MON_TELEM_REQUEST,
+  MON_TELEM_NOT_A_TELEM
+} MONTelemType_t;
+
+
 int readConfigFile();
 int checkDisks(DiskSpaceStruct_t *dsPtr);
 int checkQueues(QueueStruct_t *queuePtr);
 int writeFileAndLink(MonitorStruct_t *monitorPtr);
 void prepWriterStructs();
 void purgeDirectory(int priority);
-void checkProcesses();
-int getIdMask(ProgramId_t prog);
-char *getPidFile(ProgramId_t prog);
-char *getProgName(ProgramId_t prog);
+void checkProcesses(int dontStart);
 int getRamdiskInodes();
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr);
 int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr);
 void purgeHkDirectory(char *dirName,char *linkDirName);
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
+int getProcessInfo(ProgramId_t prog, int progPid);
 
 
 // Global Variables
 int printToScreen=0;
 int verbosity=0;
 int monitorPeriod=60; //In seconds
-int watchProcesses=0;
+int startProcesses=0;
 int ramdiskKillAcqd=50;
 int ramdiskDumpData=5;
 int inodesKillAcqd=10000;
@@ -63,7 +84,8 @@ int maxHkQueueSize=200;
 
 //
 int usbSwitchMB=50;
-int bladeSwitchMB=50;
+int satabladeSwitchMB=50;
+int sataminiSwitchMB=50;
 
 //Link Directories
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -71,35 +93,41 @@ char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 char priorityPurgeDirs[NUM_PRIORITIES][FILENAME_MAX];
 
-char bladeName[FILENAME_MAX];
-char usbIntName[FILENAME_MAX];
-char usbExtName[FILENAME_MAX];
+char satabladeName[FILENAME_MAX];
+char sataminiName[FILENAME_MAX];
+char usbName[FILENAME_MAX];
 
 
-int hkDiskBitMask;
-int eventDiskBitMask;
+int hkDiskBitMask=0;
+int eventDiskBitMask=0;
+int disableSatablade=0;
+int disableSatamini=0;
+int disableUsb=0;
 AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
 
-char *diskLocations[8]={"/tmp","/static","/home",SAFE_DATA_MOUNT,PUCK_DATA_MOUNT,BLADE_DATA_MOUNT,USBINT_DATA_MOUNT,USBEXT_DATA_MOUNT};
+char *diskLocations[7]={"/tmp","/var","/home",SAFE_DATA_MOUNT,SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT};
 char *otherDirLoc[3]={ACQD_EVENT_DIR,EVENTD_EVENT_DIR,PRIORITIZERD_EVENT_DIR};
 char *otherLinkLoc[3]={ACQD_EVENT_LINK_DIR,EVENTD_EVENT_LINK_DIR,PRIORITIZERD_EVENT_LINK_DIR};
+
+//Laziness
+MonitorStruct_t monData;
+OtherMonitorStruct_t otherData;
 
 int main (int argc, char *argv[])
 {
     CommandStruct_t theCmd;
     int retVal,pri;
 //    DiskSpaceStruct_t diskSpace;
-    MonitorStruct_t monData;
-    OtherMonitorStruct_t otherData;
+
 
     /* Log stuff */
     char *progName=basename(argv[0]);
     unsigned int startTime=time(NULL);
-    int bladeMountCmdTime=0;
-    int usbintMountCmdTime=0;
-    int usbextMountCmdTime=0;
+    int satabladeMountCmdTime=0;
+    int sataminiMountCmdTime=0;
+    int usbMountCmdTime=0;
 
     retVal=sortOutPidFile(progName);
     if(retVal<0)
@@ -158,11 +186,14 @@ int main (int argc, char *argv[])
 	    retVal=checkDisks(&(monData.diskInfo));	    
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
+	    if((monData.unixTime-startTime)>60) 
+	      checkProcesses(0);
+	    else
+	      checkProcesses(1);
+
 	    fillOtherStruct(&otherData);
 	    writeFileAndLink(&monData);
 	    writeOtherFileAndLink(&otherData);
-
-
 
 	    printf("ramDiskSpace: %d mb\n",monData.diskInfo.diskSpace[0]);
 	    if(!killedAcqd) {
@@ -197,56 +228,59 @@ int main (int argc, char *argv[])
 		}
 	    }
 
-	    printf("blade %d\t%d\n",monData.diskInfo.diskSpace[5],bladeSwitchMB);
-	    if(monData.diskInfo.diskSpace[5]<bladeSwitchMB) {
-		readConfigFile();
-		//Change blade if in use
-		if((hkDiskBitMask&BLADE_DISK_MASK || eventDiskBitMask&BLADE_DISK_MASK)) {
-		    if((monData.unixTime-bladeMountCmdTime)>300) {
-			theCmd.numCmdBytes=1;
-			theCmd.cmd[0]=CMD_MOUNT_NEXT_BLADE;
-			writeCommandAndLink(&theCmd);
-			bladeMountCmdTime=monData.unixTime;
-		    }
+	    //Now check if we need to change disks
+	    printf("satablade %d\t%d\n",monData.diskInfo.diskSpace[5],satabladeSwitchMB);
+	    if(monData.diskInfo.diskSpace[5]<satabladeSwitchMB) {
+	      readConfigFile();
+	      //Change blade if in use
+	      if((hkDiskBitMask&SATABLADE_DISK_MASK || eventDiskBitMask&SATABLADE_DISK_MASK)) {
+		if((monData.unixTime-satabladeMountCmdTime)>300) {
+		  theCmd.numCmdBytes=3;
+		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
+		  theCmd.cmd[1]=SATABLADE_DISK_MASK;
+		  theCmd.cmd[2]=0; //Next disk
+		  writeCommandAndLink(&theCmd);
+		  satabladeMountCmdTime=monData.unixTime;
 		}
+	      }
 	    }
+
+	    printf("satamini %d\t%d\n",monData.diskInfo.diskSpace[5],sataminiSwitchMB);
+	    if(monData.diskInfo.diskSpace[5]<sataminiSwitchMB) {
+	      readConfigFile();
+	      //Change blade if in use
+	      if((hkDiskBitMask&SATAMINI_DISK_MASK || eventDiskBitMask&SATAMINI_DISK_MASK)) {
+		if((monData.unixTime-sataminiMountCmdTime)>300) {
+		  theCmd.numCmdBytes=3;
+		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
+		  theCmd.cmd[1]=SATAMINI_DISK_MASK;
+		  theCmd.cmd[2]=0; //Next disk
+		  writeCommandAndLink(&theCmd);
+		  sataminiMountCmdTime=monData.unixTime;
+		}
+	      }
+	    }
+
+
+	    printf("usb %d\t%d\n",monData.diskInfo.diskSpace[6],usbSwitchMB);
+
 	    if(monData.diskInfo.diskSpace[6]<usbSwitchMB) {
-		readConfigFile();
-		//Change USB int if in use
-		if((hkDiskBitMask&USBINT_DISK_MASK || eventDiskBitMask&USBINT_DISK_MASK)) {
-		    if((monData.unixTime-usbintMountCmdTime)>300) {
+	      readConfigFile();
+		//Change USB if in use
+		if((hkDiskBitMask&USB_DISK_MASK || eventDiskBitMask&USB_DISK_MASK)) {
+		    if((monData.unixTime-usbMountCmdTime)>300) {
 			theCmd.numCmdBytes=3;
 			theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
-			theCmd.cmd[1]=1;
+			theCmd.cmd[1]=1; //Now not used
 			theCmd.cmd[2]=0;
 			if(monData.diskInfo.diskSpace[7]<usbSwitchMB)
 			    theCmd.cmd[1]=3;
 			writeCommandAndLink(&theCmd);
-			usbintMountCmdTime=monData.unixTime;
-		    }
-		}
-	    }
-	    else if(monData.diskInfo.diskSpace[7]<usbSwitchMB) {
-		readConfigFile();
-		//Change USB ext if in use
-		if((hkDiskBitMask&USBEXT_DISK_MASK || eventDiskBitMask&USBEXT_DISK_MASK)) {
-		    if((monData.unixTime-usbextMountCmdTime)>300) {
-			theCmd.numCmdBytes=3;
-			theCmd.cmd[0]=CMD_MOUNT_NEXT_USB;
-			theCmd.cmd[1]=2;
-			theCmd.cmd[2]=0;
-			writeCommandAndLink(&theCmd);
+			usbMountCmdTime=monData.unixTime;
 		    }
 		}
 	    }
 	    
-	    if((monData.unixTime-startTime)>60) {
-		checkProcesses();
-	    }
-
-
-
-
 
 //	    exit(0);
 //	    usleep(1);
@@ -292,56 +326,80 @@ int readConfigFile()
     status += configLoad ("Monitord.config","output") ;
 
     if(status == CONFIG_E_OK) {
-	watchProcesses=kvpGetInt("watchProcesses",0);
+	startProcesses=kvpGetInt("startProcesses",0);
 	maxEventQueueSize=kvpGetInt("maxEventQueueSize",300);
 	maxHkQueueSize=kvpGetInt("maxHkQueueSize",200);
 
-	tempString=kvpGetString("bladeName");
+	tempString=kvpGetString("satabladeName");
 	if(tempString) {
-	    strncpy(bladeName,tempString,FILENAME_MAX);
+	    strncpy(satabladeName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get bladeName");
-	    fprintf(stderr,"Couldn't get bladeName\n");
+	    syslog(LOG_ERR,"Couldn't get satabladeName");
+	    fprintf(stderr,"Couldn't get satabladeName\n");
 	}
 
-	tempString=kvpGetString("usbIntName");
+	tempString=kvpGetString("sataminiName");
 	if(tempString) {
-	    strncpy(usbIntName,tempString,FILENAME_MAX);
+	    strncpy(sataminiName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get usbIntName");
-	    fprintf(stderr,"Couldn't get usbIntName\n");
+	    syslog(LOG_ERR,"Couldn't get sataminiName");
+	    fprintf(stderr,"Couldn't get sataminiName\n");
 	}
 
-	tempString=kvpGetString("usbExtName");
+	tempString=kvpGetString("usbName");
 	if(tempString) {
-	    strncpy(usbExtName,tempString,FILENAME_MAX);
+	    strncpy(usbName,tempString,FILENAME_MAX);
 	}
 	else {
-	    syslog(LOG_ERR,"Couldn't get usbExtName");
-	    fprintf(stderr,"Couldn't get usbExtName\n");
+	    syslog(LOG_ERR,"Couldn't get usbName");
+	    fprintf(stderr,"Couldn't get usbName\n");
 	}
 
 
+	
 	printToScreen=kvpGetInt("printToScreen",0);
 	verbosity=kvpGetInt("verbosity",0);
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",0);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
 	usbSwitchMB=kvpGetInt("usbSwitchMB",50);
-	bladeSwitchMB=kvpGetInt("bladeSwitchMB",50);
+	satabladeSwitchMB=kvpGetInt("satabladeSwitchMB",50);
+	sataminiSwitchMB=kvpGetInt("sataminiSwitchMB",50);
 	ramdiskKillAcqd=kvpGetInt("ramdiskKillAcqd",50);
 	ramdiskDumpData=kvpGetInt("ramdiskDumpData",5);
 	maxAcqdWaitPeriod=kvpGetInt("maxAcqdWaitPeriod",180);
 	inodesKillAcqd=kvpGetInt("inodesKillAcqd",10000);
 	inodesDumpData=kvpGetInt("inodesDumpData",2000);
+	
+	disableSatablade=kvpGetInt("disableSatablade",0);
+	if(disableSatablade) {
+	  hkDiskBitMask&=(~SATABLADE_DISK_MASK);
+	  eventDiskBitMask&=(~SATABLADE_DISK_MASK);
+	}
+	disableSatamini=kvpGetInt("disableSatamini",0);
+	if(disableSatamini) {
+	  hkDiskBitMask&=(~SATAMINI_DISK_MASK);
+	  eventDiskBitMask&=(~SATAMINI_DISK_MASK);
+	}
+	disableUsb=kvpGetInt("disableUsb",0);
+	if(disableUsb) {
+	  hkDiskBitMask&=(~USB_DISK_MASK);
+	  eventDiskBitMask&=(~USB_DISK_MASK);
+	}
+
     }
     else {
 	eString=configErrorString (status) ;
 	syslog(LOG_ERR,"Error reading Monitord.config: %s\n",eString);
     }
     
+    if(printToScreen) 
+      printf("hkDiskBitMask %#x -- eventDiskBitMask %#x\n",
+	     hkDiskBitMask,eventDiskBitMask);
+     
+
     if(printToScreen && verbosity>1)
 	printf("Dirs:\n\t%s\n\t%s\n\t%s\n",
 	       MONITOR_TELEM_DIR,
@@ -375,12 +433,12 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes_short);
 	if(((short)megaBytes)==-1) errFlag--;
     }    
-    strncpy(dsPtr->bladeLabel,bladeName,9);
-    strncpy(dsPtr->usbIntLabel,usbIntName,9);
-    strncpy(dsPtr->usbExtLabel,usbExtName,9);
+    strncpy(dsPtr->satabladeLabel,satabladeName,11);
+    strncpy(dsPtr->sataminiLabel,sataminiName,11);
+    strncpy(dsPtr->usbLabel,usbName,11);
     if(printToScreen) {
-	printf("usbInt -- %s\nusbExt -- %s\nblade -- %s\n",
-	       usbIntName,usbExtName,bladeName);
+	printf("usb -- %s\nsatamini -- %s\nsatablade -- %s\n",
+	       usbName,sataminiName,satabladeName);
     }
     
     
@@ -391,126 +449,67 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 
 
 int checkQueues(QueueStruct_t *queuePtr) {
-    int retVal=0,count;
-    unsigned short numLinks=0;
-    numLinks=countFilesInDir(LOSD_CMD_ECHO_TELEM_LINK_DIR);
-    queuePtr->cmdLinksLOS=numLinks;
-    if(printToScreen) printf("%s\t%u\n",LOSD_CMD_ECHO_TELEM_LINK_DIR,numLinks);
+  int retVal=0,pri=0,hkInd=0;
+  unsigned short numLinks=0;
+  
+  static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
+    {LOSD_CMD_ECHO_TELEM_LINK_DIR,
+     SIPD_CMD_ECHO_TELEM_LINK_DIR,
+     MONITOR_TELEM_LINK_DIR,
+     HEADER_TELEM_LINK_DIR,
+     HK_TELEM_LINK_DIR,
+     ADU5_SAT_TELEM_LINK_DIR,
+     G12_SAT_TELEM_LINK_DIR,
+     ADU5_PAT_TELEM_LINK_DIR,
+     G12_POS_TELEM_LINK_DIR,
+     ADU5_VTG_TELEM_LINK_DIR,
+     SURFHK_TELEM_LINK_DIR,
+     TURFHK_TELEM_LINK_DIR,
+     OTHER_MONITOR_TELEM_LINK_DIR,
+     PEDESTAL_TELEM_LINK_DIR,
+     REQUEST_TELEM_LINK_DIR};
+  static char *telemDirs[NUM_HK_TELEM_DIRS]=
+    {LOSD_CMD_ECHO_TELEM_DIR,
+     SIPD_CMD_ECHO_TELEM_DIR,
+     MONITOR_TELEM_DIR,
+     HEADER_TELEM_DIR,
+     HK_TELEM_DIR,
+     ADU5_SAT_TELEM_DIR,
+     G12_SAT_TELEM_DIR,
+     ADU5_PAT_TELEM_DIR,
+     G12_POS_TELEM_DIR,
+     ADU5_VTG_TELEM_DIR,
+     SURFHK_TELEM_DIR,
+     TURFHK_TELEM_DIR,
+     OTHER_MONITOR_TELEM_DIR,
+     PEDESTAL_TELEM_DIR,
+     REQUEST_TELEM_DIR};
+
+  
+  for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {    
+    numLinks=countFilesInDir(telemLinkDirs[hkInd]);
+    queuePtr->hkLinks[hkInd]=numLinks;
+    if(printToScreen) printf("%s\t%u\n",telemLinkDirs[hkInd],numLinks);
     if(((short)numLinks)==-1) retVal--;
     else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR);
+      purgeHkDirectory(telemDirs[hkInd],telemLinkDirs[hkInd]);
     }
-
-    numLinks=countFilesInDir(SIPD_CMD_ECHO_TELEM_LINK_DIR);
-    queuePtr->cmdLinksSIP=numLinks;
-    if(printToScreen) printf("%s\t%u\n",SIPD_CMD_ECHO_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR);
+  }
+  
+  for(pri=0;pri<NUM_PRIORITIES;pri++) {
+    numLinks=countFilesInDir(eventTelemLinkDirs[pri]);
+    queuePtr->eventLinks[pri]=numLinks;
+    if(printToScreen) printf("%s\t%u\n",eventTelemLinkDirs[pri]
+			     ,numLinks);
+    if(((short)numLinks)==-1) {
+      retVal--;
     }
-
-    numLinks=countFilesInDir(HK_TELEM_LINK_DIR);
-    queuePtr->hkLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",HK_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(HK_TELEM_DIR,HK_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(G12_POS_TELEM_LINK_DIR);
-    queuePtr->gpsLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",G12_POS_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(G12_POS_TELEM_DIR,G12_POS_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(G12_SAT_TELEM_LINK_DIR);
-    queuePtr->gpsLinks+=numLinks;
-    if(printToScreen) printf("%s\t%u\n",G12_SAT_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(G12_SAT_TELEM_LINK_DIR,G12_SAT_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(ADU5_PAT_TELEM_LINK_DIR);
-    queuePtr->gpsLinks+=numLinks;
-    if(printToScreen) printf("%s\t%u\n",ADU5_PAT_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(ADU5_PAT_TELEM_DIR,ADU5_PAT_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(ADU5_VTG_TELEM_LINK_DIR);
-    queuePtr->gpsLinks+=numLinks;
-    if(printToScreen) printf("%s\t%u\n",ADU5_VTG_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(ADU5_VTG_TELEM_DIR,ADU5_VTG_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(ADU5_SAT_TELEM_LINK_DIR);
-    queuePtr->gpsLinks+=numLinks;
-    if(printToScreen) printf("%s\t%u\n",ADU5_SAT_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(ADU5_SAT_TELEM_DIR,ADU5_SAT_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(MONITOR_TELEM_LINK_DIR);
-    queuePtr->monitorLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",MONITOR_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(SURFHK_TELEM_LINK_DIR);
-    queuePtr->surfHkLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",SURFHK_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(SURFHK_TELEM_DIR,SURFHK_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(TURFHK_TELEM_LINK_DIR);
-    queuePtr->turfHkLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",TURFHK_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(TURFHK_TELEM_DIR,TURFHK_TELEM_LINK_DIR);
-    }
-
-    numLinks=countFilesInDir(HEADER_TELEM_LINK_DIR);
-    queuePtr->headLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",HEADER_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
     else if(numLinks>maxEventQueueSize) {
-	purgeHkDirectory(HEADER_TELEM_DIR,HEADER_TELEM_LINK_DIR);
+      //purge directory
+      purgeDirectory(pri);
     }
-
-    numLinks=countFilesInDir(PEDESTAL_TELEM_LINK_DIR);
-    queuePtr->pedestalLinks=numLinks;
-    if(printToScreen) printf("%s\t%u\n",PEDESTAL_TELEM_LINK_DIR,numLinks);
-    if(((short)numLinks)==-1) retVal--;
-    else if(numLinks>maxHkQueueSize) {
-	purgeHkDirectory(PEDESTAL_TELEM_DIR,PEDESTAL_TELEM_LINK_DIR);
-    }
-    
-    for(count=0;count<NUM_PRIORITIES;count++) {
-	numLinks=countFilesInDir(eventTelemLinkDirs[count]);
-	queuePtr->eventLinks[count]=numLinks;
-	if(printToScreen) printf("%s\t%u\n",eventTelemLinkDirs[count]
-				 ,numLinks);
-	if(((short)numLinks)==-1) {
-	    retVal--;
-	}
-	else if(numLinks>maxEventQueueSize) {
-	    //purge directory
-	    purgeDirectory(count);
-	}
-    }
-    return retVal;
+  }
+  return retVal;
 }
 
 void purgeHkDirectory(char *dirName,char *linkDirName) 
@@ -628,95 +627,102 @@ void prepWriterStructs() {
 }
 
 
-void checkProcesses()
+void checkProcesses(int dontStart)
 {
+  otherData.processBitMask=0;
     ProgramId_t prog;
+    int testPid=0;
+    int retVal=0;
     CommandStruct_t theCmd;    
     theCmd.numCmdBytes=3;
     theCmd.cmd[0]=CMD_START_PROGS;
     unsigned int value=0;
     int sendCommand=0;
-    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
+    int idMask=0;
+    for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {  
+      idMask=getIdMask(prog);
+      otherData.processBitMask|=idMask;
 	char *pidFile=getPidFile(prog);
 //	syslog(LOG_INFO,"Trying prog: %d %s\n",prog,pidFile); 
 	FILE *test = fopen(pidFile,"r");
 
 	if(!test) {
-	    syslog(LOG_INFO,"%s not present what will I do\n",pidFile);
-	    if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
+	  otherData.processBitMask&=(~idMask);
+	  fprintf(stderr,"%s is not present\n",pidFile);
+	  syslog(LOG_INFO,"%s not present what will I do\n",pidFile);
+	  if(startProcesses && !dontStart) {
+	      if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
+		fprintf(stderr,"%s not present will restart process\n",
+			pidFile);
 		syslog(LOG_WARNING,"%s not present will restart process\n",
 		       pidFile);
 		sendCommand=1;
-		value|=getIdMask(prog);	    
+		value|=idMask;	    
+	      }
 	    }
 	}
-	else fclose(test);
+	else {
+	  fscanf(test,"%d", &testPid) ;
+	  fclose(test);	  	  
+	  retVal=getProcessInfo(prog,testPid);
+	  if(retVal<0) {
+	    otherData.processBitMask&=(~idMask);
+	    fprintf(stderr,"%s present, but process %d isn't\n",pidFile,testPid);
+	    syslog(LOG_INFO,"%s present, but process %d isn't\n",pidFile,testPid);
+	    removeFile(pidFile);
+	    if(startProcesses && !dontStart) {
+	      if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
+		syslog(LOG_WARNING,"%s not present will restart process\n",
+		       pidFile);
+		sendCommand=1;
+		value|=idMask;	    
+	      }
+	    }	    
+	  }
+	}
     }
     if(sendCommand) {
 	theCmd.cmd[1]=value&0xff;
 	theCmd.cmd[2]=(value&0xff00)>>8;
 	writeCommandAndLink(&theCmd);
     }
-
-
 }
 
-int getIdMask(ProgramId_t prog) {
-    switch(prog) {
-	case ID_ACQD: return ACQD_ID_MASK;
-	case ID_ARCHIVED: return ARCHIVED_ID_MASK;
-	case ID_CALIBD: return CALIBD_ID_MASK;
-	case ID_CMDD: return CMDD_ID_MASK;
-	case ID_EVENTD: return EVENTD_ID_MASK;
-	case ID_GPSD: return GPSD_ID_MASK;
-	case ID_HKD: return HKD_ID_MASK;
-	case ID_LOSD: return LOSD_ID_MASK;
-	case ID_PRIORITIZERD: return PRIORITIZERD_ID_MASK;
-	case ID_SIPD: return SIPD_ID_MASK;
-	case ID_MONITORD: return MONITORD_ID_MASK;
-	default: break;
-    }
-    return 0;
-}
-
-
-
-char *getProgName(ProgramId_t prog) {
-    char *string;
-    switch(prog) {
-	case ID_ACQD: string="Acqd"; break;
-	case ID_ARCHIVED: string="Archived"; break;
-	case ID_CALIBD: string="Calibd"; break;
-	case ID_CMDD: string="Cmdd"; break;
-	case ID_EVENTD: string="Eventd"; break;
-	case ID_GPSD: string="GPSd"; break;
-	case ID_HKD: string="Hkd"; break;
-	case ID_LOSD: string="LOSd"; break;
-	case ID_PRIORITIZERD: string="Prioritizerd"; break;
-	case ID_SIPD: string="SIPd"; break;
-	case ID_MONITORD: string="Monitord"; break;
-	default: string=NULL; break;
-    }
-    return string;
-}
-
-char *getPidFile(ProgramId_t prog) {
-  switch(prog) {
-  case ID_ACQD: return ACQD_PID_FILE;
-  case ID_ARCHIVED: return ARCHIVED_PID_FILE;
-  case ID_CALIBD: return CALIBD_PID_FILE;
-  case ID_CMDD: return CMDD_PID_FILE;
-  case ID_EVENTD: return EVENTD_PID_FILE;
-  case ID_GPSD: return GPSD_PID_FILE;
-  case ID_HKD: return HKD_PID_FILE;
-  case ID_LOSD: return LOSD_PID_FILE;
-  case ID_PRIORITIZERD: return PRIORITIZERD_PID_FILE;
-  case ID_SIPD: return SIPD_PID_FILE;
-  case ID_MONITORD: return MONITORD_PID_FILE;
-  default: break;
+int getProcessInfo(ProgramId_t prog, int progPid)
+{
+  char statName[FILENAME_MAX];
+  int pid,ppid,pgrp,session,tty_nr,tpgid;
+  unsigned long flags,minflt,cminflt,majflt,cmajflt;
+  unsigned long utime,stime;
+  long cutime,cstime,priority,nice,hardCode,itrealvalue;
+  unsigned long starttime, vsize;
+  long rss;
+  unsigned long rlim, startcode, endcode, startstack,kstkesp,kstkeip,signal;
+  unsigned long blocked, sigignore,sigcatch,wchan,nswap,cnswap;
+  int exit_signal,processor;
+  unsigned long rt_priority, policy;
+  
+  char processName[180];
+  char state;     
+  sprintf(statName,"/proc/%d/stat",progPid);
+  FILE *fpProc = fopen(statName,"r");
+  if(!fpProc) {
+    //Probably wasn't really a process
+    return -1;
   }
-  return NULL;
+  
+  fscanf(fpProc,"%d %s %c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %lu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %d %d %lu %lu",&pid,processName,&state,&ppid,&pgrp,&session,&tty_nr,&tpgid,&flags,&minflt,&cminflt,&majflt,&cmajflt,&utime,&stime,&cutime,&cstime,&priority,&nice,&hardCode,&itrealvalue,&starttime,&vsize,&rss,&rlim,&startcode,&endcode,&startstack,&kstkesp,&kstkeip,&signal,&blocked,&sigignore,&sigcatch,&wchan,&nswap,&cnswap,&exit_signal,&processor,&rt_priority,&policy);
+  fclose(fpProc);
+
+  if(printToScreen) printf("Process %s (%d) -- utime %lu stime %lu starttime %lu\n",processName,pid,utime,stime,starttime);
+  monData.procInfo.utime[prog-ID_FIRST]=utime;
+  monData.procInfo.stime[prog-ID_FIRST]=stime;
+  monData.procInfo.vsize[prog-ID_FIRST]=vsize;
+  return 0;
+
 }
+
+
 
 
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
