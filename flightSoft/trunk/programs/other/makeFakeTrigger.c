@@ -31,30 +31,30 @@ int main (int argc, char *argv[])
     char filename[FILENAME_MAX];
     char *acqdDir="/tmp/anita/trigAcqd";
     char *acqdLinkDir="/tmp/anita/trigAcqd/link";
-    char *gpsdDir="/tmp/anita/trigGPSd";
-    char *gpsdLinkDir="/tmp/anita/trigGPSd/link";
     FILE *pFile;
     struct timeval timeStruct;
+    GpsSubTime_t theTTT;
+    theTTT.fromAdu5=0;
+    int retVal=0;
 
     makeDirectories(acqdDir);
     makeDirectories(acqdLinkDir);
-    makeDirectories(gpsdLinkDir);
-    makeDirectories(gpsdDir);
+    makeDirectories(GPSD_SUBTIME_LINK_DIR);
 
     while(1) {
 	randomWaitForNextEvent();
 	gettimeofday(&timeStruct,NULL);
-/* 	printf("%d %d\n",timeStruct.tv_sec,timeStruct.tv_usec); */
+	//	printf("%d %d\n",timeStruct.tv_sec,timeStruct.tv_usec);
 	if(writeGpsThisTime(timeStruct.tv_usec)) {
-	  sprintf(filename,"%s/gps_%d_%d.dat",gpsdDir,(int)timeStruct.tv_sec,(int)timeStruct.tv_usec*10);
-	    pFile=fopen(filename,"w");
-	    if(pFile == NULL) {
-		syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
-		exit(0);
-	    }	
-	    fprintf(pFile,"%d %d\n",(int)timeStruct.tv_sec,(int)timeStruct.tv_usec*10);
-	    fclose(pFile);
-	    makeLink(filename,gpsdLinkDir);
+	  theTTT.unixTime=timeStruct.tv_sec;
+	  theTTT.subTime=timeStruct.tv_usec*10;
+	  //	  printf("%u %u\n",theTTT.unixTime,theTTT.subTime);
+	  sprintf(filename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
+	  writeGpsTtt(&theTTT,filename);
+	  retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
+	  theTTT.fromAdu5++;
+	  if(theTTT.fromAdu5>2)
+	    theTTT.fromAdu5=0;
 	}
 
 	//Acqd file

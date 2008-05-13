@@ -729,7 +729,7 @@ typedef struct {
 typedef struct {
     unsigned int unixTime;
     unsigned int subTime;
-    int fromAdu5; //1 is yes , 0 is g12
+    int fromAdu5; //2 is ADU52, 1 is ADU51 , 0 is g12
 } GpsSubTime_t;
 
 
