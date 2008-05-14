@@ -1,7 +1,8 @@
 
 #include "../carrier/apc8620.h"
 #include "ip470.h"
-
+#include <ctype.h>
+#include <unistd.h>
 
 #define INTERRUPT_LEVEL 5   /* level or bus IRQ - may not be used on all systems */
 #define VECTOR 192          /* interrupt vector - may not be used on all systems */
@@ -70,7 +71,7 @@ int main()
     char cmd_buff[40];  /* command line input buffer */
     int item;           /* menu item selection variable */
     long status;        /* returned status of driver routines */
-    int hstatus;        /* interrupt handler returned status */
+    //    int hstatus;        /* interrupt handler returned status */
     unsigned finished;  /* flag to exit program */
     long addr;          /* long to hold board address */
     int flag;           /* general flag for exiting loops */
@@ -402,6 +403,7 @@ int main()
 	CarrierClose(c_block.nHandle);
 
     printf("\nEXIT PROGRAM\n");
+    return 0;
 }   /* end of main */
 
 

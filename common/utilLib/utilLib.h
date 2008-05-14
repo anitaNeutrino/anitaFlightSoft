@@ -108,6 +108,7 @@ extern "C" {
     int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename);
     int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename);
     int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename);
+  int writeGpsGga(GpsGgaStruct_t *ggaPtr, char *filename);
     int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename);
     int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename);
     int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename);

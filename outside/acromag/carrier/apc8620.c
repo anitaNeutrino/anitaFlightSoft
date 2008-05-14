@@ -53,8 +53,10 @@
 
 #include "apc8620.h"
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 #define DEVNAME "/dev/apc8620_"	/* name of device */
 
@@ -171,7 +173,7 @@ long input_long(int nHandle, long *p)
 
 	pCarrier = GetCarrier(nHandle);
 	if(pCarrier == NULL)
-		return;
+		return((long)0);
 
 	if( p )
 	{
@@ -606,7 +608,8 @@ ACRO_CSTATUS CarrierClose(int nHandle)
 	if(pCarrier->bInitialized == FALSE)
 		return E_NOT_INITIALIZED;
 
-  	close( &pCarrier->devname[0] );
+//  	close( &pCarrier->devname[0] );
+  	close( pCarrier->nCarrierDeviceHandle ); //RJN addition
   	pCarrier->nCarrierDeviceHandle = -1;
 	DeleteCarrier(nHandle);		
 	return (ACRO_CSTATUS)S_OK;
@@ -750,7 +753,7 @@ ACRO_CSTATUS SetIPClockControl(int nHandle, char chSlot, word uControl)
 	CARRIERDATA_STRUCT* pCarrier;
 	PCI_BOARD_MEMORY_MAP* pPCICard;
 	word nValue;
-	ACRO_CSTATUS result;
+//	ACRO_CSTATUS result; //RJN
 
 	pCarrier = GetCarrier(nHandle);
 	if(pCarrier == 0)
@@ -808,7 +811,7 @@ ACRO_CSTATUS GetIPClockControl(int nHandle, char chSlot, word* pControl)
 	CARRIERDATA_STRUCT* pCarrier;
 	PCI_BOARD_MEMORY_MAP* pPCICard;
 	word nValue;
-	ACRO_CSTATUS result;
+//	ACRO_CSTATUS result; //RJN hack
 
 	*pControl = 0;	/* default */
 

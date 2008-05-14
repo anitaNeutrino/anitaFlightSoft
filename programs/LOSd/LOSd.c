@@ -32,7 +32,7 @@
 
 #define LOS_DEVICE "/tmp/dev_los"
 
-#define NUM_HK_TELEM_DIRS 14 
+#define NUM_HK_TELEM_DIRS 20 
 
 typedef enum {
   LOS_TELEM_FIRST=0,
@@ -40,11 +40,17 @@ typedef enum {
   LOS_TELEM_MONITOR,
   LOS_TELEM_HEADER,
   LOS_TELEM_HK,
-  LOS_TELEM_ADU5_SAT,
+  LOS_TELEM_ADU5A_SAT,
+  LOS_TELEM_ADU5B_SAT,
   LOS_TELEM_G12_SAT,
-  LOS_TELEM_ADU5_PAT,
+  LOS_TELEM_ADU5A_PAT,
+  LOS_TELEM_ADU5B_PAT,
   LOS_TELEM_G12_POS,
-  LOS_TELEM_ADU5_VTG,
+  LOS_TELEM_ADU5A_VTG,
+  LOS_TELEM_ADU5B_VTG,
+  LOS_TELEM_G12_GGA,
+  LOS_TELEM_ADU5A_GGA,
+  LOS_TELEM_ADU5B_GGA,
   LOS_TELEM_SURFHK,
   LOS_TELEM_TURFRATE,
   LOS_TELEM_OTHER,
@@ -173,9 +179,15 @@ void sendWakeUpBuffer();
    makeDirectories(HK_TELEM_LINK_DIR);
    makeDirectories(MONITOR_TELEM_LINK_DIR);
    makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
-   makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+   makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
+   makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
+   makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
+   makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
+   makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
+   makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
+   makeDirectories(G12_GGA_TELEM_LINK_DIR);
+   makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
+   makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
    makeDirectories(G12_SAT_TELEM_LINK_DIR);
    makeDirectories(G12_POS_TELEM_LINK_DIR);
    makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
@@ -616,11 +628,17 @@ void fillBufferWithHk()
      MONITOR_TELEM_LINK_DIR,
      HEADER_TELEM_LINK_DIR,
      HK_TELEM_LINK_DIR,
-     ADU5_SAT_TELEM_LINK_DIR,
+     ADU5A_SAT_TELEM_LINK_DIR,
+     ADU5B_SAT_TELEM_LINK_DIR,
      G12_SAT_TELEM_LINK_DIR,
-     ADU5_PAT_TELEM_LINK_DIR,
+     ADU5A_PAT_TELEM_LINK_DIR,
+     ADU5B_PAT_TELEM_LINK_DIR,
      G12_POS_TELEM_LINK_DIR,
-     ADU5_VTG_TELEM_LINK_DIR,
+     ADU5A_VTG_TELEM_LINK_DIR,
+     ADU5B_VTG_TELEM_LINK_DIR,
+     G12_GGA_TELEM_LINK_DIR,
+     ADU5A_GGA_TELEM_LINK_DIR,
+     ADU5B_GGA_TELEM_LINK_DIR,
      SURFHK_TELEM_LINK_DIR,
      TURFHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
@@ -631,11 +649,17 @@ void fillBufferWithHk()
      MONITOR_TELEM_DIR,
      HEADER_TELEM_DIR,
      HK_TELEM_DIR,
-     ADU5_SAT_TELEM_DIR,
+     ADU5A_SAT_TELEM_DIR,
+     ADU5B_SAT_TELEM_DIR,
      G12_SAT_TELEM_DIR,
-     ADU5_PAT_TELEM_DIR,
+     ADU5A_PAT_TELEM_DIR,
+     ADU5B_PAT_TELEM_DIR,
      G12_POS_TELEM_DIR,
-     ADU5_VTG_TELEM_DIR,
+     ADU5A_VTG_TELEM_DIR,
+     ADU5B_VTG_TELEM_DIR,
+     G12_GGA_TELEM_DIR,
+     ADU5A_GGA_TELEM_DIR,
+     ADU5B_GGA_TELEM_DIR,
      SURFHK_TELEM_DIR,
      TURFHK_TELEM_DIR,
      OTHER_MONITOR_TELEM_DIR,
@@ -647,10 +671,16 @@ void fillBufferWithHk()
      sizeof(AnitaEventHeader_t),
      sizeof(HkDataStruct_t),
      sizeof(GpsAdu5SatStruct_t),
+     sizeof(GpsAdu5SatStruct_t),
      sizeof(GpsG12SatStruct_t),
+     sizeof(GpsAdu5PatStruct_t),
      sizeof(GpsAdu5PatStruct_t),
      sizeof(GpsG12PosStruct_t),
      sizeof(GpsAdu5VtgStruct_t),
+     sizeof(GpsAdu5VtgStruct_t),
+     sizeof(GpsGgaStruct_t),
+     sizeof(GpsGgaStruct_t),
+     sizeof(GpsGgaStruct_t),     
      sizeof(FullSurfHkStruct_t),
      sizeof(TurfRateStruct_t),
      sizeof(OtherMonitorStruct_t),

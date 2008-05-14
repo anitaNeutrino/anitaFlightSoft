@@ -15,9 +15,13 @@
 
 
 void fakeEvent(int trigType);
-void fakeAdu5Pat(struct timeval *currentTime);
-void fakeAdu5Sat(struct timeval *currentTime);
-void fakeAdu5Vtg(struct timeval *currentTime);
+void fakeGpsGga(struct timeval *currentTime, int fromAdu5);
+void fakeAdu5aPat(struct timeval *currentTime);
+void fakeAdu5aSat(struct timeval *currentTime);
+void fakeAdu5aVtg(struct timeval *currentTime);
+void fakeAdu5bPat(struct timeval *currentTime);
+void fakeAdu5bSat(struct timeval *currentTime);
+void fakeAdu5bVtg(struct timeval *currentTime);
 void fakeG12Sat(struct timeval *currentTime);
 void fakeG12Pos(struct timeval *currentTime);
 void fakeHkCal(struct timeval *currentTime);
@@ -38,9 +42,15 @@ float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 // Data rates
 float g12PosPeriod=10;
 int g12SatPeriod=600;
-int adu5SatPeriod=600;
-float adu5PatPeriod=10;
-float adu5VtgPeriod=10;
+int g12GgaPeriod=1;
+int adu5aGgaPeriod=1;
+int adu5bGgaPeriod=1;
+int adu5aSatPeriod=600;
+float adu5aPatPeriod=10;
+float adu5aVtgPeriod=10;
+int adu5bSatPeriod=600;
+float adu5bPatPeriod=10;
+float adu5bVtgPeriod=10;
 int hkReadoutPeriod=5;
 float actualHkPeriod=0.1;
 int hkCalPeriod=600;
@@ -98,22 +108,37 @@ int main(int argc, char *argv[])
 
     }
     else {
-	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
-	fprintf(stderr,"Error reading config file: %s\n",eString);
+	syslog(LOG_ERR,"Error reading Monitord.config file: %s\n",eString);
+	fprintf(stderr,"Error reading Monitord.config file: %s\n",eString);
     }
 
 
     kvpReset () ;
-    status = configLoad ("GPSd.config","adu5");
+    status = configLoad ("GPSd.config","adu5a");
     if (status == CONFIG_E_OK) {
 //	printf("Here\n");
-	adu5PatPeriod=kvpGetFloat("patPeriod",10);
-	adu5SatPeriod=kvpGetInt("satPeriod",600);
-	adu5VtgPeriod=kvpGetFloat("vtgPeriod",600);
+	adu5aPatPeriod=kvpGetFloat("patPeriod",10);
+	adu5aSatPeriod=kvpGetInt("satPeriod",600);
+	adu5aGgaPeriod=kvpGetInt("ggaPeriod",600);
+	adu5aVtgPeriod=kvpGetFloat("vtgPeriod",600);
     }
     else {
-	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
-	fprintf(stderr,"Error reading config file: %s\n",eString);
+	syslog(LOG_ERR,"Error reading GPSd.config file: %s\n",eString);
+	fprintf(stderr,"Error reading GPSd.config file: %s\n",eString);
+    }
+
+    kvpReset () ;
+    status = configLoad ("GPSd.config","adu5b");
+    if (status == CONFIG_E_OK) {
+//	printf("Here\n");
+	adu5bPatPeriod=kvpGetFloat("patPeriod",10);
+	adu5bSatPeriod=kvpGetInt("satPeriod",600);
+	adu5bGgaPeriod=kvpGetInt("ggaPeriod",600);
+	adu5bVtgPeriod=kvpGetFloat("vtgPeriod",600);
+    }
+    else {
+	syslog(LOG_ERR,"Error reading GPSd.config file: %s\n",eString);
+	fprintf(stderr,"Error reading GPSd.config file: %s\n",eString);
     }
 
     kvpReset () ;
@@ -122,11 +147,12 @@ int main(int argc, char *argv[])
 //	printf("Here\n");
 	g12PosPeriod=kvpGetFloat("posPeriod",10);
 	g12SatPeriod=kvpGetInt("satPeriod",600);
+	g12GgaPeriod=kvpGetInt("ggaPeriod",600);
 
     }
     else {
-	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
-	fprintf(stderr,"Error reading config file: %s\n",eString);
+	syslog(LOG_ERR,"Error reading GPSd.config file: %s\n",eString);
+	fprintf(stderr,"Error reading GPSd.config file: %s\n",eString);
     }
 
 
@@ -134,12 +160,24 @@ int main(int argc, char *argv[])
 //    int evCounter=0;
     int trigType=34;
     
-    struct timeval lastAdu5Pat;
-    lastAdu5Pat.tv_sec=0;
-    struct timeval lastAdu5Sat;
-    lastAdu5Sat.tv_sec=0;
-    struct timeval lastAdu5Vtg;
-    lastAdu5Vtg.tv_sec=0;
+    struct timeval lastG12Gga;
+    lastG12Gga.tv_sec=0;
+    struct timeval lastAdu5aGga;
+    lastAdu5aGga.tv_sec=0;
+    struct timeval lastAdu5bGga;
+    lastAdu5bGga.tv_sec=0;
+    struct timeval lastAdu5aPat;
+    lastAdu5aPat.tv_sec=0;
+    struct timeval lastAdu5aSat;
+    lastAdu5aSat.tv_sec=0;
+    struct timeval lastAdu5aVtg;
+    lastAdu5aVtg.tv_sec=0;   
+    struct timeval lastAdu5bPat;
+    lastAdu5bPat.tv_sec=0;
+    struct timeval lastAdu5bSat;
+    lastAdu5bSat.tv_sec=0;
+    struct timeval lastAdu5bVtg;
+    lastAdu5bVtg.tv_sec=0;
     struct timeval lastG12Pos;
     lastG12Pos.tv_sec=0;
     struct timeval lastG12Sat;
@@ -158,9 +196,15 @@ int main(int argc, char *argv[])
     lastSlowRate.tv_sec=0;
     struct timeval currentTime;
 
-    printf("ADU5 PAT Period %f\n",adu5PatPeriod);
-    printf("ADU5 SAT Period %d\n",adu5SatPeriod);
-    printf("ADU5 VTG Period %f\n",adu5VtgPeriod);
+    printf("G12 GGA Period %d\n",g12GgaPeriod);
+    printf("ADU5A GGA Period %d\n",adu5aGgaPeriod);
+    printf("ADU5B GGA Period %d\n",adu5bGgaPeriod);
+    printf("ADU5A PAT Period %f\n",adu5aPatPeriod);
+    printf("ADU5A SAT Period %d\n",adu5aSatPeriod);
+    printf("ADU5A VTG Period %f\n",adu5aVtgPeriod);
+    printf("ADU5B PAT Period %f\n",adu5bPatPeriod);
+    printf("ADU5B SAT Period %d\n",adu5bSatPeriod);
+    printf("ADU5B VTG Period %f\n",adu5bVtgPeriod);
     printf("G12 POS Period %f\n",g12PosPeriod);
     printf("G12 SAT Period %d\n",g12SatPeriod);
     printf("Monitor Period %d\n",monitorPeriod);
@@ -176,32 +220,66 @@ int main(int argc, char *argv[])
     makeDirectories(TURFHK_TELEM_LINK_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MONITOR_TELEM_LINK_DIR);
-    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
     makeDirectories(G12_SAT_TELEM_LINK_DIR);
     makeDirectories(G12_POS_TELEM_LINK_DIR);
 
     while(!maxEvents || (evNum<=maxEvents)) {
 	gettimeofday(&currentTime,0);
 //	time(&rawTime);
+	
 
+	//GGA
+
+	if(getTimeDiff(lastG12Gga,currentTime)>g12GgaPeriod) {
+	  fakeGpsGga(&currentTime,0);
+	  lastG12Gga=currentTime;
+	}
+	if(getTimeDiff(lastAdu5aGga,currentTime)>adu5aGgaPeriod) {
+	  fakeGpsGga(&currentTime,0);
+	  lastAdu5aGga=currentTime;
+	}
+	if(getTimeDiff(lastAdu5bGga,currentTime)>adu5bGgaPeriod) {
+	  fakeGpsGga(&currentTime,0);
+	  lastAdu5bGga=currentTime;
+	}
 	
 	//Check last PAT
-//	printf("%d %d\n",lastAdu5Pat.tv_sec,lastAdu5Pat.tv_usec);
-	if(getTimeDiff(lastAdu5Pat,currentTime)>adu5PatPeriod) {
-	    fakeAdu5Pat(&currentTime);
-	    lastAdu5Pat=currentTime;
+//	printf("%d %d\n",lastAdu5aPat.tv_sec,lastAdu5aPat.tv_usec);
+	if(getTimeDiff(lastAdu5aPat,currentTime)>adu5aPatPeriod) {
+	    fakeAdu5aPat(&currentTime);
+	    lastAdu5aPat=currentTime;
 	}
-	//Check last Adu5 SAT
-	if(getTimeDiff(lastAdu5Sat,currentTime)>adu5SatPeriod) {
-	    fakeAdu5Sat(&currentTime);
-	    lastAdu5Sat=currentTime;
+	//Check last Adu5a SAT
+	if(getTimeDiff(lastAdu5aSat,currentTime)>adu5aSatPeriod) {
+	    fakeAdu5aSat(&currentTime);
+	    lastAdu5aSat=currentTime;
 	}
-	//Check last Adu5 VTG
-	if(getTimeDiff(lastAdu5Vtg,currentTime)>adu5VtgPeriod) {
-	    fakeAdu5Vtg(&currentTime);
-	    lastAdu5Vtg=currentTime;
+	//Check last Adu5a VTG
+	if(getTimeDiff(lastAdu5aVtg,currentTime)>adu5aVtgPeriod) {
+	    fakeAdu5aVtg(&currentTime);
+	    lastAdu5aVtg=currentTime;
+	}
+	//Check last PAT
+//	printf("%d %d\n",lastAdu5aPat.tv_sec,lastAdu5aPat.tv_usec);
+	if(getTimeDiff(lastAdu5bPat,currentTime)>adu5bPatPeriod) {
+	    fakeAdu5bPat(&currentTime);
+	    lastAdu5bPat=currentTime;
+	}
+	//Check last Adu5b SAT
+	if(getTimeDiff(lastAdu5bSat,currentTime)>adu5bSatPeriod) {
+	    fakeAdu5bSat(&currentTime);
+	    lastAdu5bSat=currentTime;
+	}
+	//Check last Adu5b VTG
+	if(getTimeDiff(lastAdu5bVtg,currentTime)>adu5bVtgPeriod) {
+	    fakeAdu5bVtg(&currentTime);
+	    lastAdu5bVtg=currentTime;
 	}
 	//Check last G12 SAT
 	if(getTimeDiff(lastG12Sat,currentTime)>g12SatPeriod) {
@@ -538,7 +616,7 @@ void fakeMonitor(struct timeval *currentTime) {
 }
 	    
 
-void fakeAdu5Pat(struct timeval *currentTime) {
+void fakeAdu5aPat(struct timeval *currentTime) {
 
     GpsAdu5PatStruct_t thePat;
     char theFilename[FILENAME_MAX];
@@ -562,14 +640,14 @@ void fakeAdu5Pat(struct timeval *currentTime) {
     retVal=checkPacket(&thePat);
     if(retVal) 
 	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
+    sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5A_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
 //    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
     retVal=writeGpsPat(&thePat,theFilename);  
-    retVal=makeLink(theFilename,ADU5_PAT_TELEM_LINK_DIR); 
+    retVal=makeLink(theFilename,ADU5A_PAT_TELEM_LINK_DIR); 
 }
 
 
-void fakeAdu5Vtg(struct timeval *currentTime) {
+void fakeAdu5aVtg(struct timeval *currentTime) {
 
     GpsAdu5VtgStruct_t theVtg;
     char theFilename[FILENAME_MAX];
@@ -589,13 +667,13 @@ void fakeAdu5Vtg(struct timeval *currentTime) {
     retVal=checkPacket(&theVtg);
     if(retVal) 
 	printf("Problem with GpsAdu5VtgStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/vtg_%d_%d.dat",ADU5_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
+    sprintf(theFilename,"%s/vtg_%d_%d.dat",ADU5A_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
     retVal=writeGpsVtg(&theVtg,theFilename);  
-    retVal=makeLink(theFilename,ADU5_VTG_TELEM_LINK_DIR); 
+    retVal=makeLink(theFilename,ADU5A_VTG_TELEM_LINK_DIR); 
 }
 
 
-void fakeAdu5Sat(struct timeval *currentTime) {
+void fakeAdu5aSat(struct timeval *currentTime) {
     GpsAdu5SatStruct_t theSat;
     char theFilename[FILENAME_MAX];
     int retVal,antNum;
@@ -620,9 +698,140 @@ void fakeAdu5Sat(struct timeval *currentTime) {
     retVal=checkPacket(&theSat);
     if(retVal) 
 	printf("Problem with GpsAdu5SatStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5_SAT_TELEM_DIR,theSat.unixTime);
+    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5A_SAT_TELEM_DIR,theSat.unixTime);
     retVal=writeGpsAdu5Sat(&theSat,theFilename);  
-    retVal=makeLink(theFilename,ADU5_SAT_TELEM_LINK_DIR);
+    retVal=makeLink(theFilename,ADU5A_SAT_TELEM_LINK_DIR);
+}
+
+	    
+
+void fakeAdu5bPat(struct timeval *currentTime) {
+
+    GpsAdu5PatStruct_t thePat;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+//    thePat.gHdr.code=PACKET_GPS_ADU5_PAT;
+//    thePat.gHdr.numBytes=sizeof(GpsAdu5PatStruct_t);
+    thePat.unixTime=currentTime->tv_sec;
+    thePat.unixTimeUs=currentTime->tv_usec;
+    thePat.heading=0;
+    thePat.pitch=0;
+    thePat.roll=0;
+    thePat.brms=0;
+    thePat.mrms=0;
+    thePat.attFlag=0;
+    thePat.latitude=34.489885;
+    thePat.longitude=-1*104.2218668;
+    thePat.altitude=1238.38;
+
+    //Write file and link for sipd
+    fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
+    retVal=checkPacket(&thePat);
+    if(retVal) 
+	printf("Problem with GpsAdu5PatStruct_t %d\n",retVal);
+    sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5B_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
+//    printf("%s -- code %d -- numBytes %d\n",theFilename,thePat.gHdr.code,thePat.gHdr.numBytes);
+    retVal=writeGpsPat(&thePat,theFilename);  
+    retVal=makeLink(theFilename,ADU5B_PAT_TELEM_LINK_DIR); 
+}
+
+
+void fakeGpsGga(struct timeval *currentTime, int fromAdu5) {
+
+    GpsGgaStruct_t theGga;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+//    theGga.gHdr.code=PACKET_GPS_ADU5_PAT;
+//    theGga.gHdr.numBytes=sizeof(GpsGgaStruct_t);
+    theGga.unixTime=currentTime->tv_sec;
+    theGga.unixTimeUs=currentTime->tv_usec;
+    theGga.latitude=34.489885;
+    theGga.longitude=-1*104.2218668;
+    theGga.altitude=1238.38;
+    theGga.numSats=1;
+    theGga.geoidSeparation=7;
+    
+    //Write file and link for sipd
+    fillGenericHeader(&theGga,PACKET_GPS_ADU5_PAT,sizeof(GpsGgaStruct_t));
+    retVal=checkPacket(&theGga);
+    if(retVal) 
+	printf("Problem with GpsGgaStruct_t %d\n",retVal);
+
+    if(fromAdu5==0) {
+      sprintf(theFilename,"%s/pat_%d_%d.dat",G12_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
+      retVal=writeGpsGga(&theGga,theFilename);  
+      retVal=makeLink(theFilename,G12_GGA_TELEM_LINK_DIR); 
+    }
+    else if(fromAdu5==1) {
+      sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5A_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
+      retVal=writeGpsGga(&theGga,theFilename);  
+      retVal=makeLink(theFilename,ADU5A_GGA_TELEM_LINK_DIR); 
+    }
+    else if(fromAdu5==2) {
+      sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5B_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
+      retVal=writeGpsGga(&theGga,theFilename);  
+      retVal=makeLink(theFilename,ADU5B_GGA_TELEM_LINK_DIR); 
+    }
+    
+      
+}
+
+
+
+void fakeAdu5bVtg(struct timeval *currentTime) {
+
+    GpsAdu5VtgStruct_t theVtg;
+    char theFilename[FILENAME_MAX];
+    int retVal;
+//    theVtg.gHdr.code=PACKET_GPS_ADU5_VTG;
+//    theVtg.gHdr.numBytes=sizeof(GpsAdu5VtgStruct_t);
+    theVtg.unixTime=currentTime->tv_sec;
+    theVtg.unixTimeUs=currentTime->tv_usec;
+    theVtg.trueCourse=10.5;
+    theVtg.magneticCourse=9.5;
+    theVtg.speedInKnots=50;
+    theVtg.speedInKPH=92.6;
+
+
+    //Write file and link for sipd
+    fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
+    retVal=checkPacket(&theVtg);
+    if(retVal) 
+	printf("Problem with GpsAdu5VtgStruct_t %d\n",retVal);
+    sprintf(theFilename,"%s/vtg_%d_%d.dat",ADU5B_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
+    retVal=writeGpsVtg(&theVtg,theFilename);  
+    retVal=makeLink(theFilename,ADU5B_VTG_TELEM_LINK_DIR); 
+}
+
+
+void fakeAdu5bSat(struct timeval *currentTime) {
+    GpsAdu5SatStruct_t theSat;
+    char theFilename[FILENAME_MAX];
+    int retVal,antNum;
+    int satNum;
+
+
+//    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
+//    theSat.gHdr.numBytes=sizeof(GpsAdu5SatStruct_t);
+    theSat.unixTime=currentTime->tv_sec;
+    for(antNum=0;antNum<4;antNum++) {
+	theSat.numSats[antNum]=3;
+	for(satNum=0;satNum<(char)theSat.numSats[antNum];satNum++) {
+	    theSat.sat[antNum][satNum].prn=satNum+10;
+	    theSat.sat[antNum][satNum].azimuth=15;
+	    theSat.sat[antNum][satNum].elevation=15;
+	    theSat.sat[antNum][satNum].snr=99;
+//	theSat.sat[satNum].flag=0;
+	}
+    }
+
+    fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
+    retVal=checkPacket(&theSat);
+    if(retVal) 
+	printf("Problem with GpsAdu5SatStruct_t %d\n",retVal);
+    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5B_SAT_TELEM_DIR,theSat.unixTime);
+    retVal=writeGpsAdu5Sat(&theSat,theFilename);  
+    retVal=makeLink(theFilename,ADU5B_SAT_TELEM_LINK_DIR);
 }
 
 

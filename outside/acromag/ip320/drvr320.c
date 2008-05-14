@@ -2,6 +2,8 @@
 #include "../carrier/apc8620.h"
 #include "ip320.h"
 
+#include <ctype.h>
+
 
 #define INTERRUPT_LEVEL 5   /* level or bus IRQ - may not be used on all systems */
 #define VECTOR 192          /* interrupt vector - may not be used on all systems */
@@ -411,11 +413,11 @@ int main()
                     printf("%X] ",i & 0xf);
                 }
 /*    print the data with leading zeros. */
-                printf(" %lX",(cor_data[i] & 0xf0000) >> 16);
-                printf("%lX",(cor_data[i] & 0xf000) >> 12);
-                printf("%lX",(cor_data[i] & 0x0f00) >> 8);
-                printf("%lX",(cor_data[i] & 0x00f0) >> 4);
-                printf("%lX",cor_data[i] & 0x000f);
+                printf(" %X",(cor_data[i] & 0xf0000) >> 16);
+                printf("%X",(cor_data[i] & 0xf000) >> 12);
+                printf("%X",(cor_data[i] & 0x0f00) >> 8);
+                printf("%X",(cor_data[i] & 0x00f0) >> 4);
+                printf("%X",cor_data[i] & 0x000f);
             }
             printf("\n");
             break;
@@ -480,6 +482,7 @@ int main()
 	CarrierClose(c_block.nHandle);
 
     printf("\nEXIT PROGRAM\n");
+    return 0;
 
 }   /* end of main */
 

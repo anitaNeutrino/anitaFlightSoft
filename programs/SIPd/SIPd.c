@@ -36,7 +36,7 @@
 
 
 #define SEND_REAL_SLOW_DATA 1
-#define NUM_HK_TELEM_DIRS 14 
+#define NUM_HK_TELEM_DIRS 20 
 
 typedef enum {
   TDRSS_TELEM_FIRST=0,
@@ -44,11 +44,17 @@ typedef enum {
   TDRSS_TELEM_MONITOR,
   TDRSS_TELEM_HEADER,
   TDRSS_TELEM_HK,
-  TDRSS_TELEM_ADU5_SAT,
+  TDRSS_TELEM_ADU5A_SAT,
+  TDRSS_TELEM_ADU5B_SAT,
   TDRSS_TELEM_G12_SAT,
-  TDRSS_TELEM_ADU5_PAT,
+  TDRSS_TELEM_ADU5A_PAT,
+  TDRSS_TELEM_ADU5B_PAT,
   TDRSS_TELEM_G12_POS,
-  TDRSS_TELEM_ADU5_VTG,
+  TDRSS_TELEM_ADU5A_VTG,
+  TDRSS_TELEM_ADU5B_VTG,
+  TDRSS_TELEM_G12_GGA,
+  TDRSS_TELEM_ADU5A_GGA,
+  TDRSS_TELEM_ADU5B_GGA,
   TDRSS_TELEM_SURFHK,
   TDRSS_TELEM_TURFRATE,
   TDRSS_TELEM_OTHER,
@@ -132,11 +138,17 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      MONITOR_TELEM_LINK_DIR,
      HEADER_TELEM_LINK_DIR,
      HK_TELEM_LINK_DIR,
-     ADU5_SAT_TELEM_LINK_DIR,
+     ADU5A_SAT_TELEM_LINK_DIR,
+     ADU5B_SAT_TELEM_LINK_DIR,
      G12_SAT_TELEM_LINK_DIR,
-     ADU5_PAT_TELEM_LINK_DIR,
+     ADU5A_PAT_TELEM_LINK_DIR,
+     ADU5B_PAT_TELEM_LINK_DIR,
      G12_POS_TELEM_LINK_DIR,
-     ADU5_VTG_TELEM_LINK_DIR,
+     ADU5A_VTG_TELEM_LINK_DIR,
+     ADU5B_VTG_TELEM_LINK_DIR,
+     G12_GGA_TELEM_LINK_DIR,
+     ADU5A_GGA_TELEM_LINK_DIR,
+     ADU5B_GGA_TELEM_LINK_DIR,   
      SURFHK_TELEM_LINK_DIR,
      TURFHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
@@ -147,11 +159,17 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      MONITOR_TELEM_DIR,
      HEADER_TELEM_DIR,
      HK_TELEM_DIR,
-     ADU5_SAT_TELEM_DIR,
+     ADU5A_SAT_TELEM_DIR,
+     ADU5B_SAT_TELEM_DIR,
      G12_SAT_TELEM_DIR,
-     ADU5_PAT_TELEM_DIR,
+     ADU5A_PAT_TELEM_DIR,
+     ADU5B_PAT_TELEM_DIR,
      G12_POS_TELEM_DIR,
-     ADU5_VTG_TELEM_DIR,
+     ADU5A_VTG_TELEM_DIR,
+     ADU5B_VTG_TELEM_DIR,
+     G12_GGA_TELEM_DIR,
+     ADU5A_GGA_TELEM_DIR,
+     ADU5B_GGA_TELEM_DIR,
      SURFHK_TELEM_DIR,
      TURFHK_TELEM_DIR,
      OTHER_MONITOR_TELEM_DIR,
@@ -163,10 +181,16 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(AnitaEventHeader_t),
    sizeof(HkDataStruct_t),
    sizeof(GpsAdu5SatStruct_t),
+   sizeof(GpsAdu5SatStruct_t),
    sizeof(GpsG12SatStruct_t),
+   sizeof(GpsAdu5PatStruct_t),
    sizeof(GpsAdu5PatStruct_t),
    sizeof(GpsG12PosStruct_t),
    sizeof(GpsAdu5VtgStruct_t),
+   sizeof(GpsAdu5VtgStruct_t),
+   sizeof(GpsGgaStruct_t),
+   sizeof(GpsGgaStruct_t),
+   sizeof(GpsGgaStruct_t),     
    sizeof(FullSurfHkStruct_t),
    sizeof(TurfRateStruct_t),
    sizeof(OtherMonitorStruct_t),
@@ -175,8 +199,8 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   };
 
 //Will make these configurable soon
-int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,13,1,2,3,4,5,6,7,8,9,11,12,10};
-int hkTelemMaxCopy[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,5,2,2,5,5,3,1,3};
+int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,19,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18};
+int hkTelemMaxCopy[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,2,2,2,1,1,1,5,5,3,1,3};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -245,9 +269,15 @@ int main(int argc, char *argv[])
     }
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(HEADER_TELEM_LINK_DIR);
-    makeDirectories(ADU5_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5_PAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
+    makeDirectories(G12_GGA_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
     makeDirectories(G12_SAT_TELEM_LINK_DIR);
     makeDirectories(G12_POS_TELEM_LINK_DIR);
     makeDirectories(PEDESTAL_TELEM_LINK_DIR);

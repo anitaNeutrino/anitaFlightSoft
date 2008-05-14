@@ -1321,6 +1321,18 @@ int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename)
 
 }
 
+int writeGpsGga(GpsGgaStruct_t *ggaPtr, char *filename)
+/* Writes the pat pointed to by patPtr to filename */
+{
+
+#ifdef NO_ZLIB
+    return normalSingleWrite((unsigned char*)ggaPtr,filename,sizeof(GpsGgaStruct_t));
+#else
+    return zippedSingleWrite((unsigned char*)ggaPtr,filename,sizeof(GpsGgaStruct_t));
+#endif
+
+}
+
 
 int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename)
 /* Writes the vtg pointed to by vtgPtr to filename */
@@ -1596,6 +1608,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_GPS_ADU5_VTG: gHdr->verId=VER_ADU5_VTG; break;
 	case PACKET_GPS_G12_POS: gHdr->verId=VER_G12_POS; break;
 	case PACKET_GPS_G12_SAT: gHdr->verId=VER_G12_SAT; break;
+	case PACKET_GPS_GGA: gHdr->verId=VER_GPS_GGA; break;
 	case PACKET_HKD: gHdr->verId=VER_HK_FULL; break;
 	case PACKET_CMD_ECHO: gHdr->verId=VER_CMD_ECHO; break;
 	case PACKET_MONITOR: gHdr->verId=VER_MONITOR; break;
@@ -1658,6 +1671,7 @@ int checkPacket(void *thePtr)
 	case PACKET_GPS_ADU5_VTG: packetSize=sizeof(GpsAdu5VtgStruct_t); break;
 	case PACKET_GPS_G12_POS: packetSize=sizeof(GpsG12PosStruct_t); break;
 	case PACKET_GPS_G12_SAT: packetSize=sizeof(GpsG12SatStruct_t); break;
+	case PACKET_GPS_GGA: packetSize=sizeof(GpsGgaStruct_t); break;
 	case PACKET_HKD: packetSize=sizeof(HkDataStruct_t); break;
 	case PACKET_CMD_ECHO: packetSize=sizeof(CommandEcho_t); break;
 	case PACKET_MONITOR: packetSize=sizeof(MonitorStruct_t); break;
