@@ -1929,4 +1929,13 @@ void writeStartTest(time_t startTime)
   sprintf(theFilename,"%s/gps_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeGpsdStartStruct(&startStruct,theFilename);  
   retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);  
+
+
+  printf("\n\nGPSd Start Test\n");
+  printf("\tunixTime %u\n",startStruct.unixTime);
+  printf("\tAcks:\t%d %d %d\n",startStruct.ackCount[0],startStruct.ackCount[1],startStruct.ackCount[2]);
+  printf("\tNaks:\t%d %d %d\n",startStruct.nakCount[0],startStruct.nakCount[1],startStruct.nakCount[2]);
+  printf("\tRIOmask:\t%#x\n",startStruct.rioBitMask);
+  printf("\tTSTmask:\t%#x\n",startStruct.tstBitMask);
+  
 }
