@@ -69,11 +69,12 @@ tcsetattr(fd, TCSANOW, &options);
 
 
 /* send the commands to G12 */
- strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
- strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
+ strcat(buff, "$PASHS,NME,ALL,B,OFF\r\n");
+ strcat(buff, "$PASHS,NME,ALL,A,OFF\r\n");
  strcat(buff, "$PASHQ,PRT\r\n"); 
  strcat(buff, "$PASHQ,RIO\r\n"); 
  strcat(buff, "$PASHQ,BIT\r\n"); 
+ strcat(buff, "$PASHQ,TST\r\n"); 
  //strcat(buff, "$PASHS,RCI,000.05\r\n"); 
 // strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
