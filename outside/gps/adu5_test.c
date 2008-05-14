@@ -109,7 +109,7 @@ printf("\n");
      retVal=read(fd, data, DATA_SIZE);
 /*     printf("DATA SIZE %d\t%d\n",DATA_SIZE,retVal); */
      for(i=0; i < retVal; i++) {
- 	 printf("%c", data[i]); 
+       // 	 printf("%c", data[i]); 
 	 if(data[i]=='$') {
 /* 	 printf("%d\n",currentIndex); */
 	     if(currentIndex) {
