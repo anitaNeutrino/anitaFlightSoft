@@ -69,10 +69,16 @@ options.c_cflag |= (CLOCAL | CREAD);
 //options.c_oflag |= 0; 
 tcsetattr(fd, TCSANOW, &options);
 
-
+ 
+ 
 /* send the commands to G12 */
+ strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
+ strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
  strcat(buff, "$PASHQ,PRT\r\n"); 
- strcat(buff, "$PASHQ,RIO\r\n"); 
+ strcat(buff, "$PASHQ,RIO\r\n");
+ strcat(buff,"$PASHS,POP,20\n");
+ strcat(buff,"$PASHS,RCI,0.05\n");
+ strcat(buff, "$PASHQ,PRT\r\n"); 
  //strcat(buff, "$PASHS,RCI,000.05\r\n"); 
 // strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
@@ -81,8 +87,7 @@ tcsetattr(fd, TCSANOW, &options);
 /* strcat(buff, "$PASHQ,POS\n"); */
 /* strcat(buff, "$PASHQ,PPS\n"); */
 // strcat(buff, "$PASHS,SPD,B,4\n");
-// strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
- //strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
+
 // strcat(buff, "$PASHS,NME,RMC,B,ON\n");
  //strcat(buff, "$PASHS,LTZ,0,0\n");
  //strcat(buff, "$PASHS,UTS,ON\n");
