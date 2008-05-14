@@ -1216,7 +1216,7 @@ void processBitString(char *gpsString, int length, int fromAdu5)
     startStruct.tstBitMask |= (1 << (4*(fromAdu5-1)));
   if(testChar[1] != 'P')
     startStruct.tstBitMask |= (1 << (1+(4*(fromAdu5-1))));
-  if(testChar[1] != 'P')
+  if(testChar[2] != 'P')
     startStruct.tstBitMask |= (1 << (2+(4*(fromAdu5-1))));
   if(sensCount != 0) {
     startStruct.rioBitMask |= (1 << (4+fromAdu5));
@@ -1226,6 +1226,7 @@ void processBitString(char *gpsString, int length, int fromAdu5)
 void processTstString(char *gpsString, int length, int fromAdu5)
 {
   int retVal=strncmp(gpsString,"$PASHR,TST,000*3B",length);
+  printf("Testing %d\n%s\n",retVal,gpsString);
   if (retVal==0) {
     startStruct.tstBitMask |= (1<<(3 +(4*fromAdu5-1)));
   }
