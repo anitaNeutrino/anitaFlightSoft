@@ -75,6 +75,7 @@ tcsetattr(fd, TCSANOW, &options);
  strcat(buff, "$PASHQ,RIO\r\n"); 
  strcat(buff, "$PASHQ,BIT\r\n"); 
  strcat(buff, "$PASHQ,TST\r\n"); 
+ strcat(buff, "$PASHQ,PRT\r\n"); 
  //strcat(buff, "$PASHS,RCI,000.05\r\n"); 
 // strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
