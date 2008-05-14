@@ -443,7 +443,8 @@ int setupG12()
     else {
 	sprintf(g12Command,"$PASHS,POP,10\n");
     }
-//    strcat(g12Command,"$PASHQ,PRT,A\n");
+    strcat(g12Command,"$PASHQ,PRT\n");
+    strcat(g12Command,"$PASHQ,RIO\n");
 //    strcat(g12Command,"$PASHQ,PRT,B\n");
     strcat(g12Command,"$PASHS,ELM,0\n");
 
@@ -1506,6 +1507,10 @@ int setupAdu5A()
     char tempCommand[128]="";
     int retVal;
 
+    strcat(adu5aCommand,"$PASHQ,PRT\r\n");
+    strcat(adu5aCommand,"$PASHQ,RIO\r\n");
+    strcat(adu5aCommand,"$PASHQ,BIT\r\n");
+    strcat(adu5aCommand,"$PASHQ,TST\r\n");
     strcat(adu5aCommand,"$PASHS,ELM,0\r\n"); 
     strcat(adu5aCommand,"$PASHS,KFP,ON\r\n");
     
@@ -1560,9 +1565,13 @@ int setupAdu5B()
     char tempCommand[128]="";
     int retVal;
 
+
+    strcat(adu5bCommand,"$PASHQ,PRT\r\n");
+    strcat(adu5bCommand,"$PASHQ,RIO\r\n");
+    strcat(adu5bCommand,"$PASHQ,BIT\r\n");
+    strcat(adu5bCommand,"$PASHQ,TST\r\n");
     strcat(adu5bCommand,"$PASHS,ELM,0\r\n"); 
-    strcat(adu5bCommand,"$PASHS,KFP,ON\r\n");
-    
+    strcat(adu5bCommand,"$PASHS,KFP,ON\r\n");    
     sprintf(tempCommand,"$PASHS,3DF,V12,%2.3f,%2.3f,%2.3f\r\n",
 	    adu5bRelV12[0],adu5bRelV12[1],adu5bRelV12[2]);
     strcat(adu5bCommand,tempCommand);
