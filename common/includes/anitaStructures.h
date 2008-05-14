@@ -100,6 +100,7 @@
 #define VER_ZIPPED_PACKET 10
 #define VER_RUN_START 10
 #define VER_OTHER_MON 10
+#define VER_GPSD_START 10
 #endif
 
 
@@ -141,7 +142,8 @@ typedef enum {
     PACKET_ZIPPED_PACKET = 0x900, // Is just a zipped version of another packet
     PACKET_ZIPPED_FILE = 0xa00, // Is a zipped file
     PACKET_RUN_START = 0xb00, 
-    PACKET_OTHER_MONITOR = 0xb01 
+    PACKET_OTHER_MONITOR = 0xb01,
+    PACKET_GPSD_START = 0xc00
 } PacketCode_t;
 
 typedef enum {
@@ -635,6 +637,15 @@ typedef struct {
     float vdop;
     float tdop;
 } GpsG12PosStruct_t;
+
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned char ackCount[3];
+  unsigned char nakCount[3];
+  unsigned char rioBitMask;
+  unsigned char tstBitMask;
+} GpsdStartStruct_t;
 
 
 typedef struct {    

@@ -101,7 +101,7 @@ extern "C" {
 				 unsigned int eventNumber);
     int readSingleEncodedEvent(unsigned char *buffer, char *filename);
 
-
+    int writeGpsdStartStruct(GpsdStartStruct_t *startPtr, char *filename);
     int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
     int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
     int writePedSubbedBody(PedSubbedEventBody_t *bodyPtr, char *filename);

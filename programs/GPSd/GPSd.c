@@ -40,6 +40,12 @@ void prepWriterStructs();
 //int breakdownG12TimeString(char *subString,int *hour,int *minute,int *second);
 //int writeG12TimeFile(time_t compTime, time_t gpsTime, char *g12Output);
 int checkChecksum(char *gpsString,int gpsLength);
+void processAckString(char *gpsString, int length, int fromAdu5);
+void processNakString(char *gpsString, int length, int fromAdu5);
+void processRioString(char *gpsString, int length, int fromAdu5);
+void processBitString(char *gpsString, int length, int fromAdu5);
+void processTstString(char *gpsString, int length, int fromAdu5);
+
 void processGppatString(char *gpsString, int length, int fromAdu5);
 void processTttString(char *gpsString, int gpsLength,int fromAdu5);
 void processGpggaString(char *gpsString, int gpsLength, int fromAdu5);
@@ -51,12 +57,14 @@ void processPosString(char *gpsString, int gpsLength);
 int tryToStartNtpd();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
+void writeStartTest(time_t startTime);
 
 // Definitions
 #define LEAP_SECONDS 14 //Need to check
 #define G12_DATA_SIZE 1024
 #define ADU5_DATA_SIZE 1024
-
+#define ADU5_RIO "$PASHR,RIO,ADU5-0,____,YG01,D-P12-X--L-,800952(A)AD520033507*33"
+#define G12_RIO "$PASHR,RIO,G12,XM06,,TTOPU--LEGM_C_,VC7200228022*49"
 
 // File desciptors for GPS serial ports
 int fdG12,fdAdu5A,fdAdu5B;//,fdMag
@@ -140,7 +148,7 @@ AnitaHkWriterStruct_t g12GgaWriter;
 
 int startedNtpd=0;
 
-
+GpsdStartStruct_t startStruct;
 
 int main (int argc, char *argv[])
 {
@@ -153,8 +161,11 @@ int main (int argc, char *argv[])
 
     /* Log stuff */
     char *progName=basename(argv[0]);
-
-
+    time_t startTime;
+    time_t currentTime;
+    
+    bzero(&startStruct,sizeof(GpsdStartStruct_t));
+    
     //Sort out pid File
     retVal=sortOutPidFile(progName);
     if(retVal!=0) {
@@ -189,12 +200,16 @@ int main (int argc, char *argv[])
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
     makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
     makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
     makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
     makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
     makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
     makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
     makeDirectories(G12_POS_TELEM_LINK_DIR);
+    makeDirectories(G12_GGA_TELEM_LINK_DIR);
     makeDirectories(G12_SAT_TELEM_LINK_DIR);
+    makeDirectories(REQUEST_TELEM_LINK_DIR);
     
     printf("hkDiskBitMask %d\n",hkDiskBitMask);
 
@@ -221,11 +236,13 @@ int main (int argc, char *argv[])
 	retVal=setupG12();
 	retVal=setupAdu5A();
 	retVal=setupAdu5B();
+	time(&startTime);
 	
 //	printf("Here\n");
 	currentState=PROG_STATE_RUN;
 //	currentState=PROG_STATE_TERMINATE;
 	unsigned int loopCounter=0;
+	unsigned int sentStartFile=0;
 	while(currentState==PROG_STATE_RUN) {
 	    checkG12();
 	    checkAdu5A();
@@ -233,6 +250,13 @@ int main (int argc, char *argv[])
 	    if(!startedNtpd && g12StartNtp && loopCounter>60) startedNtpd=tryToStartNtpd();
 	    loopCounter++;
 	    usleep(1000);
+	    if(!sentStartFile) {
+	      time(&currentTime);
+	      if(currentTime>startTime+60) {
+		writeStartTest(startTime);
+		sentStartFile=1;
+	      }
+	    }
 	}
 	printf("currentState == %d\n",currentState);
 
@@ -688,6 +712,16 @@ void processG12Output(char *tempBuffer, int length,int latestData)
 //	    printf("And got Sat\n");
 	    processG12SatString(gpsString,gpsLength);
 	}
+	if(!strcmp(subString,"ACK")) {
+	  processAckString(gpsString,gpsLength,0);
+	}
+	if(!strcmp(subString,"NAK")) {
+	  processNakString(gpsString,gpsLength,0);
+	}
+	if(!strcmp(subString,"RIO")) {
+	  processRioString(gpsString,gpsLength,0);
+	}
+
 	
     }
 
@@ -1068,7 +1102,21 @@ void processAdu5Output(char *tempBuffer, int length, int latestData, int fromAdu
 //	    printf("And got Sat\n");
 	  processAdu5Sa4String(gpsString,gpsLength,fromAdu5);
 	}
-	
+	if(!strcmp(subString,"ACK")) {
+	  processAckString(gpsString,gpsLength,fromAdu5);
+	}
+	if(!strcmp(subString,"NAK")) {
+	  processNakString(gpsString,gpsLength,fromAdu5);
+	}
+	if(!strcmp(subString,"RIO")) {
+	  processRioString(gpsString,gpsLength,fromAdu5);
+	}
+	if(!strcmp(subString,"BIT")) {
+	  processBitString(gpsString,gpsLength,fromAdu5);
+	}
+	if(!strcmp(subString,"TST")) {
+	  processTstString(gpsString,gpsLength,fromAdu5);
+	}
     }
 
 
@@ -1126,6 +1174,62 @@ void processTttString(char *gpsString, int gpsLength, int fromAdu5) {
 }
 
 
+void processAckString(char *gpsString, int length, int fromAdu5)
+{
+  //Assume it's fine
+  startStruct.ackCount[fromAdu5]++;
+}
+
+void processNakString(char *gpsString, int length, int fromAdu5)
+{
+  //Assume it's fine
+  startStruct.nakCount[fromAdu5]++;
+}
+
+void processRioString(char *gpsString, int length, int fromAdu5)
+{
+  int retVal=0;
+  if(fromAdu5==0) {
+    retVal=strncmp(gpsString,G12_RIO,length);
+  }
+  else {
+    retVal=strncmp(gpsString,ADU5_RIO,length);
+  }
+
+  if (retVal==0) {
+    startStruct.rioBitMask |= (1<<fromAdu5);
+  }
+}
+
+void processBitString(char *gpsString, int length, int fromAdu5)
+{
+  char gpsCopy[ADU5_DATA_SIZE];//$PASHR,BIT,P,P,P,0,0.0*49	
+  char *subString;
+  strncpy(gpsCopy,gpsString,length);
+  subString = strtok (gpsCopy,"*");
+  char testChar[3];
+  int sensCount=0;
+  float percentBlock=0;
+  sscanf(subString,"$PASHR,BIT,%c,%c,%c,%d,%f",
+	 &testChar[0],&testChar[1],&testChar[2],&sensCount,&percentBlock);
+  if(testChar[0] != 'P')
+    startStruct.tstBitMask |= (1 << (4*(fromAdu5-1)));
+  if(testChar[1] != 'P')
+    startStruct.tstBitMask |= (1 << (1+(4*(fromAdu5-1))));
+  if(testChar[1] != 'P')
+    startStruct.tstBitMask |= (1 << (2+(4*(fromAdu5-1))));
+  if(sensCount != 0) {
+    startStruct.rioBitMask |= (1 << (4+fromAdu5));
+  }
+}
+
+void processTstString(char *gpsString, int length, int fromAdu5)
+{
+  int retVal=strncmp(gpsString,"$PASHR,TST,000*3B",length);
+  if (retVal==0) {
+    startStruct.tstBitMask |= (1<<(3 +(4*fromAdu5-1)));
+  }
+}
 
 void processG12SatString(char *gpsString, int gpsLength) {
   static int telemCount=0;
@@ -1814,4 +1918,15 @@ int sortOutPidFile(char *progName)
   }
   writePidFile(GPSD_PID_FILE);
   return 0;
+}
+
+void writeStartTest(time_t startTime)
+{
+  int retVal;
+  char theFilename[FILENAME_MAX];
+  startStruct.unixTime=startTime;
+  fillGenericHeader(&startTime,PACKET_GPSD_START,sizeof(GpsdStartStruct_t));
+  sprintf(theFilename,"%s/gps_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
+  retVal=writeGpsdStartStruct(&startStruct,theFilename);  
+  retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);  
 }

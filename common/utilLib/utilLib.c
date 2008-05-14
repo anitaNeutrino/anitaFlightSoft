@@ -1334,6 +1334,16 @@ int writeGpsGga(GpsGgaStruct_t *ggaPtr, char *filename)
 }
 
 
+int writeGpsdStartStruct(GpsdStartStruct_t *startPtr, char *filename)
+{
+#ifdef NO_ZLIB
+    return normalSingleWrite((unsigned char*)startPtr,filename,sizeof(GpsdStartStruct_t));
+#else
+    return zippedSingleWrite((unsigned char*)startPtr,filename,sizeof(GpsdStartStruct_t));
+#endif
+
+}
+
 int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename)
 /* Writes the vtg pointed to by vtgPtr to filename */
 {
@@ -1619,6 +1629,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_ZIPPED_PACKET: gHdr->verId=VER_ZIPPED_PACKET; break;
 	case PACKET_RUN_START: gHdr->verId=VER_RUN_START; break;
 	case PACKET_OTHER_MONITOR: gHdr->verId=VER_OTHER_MON; break;
+    case PACKET_GPSD_START: gHdr->verId=VER_GPSD_START; break;
 	default: 
 	    gHdr->verId=0; break;
     }
@@ -1694,6 +1705,7 @@ int checkPacket(void *thePtr)
 	    break;
 	case PACKET_ZIPPED_PACKET: break;
 	case PACKET_ZIPPED_FILE: break;
+    case PACKET_GPSD_START: packetSize=sizeof(GpsdStartStruct_t); break;
 	default: 
 	    retVal+=PKT_E_CODE; break;
     }
