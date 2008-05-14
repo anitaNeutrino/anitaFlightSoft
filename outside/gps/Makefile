@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets = adu5_command adu5_file adu5_output g12_command
+Targets = adu5_command adu5_file adu5_output g12_command adu5_test
 
 all: $(Targets)
 
