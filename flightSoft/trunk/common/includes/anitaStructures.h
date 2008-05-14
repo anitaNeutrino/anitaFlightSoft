@@ -81,6 +81,7 @@
 #define VER_ENC_WAVE_PACKET 10
 #define VER_ENC_SURF_PACKET 10
 #define VER_SURF_HK 10
+#define VER_GPS_GGA 10
 #define VER_ADU5_PAT 10
 #define VER_ADU5_SAT 10
 #define VER_ADU5_VTG 10
@@ -126,6 +127,7 @@ typedef enum {
     PACKET_GPS_ADU5_VTG = 0x202,
     PACKET_GPS_G12_POS = 0x203,
     PACKET_GPS_G12_SAT = 0x204,
+    PACKET_GPS_GGA = 0x205, //New for ANITA-II
     PACKET_HKD = 0x300,
     PACKET_CMD_ECHO = 0x400,
     PACKET_MONITOR = 0x500,
@@ -389,7 +391,7 @@ typedef struct {
 
 typedef struct {
   unsigned short eventLinks[NUM_PRIORITIES]; //10 Priorities
-  unsigned short hkLinks[15]; //Needs to be finalised once everything is settled
+  unsigned short hkLinks[21]; //Needs to be finalised once everything is settled
 } QueueStruct_t;
 
 typedef struct {
@@ -567,6 +569,22 @@ typedef struct {
     float altitude;
     unsigned int attFlag;
 } GpsAdu5PatStruct_t;
+
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int unixTimeUs;
+  unsigned int timeOfDay;  
+  float latitude;
+  float longitude;
+  float altitude;
+  float hdop;
+  float geoidSeparation;
+  float ageOfCalc;
+  unsigned char posFixType;
+  unsigned char numSats;
+  unsigned short baseStationId;
+} GpsGgaStruct_t;
 
 typedef struct {
     unsigned char prn;
