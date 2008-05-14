@@ -252,7 +252,7 @@ int main (int argc, char *argv[])
 	    usleep(1000);
 	    if(!sentStartFile) {
 	      time(&currentTime);
-	      if(currentTime>startTime+60) {
+	      if(currentTime>startTime+10) {
 		writeStartTest(startTime);
 		sentStartFile=1;
 	      }
