@@ -1221,13 +1221,17 @@ void processBitString(char *gpsString, int length, int fromAdu5)
   if(sensCount != 0) {
     startStruct.rioBitMask |= (1 << (4+fromAdu5));
   }
+
+  //  printf("Testing %c %c %c %d\n",testChar[0],testChar[1],testChar[2],sensCount);
+  //  printf("Testing %#x\n",sta
+
 }
 
 void processTstString(char *gpsString, int length, int fromAdu5)
 {
   int retVal=strncmp(gpsString,"$PASHR,TST,000*3B",length);
-  printf("Testing %d\n%s\n",retVal,gpsString);
-  if (retVal==0) {
+  //  printf("Testing %d\n%s\n",retVal,gpsString);
+  if (retVal!=0) {
     startStruct.tstBitMask |= (1<<(3 +(4*fromAdu5-1)));
   }
 }
