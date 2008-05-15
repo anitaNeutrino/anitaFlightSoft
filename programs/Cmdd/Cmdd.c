@@ -427,6 +427,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    time(&rawtime);
 	    killPrograms(MONITORD_ID_MASK);
 	    killPrograms(PLAYBACKD_ID_MASK);
+	    killPrograms(LOGWATCHD_ID_MASK);
 	    killPrograms(HKD_ID_MASK);
 	    killPrograms(GPSD_ID_MASK);
 	    killPrograms(ARCHIVED_ID_MASK);
@@ -443,6 +444,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    //Reboot
 	    killPrograms(MONITORD_ID_MASK);
 	    killPrograms(PLAYBACKD_ID_MASK);
+	    killPrograms(LOGWATCHD_ID_MASK);
 	    killPrograms(HKD_ID_MASK);
 	    killPrograms(GPSD_ID_MASK);
 	    killPrograms(ARCHIVED_ID_MASK);
@@ -478,28 +480,28 @@ int executeCommand(CommandStruct_t *theCmd)
 	case CMD_MOUNT:
 	    //Mount -a
 	  killPrograms(PLAYBACKD_ID_MASK);
-	    killPrograms(MONITORD_ID_MASK);
-	    killPrograms(HKD_ID_MASK);
-	    killPrograms(GPSD_ID_MASK);
-	    killPrograms(ARCHIVED_ID_MASK);
-	    killPrograms(ACQD_ID_MASK);
-	    killPrograms(CALIBD_ID_MASK);
-	    killPrograms(PRIORITIZERD_ID_MASK);
-	    killPrograms(EVENTD_ID_MASK);
-	    retVal=system("sudo /sbin/rmmod usb-uhci");
-	    retVal=system("sudo /sbin/insmod usb-uhci");
-	    sleep(10);
-	    retVal=system("sudo mount -a");
-	    startPrograms(HKD_ID_MASK);
-	    startPrograms(GPSD_ID_MASK);
-	    startPrograms(ARCHIVED_ID_MASK);
-	    startPrograms(ACQD_ID_MASK);
-	    startPrograms(CALIBD_ID_MASK);
-	    startPrograms(MONITORD_ID_MASK);
-	    startPrograms(PRIORITIZERD_ID_MASK);
-	    startPrograms(EVENTD_ID_MASK);
-	    startPrograms(PLAYBACKD_ID_MASK);
-	    if(retVal==-1) return 0;	    
+	  killPrograms(MONITORD_ID_MASK);
+	  killPrograms(HKD_ID_MASK);
+	  killPrograms(GPSD_ID_MASK);
+	  killPrograms(ARCHIVED_ID_MASK);
+	  killPrograms(ACQD_ID_MASK);
+	  killPrograms(CALIBD_ID_MASK);
+	  killPrograms(PRIORITIZERD_ID_MASK);
+	  killPrograms(EVENTD_ID_MASK);
+	  retVal=system("sudo /sbin/rmmod usb-uhci");
+	  retVal=system("sudo /sbin/insmod usb-uhci");
+	  sleep(10);
+	  retVal=system("sudo mount -a");
+	  startPrograms(HKD_ID_MASK);
+	  startPrograms(GPSD_ID_MASK);
+	  startPrograms(ARCHIVED_ID_MASK);
+	  startPrograms(ACQD_ID_MASK);
+	  startPrograms(CALIBD_ID_MASK);
+	  startPrograms(MONITORD_ID_MASK);
+	  startPrograms(PRIORITIZERD_ID_MASK);
+	  startPrograms(EVENTD_ID_MASK);
+	  startPrograms(PLAYBACKD_ID_MASK);
+	  if(retVal==-1) return 0;	    
 	    time(&rawtime);
 	    return rawtime;
 	case CMD_MOUNT_NEXT_SATA:
@@ -2507,6 +2509,7 @@ int clearRamdisk()
     progMask|=LOSD_ID_MASK;
     progMask|=PRIORITIZERD_ID_MASK;
     progMask|=PLAYBACKD_ID_MASK;
+    progMask|=LOGWATCHD_ID_MASK;
     progMask|=SIPD_ID_MASK;
     progMask|=MONITORD_ID_MASK;
     killPrograms(progMask);
@@ -2516,6 +2519,8 @@ int clearRamdisk()
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(CMDD_COMMAND_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
+    makeDirectories(PLAYBACK_LINK_DIR);
+    makeDirectories(LOGWATCH_LINK_DIR);
     startNewRun();
     startPrograms(progMask);  
     return retVal;

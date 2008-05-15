@@ -26,7 +26,8 @@
 #define SIPD_ID_MASK 0x200
 #define MONITORD_ID_MASK 0x400
 #define PLAYBACKD_ID_MASK 0x800
-#define ALL_ID_MASK 0xfff
+#define LOGWATCHD_ID_MASK 0x1000
+#define ALL_ID_MASK 0xffff
 
 
 typedef enum {
@@ -43,6 +44,7 @@ typedef enum {
     ID_SIPD,
     ID_MONITORD,
     ID_PLAYBACKD,
+    ID_LOGWATCHD,
     ID_NOT_AN_ID
 } ProgramId_t;
 
