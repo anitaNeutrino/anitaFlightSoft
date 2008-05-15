@@ -63,7 +63,7 @@ void handleBadSigs(int sig);
 
 //Magnetometer Stuff
 int fdMag; //Magnetometer
-
+int sendMagRequests=1;
 
 /* global variables for acromag control */
 int carrierHandle;
@@ -153,7 +153,8 @@ int main (int argc, char *argv[])
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
-   
+    syslog(LOG_INFO,"Starting Hkd\n");
+
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
     signal(SIGUSR2, sigUsr2Handler);
@@ -219,7 +220,7 @@ int main (int argc, char *argv[])
 	    if((millisecs % readoutPeriod)==0) {
 		
 		time(&rawTime);		
-		if(fdMag) sendMagnetometerRequest();
+		if(fdMag && sendMagRequests) sendMagnetometerRequest();
 		readSBSTemps();
 		if(fdMag) retVal=checkMagnetometer(); 
 //		printf("Mag Ret: %d\n",retVal);
@@ -651,6 +652,7 @@ int setupMagnetometer()
 	retVal=read(fdMag,tempData,256);
 //	printf("%s\n",tempData);
     }
+
     sprintf(setupCommand,"M=E\n");
     retVal=write(fdMag, setupCommand, strlen(setupCommand));
     if(retVal<0) {
@@ -669,6 +671,46 @@ int setupMagnetometer()
     if(retVal) {
 	retVal=read(fdMag,tempData,256);
     }
+
+    sprintf(setupCommand,"P=FFFF\n"); //Will need to play with this
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	if(printToScreen)
+//	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
+    }
+    usleep(1000);
+    retVal=isThereDataNow(fdMag);
+    if(retVal) {
+	retVal=read(fdMag,tempData,256);
+    }
+    
+     sprintf(setupCommand,"A\n"); //Start autosend data
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	if(printToScreen)
+//	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
+    }
+    usleep(1000);
+    retVal=isThereDataNow(fdMag);
+    if(retVal) {
+	retVal=read(fdMag,tempData,256);
+    }
+    
+
 /*     sprintf(setupCommand,"B=38400\n"); */
 /*     retVal=write(fdMag, setupCommand, strlen(setupCommand)); */
 /*     if(retVal<0) { */
@@ -798,8 +840,8 @@ void prepWriterStructs() {
 
 void handleBadSigs(int sig)
 {   
-    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
     closeMagnetometer();
     closeHkFilesAndTidy(&hkRawWriter);
     closeHkFilesAndTidy(&hkCalWriter);

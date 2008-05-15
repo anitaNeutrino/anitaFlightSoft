@@ -79,7 +79,7 @@
 #define G12B_DEV_NAME "/dev/ttySTDRV002_6" //These are the two ports
 #define ADU5A_DEV_NAME "/dev/ttySTDRV002_4"
 #define ADU5B_DEV_NAME "/dev/ttySTDRV002_1"  //These are the two ADU5s
-#define MAGNETOMETER_DEV_NAME "/dev/ttyUSB1"
+#define MAGNETOMETER_DEV_NAME "/dev/ttySTDRV002_3"
 
 #define NUM_PRIORITIES 10
 #define NUM_SATABLADES 8
