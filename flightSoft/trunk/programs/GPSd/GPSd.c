@@ -175,6 +175,7 @@ int main (int argc, char *argv[])
     /* Setup log */
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
+    syslog(LOG_INFO,"GPSd Starting");    
 
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
@@ -1892,8 +1893,8 @@ void prepWriterStructs() {
 void handleBadSigs(int sig)
 {
    
-    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
     closeHkFilesAndTidy(&adu5aPatWriter);
     closeHkFilesAndTidy(&adu5aSatWriter);
     closeHkFilesAndTidy(&adu5aVtgWriter); 

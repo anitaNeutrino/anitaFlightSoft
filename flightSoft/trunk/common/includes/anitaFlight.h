@@ -241,6 +241,8 @@
 #define GPSD_SUBTIME_LINK_DIR "/tmp/anita/gpsd/ttt/link"
 #define PLAYBACK_DIR "/tmp/anita/playbackd"
 #define PLAYBACK_LINK_DIR "/tmp/anita/playbackd/link"
+#define LOGWATCH_DIR "/tmp/anita/logwatchd"
+#define LOGWATCH_LINK_DIR "/tmp/anita/logwatchd/link"
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
@@ -255,6 +257,7 @@
 #define PRIORITIZERD_PID_FILE "/tmp/anita/pid/prioritizerd.pid"
 #define SIPD_PID_FILE "/tmp/anita/pid/sipd.pid"
 #define PLAYBACKD_PID_FILE "/tmp/anita/pid/playbackd.pid"
+#define LOGWATCHD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 

@@ -95,6 +95,7 @@ extern "C" {
     int fillGpsStruct(GpsSubTime_t *theGpsStruct, char *filename);
     int fillCalibStruct(CalibStruct_t *theStruct, char *filename);
     int fillCommand(CommandStruct_t *theStruct, char *filename);
+    int fillLogWatchRequest(LogWatchRequest_t *theStruct, char *filename);
     int fillUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
     int fillLabChipPedstruct(FullLabChipPedStruct_t *pedPtr, char *filename);
     int readEncodedEventFromFile(unsigned char *buffer, char *filename,
@@ -102,6 +103,8 @@ extern "C" {
     int readSingleEncodedEvent(unsigned char *buffer, char *filename);
 
     int writeGpsdStartStruct(GpsdStartStruct_t *startPtr, char *filename);
+    int writeLogWatchdStartStruct(LogWatchdStart_t *startPtr, char *filename);
+    int writeLogWatchRequest(LogWatchRequest_t *requestPtr, char *filename);
     int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
     int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
     int writePedSubbedBody(PedSubbedEventBody_t *bodyPtr, char *filename);

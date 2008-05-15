@@ -8,10 +8,6 @@
 
 #include <time.h>
 
-//inotify includes
-#include <inotifytools/inotifytools.h>
-#include <inotifytools/inotify.h>
-
 
 #include "includes/anitaStructures.h"
 
@@ -29,7 +25,7 @@ int main (int argc, char **argv)
   if(numLinks)
     fprintf(stderr,"There are %d links\n",numLinks);
   while(1) {
-    int retVal=checkLinkDirs(1); //Timeout of 1 second
+    int retVal=checkLinkDirs(1,0); //Timeout of 1 second
     if(retVal) { //New stuff
       numLinks=getNumLinks(wd);
       fprintf(stderr,"There are %d links\n",numLinks);

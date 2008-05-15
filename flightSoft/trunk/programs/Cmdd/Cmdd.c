@@ -50,8 +50,7 @@ int mountNextSatablade(int whichSatablade);
 int mountNextSatamini(int whichSatamini);
 int mountNextUsb(int intExtFlag,int whichUsb);
 void prepWriterStructs();
-int tailFile(char *filename, int numLines);
-int makeZippedFilePacket(char *filename,int fileTag);
+int requestFile(char *filename, int numLines);
 int readAcqdConfig();
 int readArchivedConfig();
 int readLosdConfig();
@@ -152,6 +151,7 @@ int main (int argc, char *argv[])
     makeDirectories(CMDD_COMMAND_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
     makeDirectories(PLAYBACK_LINK_DIR);
+    makeDirectories(LOGWATCH_LINK_DIR);
 
     do {
 	retVal=readConfig();
@@ -418,10 +418,10 @@ int executeCommand(CommandStruct_t *theCmd)
 	    }
 	case CMD_TAIL_VAR_LOG_MESSAGES:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    return tailFile("/var/log/messages",ivalue);
+	    return requestFile("/var/log/messages",ivalue);
 	case CMD_TAIL_VAR_LOG_ANITA:
 	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    return tailFile("/var/log/anita.log",ivalue);
+	    return requestFile("/var/log/anita.log",ivalue);
 	case CMD_SHUTDOWN_HALT:
 	    //Halt
 	    time(&rawtime);
@@ -1207,7 +1207,7 @@ int sendConfig(int progMask)
 	    sprintf(configFile,"%s.config",getProgName(prog));
 	    printf("Trying to send config file -- %s\n",configFile);
 	    fullFilename=configFileSpec(configFile);
-	    rawtime=makeZippedFilePacket(fullFilename,prog);
+	    rawtime=requestFile(fullFilename,0);
 	}
     }
     if(errorCount) return 0;
@@ -1925,52 +1925,21 @@ int mountNextUsb(int intExtFlag, int whichUsb) {
 
 }
 
-int tailFile(char *filename, int numLines) {
-    static int counter=0;
-    time_t rawtime;
-    time(&rawtime);
-    char tailFilename[FILENAME_MAX];
-    sprintf(tailFilename,"/tmp/tail_%s",basename(filename));
-    char theCommand[FILENAME_MAX];
-    sprintf(theCommand,"tail -n %d %s > %s",numLines,filename,tailFilename);
-    system(theCommand);
-    rawtime=makeZippedFilePacket(tailFilename,counter);
-    counter++;    
-    return rawtime;
+int requestFile(char *filename, int numLines) {
+  static int counter=0;
+  LogWatchRequest_t theRequest;
+  char outName[FILENAME_MAX];
+  time_t rawtime;
+  time(&rawtime);
+  theRequest.numLines=numLines;
+  strncpy(theRequest.filename,filename,179);
+  sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,counter);
+  counter++;
+  writeLogWatchRequest(&theRequest,outName);
+  makeLink(outName,LOGWATCH_LINK_DIR);
+  return rawtime;
 }
 
-int makeZippedFilePacket(char *filename,int fileTag) 
-{
-    int retVal;
-    time_t rawtime;
-    time(&rawtime);
-    ZippedFile_t *zipFilePtr;
-    char outputName[FILENAME_MAX];
-    char *inputBuffer;
-    char *outputBuffer;
-    unsigned int numBytesIn=0,numBytesOut=0;
-    
-    inputBuffer=readFile(filename,&numBytesIn);
-    if(!inputBuffer || !numBytesIn) return 0;
-    numBytesOut=numBytesIn+1000 +sizeof(ZippedFile_t);
-    outputBuffer=malloc(numBytesOut);
-    zipFilePtr = (ZippedFile_t*) outputBuffer;
-    zipFilePtr->unixTime=rawtime;
-    zipFilePtr->numUncompressedBytes=numBytesIn;
-    strncpy(zipFilePtr->filename,basename(filename),60);
-    retVal=zipBuffer(inputBuffer,&outputBuffer[sizeof(ZippedFile_t)],numBytesIn,&numBytesOut);
-    if(retVal==0) {		
-	fillGenericHeader(zipFilePtr,PACKET_ZIPPED_FILE,numBytesOut+sizeof(ZippedFile_t));
-	sprintf(outputName,"%s/zipFile_%d_%u.dat",REQUEST_TELEM_DIR,
-		fileTag,zipFilePtr->unixTime);
-	normalSingleWrite((unsigned char*)outputBuffer,
-			  outputName,numBytesOut+sizeof(ZippedFile_t));
-	makeLink(outputName,REQUEST_TELEM_LINK_DIR);		
-    }
-    free(inputBuffer);
-    free(outputBuffer);
-    return rawtime;
-}
 
 
 
