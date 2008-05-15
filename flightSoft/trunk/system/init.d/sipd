@@ -25,22 +25,24 @@ SIPD_OPTIONS=-d
 
 start() {
 # 	echo -n $"Starting SIPd: "
-	/usr/local/bin/daemon -u anita -r SIPd -n SIPd 
-	RETVAL=$?
+    /usr/local/bin/daemon -u anita -r LogWatchd -n LogWatchd
+    /usr/local/bin/daemon -u anita -r SIPd -n SIPd 
+    RETVAL=$?
 #	echo
-	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/SIPd
-	return $RETVAL
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/SIPd
+    return $RETVAL
 }	
 
 stop() {
 #	echo -n $"Shutting down SIPd: "
-	/usr/local/bin/daemon -u anita --stop -n SIPd 
+    /usr/local/bin/daemon -u anita --stop -n LogWatchd
+    /usr/local/bin/daemon -u anita --stop -n SIPd 
 #	killproc SIPd
 #	echo
-	RETVAL=$?
+    RETVAL=$?
 #	echo
-	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/SIPd
-	return $RETVAL
+    [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/SIPd
+    return $RETVAL
 }
 
 rhstatus() {
