@@ -224,10 +224,13 @@ int main(int argc, char *argv[])
     makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
     makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
     makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);    
     makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
     makeDirectories(G12_SAT_TELEM_LINK_DIR);
     makeDirectories(G12_POS_TELEM_LINK_DIR);
+    makeDirectories(G12_GGA_TELEM_LINK_DIR);
+    makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
+    makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
 
     while(!maxEvents || (evNum<=maxEvents)) {
 	gettimeofday(&currentTime,0);
@@ -752,7 +755,7 @@ void fakeGpsGga(struct timeval *currentTime, int fromAdu5) {
     theGga.geoidSeparation=7;
     
     //Write file and link for sipd
-    fillGenericHeader(&theGga,PACKET_GPS_ADU5_PAT,sizeof(GpsGgaStruct_t));
+    fillGenericHeader(&theGga,PACKET_GPS_GGA,sizeof(GpsGgaStruct_t));
     retVal=checkPacket(&theGga);
     if(retVal) 
 	printf("Problem with GpsGgaStruct_t %d\n",retVal);
