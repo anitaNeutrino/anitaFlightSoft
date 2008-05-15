@@ -2031,6 +2031,7 @@ int getIdMask(ProgramId_t prog) {
 	case ID_SIPD: return SIPD_ID_MASK;
 	case ID_MONITORD: return MONITORD_ID_MASK;
 	case ID_PLAYBACKD: return PLAYBACKD_ID_MASK;
+	case ID_LOGWATCHD: return LOGWATCHD_ID_MASK;
 	default: break;
     }
     return 0;
@@ -2052,6 +2053,7 @@ char *getProgName(ProgramId_t prog) {
 	case ID_SIPD: string="SIPd"; break;
 	case ID_MONITORD: string="Monitord"; break;
 	case ID_PLAYBACKD: string="Playbackd"; break;
+	case ID_LOGWATCHD: string="LogWatchd"; break;
 	default: string=NULL; break;
     }
     return string;
@@ -2071,6 +2073,7 @@ char *getPidFile(ProgramId_t prog) {
 	case ID_SIPD: return SIPD_PID_FILE;
 	case ID_MONITORD: return MONITORD_PID_FILE;
 	case ID_PLAYBACKD: return PLAYBACKD_PID_FILE;
+	case ID_LOGWATCHD: return LOGWATCHD_PID_FILE;
 	default: break;
     }
     return NULL;

@@ -51,7 +51,7 @@
 
 
 //Process Stuff
-#define NUM_PROCESSES 12
+#define NUM_PROCESSES 16 //Actually a couple more than we need
 
 //GPS stuff
 #define MAX_SATS 12
