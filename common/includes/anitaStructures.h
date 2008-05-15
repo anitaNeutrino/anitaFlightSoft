@@ -101,6 +101,7 @@
 #define VER_RUN_START 10
 #define VER_OTHER_MON 10
 #define VER_GPSD_START 10
+#define VER_LOGWATCHD_START 10
 #endif
 
 
@@ -143,7 +144,8 @@ typedef enum {
     PACKET_ZIPPED_FILE = 0xa00, // Is a zipped file
     PACKET_RUN_START = 0xb00, 
     PACKET_OTHER_MONITOR = 0xb01,
-    PACKET_GPSD_START = 0xc00
+    PACKET_GPSD_START = 0xc00,
+    PACKET_LOGWATCHD_START = 0xc01
 } PacketCode_t;
 
 typedef enum {
@@ -407,6 +409,10 @@ typedef struct {
     unsigned char cmd[MAX_CMD_LENGTH];
 } CommandStruct_t;
 
+typedef struct {
+  unsigned int numLines; //0 results in a cat, otherwise a tail
+  char filename[180];
+} LogWatchRequest_t;
 
 typedef struct {
     unsigned char chanId;   // chan+9*surf
@@ -713,10 +719,11 @@ typedef struct {
 } ZippedPacket_t;
 
 typedef struct {
-    GenericHeader_t gHdr;
-    unsigned int unixTime;
-    unsigned int numUncompressedBytes;
-    char filename[60];
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned short numUncompressedBytes;
+  unsigned short segmentNumber;
+  char filename[60];
 } ZippedFile_t;
 
 typedef struct {
@@ -726,6 +733,13 @@ typedef struct {
     unsigned int runNumber; //Run number
 } RunStart_t;
 
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int runNumber;
+  float upTime;
+  float idleTime;
+} LogWatchdStart_t;
 
 /////////////////////////////////////////////////////////////////////////////
 // On-board structs
