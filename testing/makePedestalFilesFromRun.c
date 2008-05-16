@@ -45,18 +45,13 @@ AnitaEventBody_t theBody;
 int main(int argc, char** argv) {
     char dirName[FILENAME_MAX];
     char realName[FILENAME_MAX];
-    int numBytesEvent=0,count=0,eventNum=0,doingEvent=0;
+    int count=0,eventNum=0,doingEvent=0;
     int numBytesHead=0,count2,retVal=0;
     int dirNum=0,subDirNum;
     int usleepNum=(int)((float)1000000)/((float)EVENT_RATE);
 //    GenericHeader_t *gHdr;
-    char *tempString;
     int eventCount=0;
 
-    /* Config file thingies */
-    int status=0;
-    char* eString ;
-    
 
     /* Directory reading things */
     char bigEventFileName[FILENAME_MAX];
@@ -119,7 +114,7 @@ int main(int argc, char** argv) {
 		    break;
 		}
 		if(theHeader.eventNumber%100==0)
-		    printf("Got Event %lu\n",theHeader.eventNumber);
+		    printf("Got Event %u\n",theHeader.eventNumber);
 		if(0) {
 		    printf("channel[0].header.chanId = %d\n",theBody.channel[0].header.chanId);
 		    printf("channel[1].header.chanId = %d\n",theBody.channel[1].header.chanId);
@@ -145,7 +140,7 @@ int main(int argc, char** argv) {
     }
     if(eventCount) {
 	printf("Read %d events\n",eventCount);
-	printf("Writing pedestals with time %lu\n",theHeader.unixTime);
+	printf("Writing pedestals with time %u\n",theHeader.unixTime);
 	writePedestalsWithTime(theHeader.unixTime);
     }
     
@@ -220,7 +215,7 @@ int fillBodyFromFile(AnitaEventBody_t *bodyPtr, gzFile openFile) {
 	    fprintf(stderr,"Only read %d (of %d)  bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
 	    return -7;
 	}
-//	printf("Event %lu\n",surfHeader.eventNumber);
+//	printf("Event %u\n",surfHeader.eventNumber);
 	bodyPtr->eventNumber=surfHeader.eventNumber;
 	numBytesToRead=surfHeader.gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
 	numBytesRead=gzread(openFile,bigBuffer,numBytesToRead);

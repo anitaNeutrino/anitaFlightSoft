@@ -198,15 +198,14 @@ void writePedestalsWithTime(unsigned int unixTime) {
 	    fillGenericHeader(&labPeds,PACKET_LAB_PED,sizeof(FullLabChipPedStruct_t));
 	    sprintf(filename,"%s/%s/labpeds_%u_%d_%d.dat",DATA_LINK,PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
 //	    printf("Writing lab pedestalFile: %s\n",filename);
-	    writeLabChipPedStruct(&labPeds,filename);
+	    writeStruct(&labPeds,filename,sizeof(FullLabChipPedStruct_t));
 	    sprintf(filename,"%s/%s/labpeds_%u_%d_%d.dat",DATABACKUP_LINK,PEDESTAL_DIR,labPeds.unixTimeEnd,surf,chip);
-//	    printf("Writing lab pedestalFile: %s\n",filename);
-	    writeLabChipPedStruct(&labPeds,filename);
-
+	    //	    printf("Writing lab pedestalFile: %s\n",filename);
+	    writeStruct(&labPeds,filename,sizeof(FullLabChipPedStruct_t));
+	    
 	    //And for telemetery
 	    sprintf(filename,"%s/labpeds_%u_%d_%d.dat",PEDESTAL_TELEM_DIR,labPeds.unixTimeEnd,surf,chip);
-	    writeLabChipPedStruct(&labPeds,filename);
-
+	    writeStruct(&labPeds,filename,sizeof(FullLabChipPedStruct_t));
 	    //and link it
 	    makeLink(filename,PEDESTAL_TELEM_LINK_DIR);
 	    
@@ -217,21 +216,21 @@ void writePedestalsWithTime(unsigned int unixTime) {
     usefulPeds.nsamples=avgSamples;
     //Now write ped calc file
     sprintf(filename,"%s/%s/calcpeds_%u.dat",DATA_LINK,PEDESTAL_DIR,thePeds.unixTimeEnd);
-    writePedCalcStruct(&thePeds,filename);
+    writeStruct(&thePeds,filename,sizeof(PedCalcStruct_t));
 
 
     //Now write full ped file
 //    dumpThesePeds(&usefulPeds);
     sprintf(filename,"%s/%s/peds_%u.dat",DATA_LINK,PEDESTAL_DIR,usefulPeds.unixTime);
     sprintf(linkname,"%s/%s",DATA_LINK,CURRENT_PEDESTALS);
-    writeUsefulPedStruct(&usefulPeds,filename);
+    writeStruct(&usefulPeds,filename,sizeof(PedestalStruct_t));
     //and link it
     symlink(filename,linkname);
 
 
     sprintf(filename,"%s/%s/peds_%u.dat",DATABACKUP_LINK,PEDESTAL_DIR,usefulPeds.unixTime);
     sprintf(linkname,"%s/%s",DATABACKUP_LINK,CURRENT_PEDESTALS);
-    writeUsefulPedStruct(&usefulPeds,filename);
+    writeStruct(&usefulPeds,filename,sizeof(PedestalStruct_t));
     //and link it
     unlink(CURRENT_PEDESTALS);
     symlink(filename,CURRENT_PEDESTALS);

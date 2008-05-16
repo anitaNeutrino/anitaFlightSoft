@@ -306,7 +306,7 @@ int writeFileAndLink(MonitorStruct_t *monitorPtr) {
     
     sprintf(theFilename,"%s/mon_%d.dat",
 	    MONITOR_TELEM_DIR,monitorPtr->unixTime);
-    retVal=writeMonitor(monitorPtr,theFilename);
+    retVal=writeStruct(monitorPtr,theFilename,sizeof(MonitorStruct_t));
     retVal=makeLink(theFilename,MONITOR_TELEM_LINK_DIR);
 
     retVal=cleverHkWrite((unsigned char*)monitorPtr,sizeof(MonitorStruct_t),

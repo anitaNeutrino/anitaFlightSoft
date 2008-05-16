@@ -65,6 +65,7 @@ int numSurfs=0,doingEvent=0,hkNumber=0;
 int slipCounter=0;
 int turfRateTelemEvery=1,turfRateTelemInterval=60;
 int surfHkPeriod=0;
+int surfHkAverage=10;
 int surfHkTelemEvery=0;
 int lastSurfHk=0;
 int lastTurfHk=0;
@@ -192,6 +193,7 @@ unsigned int antTrigMask=0;
 //File writing structures
 AnitaHkWriterStruct_t turfHkWriter;
 AnitaHkWriterStruct_t surfHkWriter;
+AnitaHkWriterStruct_t avgSurfHkWriter;
 AnitaEventWriterStruct_t eventWriter;
 
 //Deadtime monitoring
@@ -528,13 +530,10 @@ int main(int argc, char **argv) {
 				
 		      
 		//Now decide if we want to output the housekeeping data
-		if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
-		  //Record housekeeping data
-		  lastSurfHk=timeStruct.tv_sec;
-		  theSurfHk.unixTime=timeStruct.tv_sec;
-		  theSurfHk.unixTimeUs=timeStruct.tv_usec;
-		  outputSurfHkData();
-		}
+		theSurfHk.unixTime=timeStruct.tv_sec;
+		theSurfHk.unixTimeUs=timeStruct.tv_usec;
+		outputSurfHkData();
+
 	      }		    
 	    }
 	  }
@@ -577,7 +576,7 @@ int main(int argc, char **argv) {
       hdPtr->unixTime=timeStruct.tv_sec;
       hdPtr->unixTimeUs=timeStruct.tv_usec;
       turfRates.unixTime=timeStruct.tv_sec;
-      turfRates.unixTimeUs=timeStruct.tv_usec;
+      turfRates.ppsNum=hdPtr->turfio.ppsNum;
       if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
 
       //For now I'll just read the HK data with the events.
@@ -673,7 +672,7 @@ int main(int argc, char **argv) {
 
 	// Save data if we want to
 	outputEventData();
-	if(writeFullHk && gotSurfHk) outputSurfHkData();
+	if(gotSurfHk) outputSurfHkData();
 	if(writeFullHk) outputTurfRateData();		    	
       }
 	    
@@ -693,6 +692,7 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Error closing devices\n");
   }
 
+  closeHkFilesAndTidy(&avgSurfHkWriter);
   closeHkFilesAndTidy(&surfHkWriter);
   closeHkFilesAndTidy(&turfHkWriter);
   unlink(ACQD_PID_FILE);
@@ -1152,6 +1152,7 @@ int readConfigFile()
 
     surfHkPeriod=kvpGetInt("surfHkPeriod",1);
     surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
+    surfHkAverage=kvpGetInt("surfHkAverage",1);
     turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
     turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
     //	printf("HK surfPeriod %d\nturfRateTelemEvery %d\nturfRateTelemInterval %d\n",surfHkPeriod,turfRateTelemEvery,turfRateTelemInterval);
@@ -1651,7 +1652,7 @@ AcqdErrorCode_t runPedestalMode()
     hdPtr->unixTime=timeStruct.tv_sec;
     hdPtr->unixTimeUs=timeStruct.tv_usec;
     turfRates.unixTime=timeStruct.tv_sec;
-    turfRates.unixTimeUs=timeStruct.tv_usec;
+    turfRates.ppsNum=hdPtr->turfio.ppsNum;
     if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
 
     //Now read TURF event data (not strictly necessary for pedestal run
@@ -1860,14 +1861,119 @@ void outputEventData() {
 
 void outputSurfHkData() {
   //Do the housekeeping stuff
-  surfHkCounter++;
-  if(surfHkCounter>=surfHkTelemEvery) {
-    writeSurfHousekeeping(3);
-    surfHkCounter=0;
+  static AveragedSurfHkStruct_t avgSurfHk;
+  static float scalerMean[ACTIVE_SURFS][SCALERS_PER_SURF];
+  static float scalerMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
+  static float threshMean[ACTIVE_SURFS][SCALERS_PER_SURF];
+  static float threshMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
+  static float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
+  static float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
+  static unsigned short surfTrigBandMasks[ACTIVE_SURFS][2];
+  static unsigned short numHks=0;  
+  int surf,dac,chan;//,ind;
+  float tempVal;
+  char theFilename[FILENAME_MAX];
+  int retVal=0;
+  if(surfHkAverage>0) {
+    if(numHks==0) {
+      //Zero arrays
+      memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
+      memset(scalerMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
+      memset(scalerMeanSq,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
+      memset(threshMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
+      memset(threshMeanSq,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
+      memset(rfPowerMean,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
+      memset(rfPowerMeanSq,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
+      memset(surfTrigBandMasks,0,sizeof(float)*ACTIVE_SURFS*2);
+      //Set up initial values
+      avgSurfHk.unixTime=theSurfHk.unixTime;
+      avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
+      avgSurfHk.scalerGoal=theSurfHk.scalerGoal;
+      memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS*2);
+    }
+    //Now add stuff to the average
+    numHks++;
+    if(theSurfHk.errorFlag & (1<<surf))
+      avgSurfHk.hadError |= (1<<(surf+16));
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      for(dac=0;dac>SCALERS_PER_SURF;dac++) {
+	scalerMean[surf][dac]+=theSurfHk.scaler[surf][dac];
+	scalerMeanSq[surf][dac]+=(theSurfHk.scaler[surf][dac]*theSurfHk.scaler[surf][dac]);
+	threshMean[surf][dac]+=theSurfHk.scaler[surf][dac];
+	threshMeanSq[surf][dac]+=(theSurfHk.threshold[surf][dac]*theSurfHk.threshold[surf][dac]);
+	
+	if(theSurfHk.threshold[surf][dac]!=theSurfHk.setThreshold[surf][dac]) {
+	  avgSurfHk.hadError |= (1<<surf);
+	}
+      }
+      for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
+	rfPowerMean[surf][chan]+=theSurfHk.rfPower[surf][chan];
+	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
+      }      
+    }
+    if(numHks==surfHkAverage) {
+      //Time to output
+      for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(dac=0;dac>SCALERS_PER_SURF;dac++) {
+	  scalerMean[surf][dac]/=numHks;
+	  avgSurfHk.avgScaler[surf][dac]=round(scalerMean[surf][dac]);
+	  scalerMeanSq[surf][dac]/=numHks;
+	  tempVal=scalerMeanSq[surf][dac]-(scalerMean[surf][dac]*scalerMean[surf][dac]);
+	  if(tempVal>0)
+	    avgSurfHk.rmsScaler[surf][dac]=round(sqrt(tempVal));
+	  else
+	    avgSurfHk.rmsScaler[surf][dac]=0;
+
+	  threshMean[surf][dac]/=numHks;
+	  avgSurfHk.avgThresh[surf][dac]=round(threshMean[surf][dac]);
+	  threshMeanSq[surf][dac]/=numHks;
+	  tempVal=threshMeanSq[surf][dac]-(threshMean[surf][dac]*threshMean[surf][dac]);
+	  if(tempVal>0)
+	    avgSurfHk.rmsThresh[surf][dac]=round(sqrt(tempVal));
+	  else
+	    avgSurfHk.rmsThresh[surf][dac]=0;
+	}
+	for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
+	  rfPowerMean[surf][chan]/=numHks;
+	  avgSurfHk.avgRFPower[surf][chan]=round(rfPowerMean[surf][chan]);
+	  rfPowerMeanSq[surf][chan]/=numHks;
+	  tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
+	  if(tempVal>0)
+	    avgSurfHk.rmsRFPower[surf][chan]=round(sqrt(tempVal));
+	  else
+	    avgSurfHk.rmsRFPower[surf][chan]=0;
+	}
+      }
+      avgSurfHk.numHks=numHks;
+      avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
+      fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
+      sprintf(theFilename,"%s/avgsurfhk_%d.dat.gz",SURFHK_TELEM_DIR,
+	      theSurfHk.unixTime);
+      retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
+      makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
+
+      retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
+			   sizeof(AveragedSurfHkStruct_t),
+			   theSurfHk.unixTime,&avgSurfHk);   
+
+      numHks=0;
+    }      
   }
-  else {
-    //			    printf("\tSURF HK %d %d\n",theSurfHk.unixTime,lastSurfHk);
-    writeSurfHousekeeping(1);
+
+  if(writeFullHk) {
+    if((theSurfHk.unixTime-lastSurfHk)>=surfHkPeriod) {
+      //Record housekeeping data
+      lastSurfHk=theSurfHk.unixTime;
+      surfHkCounter++;
+      if(surfHkCounter>=surfHkTelemEvery) {
+	writeSurfHousekeeping(3);
+	surfHkCounter=0;
+      }
+      else {
+	//			    printf("\tSURF HK %d %d\n",theSurfHk.unixTime,lastSurfHk);
+	writeSurfHousekeeping(1);
+      }
+    }
   }
 }
 
@@ -1907,7 +2013,7 @@ int writeSurfHousekeeping(int dataOrTelem)
   if(dataOrTelem!=2) {
     //	sprintf(theFilename,"%s/surfhk_%d_%d.dat.gz",surfHkArchiveDir,
     //		theSurfHk.unixTime,theSurfHk.unixTimeUs);
-    //	retVal+=writeSurfHk(&theSurfHk,theFilename);
+    //	retVal+=writeStruct(&theSurfHk,theFilename);
     retVal=cleverHkWrite((unsigned char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 			 theSurfHk.unixTime,&surfHkWriter);
   }
@@ -1915,7 +2021,7 @@ int writeSurfHousekeeping(int dataOrTelem)
     // Write data for Telem
     sprintf(theFilename,"%s/surfhk_%d_%d.dat.gz",SURFHK_TELEM_DIR,
 	    theSurfHk.unixTime,theSurfHk.unixTimeUs);
-    retVal+=writeSurfHk(&theSurfHk,theFilename);
+    retVal+=writeStruct(&theSurfHk,theFilename,sizeof(FullSurfHkStruct_t));
     makeLink(theFilename,SURFHK_TELEM_LINK_DIR);
   }
   return retVal;
@@ -1943,8 +2049,8 @@ int writeTurfHousekeeping(int dataOrTelem)
   if(dataOrTelem!=1) {
     // Write data for Telem
     sprintf(theFilename,"%s/turfhk_%d_%d.dat.gz",TURFHK_TELEM_DIR,
-	    turfRates.unixTime,turfRates.unixTimeUs);
-    writeTurfRate(&turfRates,theFilename);
+	    turfRates.unixTime,turfRates.ppsNum);
+    writeStruct(&turfRates,theFilename,sizeof(TurfRateStruct_t));
     retVal+=makeLink(theFilename,TURFHK_TELEM_LINK_DIR);
   }
 
@@ -1975,7 +2081,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 	      theEventPtr->header.eventNumber);
       if(!oldStyleFiles) {
 	//		if(!compressWavefile) 
-	retVal=writeBody(theBody,theFilename);  
+	retVal=writeStruct(theBody,theFilename,sizeof(AnitaEventBody_t));  
 	//		else {
 	//		    strcat(theFilename,".gz");
 	//		    retVal=writeZippedBody(theBody,theFilename);
@@ -2002,7 +2108,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     if(writeData) {
       sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
 	      theEventPtr->header.eventNumber);
-      retVal=writeHeader(theHeader,theFilename);
+      retVal=writeStruct(theHeader,theFilename,sizeof(AnitaEventHeader_t));
     }
 	
     /* Make links, not sure what to do with return value here */
@@ -2743,6 +2849,13 @@ void prepWriterStructs() {
     surfHkWriter.currentFilePtr[diskInd]=0;
   surfHkWriter.writeBitMask=hkDiskBitMask;
 
+  //Averaged Surf Hk Writer
+  strncpy(avgSurfHkWriter.relBaseName,SURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
+  sprintf(avgSurfHkWriter.filePrefix,"avgsurfhk");
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+    avgSurfHkWriter.currentFilePtr[diskInd]=0;
+  avgSurfHkWriter.writeBitMask=hkDiskBitMask;
+
   //Event Writer
   if(useAltDir) 
     strncpy(eventWriter.relBaseName,altOutputdir,FILENAME_MAX-1);
@@ -2837,6 +2950,7 @@ void handleBadSigs(int sig)
   if(numHere==0) {
     numHere++;    
     closeDevices();
+    closeHkFilesAndTidy(&avgSurfHkWriter);
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);
   }

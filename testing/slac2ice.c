@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
 		     break;
 		}
 		if(theHeader.eventNumber%100==0)
-		     printf("Got Event %lu\t%lu\n",theHeader.eventNumber,theBody.eventNumber);
+		     printf("Got Event %u\t%u\n",theHeader.eventNumber,theBody.eventNumber);
 		if(0) {
 		     printf("channel[0].header.chanId = %d\n",theBody.channel[0].header.chanId);
 		     printf("channel[1].header.chanId = %d\n",theBody.channel[1].header.chanId);
@@ -235,17 +235,17 @@ int writeAndMakeLink(AnitaEventHeader_t *theHeaderPtr, AnitaEventBody_t *theBody
 //    FILE *testfp;
     
     /* Write ev_ file first */
-    sprintf(theFilename,"%s/ev_%ld.dat",ACQD_EVENT_DIR,
+    sprintf(theFilename,"%s/ev_%d.dat",ACQD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
-    retVal=writeBody(theBodyPtr,theFilename);
+    retVal=writeStruct(theBodyPtr,theFilename,sizeof(AnitaEventBody_t));
     
 
     /* Should probably do something with retVal */
        
-    sprintf(theFilename,"%s/hd_%ld.dat",EVENTD_EVENT_DIR,
+    sprintf(theFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
-    retVal=writeHeader(theHeaderPtr,theFilename);
+    retVal=writeStruct(theHeaderPtr,theFilename,sizeof(AnitaEventHeader_t));
 
     /* Make links, not sure what to do with return value here */
     retVal=makeLink(theFilename,EVENTD_EVENT_LINK_DIR);
@@ -270,7 +270,7 @@ int fillBodyFromFileSlac(AnitaEventBody_t *bodyPtr, gzFile openFile) {
 	    fprintf(stderr,"Only read %d (of %d)  bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
 	    return -7;
 	}
-//	printf("Event %lu\n",surfHeader.eventNumber);
+//	printf("Event %u\n",surfHeader.eventNumber);
 	bodyPtr->eventNumber=surfHeader.eventNumber;
 	numBytesToRead=surfHeader.gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
 	numBytesRead=gzread(openFile,bigBuffer,numBytesToRead);
@@ -308,7 +308,7 @@ int fillBodyFromFileNew(AnitaEventBody_t *bodyPtr, gzFile openFile) {
 	    fprintf(stderr,"Only read %d (of %d)  bytes\n",numBytesRead,sizeof(EncodedSurfPacketHeader_t));
 	    return -7;
 	}
-//	printf("Event %lu\n",surfHeader.eventNumber);
+//	printf("Event %u\n",surfHeader.eventNumber);
 	bodyPtr->eventNumber=surfHeader.eventNumber;
 	numBytesToRead=surfHeader.gHdr.numBytes-sizeof(EncodedSurfPacketHeader_t);	
 	numBytesRead=gzread(openFile,bigBuffer,numBytesToRead);

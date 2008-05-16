@@ -1937,7 +1937,7 @@ int requestFile(char *filename, int numLines) {
   strncpy(theRequest.filename,filename,179);
   sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,counter);
   counter++;
-  writeLogWatchRequest(&theRequest,outName);
+  writeStruct(&theRequest,outName,sizeof(LogWatchRequest_t));
   makeLink(outName,LOGWATCH_LINK_DIR);
   return rawtime;
 }
@@ -1998,7 +1998,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     }
     printf("Writing to file %s\n",filename);
     fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
-    writeCmdEcho(&theEcho,filename);
+    writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
     makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
 
 
@@ -2017,7 +2017,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     }
     printf("Writing to file %s\n",filename);
     fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
-    writeCmdEcho(&theEcho,filename);
+    writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
     makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
     
 

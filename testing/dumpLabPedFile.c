@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 void dumpLabPeds(FullLabChipPedStruct_t *pedPtr) 
 {
     int chan,samp;
-    printf("Times %lu\t%lu\n",pedPtr->unixTimeStart,pedPtr->unixTimeEnd);
+    printf("Times %u\t%u\n",pedPtr->unixTimeStart,pedPtr->unixTimeEnd);
     for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	printf("chanId: %d\tchipId: %d\tchipEntries: %d\n",
 	       pedPtr->pedChan[chan].chanId,

@@ -102,34 +102,12 @@ extern "C" {
 				 unsigned int eventNumber);
     int readSingleEncodedEvent(unsigned char *buffer, char *filename);
 
-    int writeGpsdStartStruct(GpsdStartStruct_t *startPtr, char *filename);
-    int writeLogWatchdStartStruct(LogWatchdStart_t *startPtr, char *filename);
-    int writeLogWatchRequest(LogWatchRequest_t *requestPtr, char *filename);
-    int writeHeader(AnitaEventHeader_t *hdPtr, char *filename);
-    int writeBody(AnitaEventBody_t *bodyPtr, char *filename);
-    int writePedSubbedBody(PedSubbedEventBody_t *bodyPtr, char *filename);
-    int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename);
-    int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename);
-    int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename);
-  int writeGpsGga(GpsGgaStruct_t *ggaPtr, char *filename);
-    int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename);
-    int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename);
-    int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename);
-    int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename);
-    int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename);
-    int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename);
-    int writeHk(HkDataStruct_t *hkPtr, char *filename);
-    int writeSurfHk(FullSurfHkStruct_t *hkPtr, char *filename);
-    int writeCmdEcho(CommandEcho_t *echoPtr, char *filename);
-    int writeCmd(CommandStruct_t *cmdPtr, char *filename);
-    int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename);
-    int writeMonitor(MonitorStruct_t *monitorPtr, char *filename);
-    int writeCalibStatus(CalibStruct_t *calibPtr, char *filename);
-    int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename);
-    int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename);
-    int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename);
-    int writeSlowRate(SlowRateFull_t *slowPtr, char *filename);
-    int writeCommandAndLink(CommandStruct_t *theCmd);
+    int writeStruct(void *thePtr, char *filename, int numBytes);
+         
+  
+    
+  
+int writeCommandAndLink(CommandStruct_t *theCmd);
 
     int genericReadOfFile(unsigned char *buffer, char *filename, int maxBytes);
 

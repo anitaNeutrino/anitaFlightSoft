@@ -19,4 +19,5 @@
 int main() {
     loadCurrentPeds();
     dumpPeds();
+    return 0;
 }

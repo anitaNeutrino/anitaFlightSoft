@@ -325,7 +325,7 @@ void sendStartStruct(LogWatchdStart_t *startPtr)
 
 
   sprintf(fileName,"%s/lwstart_%u.dat",REQUEST_TELEM_DIR,startPtr->unixTime);
-  retVal=writeLogWatchdStartStruct(startPtr,fileName);
+  retVal=writeStruct(startPtr,fileName,sizeof(LogWatchdStart_t));
   retVal=makeLink(fileName,REQUEST_TELEM_LINK_DIR);
   
 }
