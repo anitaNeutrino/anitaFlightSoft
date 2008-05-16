@@ -595,7 +595,7 @@ void writeOutputForTelem(int numBytes) {
 	    printf("Something wrong while writing %s\n",bodyName);
 	}
 	else {
-	    writeHeader(&theHead,headName);
+	  writeStruct(&theHead,headName,sizeof(AnitaEventHeader_t));
 	    makeLink(headName,eventTelemLinkDirs[pri]);
 	} 
     }

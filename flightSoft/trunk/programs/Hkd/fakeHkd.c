@@ -369,7 +369,7 @@ int outputData(AnalogueCode_t code)
     
     //Write file and make link for SIPd
     sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);
-    retVal=writeHk(&theHkData,fullFilename);     
+    retVal=writeStruct(&theHkData,fullFilename,sizeof(HkDataStruct_t));     
     retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
     
     //Write file to main disk

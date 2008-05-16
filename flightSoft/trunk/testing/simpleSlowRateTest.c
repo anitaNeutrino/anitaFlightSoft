@@ -51,6 +51,9 @@ int main (int argc, char ** argv)
 //		   count,comm1or2,seqNum,numBytes);
 	    if(numBytes==sizeof(SlowRateFull_t))
 		printSlowRateStuff((SlowRateFull_t *)sciData);
+
+	    if(seqNum==100)
+	      printf("seqNum %d\n",seqNum);
 	}
 	else {
 	    count++;
@@ -64,11 +67,11 @@ int main (int argc, char ** argv)
 
 void printSlowRateStuff(SlowRateFull_t *slowPtr)
 {
-    printf("unixTime: %lu\n",slowPtr->unixTime);
+    printf("unixTime: %u\n",slowPtr->unixTime);
     printf("\n**************** RF Stuff ******************\n");
-    printf("eventNumber: %lu\n",slowPtr->rf.eventNumber);
+    printf("eventNumber: %u\n",slowPtr->rf.eventNumber);
     printf("eventRate: 1min %f -- 10min %f\n",((float)slowPtr->rf.eventRate1Min)/8.,((float)slowPtr->rf.eventRate10Min)/8.);
-    int surf,chan,ant,phi;
+    int surf,chan,ant;//,phi;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	printf("RF Power Average SURF %d: ",surf);    
 	for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
@@ -93,8 +96,8 @@ void printSlowRateStuff(SlowRateFull_t *slowPtr)
     
 
     printf("\n**************** Housekeeping ******************\n");
-    printf("latitude %f, longitude %f, altitude %f\n",
-	   slowPtr->hk.latitude,slowPtr->hk.longitude,slowPtr->hk.altitude);
+    printf("latitude %f, longitude %f, altitude %d\n",
+	   ((float)slowPtr->hk.latitude)/100.,((float)slowPtr->hk.longitude)/100.,slowPtr->hk.altitude);
     int i;
     for(i=0;i<8;i++) {
 	printf("temp %d -- %d\n",i,(int)slowPtr->hk.temps[i]);

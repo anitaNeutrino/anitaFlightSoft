@@ -147,8 +147,8 @@ void fakeEvent(int trigType)
 		evNum);
 	sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventArchiveDir,
 		evNum);	    
-	retVal=writeHeader(&theHeader,archiveHdFilename);
-	retVal=writeBody(&theBody,archiveBodyFilename);
+	retVal=writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
+	retVal=writeStruct(&theBody,archiveBodyFilename,sizeof(AnitaEventBody_t));
     }
     if(useUsbDisks) {
 	sprintf(archiveHdFilename,"%s/hd_%d.dat",eventUSBArchiveDir,
@@ -156,8 +156,8 @@ void fakeEvent(int trigType)
 	sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventUSBArchiveDir,
 		evNum);	    
 //	printf("Writing %s\n",archiveHdFilename);
-	retVal=writeHeader(&theHeader,archiveHdFilename);
-	retVal=writeBody(&theBody,archiveBodyFilename);
+	retVal=writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
+	retVal=writeStruct(&theBody,archiveBodyFilename,sizeof(AnitaEventBody_t));
     }     
     
     evNum++; 

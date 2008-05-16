@@ -74,7 +74,7 @@ int main(int argc, char**argv) {
 	fclose(fpEvent);
     if(fpEventRef)
 	fclose(fpEventRef);
-
+    return 0;
 }
 
 

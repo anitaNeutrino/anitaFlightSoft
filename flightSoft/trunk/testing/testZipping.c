@@ -25,4 +25,5 @@ int main(int argc, char**argv) {
 /* 	return 0; */
 /*     } */
     zipFileInPlace("/home/rjn/flightSoft/README");
+    return 0;
 }

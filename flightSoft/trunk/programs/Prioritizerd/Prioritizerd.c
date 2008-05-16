@@ -252,18 +252,18 @@ int main (int argc, char *argv[])
 
 	//	    sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	//                    theHeader.eventNumber);
-	//	    writePedSubbedBody(&pedSubBody,archiveBodyFilename);
+	//	    writeStruct(&pedSubBody,archiveBodyFilename,sizeof(PedSubbedEventBody_t));
 
 	sprintf(archiveHdFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader.eventNumber);
-	writeHeader(&theHeader,archiveHdFilename);
+	writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
 
 	makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
     
 	//Write Header and make Link for telemetry 	    
 	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
 		doingEvent);
-	retVal=writeHeader(&theHeader,telemHdFilename);
+	retVal=writeStruct(&theHeader,telemHdFilename,sizeof(AnitaEventHeader_t));
 	makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 	    
 	/* Delete input */

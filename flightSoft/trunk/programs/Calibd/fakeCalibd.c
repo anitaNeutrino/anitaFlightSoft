@@ -237,7 +237,7 @@ void writeStatus()
     theStatus.status |= (((attenState)&0xf)<<ATTEN_SHIFT); 
     
     sprintf(filename,"%s/calib_%u.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
-    writeCalibStatus(&theStatus,filename);
+    writeStruct(&theStatus,filename,sizeof(CalibStruct_t));
     makeLink(filename,CALIBD_STATUS_LINK_DIR);
 
     cleverHkWrite((unsigned char*)&theStatus,sizeof(CalibStruct_t),

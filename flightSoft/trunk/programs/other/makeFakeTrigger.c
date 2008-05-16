@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
 	  theTTT.subTime=timeStruct.tv_usec*10;
 	  //	  printf("%u %u\n",theTTT.unixTime,theTTT.subTime);
 	  sprintf(filename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
-	  writeGpsTtt(&theTTT,filename);
+	  writeStruct(&theTTT,filename,sizeof(GpsSubTime_t));
 	  retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
 	  theTTT.fromAdu5++;
 	  if(theTTT.fromAdu5>2)

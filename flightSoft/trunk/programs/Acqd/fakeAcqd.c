@@ -212,11 +212,11 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 
     sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
 	    theEventPtr->header.eventNumber);
-    retVal=writeBody(theBody,theFilename);  
+    retVal=writeStruct(theBody,theFilename,sizeof(AnitaEventBody_t));  
       
     sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
 	    theEventPtr->header.eventNumber);
-    retVal=writeHeader(theHeader,theFilename);
+    retVal=writeStruct(theHeader,theFilename,sizeof(AnitaEventHeader_t));
 
     /* Make links, not sure what to do with return value here */
     retVal=makeLink(theFilename,theLinkDir);

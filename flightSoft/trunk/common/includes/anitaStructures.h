@@ -90,7 +90,7 @@
 #define VER_HK_FULL 10
 #define VER_CMD_ECHO 10
 #define VER_MONITOR 10
-#define VER_TURF_RATE 10
+#define VER_TURF_RATE 11
 #define VER_LAB_PED 10
 #define VER_FULL_PED 10
 #define VER_SLOW_1 10
@@ -102,6 +102,7 @@
 #define VER_OTHER_MON 10
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
+#define VER_AVG_SURF_HK 10
 #endif
 
 
@@ -114,6 +115,7 @@ typedef enum {
     PACKET_HD_SLAC = 0x103,
     PACKET_SURF_HK = 0x110, //FullSurfHkStruct_t --Yes
     PACKET_TURF_RATE = 0x111, //TurfRateStruct_t -- Yes
+    PACKET_AVG_SURF_HK = 0x112, //AveragedSurfHkStruct_t -- yes
     PACKET_PEDSUB_WV = 0x120, //PedSubbedWaveformPacket_t -- Yes
     PACKET_ENC_SURF = 0x121, //EncodedSurfPacketHeader_t -- Yes
     PACKET_ENC_SURF_PEDSUB = 0x122, //EncodedPedSubbedSurfPacketHeader_t -- Yes
@@ -483,13 +485,13 @@ typedef struct {
 
 
 typedef struct {
-    GenericHeader_t gHdr;
-    unsigned int unixTime;
-    unsigned int unixTimeUs;    
-    unsigned short l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
-    unsigned char upperL2Rates[PHI_SECTORS];
-    unsigned char lowerL2Rates[PHI_SECTORS];
-    unsigned char l3Rates[PHI_SECTORS];
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int ppsNum; //It's only updated every second so no need for sub-second timing
+  unsigned short l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
+  unsigned char upperL2Rates[PHI_SECTORS];
+  unsigned char lowerL2Rates[PHI_SECTORS];
+  unsigned char l3Rates[PHI_SECTORS];
 } TurfRateStruct_t;
 
 
@@ -677,6 +679,24 @@ typedef struct {
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
     unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
 } FullSurfHkStruct_t;
+
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime; //Time of first hk
+  unsigned short numHks; //Number of hks in average
+  unsigned short deltaT; //Difference in time between first and last 
+  unsigned int hadError; //Bit mask to be defined
+  unsigned short globalThreshold;
+  unsigned short scalerGoal;
+  unsigned short avgScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short rmsScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short avgThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short rmsThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short avgRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
+  unsigned short rmsRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
+  unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
+} AveragedSurfHkStruct_t;
+
 
 typedef struct {
     GenericHeader_t gHdr;

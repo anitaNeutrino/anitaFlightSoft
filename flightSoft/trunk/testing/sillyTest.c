@@ -59,6 +59,7 @@ int main (void)
     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
     printf("Size of TurfRateStruct_t: %d\n",sizeof(TurfRateStruct_t));
     printf("Size of FullSurfHkStruct_t: %d\n",sizeof(FullSurfHkStruct_t));
+    printf("Size of AveragedSurfHkStruct_t: %d\n",sizeof(AveragedSurfHkStruct_t));
     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
     printf("Size of PedSubbedEventBody_t: %d\n",sizeof(PedSubbedEventBody_t));
     printf("Size of SurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
@@ -104,15 +105,6 @@ int main (void)
 /* 	   (int)&(header.turfio)-(int)&header, */
 /* 	   (int)&(header.priority)-(int)&header); */
 
+    return 0;
 }
 
-
-/* void waitUntilNextSecond() */
-/* { */
-/*     time_t start; */
-/*     start=time(NULL); */
-/*     printf("Start time %d\n",start); */
-
-/*     while(start==time(NULL)) usleep(100); */
-    
-/* } */

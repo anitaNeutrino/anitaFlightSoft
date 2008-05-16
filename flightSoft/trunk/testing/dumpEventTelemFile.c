@@ -17,7 +17,7 @@
 #include "pedestalLib/pedestalLib.h"
 #include "compressLib/compressLib.h"
 
-char eventBuffer[100000];
+unsigned char eventBuffer[100000];
 
 
 

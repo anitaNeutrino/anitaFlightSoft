@@ -1243,291 +1243,20 @@ int genericReadOfFile(unsigned char * buffer, char *filename, int maxBytes)
 }
 
 
-int writeHeader(AnitaEventHeader_t *hdPtr, char *filename)
-/* Writes the header pointed to by hdPtr to filename */
-{
-    return normalSingleWrite((unsigned char*)hdPtr,filename,sizeof(AnitaEventHeader_t));
-}
-
-int writeBody(AnitaEventBody_t *bodyPtr, char *filename)
-/* Writes the body pointed to by bodyPtr to filename */
+int writeStruct(void *thePtr, char *filename, int numBytes)
 {
 #ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
+  return normalSingleWrite((unsigned char*)thePtr,filename,numBytes);
 #else
-    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
-    return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
-#endif
-}
-
-int writePedSubbedBody(PedSubbedEventBody_t *bodyPtr, char *filename)
-/* Writes the body pointed to by bodyPtr to filename */
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(PedSubbedEventBody_t));
-#else
-    return normalSingleWrite((unsigned char*)bodyPtr,filename,sizeof(PedSubbedEventBody_t));
-    return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(PedSubbedEventBody_t));
+  return zippedSingleWrite((unsigned char*)thePtr,filename,numBytes);  
 #endif
 }
 
 
 
-int writeZippedBody(AnitaEventBody_t *bodyPtr, char *filename)
-/* Writes the body pointed to by bodyPtr to filename */
-{
-    return zippedSingleWrite((unsigned char*)bodyPtr,filename,sizeof(AnitaEventBody_t));
-}
-
-int writeWaveformPacket(RawWaveformPacket_t *wavePtr, char *filename)
-/* Writes the waveform pointed to by wavePtr to filename */
-{
-    
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
-#else
-    return zippedSingleWrite((unsigned char*)wavePtr,filename,sizeof(RawWaveformPacket_t));
-#endif
-}
-
-
-int writeSurfPacket(RawSurfPacket_t *surfPtr, char *filename)
-/* Writes the surf packet pointed to by surfPtr to filename */
-{
-  
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)surfPtr,filename,sizeof(RawSurfPacket_t));
-#else
-    return zippedSingleWrite((unsigned char*)surfPtr,filename,sizeof(RawSurfPacket_t));
-#endif
-}
-
-
-int writeSurfHk(FullSurfHkStruct_t *surfPtr, char *filename)
-/* Writes the surf hk packet pointed to by surfPtr to filename */
-{
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)surfPtr,filename,sizeof(FullSurfHkStruct_t));
-#endif
-
-}
-
-int writeGpsPat(GpsAdu5PatStruct_t *patPtr, char *filename)
-/* Writes the pat pointed to by patPtr to filename */
-{
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)patPtr,filename,sizeof(GpsAdu5PatStruct_t));
-#endif
-
-}
-
-int writeGpsGga(GpsGgaStruct_t *ggaPtr, char *filename)
-/* Writes the pat pointed to by patPtr to filename */
-{
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)ggaPtr,filename,sizeof(GpsGgaStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)ggaPtr,filename,sizeof(GpsGgaStruct_t));
-#endif
-
-}
-
-int writeLogWatchRequest(LogWatchRequest_t *requestPtr, char *filename)
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)requestPtr,filename,sizeof(LogWatchRequest_t));
-#else
-    return zippedSingleWrite((unsigned char*)requestPtr,filename,sizeof(LogWatchRequest_t));
-#endif
-}
-int writeLogWatchdStartStruct(LogWatchdStart_t *startPtr, char *filename)
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)startPtr,filename,sizeof(LogWatchdStart_t));
-#else
-    return zippedSingleWrite((unsigned char*)startPtr,filename,sizeof(LogWatchdStart_t));
-#endif
-}
-
-int writeGpsdStartStruct(GpsdStartStruct_t *startPtr, char *filename)
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)startPtr,filename,sizeof(GpsdStartStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)startPtr,filename,sizeof(GpsdStartStruct_t));
-#endif
-
-}
-
-int writeGpsVtg(GpsAdu5VtgStruct_t *vtgPtr, char *filename)
-/* Writes the vtg pointed to by vtgPtr to filename */
-{
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)vtgPtr,filename,sizeof(GpsAdu5VtgStruct_t));
-#endif
-
-}
-
-int writeGpsPos(GpsG12PosStruct_t *posPtr, char *filename)
-/* Writes the pos pointed to by posPtr to filename */
-{
-
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)posPtr,filename,sizeof(GpsG12PosStruct_t));
-#endif
-
-}
-
-int writeGpsAdu5Sat(GpsAdu5SatStruct_t *satPtr, char *filename)
-/* Writes the sat pointed to by satPtr to filename */
-{   
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsAdu5SatStruct_t));
-#endif
-
-}
-
-
-int writeGpsG12Sat(GpsG12SatStruct_t *satPtr, char *filename)
-/* Writes the sat pointed to by satPtr to filename */
-{   
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)satPtr,filename,sizeof(GpsG12SatStruct_t));
-#endif
-
-}
-
-
-int writeGpsTtt(GpsSubTime_t *tttPtr, char *filename)
-/* Writes the ttt pointed to by tttPtr to filename */
-{     
-    return normalSingleWrite((unsigned char*)tttPtr,filename,sizeof(GpsSubTime_t));
-}
-
-int writeHk(HkDataStruct_t *hkPtr, char *filename)
-/* Writes the hk pointed to by hkPtr to filename */
-{     
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)hkPtr,filename,sizeof(HkDataStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)hkPtr,filename,sizeof(HkDataStruct_t));
-#endif
-
-}
-
-
-int writeCmdEcho(CommandEcho_t *echoPtr, char *filename)
-/* Writes the echo pointed to by echoPtr to filename */
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)echoPtr,filename,sizeof(CommandEcho_t));
-#else
-    return zippedSingleWrite((unsigned char*)echoPtr,filename,sizeof(CommandEcho_t));
-#endif
-}
-
-
-int writeCmd(CommandStruct_t *cmdPtr, char *filename)
-/* Writes the cmd pointed to by cmdPtr to filename */
-{   
-    return normalSingleWrite((unsigned char*)cmdPtr,filename,sizeof(CommandStruct_t));
-}
-
-int writeCalibStatus(CalibStruct_t *calibPtr, char *filename)
-/* Writes the cmd pointed to by cmdPtr to filename */
-{   
-    return normalSingleWrite((unsigned char*)calibPtr,filename,sizeof(CalibStruct_t));
-}
-
-int writePedCalcStruct(PedCalcStruct_t *pedPtr, char *filename) 
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedCalcStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedCalcStruct_t));
-#endif
-
-}
-
-
-int writeUsefulPedStruct(PedestalStruct_t *pedPtr, char *filename)
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedestalStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)pedPtr,filename,sizeof(PedestalStruct_t));
-#endif
-
-}
-
-
-int writeLabChipPedStruct(FullLabChipPedStruct_t *pedPtr, char *filename) 
-{
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)pedPtr,filename,sizeof(FullLabChipPedStruct_t));
-#endif
-
-}
-
-
-int writeMonitor(MonitorStruct_t *monitorPtr, char *filename)
-/* Writes the monitor object pointed to by monitorPtr to filename */
-{   
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)monitorPtr,filename,sizeof(MonitorStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)monitorPtr,filename,sizeof(MonitorStruct_t));
-#endif
-
-}
 
 
 
-int writeTurfRate(TurfRateStruct_t *turfPtr, char *filename)
-/* Writes the TurfRateStruct_t object pointed to by turfPtr to filename */
-{
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)turfPtr,filename,sizeof(TurfRateStruct_t));
-#else
-    return zippedSingleWrite((unsigned char*)turfPtr,filename,sizeof(TurfRateStruct_t));
-#endif
-
-}
-
-
-int writeSlowRate(SlowRateFull_t *slowPtr, char *filename)
-/* Writes the SlowRateFull_t object pointed to by slowPtr to filename */
-{
-
-#ifdef NO_ZLIB
-    return normalSingleWrite((unsigned char*)slowPtr,filename,sizeof(SlowRateFull_t));
-#else
-    return zippedSingleWrite((unsigned char*)slowPtr,filename,sizeof(SlowRateFull_t));
-#endif
-
-}
 
 
 
@@ -1630,6 +1359,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_SURF: gHdr->verId=VER_SURF_PACKET; break;
 	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;
 	case PACKET_TURF_RATE: gHdr->verId=VER_TURF_RATE; break;
+    case PACKET_AVG_SURF_HK: gHdr->verId=VER_AVG_SURF_HK; break;
 	case PACKET_LAB_PED: gHdr->verId=VER_LAB_PED; break;
 	case PACKET_FULL_PED: gHdr->verId=VER_FULL_PED; break;
 	case PACKET_ENC_WV_PEDSUB: gHdr->verId=VER_ENC_WAVE_PACKET; break;
@@ -1693,7 +1423,8 @@ int checkPacket(void *thePtr)
 	case PACKET_PEDSUB_SURF: packetSize=sizeof(PedSubbedSurfPacket_t); break;
 	case PACKET_SURF: packetSize=sizeof(RawSurfPacket_t); break;
 	case PACKET_SURF_HK: packetSize=sizeof(FullSurfHkStruct_t); break;
-	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
+    case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
+    case PACKET_AVG_SURF_HK: packetSize=sizeof(AveragedSurfHkStruct_t); break;
 	case PACKET_ENC_WV_PEDSUB: break;
 	case PACKET_ENC_SURF: break;
 	case PACKET_ENC_SURF_PEDSUB: break;
@@ -1803,7 +1534,7 @@ int writeCommandAndLink(CommandStruct_t *theCmd) {
 	   theCmd->cmd[0],theCmd->cmd[1],theCmd->cmd[2],theCmd->cmd[3],
 	   theCmd->numCmdBytes);
 
-    writeCmd(theCmd,filename);
+    writeStruct(theCmd,filename,sizeof(CommandStruct_t));
     makeLink(filename,CMDD_COMMAND_LINK_DIR);    
     return retVal;
 }

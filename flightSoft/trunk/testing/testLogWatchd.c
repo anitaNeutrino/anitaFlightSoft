@@ -24,7 +24,7 @@ char unzippedBuffer[MAX_FILE_SIZE];
 void processZippedFile(ZippedFile_t *zfPtr);
 
 int main(int argc, char** argv) {
-    char bigBuffer[100000];
+    unsigned char bigBuffer[100000];
     int numBytes=0,count=0,checkVal;
      char currentLink[FILENAME_MAX];
     char currentFile[FILENAME_MAX];

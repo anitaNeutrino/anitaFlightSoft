@@ -51,7 +51,7 @@ int main(int argc, char**argv) {
     }
     if(fpEvent)
 	fclose(fpEvent);
-
+    return 0;
 }
 
 

@@ -605,7 +605,7 @@ int writeHeaderAndMakeLink(AnitaEventHeader_t *theHeaderPtr)
     sprintf(theFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 	    theHeaderPtr->eventNumber);
     if(printToScreen && verbosity) printf("Writing %s\n",theFilename);
-    retVal=writeHeader(theHeaderPtr,theFilename);
+    retVal=writeStruct(theHeaderPtr,theFilename,sizeof(AnitaEventHeader_t));
 
 		 
     /* Make links, not sure what to do with return value here */

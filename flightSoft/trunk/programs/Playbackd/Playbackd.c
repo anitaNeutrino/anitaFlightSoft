@@ -419,9 +419,9 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
 	printf("Something wrong while writing %s\n",bodyName);
     }
     else {
-	writeHeader(hdPtr,headName);
-	makeLink(headName,eventTelemLinkDirs[pri]);
-	fprintf(stderr,"Think I did it\n");
+      writeStruct(hdPtr,headName,sizeof(AnitaEventHeader_t));
+      makeLink(headName,eventTelemLinkDirs[pri]);
+      fprintf(stderr,"Think I did it\n");
     } 
 }
 
