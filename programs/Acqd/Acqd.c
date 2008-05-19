@@ -1954,7 +1954,7 @@ void outputSurfHkData() {
 
       retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
 			   sizeof(AveragedSurfHkStruct_t),
-			   theSurfHk.unixTime,&avgSurfHk);   
+			   theSurfHk.unixTime,&avgSurfHkWriter);   
 
       numHks=0;
     }      
