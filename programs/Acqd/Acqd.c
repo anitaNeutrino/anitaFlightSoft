@@ -2418,6 +2418,12 @@ AcqdErrorCode_t readSurfHkData()
     for(rfChan=0;rfChan<2;rfChan++) {
       theSurfHk.surfTrigBandMask[surf][rfChan]=surfTrigBandMasks[surf][rfChan];
     }
+
+    if(printToScreen) {
+      for(index=0;index<72;index++) {
+	printf("SURF %d, Word %d == %d  (%d)\n",surfIndex[surf],index,buffer[index],buffer[index]&0xffff);
+      }
+    }
     
     //First stuff the scaler data
     for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
