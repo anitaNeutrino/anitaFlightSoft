@@ -102,8 +102,8 @@ int pedSwitchConfigAtEnd=1; //Need to work out exactly what this does
 
 //Temporary Global Variables
 unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
-unsigned int avgScalerData[MAX_SURFS][N_RFTRIG];
-//unsigned short threshData[MAX_SURFS][N_RFTRIG];
+unsigned int avgScalerData[MAX_SURFS][SCALERS_PER_SURF];
+//unsigned short threshData[MAX_SURFS][SCALERS_PER_SURF];
 //unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
 
 //Configurable watchamacallits
@@ -152,11 +152,11 @@ int pps2TrigFlag = 0;
 //Threshold Stuff
 //int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
 int surfTrigBandMasks[ACTIVE_SURFS][2];
-int thresholdArray[ACTIVE_SURFS][N_RFTRIG];
-float pidGoalScaleFactors[ACTIVE_SURFS][N_RFTRIG];
+int thresholdArray[ACTIVE_SURFS][SCALERS_PER_SURF];
+float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
 int setGlobalThreshold=0; 
 int globalThreshold=2200;
-DacPidStruct_t thePids[ACTIVE_SURFS][N_RFTRIG];
+DacPidStruct_t thePids[ACTIVE_SURFS][SCALERS_PER_SURF];
 float dacIGain;  // integral gain
 float dacPGain;  // proportional gain
 float dacDGain;  // derivative gain
@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
   turfioPtr=&(hdPtr->turfio);
 
   //Initialize dacPid stuff
-  memset(&thePids,0,sizeof(DacPidStruct_t)*ACTIVE_SURFS*N_RFTRIG);    
+  memset(&thePids,0,sizeof(DacPidStruct_t)*ACTIVE_SURFS*SCALERS_PER_SURF);    
    
   // Setup log 
   setlogmask(LOG_UPTO(LOG_INFO));
@@ -1273,13 +1273,13 @@ int readConfigFile()
     }
 	
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
-      for(dac=0;dac<N_RFTRIG;dac++) {
+      for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	thresholdArray[surf][dac]=0;
 	pidGoalScaleFactors[surf][dac]=0;
       }
       if(dacSurfs[surf]) {		
 	sprintf(keyName,"threshSurf%d",surf+1);
-	tempNum=32;	       
+	tempNum=SCALERS_PER_SURF;	       
 	kvpStatus = kvpGetIntArray(keyName,&(thresholdArray[surf][0]),&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
 	  syslog(LOG_WARNING,"kvpGetIntArray(%s): %s",keyName,
@@ -1290,7 +1290,7 @@ int readConfigFile()
 	}
 
 	sprintf(keyName,"pidGoalScaleSurf%d",surf+1);
-	tempNum=32;	       
+	tempNum=SCALERS_PER_SURF;	       
 	kvpStatus = kvpGetFloatArray(keyName,&(pidGoalScaleFactors[surf][0]),&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
 	  syslog(LOG_WARNING,"kvpGetFloatArray(%s): %s",keyName,
@@ -1499,10 +1499,14 @@ int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
 
 void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short val)
 {
+  memset(obuffer,0,sizeof(int)*MAX_SURFS*34);
   int dac,surf;
   for(surf=0;surf<numSurfs;surf++) {
-    for (dac=0;dac<N_RFTRIG;dac++) {
-      obuffer[surf][dac] = (dac<<16) + val;
+    for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
+      if(rawScalerToLogicScaler[dac]>=0) 
+	obuffer[surf][dac] = (dac<<16) + val; //Actual channel
+      else
+	obuffer[surf][dac] = (dac<<16) + 0; //Not an actual channel
     }
     obuffer[surf][32] = (32 << 16) + surfTrigBandMasks[surfIndex[surf]-1][0];
     obuffer[surf][33] = (33 << 16) + surfTrigBandMasks[surfIndex[surf]-1][1];
@@ -1512,10 +1516,17 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
 
 void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
 {
-  int dac,surf;
+  memset(obuffer,0,sizeof(int)*MAX_SURFS*34);
+  int dac,surf,index;
   for(surf=0;surf<numSurfs;surf++) {
-    for (dac=0;dac<N_RFTRIG;dac++) {
-      obuffer[surf][dac] = (dac<<16) + (thresholdArray[surfIndex[surf]-1][dac]&0xfff);
+    for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
+      index=rawScalerToLogicScaler[dac];
+      if(index>=0) {
+	obuffer[surf][dac] = (dac<<16) + (thresholdArray[surfIndex[surf]-1][index]&0xfff);
+      }
+      else {
+	obuffer[surf][dac] = (dac<<16) + 0;	   
+      }
     }
     obuffer[surf][32] = (32 << 16) + surfTrigBandMasks[surfIndex[surf]-1][0];
     obuffer[surf][33] = (33 << 16) + surfTrigBandMasks[surfIndex[surf]-1][1];
@@ -1546,7 +1557,7 @@ AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
 
 
 AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold) {
-  unsigned int outBuffer[MAX_SURFS][N_RFTRIG+2];
+  unsigned int outBuffer[MAX_SURFS][RAW_SCALERS_PER_SURF+2];
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
   
@@ -1560,7 +1571,7 @@ AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold) {
 
 
 AcqdErrorCode_t setDACThresholds() {
-  unsigned int outBuffer[MAX_SURFS][N_RFTRIG+2];
+  unsigned int outBuffer[MAX_SURFS][RAW_SCALERS_PER_SURF+2];
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
   
@@ -1768,7 +1779,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
   } while(!done);
   //This is single dacVal stuff
   //
-  //    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*N_RFTRIG);
+  //    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*SCALERS_PER_SURF);
   //  if(surfForSingle==100) {
   //    for(surf=0;surf<numSurfs;surf++)
   //      thresholdArray[surf][dacForSingle]=doingDacVal;
@@ -2369,7 +2380,7 @@ AcqdErrorCode_t readSurfHkData()
 // Reads the scaler and RF power data from the SURF board
 {
   AcqdErrorCode_t status=ACQD_E_OK;
-  int surf,rfChan;
+  int surf,rfChan,index;
   unsigned int buffer[72];
   unsigned int count=0;
   unsigned int dataInt;
@@ -2409,8 +2420,9 @@ AcqdErrorCode_t readSurfHkData()
     }
     
     //First stuff the scaler data
-    for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
-      dataInt=buffer[rfChan];
+    for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
+      index=rawScalerToLogicScaler[rfChan];
+      dataInt=buffer[index];
       theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
       if((printToScreen && verbosity>1) || HK_DEBUG) 
 	printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.scaler[surf][rfChan]);
@@ -2425,8 +2437,9 @@ AcqdErrorCode_t readSurfHkData()
     }
     
     //Next comes the threshold (DAC val) data
-    for(rfChan=0;rfChan<N_RFTRIG;rfChan++){
-      dataInt=buffer[N_RFTRIG+rfChan];
+    for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
+      index=rawScalerToLogicScaler[rfChan];
+      dataInt=buffer[RAW_SCALERS_PER_SURF+index];
       
       theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
       theSurfHk.setThreshold[surf][rfChan]=thresholdArray[surf][rfChan];
@@ -2450,7 +2463,8 @@ AcqdErrorCode_t readSurfHkData()
     
     //Lastly read the RF Power Data
     for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
-      dataInt=buffer[(2*N_RFTRIG)+rfChan];
+      index=rawScalerToLogicScaler[rfChan];
+      dataInt=buffer[(2*RAW_SCALERS_PER_SURF)+index];
       theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
       if((printToScreen && verbosity>1) || HK_DEBUG)
 	printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]&0xfff);
@@ -2754,10 +2768,10 @@ int updateThresholdsUsingPID() {
   avgCount++;
   for(surf=0;surf<numSurfs;surf++) {
     if(dacSurfs[surf]==1) {
-      for(dac=0;dac<N_RFTRIG;dac++) {
+      for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	chanGoal=(int)(pidGoal*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
-	if(chanGoal>32000) chanGoal=32000;
+	if(chanGoal>16000) chanGoal=16000;
 	if(abs(theSurfHk.scaler[surf][dac]-chanGoal)>pidPanicVal)
 	  wayOffCount++;
 	avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
@@ -2769,10 +2783,10 @@ int updateThresholdsUsingPID() {
   //    }
   if(avgCount==pidAverage || wayOffCount>100) {
     for(surf=0;surf<numSurfs;surf++) {
-      for(dac=0;dac<N_RFTRIG;dac++) {		
+      for(dac=0;dac<SCALERS_PER_SURF;dac++) {		
 	chanGoal=(int)(pidGoal*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
-	if(chanGoal>32000) chanGoal=32000;
+	if(chanGoal>16000) chanGoal=16000;
 	if(dacSurfs[surf]==1) {
 	  value=avgScalerData[surf][dac]/avgCount;
 	  avgScalerData[surf][dac]=0;
