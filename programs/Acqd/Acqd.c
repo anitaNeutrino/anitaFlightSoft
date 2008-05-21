@@ -151,7 +151,7 @@ int pps2TrigFlag = 0;
 
 //Threshold Stuff
 //int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
-int surfTrigBandMasks[ACTIVE_SURFS][2];
+int surfTrigBandMasks[ACTIVE_SURFS];
 int thresholdArray[ACTIVE_SURFS][SCALERS_PER_SURF];
 float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
 int setGlobalThreshold=0; 
@@ -1209,8 +1209,8 @@ int readConfigFile()
 
     turfioPos.bus=kvpGetInt("turfioBus",3); //in seconds
     turfioPos.slot=kvpGetInt("turfioSlot",10); //in seconds
-    tempNum=18;
-    kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0][0],&tempNum);
+    tempNum=ACTIVE_SURFS;
+    kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(surfTrigBandMasks): %s",
 	     kvpErrorString(kvpStatus));
@@ -1500,16 +1500,26 @@ int init_param(int argn, char **argv,  int *n, unsigned short *dacVal) {
 void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short val)
 {
   memset(obuffer,0,sizeof(int)*MAX_SURFS*34);
-  int dac,surf;
+  int dac,surf,index;
+  unsigned int mask[2]={0};
   for(surf=0;surf<numSurfs;surf++) {
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
-      if(rawScalerToLogicScaler[dac]>=0) 
+      index=rawScalerToLogicScaler[dac];
+      if(index>=0) {
 	obuffer[surf][dac] = (dac<<16) + val; //Actual channel
-      else
-	obuffer[surf][dac] = (dac<<16) + 0; //Not an actual channel
+	if(dac<16) {
+	  mask[0] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<dac);
+	}
+	else {
+	  mask[1] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<(dac-16));
+	}		      
+      }
+      else {
+	obuffer[surf][dac] = (dac<<16) + 0; //Not an actual channel	
+      }
     }
-    obuffer[surf][32] = (32 << 16) + surfTrigBandMasks[surfIndex[surf]-1][0];
-    obuffer[surf][33] = (33 << 16) + surfTrigBandMasks[surfIndex[surf]-1][1];
+    obuffer[surf][32] = (32 << 16) + mask[0];
+    obuffer[surf][33] = (33 << 16) + mask[1];
   }
 }
 
@@ -1518,18 +1528,25 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
 {
   memset(obuffer,0,sizeof(int)*MAX_SURFS*34);
   int dac,surf,index;
+  unsigned int mask[2]={0};
   for(surf=0;surf<numSurfs;surf++) {
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
       index=rawScalerToLogicScaler[dac];
       if(index>=0) {
 	obuffer[surf][dac] = (dac<<16) + (thresholdArray[surfIndex[surf]-1][index]&0xfff);
+	if(dac<16) {
+	  mask[0] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<dac);
+	}
+	else {
+	  mask[1] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<(dac-16));
+	}	
       }
       else {
 	obuffer[surf][dac] = (dac<<16) + 0;	   
       }
     }
-    obuffer[surf][32] = (32 << 16) + surfTrigBandMasks[surfIndex[surf]-1][0];
-    obuffer[surf][33] = (33 << 16) + surfTrigBandMasks[surfIndex[surf]-1][1];
+    obuffer[surf][32] = (32 << 16) + mask[0];
+    obuffer[surf][33] = (33 << 16) + mask[1];
   }
 }
 
@@ -1879,7 +1896,7 @@ void outputSurfHkData() {
   static float threshMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
   static float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
   static float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
-  static unsigned short surfTrigBandMasks[ACTIVE_SURFS][2];
+  static unsigned short surfTrigBandMasks[ACTIVE_SURFS];
   static unsigned short numHks=0;  
   int surf,dac,chan;//,ind;
   float tempVal;
@@ -1895,12 +1912,12 @@ void outputSurfHkData() {
       memset(threshMeanSq,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
       memset(rfPowerMean,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
       memset(rfPowerMeanSq,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
-      memset(surfTrigBandMasks,0,sizeof(float)*ACTIVE_SURFS*2);
+      memset(surfTrigBandMasks,0,sizeof(short)*ACTIVE_SURFS);
       //Set up initial values
       avgSurfHk.unixTime=theSurfHk.unixTime;
       avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
       avgSurfHk.scalerGoal=theSurfHk.scalerGoal;
-      memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS*2);
+      memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS);
     }
     //Now add stuff to the average
     numHks++;
@@ -2415,9 +2432,8 @@ AcqdErrorCode_t readSurfHkData()
     }
 
     //First just fill in antMask in SURF
-    for(rfChan=0;rfChan<2;rfChan++) {
-      theSurfHk.surfTrigBandMask[surf][rfChan]=surfTrigBandMasks[surf][rfChan];
-    }
+    theSurfHk.surfTrigBandMask[surf]=surfTrigBandMasks[surf];
+    
 
     if(printToScreen && verbosity>2) {
       for(index=0;index<72;index++) {

@@ -80,7 +80,7 @@
 #define VER_SURF_PACKET 10
 #define VER_ENC_WAVE_PACKET 10
 #define VER_ENC_SURF_PACKET 10
-#define VER_SURF_HK 11
+#define VER_SURF_HK 12
 #define VER_GPS_GGA 10
 #define VER_ADU5_PAT 10
 #define VER_ADU5_SAT 10
@@ -102,7 +102,7 @@
 #define VER_OTHER_MON 10
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
-#define VER_AVG_SURF_HK 11
+#define VER_AVG_SURF_HK 12
 #endif
 
 
@@ -677,7 +677,7 @@ typedef struct {
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short setThreshold[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
-    unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
+    unsigned short surfTrigBandMask[ACTIVE_SURFS];
 } FullSurfHkStruct_t;
 
 typedef struct {
@@ -694,7 +694,7 @@ typedef struct {
   unsigned short rmsThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short avgRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
   unsigned short rmsRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
-  unsigned short surfTrigBandMask[ACTIVE_SURFS][2];
+  unsigned short surfTrigBandMask[ACTIVE_SURFS];
 } AveragedSurfHkStruct_t;
 
 
