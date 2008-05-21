@@ -2419,7 +2419,7 @@ AcqdErrorCode_t readSurfHkData()
       theSurfHk.surfTrigBandMask[surf][rfChan]=surfTrigBandMasks[surf][rfChan];
     }
 
-    if(printToScreen) {
+    if(printToScreen && verbosity>2) {
       for(index=0;index<72;index++) {
 	printf("SURF %d, Word %d == %d  (%d)\n",surfIndex[surf],index,buffer[index],buffer[index]&0xffff);
       }
@@ -2446,7 +2446,7 @@ AcqdErrorCode_t readSurfHkData()
     for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
       index=logicalScalerToRawScaler[rfChan];
       dataInt=buffer[RAW_SCALERS_PER_SURF+index];
-      if(printToScreen) {
+      if(printToScreen && verbosity>2) {
 	printf("Surf %d, Threshold %d Word %d == %d\n",surfIndex[surf],rfChan,RAW_SCALERS_PER_SURF+index,dataInt&0xffff);
       }
       theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
