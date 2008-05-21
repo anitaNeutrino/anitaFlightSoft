@@ -471,7 +471,7 @@ int main(int argc, char **argv) {
 	  rateCalcAndServo(&timeStruct,lastEvNum); 
 
 
-	  if(tmo>500) {
+	  if(tmo>10) {
 	    if(printToScreen && verbosity>3)
 	      printf("Here because tmo is %d\n",tmo);
 	    if(currentState!=PROG_STATE_RUN) 
