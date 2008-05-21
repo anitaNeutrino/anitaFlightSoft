@@ -2427,7 +2427,7 @@ AcqdErrorCode_t readSurfHkData()
     
     //First stuff the scaler data
     for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
-      index=rawScalerToLogicScaler[rfChan];
+      index=logicalScalerToRawScaler[rfChan];
       dataInt=buffer[index];
       theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
       if((printToScreen && verbosity>1) || HK_DEBUG) 
@@ -2444,9 +2444,11 @@ AcqdErrorCode_t readSurfHkData()
     
     //Next comes the threshold (DAC val) data
     for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
-      index=rawScalerToLogicScaler[rfChan];
+      index=logicalScalerToRawScaler[rfChan];
       dataInt=buffer[RAW_SCALERS_PER_SURF+index];
-      
+      if(printToScreen) {
+	printf("Surf %d, Threshold %d Word %d == %d\n",surfIndex[surf],rfChan,RAW_SCALERS_PER_SURF+index,dataInt&0xffff);
+      }
       theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
       theSurfHk.setThreshold[surf][rfChan]=thresholdArray[surf][rfChan];
       if((printToScreen && verbosity>1) || HK_DEBUG) 
@@ -2469,7 +2471,7 @@ AcqdErrorCode_t readSurfHkData()
     
     //Lastly read the RF Power Data
     for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
-      index=rawScalerToLogicScaler[rfChan];
+      index=rfChan;
       dataInt=buffer[(2*RAW_SCALERS_PER_SURF)+index];
       theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
       if((printToScreen && verbosity>1) || HK_DEBUG)
