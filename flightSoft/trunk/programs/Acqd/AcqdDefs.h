@@ -44,7 +44,6 @@
 #define N_CHAN 9
 #define N_RFCHAN RFCHAN_PER_SURF
 #define N_CHIP 4
-#define N_RFTRIG SCALERS_PER_SURF  // 32 RF trigger channels per SURF board
 
 
 typedef enum __SURF_control_act {  
@@ -119,5 +118,7 @@ typedef struct {
     unsigned char test[8];
 } TurfioTestPattern_t;
       
-	
+int logicalScalerToRawScaler[SCALERS_PER_SURF]={8,10,12,14,9,11,13,15,16,18,20,22,17,19,21,23}; //Note raw counts from 0
+int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={-1,-1,-1,-1,-1,-1,-1,-1,0,4,1,5,2,6,3,7,8,12,9,13,10,14,11,15,-1,-1,-1,-1,-1,-1,-1,-1};
+
 #endif //ACQDSDDEFS_H

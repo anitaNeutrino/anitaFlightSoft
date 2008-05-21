@@ -80,7 +80,7 @@
 #define VER_SURF_PACKET 10
 #define VER_ENC_WAVE_PACKET 10
 #define VER_ENC_SURF_PACKET 10
-#define VER_SURF_HK 10
+#define VER_SURF_HK 11
 #define VER_GPS_GGA 10
 #define VER_ADU5_PAT 10
 #define VER_ADU5_SAT 10
@@ -102,7 +102,7 @@
 #define VER_OTHER_MON 10
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
-#define VER_AVG_SURF_HK 10
+#define VER_AVG_SURF_HK 11
 #endif
 
 
