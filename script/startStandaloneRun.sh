@@ -6,7 +6,7 @@ daemon --stop -n GPSd
 daemon --stop -n Monitord
 daemon --stop -n Cmdd
 daemon --stop -n Calibd
-#daemon --stop -n Acqd
+daemon --stop -n Acqd
 daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 
@@ -31,7 +31,7 @@ daemon -r Cmdd -n Cmdd
 daemon -r Archived -n Archived
 daemon -r Hkd -n Hkd
 daemon -r GPSd -n GPSd
-#daemon -r Monitord -n Monitord
+daemon -r Monitord -n Monitord
 daemon -r Calibd -n Calibd
 
 #Just to make sure
