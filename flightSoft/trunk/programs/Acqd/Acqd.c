@@ -64,6 +64,7 @@ int printToScreen=0,standAloneMode=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
 int slipCounter=0;
 int turfRateTelemEvery=1,turfRateTelemInterval=60;
+int turfRateAverage=60;
 int surfHkPeriod=0;
 int surfHkAverage=10;
 int surfHkTelemEvery=0;
@@ -194,6 +195,7 @@ unsigned int antTrigMask=0;
 AnitaHkWriterStruct_t turfHkWriter;
 AnitaHkWriterStruct_t surfHkWriter;
 AnitaHkWriterStruct_t avgSurfHkWriter;
+AnitaHkWriterStruct_t sumTurfRateWriter;
 AnitaEventWriterStruct_t eventWriter;
 
 //Deadtime monitoring
@@ -673,7 +675,9 @@ int main(int argc, char **argv) {
 	// Save data if we want to
 	outputEventData();
 	if(gotSurfHk) outputSurfHkData();
-	if(writeFullHk) outputTurfRateData();		    	
+	if(newTurfRateData) outputTurfRateData();		    	
+
+
       }
 	    
       // Clear boards
@@ -693,6 +697,7 @@ int main(int argc, char **argv) {
   }
 
   closeHkFilesAndTidy(&avgSurfHkWriter);
+  closeHkFilesAndTidy(&sumTurfRateWriter);
   closeHkFilesAndTidy(&surfHkWriter);
   closeHkFilesAndTidy(&turfHkWriter);
   unlink(ACQD_PID_FILE);
@@ -1153,6 +1158,7 @@ int readConfigFile()
     surfHkPeriod=kvpGetInt("surfHkPeriod",1);
     surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
     surfHkAverage=kvpGetInt("surfHkAverage",1);
+    turfRateAverage=kvpGetInt("turfRateAverage",60);
     turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
     turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
     //	printf("HK surfPeriod %d\nturfRateTelemEvery %d\nturfRateTelemInterval %d\n",surfHkPeriod,turfRateTelemEvery,turfRateTelemInterval);
@@ -1976,14 +1982,13 @@ void outputSurfHkData() {
       avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
       fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
       sprintf(theFilename,"%s/avgsurfhk_%d.dat.gz",SURFHK_TELEM_DIR,
-	      theSurfHk.unixTime);
+	      avgSurfHk.unixTime);
       retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
       makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
-
+      
       retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
 			   sizeof(AveragedSurfHkStruct_t),
-			   theSurfHk.unixTime,&avgSurfHkWriter);   
-
+			   avgSurfHk.unixTime,&avgSurfHkWriter);   
       numHks=0;
     }      
   }
@@ -2007,7 +2012,44 @@ void outputSurfHkData() {
 
 
 void outputTurfRateData() {
-  if(newTurfRateData) {
+  char theFilename[FILENAME_MAX];
+  static SummedTurfRateStruct_t sumTurf;
+  static int numRates=0;
+  int retVal=0,surf,ant,phi;
+  if(turfRateAverage>0) {
+    if(numRates==0) {
+      //Need to initialize sumTurf
+      memset(&sumTurf,0,sizeof(SummedTurfRateStruct_t));
+      sumTurf.unixTime=turfRates.unixTime;
+    }
+    numRates++;
+    for(surf=0;surf<TRIGGER_SURFS;surf++) {
+      for(ant=0;ant<ANTS_PER_SURF;ant++) {
+	sumTurf.l1Rates[surf][ant]+=turfRates.l1Rates[surf][ant];
+      }
+    }
+    for(phi=0;phi<PHI_SECTORS;phi++) {
+      sumTurf.upperL2Rates[phi]+=turfRates.upperL2Rates[phi];
+      sumTurf.lowerL2Rates[phi]+=turfRates.lowerL2Rates[phi];
+      sumTurf.l3Rates[phi]+=turfRates.l3Rates[phi];
+    }
+    if(numRates==turfRateAverage) {
+      //Tiem to output it
+      sumTurf.numRates=numRates;
+      sumTurf.deltaT=turfRates.unixTime-sumTurf.unixTime;
+      fillGenericHeader(&sumTurf,PACKET_SUM_TURF_RATE,sizeof(SummedTurfRateStruct_t)); 
+      sprintf(theFilename,"%s/sumturfrate_%d.dat.gz",TURFHK_TELEM_DIR,
+	      theSurfHk.unixTime);
+      retVal+=writeStruct(&sumTurf,theFilename,sizeof(SummedTurfRateStruct_t));
+      makeLink(theFilename,TURFHK_TELEM_LINK_DIR);  
+
+      retVal=cleverHkWrite((unsigned char*)&sumTurf,
+			   sizeof(SummedTurfRateStruct_t),
+			   sumTurf.unixTime,&sumTurfRateWriter);  
+    }
+    numRates=0;
+  }
+  if(writeFullHk) {
     writeTurfHousekeeping(1);
     turfHkCounter++;
     if(turfHkCounter>=turfRateTelemEvery) {
@@ -2894,6 +2936,14 @@ void prepWriterStructs() {
     avgSurfHkWriter.currentFilePtr[diskInd]=0;
   avgSurfHkWriter.writeBitMask=hkDiskBitMask;
 
+
+  //Summed Turf Rate Writer
+  strncpy(sumTurfRateWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
+  sprintf(sumTurfRateWriter.filePrefix,"sumturfhk");
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+    sumTurfRateWriter.currentFilePtr[diskInd]=0;
+  sumTurfRateWriter.writeBitMask=hkDiskBitMask;
+
   //Event Writer
   if(useAltDir) 
     strncpy(eventWriter.relBaseName,altOutputdir,FILENAME_MAX-1);
@@ -2988,6 +3038,7 @@ void handleBadSigs(int sig)
   if(numHere==0) {
     numHere++;    
     closeDevices();
+    closeHkFilesAndTidy(&sumTurfRateWriter);
     closeHkFilesAndTidy(&avgSurfHkWriter);
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);

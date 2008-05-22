@@ -103,6 +103,7 @@
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
 #define VER_AVG_SURF_HK 12
+#define VER_SUM_TURF_RATE 10
 #endif
 
 
@@ -116,6 +117,7 @@ typedef enum {
     PACKET_SURF_HK = 0x110, //FullSurfHkStruct_t --Yes
     PACKET_TURF_RATE = 0x111, //TurfRateStruct_t -- Yes
     PACKET_AVG_SURF_HK = 0x112, //AveragedSurfHkStruct_t -- yes
+    PACKET_SUM_TURF_RATE = 0x112, //SummedTurfRateStruct_t -- yes
     PACKET_PEDSUB_WV = 0x120, //PedSubbedWaveformPacket_t -- Yes
     PACKET_ENC_SURF = 0x121, //EncodedSurfPacketHeader_t -- Yes
     PACKET_ENC_SURF_PEDSUB = 0x122, //EncodedPedSubbedSurfPacketHeader_t -- Yes
@@ -493,6 +495,17 @@ typedef struct {
   unsigned char lowerL2Rates[PHI_SECTORS];
   unsigned char l3Rates[PHI_SECTORS];
 } TurfRateStruct_t;
+
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime; //Time of first hk
+  unsigned short numRates; //Number of rates in average
+  unsigned short deltaT; //Difference in time between first and last 
+  unsigned int l1Rates[TRIGGER_SURFS][ANTS_PER_SURF]; // 3 of 8 counters
+  unsigned short upperL2Rates[PHI_SECTORS];
+  unsigned short lowerL2Rates[PHI_SECTORS];
+  unsigned short l3Rates[PHI_SECTORS];
+} SummedTurfRateStruct_t;
 
 
 typedef struct {

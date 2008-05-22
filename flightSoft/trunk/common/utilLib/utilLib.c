@@ -1360,6 +1360,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;
 	case PACKET_TURF_RATE: gHdr->verId=VER_TURF_RATE; break;
     case PACKET_AVG_SURF_HK: gHdr->verId=VER_AVG_SURF_HK; break;
+    case PACKET_SUM_TURF_RATE: gHdr->verId=VER_SUM_TURF_RATE; break;
 	case PACKET_LAB_PED: gHdr->verId=VER_LAB_PED; break;
 	case PACKET_FULL_PED: gHdr->verId=VER_FULL_PED; break;
 	case PACKET_ENC_WV_PEDSUB: gHdr->verId=VER_ENC_WAVE_PACKET; break;
@@ -1425,6 +1426,7 @@ int checkPacket(void *thePtr)
 	case PACKET_SURF_HK: packetSize=sizeof(FullSurfHkStruct_t); break;
     case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
     case PACKET_AVG_SURF_HK: packetSize=sizeof(AveragedSurfHkStruct_t); break;
+    case PACKET_SUM_TURF_RATE: packetSize=sizeof(SummedTurfRateStruct_t); break;
 	case PACKET_ENC_WV_PEDSUB: break;
 	case PACKET_ENC_SURF: break;
 	case PACKET_ENC_SURF_PEDSUB: break;
