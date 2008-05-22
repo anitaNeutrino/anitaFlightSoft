@@ -1433,22 +1433,24 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
     mask[1]=0;
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
       index=rawScalerToLogicScaler[dac];
-      printf("surf %d, surfTrigBandMasks %d, dac %d, index %d\n",
-	     surf,surfTrigBandMasks[surfIndex[surf]-1],dac,index);
+      //      printf("surf %d, surfTrigBandMasks %d, dac %d, index %d\n",
+      //	     surf,surfTrigBandMasks[surfIndex[surf]-1],dac,index);
       if(index>=0) {
 	obuffer[surf][dac] = (dac<<16) + val; //Actual channel
 	if(dac<16) {
-	  mask[0] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<dac);
+	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
+	    mask[0] |= (1<<dac);
 	}
 	else {
-	  mask[1] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<(dac-16));
+	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
+	    mask[1] |= (1<<*=(dac-16));
 	}		      
       }
       else {
 	obuffer[surf][dac] = (dac<<16) + 0; //Not an actual channel	
       }
     }    
-    fprintf(stderr,"surf %d mask %#x\t%#x\n",surf,mask[0],mask[1]);
+    //    fprintf(stderr,"surf %d mask %#x\t%#x\n",surf,mask[0],mask[1]);
     obuffer[surf][32] = (32 << 16) + mask[0];
     obuffer[surf][33] = (33 << 16) + mask[1];
   }
@@ -1468,10 +1470,13 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
       if(index>=0) {
 	obuffer[surf][dac] = (dac<<16) + (thresholdArray[surfIndex[surf]-1][index]&0xfff);
 	if(dac<16) {
-	  mask[0] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<dac);
+	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
+	    mask[0] |= (1<<dac);
 	}
 	else {
-	  mask[1] |= ((surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))<<(dac-16));
+	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
+	    mask[1] |= (1<<*=(dac-16));
+
 	}	
       }
       else {
