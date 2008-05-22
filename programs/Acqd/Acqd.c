@@ -1443,7 +1443,7 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
 	}
 	else {
 	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
-	    mask[1] |= (1<<*=(dac-16));
+	    mask[1] |= (1<<(dac-16));
 	}		      
       }
       else {
@@ -1475,7 +1475,7 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
 	}
 	else {
 	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
-	    mask[1] |= (1<<*=(dac-16));
+	    mask[1] |= (1<<(dac-16));
 
 	}	
       }
