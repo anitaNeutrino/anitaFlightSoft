@@ -1475,6 +1475,7 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
 	obuffer[surf][dac] = (dac<<16) + 0;	   
       }
     }
+    printf("surf %d mask %#x\t%#x\n",surf,mask[0],mask[1]);
     obuffer[surf][32] = (32 << 16) + mask[0];
     obuffer[surf][33] = (33 << 16) + mask[1];
   }
