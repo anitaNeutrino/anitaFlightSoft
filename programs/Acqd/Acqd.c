@@ -403,7 +403,7 @@ int main(int argc, char **argv) {
 
     while (currentState==PROG_STATE_RUN) {
       //This is the start of the main event loop
-      if((standAloneMode || numEvents) && (numEvents && numEvents<doingEvent)) {
+      if(numEvents && numEvents<doingEvent) {
 	currentState=PROG_STATE_TERMINATE;
 	break;
 	//This is one way out of the main event loop
@@ -431,6 +431,7 @@ int main(int argc, char **argv) {
 	  //somehow changeable
 	  eventReadyFlag=0;
 	  status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+	  printf("eventReadyFlag %d -- %d\n",eventReadyFlag,checkSurfFdsForData());
 	  if(status!=ACQD_E_OK) {
 	    fprintf(stderr,"Error reading GPIO value from SURF 0\n");
 	    syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
@@ -3113,3 +3114,20 @@ void intersperseSoftTrig(struct timeval *tvPtr)
   }
 }
 
+int checkSurfFdsForData()
+{
+  static struct timeval read_timeout;
+  static struct timeval * read_timeout_ptr;
+  static fd_set read_fds;
+  int retVal=0;
+  read_timeout.tv_sec = 1;
+  read_timeout.tv_usec = 0;
+  read_timeout_ptr=&read_timeout;
+  
+  FD_ZERO(&read_fds);
+  FD_SET(surfFds[0], &read_fds);
+  retVal = select(surfFds[0]+1, &read_fds,NULL, NULL, read_timeout_ptr);
+  
+  printf("checkSurfFdsForData: retVal %d\n",retVal);
+  return retVal;
+}

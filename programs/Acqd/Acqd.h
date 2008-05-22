@@ -56,6 +56,7 @@ void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum);
 void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
 void intersperseSurfHk(struct timeval *tvPtr);
 void intersperseSoftTrig(struct timeval *tvPtr);
+int checkSurfFdsForData();
 
 //Output functions
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned int evNum);
