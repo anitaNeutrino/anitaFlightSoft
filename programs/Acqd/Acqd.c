@@ -2018,6 +2018,7 @@ void outputTurfRateData() {
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
   int retVal=0,surf,ant,phi;
+  printf("outputTurfRateData -- numRates %d\n",numRates);
   if(turfRateAverage>0) {
     if(numRates==0) {
       //Need to initialize sumTurf
@@ -2036,7 +2037,7 @@ void outputTurfRateData() {
       sumTurf.l3Rates[phi]+=turfRates.l3Rates[phi];
     }
     if(numRates==turfRateAverage) {
-      //Tiem to output it
+      //Time to output it
       sumTurf.numRates=numRates;
       sumTurf.deltaT=turfRates.unixTime-sumTurf.unixTime;
       fillGenericHeader(&sumTurf,PACKET_SUM_TURF_RATE,sizeof(SummedTurfRateStruct_t)); 
