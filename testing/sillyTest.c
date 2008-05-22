@@ -83,7 +83,7 @@ int main (void)
     printf("Size of LabChipChannelPedStruct_t: %d\n",sizeof(LabChipChannelPedStruct_t));
     printf("Size of FullLabChipPedStruct_t: %d\n",sizeof(FullLabChipPedStruct_t));
     printf("Size of FullPedStruct_t: %d\n",sizeof(FullPedStruct_t));
-
+    printf("Size of AcqdStartStruct_t: %d\n",sizeof(AcqdStartStruct_t));
 
 /*     printf("\n\n");   */
 /*     printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n", */

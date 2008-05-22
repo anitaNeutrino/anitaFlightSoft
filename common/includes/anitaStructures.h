@@ -676,8 +676,8 @@ typedef struct {
   unsigned int numEvents;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF]; //Ped subtracted
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; //Ped subtracted
-  unsigned short threshVals[40];
-  unsigned short scalerVals[ACTIVE_SURFS][SCALERS_PER_SURF][40];
+  unsigned short threshVals[10];
+  unsigned short scalerVals[ACTIVE_SURFS][SCALERS_PER_SURF][10];
 } AcqdStartStruct_t;
   
 
