@@ -1767,8 +1767,8 @@ AcqdErrorCode_t doStartTest()
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
 	  chanId=GetChanIndex(surf,chan);
-	  printf("%d %d -- %d %d\n",surf,chanId,bdPtr->channel[chanId].data[0],
-		 pedSubBody.channel[chanId].data[0]);
+	  //	  printf("%d %d -- %d %d\n",surf,chanId,bdPtr->channel[chanId].data[0],
+	  //		 pedSubBody.channel[chanId].data[0]);
 	  chanMean[surf][chan]+=pedSubBody.channel[chanId].mean;
 	  chanRMS[surf][chan]+=pedSubBody.channel[chanId].rms;
 	}
