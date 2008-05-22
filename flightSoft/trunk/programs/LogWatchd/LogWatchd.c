@@ -45,6 +45,8 @@ int startProcMounts=1;
 int startLspci=1;
 int startLsusb=1;
 
+int hkDiskBitMask;
+
 int main (int argc, char *argv[])
 {
     int retVal;
@@ -157,7 +159,17 @@ int readConfigFile()
     int status=0;
     char* eString ;
 
+
+ /* Load Global Config */
     kvpReset();
+    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+    eString = configErrorString (status) ;
+
+    /* Get Device Names and config stuff */
+    if (status == CONFIG_E_OK) {
+	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
+    }
+    kvpReset () ;
     status = configLoad ("LogWatchd.config","output") ;
     status = configLoad ("LogWatchd.config","logwatchd") ;
     if(status == CONFIG_E_OK) {
@@ -327,5 +339,5 @@ void sendStartStruct(LogWatchdStart_t *startPtr)
   sprintf(fileName,"%s/lwstart_%u.dat",REQUEST_TELEM_DIR,startPtr->unixTime);
   retVal=writeStruct(startPtr,fileName,sizeof(LogWatchdStart_t));
   retVal=makeLink(fileName,REQUEST_TELEM_LINK_DIR);
-  
+  retVal=simpleMultiDiskWrite(startPtr,sizeof(LogWatchdStart_t),startPtr->unixTime,STARTUP_ARCHIVE_DIR,"logwatchd",hkDiskBitMask);
 }

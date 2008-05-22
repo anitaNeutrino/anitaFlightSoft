@@ -70,6 +70,22 @@ int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 }
 
 
+int simpleMultiDiskWrite(void *buffer, int numBytes, unsigned int unixTime, char *partialDir, char *filePrefix, int writeBitMask)
+{
+  int diskInd;
+  int retVal=0;
+  char filename[FILENAME_MAX];  
+  char dirName[FILENAME_MAX];  
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+    if(!(diskBitMasks[diskInd]&writeBitMask)) continue;
+    sprintf(dirName,"%s/%s",diskNames[diskInd],partialDir);
+    makeDirectories(dirName);
+    sprintf(filename,"%s/%s_%d.dat",dirName,filePrefix,unixTime);
+    retVal=writeStruct(buffer,filename,numBytes);
+  }
+  return retVal;
+}
+
 int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, AnitaHkWriterStruct_t *awsPtr)
 {
     int diskInd;

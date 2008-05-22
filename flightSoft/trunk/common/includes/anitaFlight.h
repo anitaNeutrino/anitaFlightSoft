@@ -271,8 +271,8 @@
 #define SURFHK_ARCHIVE_DIR "/current/house/surfhk"
 #define TURFHK_ARCHIVE_DIR "/current/house/turfhk"
 #define MONITOR_ARCHIVE_DIR "/current/house/monitor"
-
 #define EVENT_ARCHIVE_DIR "/current/event/"
+#define STARTUP_ARCHIVE_DIR "/current/start"
 
 //Slow Rate Stuff
 #define SLOW_RF_FILE "/tmp/anita/latestSlowRf.dat"
