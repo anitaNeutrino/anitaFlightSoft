@@ -114,8 +114,6 @@ char altOutputdir[FILENAME_MAX];
 char subAltOutputdir[FILENAME_MAX];
 //char acqdEventLinkDir[FILENAME_MAX];
 
-#define N_TMO 500    /* number of msec wait for Evt_f before timed out. */
-#define N_TMO_INT 10000 //Millisec to wait for interrupt
 #define EVTF_TIMEOUT 10000000 /* in microseconds */
 
 int surfFirmwareVersion=2;
@@ -203,6 +201,9 @@ float totalDeadtime; //In Secs
 float totalTime; //In Secs
 float intervalDeadtime; //In secs
 
+//Surf Hk Readout
+struct timeval lastSurfHkRead;
+
 
 //RJN -- Nasty hack as SURF 2 is the only one we monitor busy on
 int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
@@ -216,20 +217,11 @@ int main(int argc, char **argv) {
   int numDevices; 
   int eventReadyFlag=0;
   unsigned short dacVal=2200;
-  int surf;
-  int gotSurfHk=0;
   unsigned int lastEvNum=0;
   struct timeval timeStruct;
 
  
-
-  struct timeval lastSurfHkRead;
-  int timeDiff=0;
-
-
   int reInitNeeded=0;
-  int lastSoftTrigTime=0;  
-  unsigned int lastSlowSurfHk=0;
 
   //Initialize some of the timing variables
   lastSurfHkRead.tv_sec=0;
@@ -411,7 +403,6 @@ int main(int argc, char **argv) {
 
     while (currentState==PROG_STATE_RUN) {
       //This is the start of the main event loop
-      gotSurfHk=0;
       if((standAloneMode || numEvents) && (numEvents && numEvents<doingEvent)) {
 	currentState=PROG_STATE_TERMINATE;
 	break;
@@ -419,24 +410,15 @@ int main(int argc, char **argv) {
       }
 
       //Fill theEvent with zeros 
-      bzero(&theEvent, sizeof(theEvent)) ;
+      memset(&theEvent,0, sizeof(theEvent)) ;
       memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
       if(setGlobalThreshold) 
 	theSurfHk.globalThreshold=globalThreshold;
 
-
+      gettimeofday(&timeStruct,NULL);
       //Send software trigger if we want to
-      if(sendSoftTrigger && doingEvent>=0) {
-	if(!softTrigPeriod || (time(NULL)-lastSoftTrigTime)>softTrigPeriod) {		    		
-	  setTurfControl(SendSoftTrg);
-	  lastSoftTrigTime=time(NULL);
-	  if(printToScreen && verbosity)
-	    printf("Sent software trigger at %d: next at %d\n",
-		   lastSoftTrigTime, 
-		   lastSoftTrigTime+softTrigPeriod);
-		
-	}
-      }
+      if(sendSoftTrigger)
+	intersperseSoftTrig(&timeStruct);
 
 
       // Wait for ready to read (EVT_RDY) 
@@ -459,8 +441,10 @@ int main(int argc, char **argv) {
 		   surfIndex[0],eventReadyFlag);
 		
 	  //
-	  if(tmo && (tmo%2)==0) //Might change tmo%2
+	  //Have to change this at some point
+	  if(tmo) //Might change tmo%2
 	    myUsleep(1); 
+
 	  tmo++;
 		       		
 	  //This time getting is quite important as the two bits below rely on having a recent time.
@@ -471,84 +455,28 @@ int main(int argc, char **argv) {
 	  handleSlowRate(&timeStruct,lastEvNum); 
 	  //Calculates rate and servos on it if we wish
 	  rateCalcAndServo(&timeStruct,lastEvNum); 
+	  //Gives us a chance to read hk and servo thresholds
+	  intersperseSurfHk(&timeStruct);
+	  //Also gives a chance to send software tiggers
+	  if(sendSoftTrigger)
+	    intersperseSoftTrig(&timeStruct);
 
-
-	  if(tmo>10) {
-	    if(printToScreen && verbosity>3)
-	      printf("Here because tmo is %d\n",tmo);
-	    if(currentState!=PROG_STATE_RUN) 
-	      break;
-
-	    //Send software trigger if we want to
-	    if(sendSoftTrigger && doingEvent>=0) {
-	      if(!softTrigPeriod || (time(NULL)-lastSoftTrigTime)>=softTrigPeriod) {		    		
-		setTurfControl(SendSoftTrg);
-		lastSoftTrigTime=time(NULL);
-		if(printToScreen && verbosity)
-		  printf("Sent software trigger at %d: next at %d\n",
-			 lastSoftTrigTime, 
-			 lastSoftTrigTime+softTrigPeriod);
-		      
-	      }
-	    }
-		  
-	    tmo=0;
-	    //Give us a chance to servo thresholds
-	    if(surfFirmwareVersion>=3) {
-	      gettimeofday(&timeStruct,NULL);
-	      timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
-	      timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec);
-		    		    
-	      if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
-		//printf("Time Diff %d, %d.%d and %d.%d\n",
-		//       timeDiff,timeStruct.tv_sec,timeStruct.tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
-		lastSurfHkRead=timeStruct;
-		if(printToScreen && verbosity>2)
-		  printf("Reading surfHk 'cause aint got no events\n");
-		status=readSurfHkData();
-		//Should check status
-		for(surf=0;surf<numSurfs;++surf)
-		  if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
-		    fprintf(stderr,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-		    syslog(LOG_ERR,"Failed to send clear event pulse on SURF %d.\n",surfIndex[surf]) ;
-		    //Do something??
-		  }
-		      
-		if(verbosity && printToScreen) 
-		  printf("Read SURF Housekeeping\n");
-				    		      
-		if(timeStruct.tv_sec>lastSlowSurfHk) {
-		  addSurfHkToAverage(&theSurfHk);
-		  lastSlowSurfHk=timeStruct.tv_sec;
-		}
-		      
-		if(verbosity && printToScreen && enableChanServo) 
-		  printf("Will servo on channel scalers\n");
-		//Here is the channel servo
-		if(enableChanServo) {
-		  if(updateThresholdsUsingPID())
-		    setDACThresholds();
-		}
-				
-		      
-		//Now decide if we want to output the housekeeping data
-		theSurfHk.unixTime=timeStruct.tv_sec;
-		theSurfHk.unixTimeUs=timeStruct.tv_usec;
-		outputSurfHkData();
-
-	      }		    
-	    }
-	  }
+	  if(currentState!=PROG_STATE_RUN) 
+	    break;
+	  
+	  if(tmo==EVTF_TIMEOUT)
+	    break;
+	
 	} while(!(eventReadyFlag));
 	      
 	//Check if we are trying to leave the event loop
 	if(currentState!=PROG_STATE_RUN) 
 	  continue;
 	      
-	if (tmo == N_TMO || tmo==EVTF_TIMEOUT){
+	if (tmo==EVTF_TIMEOUT){
 	  syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
 	  if(printToScreen)
-	    printf(" Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", N_TMO) ;
+	    printf(" Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", tmo) ;
 	  continue;		
 	}
       }
@@ -580,51 +508,7 @@ int main(int argc, char **argv) {
       turfRates.unixTime=timeStruct.tv_sec;
       turfRates.ppsNum=hdPtr->turfio.ppsNum;
       if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
-
-      //For now I'll just read the HK data with the events.
-      //Later we will change this to do something more cleverer
-
-      //Switched for timing test
-      gettimeofday(&timeStruct,NULL);
-      timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
-      timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec);
-	      
-      if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
-	// printf("Time Diff %d, %d.%d and %d.%d\n",
-	//timeDiff,timeStruct.tv_sec,timeStruct.tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
-	lastSurfHkRead=timeStruct;
-	status=readSurfHkData();
-				
-		
-	for(surf=0;surf<numSurfs;++surf) {
-	  if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
-	    fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
-	    syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
-	  }	
-	}
-	      	
-	if(verbosity && printToScreen) printf("Read SURF Housekeeping\n");
-				
-	if(enableChanServo) {
-	  if(verbosity && printToScreen) 
-	    printf("Will servo on channel scalers\n");		  
-	  if(updateThresholdsUsingPID())
-	    setDACThresholds();
-	}    
-		    
-		    
-	if((timeStruct.tv_sec-lastSurfHk)>=surfHkPeriod) {
-	  //Record housekeeping data
-	  // disabled by GSV
-	  gotSurfHk=1;  
-	  lastSurfHk=timeStruct.tv_sec;
-	  theSurfHk.unixTime=timeStruct.tv_sec;
-	  theSurfHk.unixTimeUs=timeStruct.tv_usec;		  
-	}
-      }
-	      
-	  
-
+      
       status=readTurfEventData();
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Problem reading TURF event data\n");
@@ -643,6 +527,12 @@ int main(int argc, char **argv) {
       if(reInitNeeded) {
 	hdPtr->otherFlag2=0x1;
       }
+            
+      //Switched for timing test
+      gettimeofday(&timeStruct,NULL);
+      intersperseSurfHk(&timeStruct);
+
+
 	    
       if(verbosity && printToScreen) printf("Done reading\n");
 	    
@@ -674,9 +564,7 @@ int main(int argc, char **argv) {
 
 	// Save data if we want to
 	outputEventData();
-	if(gotSurfHk) outputSurfHkData();
 	if(newTurfRateData) outputTurfRateData();		    	
-
 
       }
 	    
@@ -1666,7 +1554,7 @@ AcqdErrorCode_t runPedestalMode()
     
     if (tmo==EVTF_TIMEOUT){
       syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
-      fprintf(stderr,"Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", N_TMO) ;
+      fprintf(stderr,"Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", tmo) ;
       continue;		
     }
 
@@ -3154,3 +3042,74 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
     lastEventCounter=doingEvent;		  
   }
 }
+
+void intersperseSurfHk(struct timeval *tvPtr)
+{
+  AcqdErrorCode_t status;
+  int timeDiff=0;  
+  int surf;
+  static unsigned int lastSlowSurfHk=0;
+  timeDiff=tvPtr->tv_usec-lastSurfHkRead.tv_usec;
+  timeDiff+=1000000*(tvPtr->tv_sec-lastSurfHkRead.tv_sec);
+		    		
+  //Only read the housekeeping every 50ms, will change this to be configurable.
+  //Maybe.
+  if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
+    //printf("Time Diff %d, %d.%d and %d.%d\n",
+    //       timeDiff,tvPtr->tv_sec,tvPtr->tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
+    lastSurfHkRead=(*tvPtr);
+    status=readSurfHkData();
+    //Should check status
+	
+    for(surf=0;surf<numSurfs;++surf) {
+      if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
+	fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+	syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+	//Do something??
+      }
+    }
+    
+    if(verbosity && printToScreen) 
+      printf("Read SURF Housekeeping\n");
+    
+    if(tvPtr->tv_sec>lastSlowSurfHk) {
+      addSurfHkToAverage(&theSurfHk);
+      lastSlowSurfHk=tvPtr->tv_sec;
+    }
+    
+    if(verbosity && printToScreen && enableChanServo) 
+      printf("Will servo on channel scalers\n");
+
+    //Here is the channel servo
+    if(enableChanServo) {
+      if(updateThresholdsUsingPID())
+	setDACThresholds();
+    }
+				
+		      
+    //Now decide if we want to output the housekeeping data
+    theSurfHk.unixTime=tvPtr->tv_sec;
+    theSurfHk.unixTimeUs=tvPtr->tv_usec;
+    outputSurfHkData();
+
+  }		    
+}
+
+void intersperseSoftTrig(struct timeval *tvPtr)
+{          
+  static int lastSoftTrigTime=0;  
+
+  //Send software trigger if we want to
+  if(sendSoftTrigger && doingEvent>=0) {
+    if(!softTrigPeriod || (tvPtr->tv_sec-lastSoftTrigTime)>=softTrigPeriod) {		    		
+      setTurfControl(SendSoftTrg);
+      lastSoftTrigTime=tvPtr->tv_sec;
+      if(printToScreen && verbosity)
+	printf("Sent software trigger at %d: next at %d\n",
+	       lastSoftTrigTime, 
+	       lastSoftTrigTime+softTrigPeriod);
+      
+    }
+  }
+}
+
