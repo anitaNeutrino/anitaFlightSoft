@@ -54,6 +54,8 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
 void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
 void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum);
 void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
+void intersperseSurfHk(struct timeval *tvPtr);
+void intersperseSoftTrig(struct timeval *tvPtr);
 
 //Output functions
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned int evNum);
