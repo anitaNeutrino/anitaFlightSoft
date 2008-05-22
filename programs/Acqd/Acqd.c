@@ -1159,6 +1159,8 @@ int readConfigFile()
     surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
     surfHkAverage=kvpGetInt("surfHkAverage",1);
     turfRateAverage=kvpGetInt("turfRateAverage",60);
+    if(printToScreen) 
+      printf("surfHkAverage %d\nturfRateAverage %d\n",surfHkAverage,turfRateAverage);
     turfRateTelemEvery=kvpGetInt("turfRateTelemEvery",1);
     turfRateTelemInterval=kvpGetInt("turfRateTelemInterval",1);
     //	printf("HK surfPeriod %d\nturfRateTelemEvery %d\nturfRateTelemInterval %d\n",surfHkPeriod,turfRateTelemEvery,turfRateTelemInterval);
@@ -1981,7 +1983,7 @@ void outputSurfHkData() {
       avgSurfHk.numHks=numHks;
       avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
       fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
-      sprintf(theFilename,"%s/avgsurfhk_%d.dat.gz",SURFHK_TELEM_DIR,
+      sprintf(theFilename,"%s/avgsurfhk_%d.dat",SURFHK_TELEM_DIR,
 	      avgSurfHk.unixTime);
       retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
       makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
@@ -2038,8 +2040,8 @@ void outputTurfRateData() {
       sumTurf.numRates=numRates;
       sumTurf.deltaT=turfRates.unixTime-sumTurf.unixTime;
       fillGenericHeader(&sumTurf,PACKET_SUM_TURF_RATE,sizeof(SummedTurfRateStruct_t)); 
-      sprintf(theFilename,"%s/sumturfrate_%d.dat.gz",TURFHK_TELEM_DIR,
-	      theSurfHk.unixTime);
+      sprintf(theFilename,"%s/sumturfrate_%d.dat",TURFHK_TELEM_DIR,
+	      sumTurf.unixTime);
       retVal+=writeStruct(&sumTurf,theFilename,sizeof(SummedTurfRateStruct_t));
       makeLink(theFilename,TURFHK_TELEM_LINK_DIR);  
 
