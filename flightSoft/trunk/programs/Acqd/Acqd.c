@@ -79,7 +79,7 @@ int niceValue=-20;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
-AnitaEventBody_t *bdPtr;//=&(theEvent.header);
+AnitaEventBody_t *bdPtr;//=&(theEvent.body);
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
 int newTurfRateData=0;
@@ -99,6 +99,10 @@ int writeDebugData=0;
 int numPedEvents=4000;
 int pedSwitchConfigAtEnd=1; //Need to work out exactly what this does
 
+//Start test stuff
+int enableStartTest=1;
+int startSoftTrigs=10;
+
 
 
 //Temporary Global Variables
@@ -109,10 +113,8 @@ unsigned int avgScalerData[MAX_SURFS][SCALERS_PER_SURF];
 
 //Configurable watchamacallits
 /* Ports and directories */
-//char acqdEventDir[FILENAME_MAX];
 char altOutputdir[FILENAME_MAX];
 char subAltOutputdir[FILENAME_MAX];
-//char acqdEventLinkDir[FILENAME_MAX];
 
 #define EVTF_TIMEOUT 10000000 /* in microseconds */
 
@@ -214,6 +216,7 @@ int main(int argc, char **argv) {
   AcqdErrorCode_t status=ACQD_E_OK;
   int retVal=0;
   int i=0,tmo=0; 
+  int doneStartTest=0;
   int numDevices; 
   int eventReadyFlag=0;
   unsigned short dacVal=2200;
@@ -280,7 +283,7 @@ int main(int argc, char **argv) {
     
   status=initializeDevices(&numDevices);
   if (status!=ACQD_E_OK || numDevices < 0) {
-    if(printToScreen) printf("Problem initializing devices\n");
+    fprintf(stderr,"Problem initializing devices\n");
     syslog(LOG_ERR,"Error initializing devices");
     handleBadSigs(1002);
   }
@@ -299,11 +302,19 @@ int main(int argc, char **argv) {
   //No idea why we want to sleep here but hey there we are
   if(sendSoftTrigger) sleep(2);
 
+ //Now we'll do our startUpTest
+  if(enableStartTest && !doneStartTest) {
+    clearDevices();
+    doStartTest();
+    doneStartTest=1;    
+  }
+
   //Main program loop
   do { //while( currentState==PROG_STATE_INIT
     unsigned int tempTrigMask=antTrigMask;
     // Clear devices 
     clearDevices();
+
     antTrigMask=tempTrigMask;
 
     if(!reInitNeeded) {
@@ -321,6 +332,10 @@ int main(int argc, char **argv) {
     //Take a forced trigger to get rid of any junk
     setTurfControl(SendSoftTrg);
     
+   
+
+
+
       
     // Set trigger modes
     //RF and Software Triggers enabled by default
@@ -350,7 +365,7 @@ int main(int argc, char **argv) {
       else 
 	printf("PPS 2 Trig Disabled\n");		
       if(sendSoftTrigger) 
-	printf("Sending software triggers\n");
+	printf("Sending software triggers every %d seconds\n",softTrigPeriod);
     }
 
     if(doThresholdScan || pedestalMode) {
@@ -1230,15 +1245,28 @@ int readConfigFile()
   }
   else {
     eString=configErrorString (status) ;
-    syslog(LOG_ERR,"Error reading Acqd.config: %s\n",eString);
+    syslog(LOG_ERR,"Error reading Acqd.config <rates>: %s\n",eString);
+    fprintf(stderr,"Error reading Acqd.config <rates>: %s\n",eString);
   }
 
+  kvpReset();
+  status = configLoad ("Acqd.config","starttest");
+  if(status == CONFIG_E_OK) {
+    enableStartTest=kvpGetInt("enableStartTest",1);
+    startSoftTrigs=kvpGetInt("startSoftTrigs",10);
+  }
+  else {
+    eString=configErrorString(status);
+    syslog(LOG_ERR,"Error reading Acqd.config <starttest>: %s\n",eString);
+    fprintf(stderr,"Error reading Acqd.config <starttest>: %s\n",eString);
+  }
 
 
   if(printToScreen) {
     printf("Read Config File\n");
     printf("doThresholdScan %d\n",doThresholdScan);
     printf("pedestalMode %d\n",pedestalMode);
+    printf("enableStartTest %d\n",enableStartTest);
     printf("writeData %d",writeData);
     if(writeData) {
       if(useAltDir) 
@@ -1637,6 +1665,192 @@ AcqdErrorCode_t runPedestalMode()
   }
   return status;
 }
+
+AcqdErrorCode_t doStartTest()
+{
+  AcqdErrorCode_t status=ACQD_E_OK;
+  int dacVal=0,chanId,chan,surf,dac,retVal;
+  int tInd=0,firstLoop=1,tmo=0,eventReadyFlag=0;
+  struct timeval timeStruct;
+  unsigned int tempTrigMask=antTrigMask;
+  PedSubbedEventBody_t pedSubBody;
+  AcqdStartStruct_t startStruct;
+  float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
+  float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
+  char theFilename[FILENAME_MAX];
+  startStruct.numEvents=0;
+  memset(chanMean,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
+  memset(chanRMS,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
+
+  //Disable triggers
+  antTrigMask=0xffffffff;   
+  writeAntTrigMask(); 
+  antTrigMask=tempTrigMask;
+
+  doingEvent=0;
+  //Now have an event loop
+  currentState=PROG_STATE_RUN;
+  if(printToScreen)
+    printf("Inside doStartTest\n");
+
+  gettimeofday(&timeStruct,NULL);
+  startStruct.unixTime=timeStruct.tv_sec;
+  
+  while(currentState==PROG_STATE_RUN && doingEvent<startSoftTrigs) {
+    //Fill theEvent with zeros 
+    bzero(&theEvent, sizeof(theEvent)) ;    
+    //Send software trigger 	
+    setTurfControl(SendSoftTrg);   
+    // Wait for ready to read (EVT_RDY) 
+    tmo=0;	    
+    do {
+      //Check if we want to break out
+      if(currentState!=PROG_STATE_RUN) 
+	break;
+      //Need to make the SURF that we read the GPIO value from
+      //somehow changeable
+      eventReadyFlag=0;
+      status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+      if(status!=ACQD_E_OK) {
+	fprintf(stderr,"Error reading GPIO value from SURF 0\n");
+	syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
+	//Do what??
+      }		      
+      tmo++;      
+    } while(!(eventReadyFlag) && tmo<EVTF_TIMEOUT);
+    
+    //Check if we are trying to leave the event loop
+    if(currentState!=PROG_STATE_RUN) 
+      continue;
+    
+    if (tmo==EVTF_TIMEOUT){
+      syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
+      fprintf(stderr,"Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", tmo) ;
+      continue;		
+    }
+
+    //Now load event into ram
+    if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
+      fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
+      syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
+    }
+	    
+    //Now actually read the event data
+    status+=readSurfEventData();
+    if(status!=ACQD_E_OK) {
+      fprintf(stderr,"Error reading SURF event data %d.\n",doingEvent);
+      syslog(LOG_ERR,"Error reading SURF event data %d.\n",doingEvent);
+    }
+    
+    if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
+
+    //Now read TURF event data (not strictly necessary for pedestal run
+    status=readTurfEventData();
+    if(status!=ACQD_E_OK) {
+      fprintf(stderr,"Problem reading TURF event data\n");
+      syslog(LOG_ERR,"Problem reading TURF event data\n");
+    }
+    if(verbosity && printToScreen) printf("Done reading\n");
+	    	    
+    //Error checking
+    if(status!=ACQD_E_OK) {
+      //We have an error
+      fprintf(stderr,"Error detected %d, during event %d",status,doingEvent);
+      syslog(LOG_ERR,"Error detected %d, during event %d",status,doingEvent);	      
+      status=ACQD_E_OK;
+    }
+    else if(doingEvent>=0) { 
+      //Actually add event to running means
+      subtractCurrentPeds(bdPtr,&pedSubBody);
+      startStruct.numEvents++;
+      for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+	  chanId=GetChanIndex(surf,chan);
+	  chanMean[surf][chan]+=pedSubBody.channel[chanId].mean;
+	  chanRMS[surf][chan]+=pedSubBody.channel[chanId].rms;
+	}
+      }
+      printf("Done %d events\n",doingEvent);
+    }		    
+    // Clear boards
+    sendClearEvent();    
+  }
+  
+  //Now have obtained our N events
+  for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+      chanMean[surf][chan]/=numEvents;
+      chanRMS[surf][chan]/=numEvents;
+      startStruct.chanMean[surf][chan]=chanMean[surf][chan];
+      startStruct.chanRMS[surf][chan]=chanRMS[surf][chan];
+    }
+  }
+
+  //Now do out silly little threshold scan
+  for(tInd=0;tInd<40;tInd++) {
+    dacVal=100*tInd;
+    if(printToScreen) 
+      printf("Setting Threshold -- %d\r",dacVal);
+    setGloablDACThreshold(dacVal);
+    if(firstLoop) {
+      usleep(30000);
+      firstLoop=0;
+    }
+    startStruct.threshVals[tInd]=dacVal;
+    status=readSurfHkData(); 
+    //Then send clear hk pulse
+    for(surf=0;surf<numSurfs;++surf) {
+      if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
+	fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+	syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+      }	
+    }
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      for(dac=0;dac<SCALERS_PER_SURF;dac++) {
+	startStruct.scalerVals[surf][dac][tInd]=theSurfHk.scaler[surf][dac];
+      }
+    }
+  }
+  fillGenericHeader(&startStruct,PACKET_ACQD_START,sizeof(AcqdStartStruct_t));
+  sprintf(theFilename,"%s/acqd_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
+  retVal=writeStruct(&startStruct,theFilename,sizeof(AcqdStartStruct_t));  
+  retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR); 
+
+  printf("\n\n\nAcqd Start Info\n\n");
+  for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    printf("SURF %d Mean:",surfIndex[surf]);
+    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+      printf("\t%f",startStruct.chanMean[surf][chan]);
+    }
+    printf("\n");
+  }
+  for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    printf("SURF %d RMS:",surfIndex[surf]);
+    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
+      printf("\t%f",startStruct.chanRMS[surf][chan]);
+    }
+    printf("\n");
+  }
+
+  printf("\nThreshold Stuff\n");
+  printf("Thresholds:\t");
+  for(tInd=0;tInd<40;tInd++) {
+    printf("%d ",startStruct.threshVals[tInd]);
+  }
+  printf("\n");
+  for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    for(dac=0;dac<SCALERS_PER_SURF;dac++) {
+      printf("Chan %d_%d:\t",surfIndex[surf],dac+1);
+      for(tInd=0;tInd<40;tInd++) {
+	printf("%d ",startStruct.scalerVals[surf][dac][tInd]);
+      }
+      printf("\n");
+    }
+  }
+  return ACQD_E_OK;
+} 
+
+
 
 AcqdErrorCode_t doGlobalThresholdScan() 
 {		
@@ -3116,12 +3330,13 @@ void intersperseSoftTrig(struct timeval *tvPtr)
 
 int checkSurfFdsForData()
 {
+  //Unused and unworkable?
   static struct timeval read_timeout;
   static struct timeval * read_timeout_ptr;
   static fd_set read_fds;
   int retVal=0;
-  read_timeout.tv_sec = 1;
-  read_timeout.tv_usec = 0;
+  read_timeout.tv_sec = 0;
+  read_timeout.tv_usec = 50000;
   read_timeout_ptr=&read_timeout;
   
   FD_ZERO(&read_fds);
