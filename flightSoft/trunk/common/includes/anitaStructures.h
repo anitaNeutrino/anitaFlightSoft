@@ -74,7 +74,7 @@
 #else
 #define VER_EVENT_BODY 10
 #define VER_PEDSUBBED_EVENT_BODY 10
-#define VER_EVENT_HEADER 10
+#define VER_EVENT_HEADER 11
 #define SLAC_VER_EVENT_HEADER 10
 #define VER_WAVE_PACKET 10
 #define VER_SURF_PACKET 10
@@ -511,22 +511,23 @@ typedef struct {
 
 
 typedef struct {
-    GenericHeader_t gHdr;
-    unsigned int unixTime;       /* unix UTC sec*/
-    unsigned int unixTimeUs;     /* unix UTC microsec */
-    int gpsSubTime;     /* the GPS fraction of second (in ns) 
-			   (for the X events per second that get 
+  GenericHeader_t gHdr;
+  unsigned int unixTime;       /* unix UTC sec*/
+  unsigned int unixTimeUs;     /* unix UTC microsec */
+  int gpsSubTime;     /* the GPS fraction of second (in ns) 
+			 (for the X events per second that get 
 			   tagged with it, note it now includes
 			   second offset from unixTime)*/
-    unsigned int eventNumber;    /* Global event number */
-    unsigned short surfMask;
-    unsigned short calibStatus;   /* Were we flashing the pulser? */
-    unsigned char priority; // priority and other
-    unsigned char turfUpperWord; // The upper 8 bits from the TURF
-    unsigned char otherFlag; //Currently unused 
-    unsigned char otherFlag2; //Currently unused 
-    unsigned int antTrigMask; // What was the ant trigger mask
-    TurfioStruct_t turfio; /*The X byte TURFIO data*/
+  unsigned int eventNumber;    /* Global event number */
+  unsigned short calibStatus;   /* Were we flashing the pulser? */
+  unsigned char priority; // priority and other
+  unsigned char turfUpperWord; // The upper 8 bits from the TURF
+  unsigned char otherFlag; //Currently unused 
+  unsigned char errorFlag; //Bit 1 means sync slip
+  unsigned char otherFlag3;
+  unsigned char nadirAntTrigMask; //
+  unsigned int antTrigMask; // What was the ant trigger mask
+  TurfioStruct_t turfio; /*The X byte TURFIO data*/
 } AnitaEventHeader_t;
 
 
