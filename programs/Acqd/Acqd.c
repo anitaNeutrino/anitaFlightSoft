@@ -1786,7 +1786,7 @@ AcqdErrorCode_t doStartTest()
 	  chanRMS[surf][chan]+=pedSubBody.channel[chanId].rms;
 	}
       }
-      printf("Done %d events\n",doingEvent);
+      //      printf("Done %d events\n",doingEvent);
     }		    
     // Clear boards
     sendClearEvent();    
@@ -1831,6 +1831,8 @@ AcqdErrorCode_t doStartTest()
   sprintf(theFilename,"%s/acqd_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(AcqdStartStruct_t));  
   retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR); 
+  retVal=simpleMultiDiskWrite(&startStruct,sizeof(AcqdStartStruct_t),startStruct.unixTime,STARTUP_ARCHIVE_DIR,"acqd",hkDiskBitMask);
+
 
   printf("\n\n\nAcqd Start Info\n\n");
   for(surf=0;surf<ACTIVE_SURFS;surf++) {

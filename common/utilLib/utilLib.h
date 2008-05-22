@@ -121,6 +121,8 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
     int touchFile(char *filename);
     int checkFileExists(char *filename);
 
+
+  int simpleMultiDiskWrite(void *buffer, int numBytes, unsigned int unixTime, char *partialDir, char *filePrefix, int writeBitMask);
     int cleverHkWrite(unsigned char *buffer, int numBytes,unsigned int unixTime, AnitaHkWriterStruct_t *awsPtr);
     int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr);
     int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr);

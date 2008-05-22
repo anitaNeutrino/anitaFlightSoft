@@ -1929,7 +1929,7 @@ void writeStartTest(time_t startTime)
   sprintf(theFilename,"%s/gps_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(GpsdStartStruct_t));  
   retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);  
-
+  retVal=simpleMultiDiskWrite(&startStruct,sizeof(GpsdStartStruct_t),startStruct.unixTime,STARTUP_ARCHIVE_DIR,"gpsd",hkDiskBitMask);
 
   printf("\n\nGPSd Start Test\n");
   printf("\tunixTime %u\n",startStruct.unixTime);
