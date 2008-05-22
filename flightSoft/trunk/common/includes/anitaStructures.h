@@ -117,7 +117,7 @@ typedef enum {
     PACKET_SURF_HK = 0x110, //FullSurfHkStruct_t --Yes
     PACKET_TURF_RATE = 0x111, //TurfRateStruct_t -- Yes
     PACKET_AVG_SURF_HK = 0x112, //AveragedSurfHkStruct_t -- yes
-    PACKET_SUM_TURF_RATE = 0x112, //SummedTurfRateStruct_t -- yes
+    PACKET_SUM_TURF_RATE = 0x113, //SummedTurfRateStruct_t -- yes
     PACKET_PEDSUB_WV = 0x120, //PedSubbedWaveformPacket_t -- Yes
     PACKET_ENC_SURF = 0x121, //EncodedSurfPacketHeader_t -- Yes
     PACKET_ENC_SURF_PEDSUB = 0x122, //EncodedPedSubbedSurfPacketHeader_t -- Yes
