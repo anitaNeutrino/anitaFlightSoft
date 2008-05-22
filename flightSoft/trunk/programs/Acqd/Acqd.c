@@ -1429,6 +1429,8 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
   int dac,surf,index;
   unsigned int mask[2]={0};
   for(surf=0;surf<numSurfs;surf++) {
+    mask[0]=0;
+    mask[1]=0;
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
       index=rawScalerToLogicScaler[dac];
       if(index>=0) {
@@ -1456,6 +1458,8 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
   int dac,surf,index;
   unsigned int mask[2]={0};
   for(surf=0;surf<numSurfs;surf++) {
+    mask[0]=0;
+    mask[1]=0;
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
       index=rawScalerToLogicScaler[dac];
       if(index>=0) {
