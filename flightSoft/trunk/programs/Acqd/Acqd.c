@@ -1867,8 +1867,12 @@ AcqdErrorCode_t doGlobalThresholdScan()
   int done=0,surf=0;
   int firstLoop=1;
   struct timeval timeStruct;
+  currentState=PROG_STATE_RUN;
   fprintf(stderr,"Inside doGlobalThresholdScan\n");
   do {
+    //Check if we are trying to leave the event loop
+    if(currentState!=PROG_STATE_RUN) 
+      break;
     threshScanCounter++;
     theScalers.threshold=dacVal;
 
@@ -1881,9 +1885,10 @@ AcqdErrorCode_t doGlobalThresholdScan()
     lastDacVal=dacVal;
     if(firstLoop) {
       usleep(30000);
-      //      firstLoop=0;
+      firstLoop=0;
     }
-
+    
+    
     gettimeofday(&timeStruct,NULL);
     //Actually read and write surfHk here
     status=readSurfHkData();
