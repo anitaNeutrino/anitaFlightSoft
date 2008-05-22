@@ -1782,8 +1782,8 @@ AcqdErrorCode_t doStartTest()
   //Now have obtained our N events
   for(surf=0;surf<ACTIVE_SURFS;surf++) {
     for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-      chanMean[surf][chan]/=numEvents;
-      chanRMS[surf][chan]/=numEvents;
+      chanMean[surf][chan]/=startStruct.numEvents;
+      chanRMS[surf][chan]/=startStruct.numEvents;
       startStruct.chanMean[surf][chan]=chanMean[surf][chan];
       startStruct.chanRMS[surf][chan]=chanRMS[surf][chan];
     }
