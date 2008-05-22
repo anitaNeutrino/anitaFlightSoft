@@ -1823,14 +1823,14 @@ AcqdErrorCode_t doStartTest()
   for(surf=0;surf<ACTIVE_SURFS;surf++) {
     printf("SURF %d Mean:",surfIndex[surf]);
     for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-      printf("\t%f",startStruct.chanMean[surf][chan]);
+      printf("\t%3.2f",startStruct.chanMean[surf][chan]);
     }
     printf("\n");
   }
   for(surf=0;surf<ACTIVE_SURFS;surf++) {
     printf("SURF %d RMS:",surfIndex[surf]);
     for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-      printf("\t%f",startStruct.chanRMS[surf][chan]);
+      printf("\t%3.2f",startStruct.chanRMS[surf][chan]);
     }
     printf("\n");
   }
@@ -1845,7 +1845,7 @@ AcqdErrorCode_t doStartTest()
     for(dac=0;dac<SCALERS_PER_SURF;dac++) {
       printf("Chan %d_%d:\t",surfIndex[surf],dac+1);
       for(tInd=0;tInd<10;tInd++) {
-	printf("%d ",startStruct.scalerVals[surf][dac][tInd]);
+	printf("%4d ",startStruct.scalerVals[surf][dac][tInd]);
       }
       printf("\n");
     }
