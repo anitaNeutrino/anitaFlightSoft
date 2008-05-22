@@ -1384,6 +1384,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_OTHER_MONITOR: gHdr->verId=VER_OTHER_MON; break;
     case PACKET_GPSD_START: gHdr->verId=VER_GPSD_START; break;
     case PACKET_LOGWATCHD_START: gHdr->verId=VER_LOGWATCHD_START; break;
+    case PACKET_ACQD_START: gHdr->verId=VER_ACQD_START; break;
 	default: 
 	    gHdr->verId=0; break;
     }
@@ -1463,6 +1464,7 @@ int checkPacket(void *thePtr)
 	case PACKET_ZIPPED_FILE: break;
     case PACKET_GPSD_START: packetSize=sizeof(GpsdStartStruct_t); break;
     case PACKET_LOGWATCHD_START: packetSize=sizeof(LogWatchdStart_t); break;
+    case PACKET_ACQD_START: packetSize=sizeof(AcqdStartStruct_t); break;
 	default: 
 	    retVal+=PKT_E_CODE; break;
     }
@@ -1507,6 +1509,12 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_ZIPPED_FILE: string="ZippedFile_t"; break;
 	case PACKET_RUN_START: string="RunStart_t"; break;
 	case PACKET_OTHER_MONITOR: string="OtherMonitorStruct_t"; break;
+    case PACKET_GPSD_START: string="GpsdStartStruct_t"; break;
+    case PACKET_LOGWATCHD_START: string="LogWatchdStart_t"; break;
+    case PACKET_ACQD_START: string="AcqdStartStruct_t"; break;
+    case PACKET_GPS_GGA: string="GpsGgaStruct_t"; break;
+    case PACKET_AVG_SURF_HK: string="AveragedSurfHkStruct_t"; break;
+    case PACKET_SUM_TURF_RATE: string="SummedTurfRateStruct_t"; break;
 
 	default: 
 	    string="Unknown Packet Code"; break;

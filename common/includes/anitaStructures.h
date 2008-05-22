@@ -16,7 +16,7 @@
 #include "includes/anitaFlight.h"
 
 #define SetVerId(A) (0xfe | (((A)&0xff)<<8))
-#define GetChanIndex(A,B) ((B)+(9*(A)))
+#define GetChanIndex(A,B) ((B)+(CHANNELS_PER_SURF*(A)))
 
 #ifdef SLAC_DATA06
 //SLAC data definitions
@@ -104,6 +104,7 @@
 #define VER_LOGWATCHD_START 10
 #define VER_AVG_SURF_HK 12
 #define VER_SUM_TURF_RATE 10
+#define VER_ACQD_START 10
 #endif
 
 
@@ -149,7 +150,8 @@ typedef enum {
     PACKET_RUN_START = 0xb00, 
     PACKET_OTHER_MONITOR = 0xb01,
     PACKET_GPSD_START = 0xc00,
-    PACKET_LOGWATCHD_START = 0xc01
+    PACKET_LOGWATCHD_START = 0xc01,
+    PACKET_ACQD_START = 0xc02
 } PacketCode_t;
 
 typedef enum {
@@ -668,6 +670,16 @@ typedef struct {
   unsigned char tstBitMask;
 } GpsdStartStruct_t;
 
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int numEvents;
+  float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF]; //Ped subtracted
+  float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; //Ped subtracted
+  unsigned short threshVals[40];
+  unsigned short scalerVals[ACTIVE_SURFS][SCALERS_PER_SURF][40];
+} AcqdStartStruct_t;
+  
 
 typedef struct {    
     GenericHeader_t gHdr;

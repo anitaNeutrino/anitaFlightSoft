@@ -1925,7 +1925,7 @@ void writeStartTest(time_t startTime)
   int retVal;
   char theFilename[FILENAME_MAX];
   startStruct.unixTime=startTime;
-  fillGenericHeader(&startTime,PACKET_GPSD_START,sizeof(GpsdStartStruct_t));
+  fillGenericHeader(&startStruct,PACKET_GPSD_START,sizeof(GpsdStartStruct_t));
   sprintf(theFilename,"%s/gps_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(GpsdStartStruct_t));  
   retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);  

@@ -35,7 +35,7 @@ AcqdErrorCode_t sendClearEvent();
 //Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
 AcqdErrorCode_t runPedestalMode();
-
+AcqdErrorCode_t doStartTest();
 
 //Configuration functions
 int readConfigFile();
@@ -57,6 +57,7 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
 void intersperseSurfHk(struct timeval *tvPtr);
 void intersperseSoftTrig(struct timeval *tvPtr);
 int checkSurfFdsForData();
+
 
 //Output functions
 void writeSurfData(char *directory, unsigned short *wv_data,unsigned int evNum);
