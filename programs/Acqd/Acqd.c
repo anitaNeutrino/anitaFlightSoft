@@ -2018,7 +2018,7 @@ void outputTurfRateData() {
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
   int retVal=0,surf,ant,phi;
-  printf("outputTurfRateData -- numRates %d\n",numRates);
+  //  printf("outputTurfRateData -- numRates %d\n",numRates);
   if(turfRateAverage>0) {
     if(numRates==0) {
       //Need to initialize sumTurf
@@ -2048,9 +2048,9 @@ void outputTurfRateData() {
 
       retVal=cleverHkWrite((unsigned char*)&sumTurf,
 			   sizeof(SummedTurfRateStruct_t),
-			   sumTurf.unixTime,&sumTurfRateWriter);  
+			   sumTurf.unixTime,&sumTurfRateWriter);      
+      numRates=0;
     }
-    numRates=0;
   }
   if(writeFullHk) {
     writeTurfHousekeeping(1);
