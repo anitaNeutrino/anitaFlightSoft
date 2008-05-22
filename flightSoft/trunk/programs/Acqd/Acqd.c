@@ -1790,8 +1790,8 @@ AcqdErrorCode_t doStartTest()
   }
 
   //Now do out silly little threshold scan
-  for(tInd=0;tInd<40;tInd++) {
-    dacVal=100*tInd;
+  for(tInd=0;tInd<10;tInd++) {
+    dacVal=2000 + (200*tInd);
     if(printToScreen) 
       printf("Setting Threshold -- %d\r",dacVal);
     setGloablDACThreshold(dacVal);
@@ -1837,14 +1837,14 @@ AcqdErrorCode_t doStartTest()
 
   printf("\nThreshold Stuff\n");
   printf("Thresholds:\t");
-  for(tInd=0;tInd<40;tInd++) {
+  for(tInd=0;tInd<10;tInd++) {
     printf("%d ",startStruct.threshVals[tInd]);
   }
   printf("\n");
   for(surf=0;surf<ACTIVE_SURFS;surf++) {
     for(dac=0;dac<SCALERS_PER_SURF;dac++) {
       printf("Chan %d_%d:\t",surfIndex[surf],dac+1);
-      for(tInd=0;tInd<40;tInd++) {
+      for(tInd=0;tInd<10;tInd++) {
 	printf("%d ",startStruct.scalerVals[surf][dac][tInd]);
       }
       printf("\n");
