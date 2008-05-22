@@ -189,7 +189,8 @@ float rateIMin=-100;
 //bit 8 in second word is 48th antenna
 //We load in reverse order starting with the missing SURF 10 
 //and working backwards to SURF 1
-unsigned int antTrigMask=0;
+unsigned int antTrigMask=0; //antennas 1-32
+unsigned int nadirAntTrigMask=0; //antennas 33-40
 
 //File writing structures
 AnitaHkWriterStruct_t turfHkWriter;
@@ -313,10 +314,12 @@ int main(int argc, char **argv) {
   //Main program loop
   do { //while( currentState==PROG_STATE_INIT
     unsigned int tempTrigMask=antTrigMask;
+    unsigned int tempNadirTrigMask=nadirAntTrigMask;
     // Clear devices 
     clearDevices();
 
     antTrigMask=tempTrigMask;
+    nadirAntTrigMask=tempNadirTrigMask;
 
     if(!reInitNeeded) {
       retVal=readConfigFile();
@@ -372,6 +375,7 @@ int main(int argc, char **argv) {
     if(doThresholdScan || pedestalMode) {
       //If we're doing a threshold or a pedestal scan disable all antennas
       antTrigMask=0xffffffff;
+      nadirAntTrigMask=0xff;
     }
 
     //Write antenna mask to exclude certain antennas from events
@@ -540,9 +544,9 @@ int main(int argc, char **argv) {
 	syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d",slipCounter,hdPtr->turfio.trigNum);
 	currentState=PROG_STATE_INIT;
       }
-      hdPtr->otherFlag2=0;
+      hdPtr->errorFlag=0;
       if(reInitNeeded) {
-	hdPtr->otherFlag2=0x1;
+	hdPtr->errorFlag=0x1;
       }
             
       //Switched for timing test
@@ -569,8 +573,9 @@ int main(int argc, char **argv) {
 	hdPtr->eventNumber=getEventNumber();
 	bdPtr->eventNumber=hdPtr->eventNumber;
 	lastEvNum=hdPtr->eventNumber;
-	hdPtr->surfMask=surfMask;
+	//	hdPtr->surfMask=surfMask;
 	hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
+	hdPtr->nadirAntTrigMask=(unsigned char)nadirAntTrigMask&0xff;	       
 		
 	//Filled by Eventd
 	//hdPtr->gpsSubTime;
@@ -1117,6 +1122,7 @@ int readConfigFile()
     }
     tempNum=2;
     antTrigMask=kvpGetUnsignedInt("antTrigMask",0);
+    nadirAntTrigMask=kvpGetUnsignedInt("nadirAntTrigMask",0);
 	
     if(printToScreen) printf("Print to screen flag is %d\n",printToScreen);
 
@@ -1331,6 +1337,7 @@ AcqdErrorCode_t clearDevices()
   }
 
   antTrigMask=0xffffffff;    
+  nadirAntTrigMask=0xff;
   //Mask off all antennas
   if(verbosity && printToScreen)
     fprintf(stderr,"Masking off antennas\n");
@@ -1385,6 +1392,7 @@ AcqdErrorCode_t clearDevices()
   if(verbosity && printToScreen)
     fprintf(stderr,"Masking off antennas\n");
   antTrigMask=0xffffffff;    
+  nadirAntTrigMask=0xff;
   status=writeAntTrigMask();
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
@@ -1640,9 +1648,9 @@ AcqdErrorCode_t runPedestalMode()
     else if(doingEvent>=0) { //RJN changed 24/11/06 for test
       hdPtr->eventNumber=getEventNumber();
       bdPtr->eventNumber=hdPtr->eventNumber;
-      hdPtr->surfMask=surfMask;
+      //      hdPtr->surfMask=surfMask;
       hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
-      
+      hdPtr->nadirAntTrigMask=(unsigned char)nadirAntTrigMask;
       //Filled by Eventd
       //hdPtr->gpsSubTime;
       //hdPtr->calibStatus;
@@ -1687,6 +1695,7 @@ AcqdErrorCode_t doStartTest()
   int tInd=0,firstLoop=1,tmo=0,eventReadyFlag=0;
   struct timeval timeStruct;
   unsigned int tempTrigMask=antTrigMask;
+  unsigned int tempNadirTrigMask=nadirAntTrigMask;
   PedSubbedEventBody_t pedSubBody;
   AcqdStartStruct_t startStruct;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
@@ -1700,6 +1709,7 @@ AcqdErrorCode_t doStartTest()
   antTrigMask=0xffffffff;   
   writeAntTrigMask(); 
   antTrigMask=tempTrigMask;
+  nadirAntTrigMask=tempNadirTrigMask;
 
   doingEvent=0;
   //Now have an event loop
@@ -2401,7 +2411,7 @@ AcqdErrorCode_t readSurfEventData()
     }      
     if(surf==0) {
       hdPtr->otherFlag=0;
-      hdPtr->otherFlag2=0;
+      hdPtr->errorFlag=0;
     }
 	
     int surfEvNum=((headerWord&0xf000000)>>24);
@@ -2903,9 +2913,11 @@ AcqdErrorCode_t writeAntTrigMask()
   AcqdErrorCode_t status;
   int i=0,j=0,chanBit=1;
   unsigned int gpioVal;
-  int actualMask[2]={255,0};
+  int actualMask[2]={0,0};
   
-  actualMask[0]|=((antTrigMask&0xffffff)<<8);
+  actualMask[0]|=(antTrigMask&0xffff); //Lowest 16-bits
+  actualMask[0]|=((nadirAntTrigMask&0xff)<<16);
+  actualMask[0]|=((antTrigMask&0xff0000)<<8);
   actualMask[1]=(antTrigMask&0xff000000)>>24;
   syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n",
 	 antTrigMask,actualMask[1],actualMask[0]);
