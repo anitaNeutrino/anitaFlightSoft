@@ -1433,6 +1433,8 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
     mask[1]=0;
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
       index=rawScalerToLogicScaler[dac];
+      printf("surf %d, surfTrigBandMasks %d, dac %d, index %d\n",
+	     surf,surfTrigBandMasks[surfIndex[surf]-1],dac,index);
       if(index>=0) {
 	obuffer[surf][dac] = (dac<<16) + val; //Actual channel
 	if(dac<16) {
