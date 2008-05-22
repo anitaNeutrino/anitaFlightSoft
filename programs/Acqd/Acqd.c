@@ -431,7 +431,7 @@ int main(int argc, char **argv) {
 	  //somehow changeable
 	  eventReadyFlag=0;
 	  status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
-	  printf("eventReadyFlag %d -- %d\n",eventReadyFlag,checkSurfFdsForData());
+	  //	  printf("eventReadyFlag %d -- %d\n",eventReadyFlag,checkSurfFdsForData());
 	  if(status!=ACQD_E_OK) {
 	    fprintf(stderr,"Error reading GPIO value from SURF 0\n");
 	    syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
