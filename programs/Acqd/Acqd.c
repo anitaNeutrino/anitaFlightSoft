@@ -1838,14 +1838,14 @@ AcqdErrorCode_t doStartTest()
   printf("\nThreshold Stuff\n");
   printf("Thresholds:\t");
   for(tInd=0;tInd<10;tInd++) {
-    printf("%d ",startStruct.threshVals[tInd]);
+    printf("%5d ",startStruct.threshVals[tInd]);
   }
   printf("\n");
   for(surf=0;surf<ACTIVE_SURFS;surf++) {
     for(dac=0;dac<SCALERS_PER_SURF;dac++) {
       printf("Chan %d_%d:\t",surfIndex[surf],dac+1);
       for(tInd=0;tInd<10;tInd++) {
-	printf("%4d ",startStruct.scalerVals[surf][dac][tInd]);
+	printf("%5d ",startStruct.scalerVals[surf][dac][tInd]);
       }
       printf("\n");
     }
