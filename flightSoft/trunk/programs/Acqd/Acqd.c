@@ -266,6 +266,7 @@ int main(int argc, char **argv) {
   makeDirectories(SURFHK_TELEM_LINK_DIR);
   makeDirectories(TURFHK_TELEM_LINK_DIR);
   makeDirectories(CMDD_COMMAND_LINK_DIR);
+  makeDirectories(REQUEST_TELEM_LINK_DIR);
 
   retVal=readConfigFile();
   if(retVal!=CONFIG_E_OK) {
@@ -431,7 +432,7 @@ int main(int argc, char **argv) {
 	theSurfHk.globalThreshold=globalThreshold;
 
       gettimeofday(&timeStruct,NULL);
-      //Send software trigger if we want to
+     //Send software trigger if we want to
       if(sendSoftTrigger)
 	intersperseSoftTrig(&timeStruct);
 
@@ -1794,7 +1795,7 @@ AcqdErrorCode_t doStartTest()
     setGloablDACThreshold(dacVal);
     if(firstLoop) {
       usleep(30000);
-      firstLoop=0;
+      //      firstLoop=0;
     }
     startStruct.threshVals[tInd]=dacVal;
     status=readSurfHkData(); 
@@ -1878,7 +1879,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
     lastDacVal=dacVal;
     if(firstLoop) {
       usleep(30000);
-      firstLoop=0;
+      //      firstLoop=0;
     }
 
     gettimeofday(&timeStruct,NULL);
