@@ -1701,6 +1701,8 @@ AcqdErrorCode_t doStartTest()
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
   char theFilename[FILENAME_MAX];
+  int tempGlobalThreshold=setGlobalThreshold;
+  setGlobalThreshold=0;
   startStruct.numEvents=0;
   memset(chanMean,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
   memset(chanRMS,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
@@ -1839,6 +1841,7 @@ AcqdErrorCode_t doStartTest()
       }
     }
   }
+  setGlobalThreshold=tempGlobalThreshold;
   fillGenericHeader(&startStruct,PACKET_ACQD_START,sizeof(AcqdStartStruct_t));
   sprintf(theFilename,"%s/acqd_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(AcqdStartStruct_t));  
