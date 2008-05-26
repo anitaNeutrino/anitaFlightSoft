@@ -1823,7 +1823,9 @@ AcqdErrorCode_t doStartTest()
       //      firstLoop=0;
     }
     startStruct.threshVals[tInd]=dacVal;
+    theSurfHk.globalThreshold=dacVal;
     status=readSurfHkData(); 
+    theSurfHk.globalThreshold=0; //Just to avoid error message
     //Then send clear hk pulse
     for(surf=0;surf<numSurfs;++surf) {
       if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
