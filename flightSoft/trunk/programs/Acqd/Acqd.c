@@ -1702,7 +1702,7 @@ AcqdErrorCode_t doStartTest()
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
   char theFilename[FILENAME_MAX];
   int tempGlobalThreshold=setGlobalThreshold;
-  setGlobalThreshold=0;
+  setGlobalThreshold=1;
   startStruct.numEvents=0;
   memset(chanMean,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
   memset(chanRMS,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
