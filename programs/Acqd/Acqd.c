@@ -2223,6 +2223,8 @@ int writeSurfHousekeeping(int dataOrTelem)
 // 2 == telem
 // anything else == both
 {
+  if(printToScreen && verbosity>=0)
+    printf("writeSurfHousekeeping(%d)\n",dataOrTelem);
   char theFilename[FILENAME_MAX];
   int retVal=0;
   fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
