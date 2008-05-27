@@ -313,6 +313,8 @@ int main(int argc, char **argv) {
 
   //Main program loop
   do { //while( currentState==PROG_STATE_INIT
+    lastSurfHkRead.tv_sec=0;
+    lastSurfHkRead.tv_usec=0;
     unsigned int tempTrigMask=antTrigMask;
     unsigned int tempNadirTrigMask=nadirAntTrigMask;
     // Clear devices 
@@ -3305,8 +3307,8 @@ void intersperseSurfHk(struct timeval *tvPtr)
   AcqdErrorCode_t status;
   int timeDiff=0;  
   int surf;
-  static unsigned int lastSlowSurfHk=0;
-  timeDiff=tvPtr->tv_usec-lastSurfHkRead.tv_usec;
+  static unsigned int lastSlowSurfHk=0;  
+  timeDiff=tvPtr->tv_usec-lastSurfHkRead.tv_usec;  
   timeDiff+=1000000*(tvPtr->tv_sec-lastSurfHkRead.tv_sec);
 		    		
   //Only read the housekeeping every 50ms, will change this to be configurable.
@@ -3314,7 +3316,8 @@ void intersperseSurfHk(struct timeval *tvPtr)
   if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
     //printf("Time Diff %d, %d.%d and %d.%d\n",
     //       timeDiff,tvPtr->tv_sec,tvPtr->tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
-    lastSurfHkRead=(*tvPtr);
+    lastSurfHkRead.tv_sec=tvPtr->tv_sec;
+    lastSurfHkRead.tv_usec=tvPtr->tv_usec;
     status=readSurfHkData();
     //Should check status
 	
