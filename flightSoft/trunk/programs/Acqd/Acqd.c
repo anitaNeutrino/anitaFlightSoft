@@ -334,7 +334,7 @@ int main(int argc, char **argv) {
 
     //Send software trigger
     //Take a forced trigger to get rid of any junk
-    setTurfControl(SendSoftTrg);
+    //    setTurfControl(SendSoftTrg);
     
    
 
@@ -2252,7 +2252,8 @@ int writeTurfHousekeeping(int dataOrTelem)
 {
   char theFilename[FILENAME_MAX];
   int retVal=0;
-
+  //  if(printToScreen &&verbosity>=0)
+    
 
   fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
   //Write data to disk
