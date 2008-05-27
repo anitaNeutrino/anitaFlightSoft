@@ -1325,7 +1325,7 @@ AcqdErrorCode_t clearDevices()
   int i;
   AcqdErrorCode_t status;
 
-  if(verbosity &&printToScreen) printf("*** Clearing devices ***\n");
+  if(verbosity>=0 && printToScreen) printf("*** Clearing devices ***\n");
     
   //Added RJN 24/11/06
   trigMode=TrigNone;
@@ -1708,7 +1708,8 @@ AcqdErrorCode_t doStartTest()
   memset(chanRMS,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
 
   //Disable triggers
-  antTrigMask=0xffffffff;   
+  antTrigMask=0xffffffff;
+  nadirAntTrigMask=0xff;
   writeAntTrigMask(); 
   antTrigMask=tempTrigMask;
   nadirAntTrigMask=tempNadirTrigMask;
