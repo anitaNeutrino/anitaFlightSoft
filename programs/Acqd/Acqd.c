@@ -2161,7 +2161,7 @@ void outputTurfRateData() {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
-  int retVal=0,surf,ant,phi;
+  int retVal=0,surf,ant,phi,ring;
   //  printf("outputTurfRateData -- numRates %d\n",numRates);
   if(turfRateAverage>0) {
     if(numRates==0) {
@@ -2170,12 +2170,10 @@ void outputTurfRateData() {
       sumTurf.unixTime=turfRates.unixTime;
     }
     numRates++;
-    for(surf=0;surf<TRIGGER_SURFS;surf++) {
-      for(ant=0;ant<ANTS_PER_SURF;ant++) {
-	sumTurf.l1Rates[surf][ant]+=turfRates.l1Rates[surf][ant];
-      }
-    }
     for(phi=0;phi<PHI_SECTORS;phi++) {
+      for(ring=0;ring<2;ring++) {
+	sumTurf.l1Rates[phi][ring]+=turfRates.l1Rates[phi][ring];
+      }
       sumTurf.upperL2Rates[phi]+=turfRates.upperL2Rates[phi];
       sumTurf.lowerL2Rates[phi]+=turfRates.lowerL2Rates[phi];
       sumTurf.l3Rates[phi]+=turfRates.l3Rates[phi];
@@ -2707,7 +2705,7 @@ AcqdErrorCode_t readTurfEventData()
   unsigned int dataInt;
   static unsigned short lastPPSNum=0;
 
-  int wordNum,surf,ant,errCount=0,count=0;
+  int wordNum,surf,phi,ring,errCount=0,count=0;
   TurfioTestPattern_t startPat;
   TurfioTestPattern_t endPat;
   unsigned short turfBuf[160];
@@ -2790,15 +2788,15 @@ AcqdErrorCode_t readTurfEventData()
     }
     else if(wordNum<88) {
       //Surf Antenna counters
-      surf=(wordNum-24)/8;
-      ant=(wordNum%8)/2;
+      phi=((wordNum-24)/2)%PHI_SECTORS;
+      ring=((wordNum-24)/2)/PHI_SECTORS;
       if(wordNum%2==0) {
 	//First word
-	turfRates.l1Rates[surf][ant]=dataShort;
+	turfRates.l1Rates[phi][ring]=dataShort;
       }
       else if(wordNum%2==1) {
 	//Second word
-	turfRates.l1Rates[surf][ant]+=(dataShort<<8);
+	turfRates.l1Rates[phi][ring]+=(dataShort<<8);
       }	    
     }
     else if(wordNum<104) {
