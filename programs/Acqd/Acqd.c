@@ -2223,7 +2223,7 @@ int writeSurfHousekeeping(int dataOrTelem)
 // 2 == telem
 // anything else == both
 {
-  if(printToScreen && verbosity>=0)
+  if(printToScreen && verbosity>1)
     printf("writeSurfHousekeeping(%d) -- theSurfHk.setThreshold[0][0]=%d\n",dataOrTelem,theSurfHk.setThreshold[0][0]);
   char theFilename[FILENAME_MAX];
   int retVal=0;
