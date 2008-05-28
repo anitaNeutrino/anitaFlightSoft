@@ -23,7 +23,8 @@ mkdir /mnt/data/current/log
 /home/anita/flightSoft/bin/simpleLog /mnt/data/current/log/simpleLog.txt
 mkdir /mnt/satamini/current/log
 cp /mnt/data/current/log/simpleLog.txt /mnt/satamini/current/log/simpleLog.txt
-
+mkdir /mnt/data/satamini/current/config
+cp /home/anita/flightSoft/config/*.config /mnt/data/satamini/current/config
 sleep 2
 
 echo "Starting Programs"

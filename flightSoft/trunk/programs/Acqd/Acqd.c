@@ -2257,8 +2257,8 @@ int writeTurfHousekeeping(int dataOrTelem)
 {
   char theFilename[FILENAME_MAX];
   int retVal=0;
-  //  if(printToScreen &&verbosity>=0)
-    
+    if(printToScreen &&verbosity>=2)
+   	printf("writeTurfHousekeeping(%d)\n",dataOrTelem); 
 
   fillGenericHeader(&turfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));
   //Write data to disk
