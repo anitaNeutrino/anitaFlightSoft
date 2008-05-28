@@ -94,7 +94,7 @@ int numEventRates=0;
 
 void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEventNumber) //to be called once a minute
 {
-    int i,surf,chan,ant,phi,scl;
+  int i,surf,chan,ant,phi,scl,ring;
     SlowRateRFCalcStruct_t slowCalc;
     SlowRateRFStruct_t slowRf;
 
@@ -188,31 +188,31 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	}
     }
     if(numTurfRates) {
-	for(i=0;i<numTurfRates;i++) {
-	    for(surf=0;surf<TRIGGER_SURFS;surf++) {
-		for(ant=0;ant<ANTS_PER_SURF;ant++) {
-		    slowCalc.avgL1Rates[surf]+=theTurfRates[i].l1Rates[surf][ant];
-		}
-	    }
-	    
-	    for(phi=0;phi<PHI_SECTORS;phi++) {
-		slowCalc.avgUpperL2Rates[phi]+=theTurfRates[i].upperL2Rates[phi];
-		slowCalc.avgLowerL2Rates[phi]+=theTurfRates[i].lowerL2Rates[phi];
-		slowCalc.avgL3Rates[phi]+=theTurfRates[i].l3Rates[phi];
-	    }
+      for(i=0;i<numTurfRates;i++) {
+	for(phi=0;phi<PHI_SECTORS;phi++) {
+	  for(ring=0;ring<2;ring++) {	      
+	    slowCalc.avgL1Rates[phi/2]+=theTurfRates[i].l1Rates[phi][ring];
+	  }
 	}
-	for(surf=0;surf<TRIGGER_SURFS;surf++) {
-	    for(ant=0;ant<ANTS_PER_SURF;ant++) {
-		slowCalc.avgL1Rates[surf]/=((float)4*numTurfRates);
-		slowCalc.avgL1Rates[surf]/=((float)256);
-		if(slowCalc.avgL1Rates[surf]<0)
-		    slowCalc.avgL1Rates[surf]=0;
-		if(slowCalc.avgL1Rates[surf]>255)
-		    slowCalc.avgL1Rates[surf]=255;
-		slowRf.avgL1Rates[surf]=slowCalc.avgL1Rates[surf];
-
-	    }
+	
+	for(phi=0;phi<PHI_SECTORS;phi++) {
+	  slowCalc.avgUpperL2Rates[phi]+=theTurfRates[i].upperL2Rates[phi];
+	  slowCalc.avgLowerL2Rates[phi]+=theTurfRates[i].lowerL2Rates[phi];
+	  slowCalc.avgL3Rates[phi]+=theTurfRates[i].l3Rates[phi];
 	}
+      }
+      for(surf=0;surf<TRIGGER_SURFS;surf++) {
+	for(ant=0;ant<ANTS_PER_SURF;ant++) {
+	  slowCalc.avgL1Rates[surf]/=((float)4*numTurfRates);
+	  slowCalc.avgL1Rates[surf]/=((float)256);
+	  if(slowCalc.avgL1Rates[surf]<0)
+	    slowCalc.avgL1Rates[surf]=0;
+	  if(slowCalc.avgL1Rates[surf]>255)
+	    slowCalc.avgL1Rates[surf]=255;
+	  slowRf.avgL1Rates[surf]=slowCalc.avgL1Rates[surf];
+	  
+	}
+      }
 	
 	for(phi=0;phi<PHI_SECTORS;phi++) {
 	    slowCalc.avgUpperL2Rates[phi]/=((float)numTurfRates);

@@ -498,7 +498,7 @@ void highrateHandler(int *ignore)
 	//Now we try and send some data
 	//I'm going to try and modify this but for now
 	if(hkCount%eventBandwidth==0)
-	    sendSomeHk(10000);
+	  sendSomeHk(10000);
 	hkCount++;
     }	
 
