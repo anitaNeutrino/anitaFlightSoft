@@ -2160,7 +2160,7 @@ void outputTurfRateData() {
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
   int retVal=0,phi,ring;
-  //  printf("outputTurfRateData -- numRates %d\n",numRates);
+  printf("outputTurfRateData -- numRates %d, ppsNum\n",numRates,turfRates.ppsNum);
   if(turfRateAverage>0) {
     if(numRates==0) {
       //Need to initialize sumTurf
