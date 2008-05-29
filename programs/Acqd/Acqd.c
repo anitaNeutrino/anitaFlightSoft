@@ -528,11 +528,11 @@ int main(int argc, char **argv) {
 	      
       hdPtr->unixTime=timeStruct.tv_sec;
       hdPtr->unixTimeUs=timeStruct.tv_usec;
-      turfRates.unixTime=timeStruct.tv_sec;
-      turfRates.ppsNum=hdPtr->turfio.ppsNum;
       if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
       
       status=readTurfEventData();
+      turfRates.unixTime=timeStruct.tv_sec;
+      turfRates.ppsNum=hdPtr->turfio.ppsNum;
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Problem reading TURF event data\n");
 	syslog(LOG_ERR,"Problem reading TURF event data\n");
@@ -1628,12 +1628,12 @@ AcqdErrorCode_t runPedestalMode()
 	      
     hdPtr->unixTime=timeStruct.tv_sec;
     hdPtr->unixTimeUs=timeStruct.tv_usec;
-    turfRates.unixTime=timeStruct.tv_sec;
-    turfRates.ppsNum=hdPtr->turfio.ppsNum;
     if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
 
     //Now read TURF event data (not strictly necessary for pedestal run
     status=readTurfEventData();
+    turfRates.unixTime=timeStruct.tv_sec;
+    turfRates.ppsNum=hdPtr->turfio.ppsNum;
     if(status!=ACQD_E_OK) {
       fprintf(stderr,"Problem reading TURF event data\n");
       syslog(LOG_ERR,"Problem reading TURF event data\n");
