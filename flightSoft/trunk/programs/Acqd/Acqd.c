@@ -2166,6 +2166,8 @@ void outputTurfRateData() {
       //Need to initialize sumTurf
       memset(&sumTurf,0,sizeof(SummedTurfRateStruct_t));
       sumTurf.unixTime=turfRates.unixTime;
+      sumTurf.antTrigMask=antTrigMask;
+      sumTurf.nadirAntTrigMask=nadirAntTrigMask;
     }
     numRates++;
     for(phi=0;phi<PHI_SECTORS;phi++) {
@@ -2908,6 +2910,8 @@ AcqdErrorCode_t readTurfEventData()
   if(turfioPtr->ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
     newTurfRateData=1;
   }
+  turfRates.antTrigMask=antTrigMask;
+  turfRates.nadirAntTrigMask=nadirAntTrigMask&0xff;
   lastPPSNum=turfioPtr->ppsNum;
   return status;	
 }
