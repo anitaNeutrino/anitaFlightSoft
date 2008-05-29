@@ -2904,8 +2904,8 @@ AcqdErrorCode_t readTurfEventData()
 	   turfioPtr->lowerL2TrigPattern,
 	   turfioPtr->l3TrigPattern);
   }
-  //RJN hack for no PPS mode
-  if(1 || turfioPtr->ppsNum!=lastPPSNum) {
+
+  if(turfioPtr->ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
     newTurfRateData=1;
   }
   lastPPSNum=turfioPtr->ppsNum;
