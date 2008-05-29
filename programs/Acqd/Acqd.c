@@ -532,7 +532,6 @@ int main(int argc, char **argv) {
       
       status=readTurfEventData();
       turfRates.unixTime=timeStruct.tv_sec;
-      turfRates.ppsNum=hdPtr->turfio.ppsNum;
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Problem reading TURF event data\n");
 	syslog(LOG_ERR,"Problem reading TURF event data\n");
@@ -1633,7 +1632,6 @@ AcqdErrorCode_t runPedestalMode()
     //Now read TURF event data (not strictly necessary for pedestal run
     status=readTurfEventData();
     turfRates.unixTime=timeStruct.tv_sec;
-    turfRates.ppsNum=hdPtr->turfio.ppsNum;
     if(status!=ACQD_E_OK) {
       fprintf(stderr,"Problem reading TURF event data\n");
       syslog(LOG_ERR,"Problem reading TURF event data\n");
@@ -2766,8 +2764,10 @@ AcqdErrorCode_t readTurfEventData()
       case 15:
 	turfioPtr->trigTime+=(dataInt<<24); break;
       case 16:
-	turfioPtr->ppsNum=dataShort; break;
+	turfioPtr->ppsNum=dataShort; 
+	turfRates->ppsNum=dataShort;break;
       case 17:
+	turfRates->ppsNum+=(dataShort<<8);
 	turfioPtr->ppsNum+=(dataShort<<8); break;
       case 18:
 	turfioPtr->deadTime=(dataShort); break;
