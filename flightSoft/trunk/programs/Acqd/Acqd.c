@@ -2161,7 +2161,7 @@ void outputTurfRateData() {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
-  int retVal=0,surf,ant,phi,ring;
+  int retVal=0,phi,ring;
   //  printf("outputTurfRateData -- numRates %d\n",numRates);
   if(turfRateAverage>0) {
     if(numRates==0) {
@@ -2705,7 +2705,7 @@ AcqdErrorCode_t readTurfEventData()
   unsigned int dataInt;
   static unsigned short lastPPSNum=0;
 
-  int wordNum,surf,phi,ring,errCount=0,count=0;
+  int wordNum,phi,ring,errCount=0,count=0;
   TurfioTestPattern_t startPat;
   TurfioTestPattern_t endPat;
   unsigned short turfBuf[160];
