@@ -90,7 +90,7 @@
 #define VER_HK_FULL 10
 #define VER_CMD_ECHO 10
 #define VER_MONITOR 10
-#define VER_TURF_RATE 12
+#define VER_TURF_RATE 13
 #define VER_LAB_PED 10
 #define VER_FULL_PED 10
 #define VER_SLOW_1 10
@@ -103,7 +103,7 @@
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
 #define VER_AVG_SURF_HK 12
-#define VER_SUM_TURF_RATE 10
+#define VER_SUM_TURF_RATE 11
 #define VER_ACQD_START 10
 #endif
 
@@ -496,6 +496,8 @@ typedef struct {
   unsigned char upperL2Rates[PHI_SECTORS];
   unsigned char lowerL2Rates[PHI_SECTORS];
   unsigned char l3Rates[PHI_SECTORS];
+  unsigned int antTrigMask;
+  unsigned char nadirAntTrigMask;
 } TurfRateStruct_t;
 
 typedef struct {
@@ -507,6 +509,8 @@ typedef struct {
   unsigned short upperL2Rates[PHI_SECTORS];
   unsigned short lowerL2Rates[PHI_SECTORS];
   unsigned short l3Rates[PHI_SECTORS];
+  unsigned int antTrigMask;
+  unsigned char nadirAntTrigMask; //Maybe need to pad three bytes
 } SummedTurfRateStruct_t;
 
 
