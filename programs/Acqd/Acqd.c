@@ -2764,8 +2764,8 @@ AcqdErrorCode_t readTurfEventData()
       case 15:
 	turfioPtr->trigTime+=(dataInt<<24); break;
       case 16:
-	turfioPtr.ppsNum=dataShort; 
-	turfRates->ppsNum=dataShort;break;
+	turfioPtr->ppsNum=dataShort; 
+	turfRates.ppsNum=dataShort;break;
       case 17:
 	turfRates.ppsNum+=(dataShort<<8);
 	turfioPtr->ppsNum+=(dataShort<<8); break;
