@@ -68,6 +68,7 @@ int turfRateAverage=60;
 int surfHkPeriod=0;
 int surfHkAverage=10;
 int surfHkTelemEvery=0;
+int writeRawScalers=0; //period in seconds
 int lastSurfHk=0;
 int lastTurfHk=0;
 int turfHkCounter=0;
@@ -197,6 +198,7 @@ AnitaHkWriterStruct_t turfHkWriter;
 AnitaHkWriterStruct_t surfHkWriter;
 AnitaHkWriterStruct_t avgSurfHkWriter;
 AnitaHkWriterStruct_t sumTurfRateWriter;
+AnitaHkWriterStruct_t rawScalerWriter;
 AnitaEventWriterStruct_t eventWriter;
 
 //Deadtime monitoring
@@ -607,6 +609,7 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Error closing devices\n");
   }
 
+  closeHkFilesAndTidy(&rawScalerWriter);
   closeHkFilesAndTidy(&avgSurfHkWriter);
   closeHkFilesAndTidy(&sumTurfRateWriter);
   closeHkFilesAndTidy(&surfHkWriter);
@@ -1055,7 +1058,7 @@ int readConfigFile()
     useInterrupts=kvpGetInt("useInterrupts",0);
     surfFirmwareVersion=kvpGetInt("surfFirmwareVersion",2);
     turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
-
+    writeRawScalers=kvpGetInt("writeRawScalers",1);
     //	printf("%s\n",acqdEventDir);
 
 
@@ -1905,7 +1908,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
     if(currentState!=PROG_STATE_RUN) 
       break;
     threshScanCounter++;
-    theScalers.threshold=dacVal;
+    //    theScalers.threshold=dacVal;
 
     if(dacVal!=lastDacVal) {
       if(printToScreen) 
@@ -2052,6 +2055,7 @@ void outputSurfHkData() {
   float tempVal;
   char theFilename[FILENAME_MAX];
   int retVal=0;
+  static time_t lastRawScaler=0;
   if(surfHkAverage>0) {
     if(numHks==0) {
       //Zero arrays
@@ -2150,6 +2154,14 @@ void outputSurfHkData() {
 	//			    printf("\tSURF HK %d %d\n",theSurfHk.unixTime,lastSurfHk);
 	writeSurfHousekeeping(1);
       }
+    }
+  }
+  if(writeRawScalers) {
+    if((theScalers.unixTime-lastRawScaler)>=writeRawScalers) {
+      retVal=cleverHkWrite((unsigned char*)&theScalers,sizeof(SimpleScalerStruct_t),theScalers.unixTime,&rawScalerWriter);
+      //      printf("Writing rawScalerWriter %u -- %u\n",theScalers.unixTime
+      lastRawScaler=theScalers.unixTime;
+
     }
   }
 }
@@ -2631,6 +2643,14 @@ AcqdErrorCode_t readSurfHkData()
       }
     }
     
+    //Fill in the raw scaler data
+    for(index=0;index<32;index++) {
+      dataInt=buffer[index];
+      theScalers.scaler[surf][index]=dataInt&0xffff;
+    }
+      
+
+
     //First stuff the scaler data
     for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
       index=logicalScalerToRawScaler[rfChan];
@@ -3090,6 +3110,13 @@ void prepWriterStructs() {
     avgSurfHkWriter.currentFilePtr[diskInd]=0;
   avgSurfHkWriter.writeBitMask=hkDiskBitMask;
 
+  //Raw Scaler Hk Writer
+  strncpy(rawScalerWriter.relBaseName,SURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
+  sprintf(rawScalerWriter.filePrefix,"rawscalers");
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+    rawScalerWriter.currentFilePtr[diskInd]=0;
+  rawScalerWriter.writeBitMask=hkDiskBitMask;
+
 
   //Summed Turf Rate Writer
   strncpy(sumTurfRateWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
@@ -3194,6 +3221,7 @@ void handleBadSigs(int sig)
     closeDevices();
     closeHkFilesAndTidy(&sumTurfRateWriter);
     closeHkFilesAndTidy(&avgSurfHkWriter);
+    closeHkFilesAndTidy(&rawScalerWriter);
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);
   }
@@ -3352,6 +3380,8 @@ void intersperseSurfHk(struct timeval *tvPtr)
 				
 		      
     //Now decide if we want to output the housekeeping data
+    theScalers.unixTime=tvPtr->tv_sec;
+    theScalers.unixTimeUs=tvPtr->tv_usec;
     theSurfHk.unixTime=tvPtr->tv_sec;
     theSurfHk.unixTimeUs=tvPtr->tv_usec;
     outputSurfHkData();

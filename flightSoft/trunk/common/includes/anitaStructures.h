@@ -387,8 +387,9 @@ typedef struct {
 
 
 typedef struct {    
-    unsigned short threshold;
-    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned int unixTime;
+  unsigned int unixTimeUs;
+  unsigned short scaler[ACTIVE_SURFS][32];
 } SimpleScalerStruct_t; //No inter used
 
 
