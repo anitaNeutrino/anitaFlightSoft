@@ -218,7 +218,7 @@ int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
 int main(int argc, char **argv) {
   AcqdErrorCode_t status=ACQD_E_OK;
   int retVal=0;
-  int i=0,tmo=0; 
+  int i=0,tmo=0,surf; 
   int doneStartTest=0;
   int numDevices; 
   int eventReadyFlag=0;
