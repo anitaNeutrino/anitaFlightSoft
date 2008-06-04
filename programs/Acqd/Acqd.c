@@ -59,8 +59,8 @@ BoardLocStruct_t turfioPos;
 BoardLocStruct_t surfPos[MAX_SURFS];
 int dacSurfs[MAX_SURFS];
 int surfIndex[MAX_SURFS];
-int dacChans[NUM_DAC_CHANS];
 int printToScreen=0,standAloneMode=0;
+int printPidStuff=1;
 int numSurfs=0,doingEvent=0,hkNumber=0;
 int slipCounter=0;
 int turfRateTelemEvery=1,turfRateTelemInterval=60;
@@ -165,7 +165,7 @@ float dacDGain;  // derivative gain
 int dacIMax;  // maximum intergrator state
 int dacIMin; // minimum integrator state
 int enableChanServo = FALSE; //Turn on the individual chanel servo
-int pidGoal;
+int pidGoals[BANDS_PER_ANT];
 int pidPanicVal;
 int pidAverage;
 int numEvents=0;
@@ -1068,7 +1068,7 @@ int readConfigFile()
       printToScreen=1;
       addedVerbosity--;
     }
-
+    printPidStuff=kvpGetInt("printPidStuff",1);
     surfHkPeriod=kvpGetInt("surfHkPeriod",1);
     surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
     surfHkAverage=kvpGetInt("surfHkAverage",1);
@@ -1112,7 +1112,6 @@ int readConfigFile()
     enableChanServo=kvpGetInt("enableChanServo",1);
     if(doThresholdScan)
       enableChanServo=0;
-    pidGoal=kvpGetInt("pidGoal",2000);
     pidPanicVal=kvpGetInt("pidPanicVal",200);
     pidAverage=kvpGetInt("pidAverage",1);
     if(pidAverage<1) pidAverage=1;
@@ -1132,13 +1131,20 @@ int readConfigFile()
 
     turfioPos.bus=kvpGetInt("turfioBus",3); //in seconds
     turfioPos.slot=kvpGetInt("turfioSlot",10); //in seconds
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetIntArray("pidGoals",&pidGoals[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(pidGoals): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(pidGoals): %s\n",
+	      kvpErrorString(kvpStatus));
+    }      
     tempNum=ACTIVE_SURFS;
     kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(surfTrigBandMasks): %s",
 	     kvpErrorString(kvpStatus));
-      if(printToScreen)
-	fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
+      fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
 		kvpErrorString(kvpStatus));
     }
 
@@ -2070,7 +2076,7 @@ void outputSurfHkData() {
       //Set up initial values
       avgSurfHk.unixTime=theSurfHk.unixTime;
       avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
-      avgSurfHk.scalerGoal=theSurfHk.scalerGoal;
+      memcpy(avgSurfHk.scalerGoals,theSurfHk.scalerGoals,sizeof(short)*BANDS_PER_ANT);
       memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS);
     }
     //Now add stuff to the average
@@ -2599,7 +2605,7 @@ AcqdErrorCode_t readSurfHkData()
 // Reads the scaler and RF power data from the SURF board
 {
   AcqdErrorCode_t status=ACQD_E_OK;
-  int surf,rfChan,index;
+  int surf,rfChan,index,band;
   unsigned int buffer[72];
   unsigned int count=0;
   unsigned int dataInt;
@@ -2608,11 +2614,16 @@ AcqdErrorCode_t readSurfHkData()
   if(verbosity && printToScreen) 
     printf("Reading Surf HK %d.\n",hkNumber);
   
-  if(enableChanServo)
-    theSurfHk.scalerGoal=pidGoal;
-  else 
-    theSurfHk.scalerGoal=0;
-
+  if(enableChanServo) {
+    for(band=0;band<ANTS_PER_SURF;band++) 
+      theSurfHk.scalerGoals[band]=pidGoals[band];
+  }
+  else {
+    theSurfHk.scalerGoals[0]=0;
+    theSurfHk.scalerGoals[1]=0;
+    theSurfHk.scalerGoals[2]=0;
+    theSurfHk.scalerGoals[3]=0;
+  }
   for(surf=0;surf<numSurfs;surf++){  
     count=0;
     //Set the SURF to Hk mode
@@ -3002,14 +3013,15 @@ AcqdErrorCode_t writeAntTrigMask()
 int updateThresholdsUsingPID() {
   static int avgCount=0;
   int wayOffCount=0;
-  int surf,dac,error,value,change;
+  int surf,dac,error,value,change,band;
   float pTerm, dTerm, iTerm;
   int chanGoal;
   avgCount++;
   for(surf=0;surf<numSurfs;surf++) {
     if(dacSurfs[surf]==1) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
-	chanGoal=(int)(pidGoal*pidGoalScaleFactors[surf][dac]);
+	band=dac%4;
+	chanGoal=(int)(pidGoals[band]*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
 	if(chanGoal>16000) chanGoal=16000;
 	if(abs(theSurfHk.scaler[surf][dac]-chanGoal)>pidPanicVal)
@@ -3021,16 +3033,29 @@ int updateThresholdsUsingPID() {
   //    if(wayOffCount>100) {
   //	printf("Way off count %d (avgCount %d)\n",wayOffCount,avgCount);
   //    }
+  if(printPidStuff) {
+    printf("PID Status:Band Goals:");
+    for(band=0;band<BANDS_PER_ANT;band++) 
+      printf(" %d",pidGoals[band]);
+    printf("\n");
+  }
+  
   if(avgCount==pidAverage || wayOffCount>100) {
     for(surf=0;surf<numSurfs;surf++) {
+      if(printPidStuff)
+	printf("SURF %d:\t",surfIndex[surf]);
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {		
-	chanGoal=(int)(pidGoal*pidGoalScaleFactors[surf][dac]);
+	band=dac%4;
+	chanGoal=(int)(pidGoals[band]*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
 	if(chanGoal>16000) chanGoal=16000;
 	if(dacSurfs[surf]==1) {
 	  value=avgScalerData[surf][dac]/avgCount;
 	  avgScalerData[surf][dac]=0;
 	  error=chanGoal-value;
+	  if(printPidStuff)
+	    printf("%d ",value);
+
 	  //		    printf("%d %d %d %d\n",thePids[surf][dac].iState,
 	  //			   avgScalerData[surf][dac],value,error);
 	    
@@ -3067,7 +3092,9 @@ int updateThresholdsUsingPID() {
 	  //		       thresholdArray[surfIndex[surf]-1][dac],
 	  //		       pTerm,iTerm,dTerm);
 	}
-      }   
+      }
+      if(printPidStuff)
+	printf("\n");
     }
     avgCount=0;
     return 1;
@@ -3162,11 +3189,13 @@ void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struc
     -1e-6*(float)(lastRateCalcTime->tv_usec);
   float rate=((float)(eventNumber-lastRateCalcEvent))/timespan;    
   float error;
-  int change,setting;
+  int change,setting,band;
   float pTerm, dTerm, iTerm;
+  
+
 
   if(!setGlobalThreshold) 
-    setting=pidGoal;
+    setting=(pidGoals[0]+pidGoals[1]+pidGoals[2]+pidGoals[3])/4; 
   else
     setting=globalThreshold;
     
@@ -3194,18 +3223,25 @@ void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struc
 	 rate,rateGoal,setting,change);
     
   if(change!=0) {
-    setting+=change;
     if(!setGlobalThreshold) {
-      pidGoal=setting;
-      if(pidGoal<1) pidGoal=1;
-      if(pidGoal>10000) pidGoal=10000;
-      syslog(LOG_INFO,"Changing pidGoal to %d\n",pidGoal);
+      for(band=0;band<BANDS_PER_ANT;band++) {
+	pidGoals[band]+=((int)((float)change*pidGoals[band])/((float)setting));
+	if(pidGoals[band]<1) pidGoals[band]=1;
+	if(pidGoals[band]>10000) pidGoals[band]=10000;
+      }
+      syslog(LOG_INFO,"Changing pidGoals to %d %d %d %d\n",
+	     pidGoals[0],pidGoals[1],pidGoals[2],pidGoals[3]);
+      if(printToScreen)
+	fprintf(stdout,"Changing pidGoals to %d %d %d %d\n",
+		pidGoals[0],pidGoals[1],pidGoals[2],pidGoals[3]);
     }
     else {
-      globalThreshold=setting;
+      globalThreshold=setting+change;
       if(globalThreshold<1) globalThreshold=1;
       if(globalThreshold>4095) globalThreshold=4095;
-      syslog(LOG_INFO,"Changing globalThreshold to %d\n",pidGoal);
+      syslog(LOG_INFO,"Changing globalThreshold to %d\n",globalThreshold);
+      if(printToScreen)
+	fprintf(stdout,"Changing globalThreshold to %d\n",globalThreshold);
     }    
   }
 }
