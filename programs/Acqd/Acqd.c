@@ -3044,7 +3044,7 @@ int updateThresholdsUsingPID() {
     }
     for(surf=0;surf<numSurfs;surf++) {
       if(printPidStuff)
-	printf("SURF %d:\t",surfIndex[surf]);
+	printf("SURF %2d: ",surfIndex[surf]);
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {		
 	band=dac%4;
 	chanGoal=(int)(pidGoals[band]*pidGoalScaleFactors[surf][dac]);
