@@ -455,7 +455,10 @@ void fakeSurfHk(struct timeval *currentTime) {
 
     theSurfHk.unixTime=currentTime->tv_sec;
     theSurfHk.unixTimeUs=currentTime->tv_usec;
-    theSurfHk.scalerGoal=2600;
+    theSurfHk.scalerGoals[0]=2600;
+    theSurfHk.scalerGoals[1]=2600;
+    theSurfHk.scalerGoals[2]=2600;
+    theSurfHk.scalerGoals[3]=2600;
     for(i=0;i<ACTIVE_SURFS;i++) {
 	theSurfHk.upperWords[i]=i;
 	for(j=0;j<SCALERS_PER_SURF;j++) {

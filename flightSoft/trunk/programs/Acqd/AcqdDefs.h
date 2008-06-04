@@ -118,7 +118,7 @@ typedef struct {
     unsigned char test[8];
 } TurfioTestPattern_t;
       
-int logicalScalerToRawScaler[SCALERS_PER_SURF]={8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}; //Note raw counts from 0
-int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={-1,-1,-1,-1,-1,-1,-1,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1};
+int logicalScalerToRawScaler[SCALERS_PER_SURF]={8,10,12,14,9,11,13,15,16,18,20,22,17,19,21,23}; //Note raw counts from 0
+int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={-1,-1,-1,-1,-1,-1,-1,-1,0,4,1,5,2,6,3,7,8,12,9,13,10,14,11,15,-1,-1,-1,-1,-1,-1,-1,-1};
 
 #endif //ACQDSDDEFS_H
