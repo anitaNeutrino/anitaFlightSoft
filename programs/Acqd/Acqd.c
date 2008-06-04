@@ -3033,14 +3033,15 @@ int updateThresholdsUsingPID() {
   //    if(wayOffCount>100) {
   //	printf("Way off count %d (avgCount %d)\n",wayOffCount,avgCount);
   //    }
-  if(printPidStuff) {
-    printf("PID Status:Band Goals:");
-    for(band=0;band<BANDS_PER_ANT;band++) 
-      printf(" %d",pidGoals[band]);
-    printf("\n");
-  }
+ 
   
   if(avgCount==pidAverage || wayOffCount>100) {
+    if(printPidStuff) {
+      printf("PID Status:Band Goals:");
+      for(band=0;band<BANDS_PER_ANT;band++) 
+	printf(" %d",pidGoals[band]);
+      printf("\n");
+    }
     for(surf=0;surf<numSurfs;surf++) {
       if(printPidStuff)
 	printf("SURF %d:\t",surfIndex[surf]);
@@ -3054,7 +3055,7 @@ int updateThresholdsUsingPID() {
 	  avgScalerData[surf][dac]=0;
 	  error=chanGoal-value;
 	  if(printPidStuff)
-	    printf("%d ",value);
+	    printf("%4d ",value);
 
 	  //		    printf("%d %d %d %d\n",thePids[surf][dac].iState,
 	  //			   avgScalerData[surf][dac],value,error);
