@@ -337,12 +337,14 @@ void checkEvents()
       sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,tempString);
       sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,tempString);
       retVal=fillHeader(&theHead,currentHeadname);
-      sprintf(currentBodyname,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
+
+      //Switch to
+      sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	      theHead.eventNumber);
       if(!shouldWeThrowAway(theHead.priority&0xf) ) {
 	    
 	
-	retVal=fillBody(&theBody,currentBodyname);
+	retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
 	//	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	//		theHead.eventNumber);
 	//	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
@@ -350,7 +352,7 @@ void checkEvents()
 	//	       theBody.eventNumber,pedSubBody.eventNumber);
 	
 	//Subtract Pedestals
-	subtractCurrentPeds(&theBody,&pedSubBody);
+	//	subtractCurrentPeds(&theBody,&pedSubBody);
 	
 	
 	processEvent();
@@ -425,27 +427,32 @@ void processEvent()
     if(!eventWriter.justHeader) {
 	memset(outputBuffer,0,MAX_WAVE_BUFFER);
 	switch(onboardStorageType) {
-	    case ARCHIVE_RAW:
-		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-		numBytes=sizeof(AnitaEventBody_t);
-		retVal=COMPRESS_E_OK;
-		break;
-	    case ARCHIVE_PEDSUBBED:
-		memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
-		numBytes=sizeof(PedSubbedEventBody_t);
-		retVal=COMPRESS_E_OK;
-		break;
-	    case ARCHIVE_ENCODED:	    
-		retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
-		break;
-	    case ARCHIVE_PEDSUBBED_ENCODED:	    
-		retVal=packPedSubbedEvent(&pedSubBody,&diskEncCntl,outputBuffer,&numBytes);
-		break;
-	    default:
-		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-		numBytes=sizeof(AnitaEventBody_t);
-		retVal=COMPRESS_E_OK;
-		break;	    
+	case ARCHIVE_RAW:
+	      //No longer an option
+	      //		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	      //		numBytes=sizeof(AnitaEventBody_t);
+	      //		retVal=COMPRESS_E_OK;
+	      //		break;
+	case ARCHIVE_PEDSUBBED:
+	  memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+	  numBytes=sizeof(PedSubbedEventBody_t);
+	  retVal=COMPRESS_E_OK;
+	  break;
+	case ARCHIVE_ENCODED:	    
+	  //Again no longer an option
+	  //		retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
+	  //		break;
+	case ARCHIVE_PEDSUBBED_ENCODED:	    
+	  retVal=packPedSubbedEvent(&pedSubBody,&diskEncCntl,outputBuffer,&numBytes);
+	  break;
+	default:
+	  memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+	  numBytes=sizeof(PedSubbedEventBody_t);
+	  retVal=COMPRESS_E_OK;
+	  //memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	  //numBytes=sizeof(AnitaEventBody_t);
+	  //retVal=COMPRESS_E_OK;
+	  break;	    
 	}
     }
     else numBytes=0;
@@ -512,8 +519,8 @@ void processEvent()
 	writeOutputToDisk(numBytes);
     }
     else {
-	syslog(LOG_ERR,"Error compressing event %u\n",theBody.eventNumber);
-	fprintf(stderr,"Error compressing event %u\n",theBody.eventNumber);
+	syslog(LOG_ERR,"Error compressing event %u\n",pedSubBody.eventNumber);
+	fprintf(stderr,"Error compressing event %u\n",pedSubBody.eventNumber);
     }
 
     //3) Pack Event For Telemetry
@@ -523,20 +530,20 @@ void processEvent()
 	switch(telemType) {
 	    case ARCHIVE_RAW:
 		//Need to add routine
-		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
-		numBytes=sizeof(AnitaEventBody_t);
-		retVal=COMPRESS_E_OK;
-		break;
+	      //		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	      //		numBytes=sizeof(AnitaEventBody_t);
+	      //		retVal=COMPRESS_E_OK;
+	      //		break;
 	    case ARCHIVE_PEDSUBBED:
 		//Need to add routine
 		memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
 		numBytes=sizeof(PedSubbedEventBody_t);
 		retVal=COMPRESS_E_OK;
 		break;
-	    case ARCHIVE_ENCODED:	    
-		retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
-		break;
-	    case ARCHIVE_PEDSUBBED_ENCODED:	    
+		//	    case ARCHIVE_ENCODED:	    
+		//		retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
+		//		break;
+		//	    case ARCHIVE_PEDSUBBED_ENCODED:	    
 		retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
 		break;
 	}
@@ -545,8 +552,8 @@ void processEvent()
 	if(retVal==COMPRESS_E_OK)
 	    writeOutputForTelem(numBytes);
 	else {
-	    syslog(LOG_ERR,"Error compressing event %u for telemetry\n",theBody.eventNumber);
-	    fprintf(stderr,"Error compressing event %u for telemetry\n",theBody.eventNumber);
+	    syslog(LOG_ERR,"Error compressing event %u for telemetry\n",pedSubBody.eventNumber);
+	    fprintf(stderr,"Error compressing event %u for telemetry\n",pedSubBody.eventNumber);
 	}
     }
 }

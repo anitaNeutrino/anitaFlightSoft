@@ -3,7 +3,8 @@
     surf and channel.
     
     Maps
-    June 2006  rjn@mps.ohio-state.edu
+    May 2008 -- rjn@hep.ucl.ac.uk 
+    (conversions taken from Chris Williams williams.2560@ous.edu)
 */
 
 
@@ -24,6 +25,11 @@ extern "C" {
 
     inline int getLogicalIndexFromSurf(int surf, int chan) 
     {return GetChanIndex(surf,chan);}
+
+  
+  /*Converters between latitude, longitude, and altitude to WGS84 cartesian coordinates*/
+  void ltLgAlToGeoXYZ(double latLonAlt[3], double xyz[3]);
+  void geoXYZToLtLgAl(double xyz[3], double latLonAlt[3]);
 
 #ifdef __cplusplus
 }

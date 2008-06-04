@@ -287,6 +287,8 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 		     PedSubbedEventBody_t *pedSubBdPtr) {
     pedSubBdPtr->whichPeds=currentPeds.unixTime;
     pedSubBdPtr->eventNumber=rawBdPtr->eventNumber;
+    memcpy(pedSubBdPtr->surfEventId,rawBdPtr->surfEventId,
+	   sizeof(unsigned int)*ACTIVE_SURFS);
     int surf,chan,samp,chip;   
     int chanIndex=0;
     int mean,meanSq,nsamps;
