@@ -80,7 +80,8 @@ int niceValue=-20;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
-AnitaEventBody_t *bdPtr;//=&(theEvent.body);
+AnitaEventBody_t *bdPtr;//=&(theEvent.body)
+PedSubbedEventBody_t pedSubBody;
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
 int newTurfRateData=0;
@@ -538,7 +539,11 @@ int main(int argc, char **argv) {
       hdPtr->unixTimeUs=timeStruct.tv_usec;
       if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
       
-      status=readTurfEventDataVer3();
+      if(turfFirmwareVersion==3)
+	status=readTurfEventDataVer3();
+      else
+	status=readTurfEventDataVer5();
+
       turfRates.unixTime=timeStruct.tv_sec;
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Problem reading TURF event data\n");
@@ -1645,7 +1650,10 @@ AcqdErrorCode_t runPedestalMode()
     if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
 
     //Now read TURF event data (not strictly necessary for pedestal run
-    status=readTurfEventDataVer3();
+    if(turfFirmwareVersion==3)
+      status=readTurfEventDataVer3();
+    else
+      status=readTurfEventDataVer5();
     turfRates.unixTime=timeStruct.tv_sec;
     if(status!=ACQD_E_OK) {
       fprintf(stderr,"Problem reading TURF event data\n");
@@ -1711,7 +1719,6 @@ AcqdErrorCode_t doStartTest()
   struct timeval timeStruct;
   unsigned int tempTrigMask=antTrigMask;
   unsigned int tempNadirTrigMask=nadirAntTrigMask;
-  PedSubbedEventBody_t pedSubBody;
   AcqdStartStruct_t startStruct;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
@@ -1787,7 +1794,10 @@ AcqdErrorCode_t doStartTest()
     if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
 
     //Now read TURF event data (not strictly necessary for pedestal run
-    status=readTurfEventDataVer3();
+    if(turfFirmwareVersion==3)
+      status=readTurfEventDataVer3();
+    else
+      status=readTurfEventDataVer5();
     if(status!=ACQD_E_OK) {
       fprintf(stderr,"Problem reading TURF event data\n");
       syslog(LOG_ERR,"Problem reading TURF event data\n");
@@ -2305,7 +2315,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
   char theFilename[FILENAME_MAX];
   int retVal;
   AnitaEventHeader_t *theHeader=&(theEventPtr->header);
-  AnitaEventBody_t *theBody=&(theEventPtr->body);
+  AnitaEventBody_t *theBodyPtr=&(theEventPtr->body);
 
 
   //Fill Generic Header
@@ -2313,38 +2323,18 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
     fillGenericHeader(hdPtr,PACKET_HD,sizeof(AnitaEventHeader_t));
   else
     fillGenericHeader(hdPtr,PACKET_HD_SLAC,sizeof(AnitaEventHeader_t));
-  fillGenericHeader(theBody,PACKET_BD,sizeof(AnitaEventBody_t));
+  fillGenericHeader(theBodyPtr,PACKET_BD,sizeof(AnitaEventBody_t));
 
 
 
   if(!useAltDir) {
     if(justWriteHeader==0 && writeData) {
-      sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
+      sprintf(theFilename,"%s/psev_%d.dat",theEventDir,
 	      theEventPtr->header.eventNumber);
-      if(!oldStyleFiles) {
-	//		if(!compressWavefile) 
-	retVal=writeStruct(theBody,theFilename,sizeof(AnitaEventBody_t));  
-	//		else {
-	//		    strcat(theFilename,".gz");
-	//		    retVal=writeZippedBody(theBody,theFilename);
-	//		}
-	//		printf("%s\n",theFilename);
-      }
-      else {
-	sprintf(theFilename,"%s/surf_data.%d",theEventDir,
-		theEventPtr->header.eventNumber);
-	FILE *eventFile;
-	int n;
-	if ((eventFile=fopen(theFilename, "wb")) == NULL) { 
-	  printf("Failed to open event file, %s\n", theFilename) ;
-	  return ;
-	}
-	if ((n=fwrite(labData, sizeof(int), 
-		      N_SAMP*N_CHAN*numSurfs,eventFile)) 
-	    != N_SAMP*N_CHAN*numSurfs)  
-	  printf("Failed to write all event data. wrote only %d.\n", n) ;
-	fclose(eventFile);
-      }	    	    	    
+      //Now lets try and write a PedSubbedEventBody_t file
+      	//Subtract Pedestals
+      subtractCurrentPeds(theBodyPtr,&pedSubBody);
+      retVal=writeStruct(&pedSubBody,theFilename,sizeof(PedSubbedEventBody_t));
     }
 	
     if(writeData) {
@@ -2360,10 +2350,10 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
   else {
     if(printToScreen && verbosity) {
       printf("Trying to write event %u to dir %s\n",
-	     theBody->eventNumber,theEventDir);
+	     theBodyPtr->eventNumber,theEventDir);
     }
 	
-    retVal=cleverEventWrite((unsigned char*)theBody,sizeof(AnitaEventBody_t),theHeader,&eventWriter);
+    retVal=cleverEventWrite((unsigned char*)theBodyPtr,sizeof(AnitaEventBody_t),theHeader,&eventWriter);
     if(retVal<0) {
 	
       //Do something
@@ -2417,9 +2407,9 @@ AcqdErrorCode_t readSurfEventData()
       //Persist anyhow
     }
       
-    //In version 3 data is read as 32 bit words:
+    //In version X data is read as 32 bit words:
     /* 0 -- Header Word
-       1 -- Prime Word
+       1 -- Event Id???
        2:129 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read)
        130:1153 -- Chans 1 through 8 128 reads per chan as above
        1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
@@ -2445,6 +2435,7 @@ AcqdErrorCode_t readSurfEventData()
     if(surf==0) {
       hdPtr->otherFlag=0;
       hdPtr->errorFlag=0;
+      hdPtr->surfSlipFlag=0;
     }
 	
     int surfEvNum=((headerWord&0xf000000)>>24);
@@ -2456,12 +2447,22 @@ AcqdErrorCode_t readSurfEventData()
     }
     if(printToScreen && verbosity>2)
       printf("surf %d\tsurfEvNum %d\theaderWord %#x\nhdPtr->otherFlag %d\n",surf,surfEvNum,headerWord,hdPtr->otherFlag);
+    
       
-      
-    //Next is the junk prime word 
+    //Next is surf event id word 
     dataInt=eventBuf[1];
     if(printToScreen && verbosity>2) {
-      printf("SURF %d (%d), CHIP %d, CHN %d, Prime: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt);
+      printf("SURF %d (%d), CHIP %d, CHN %d, SURF Event Id: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt);
+    }
+    bdPtr->surfEventId[surf]=dataInt;
+    if(dataInt!=bdPtr->surfEventId[surf]) {
+      //Have a slip
+      if(surf<9) {
+	hdPtr->surfSlipFlag|=(1<<(surf-1));
+      }
+      else {
+	hdPtr->errorFlag|=(1<<2);
+      }
     }
 
     //Now we get the first 256 samples per channel
@@ -2924,6 +2925,11 @@ AcqdErrorCode_t readTurfEventDataVer3()
 	     endPat.test[wordNum]);
     }
   }
+  if(errCount) {
+    //Flag for non matching TURF test patterns
+    hdPtr->errorFlag|=(1<<3);
+  }
+
 
   if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {
     intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
@@ -3124,21 +3130,67 @@ AcqdErrorCode_t readTurfEventDataVer5()
     else if(wordNum<148) {
       if(wordNum%2==0) {
 	//First word
-	//		turfioPtr->l3TrigPattern2=dataShort;
+	turfioPtr->otherTrigPattern[0]=dataShort;
       }
       else if(wordNum%2==1) {
 	//Second word
-	//		turfioPtr->l3TrigPattern2+=(dataShort<<8);
+	turfioPtr->otherTrigPattern[0]+=(dataShort<<8);
+      }
+    }	  
+    else if(wordNum<150) {
+      if(wordNum%2==0) {
+	//First word
+	turfioPtr->otherTrigPattern[1]=dataShort;
+      }
+      else if(wordNum%2==1) {
+	//Second word
+	turfioPtr->otherTrigPattern[1]+=(dataShort<<8);
+      }
+    }	  
+    else if(wordNum<152) {
+      if(wordNum%2==0) {
+	//First word
+	turfioPtr->otherTrigPattern[2]=dataShort;
+      }
+      else if(wordNum%2==1) {
+	//Second word
+	turfioPtr->otherTrigPattern[2]+=(dataShort<<8);
       }
     }	    	    	
-    else if(wordNum<152) {
-      //do nothing
+    else if(wordNum<153) {
+      turfioPtr->nadirL1TrigPattern=dataChar;
+    }    	    	
+    else if(wordNum<154) {
+      turfioPtr->nadirL2TrigPattern=dataChar;
     }
-    else if(wordNum<160) {
-      endPat.test[wordNum-152]=dataChar; 
+    else if(wordNum<158) {
+      //TURF Event Id
+      switch(wordNum) {
+      case 154:
+	hdPtr->turfEventId=dataInt; break;
+      case 155:
+	hdPtr->turfEventId+=(dataInt<<8); break;
+      case 156:
+	hdPtr->turfEventId+=(dataInt<<16); break;
+      case 157:
+	hdPtr->turfEventId+=(dataInt<<24); break;
+      default:
+	break;
+      }
     }
-	    
-	
+    else if(wordNum<166) {
+      turfRates.nadirL1Rates[wordNum-158]=dataChar;
+    }
+    else if(wordNum<174) {
+      turfRates.nadirL2Rates[wordNum-166]=dataChar;
+    }
+    else if(wordNum<248) {
+      //Reserved 
+      //Do Nothing
+    }
+    else if(wordNum<256) {
+      endPat.test[wordNum-248]=dataChar; 
+    }	    	
   }
   for(wordNum=0;wordNum<8;wordNum++) {
     if(startPat.test[wordNum]!=endPat.test[wordNum]) 
@@ -3147,6 +3199,10 @@ AcqdErrorCode_t readTurfEventDataVer5()
       printf("Test Pattern %d -- %x -- %x\n",wordNum,startPat.test[wordNum],
 	     endPat.test[wordNum]);
     }
+  }
+  if(errCount) {
+    //Flag for non matching TURF test patterns
+    hdPtr->errorFlag|=(1<<3);
   }
 
   if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {

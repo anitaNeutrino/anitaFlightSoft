@@ -212,14 +212,17 @@ int main (int argc, char *argv[])
 		tempString);		 
 	sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 		doingEvent);
-	sprintf(bodyFilename,"%s/ev_%d.dat",ACQD_EVENT_DIR,
+
+	//RJN 4th June 2008
+	//Switch to Acqd writing psev files
+	sprintf(bodyFilename,"%s/psev_%d.dat",ACQD_EVENT_DIR,
 		doingEvent);
 		 
-	retVal=fillBody(&theBody,bodyFilename);
+	retVal=fillPedSubbedBody(&pedSubBody,bodyFilename);
 	retVal=fillHeader(&theHeader,hdFilename);
 		 
 	//Subtract Pedestals
-	subtractCurrentPeds(&theBody,&pedSubBody);
+	//	subtractCurrentPeds(&theBody,&pedSubBody);
 		
 		
 	//	    printf("Event %u, Body %u, PS Body %u\n",theHeader.eventNumber,
@@ -244,8 +247,8 @@ int main (int argc, char *argv[])
 	fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
   
 	     
-	//Write body and header for Archived
-	sprintf(archiveBodyFilename,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
+	//Rename body and write header for Archived
+	sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader.eventNumber);
 	rename(bodyFilename,archiveBodyFilename);
 	//	    unlink(bodyFilename);
