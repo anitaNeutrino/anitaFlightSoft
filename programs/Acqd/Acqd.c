@@ -380,6 +380,12 @@ int main(int argc, char **argv) {
       //If we're doing a threshold or a pedestal scan disable all antennas
       antTrigMask=0xffffffff;
       nadirAntTrigMask=0xff;
+
+      //Also disable surfTrigBandMasks
+      for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	surfTrigBandMasks[surf]=0;
+      }
+      
     }
 
     //Write antenna mask to exclude certain antennas from events
