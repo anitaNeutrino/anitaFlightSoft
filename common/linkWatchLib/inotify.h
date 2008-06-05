@@ -3,7 +3,7 @@
 #define _INOTIFYTOOLS_INOTIFY_H 1
 
 /* this is defined to 1 if <sys/inotify.h> works. */
-#define SYS_INOTIFY_H_EXISTS_AND_WORKS 1
+//#define SYS_INOTIFY_H_EXISTS_AND_WORKS 1
 
 
 #ifdef SYS_INOTIFY_H_EXISTS_AND_WORKS

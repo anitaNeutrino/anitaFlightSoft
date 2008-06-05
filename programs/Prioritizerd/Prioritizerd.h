@@ -18,7 +18,7 @@
 #include "includes/anitaStructures.h"
 
 /* Structure defininitions */
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 typedef struct {
     float re; 
     float im; 
@@ -33,6 +33,7 @@ typedef struct {
     short numSamples;
     channel_volts channel[NUM_DIGITZED_CHANNELS];
 } event_volts;
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 /* Function Definitions */
 

@@ -2200,8 +2200,9 @@ void outputTurfRateData() {
       //Need to initialize sumTurf
       memset(&sumTurf,0,sizeof(SummedTurfRateStruct_t));
       sumTurf.unixTime=turfRates.unixTime;
-      sumTurf.antTrigMask=antTrigMask;
-      sumTurf.nadirAntTrigMask=nadirAntTrigMask;
+      sumTurf.antTrigMask=turfRates.antTrigMask;
+      sumTurf.nadirAntTrigMask=turfRates.nadirAntTrigMask;
+      sumTurf.phiTrigMask=turfRates.phiTrigMask;
     }
     numRates++;
     for(phi=0;phi<PHI_SECTORS;phi++) {
@@ -2972,7 +2973,7 @@ AcqdErrorCode_t readTurfEventDataVer5()
   unsigned int dataInt;
   static unsigned short lastPPSNum=0;
 
-  int wordNum,phi,ring,errCount=0,count=0;
+  int wordNum,phi,ring,errCount=0,count=0,nadirAnt;
   TurfioTestPattern_t startPat;
   TurfioTestPattern_t endPat;
   unsigned short turfBuf[256];
@@ -3178,11 +3179,49 @@ AcqdErrorCode_t readTurfEventDataVer5()
 	break;
       }
     }
-    else if(wordNum<166) {
-      turfRates.nadirL1Rates[wordNum-158]=dataChar;
-    }
     else if(wordNum<174) {
+      nadirAnt=(wordNum-158)/2;
+      if(wordNum%2==0) {
+	//First word
+	turfRates.nadirL1Rates[nadirAnt]=dataShort;
+      }
+      else if(wordNum%2==1) {
+	//Second word
+	turfRates.nadirL1Rates[nadirAnt]+=(dataShort<<8);
+      }	    
+    }
+    else if(wordNum<182) {
       turfRates.nadirL2Rates[wordNum-166]=dataChar;
+    }
+    else if(wordNum<186) {
+      //Antenna Mask
+      switch(wordNum) {
+      case 182:
+	hdPtr->antTrigMask=dataInt; break;
+      case 183:
+	hdPtr->antTrigMask+=(dataInt<<8); break;
+      case 184:
+	hdPtr->antTrigMask+=(dataInt<<16); break;
+      case 185:
+	hdPtr->antTrigMask+=(dataInt<<24); break;
+      default:
+	break;
+      }
+    }
+    else if(wordNum<188) {
+      if(wordNum==186)
+	hdPtr->nadirAntTrigMask=dataChar;
+      //Ignore word 187 for now
+    }
+    else if(wordNum<190) {
+      if(wordNum%2==0) {
+	//First word
+	hdPtr->phiTrigMask=dataShort;
+      }
+      else if(wordNum%2==1) {
+	//Second word
+	hdPtr->phiTrigMask+=(dataShort<<8);
+      }	    
     }
     else if(wordNum<248) {
       //Reserved 
@@ -3227,8 +3266,10 @@ AcqdErrorCode_t readTurfEventDataVer5()
   if(turfioPtr->ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
     newTurfRateData=1;
   }
-  turfRates.antTrigMask=antTrigMask;
-  turfRates.nadirAntTrigMask=nadirAntTrigMask&0xff;
+  //Make sure to copy relevant mask data to turfRate struct
+  turfRates.antTrigMask=hdPtr->antTrigMask;
+  turfRates.nadirAntTrigMask=hdPtr->nadirAntTrigMask;
+  turfRates.phiTrigMask=hdPtr->phiTrigMask;
   lastPPSNum=turfioPtr->ppsNum;
   return status;	
 }

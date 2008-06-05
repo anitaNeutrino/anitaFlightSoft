@@ -16,7 +16,7 @@
  *
  * \section Reminder
  *
- * You may also want to look at the <a href="http://www.physics.ohio-state.edu/~rjn/flightSoft>Flight Software homepage.</a>
+ * You may also want to look at the <A HREF="http://www.hep.ucl.ac.uk/uhen/anita/private/flightSoft">Flight Software homepage.</A>
  *  
  *
  */
@@ -67,6 +67,7 @@
 #define ANTS_PER_SURF 4
 #define TRIGGER_SURFS 8
 #define PHI_SECTORS 16
+#define NADIR_ANTS 8
 
 //Prioritizer Stuff
 #define WRAPPED_HITBUS 0x8 //Bit 3 is the wrapped hitbus bit

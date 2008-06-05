@@ -5,7 +5,7 @@
 #include "pedestalLib/pedestalLib.h"
 #include "utilLib/utilLib.h"
 #include <math.h>
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 typedef struct{
      TransientChannel3_t* topRing[PHI_SECTORS][2];
      TransientChannel3_t* botRing[PHI_SECTORS][2];
@@ -114,6 +114,7 @@ typedef struct {
      int totalOccupancy[PHI_SECTORS][2]; //
 } AnitaSectorAnalysis_t;
 
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 #include "GenerateScore.h"
 #include "Filters.h"
     
