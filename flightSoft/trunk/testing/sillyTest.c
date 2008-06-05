@@ -58,6 +58,7 @@ int main (void)
     printf("Size of RawSurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
     printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
     printf("Size of TurfRateStruct_t: %d\n",sizeof(TurfRateStruct_t));
+    printf("Size of SummedTurfRateStruct_t: %d\n",sizeof(SummedTurfRateStruct_t));
     printf("Size of FullSurfHkStruct_t: %d\n",sizeof(FullSurfHkStruct_t));
     printf("Size of AveragedSurfHkStruct_t: %d\n",sizeof(AveragedSurfHkStruct_t));
     printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
@@ -77,6 +78,7 @@ int main (void)
     printf("Size of CommandEcho_t: %d\n",sizeof(CommandEcho_t));
     printf("Size of DiskSpaceStruct_t: %d\n",sizeof(DiskSpaceStruct_t));
     printf("Size of QueueStruct_t: %d\n",sizeof(QueueStruct_t));
+    printf("Size of ProcessInfo_t: %d\n",sizeof(ProcessInfo_t));
     printf("Size of MonitorStruct_t: %d\n",sizeof(MonitorStruct_t));
     printf("Size of OtherMonitorStruct_t: %d\n",sizeof(OtherMonitorStruct_t));
     printf("Size of RunStart_t: %d\n",sizeof(RunStart_t));
@@ -84,6 +86,9 @@ int main (void)
     printf("Size of FullLabChipPedStruct_t: %d\n",sizeof(FullLabChipPedStruct_t));
     printf("Size of FullPedStruct_t: %d\n",sizeof(FullPedStruct_t));
     printf("Size of AcqdStartStruct_t: %d\n",sizeof(AcqdStartStruct_t));
+    printf("Size of LogWatchdStart_t: %d\n",sizeof(LogWatchdStart_t));
+    printf("Size of ZippedPacket_t: %d\n",sizeof(ZippedPacket_t));
+    printf("Size of ZippedFile_t: %d\n",sizeof(ZippedFile_t));
 
 /*     printf("\n\n");   */
 /*     printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n", */
