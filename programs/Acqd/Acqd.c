@@ -2193,7 +2193,7 @@ void outputTurfRateData() {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
-  int retVal=0,phi,ring;
+  int retVal=0,phi,ring,nadirAnt;
   //  printf("outputTurfRateData -- numRates %d, ppsNum %d\n",numRates,turfRates.ppsNum);
   if(turfRateAverage>0) {
     if(numRates==0) {
@@ -2205,6 +2205,11 @@ void outputTurfRateData() {
       sumTurf.phiTrigMask=turfRates.phiTrigMask;
     }
     numRates++;
+    sumTurf.errorFlag|=turfRates.errorFlag;
+    for(nadirAnt=0;nadirAnt<NADIR_ANTS;nadirAnt++) {
+      sumTurf.nadirL1Rates[nadirAnt]+=turfRates.nadirL1Rates[nadirAnt];
+      sumTurf.nadirL2Rates[nadirAnt]+=turfRates.nadirL2Rates[nadirAnt];
+    }
     for(phi=0;phi<PHI_SECTORS;phi++) {
       for(ring=0;ring<2;ring++) {
 	sumTurf.l1Rates[phi][ring]+=turfRates.l1Rates[phi][ring];

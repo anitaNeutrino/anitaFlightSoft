@@ -523,9 +523,9 @@ typedef struct {
   Process Information the time used and memory used by ANITA processess
 */
 typedef struct {
-  unsigned long utime[NUM_PROCESSES];
-  unsigned long stime[NUM_PROCESSES];
-  unsigned long vsize[NUM_PROCESSES];
+  unsigned int utime[NUM_PROCESSES];
+  unsigned int stime[NUM_PROCESSES];
+  unsigned int vsize[NUM_PROCESSES];
 } ProcessInfo_t;
 
 //!  On board command structre
@@ -669,12 +669,12 @@ typedef struct {
   unsigned int unixTime; ///<Time of first hk
   unsigned short numRates; ///<Number of rates in average
   unsigned short deltaT; ///<Difference in time between first and last 
-  unsigned int l1Rates[PHI_SECTORS][2]; ///<x16 to get Hz 
-  unsigned short upperL2Rates[PHI_SECTORS]; ///<x64 to get Hz
-  unsigned short lowerL2Rates[PHI_SECTORS]; ///<x64 to get Hz
-  unsigned short l3Rates[PHI_SECTORS]; ///<Hz
-  unsigned short nadirL1Rates[NADIR_ANTS]; ///<x16 to get Hz
-  unsigned char nadirL2Rates[NADIR_ANTS]; ///<x64 to get Hz  
+  unsigned int l1Rates[PHI_SECTORS][2]; ///<x16/numRates to get Hz 
+  unsigned short upperL2Rates[PHI_SECTORS]; ///<x64/numRates to get Hz
+  unsigned short lowerL2Rates[PHI_SECTORS]; ///<x64/numRates to get Hz
+  unsigned short l3Rates[PHI_SECTORS]; ///< /numRates to get Hz
+  unsigned int nadirL1Rates[NADIR_ANTS]; ///<x16/numRates to get Hz
+  unsigned short nadirL2Rates[NADIR_ANTS]; ///<x64/numRates to get Hz  
   unsigned int antTrigMask; ///<As read from TURF (16-bit upper phi, lower phi)
   unsigned short phiTrigMask; ///<16-bit phi-sector mask
   unsigned char nadirAntTrigMask; ///< 8-bit nadir phi mask
@@ -982,6 +982,7 @@ typedef struct {
   unsigned short deltaT; ///<Difference in time between first and last 
   unsigned int hadError; ///<Bit mask to be defined
   unsigned short globalThreshold;
+  unsigned short reserved; 
   unsigned short scalerGoals[BANDS_PER_ANT];
   unsigned short avgScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short rmsScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
@@ -1031,6 +1032,7 @@ typedef struct {
     unsigned short dirFiles[3]; ///< /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
     unsigned short dirLinks[3]; ///< /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
     unsigned short processBitMask;
+  unsigned short reserved;
 } OtherMonitorStruct_t;
 
 //! Pedestal Block -- Telemetered
