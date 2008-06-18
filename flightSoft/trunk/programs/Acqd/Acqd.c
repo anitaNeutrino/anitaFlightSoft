@@ -84,6 +84,7 @@ AnitaEventBody_t *bdPtr;//=&(theEvent.body)
 PedSubbedEventBody_t pedSubBody;
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
+AveragedSurfHkStruct_t avgSurfHk;
 int newTurfRateData=0;
 
 
@@ -1922,6 +1923,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
   int dacVal=0,lastDacVal=-1;
   int done=0,surf=0;
   int firstLoop=1;
+  time_t lastRawScaler=0;
   struct timeval timeStruct;
   currentState=PROG_STATE_RUN;
   fprintf(stderr,"Inside doGlobalThresholdScan\n");
@@ -2064,7 +2066,7 @@ void outputEventData() {
 
 void outputSurfHkData() {
   //Do the housekeeping stuff
-  static AveragedSurfHkStruct_t avgSurfHk;
+  
   static float scalerMean[ACTIVE_SURFS][SCALERS_PER_SURF];
   static float scalerMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
   static float threshMean[ACTIVE_SURFS][SCALERS_PER_SURF];
@@ -2120,30 +2122,30 @@ void outputSurfHkData() {
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(dac=0;dac>SCALERS_PER_SURF;dac++) {
 	  scalerMean[surf][dac]/=numHks;
-	  avgSurfHk.avgScaler[surf][dac]=round(scalerMean[surf][dac]);
+	  avgSurfHk.avgScaler[surf][dac]=(int)(scalerMean[surf][dac]+0.5);
 	  scalerMeanSq[surf][dac]/=numHks;
 	  tempVal=scalerMeanSq[surf][dac]-(scalerMean[surf][dac]*scalerMean[surf][dac]);
 	  if(tempVal>0)
-	    avgSurfHk.rmsScaler[surf][dac]=round(sqrt(tempVal));
+	    avgSurfHk.rmsScaler[surf][dac]=(int)(sqrt(tempVal)+0.5);
 	  else
 	    avgSurfHk.rmsScaler[surf][dac]=0;
 
 	  threshMean[surf][dac]/=numHks;
-	  avgSurfHk.avgThresh[surf][dac]=round(threshMean[surf][dac]);
+	  avgSurfHk.avgThresh[surf][dac]=(int)(threshMean[surf][dac]+0.5);
 	  threshMeanSq[surf][dac]/=numHks;
 	  tempVal=threshMeanSq[surf][dac]-(threshMean[surf][dac]*threshMean[surf][dac]);
 	  if(tempVal>0)
-	    avgSurfHk.rmsThresh[surf][dac]=round(sqrt(tempVal));
+	    avgSurfHk.rmsThresh[surf][dac]=(int)(sqrt(tempVal)+0.5);
 	  else
 	    avgSurfHk.rmsThresh[surf][dac]=0;
 	}
 	for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
 	  rfPowerMean[surf][chan]/=numHks;
-	  avgSurfHk.avgRFPower[surf][chan]=round(rfPowerMean[surf][chan]);
+	  avgSurfHk.avgRFPower[surf][chan]=(int)(rfPowerMean[surf][chan]+0.5);
 	  rfPowerMeanSq[surf][chan]/=numHks;
 	  tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
 	  if(tempVal>0)
-	    avgSurfHk.rmsRFPower[surf][chan]=round(sqrt(tempVal));
+	    avgSurfHk.rmsRFPower[surf][chan]=(int)(sqrt(tempVal)+0.5);
 	  else
 	    avgSurfHk.rmsRFPower[surf][chan]=0;
 	}
@@ -2156,6 +2158,9 @@ void outputSurfHkData() {
       retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
       makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
       
+      if(printToScreen && verbosity>=0) {
+	printf("Averaged Scaler [0][0]=%d\n",avgSurfHk.avgScaler[0][0]);
+      }
       retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
 			   sizeof(AveragedSurfHkStruct_t),
 			   avgSurfHk.unixTime,&avgSurfHkWriter);   
