@@ -2082,6 +2082,7 @@ void outputSurfHkData() {
   static time_t lastRawScaler=0;
   if(surfHkAverage>0) {
     if(numHks==0) {
+      printf("Zeroing arrays, numHks=%d\n",numHks);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
       memset(scalerMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
@@ -2117,8 +2118,9 @@ void outputSurfHkData() {
 	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
       }      
     }
+    printf("scalerMean[0][0]=%d numHks=%d surfHkAverage=%d\n",scalerMean[0][0],numHks,surfHkAverage);    
     if(numHks==surfHkAverage) {
-      printf("scalerMean[0][0]=%d numHks=%d surfHkAverage=%d\n",scalerMean[0][0],numHks,surfHkAverage);    
+
       //Time to output
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(dac=0;dac>SCALERS_PER_SURF;dac++) {
