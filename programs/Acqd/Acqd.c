@@ -2968,6 +2968,7 @@ AcqdErrorCode_t readTurfEventDataVer3()
   if(turfioPtr->ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
     newTurfRateData=1;
   }
+  printf("turfioPtr->ppsNum=%d\n",turfioPtr->ppsNum);
   turfRates.antTrigMask=antTrigMask;
   turfRates.nadirAntTrigMask=nadirAntTrigMask&0xff;
   lastPPSNum=turfioPtr->ppsNum;
