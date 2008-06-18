@@ -2107,7 +2107,7 @@ void outputSurfHkData() {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	scalerMean[surf][dac]+=theSurfHk.scaler[surf][dac];
 	scalerMeanSq[surf][dac]+=(theSurfHk.scaler[surf][dac]*theSurfHk.scaler[surf][dac]);
-	threshMean[surf][dac]+=theSurfHk.scaler[surf][dac];
+	threshMean[surf][dac]+=theSurfHk.threshold[surf][dac];
 	threshMeanSq[surf][dac]+=(theSurfHk.threshold[surf][dac]*theSurfHk.threshold[surf][dac]);
 	
 	if(theSurfHk.threshold[surf][dac]!=theSurfHk.setThreshold[surf][dac]) {
