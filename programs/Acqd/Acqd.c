@@ -2104,7 +2104,7 @@ void outputSurfHkData() {
     if(theSurfHk.errorFlag & (1<<surf))
       avgSurfHk.hadError |= (1<<(surf+16));
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
-      for(dac=0;dac>SCALERS_PER_SURF;dac++) {
+      for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	scalerMean[surf][dac]+=theSurfHk.scaler[surf][dac];
 	scalerMeanSq[surf][dac]+=(theSurfHk.scaler[surf][dac]*theSurfHk.scaler[surf][dac]);
 	threshMean[surf][dac]+=theSurfHk.scaler[surf][dac];
@@ -2119,7 +2119,7 @@ void outputSurfHkData() {
 	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
       }      
     }
-    printf("scalerMean[0][0]=%f numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage);    
+    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
     if(numSurfHksInAvg==surfHkAverage) {
 
       //Time to output
@@ -3694,12 +3694,12 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 		  
     if(rateCalcPeriod) {
       if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
-	printf("Event %d (%d)-- Current Rate %3.2f Hz  (%3.2f Hz)\n",lastEvNum,doingEvent,((float)(doingEvent-lastEventCounter))/rateCalcPeriod,((float)doingEvent)/totalTime);
+	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 	//		    if(lastEventCounter<200)
 	//			printf("\n");
       }
       else {
-	printf("Event %d i(%d)-- Current Rate 0 Hz\n",lastEvNum,doingEvent);
+	printf("Event %d -- Current Rate 0 Hz\n",lastEvNum);
       }
 		    
 		    
