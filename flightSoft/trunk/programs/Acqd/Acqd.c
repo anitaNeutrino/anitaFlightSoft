@@ -2118,6 +2118,7 @@ void outputSurfHkData() {
       }      
     }
     if(numHks==surfHkAverage) {
+      printf("scalerMean[0][0]=%d numHks=%d\n",scalerMean[0][0],numHks);    
       //Time to output
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(dac=0;dac>SCALERS_PER_SURF;dac++) {
