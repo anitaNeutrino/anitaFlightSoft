@@ -1923,7 +1923,6 @@ AcqdErrorCode_t doGlobalThresholdScan()
   int dacVal=0,lastDacVal=-1;
   int done=0,surf=0;
   int firstLoop=1;
-  time_t lastRawScaler=0;
   struct timeval timeStruct;
   currentState=PROG_STATE_RUN;
   fprintf(stderr,"Inside doGlobalThresholdScan\n");
@@ -2071,7 +2070,6 @@ float threshMean[ACTIVE_SURFS][SCALERS_PER_SURF];
 float threshMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
 float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
 float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
-unsigned short surfTrigBandMasks[ACTIVE_SURFS];
 unsigned short numSurfHksInAvg=0;  
 
 
@@ -2095,7 +2093,6 @@ void outputSurfHkData() {
       memset(threshMeanSq,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
       memset(rfPowerMean,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
       memset(rfPowerMeanSq,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
-      memset(surfTrigBandMasks,0,sizeof(short)*ACTIVE_SURFS);
       //Set up initial values
       avgSurfHk.unixTime=theSurfHk.unixTime;
       avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
@@ -2122,7 +2119,7 @@ void outputSurfHkData() {
 	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
       }      
     }
-    printf("scalerMean[0][0]=%d numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage);    
+    printf("scalerMean[0][0]=%f numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage);    
     if(numSurfHksInAvg==surfHkAverage) {
 
       //Time to output
@@ -2157,7 +2154,7 @@ void outputSurfHkData() {
 	    avgSurfHk.rmsRFPower[surf][chan]=0;
 	}
       }
-      avgSurfHk.numSurfHksInAvg=numSurfHksInAvg;
+      avgSurfHk.numHks=numSurfHksInAvg;
       avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
       fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
       sprintf(theFilename,"%s/avgsurfhk_%d.dat",SURFHK_TELEM_DIR,
