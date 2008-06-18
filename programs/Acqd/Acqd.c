@@ -2084,7 +2084,7 @@ void outputSurfHkData() {
   static time_t lastRawScaler=0;
   if(surfHkAverage>0) {
     if(numSurfHksInAvg==0) {
-      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
+      //      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
       memset(scalerMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
@@ -2119,12 +2119,12 @@ void outputSurfHkData() {
 	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
       }      
     }
-    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
+    //    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
     if(numSurfHksInAvg==surfHkAverage) {
 
       //Time to output
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	for(dac=0;dac>SCALERS_PER_SURF;dac++) {
+	for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	  scalerMean[surf][dac]/=numSurfHksInAvg;
 	  avgSurfHk.avgScaler[surf][dac]=(int)(scalerMean[surf][dac]+0.5);
 	  scalerMeanSq[surf][dac]/=numSurfHksInAvg;
@@ -2162,9 +2162,9 @@ void outputSurfHkData() {
       retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
       makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
       
-      if(printToScreen && verbosity>=0) {
-	printf("Averaged Scaler [0][0]=%d\n",avgSurfHk.avgScaler[0][0]);
-      }
+      //      if(printToScreen && verbosity>=0) {
+      //	printf("Averaged Scaler [0][0]=%d\n",avgSurfHk.avgScaler[0][0]);
+      //      }
       retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
 			   sizeof(AveragedSurfHkStruct_t),
 			   avgSurfHk.unixTime,&avgSurfHkWriter);   
