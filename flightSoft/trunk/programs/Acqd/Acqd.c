@@ -2064,25 +2064,29 @@ void outputEventData() {
   }
 }
 
+//Global variables for this annoying thing
+float scalerMean[ACTIVE_SURFS][SCALERS_PER_SURF];
+float scalerMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
+float threshMean[ACTIVE_SURFS][SCALERS_PER_SURF];
+float threshMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
+float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
+float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
+unsigned short surfTrigBandMasks[ACTIVE_SURFS];
+unsigned short numSurfHksInAvg=0;  
+
+
 void outputSurfHkData() {
   //Do the housekeeping stuff
   
-  static float scalerMean[ACTIVE_SURFS][SCALERS_PER_SURF];
-  static float scalerMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
-  static float threshMean[ACTIVE_SURFS][SCALERS_PER_SURF];
-  static float threshMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
-  static float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
-  static float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
-  static unsigned short surfTrigBandMasks[ACTIVE_SURFS];
-  static unsigned short numHks=0;  
+  
   int surf,dac,chan;//,ind;
   float tempVal;
   char theFilename[FILENAME_MAX];
   int retVal=0;
   static time_t lastRawScaler=0;
   if(surfHkAverage>0) {
-    if(numHks==0) {
-      printf("Zeroing arrays, numHks=%d\n",numHks);
+    if(numSurfHksInAvg==0) {
+      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
       memset(scalerMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
@@ -2099,7 +2103,7 @@ void outputSurfHkData() {
       memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS);
     }
     //Now add stuff to the average
-    numHks++;
+    numSurfHksInAvg++;
     if(theSurfHk.errorFlag & (1<<surf))
       avgSurfHk.hadError |= (1<<(surf+16));
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -2118,24 +2122,24 @@ void outputSurfHkData() {
 	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
       }      
     }
-    printf("scalerMean[0][0]=%d numHks=%d surfHkAverage=%d\n",scalerMean[0][0],numHks,surfHkAverage);    
-    if(numHks==surfHkAverage) {
+    printf("scalerMean[0][0]=%d numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage);    
+    if(numSurfHksInAvg==surfHkAverage) {
 
       //Time to output
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	for(dac=0;dac>SCALERS_PER_SURF;dac++) {
-	  scalerMean[surf][dac]/=numHks;
+	  scalerMean[surf][dac]/=numSurfHksInAvg;
 	  avgSurfHk.avgScaler[surf][dac]=(int)(scalerMean[surf][dac]+0.5);
-	  scalerMeanSq[surf][dac]/=numHks;
+	  scalerMeanSq[surf][dac]/=numSurfHksInAvg;
 	  tempVal=scalerMeanSq[surf][dac]-(scalerMean[surf][dac]*scalerMean[surf][dac]);
 	  if(tempVal>0)
 	    avgSurfHk.rmsScaler[surf][dac]=(int)(sqrt(tempVal)+0.5);
 	  else
 	    avgSurfHk.rmsScaler[surf][dac]=0;
 
-	  threshMean[surf][dac]/=numHks;
+	  threshMean[surf][dac]/=numSurfHksInAvg;
 	  avgSurfHk.avgThresh[surf][dac]=(int)(threshMean[surf][dac]+0.5);
-	  threshMeanSq[surf][dac]/=numHks;
+	  threshMeanSq[surf][dac]/=numSurfHksInAvg;
 	  tempVal=threshMeanSq[surf][dac]-(threshMean[surf][dac]*threshMean[surf][dac]);
 	  if(tempVal>0)
 	    avgSurfHk.rmsThresh[surf][dac]=(int)(sqrt(tempVal)+0.5);
@@ -2143,9 +2147,9 @@ void outputSurfHkData() {
 	    avgSurfHk.rmsThresh[surf][dac]=0;
 	}
 	for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-	  rfPowerMean[surf][chan]/=numHks;
+	  rfPowerMean[surf][chan]/=numSurfHksInAvg;
 	  avgSurfHk.avgRFPower[surf][chan]=(int)(rfPowerMean[surf][chan]+0.5);
-	  rfPowerMeanSq[surf][chan]/=numHks;
+	  rfPowerMeanSq[surf][chan]/=numSurfHksInAvg;
 	  tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
 	  if(tempVal>0)
 	    avgSurfHk.rmsRFPower[surf][chan]=(int)(sqrt(tempVal)+0.5);
@@ -2153,7 +2157,7 @@ void outputSurfHkData() {
 	    avgSurfHk.rmsRFPower[surf][chan]=0;
 	}
       }
-      avgSurfHk.numHks=numHks;
+      avgSurfHk.numSurfHksInAvg=numSurfHksInAvg;
       avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
       fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
       sprintf(theFilename,"%s/avgsurfhk_%d.dat",SURFHK_TELEM_DIR,
@@ -2167,7 +2171,7 @@ void outputSurfHkData() {
       retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
 			   sizeof(AveragedSurfHkStruct_t),
 			   avgSurfHk.unixTime,&avgSurfHkWriter);   
-      numHks=0;
+      numSurfHksInAvg=0;
     }      
   }
 
