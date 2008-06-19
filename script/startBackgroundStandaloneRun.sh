@@ -9,6 +9,7 @@ daemon --stop -n Calibd
 daemon --stop -n Acqd
 daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
+daemon --stop -n LOSd
 
 echo "Sleeping while files are written and zipped"
 sleep 5
@@ -40,7 +41,7 @@ daemon -r Calibd -n Calibd
 #Just to make sure
 daemon -r Prioritizerd -n Prioritizerd 
 daemon -r Eventd -n Eventd
-#daemon -r LOSd -n LOSd
+daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
 
 sleep 2

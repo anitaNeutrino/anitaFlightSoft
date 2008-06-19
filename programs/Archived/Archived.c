@@ -525,6 +525,9 @@ void processEvent()
 
     //3) Pack Event For Telemetry
     //Again we have a range of options for event telemetry
+
+    if(printToScreen && verbosity>1) printf("Event %d, telemType %d\n",theHead.eventNumber,telemType);
+
     if(!eventWriter.justHeader) {
 	memset(outputBuffer,0,MAX_WAVE_BUFFER);
 	switch(telemType) {
@@ -543,7 +546,7 @@ void processEvent()
 		//	    case ARCHIVE_ENCODED:	    
 		//		retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
 		//		break;
-		//	    case ARCHIVE_PEDSUBBED_ENCODED:	    
+	    case ARCHIVE_PEDSUBBED_ENCODED:	    
 		retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
 		break;
 	}
@@ -594,6 +597,11 @@ void writeOutputForTelem(int numBytes) {
     if(pri<0 || pri>9) pri=9;
     //this step is now done in Prioritizerd
 //    theHead.priority=(16*theHead.priority)+pri;
+    if(printToScreen && verbosity>1) {
+	printf("Event %u, (%d bytes) \n",theHead.eventNumber,numBytes);
+    }
+
+
     if(!eventWriter.justHeader) {
 	sprintf(bodyName,"%s/ev_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
 	sprintf(headName,"%s/hd_%u.dat",eventTelemDirs[pri],theHead.eventNumber);

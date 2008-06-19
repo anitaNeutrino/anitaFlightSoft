@@ -3291,6 +3291,16 @@ AcqdErrorCode_t readTurfEventDataVer5()
 
 
 
+AcqdErrorCode_t readTurfHkData()   
+{
+    //This fills a TurfRate structure
+    unsigned int value;
+    int i=0;
+    
+}
+
+
+
 AcqdErrorCode_t writeAntTrigMask() 
 /*!
   Remember that 0 in the RFCM mask means on
@@ -3803,4 +3813,32 @@ int checkSurfFdsForData()
   
   printf("checkSurfFdsForData: retVal %d\n",retVal);
   return retVal;
+}
+
+
+
+AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr)
+{
+  struct turfioDriverRead req;
+  req.address = address;
+  if (ioctl(turfioFd, TURFIO_IOCREAD, &req)) {
+      syslog("Error reading TURFIO register -- %s\n",strerror(errno));
+      fprintf(stderr,"Error reading TURFIO register -- %s\n",strerror(errno));
+      return ACQD_E_TURFIO_IOCTL;
+  }
+  *valPtr=req.value;
+  return ACQD_E_OK;
+}
+
+AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value)
+{
+  struct turfioDriverRead req;
+  req.address = address; 
+  req.value = value;
+  if (ioctl(turfioFd, TURFIO_IOCWRITE, &req)) {
+      syslog("Error writing TURFIO register -- %s\n",strerror(errno));
+      fprintf(stderr,"Error writing TURFIO register -- %s\n",strerror(errno));
+      return ACQD_E_TURFIO_IOCTL;
+  }
+  return ACQD_E_OK;
 }

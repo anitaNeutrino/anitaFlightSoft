@@ -101,6 +101,7 @@ typedef enum {
     ACQD_E_TURFIO_GPIO,
     ACQD_E_SURF_GPIO,
     ACQD_E_CLOSE,
+    ACQD_E_TURFIO_IOCTL,
     ACQD_E_UNNAMED
 } AcqdErrorCode_t ;
 

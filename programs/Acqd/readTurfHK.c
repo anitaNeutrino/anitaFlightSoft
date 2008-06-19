@@ -82,7 +82,6 @@ int main(int argc, char **argv) {
 
 unsigned int readTurfioReg(unsigned int tiofd, unsigned int address) {
   struct turfioDriverRead req;
-
   req.address = address;
   if (ioctl(tiofd, TURFIO_IOCREAD, &req)) {
     perror("ioctl");
@@ -94,7 +93,6 @@ unsigned int readTurfioReg(unsigned int tiofd, unsigned int address) {
 void setTurfioReg(unsigned int tiofd, unsigned int address,
 		  unsigned int value) {
   struct turfioDriverRead req;
-
   req.address = address; 
   req.value = value;
 

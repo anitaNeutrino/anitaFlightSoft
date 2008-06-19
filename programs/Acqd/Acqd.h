@@ -31,7 +31,9 @@ AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
 AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);
 AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) ;
 AcqdErrorCode_t sendClearEvent();
-
+AcqdErrorCode_t readTurfHkData();
+AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr);
+AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value);
 
 //Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
