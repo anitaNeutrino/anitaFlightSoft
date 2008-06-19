@@ -51,6 +51,9 @@
 #define PED_DEFAULT_VALUE 650
 
 
+//Firmware Stuff
+#define TURF_BANK_SIZE 64
+
 //Process Stuff
 #define NUM_PROCESSES 16 //Actually a couple more than we need
 

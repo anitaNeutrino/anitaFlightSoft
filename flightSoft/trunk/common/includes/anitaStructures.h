@@ -90,7 +90,7 @@
 #define VER_HK_FULL 10
 #define VER_CMD_ECHO 10
 #define VER_MONITOR 10
-#define VER_TURF_RATE 15
+#define VER_TURF_RATE 16
 #define VER_LAB_PED 10
 #define VER_FULL_PED 10
 #define VER_SLOW_1 10
@@ -103,7 +103,7 @@
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
 #define VER_AVG_SURF_HK 13
-#define VER_SUM_TURF_RATE 15
+#define VER_SUM_TURF_RATE 16
 #define VER_ACQD_START 10
 #define VER_TURF_REG 10
 #endif
@@ -658,9 +658,10 @@ typedef struct {
   Turf Rates -- Telemetered
 */
 typedef struct {
-  GenericHeader_t gHdr;
-  unsigned int unixTime;
-  unsigned int ppsNum; ///<It's only updated every second so no need for sub-second timing
+    GenericHeader_t gHdr;
+    unsigned int unixTime;
+    unsigned short ppsNum; ///<It's only updated every second so no need for sub-second timing
+    unsigned short deadTime; ///<How much were we dead??
   unsigned short l1Rates[PHI_SECTORS][2]; ///<x16 to get Hz
   unsigned char upperL2Rates[PHI_SECTORS]; ///<x64 to get Hz
   unsigned char lowerL2Rates[PHI_SECTORS]; ///<x64 to get Hz
@@ -670,7 +671,7 @@ typedef struct {
   unsigned int antTrigMask; ///< As read from TURF (16-bit upper phi, lower phi)
   unsigned short phiTrigMask; ///< 16 bit phi-sector mask
   unsigned char nadirAntTrigMask; ///< 8-bit nadir phi mask
-  unsigned char errorFlag;///<Bit 1,2,3 are for upper,lower,nadir trig mask match
+  unsigned char errorFlag;///<Bit 1-4 bufferdepth, Bits 5,6,7 are for upper,lower,nadir trig mask match
 } TurfRateStruct_t;
 
 //!  Summed Turf Rates -- Telemetered
@@ -678,20 +679,22 @@ typedef struct {
   Summed Turf Rates, rather than send down the TurfRate block every second will instead preferential send down these blocks that are summed over a minute or so.
 */
 typedef struct {
-  GenericHeader_t gHdr;
-  unsigned int unixTime; ///<Time of first hk
-  unsigned short numRates; ///<Number of rates in average
-  unsigned short deltaT; ///<Difference in time between first and last 
-  unsigned int l1Rates[PHI_SECTORS][2]; ///<x16/numRates to get Hz 
-  unsigned short upperL2Rates[PHI_SECTORS]; ///<x64/numRates to get Hz
-  unsigned short lowerL2Rates[PHI_SECTORS]; ///<x64/numRates to get Hz
-  unsigned short l3Rates[PHI_SECTORS]; ///< /numRates to get Hz
-  unsigned int nadirL1Rates[NADIR_ANTS]; ///<x16/numRates to get Hz
-  unsigned short nadirL2Rates[NADIR_ANTS]; ///<x64/numRates to get Hz  
-  unsigned int antTrigMask; ///<As read from TURF (16-bit upper phi, lower phi)
-  unsigned short phiTrigMask; ///<16-bit phi-sector mask
-  unsigned char nadirAntTrigMask; ///< 8-bit nadir phi mask
-  unsigned char errorFlag;///<Bit 1,2,3 are for upper,lower,nadir trig mask match
+    GenericHeader_t gHdr;
+    unsigned int unixTime; ///<Time of first hk
+    unsigned short numRates; ///<Number of rates in average
+    unsigned short deltaT; ///<Difference in time between first and last 
+    unsigned int deadTime; ///<Summed dead time between first and last
+    unsigned char bufferCount[4]; ///<Counting filled buffers
+    unsigned int l1Rates[PHI_SECTORS][2]; ///<x16/numRates to get Hz 
+    unsigned short upperL2Rates[PHI_SECTORS]; ///<x64/numRates to get Hz
+    unsigned short lowerL2Rates[PHI_SECTORS]; ///<x64/numRates to get Hz
+    unsigned short l3Rates[PHI_SECTORS]; ///< /numRates to get Hz
+    unsigned int nadirL1Rates[NADIR_ANTS]; ///<x16/numRates to get Hz
+    unsigned short nadirL2Rates[NADIR_ANTS]; ///<x64/numRates to get Hz  
+    unsigned int antTrigMask; ///<As read from TURF (16-bit upper phi, lower phi)
+    unsigned short phiTrigMask; ///<16-bit phi-sector mask
+    unsigned char nadirAntTrigMask; ///< 8-bit nadir phi mask
+    unsigned char errorFlag;///<Bit 1-4 bufferdepth, Bits 5,6,7 are for upper,lower,nadir trig mask match
 } SummedTurfRateStruct_t;
 
 //!  ANITA Event Header -- Telemetered
