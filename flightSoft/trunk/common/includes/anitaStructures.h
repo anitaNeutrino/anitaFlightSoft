@@ -105,6 +105,7 @@
 #define VER_AVG_SURF_HK 13
 #define VER_SUM_TURF_RATE 15
 #define VER_ACQD_START 10
+#define VER_TURF_REG 10
 #endif
 
 
@@ -123,6 +124,7 @@ typedef enum {
     PACKET_TURF_RATE = 0x111, ///<TurfRateStruct_t -- Yes
     PACKET_AVG_SURF_HK = 0x112, ///<AveragedSurfHkStruct_t -- yes
     PACKET_SUM_TURF_RATE = 0x113, ///<SummedTurfRateStruct_t -- yes
+    PACKET_TURF_REGISTER = 0x114, ///<TurfRegisterContents_t -- probably not
     PACKET_PEDSUB_WV = 0x120, ///<PedSubbedWaveformPacket_t -- Yes
     PACKET_ENC_SURF = 0x121, ///<EncodedSurfPacketHeader_t -- Yes
     PACKET_ENC_SURF_PEDSUB = 0x122, ///<EncodedPedSubbedSurfPacketHeader_t -- Yes
@@ -497,6 +499,17 @@ typedef struct {
   unsigned int unixTimeUs;
   unsigned short scaler[ACTIVE_SURFS][32];
 } SimpleScalerStruct_t; //No inter used
+
+//!  Debugging use only TURF scaler data
+/*!
+  Debugging use only TURF scaler data
+*/
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int whichBank;
+  unsigned int values[TURF_BANK_SIZE];
+} TurfRegisterContents_t;
+
 
 //!  Disk Space
 /*!
