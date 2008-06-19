@@ -27,10 +27,11 @@
 #include "includes/anitaStructures.h"
 #include "losLib/telemwrap.h"
 
+//#define SEND_TEST_PACKET 1
 #define LOS_MAX_BYTES 8000
 #define TIMEOUT_IN_MILLISECONDS 1000
 
-#define LOS_DEVICE "/tmp/dev_los"
+#define LOS_DEVICE "/dev/los"
 
 #define NUM_HK_TELEM_DIRS 20 
 
@@ -283,10 +284,10 @@ void sendWakeUpBuffer();
    int retVal=0;
    if(fdLos==0) {
      //First time
-     fdLos = open(LOS_DEVICE, O_WRONLY | O_NONBLOCK);
+     fdLos = open(LOS_DEVICE, O_WRONLY );
      if(fdLos<=0) {
-       fprintf(stderr,"Error opening %s:\n",LOS_DEVICE);
-       syslog(LOG_ERR,"Error opening %s:\n",LOS_DEVICE);
+       fprintf(stderr,"Error opening %s (%s):\n",LOS_DEVICE,strerror(errno));
+       syslog(LOG_ERR,"Error opening %s (%s):\n",LOS_DEVICE,strerror(errno));
        handleBadSigs(0);
      }
      telemwrap_init(TW_LOS);
@@ -943,7 +944,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
       syslog(LOG_ERR,"Don't know what to do with packet %d -- %s (Message %d of 100)\n",gHdr->code,packetCodeAsString(gHdr->code),errorCounter);
       errorCounter++;
     }
-    fprintf(stderr,"Don't know what to do with packet %d -- %s (file %s)\n",gHdr->code,packetCodeAsString(gHdr->code),waveFilename);
+    fprintf(stderr,"Don't know what to do with packet %d -- %s (file %s, size %d)\n",gHdr->code,packetCodeAsString(gHdr->code),waveFilename,retVal);
   }
 	
   if(printToScreen && verbosity>1) 
@@ -1277,6 +1278,15 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
 
   unsigned int nbytes, retVal,ret;
   
+#ifdef SEND_TEST_PACKET
+  int i=0;
+  numBytesSci=1024;
+  for(i=0;i<numBytesSci;i++)
+      buffer[i]=i;
+#endif
+
+  printf("Sending buffer length %d\n",numBytesSci);
+
   nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci);
   if (nbytes < 0) {
     syslog(LOG_ERR,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
