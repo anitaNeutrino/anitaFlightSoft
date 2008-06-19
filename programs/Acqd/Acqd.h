@@ -58,6 +58,7 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
 void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum);
 void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
 void intersperseSurfHk(struct timeval *tvPtr);
+void intersperseTurfRate(struct timeval *tvPtr);
 void intersperseSoftTrig(struct timeval *tvPtr);
 int checkSurfFdsForData();
 

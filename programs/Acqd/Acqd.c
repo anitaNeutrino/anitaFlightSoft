@@ -88,6 +88,7 @@ AveragedSurfHkStruct_t avgSurfHk;
 int newTurfRateData=0;
 
 
+TurfRegisterContents_t theTurfReg;
 SimpleScalerStruct_t theScalers;
 FullSurfHkStruct_t theSurfHk;
 
@@ -211,6 +212,9 @@ float intervalDeadtime; //In secs
 //Surf Hk Readout
 struct timeval lastSurfHkRead;
 
+
+//TURF Rate Readout
+unsigned short lastPPSNum=0;
 
 //RJN -- Nasty hack as SURF 2 is the only one we monitor busy on
 int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
@@ -567,7 +571,7 @@ int main(int argc, char **argv) {
       //Switched for timing test
       gettimeofday(&timeStruct,NULL);
       intersperseSurfHk(&timeStruct);
-
+      intersperseTurfRate(&timeStruct);
 
 	    
       if(verbosity && printToScreen) printf("Done reading\n");
@@ -2756,7 +2760,7 @@ AcqdErrorCode_t readTurfEventDataVer3()
   unsigned char dataChar;
   unsigned short dataShort;
   unsigned int dataInt;
-  static unsigned short lastPPSNum=0;
+
 
   int wordNum,phi,ring,errCount=0,count=0;
   TurfioTestPattern_t startPat;
@@ -2965,13 +2969,13 @@ AcqdErrorCode_t readTurfEventDataVer3()
 	   turfioPtr->l3TrigPattern);
   }
 
-  if(turfioPtr->ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
+  if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
     newTurfRateData=1;
   }
   //  printf("turfioPtr->ppsNum=%d\n",turfioPtr->ppsNum);
   turfRates.antTrigMask=antTrigMask;
   turfRates.nadirAntTrigMask=nadirAntTrigMask&0xff;
-  lastPPSNum=turfioPtr->ppsNum;
+  lastPPSNum=turfRates.ppsNum;
   return status;	
 }
 
@@ -3025,6 +3029,7 @@ AcqdErrorCode_t readTurfEventDataVer5()
     else if(wordNum<8) {
       startPat.test[wordNum]=dataChar; 
       turfioPtr->bufferDepth=((dataChar&CUR_BUF_MASK_READ)>>(CUR_BUF_SHIFT_READ-CUR_BUF_SHIFT_FINAL));
+      turfRates.errorFlag=turfioPtr->bufferDepth;
     }
       
     else if(wordNum<24) {
@@ -3056,8 +3061,11 @@ AcqdErrorCode_t readTurfEventDataVer5()
 	turfioPtr->ppsNum+=(dataShort<<8); break;
       case 18:
 	turfioPtr->deadTime=(dataShort); break;
+	turfRates.deadTime=(dataShort); break;
+	
       case 19:
 	turfioPtr->deadTime+=(dataShort<<8); break;
+	turfRates.deadTime+=(dataShort<<8); break;
       case 20:
 	turfioPtr->c3poNum=dataInt; break;
       case 21:
@@ -3278,14 +3286,14 @@ AcqdErrorCode_t readTurfEventDataVer5()
 	   turfioPtr->l3TrigPattern);
   }
 
-  if(turfioPtr->ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
+  if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
     newTurfRateData=1;
   }
   //Make sure to copy relevant mask data to turfRate struct
   turfRates.antTrigMask=hdPtr->antTrigMask;
   turfRates.nadirAntTrigMask=hdPtr->nadirAntTrigMask;
   turfRates.phiTrigMask=hdPtr->phiTrigMask;
-  lastPPSNum=turfioPtr->ppsNum;
+  lastPPSNum=turfRates.ppsNum;
   return status;	
 }
 
@@ -3294,9 +3302,129 @@ AcqdErrorCode_t readTurfEventDataVer5()
 AcqdErrorCode_t readTurfHkData()   
 {
     //This fills a TurfRate structure
-    unsigned int value;
+    unsigned int uvalue;
+    unsigned short usvalue,usvalue2;
+    unsigned char ucvalue,ucvalue2,ucvalue3,ucvalue4;
+    int ring=0,phi=0;
+
     int i=0;
+
+    memset(&theTurfReg,0,sizeof(TurfRegisterContents_t));    
+    memset(&turfRates,0,sizeof(TurfRateStruct_t));
+    newTurfRateData=0;
+    AcqdErrorCode_t status=setTurfioReg(262, 3); // set TURF_BANK to Bank 3
+    if(status!=ACQD_E_OK)
+	return status;
     
+    for(i=0;i<TURF_BANK_SIZE;i++) {
+	status=readTurfioReg(i,&uvalue);
+	theTurfReg.values[i]=uvalue;
+	if(i<16) {
+	    //L1 rates
+	    usvalue=uvalue&0xffff;
+	    usvalue2=(uvalue&0xffff0000)>>16;
+	    ring=(i<8); //0 is upper, 1 is lower
+	    phi=i*2;
+	    if(phi>=16) phi-=16;
+	    turfRates.l1Rates[phi][ring]=usvalue;
+	    turfRates.l1Rates[phi+1][ring]=usvalue2;	
+	}
+	else if(i<20) {
+	    ucvalue=uvalue&0xff;
+	    ucvalue2=(uvalue&0xff00)>>8;
+	    ucvalue3=(uvalue&0xff0000)>>16;
+	    ucvalue4=(uvalue&0xff000000)>>24;
+	    phi=(i-16)*4;
+	    turfRates.upperL2Rates[phi]=ucvalue;
+	    turfRates.upperL2Rates[phi+1]=ucvalue2;
+	    turfRates.upperL2Rates[phi+2]=ucvalue3;
+	    turfRates.upperL2Rates[phi+3]=ucvalue4;
+	}
+	else if(i<24) {
+	    ucvalue=uvalue&0xff;
+	    ucvalue2=(uvalue&0xff00)>>8;
+	    ucvalue3=(uvalue&0xff0000)>>16;
+	    ucvalue4=(uvalue&0xff000000)>>24;
+	    phi=(i-20)*4;
+	    turfRates.lowerL2Rates[phi]=ucvalue;
+	    turfRates.lowerL2Rates[phi+1]=ucvalue2;
+	    turfRates.lowerL2Rates[phi+2]=ucvalue3;
+	    turfRates.lowerL2Rates[phi+3]=ucvalue4;
+	}
+	else if(i<28) {
+	    ucvalue=uvalue&0xff;
+	    ucvalue2=(uvalue&0xff00)>>8;
+	    ucvalue3=(uvalue&0xff0000)>>16;
+	    ucvalue4=(uvalue&0xff000000)>>24;
+	    phi=(i-24)*4;
+	    turfRates.l3Rates[phi]=ucvalue;
+	    turfRates.l3Rates[phi+1]=ucvalue2;
+	    turfRates.l3Rates[phi+2]=ucvalue3;
+	    turfRates.l3Rates[phi+3]=ucvalue4;
+	}
+	else if(i<32) {
+	    //Nadir L1 rates
+	    usvalue=uvalue&0xffff;
+	    usvalue2=(uvalue&0xffff0000)>>16;
+	    phi=(i-28)*2; //Only counts to 8
+	    turfRates.nadirL1Rates[phi]=usvalue;
+	    turfRates.nadirL1Rates[phi+1]=usvalue2;	
+	}
+	else if(i<34) {
+	    //Nadir L2 Rates
+	    ucvalue=uvalue&0xff;
+	    ucvalue2=(uvalue&0xff00)>>8;
+	    ucvalue3=(uvalue&0xff0000)>>16;
+	    ucvalue4=(uvalue&0xff000000)>>24;
+	    phi=(i-32)*4; //Only counts to 8
+	    turfRates.nadirL2Rates[phi]=ucvalue;
+	    turfRates.nadirL2Rates[phi+1]=ucvalue2;	
+	}
+	else if(i<38) {
+	    //Reserved for now
+	}
+	else if(i==38) {
+	    //C3ponum 133
+	}
+	else if(i==39) {
+	    //C3ponum 250
+	}
+	else if(i==40) {
+	    //C3ponum 33
+	}
+	else if(i==41) {
+	    usvalue=uvalue&0xffff;
+	    usvalue2=(uvalue&0xffff0000)>>16;
+	    turfRates.ppsNum=usvalue;	    
+	    turfRates.deadTime=usvalue2;
+	}
+	else if(i==42) {
+	    ucvalue=uvalue&0xff;
+	    turfRates.errorFlag=ucvalue&0xf;
+	}
+	    
+    }
+    
+    if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
+	newTurfRateData=1;
+    }
+    //Make sure to copy relevant mask data to turfRate struct
+    status=setTurfioReg(262, 0); // set TURF_BANK to Bank 0
+    if(status!=ACQD_E_OK)
+	return status;
+
+    //Ant Trig Mask
+    status=readTurfioReg(4,&uvalue);   
+    turfRates.antTrigMask=uvalue;
+    
+    status=readTurfioReg(5,&uvalue);   
+    turfRates.nadirAntTrigMask=uvalue&0xff;
+
+    status=readTurfioReg(6,&uvalue);   
+    turfRates.phiTrigMask=uvalue;
+
+    lastPPSNum=turfRates.ppsNum;
+    return status;
 }
 
 
@@ -3723,6 +3851,21 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
   }
 }
 
+
+void intersperseTurfRate(struct timeval *tvPtr)
+{
+    static time_t lastTurfRateRead=0;
+    unsigned int timeDiff=tvPtr->tv_sec-lastTurfRateRead;
+    if(turfFirmwareVersion>=5) {
+	if(timeDiff>0) {
+	    readTurfHkData();
+	    lastTurfRateRead=tvPtr->tv_sec;
+	    if(newTurfRateData) outputTurfRateData();		    	
+	}
+    }
+
+}
+
 void intersperseSurfHk(struct timeval *tvPtr)
 {
   AcqdErrorCode_t status;
@@ -3822,7 +3965,7 @@ AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr)
   struct turfioDriverRead req;
   req.address = address;
   if (ioctl(turfioFd, TURFIO_IOCREAD, &req)) {
-      syslog("Error reading TURFIO register -- %s\n",strerror(errno));
+      syslog(LOG_ERR,"Error reading TURFIO register -- %s\n",strerror(errno));
       fprintf(stderr,"Error reading TURFIO register -- %s\n",strerror(errno));
       return ACQD_E_TURFIO_IOCTL;
   }
@@ -3836,7 +3979,7 @@ AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value)
   req.address = address; 
   req.value = value;
   if (ioctl(turfioFd, TURFIO_IOCWRITE, &req)) {
-      syslog("Error writing TURFIO register -- %s\n",strerror(errno));
+      syslog(LOG_ERR,"Error writing TURFIO register -- %s\n",strerror(errno));
       fprintf(stderr,"Error writing TURFIO register -- %s\n",strerror(errno));
       return ACQD_E_TURFIO_IOCTL;
   }
