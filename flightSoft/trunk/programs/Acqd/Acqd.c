@@ -797,8 +797,8 @@ AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action)
 {
   int retVal=0;  
   if(surfId>=numSurfs) {
-    fprintf(stderr,"SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
-    syslog(LOG_ERR,"SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
+      fprintf(stderr,"sSC SURF Id: %d is out of range (0 - %d) --%s\n",surfId,numSurfs-1,surfControlActionAsString(action));
+    syslog(LOG_ERR,"sSC SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
     return ACQD_E_CANTCOUNT;
   }  
   int surfFd=surfFds[surfId];
@@ -1525,8 +1525,8 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
 
 AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
   if(surfId>=numSurfs) {
-    fprintf(stderr,"SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
-    syslog(LOG_ERR,"SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
+    fprintf(stderr,"wDVB SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
+    syslog(LOG_ERR,"wDVB SURF Id: %d is out of range (0 - %d)\n",surfId,numSurfs-1);
     return ACQD_E_CANTCOUNT;
   }  
   int surfFd=surfFds[surfId];
@@ -2632,7 +2632,7 @@ AcqdErrorCode_t readSurfHkData()
 {
   AcqdErrorCode_t status=ACQD_E_OK;
   int surf,rfChan,index,band;
-  unsigned int buffer[72];
+  unsigned int buffer[128];
   unsigned int count=0;
   unsigned int dataInt;
 
