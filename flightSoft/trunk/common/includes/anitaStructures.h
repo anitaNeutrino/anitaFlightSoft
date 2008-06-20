@@ -498,6 +498,7 @@ typedef struct {
   unsigned int unixTime;
   unsigned int unixTimeUs;
   unsigned short scaler[ACTIVE_SURFS][32];
+  unsigned short extraScaler[ACTIVE_SURFS][32];
 } SimpleScalerStruct_t; //No inter used
 
 //!  Debugging use only TURF scaler data
