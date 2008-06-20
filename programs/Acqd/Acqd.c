@@ -2658,7 +2658,12 @@ AcqdErrorCode_t readSurfHkData()
       //Persist anyhow
     }
     //Read the Hk data
-    count = read(surfFds[surf], buffer, 72*sizeof(int));
+    if(writeRawScalers) {
+	count = read(surfFds[surf], buffer, 128*sizeof(int));
+    }
+    else {
+	count = read(surfFds[surf], buffer, 72*sizeof(int));
+    }
     if (count < 0) {
       syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
@@ -2744,6 +2749,15 @@ AcqdErrorCode_t readSurfHkData()
 	theSurfHk.errorFlag|=(1>>surf);
       }
 
+    }
+
+    if(writeRawScalers) {
+	//Even more lastly get the extra scalers	 
+	//Fill in the raw scaler data
+	for(index=0;index<32;index++) {
+	    dataInt=buffer[index+(3*32)];
+	    theScalers.extraScaler[surf][index]=dataInt&0xffff;
+	}
     }
   }
   return status;
