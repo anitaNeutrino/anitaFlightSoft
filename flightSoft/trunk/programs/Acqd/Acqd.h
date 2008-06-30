@@ -35,6 +35,7 @@ AcqdErrorCode_t readTurfHkData();
 AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr);
 AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value);
 AcqdErrorCode_t setTriggerMasks();
+AcqdErrorCode_t checkTurfEventReady(int *turfEventReady);
 
 //Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
