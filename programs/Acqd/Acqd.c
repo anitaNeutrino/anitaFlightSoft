@@ -61,6 +61,7 @@ int dacSurfs[MAX_SURFS];
 int surfIndex[MAX_SURFS];
 int printToScreen=0,standAloneMode=0;
 int printPidStuff=1;
+unsigned int eventEpoch=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
 int slipCounter=0;
 int turfRateTelemEvery=1,turfRateTelemInterval=60;
@@ -210,6 +211,7 @@ unsigned short phiTrigMask=0; // phi sectors 1-16 bitmask
 unsigned short gpsPhiTrigMask=0; // phi sectors 1-16 bitmask from GPS
 unsigned int antTrigMask=0; //antennas 1-32
 unsigned int nadirAntTrigMask=0; //antennas 33-40
+
 
 //File writing structures
 AnitaHkWriterStruct_t turfHkWriter;
@@ -373,9 +375,8 @@ int main(int argc, char **argv) {
     trigMode=TrigNone;
     if(pps1TrigFlag) trigMode|=TrigPPS1;
     if(pps2TrigFlag) trigMode|=TrigPPS2;
-    // RJN debugging -- what the heck there's some subtlety I can't
-    // quite remember that explains why the line below is commented out
-    //	setTurfControl(SetTrigMode);
+    // Reenabled the setting of the trigger mode here
+    setTurfControl(SetTrigMode);
 
     if(pedestalMode && pedUsePPS2Trig) {
       trigMode=TrigPPS2;
@@ -487,8 +488,17 @@ int main(int argc, char **argv) {
 	do {
 	  //Need to make the SURF that we read the GPIO value from
 	  //somehow changeable
-	  eventReadyFlag=0;
-	  status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+	
+	    eventReadyFlag=0;
+	    
+	    if(turfFirmwareVersion==3) {
+		status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+	    }
+	    else {
+		status=checkTurfEventReady(&eventReadyFlag);
+	    }
+
+//	  
 	  //	  printf("eventReadyFlag %d -- %d\n",eventReadyFlag,checkSurfFdsForData());
 	  if(status!=ACQD_E_OK) {
 	    fprintf(stderr,"Error reading GPIO value from SURF 0\n");
@@ -547,10 +557,10 @@ int main(int argc, char **argv) {
       }
 	    
       //Now load event into ram
-      if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
-	fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
-	syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
-      }
+//      if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
+//	fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
+//	syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
+//      }
 
 
       //Either have a trigger or are going ahead regardless
@@ -612,8 +622,8 @@ int main(int argc, char **argv) {
       //Error checking
       if(status!=ACQD_E_OK) {
 	//We have an error
-	fprintf(stderr,"Error detected %d, during event %d",status,doingEvent);
-	syslog(LOG_ERR,"Error detected %d, during event %d",status,doingEvent);	      
+	fprintf(stderr,"Error detected %d, during event %d\n",status,doingEvent);
+	syslog(LOG_ERR,"Error detected %d, during event %d\n",status,doingEvent);	      
 	status=ACQD_E_OK;
       }
       else if(doingEvent>=0) { //RJN changed 24/11/06 for test
@@ -793,26 +803,23 @@ char *turfControlActionAsString(TurfControlAction_t action) {
   case RprgTurf :
     string = "RprgTurf" ;
     break ;
-  case TurfLoadRam :
-    string = "TurfLoadRam" ;
-    break ;
   case SendSoftTrg : 
     string = "SendSoftTrg" ;
     break;
-  case RFCBit : 
-    string = "RFCBit" ;
-    break;
-  case RFCClk : 
-    string = "RFCClk" ;
-    break;	  	  	    
-  case EnablePPS1Trig : 
-    string = "EnablePPS1Trig";
-    break;
-  case EnablePPS2Trig : 
-    string = "EnablePPS2Trig";
-    break;
   case TurfClearAll : 
     string = "TurfClearAll";
+    break;
+  case TurfClearEvent : 
+    string = "TurfClearEvent";
+    break;
+  case SetPhiTrigMask : 
+    string = "SetPhiTrigMask";
+    break;
+  case SetAntTrigMask : 
+    string = "SetAntTrigMask";
+    break;
+  case SetEventEpoch : 
+    string = "SetEventEpoch";
     break;
   default :
     string = "Unknown" ;
@@ -877,81 +884,93 @@ AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action)
 
 
 AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
-  //These numbers are octal
-  unsigned int baseClr          = 0022222222 ;
-  unsigned int rprgTurf         = 0000000004 ;
-  unsigned int loadRam          = 0000000040 ;
-  unsigned int sendSoftTrig     = 0000000400 ;
-  unsigned int rfcDbit          = 0004000000 ;
-  unsigned int rfcClk           = 0000004000 ;
-  unsigned int enablePPS1Trig   = 0000040000 ; //Real PPS from ADU5
-  unsigned int enablePPS2Trig   = 0000400000 ; //Burst PPS up to 20Hz from G123
-  unsigned int clearAll         = 0040000000 ;
+    unsigned int uvalue=0;   
+    //Now need to actually do something
+    AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
+    if(status!=ACQD_E_OK)
+	return status;
 
-  unsigned int           gpioVal,baseVal ; 
-  AcqdErrorCode_t status=ACQD_E_OK;
-  int i ;
 
-  static int first=1;
-  //    printf("Dec: %d %d %d\nHex: %x %x %x\nOct: %o %o %o\n",base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg,base_clr,rprg_turf,clr_trg);
-  //    handleBadSigs(1000);
-  if(first) {
-    gpioVal=baseClr;
-    status=setTurfGPIOValue(gpioVal);
-    if(status!=ACQD_E_OK) {
-      syslog(LOG_ERR,"Error setting TURFIO gpio to %o --%s",gpioVal,strerror(errno));
-      fprintf(stderr,"Error setting TURFIO gpio to %o --%s",gpioVal,strerror(errno));
-      return ACQD_E_TURFIO_GPIO;
-    }
-    if(printToScreen) {
-      status=readTurfGPIOValue(&gpioVal);
-      printf("First read of TURF GPIO: %o\n", status);
-    }	
-    first=0;
-  }
-  // Read current GPIO state
-  status=readTurfGPIOValue(&baseVal);
-  if(status!=ACQD_E_OK) {
-    syslog(LOG_ERR,"Error reading TURFIO gpio -- %s",strerror(errno));
-    fprintf(stderr,"Error reading TURFIO gpio -- %s",strerror(errno));
-  }
-        
-  if(trigMode&TrigPPS1) baseVal |= enablePPS1Trig;
-  if(trigMode&TrigPPS2) baseVal |= enablePPS2Trig;
-
-  switch (action) {
-  case SetTrigMode : gpioVal =baseVal; break;
-  case RprgTurf : gpioVal = baseVal | rprgTurf ; break ;
-  case TurfLoadRam : gpioVal = baseVal | loadRam ; break ;
-  case SendSoftTrg : gpioVal = baseVal | sendSoftTrig ; break ;
-  case RFCBit : gpioVal = (baseVal |= rfcDbit) | rfcClk ; break ;
-  case RFCClk : gpioVal = (baseVal &= ~rfcDbit) | rfcClk ; break ;
-  case EnablePPS1Trig : gpioVal = baseVal | enablePPS1Trig ; break ;
-  case EnablePPS2Trig : gpioVal = baseVal | enablePPS2Trig ; break ;
-  case TurfClearAll : gpioVal = baseVal | clearAll ; break ;
+    switch (action) {
+	case SetTrigMode :
+	    uvalue=trigMode;
+	    trigMode &= ~TrigSoft; //As software trigger is an edge
+	    status+=setTurfioReg(TurfRegControlTrigger,uvalue);
+	    break;
+      
+	case RprgTurf :
+	    //Reprogram TURF
+	    break;
 	    
-  default :
-    syslog(LOG_WARNING,"setTurfControl: undefined action %d",action);
-    fprintf(stderr,"setTurfControl: undfined action, %d\n", action) ;
-    return ACQD_E_UNKNOWN_CMD;
-  }
-    
-  if (verbosity && printToScreen)
-    printf("setTurfControl: action %s, gpioVal = %o\n",
-	   turfControlActionAsString(action), gpioVal) ;
-    
-  if ((status=setTurfGPIOValue(gpioVal))!= ACQD_E_OK) {
-    syslog(LOG_ERR,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
-    fprintf(stderr,"setTurfControl: failed to set GPIO to %o\t(%s).\n", gpioVal,strerror(errno));
-    return ACQD_E_TURFIO_GPIO ;
-  }
-    
-  if (action > TurfClearAll) return ACQD_E_OK ;
-  if (action == RprgTurf)  /* wait a while in case of RprgTurf. */
-    for(i=0 ; i++<10 ; usleep(1)) ;
-              
-  return setTurfGPIOValue(baseVal);
+	case SendSoftTrg : 
+	    //Send software trigger
+	    status+=readTurfioReg(TurfRegControlTrigger,&uvalue);
+	    if(status!=ACQD_E_OK) {
+		fprintf(stderr,"Error reading Trigger thingy\n");
+		syslog(LOG_ERR,"Error reading Trigger thingy\n");
+	    }
+	    uvalue &=~TrigSoft; //Set Low
+	    status+=setTurfioReg(TurfRegControlTrigger,uvalue);
+	    uvalue &=TrigSoft; //Set High
+	    status+=setTurfioReg(TurfRegControlTrigger,uvalue);
+	    uvalue &=~TrigSoft; //Set Low
+	    status+=setTurfioReg(TurfRegControlTrigger,uvalue);
+	    break;
 
+	    
+	case TurfClearAll :
+	    //Send TURF Clear All
+	    uvalue=0; //Set Low
+	    status+=setTurfioReg(TurfRegControlClear,uvalue);
+	    uvalue &= BitTurfClearAll; //Set High
+	    status+=setTurfioReg(TurfRegControlClear,uvalue);
+	    uvalue &= ~BitTurfClearAll; //Set Low
+	    status+=setTurfioReg(TurfRegControlClear,uvalue);	    
+	    break;
+	
+	case TurfClearEvent : 
+	    //Send TURF Clear Event
+	    uvalue=0; //Set Low
+	    status+=setTurfioReg(TurfRegControlClear,uvalue);
+	    uvalue &= BitTurfClearEvent; //Set High
+	    status+=setTurfioReg(TurfRegControlClear,uvalue);
+	    uvalue &= ~BitTurfClearEvent; //Set Low
+	    status+=setTurfioReg(TurfRegControlClear,uvalue);	 
+	    break;
+	case SetPhiTrigMask:
+	    uvalue=phiTrigMask;
+	    status+=setTurfioReg(TurfRegControlPhiMask,uvalue);
+	    break;
+	case SetAntTrigMask:
+	    uvalue=antTrigMask;
+	    status+=setTurfioReg(TurfRegControlAntTrigMask,uvalue);
+	    uvalue=nadirAntTrigMask;
+	    status+=setTurfioReg(TurfRegControlNadirAntTrigMask,uvalue);
+	    break;
+	case SetEventEpoch:
+	    uvalue=eventEpoch;
+	    status+=setTurfioReg(TurfRegControlEpoch,uvalue);
+	    break;
+	    
+	default :
+	    syslog(LOG_WARNING,"setTurfControl: undefined action %d",action);
+	    fprintf(stderr,"setTurfControl: undfined action, %d\n", action) ;
+	    return ACQD_E_UNKNOWN_CMD;
+    }
+    
+    if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"setTurfControl: error executing %d (%s)\n",
+	       action,turfControlActionAsString(action));
+	fprintf(stderr,"setTurfControl: error executing %d (%s)\n",
+	       action,turfControlActionAsString(action));
+    }
+    else {
+	if(printToScreen && verbosity) {
+	    printf("setTurfControl: %d (%s)\n",
+		   action,turfControlActionAsString(action));
+	}
+    }
+    return status;
 }
 
 AcqdErrorCode_t closeDevices() 
@@ -1658,7 +1677,12 @@ AcqdErrorCode_t runPedestalMode()
       //Need to make the SURF that we read the GPIO value from
       //somehow changeable
       eventReadyFlag=0;
-      status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+      if(turfFirmwareVersion==3) {
+	  status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+      }
+      else {
+	  status=checkTurfEventReady(&eventReadyFlag);
+      }
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Error reading GPIO value from SURF 0\n");
 	syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
@@ -1677,11 +1701,12 @@ AcqdErrorCode_t runPedestalMode()
       continue;		
     }
 
+    //Deprecated in TURF version 3.6
     //Now load event into ram
-    if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
-      fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
-      syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
-    }
+//    if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
+//      fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
+//      syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
+//    }
 
     gettimeofday(&timeStruct,NULL);
 	    
@@ -1806,8 +1831,15 @@ AcqdErrorCode_t doStartTest()
 	break;
       //Need to make the SURF that we read the GPIO value from
       //somehow changeable
+
       eventReadyFlag=0;
-      status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+      if(turfFirmwareVersion==3) {
+	  status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+      }
+      else {
+	  status=checkTurfEventReady(&eventReadyFlag);
+      }
+
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Error reading GPIO value from SURF 0\n");
 	syslog(LOG_ERR,"Error reading GPIO value from SURF 0\n");
@@ -1825,12 +1857,13 @@ AcqdErrorCode_t doStartTest()
       fprintf(stderr,"Timed out (%d ms) while waiting for EVT_RDY flag in self trigger mode.\n", tmo) ;
       continue;		
     }
-
+    
+    //Deprecated in version 3.6
     //Now load event into ram
-    if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
-      fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
-      syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
-    }
+//    if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
+//      fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
+//      syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
+//    }
 	    
     //Now actually read the event data
     status+=readSurfEventData();
@@ -2492,8 +2525,8 @@ AcqdErrorCode_t readSurfEventData()
     //Read the Event data
     count = read(surfFds[surf], eventBuf, 1170*sizeof(int));
     if (count < 0) {
-      syslog(LOG_ERR,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error reading event data from SURF %d (%s)",surfIndex[surf],strerror(errno));
+      syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
+      fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
     }
     if(printToScreen && verbosity>2) {	
       for(i=0;i<1170;i++) {
@@ -3065,19 +3098,19 @@ AcqdErrorCode_t readTurfEventDataVer5()
   int wordNum,phi,ring,errCount=0,count=0,nadirAnt;
   TurfioTestPattern_t startPat;
   TurfioTestPattern_t endPat;
-  unsigned short turfBuf[256];
+  unsigned char turfBuf[TURF_EVENT_DATA_SIZE];
     
-  //Read out 160 words and shorts not ints
+  //Read out 256 words and shorts not ints
 
   //They'll be some read statement here    
-  //Read the Hk data
-  count = read(turfioFd, turfBuf, 160*sizeof(short));
+  //Read the TURF data
+  count = read(turfioFd, turfBuf, TURF_EVENT_DATA_SIZE*sizeof(char));
   if (count < 0) {
     syslog(LOG_ERR,"Error reading TURF data from TURFIO (%s)",strerror(errno));
     fprintf(stderr,"Error reading TURF data from TURFIO (%s)",strerror(errno));
   }
     
-  for(wordNum=0;wordNum<160;wordNum++) {
+  for(wordNum=0;wordNum<TURF_EVENT_DATA_SIZE;wordNum++) {
     dataWord=turfBuf[wordNum]&0xffff;
     dataChar=0;
     dataShort=0;
@@ -3086,7 +3119,7 @@ AcqdErrorCode_t readTurfEventDataVer5()
     dataShort=dataWord&0xff;
     dataInt=dataWord&0xff;
     upperChar=(dataWord&0xff00)>>8;
-    if(printToScreen && verbosity>1) {
+    if(printToScreen && verbosity>=0) {
       printf("TURFIO -- Word %d  -- %x -- %x + %x\n",wordNum,dataWord,
 	     dataShort,upperChar);
     }
@@ -3345,7 +3378,7 @@ AcqdErrorCode_t readTurfEventDataVer5()
   }
 
     
-  if(verbosity && printToScreen) {
+  if(verbosity>=0 && printToScreen) {
     printf("TURF Data\n\tEvent (software):\t%u\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%u\n\tppsNum:\t\t%u\n\tc3p0Num:\t%u\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\n",
 	   hdPtr->eventNumber,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime);
     printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\n",
@@ -3484,13 +3517,13 @@ AcqdErrorCode_t readTurfHkData()
 	return status;
 
     //Ant Trig Mask
-    status=readTurfioReg(TurfRegAntTrigMask,&uvalue);   
+    status=readTurfioReg(TurfRegControlAntTrigMask,&uvalue);   
     turfRates.antTrigMask=uvalue;
     
-    status=readTurfioReg(TurfRegNadirAntTrigMask,&uvalue);   
+    status=readTurfioReg(TurfRegControlNadirAntTrigMask,&uvalue);   
     turfRates.nadirAntTrigMask=uvalue&0xff;
 
-    status=readTurfioReg(TurfRegPhiMask,&uvalue);   
+    status=readTurfioReg(TurfRegControlPhiMask,&uvalue);   
     turfRates.phiTrigMask=uvalue&0xffff;
 
     lastPPSNum=turfRates.ppsNum;
@@ -3504,57 +3537,57 @@ AcqdErrorCode_t writeAntTrigMask()
   Remember that 0 in the RFCM mask means on
 */
 {
-  AcqdErrorCode_t status;
-  int i=0,j=0,chanBit=1;
-  unsigned int gpioVal;
-  int actualMask[2]={0,0};
+/*   AcqdErrorCode_t status; */
+/*   int i=0,j=0,chanBit=1; */
+/*   unsigned int gpioVal; */
+/*   int actualMask[2]={0,0}; */
   
-  actualMask[0]|=(antTrigMask&0xffff); //Lowest 16-bits
-  actualMask[0]|=((nadirAntTrigMask&0xff)<<16);
-  actualMask[0]|=((antTrigMask&0xff0000)<<8);
-  actualMask[1]=(antTrigMask&0xff000000)>>24;
-  syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n",
-	 antTrigMask,actualMask[1],actualMask[0]);
+/*   actualMask[0]|=(antTrigMask&0xffff); //Lowest 16-bits */
+/*   actualMask[0]|=((nadirAntTrigMask&0xff)<<16); */
+/*   actualMask[0]|=((antTrigMask&0xff0000)<<8); */
+/*   actualMask[1]=(antTrigMask&0xff000000)>>24; */
+/*   syslog(LOG_INFO,"antTrigMask: %#x  actualMask[1]:%#x   actualMask[0]:%#x\n", */
+/* 	 antTrigMask,actualMask[1],actualMask[0]); */
   
-  status=setTurfControl(RFCBit);
-  if(status!=ACQD_E_OK) {		
-    syslog(LOG_ERR,"Failed to set 1st RFCBit %d",status);		    
-    fprintf(stderr,"Failed to set 1st RFCBit %d.\n",status) ;
-  }	
+/*   status=setTurfControl(RFCBit); */
+/*   if(status!=ACQD_E_OK) {		 */
+/*     syslog(LOG_ERR,"Failed to set 1st RFCBit %d",status);		     */
+/*     fprintf(stderr,"Failed to set 1st RFCBit %d.\n",status) ; */
+/*   }	 */
   
-  //Now send bit pattern to TURF using RFCBit and RFCClk
-  while(i<40) {
-    if (i==32) j=chanBit=1 ;	
-    //	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,actualMask[j],(actualMask[j]&chanBit));
-    if(actualMask[j]&chanBit) status=setTurfControl(RFCBit);
-    else status=setTurfControl(RFCClk);
-    if (status != ACQD_E_OK) {
-      syslog(LOG_ERR,"Failed to send RFC bit %d to TURF, %x %x",
-	     i,actualMask[1],actualMask[0]);
-      fprintf(stderr,"Failed to send RFC bit %d to TURF, %x %x\n",
-	      i,actualMask[1],actualMask[0]);
-    }	
-    chanBit<<=1;
-    i++;
-  }
+/*   //Now send bit pattern to TURF using RFCBit and RFCClk */
+/*   while(i<40) { */
+/*     if (i==32) j=chanBit=1 ;	 */
+/*     //	printf("Debug RFCM: i=%d j=%d chn_bit=%d mask[j]=%d\twith and %d\n",i,j,chanBit,actualMask[j],(actualMask[j]&chanBit)); */
+/*     if(actualMask[j]&chanBit) status=setTurfControl(RFCBit); */
+/*     else status=setTurfControl(RFCClk); */
+/*     if (status != ACQD_E_OK) { */
+/*       syslog(LOG_ERR,"Failed to send RFC bit %d to TURF, %x %x", */
+/* 	     i,actualMask[1],actualMask[0]); */
+/*       fprintf(stderr,"Failed to send RFC bit %d to TURF, %x %x\n", */
+/* 	      i,actualMask[1],actualMask[0]); */
+/*     }	 */
+/*     chanBit<<=1; */
+/*     i++; */
+/*   } */
 
-  // check GPIO8 is set or not. 
-  status=readTurfGPIOValue(&gpioVal);
-  if(status!=ACQD_E_OK) {
-    syslog(LOG_ERR,"Error reading TURFIO GPIO Val -- %s\n",strerror(errno));
-    fprintf(stderr,"Error reading TURFIO GPIO Val -- %s\n",strerror(errno));
-  }
+/*   // check GPIO8 is set or not.  */
+/*   status=readTurfGPIOValue(&gpioVal); */
+/*   if(status!=ACQD_E_OK) { */
+/*     syslog(LOG_ERR,"Error reading TURFIO GPIO Val -- %s\n",strerror(errno)); */
+/*     fprintf(stderr,"Error reading TURFIO GPIO Val -- %s\n",strerror(errno)); */
+/*   } */
   
-  if(gpioVal & 0400000000) {
-    syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1],actualMask[0]) ;
-    if(printToScreen) 
-      printf("writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1], actualMask[0]) ;
-  }   
-  else {
-    syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpioVal);
-    fprintf(stderr,"writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpioVal);
-    return ACQD_E_TURFIO_GPIO;
-  }
+/*   if(gpioVal & 0400000000) { */
+/*     syslog(LOG_INFO,"writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1],actualMask[0]) ; */
+/*     if(printToScreen)  */
+/*       printf("writeAntTrigMask: GPIO8 on, so mask should be set to %#04x %#010x.\n", actualMask[1], actualMask[0]) ; */
+/*   }    */
+/*   else { */
+/*     syslog(LOG_ERR,"writeAntTrigMask: GPIO 8 not on: GPIO=%o",gpioVal); */
+/*     fprintf(stderr,"writeAntTrigMask: GPIO 8 not on: GPIO=%o\n",gpioVal); */
+/*     return ACQD_E_TURFIO_GPIO; */
+/*   } */
   return ACQD_E_OK;
     
 }
@@ -3571,15 +3604,21 @@ AcqdErrorCode_t setTriggerMasks()
     return writeAntTrigMask();
   
   //Now need to actually do something
-  AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
+  AcqdErrorCode_t status=setTurfControl(SetAntTrigMask);
+  status+=setTurfControl(SetPhiTrigMask);
   if(status!=ACQD_E_OK)
-    return status;
+      return status;
 
+
+  //Now check them
+  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
+  if(status!=ACQD_E_OK)
+      return status;
+
+  
   //Ant Trig Mask
-  uvalue=antTrigMask;
-  status+=setTurfioReg(TurfRegAntTrigMask,uvalue);     
   uvalue=0;
-  status+=readTurfioReg(TurfRegAntTrigMask,&uvalue);
+  status+=readTurfioReg(TurfRegControlAntTrigMask,&uvalue);
   if(uvalue!=antTrigMask) {
     fprintf(stderr,"Error reading back antTrigMask wanted %#x got %#x\n",
 	    antTrigMask,uvalue);
@@ -3589,10 +3628,8 @@ AcqdErrorCode_t setTriggerMasks()
   }
    
  //Nadir Ant Trig Mask
-  uvalue=nadirAntTrigMask;
-  status+=setTurfioReg(TurfRegNadirAntTrigMask,uvalue);     
   uvalue=0;
-  status+=readTurfioReg(TurfRegNadirAntTrigMask,&uvalue);
+  status+=readTurfioReg(TurfRegControlNadirAntTrigMask,&uvalue);
   if((uvalue&0xff)!=antTrigMask) {
     fprintf(stderr,"Error reading back nadirAntTrigMask wanted %#x got %#x\n",
 	    nadirAntTrigMask,uvalue&0xff);
@@ -3603,10 +3640,8 @@ AcqdErrorCode_t setTriggerMasks()
 
   
   //Phi Trigger Mask
-  uvalue=phiTrigMask;
-  status+=setTurfioReg(TurfRegPhiMask,uvalue);     
   uvalue=0;
-  status+=readTurfioReg(TurfRegPhiMask,&uvalue);
+  status+=readTurfioReg(TurfRegControlPhiMask,&uvalue);
   if((uvalue&0xffff)!=antTrigMask) {
     fprintf(stderr,"Error reading back phiTrigMask wanted %#x got %#x\n",
 	    phiTrigMask,uvalue&0xffff);
@@ -4190,4 +4225,32 @@ int checkTurfRates()
     }
   }
   return changedSomething;  
+}
+
+
+
+AcqdErrorCode_t checkTurfEventReady(int *turfEventReady)
+{
+    unsigned int buffer[100];    
+    int retval;
+    *turfEventReady=0;
+    if ((retval = read(turfioFd, buffer, 1)) < 0) {
+	if (errno != EAGAIN) {
+	    syslog(LOG_ERR,"Problem checking for TURF event ready -- %s",
+		   strerror(errno));
+	    fprintf(stderr,"Problem checking for TURF event ready -- %s",
+		    strerror(errno));
+	    return ACQD_E_TURF_EVENT_READY;		
+	} 
+	else {
+	    //No event
+	    return ACQD_E_OK;		
+	}
+    }
+    else {
+	if(printToScreen)
+	    printf("Got an event ready in TURFIO");
+	*turfEventReady = 1;
+    }
+    return ACQD_E_OK;		
 }

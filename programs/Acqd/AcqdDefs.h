@@ -32,6 +32,9 @@
 #define MAX_EVENTS_PER_DIR 1000
 #define NUM_DYN_TURF_RATE 60
 
+#define SURF_EVENT_DATA_SIZE 1170
+#define TURF_EVENT_DATA_SIZE 256
+
 
 #define GetUpper16(A) (((A)&UPPER16)>>16)
 #define GetLower16(A) ((A)&LOWER16)
@@ -54,21 +57,21 @@ typedef enum __TURF_register_bank {
   TurfBankHk=3
 } TurfRegisterBank_t;
 
-typedef enum __TURF_register_address {
-  TurfRegFrut=0x0,
-  TurfRegVersion=0x1,
-  TurfRegZero1=0x2,
-  TurfRegZero2=0x3,
-  TurfRegAntTrigMask=0x4,
-  TurfRegNadirAntTrigMask=0x5,
-  TurfRegPhiMask=0x6,
-  TurfRegEpoch=0x7,
-  TurfRegTrigger=0x8,
-  TurfRegClockStatus=0x9,
-  TurfRegEventReady=0xa,
-  TurfRegNextEventId=0xb,
-  TurfRegClear=0xc
-} TurfRegsiterAddress_t;
+typedef enum __TURF_register_control {
+  TurfRegControlFrut=0x0,
+  TurfRegControlVersion=0x1,
+  TurfRegControlZero1=0x2,
+  TurfRegControlZero2=0x3,
+  TurfRegControlAntTrigMask=0x4,
+  TurfRegControlNadirAntTrigMask=0x5,
+  TurfRegControlPhiMask=0x6,
+  TurfRegControlEpoch=0x7,
+  TurfRegControlTrigger=0x8,
+  TurfRegControlClockStatus=0x9,
+  TurfRegControlEventReady=0xa,
+  TurfRegControlNextEventId=0xb,
+  TurfRegControlClear=0xc
+} TurfRegsiterControl_t;
 
 
 
@@ -92,22 +95,26 @@ typedef enum __SURF_status_flag {
 typedef enum __TURF_control_act { 
     SetTrigMode,
     RprgTurf,
-    TurfLoadRam,
     SendSoftTrg,
-    RFCBit,
-    RFCClk,
-//    EnableRfTrg,
-    EnablePPS1Trig,
-    EnablePPS2Trig,
-//    EnableSoftTrig, //Always enabled
-    TurfClearAll
+    TurfClearEvent,
+    TurfClearAll,
+    SetPhiTrigMask,
+    SetAntTrigMask,
+    SetEventEpoch
 } TurfControlAction_t ;
 
 typedef enum __TURF_trigger_mode {
     TrigNone = 0,
+    TrigSoft = 0x1,
     TrigPPS1 = 0x2,
     TrigPPS2 = 0x4
 } TriggerMode_t;
+
+typedef enum __TURF_clear_mode {
+    BitTurfClearAll = 0x0,
+    BitTurfClearEvent = 0x1,
+    BitTurfTrigDisable = 0x2
+} TurfClearMode_t;
 
 typedef enum {
     ACQD_E_OK = 0,
@@ -129,6 +136,7 @@ typedef enum {
     ACQD_E_CLOSE,
     ACQD_E_TURFIO_IOCTL,
     ACQD_E_MASK,
+    ACQD_E_TURF_EVENT_READY,
     ACQD_E_UNNAMED
 } AcqdErrorCode_t ;
 
