@@ -6,7 +6,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
 #Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
-Targets =  Acqd fakeAcqd testSdProg readTurfHK
+Targets =  Acqd fakeAcqd testSdProg #readTurfHK
 
 
 all: $(Targets)

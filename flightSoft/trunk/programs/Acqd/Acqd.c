@@ -207,6 +207,7 @@ unsigned int countLastTurfRates;
 //We load in reverse order starting with the missing SURF 10 
 //and working backwards to SURF 1
 unsigned short phiTrigMask=0; // phi sectors 1-16 bitmask
+unsigned short gpsPhiTrigMask=0; // phi sectors 1-16 bitmask from GPS
 unsigned int antTrigMask=0; //antennas 1-32
 unsigned int nadirAntTrigMask=0; //antennas 33-40
 
@@ -1169,6 +1170,8 @@ int readConfigFile()
     }
     tempNum=2;
     phiTrigMask=kvpGetUnsignedInt("phiTrigMask",0);
+    gpsPhiTrigMask=kvpGetUnsignedInt("gpsPhiTrigMask",0);
+    phiTrigMask|=gpsPhiTrigMask;
     antTrigMask=kvpGetUnsignedInt("antTrigMask",0);
     nadirAntTrigMask=kvpGetUnsignedInt("nadirAntTrigMask",0);
 	
@@ -2215,9 +2218,7 @@ void doSurfHkAverage(int flushData)
 
 void outputSurfHkData() {
   //Do the housekeeping stuff
-   
-  char theFilename[FILENAME_MAX];
-  int retVal=0;
+     int retVal=0;
   static time_t lastRawScaler=0;
   if(surfHkAverage>0) {
     doSurfHkAverage(0);      
@@ -2297,8 +2298,6 @@ void doTurfRateSum(int flushData) {
 }
 
 void outputTurfRateData() {
-  char theFilename[FILENAME_MAX];
-  int retVal=0;
   //  printf("outputTurfRateData -- numRates %d, ppsNum %d\n",numRates,turfRates.ppsNum);
   if(turfRateAverage>0) {
     doTurfRateSum(0);
@@ -4112,14 +4111,21 @@ int checkTurfRates()
   //then check if we need to mask out a phi sector  
   int numLastTurfs=0;
   int phi=0,tInd=0,ring=0;
-  int l1HitCount[PHI_SECTORS][2]={0};
-  int l1MissCount[PHI_SECTORS][2]={0};  
+  int l1HitCount[PHI_SECTORS][2];
+  int l1MissCount[PHI_SECTORS][2];  
   int l3HitCount[PHI_SECTORS]={0};
   int l3MissCount[PHI_SECTORS]={0};
   int turfRateIndex=(countLastTurfRates%NUM_DYN_TURF_RATE);
   unsigned int newPhiMask=0;
   unsigned int newAntTrigMask=0;
   int changedSomething=0;
+  
+  memset(l1HitCount,0,sizeof(int)*PHI_SECTORS*2);
+  memset(l1MissCount,0,sizeof(int)*PHI_SECTORS*2);
+  memset(l3HitCount,0,sizeof(int)*PHI_SECTORS);
+  memset(l3MissCount,0,sizeof(int)*PHI_SECTORS);
+
+
   //Number between 0 and NUM_DYN_TURF_RATE-1
   lastTurfRates[turfRateIndex]=turfRates;
   countLastTurfRates++;
@@ -4168,16 +4174,16 @@ int checkTurfRates()
   if(phiTrigMask!=newPhiMask) {
     if(enableDynamicPhiMasking) {
       if(printToScreen) {
-	pritnf("Changing phi mask from %#x to %#x\n",phiTrigMask,newPhiMask);
+	printf("Changing phi mask from %#x to %#x\n",phiTrigMask,newPhiMask);
       }
-      phiTrigMask=newPhiMask;
+      phiTrigMask=newPhiMask | gpsPhiTrigMask;
       changedSomething=1;
     }
   }
   if(newAntTrigMask!=antTrigMask) {
     if(enableDynamicAntMasking) {
       if(printToScreen) {
-	pritnf("Changing antenna mask from %#x to %#x\n",antTrigMask,newAntTrigMask);
+	printf("Changing antenna mask from %#x to %#x\n",antTrigMask,newAntTrigMask);
       }
       antTrigMask=newAntTrigMask;
       changedSomething=1;
