@@ -246,7 +246,7 @@ void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
 	  antennaData->discone[i]=(surfData->ch[disconeIndex[i]]);
 	  //TCF_RMSfill(&antennaData->discone[i]);
      }
-     
+#endif    
 }
 
 /* void CheckRMS(AnitaInstrumentF_t *theData,int thresh,int navg, */
