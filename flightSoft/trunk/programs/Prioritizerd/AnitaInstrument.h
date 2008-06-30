@@ -6,6 +6,65 @@
 #include "utilLib/utilLib.h"
 #include <math.h>
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
+#ifdef ANITA2
+typedef struct{
+     TransientChannel3_t* topRing[PHI_SECTORS][2];
+     TransientChannel3_t* botRing[PHI_SECTORS][2];
+     TransientChannel3_t* nadir[8][2];
+} AnitaInstrument3_t; //use pointers to contents of an anita transient body;
+
+typedef struct{
+     TransientChannelF_t topRing[PHI_SECTORS][2];
+     TransientChannelF_t botRing[PHI_SECTORS][2];
+     TransientChannelF_t nadir[8][2];
+} AnitaInstrumentF_t; 
+
+typedef struct {
+     int sample[MAX_NUMBER_SAMPLES];
+     float data[MAX_NUMBER_SAMPLES];
+     short npoints;
+} EnvelopeF_t;
+
+typedef struct{
+     EnvelopeF_t topRing[PHI_SECTORS][2];
+     EnvelopeF_t botRing[PHI_SECTORS][2];
+     EnvelopeF_t nadir[8][2];
+} AnitaEnvelopeF_t;
+
+typedef struct{
+     LogicChannel_t topRing[PHI_SECTORS][2];
+     LogicChannel_t botRing[PHI_SECTORS][2];
+     LogicChannel_t nadir[8][2];
+} AnitaChannelDiscriminator_t;
+
+typedef struct{
+     LogicChannel_t topRing[PHI_SECTORS];
+     LogicChannel_t botRing[PHI_SECTORS];
+     LogicChannel_t nadir[8]; //between nadirs, take or of the neighbors
+} AnitaSectorLogic_t;
+
+typedef struct{
+     LogicChannel_t sector[PHI_SECTORS];
+} AnitaCoincidenceLogic_t;
+
+typedef struct{
+     float time;
+     float value;
+} Peak_t;
+
+typedef struct{
+     Peak_t topRing[PHI_SECTORS][2];
+     Peak_t botRing[PHI_SECTORS][2];
+     Peak_t nadir[8][2];
+} AnitaPeak_t;
+
+typedef struct{
+     int nover;
+     float topRing[PHI_SECTORS][2];
+     float botRing[PHI_SECTORS][2];
+     float nadir[8][2];
+}RMScheck_t;
+#else //end ANITA2
 typedef struct{
      TransientChannel3_t* topRing[PHI_SECTORS][2];
      TransientChannel3_t* botRing[PHI_SECTORS][2];
@@ -71,6 +130,8 @@ typedef struct{
      float discone[4];
 }RMScheck_t;
 
+#endif //not ANITA2--use ANITA1 structures
+
 #define MAX_BASELINES 32
 #define MAX_ITER 10
 
@@ -120,14 +181,22 @@ typedef struct {
     
 extern const int topRingIndex[PHI_SECTORS][2];
 extern const int botRingIndex[PHI_SECTORS][2];
+#ifdef ANITA2
+extern const int nadirIndex[8][2];
+#else //ANITA2
 extern const int biconeIndex[4]; //phi=2,6,10,14
 extern const int disconeIndex[4]; //phi=4,8,12,16
+#endif //not ANITA 2
 extern const float topPhaseCenter[16][3]; //x,y,z in ANITA system and  meters
 extern const float botPhaseCenter[16][3];
 extern const float topDelay[16][2];//ns
 extern const float botDelay[16][2];//ns
+#ifdef ANITA2
+extern const float nadirPhaseCenter[8][3];
+#else //ANITA2
 extern const float biconePhaseCenter[4][3];
 extern const float disconePhaseCenter[4][3];
+#endif //not ANITA2
 //nominal view direction in ACS phi _degrees_ by phi sector
 extern const float sectorPhiACS[16];
 extern const float dipangle; 
