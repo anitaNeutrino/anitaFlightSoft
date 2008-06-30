@@ -176,6 +176,16 @@ int numEvents=0;
 int calculateRateAfter=5;
 
 //Rate servo stuff
+int enableDynamicPhiMasking=0;
+int enableDynamicAntMasking=0;
+int dynamicPhiThresholdOverRate=20;
+int dynamicPhiThresholdOverWindow=20;
+int dynamicPhiThresholdUnderRate=1;
+int dynamicPhiThresholdUnderWindow=50;
+int dynamicAntThresholdOverRate=500000;
+int dynamicAntThresholdOverWindow=30;
+int dynamicAntThresholdUnderRate=100000;
+int dynamicAntThresholdUnderWindow=50;
 int enableRateServo=1;
 int servoRateCalcPeriod=60;
 float rateGoal=5;
@@ -185,6 +195,9 @@ float rateDGain=0;
 float rateIMax=100;
 float rateIMin=-100;
 
+//Thingies for the dynamic masking
+TurfRateStruct_t lastTurfRates[NUM_DYN_TURF_RATE];
+unsigned int countLastTurfRates;
 
 
 //RFCM Mask
@@ -193,6 +206,7 @@ float rateIMin=-100;
 //bit 8 in second word is 48th antenna
 //We load in reverse order starting with the missing SURF 10 
 //and working backwards to SURF 1
+unsigned short phiTrigMask=0; // phi sectors 1-16 bitmask
 unsigned int antTrigMask=0; //antennas 1-32
 unsigned int nadirAntTrigMask=0; //antennas 33-40
 
@@ -234,6 +248,7 @@ int main(int argc, char **argv) {
 
  
   int reInitNeeded=0;
+  int newPhiMask=0;
 
   //Initialize some of the timing variables
   lastSurfHkRead.tv_sec=0;
@@ -331,7 +346,7 @@ int main(int argc, char **argv) {
     antTrigMask=tempTrigMask;
     nadirAntTrigMask=tempNadirTrigMask;
 
-    if(!reInitNeeded) {
+    if(!reInitNeeded && !newPhiMask) {
       retVal=readConfigFile();
       if(retVal!=CONFIG_E_OK) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
@@ -339,6 +354,7 @@ int main(int argc, char **argv) {
 	//		return -1;
       }
     }
+    newPhiMask=0;
     reInitNeeded=0;
     slipCounter=0;
 
@@ -393,9 +409,14 @@ int main(int argc, char **argv) {
       }
       
     }
-
+    //Need something here to handle the reset the averages and such
+    doSurfHkAverage(1); //Flush the surf hk average
+    doTurfRateSum(1); //Flush the turf rate sum    
+    memset(lastTurfRates,0,NUM_DYN_TURF_RATE*sizeof(TurfRateStruct_t));
+    countLastTurfRates=0;
+    
     //Write antenna mask to exclude certain antennas from events
-    writeAntTrigMask();
+    setTriggerMasks();
 	
     //Set Thresholds
     if(setGlobalThreshold) {
@@ -494,6 +515,8 @@ int main(int argc, char **argv) {
 	  rateCalcAndServo(&timeStruct,lastEvNum); 
 	  //Gives us a chance to read hk and servo thresholds
 	  intersperseSurfHk(&timeStruct);
+	  //Gives us a chance to read hk and servo thresholds
+	  newPhiMask=intersperseTurfRate(&timeStruct);
 	  //Also gives a chance to send software tiggers
 	  if(sendSoftTrigger)
 	    intersperseSoftTrig(&timeStruct);
@@ -571,7 +594,6 @@ int main(int argc, char **argv) {
       //Switched for timing test
       gettimeofday(&timeStruct,NULL);
       intersperseSurfHk(&timeStruct);
-      intersperseTurfRate(&timeStruct);
 
 	    
       if(verbosity && printToScreen) printf("Done reading\n");
@@ -579,8 +601,13 @@ int main(int argc, char **argv) {
       //Add TURF Rate Info to slow file
       if(newTurfRateData) {
 	addTurfRateToAverage(&turfRates);
+	newPhiMask=checkTurfRates();	
       }
-	    
+	  
+      if(newPhiMask) {
+	currentState=PROG_STATE_INIT;
+      }
+  
       //Error checking
       if(status!=ACQD_E_OK) {
 	//We have an error
@@ -593,6 +620,7 @@ int main(int argc, char **argv) {
 	bdPtr->eventNumber=hdPtr->eventNumber;
 	lastEvNum=hdPtr->eventNumber;
 	//	hdPtr->surfMask=surfMask;
+	hdPtr->phiTrigMask=phiTrigMask;
 	hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
 	hdPtr->nadirAntTrigMask=(unsigned char)nadirAntTrigMask&0xff;	       
 		
@@ -1140,6 +1168,7 @@ int readConfigFile()
       standAloneMode=0;	    
     }
     tempNum=2;
+    phiTrigMask=kvpGetUnsignedInt("phiTrigMask",0);
     antTrigMask=kvpGetUnsignedInt("antTrigMask",0);
     nadirAntTrigMask=kvpGetUnsignedInt("nadirAntTrigMask",0);
 	
@@ -1267,6 +1296,16 @@ int readConfigFile()
   kvpReset();
   status = configLoad ("Acqd.config","rates");
   if(status == CONFIG_E_OK) {
+    enableDynamicAntMasking=kvpGetInt("enableDynamicAntMasking",0);
+    enableDynamicPhiMasking=kvpGetInt("enableDynamicPhiMasking",0);
+    dynamicPhiThresholdOverRate=kvpGetInt("dynamicPhiThresholdOverRate",20);
+    dynamicPhiThresholdOverWindow=kvpGetInt("dynamicPhiThresholdOverWindow",20);
+    dynamicPhiThresholdUnderRate=kvpGetInt("dynamicPhiThresholdUnderRate",1);
+    dynamicPhiThresholdUnderWindow=kvpGetInt("dynamicPhiThresholdUnderWindow",50);
+    dynamicAntThresholdOverRate=kvpGetInt("dynamicAntThresholdOverRate",500000);
+    dynamicAntThresholdOverWindow=kvpGetInt("dynamicAntThresholdOverWindow",30);
+    dynamicAntThresholdUnderRate=kvpGetInt("dynamicAntThresholdUnderRate",100000);
+    dynamicAntThresholdUnderWindow=kvpGetInt("dynamicAntThresholdUnderWindow",50);
     enableRateServo=kvpGetInt("enableRateServo",0);
     servoRateCalcPeriod=kvpGetInt("servoRateCalcPeriod",60);
     rateGoal=kvpGetFloat("rateGoal",5);
@@ -1367,7 +1406,7 @@ AcqdErrorCode_t clearDevices()
   //Mask off all antennas
   if(verbosity && printToScreen)
     fprintf(stderr,"Masking off antennas\n");
-  status=writeAntTrigMask();
+  status=setTriggerMasks();
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
     fprintf(stderr,"Failed to write antenna trigger mask\n");
@@ -1419,7 +1458,7 @@ AcqdErrorCode_t clearDevices()
     fprintf(stderr,"Masking off antennas\n");
   antTrigMask=0xffffffff;    
   nadirAntTrigMask=0xff;
-  status=writeAntTrigMask();
+  status=setTriggerMasks();
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
     fprintf(stderr,"Failed to write antenna trigger mask\n");
@@ -1677,6 +1716,7 @@ AcqdErrorCode_t runPedestalMode()
       hdPtr->eventNumber=getEventNumber();
       bdPtr->eventNumber=hdPtr->eventNumber;
       //      hdPtr->surfMask=surfMask;
+      hdPtr->phiTrigMask=phiTrigMask;
       hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
       hdPtr->nadirAntTrigMask=(unsigned char)nadirAntTrigMask;
       //Filled by Eventd
@@ -1737,7 +1777,7 @@ AcqdErrorCode_t doStartTest()
   //Disable triggers
   antTrigMask=0xffffffff;
   nadirAntTrigMask=0xff;
-  writeAntTrigMask(); 
+  setTriggerMasks(); 
   antTrigMask=tempTrigMask;
   nadirAntTrigMask=tempNadirTrigMask;
 
@@ -2076,19 +2116,15 @@ float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
 float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
 unsigned short numSurfHksInAvg=0;  
 
-
-void outputSurfHkData() {
-  //Do the housekeeping stuff
-  
-  
-  int surf,dac,chan;//,ind;
-  float tempVal;
+void doSurfHkAverage(int flushData)
+{
   char theFilename[FILENAME_MAX];
   int retVal=0;
-  static time_t lastRawScaler=0;
-  if(surfHkAverage>0) {
+  int surf,dac,chan;//,ind;
+  float tempVal;
+  if(!flushData) {
     if(numSurfHksInAvg==0) {
-      //      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
+    //      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
       memset(scalerMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
@@ -2124,56 +2160,67 @@ void outputSurfHkData() {
       }      
     }
     //    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
-    if(numSurfHksInAvg==surfHkAverage) {
-
-      //Time to output
-      for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	for(dac=0;dac<SCALERS_PER_SURF;dac++) {
-	  scalerMean[surf][dac]/=numSurfHksInAvg;
-	  avgSurfHk.avgScaler[surf][dac]=(int)(scalerMean[surf][dac]+0.5);
-	  scalerMeanSq[surf][dac]/=numSurfHksInAvg;
-	  tempVal=scalerMeanSq[surf][dac]-(scalerMean[surf][dac]*scalerMean[surf][dac]);
-	  if(tempVal>0)
-	    avgSurfHk.rmsScaler[surf][dac]=(int)(sqrt(tempVal)+0.5);
-	  else
-	    avgSurfHk.rmsScaler[surf][dac]=0;
-
-	  threshMean[surf][dac]/=numSurfHksInAvg;
-	  avgSurfHk.avgThresh[surf][dac]=(int)(threshMean[surf][dac]+0.5);
-	  threshMeanSq[surf][dac]/=numSurfHksInAvg;
-	  tempVal=threshMeanSq[surf][dac]-(threshMean[surf][dac]*threshMean[surf][dac]);
-	  if(tempVal>0)
-	    avgSurfHk.rmsThresh[surf][dac]=(int)(sqrt(tempVal)+0.5);
-	  else
-	    avgSurfHk.rmsThresh[surf][dac]=0;
-	}
-	for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-	  rfPowerMean[surf][chan]/=numSurfHksInAvg;
-	  avgSurfHk.avgRFPower[surf][chan]=(int)(rfPowerMean[surf][chan]+0.5);
-	  rfPowerMeanSq[surf][chan]/=numSurfHksInAvg;
-	  tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
-	  if(tempVal>0)
-	    avgSurfHk.rmsRFPower[surf][chan]=(int)(sqrt(tempVal)+0.5);
-	  else
-	    avgSurfHk.rmsRFPower[surf][chan]=0;
-	}
+  }
+  if((flushData && numSurfHksInAvg>0) || (numSurfHksInAvg>0 && numSurfHksInAvg==surfHkAverage)) {
+    //Time to output
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      for(dac=0;dac<SCALERS_PER_SURF;dac++) {
+	scalerMean[surf][dac]/=numSurfHksInAvg;
+	avgSurfHk.avgScaler[surf][dac]=(int)(scalerMean[surf][dac]+0.5);
+	scalerMeanSq[surf][dac]/=numSurfHksInAvg;
+	tempVal=scalerMeanSq[surf][dac]-(scalerMean[surf][dac]*scalerMean[surf][dac]);
+	if(tempVal>0)
+	  avgSurfHk.rmsScaler[surf][dac]=(int)(sqrt(tempVal)+0.5);
+	else
+	  avgSurfHk.rmsScaler[surf][dac]=0;
+	
+	threshMean[surf][dac]/=numSurfHksInAvg;
+	avgSurfHk.avgThresh[surf][dac]=(int)(threshMean[surf][dac]+0.5);
+	threshMeanSq[surf][dac]/=numSurfHksInAvg;
+	tempVal=threshMeanSq[surf][dac]-(threshMean[surf][dac]*threshMean[surf][dac]);
+	if(tempVal>0)
+	  avgSurfHk.rmsThresh[surf][dac]=(int)(sqrt(tempVal)+0.5);
+	else
+	  avgSurfHk.rmsThresh[surf][dac]=0;
       }
-      avgSurfHk.numHks=numSurfHksInAvg;
-      avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
-      fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
-      sprintf(theFilename,"%s/avgsurfhk_%d.dat",SURFHK_TELEM_DIR,
-	      avgSurfHk.unixTime);
-      retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
-      makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
-      
-      //      if(printToScreen && verbosity>=0) {
-      //	printf("Averaged Scaler [0][0]=%d\n",avgSurfHk.avgScaler[0][0]);
-      //      }
-      retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
-			   sizeof(AveragedSurfHkStruct_t),
+      for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
+	rfPowerMean[surf][chan]/=numSurfHksInAvg;
+	avgSurfHk.avgRFPower[surf][chan]=(int)(rfPowerMean[surf][chan]+0.5);
+	rfPowerMeanSq[surf][chan]/=numSurfHksInAvg;
+	tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
+	if(tempVal>0)
+	    avgSurfHk.rmsRFPower[surf][chan]=(int)(sqrt(tempVal)+0.5);
+	else
+	  avgSurfHk.rmsRFPower[surf][chan]=0;
+      }
+    }
+    avgSurfHk.numHks=numSurfHksInAvg;
+    avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
+    fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
+    sprintf(theFilename,"%s/avgsurfhk_%d.dat",SURFHK_TELEM_DIR,
+	    avgSurfHk.unixTime);
+    retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
+    makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
+    
+    //      if(printToScreen && verbosity>=0) {
+    //	printf("Averaged Scaler [0][0]=%d\n",avgSurfHk.avgScaler[0][0]);
+    //      }
+    retVal=cleverHkWrite((unsigned char*)&avgSurfHk,
+			 sizeof(AveragedSurfHkStruct_t),
 			   avgSurfHk.unixTime,&avgSurfHkWriter);   
-      numSurfHksInAvg=0;
-    }      
+    numSurfHksInAvg=0;
+  }
+}
+
+
+void outputSurfHkData() {
+  //Do the housekeeping stuff
+   
+  char theFilename[FILENAME_MAX];
+  int retVal=0;
+  static time_t lastRawScaler=0;
+  if(surfHkAverage>0) {
+    doSurfHkAverage(0);      
   }
 
   if(writeFullHk) {
@@ -2201,18 +2248,17 @@ void outputSurfHkData() {
   }
 }
 
-
-void outputTurfRateData() {
+void doTurfRateSum(int flushData) {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
   int retVal=0,phi,ring,nadirAnt;
-  //  printf("outputTurfRateData -- numRates %d, ppsNum %d\n",numRates,turfRates.ppsNum);
-  if(turfRateAverage>0) {
+  if(!flushData) {
     if(numRates==0) {
       //Need to initialize sumTurf
       memset(&sumTurf,0,sizeof(SummedTurfRateStruct_t));
       sumTurf.unixTime=turfRates.unixTime;
+      sumTurf.phiTrigMask=turfRates.phiTrigMask;
       sumTurf.antTrigMask=turfRates.antTrigMask;
       sumTurf.nadirAntTrigMask=turfRates.nadirAntTrigMask;
       sumTurf.phiTrigMask=turfRates.phiTrigMask;
@@ -2231,11 +2277,12 @@ void outputTurfRateData() {
       sumTurf.lowerL2Rates[phi]+=turfRates.lowerL2Rates[phi];
       sumTurf.l3Rates[phi]+=turfRates.l3Rates[phi];
     }
-    if(numRates==turfRateAverage) {
+  }
+  if((flushData && numRates>0) || numRates==turfRateAverage) {
       //Time to output it
-      sumTurf.numRates=numRates;
-      sumTurf.deltaT=turfRates.unixTime-sumTurf.unixTime;
-      fillGenericHeader(&sumTurf,PACKET_SUM_TURF_RATE,sizeof(SummedTurfRateStruct_t)); 
+    sumTurf.numRates=numRates;
+    sumTurf.deltaT=turfRates.unixTime-sumTurf.unixTime;
+    fillGenericHeader(&sumTurf,PACKET_SUM_TURF_RATE,sizeof(SummedTurfRateStruct_t)); 
       sprintf(theFilename,"%s/sumturfrate_%d.dat",TURFHK_TELEM_DIR,
 	      sumTurf.unixTime);
       retVal+=writeStruct(&sumTurf,theFilename,sizeof(SummedTurfRateStruct_t));
@@ -2245,7 +2292,16 @@ void outputTurfRateData() {
 			   sizeof(SummedTurfRateStruct_t),
 			   sumTurf.unixTime,&sumTurfRateWriter);      
       numRates=0;
-    }
+  }
+  
+}
+
+void outputTurfRateData() {
+  char theFilename[FILENAME_MAX];
+  int retVal=0;
+  //  printf("outputTurfRateData -- numRates %d, ppsNum %d\n",numRates,turfRates.ppsNum);
+  if(turfRateAverage>0) {
+    doTurfRateSum(0);
   }
   if(writeFullHk) {
     writeTurfHousekeeping(1);
@@ -2987,6 +3043,7 @@ AcqdErrorCode_t readTurfEventDataVer3()
     newTurfRateData=1;
   }
   //  printf("turfioPtr->ppsNum=%d\n",turfioPtr->ppsNum);
+  turfRates.phiTrigMask=phiTrigMask;
   turfRates.antTrigMask=antTrigMask;
   turfRates.nadirAntTrigMask=nadirAntTrigMask&0xff;
   lastPPSNum=turfRates.ppsNum;
@@ -3326,7 +3383,7 @@ AcqdErrorCode_t readTurfHkData()
     memset(&theTurfReg,0,sizeof(TurfRegisterContents_t));    
     memset(&turfRates,0,sizeof(TurfRateStruct_t));
     newTurfRateData=0;
-    AcqdErrorCode_t status=setTurfioReg(262, 3); // set TURF_BANK to Bank 3
+    AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankHk); // set TURF_BANK to Bank 3
     if(status!=ACQD_E_OK)
 	return status;
     
@@ -3423,19 +3480,19 @@ AcqdErrorCode_t readTurfHkData()
 	newTurfRateData=1;
     }
     //Make sure to copy relevant mask data to turfRate struct
-    status=setTurfioReg(262, 0); // set TURF_BANK to Bank 0
+    status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
     if(status!=ACQD_E_OK)
 	return status;
 
     //Ant Trig Mask
-    status=readTurfioReg(4,&uvalue);   
+    status=readTurfioReg(TurfRegAntTrigMask,&uvalue);   
     turfRates.antTrigMask=uvalue;
     
-    status=readTurfioReg(5,&uvalue);   
+    status=readTurfioReg(TurfRegNadirAntTrigMask,&uvalue);   
     turfRates.nadirAntTrigMask=uvalue&0xff;
 
-    status=readTurfioReg(6,&uvalue);   
-    turfRates.phiTrigMask=uvalue;
+    status=readTurfioReg(TurfRegPhiMask,&uvalue);   
+    turfRates.phiTrigMask=uvalue&0xffff;
 
     lastPPSNum=turfRates.ppsNum;
     return status;
@@ -3501,6 +3558,68 @@ AcqdErrorCode_t writeAntTrigMask()
   }
   return ACQD_E_OK;
     
+}
+
+
+AcqdErrorCode_t setTriggerMasks() 
+/*!
+  New function that sets the antenna and phi trigger masks
+*/
+{
+  unsigned int uvalue=0;
+  int countErrs=0;
+  if(turfFirmwareVersion==3)
+    return writeAntTrigMask();
+  
+  //Now need to actually do something
+  AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
+  if(status!=ACQD_E_OK)
+    return status;
+
+  //Ant Trig Mask
+  uvalue=antTrigMask;
+  status+=setTurfioReg(TurfRegAntTrigMask,uvalue);     
+  uvalue=0;
+  status+=readTurfioReg(TurfRegAntTrigMask,&uvalue);
+  if(uvalue!=antTrigMask) {
+    fprintf(stderr,"Error reading back antTrigMask wanted %#x got %#x\n",
+	    antTrigMask,uvalue);
+    syslog(LOG_ERR,"Error reading back antTrigMask wanted %#x got %#x\n",
+	    antTrigMask,uvalue);
+    countErrs++;
+  }
+   
+ //Nadir Ant Trig Mask
+  uvalue=nadirAntTrigMask;
+  status+=setTurfioReg(TurfRegNadirAntTrigMask,uvalue);     
+  uvalue=0;
+  status+=readTurfioReg(TurfRegNadirAntTrigMask,&uvalue);
+  if((uvalue&0xff)!=antTrigMask) {
+    fprintf(stderr,"Error reading back nadirAntTrigMask wanted %#x got %#x\n",
+	    nadirAntTrigMask,uvalue&0xff);
+    syslog(LOG_ERR,"Error reading back nadirAntTrigMask wanted %#x got %#x\n",
+	    nadirAntTrigMask,uvalue&0xff);
+    countErrs++;
+  } 
+
+  
+  //Phi Trigger Mask
+  uvalue=phiTrigMask;
+  status+=setTurfioReg(TurfRegPhiMask,uvalue);     
+  uvalue=0;
+  status+=readTurfioReg(TurfRegPhiMask,&uvalue);
+  if((uvalue&0xffff)!=antTrigMask) {
+    fprintf(stderr,"Error reading back phiTrigMask wanted %#x got %#x\n",
+	    phiTrigMask,uvalue&0xffff);
+    syslog(LOG_ERR,"Error reading back phiTrigMask wanted %#x got %#x\n",
+	    phiTrigMask,uvalue&0xffff);
+    countErrs++;
+  } 
+     
+  if(countErrs==0)
+    return status;
+  else 
+    return ACQD_E_MASK;
 }
 
 
@@ -3866,18 +3985,23 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 }
 
 
-void intersperseTurfRate(struct timeval *tvPtr)
+int intersperseTurfRate(struct timeval *tvPtr)
 {
     static time_t lastTurfRateRead=0;
     unsigned int timeDiff=tvPtr->tv_sec-lastTurfRateRead;
+    int newPhiMask=0;
     if(turfFirmwareVersion>=5) {
 	if(timeDiff>0) {
 	    readTurfHkData();
 	    lastTurfRateRead=tvPtr->tv_sec;
-	    if(newTurfRateData) outputTurfRateData();		    	
+	    if(newTurfRateData) {
+	      addTurfRateToAverage(&turfRates);
+	      newPhiMask=checkTurfRates();	
+	      outputTurfRateData();		
+	    }    	
 	}
     }
-
+    return newPhiMask;
 }
 
 void intersperseSurfHk(struct timeval *tvPtr)
@@ -3953,25 +4077,6 @@ void intersperseSoftTrig(struct timeval *tvPtr)
   }
 }
 
-int checkSurfFdsForData()
-{
-  //Unused and unworkable?
-  static struct timeval read_timeout;
-  static struct timeval * read_timeout_ptr;
-  static fd_set read_fds;
-  int retVal=0;
-  read_timeout.tv_sec = 0;
-  read_timeout.tv_usec = 50000;
-  read_timeout_ptr=&read_timeout;
-  
-  FD_ZERO(&read_fds);
-  FD_SET(surfFds[0], &read_fds);
-  retVal = select(surfFds[0]+1, &read_fds,NULL, NULL, read_timeout_ptr);
-  
-  printf("checkSurfFdsForData: retVal %d\n",retVal);
-  return retVal;
-}
-
 
 
 AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr)
@@ -3998,4 +4103,85 @@ AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value)
       return ACQD_E_TURFIO_IOCTL;
   }
   return ACQD_E_OK;
+}
+
+
+int checkTurfRates()
+{
+  //The aim of this function is to add the TURF rate to the average and
+  //then check if we need to mask out a phi sector  
+  int numLastTurfs=0;
+  int phi=0,tInd=0,ring=0;
+  int l1HitCount[PHI_SECTORS][2]={0};
+  int l1MissCount[PHI_SECTORS][2]={0};  
+  int l3HitCount[PHI_SECTORS]={0};
+  int l3MissCount[PHI_SECTORS]={0};
+  int turfRateIndex=(countLastTurfRates%NUM_DYN_TURF_RATE);
+  unsigned int newPhiMask=0;
+  unsigned int newAntTrigMask=0;
+  int changedSomething=0;
+  //Number between 0 and NUM_DYN_TURF_RATE-1
+  lastTurfRates[turfRateIndex]=turfRates;
+  countLastTurfRates++;
+  if(countLastTurfRates>30) {
+    //Maybe try and look at things
+    numLastTurfs=countLastTurfRates;
+    if(numLastTurfs>NUM_DYN_TURF_RATE)
+      numLastTurfs=NUM_DYN_TURF_RATE;
+    
+    for(tInd=0;tInd<numLastTurfs;tInd++) {
+      for(phi=0;phi<PHI_SECTORS;phi++) {
+	if(lastTurfRates[tInd].l3Rates[phi]>dynamicPhiThresholdOverRate) 
+	  l3HitCount[phi]++;
+	if(lastTurfRates[tInd].l3Rates[phi]<dynamicPhiThresholdUnderRate)
+	  l3MissCount[phi]++;
+	for(ring=0;ring<2;ring++) {
+	  if(lastTurfRates[tInd].l1Rates[phi][ring]>dynamicAntThresholdOverRate) 
+	    l1HitCount[phi][ring]++;
+	  if(lastTurfRates[tInd].l1Rates[phi][ring]<dynamicAntThresholdUnderRate)
+	    l1MissCount[phi][ring]++;
+	}
+      }  
+    }
+    
+    newPhiMask=phiTrigMask;
+    newAntTrigMask=antTrigMask;
+    for(phi=0;phi<PHI_SECTORS;phi++) {
+      if(l3HitCount[phi]>dynamicPhiThresholdOverWindow) {
+	//Got a hot channel
+	newPhiMask |= (1<<phi);
+      }
+      if(l3MissCount[phi]>dynamicPhiThresholdUnderWindow) {
+	//Got a quiet channel
+	newPhiMask &= ~(1<<phi);
+      }
+      for(ring=0;ring<2;ring++) {
+	if(l1HitCount[phi][ring]>dynamicAntThresholdOverWindow) {
+	  newAntTrigMask |= (1<<(phi +PHI_SECTORS*ring));
+	}
+	if(l1HitCount[phi][ring]<dynamicAntThresholdUnderWindow) {
+	  newAntTrigMask &= ~(1<<(phi +PHI_SECTORS*ring));
+	}
+      }
+    }
+  }
+  if(phiTrigMask!=newPhiMask) {
+    if(enableDynamicPhiMasking) {
+      if(printToScreen) {
+	pritnf("Changing phi mask from %#x to %#x\n",phiTrigMask,newPhiMask);
+      }
+      phiTrigMask=newPhiMask;
+      changedSomething=1;
+    }
+  }
+  if(newAntTrigMask!=antTrigMask) {
+    if(enableDynamicAntMasking) {
+      if(printToScreen) {
+	pritnf("Changing antenna mask from %#x to %#x\n",antTrigMask,newAntTrigMask);
+      }
+      antTrigMask=newAntTrigMask;
+      changedSomething=1;
+    }
+  }
+  return changedSomething;  
 }

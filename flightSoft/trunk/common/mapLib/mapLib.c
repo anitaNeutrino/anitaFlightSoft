@@ -207,3 +207,16 @@ void aXYZToGeoXYZ(double axyz[3], double aLtLgAl[3], double hpr[3], double xyz[3
 
 
 }
+
+int getSourcePhiAndDistance(double anitaLatLonAltHead[4],
+			    double sourceLatLonAlt[3],
+			    int *phiDir,
+			    double *distance)
+{
+  //
+
+
+  *phiDir=-1;
+  *distance=-1;
+  return -1;
+}
