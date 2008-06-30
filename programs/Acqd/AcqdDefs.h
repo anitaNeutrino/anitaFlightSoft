@@ -30,6 +30,7 @@
 #define UPPER16 0xffff0000
 #define HITBUS 0x1000
 #define MAX_EVENTS_PER_DIR 1000
+#define NUM_DYN_TURF_RATE 60
 
 
 #define GetUpper16(A) (((A)&UPPER16)>>16)
@@ -44,6 +45,31 @@
 #define N_CHAN 9
 #define N_RFCHAN RFCHAN_PER_SURF
 #define N_CHIP 4
+
+//TURF Register Thingies
+#define TURF_BANK_CHANGE 262
+typedef enum __TURF_register_bank {
+  TurfBankControl=0,
+  TurfBankEvent=2,
+  TurfBankHk=3
+} TurfRegisterBank_t;
+
+typedef enum __TURF_register_address {
+  TurfRegFrut=0x0,
+  TurfRegVersion=0x1,
+  TurfRegZero1=0x2,
+  TurfRegZero2=0x3,
+  TurfRegAntTrigMask=0x4,
+  TurfRegNadirAntTrigMask=0x5,
+  TurfRegPhiMask=0x6,
+  TurfRegEpoch=0x7,
+  TurfRegTrigger=0x8,
+  TurfRegClockStatus=0x9,
+  TurfRegEventReady=0xa,
+  TurfRegNextEventId=0xb,
+  TurfRegClear=0xc
+} TurfRegsiterAddress_t;
+
 
 
 typedef enum __SURF_control_act {  
@@ -102,6 +128,7 @@ typedef enum {
     ACQD_E_SURF_GPIO,
     ACQD_E_CLOSE,
     ACQD_E_TURFIO_IOCTL,
+    ACQD_E_MASK,
     ACQD_E_UNNAMED
 } AcqdErrorCode_t ;
 

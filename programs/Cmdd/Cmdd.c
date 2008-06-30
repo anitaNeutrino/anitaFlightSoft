@@ -68,6 +68,7 @@ int setLosdPriorityBandwidth(int pri, int bw);
 int setSipdPriorityBandwidth(int pri, int bw);
 int executePrioritizerdCommand(int command, int value);
 int executePlaybackCommand(int command, unsigned int value1, unsigned int value2);
+int executeAcqdRateCommand(int command, unsigned char args[8]);
 int startNewRun();
 int getNewRunNumber();
 int getLatestEventNumber();
@@ -96,6 +97,7 @@ char usbName[FILENAME_MAX];
 char sataminiName[FILENAME_MAX];
 
 //Needed for commands
+int pidGoals[BANDS_PER_ANT];
 int surfTrigBandMasks[ACTIVE_SURFS][2];
 int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
@@ -857,18 +859,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
 	    return rawtime;
-	case ACQD_ENABLE_CHAN_SERVO: 	    
-	    ivalue=theCmd->cmd[1];
-	    configModifyInt("Acqd.config","thresholds","enableChanServo",ivalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
-	    if(retVal) return 0;
-	    return rawtime;
-	case ACQD_SET_PID_GOAL: 	    
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyInt("Acqd.config","thresholds","pidGoal",ivalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
-	    if(retVal) return 0;
-	    return rawtime;
+
 	case ACQD_PEDESTAL_RUN: 	    
 	    ivalue=theCmd->cmd[1];
 	    ivalue&=0x1;
@@ -885,45 +876,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    goto NEW_RUN;
 	    if(retVal) return 0;
 	    return rawtime;
-	case ACQD_SET_ANT_TRIG_MASK: 	    
-	    utemp=(theCmd->cmd[1]);	    
-	    uvalue=utemp;
-	    utemp=(theCmd->cmd[2]);
-	    uvalue|=(utemp<<8);
-	    utemp=(theCmd->cmd[3]);
-	    uvalue|=(utemp<<16);
-	    utemp=(theCmd->cmd[4]);
-	    uvalue|=(utemp<<24);
-	    syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",theCmd->cmd[1],theCmd->cmd[2],
-		   theCmd->cmd[3],theCmd->cmd[4],uvalue,(unsigned int)uvalue);
 
-	    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",uvalue,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
-	    if(retVal) return 0;
-	    return rawtime;
-	case ACQD_SET_SURF_BAND_TRIG_MASK: 	    
-	    ivalue=(theCmd->cmd[1]); //Which Surf
-	    ivalue2=(theCmd->cmd[2])+(theCmd->cmd[3]<<8);
-	    ivalue3=(theCmd->cmd[4])+(theCmd->cmd[5]<<8);
-	    readAcqdConfig();
-	    if(ivalue>-1 && ivalue<9) {
-		surfTrigBandMasks[ivalue][0]=ivalue2;
-		surfTrigBandMasks[ivalue][1]=ivalue3;
-		configModifyIntArray("Acqd.config","thresholds","surfTrigBandMasks",&surfTrigBandMasks[0][0],2*ACTIVE_SURFS,&rawtime);
-	    }
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
-	    if(retVal) return 0;
-	    return rawtime;
-	case ACQD_SET_GLOBAL_THRESHOLD: 	    
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue,NULL);
-	    if(ivalue>0) 
-		configModifyInt("Acqd.config","thresholds","setGlobalThreshold",1,&rawtime);
-	    else
-		configModifyInt("Acqd.config","thresholds","setGlobalThreshold",0,&rawtime);
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
-	    if(retVal) return 0;
-	    return rawtime;
+
 	case ACQD_REPROGRAM_TURF: 	    
 	    ivalue=theCmd->cmd[1];
 	    configModifyInt("Acqd.config","acqd","reprogramTurf",ivalue,&rawtime);
@@ -965,31 +919,6 @@ int executeCommand(CommandStruct_t *theCmd)
 	    configModifyInt("Acqd.config","thresholdScan","thresholdScanPointsPerStep",ivalue,&rawtime);
 	    retVal=sendSignal(ID_ACQD,SIGUSR1);
 	    if(retVal) return 0;
-	    return rawtime;
-	case ACQD_CHAN_PID_GOAL_SCALE:
-	    ivalue=theCmd->cmd[1]; //surf 0:8
-	    ivalue2=theCmd->cmd[2]; //dac 0:31
-	    if(ivalue>8 || ivalue2>31) return 0;
-	    ivalue3=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
-	    fvalue=((float)ivalue3)/1000.;
-	    return setPidGoalScaleFactor(ivalue,ivalue2,fvalue);
-	case ACQD_SET_RATE_SERVO:
-	    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-	    if(ivalue>0) {
-		configModifyInt("Acqd.config","rates","enableRateServo",1,NULL);
-		fvalue=((float)ivalue)/1000.;
-		configModifyFloat("Acqd.config","rates","rateGoal",fvalue,&rawtime);
-	    }
-	    else {
-		configModifyInt("Acqd.config","rates","enableRateServo",0,&rawtime);	    
-	    }
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);
-	    return rawtime;
-	case ACQD_SET_NICE_VALUE:
-	    ivalue=theCmd->cmd[1]; //Between 0 and 255
-	    ivalue-=20; //-20 is the lowest;
-	    configModifyInt("Acqd.config","acqd","niceValue",ivalue,&rawtime);	
-	    retVal=sendSignal(ID_ACQD,SIGUSR1);    
 	    return rawtime;
 	case SIPD_SEND_WAVE:
 	    ivalue=theCmd->cmd[1];
@@ -1075,6 +1004,8 @@ int executeCommand(CommandStruct_t *theCmd)
 	    configModifyInt("Monitord.config","monitord","inodesDumpData",ivalue,&rawtime);	
 	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
 	    return rawtime;
+    case ACQD_RATE_COMMAND:
+      return executeAcqdRateCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
 	case PRIORITIZERD_COMMAND:
 	    ivalue=theCmd->cmd[1]; //Command num
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
@@ -1711,6 +1642,177 @@ int executePrioritizerdCommand(int command, int value)
 	    return -1;
     }	    
     return rawtime;
+}
+
+int executeAcqdRateCommand(int command, unsigned char args[8])
+{
+  int retVal=0;
+  unsigned int uvalue[4]={0};
+  unsigned int utemp=0;
+  int ivalue[4]={0};
+  float fvalue=0;
+  time_t rawtime;
+    switch(command) {
+    case ACQD_RATE_ENABLE_CHAN_SERVO: 	    
+      ivalue[0]=args[0];
+      configModifyInt("Acqd.config","thresholds","enableChanServo",ivalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_PID_GOALS: 	    
+      uvalue[0]=args[0]+(args[1]<<8);
+      uvalue[1]=args[2]+(args[3]<<8);
+      uvalue[2]=args[4]+(args[5]<<8);
+      uvalue[3]=args[6]+(args[7]<<8);      
+      pidGoals[0]=uvalue[0];
+      pidGoals[1]=uvalue[1];
+      pidGoals[2]=uvalue[2];
+      pidGoals[3]=uvalue[3];      
+      configModifyIntArray("Acqd.config","thresholds","pidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_ANT_TRIG_MASK: 	    
+      utemp=(args[0]);	    
+      uvalue[0]=utemp;
+      utemp=(args[1]);
+      uvalue[0]|=(utemp<<8);
+      utemp=(args[2]);
+      uvalue[0]|=(utemp<<16);
+      utemp=(args[3]);
+      uvalue[0]|=(utemp<<24);
+      syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
+	     args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
+      
+      configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",uvalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_PHI_MASK: 	    
+      utemp=(args[0]);	    
+      uvalue[0]=utemp;
+      utemp=(args[1]);
+      uvalue[0]|=(utemp<<8);
+      syslog(LOG_INFO,"ACQD_RATE_SET_PHI_MASK: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
+      
+      configModifyUnsignedInt("Acqd.config","thresholds","phiTrigMask",uvalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_SURF_BAND_TRIG_MASK: 	    
+      ivalue[0]=(args[0]); //Which Surf
+      ivalue[1]=(args[1])+(args[2]<<8);
+      ivalue[2]=(args[3])+(args[4]<<8);
+      readAcqdConfig();
+      if(ivalue[0]>-1 && ivalue[0]<ACTIVE_SURFS) {
+	surfTrigBandMasks[ivalue[0]][0]=ivalue[1];
+	surfTrigBandMasks[ivalue[0]][1]=ivalue[2];
+	configModifyIntArray("Acqd.config","thresholds","surfTrigBandMasks",&surfTrigBandMasks[0][0],2*ACTIVE_SURFS,&rawtime);
+      }
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_CHAN_PID_GOAL_SCALE:
+      ivalue[0]=args[0]; //surf 0:8
+      ivalue[1]=args[1]; //dac 0:31
+      if(ivalue[0]>8 || ivalue[1]>31) return 0;
+      ivalue[2]=args[2]+(args[3]<<8);
+      fvalue=((float)ivalue[2])/1000.;
+      return setPidGoalScaleFactor(ivalue[0],ivalue[1],fvalue);
+    case ACQD_RATE_SET_RATE_SERVO:
+      ivalue[0]=args[0]+(args[1]<<8);
+      if(ivalue[0]>0) {
+	configModifyInt("Acqd.config","rates","enableRateServo",1,NULL);
+	fvalue=((float)ivalue[0])/1000.;
+	configModifyFloat("Acqd.config","rates","rateGoal",fvalue,&rawtime);
+      }
+      else {
+	configModifyInt("Acqd.config","rates","enableRateServo",0,&rawtime);	    
+      }
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      return rawtime;
+    case ACQD_RATE_ENABLE_DYNAMIC_PHI_MASK: 	    
+      utemp=(args[0]);	    
+      ivalue[0]=utemp;
+      configModifyInt("Acqd.config","rates","enableDynamicPhiMasking",ivalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_ENABLE_DYNAMIC_ANT_MASK: 	    
+      utemp=(args[0]);	    
+      ivalue[0]=utemp;
+      configModifyInt("Acqd.config","rates","enableDynamicAntMasking",ivalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_DYNAMIC_PHI_MASK_OVER: 	    
+      utemp=(args[0]);	    
+      ivalue[0]=utemp; //This will be the rate
+      utemp=(args[1]);	    
+      ivalue[1]=utemp; //This is the window size in seconds
+      configModifyInt("Acqd.config","rates","dynamicPhiThresholdOverRate",ivalue[0],&rawtime);
+      configModifyInt("Acqd.config","rates","dynamicPhiThresholdOverWindow",ivalue[1],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_DYNAMIC_PHI_MASK_UNDER: 	    
+      utemp=(args[0]);	    
+      ivalue[0]=utemp; //This will be the rate
+      utemp=(args[1]);	    
+      ivalue[1]=utemp; //This is the window size in seconds
+      configModifyInt("Acqd.config","rates","dynamicPhiThresholdUnderRate",ivalue[0],&rawtime);
+      configModifyInt("Acqd.config","rates","dynamicPhiThresholdUnderWindow",ivalue[1],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_DYNAMIC_ANT_MASK_OVER: 	    
+      utemp=(args[0]);	    
+      uvalue[0]=utemp;
+      utemp=(args[1]);
+      uvalue[0]|=(utemp<<8);
+      utemp=(args[2]);
+      uvalue[0]|=(utemp<<16);
+      utemp=(args[3]);
+      uvalue[0]|=(utemp<<24);
+      utemp=(args[4]);	          
+      ivalue[0]=utemp; //This is the window size in seconds
+      configModifyUnsignedInt("Acqd.config","rates","dynamicAntThresholdOverRate",uvalue[0],&rawtime);
+      configModifyInt("Acqd.config","rates","dynamicAntThresholdOverWindow",ivalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_DYNAMIC_ANT_MASK_UNDER: 		    
+      utemp=(args[0]);	    
+      uvalue[0]=utemp;
+      utemp=(args[1]);
+      uvalue[0]|=(utemp<<8);
+      utemp=(args[2]);
+      uvalue[0]|=(utemp<<16);
+      utemp=(args[3]);
+      uvalue[0]|=(utemp<<24);
+      utemp=(args[4]);	          
+      ivalue[0]=utemp; //This is the window size in seconds
+      configModifyUnsignedInt("Acqd.config","rates","dynamicAntThresholdUnderRate",uvalue[0],&rawtime);
+      configModifyInt("Acqd.config","rates","dynamicAntThresholdUnderWindow",ivalue[0],&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;    
+    case ACQD_RATE_SET_GLOBAL_THRESHOLD: 	    
+      ivalue[0]=args[0]+(args[1]<<8);
+      configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue[0],NULL);
+      if(ivalue[0]>0) 
+	configModifyInt("Acqd.config","thresholds","setGlobalThreshold",1,&rawtime);
+      else
+	configModifyInt("Acqd.config","thresholds","setGlobalThreshold",0,&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    default:
+      fprintf(stderr,"Unknown Acqd Rate Command -- %d\n",command);
+      syslog(LOG_ERR,"Unknown Acqd Rate Command -- %d\n",command);
+      return 0;
+    }
+    return 0;
 }
 
 

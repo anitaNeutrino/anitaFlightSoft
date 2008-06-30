@@ -34,6 +34,7 @@ AcqdErrorCode_t sendClearEvent();
 AcqdErrorCode_t readTurfHkData();
 AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr);
 AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value);
+AcqdErrorCode_t setTriggerMasks();
 
 //Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
@@ -58,9 +59,10 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
 void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum);
 void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
 void intersperseSurfHk(struct timeval *tvPtr);
-void intersperseTurfRate(struct timeval *tvPtr);
+int intersperseTurfRate(struct timeval *tvPtr);
 void intersperseSoftTrig(struct timeval *tvPtr);
-int checkSurfFdsForData();
+int checkTurfRates(); //Checks the previous N TURF rates to see if we want to implement dynamic masking
+
 
 
 //Output functions
@@ -74,6 +76,8 @@ void prepWriterStructs();
 void outputEventData();
 void outputSurfHkData();
 void outputTurfRateData();
+void doSurfHkAverage(int flushData);
+void doTurfRateSum(int flushData);
 		     
 
 #endif //ACQD_H

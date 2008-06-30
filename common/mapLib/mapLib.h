@@ -17,15 +17,22 @@ extern "C" {
 #include "includes/anitaMapping.h"
 #include "includes/anitaStructures.h"
 
-    void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr);
-    void fillSurfFromAntAndPol(SurfAntMapStruct_t *mapPtr);
-    void fillPhiFromSurf(SurfAntMapStruct_t *mapPtr);
-    int getLogicalIndexFromAnt(int ant,  AntennaPol_t pol);
-    int getLogicalIndexFromPhi(int phi,  AntennaTier_t tier, AntennaPol_t pol);
+  void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr);
+  void fillSurfFromAntAndPol(SurfAntMapStruct_t *mapPtr);
+  void fillPhiFromSurf(SurfAntMapStruct_t *mapPtr);
+  int getLogicalIndexFromAnt(int ant,  AntennaPol_t pol);
+  int getLogicalIndexFromPhi(int phi,  AntennaTier_t tier, AntennaPol_t pol);
 
-    inline int getLogicalIndexFromSurf(int surf, int chan) 
-    {return GetChanIndex(surf,chan);}
 
+  int getSourcePhiAndDistance(double anitaLatLonAltHead[4],
+			      double sourceLatLonAlt[3],
+			      int *phiDir,
+			      double *distance);
+
+
+  inline int getLogicalIndexFromSurf(int surf, int chan) 
+  {return GetChanIndex(surf,chan);}
+  
   
   /*Converters between latitude, longitude, and altitude to WGS84 cartesian coordinates*/
   void ltLgAlToGeoXYZ(double latLonAlt[3], double xyz[3]);
