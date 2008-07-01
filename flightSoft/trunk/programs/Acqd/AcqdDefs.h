@@ -111,9 +111,9 @@ typedef enum __TURF_trigger_mode {
 } TriggerMode_t;
 
 typedef enum __TURF_clear_mode {
-    BitTurfClearAll = 0x0,
-    BitTurfClearEvent = 0x1,
-    BitTurfTrigDisable = 0x2
+    BitTurfClearAll = 0x1,
+    BitTurfClearEvent = 0x2,
+    BitTurfTrigDisable = 0x4
 } TurfClearMode_t;
 
 typedef enum {
