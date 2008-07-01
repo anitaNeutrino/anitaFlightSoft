@@ -24,11 +24,11 @@ extern "C" {
   int getLogicalIndexFromPhi(int phi,  AntennaTier_t tier, AntennaPol_t pol);
 
 
-  int getSourcePhiAndDistance(double anitaLatLonAltHead[4],
+  int getSourcePhiAndDistance(double anitaLatLonAlt[3],
+			      double anitaHPR[3],
 			      double sourceLatLonAlt[3],
 			      int *phiDir,
 			      double *distance);
-
 
   inline int getLogicalIndexFromSurf(int surf, int chan) 
   {return GetChanIndex(surf,chan);}
@@ -37,6 +37,11 @@ extern "C" {
   /*Converters between latitude, longitude, and altitude to WGS84 cartesian coordinates*/
   void ltLgAlToGeoXYZ(double latLonAlt[3], double xyz[3]);
   void geoXYZToLtLgAl(double xyz[3], double latLonAlt[3]);
+
+  //Convertes between ANTA cartesian coordinates and North, west, Up coordinates
+  //for given latitude, longitude, altitude, heading, pitch and roll
+  void aXYZToANWU(double aXYZ[3], double hpr[3], double aNWU[3]);
+  void aNWUToAXYZ(double aNWU[3], double hpr[3], double aXYZ[3]);
 
 #ifdef __cplusplus
 }
