@@ -1,8 +1,10 @@
 #!/bin/bash
 #Script to test writing to satablades in the bemco test.
 
+cd /home/anita/flightSoft/testing
 
-BASE_LOG_DIR=/home/rjn/bemcoLog/satablade
+
+BASE_LOG_DIR=/home/anita/bemcoLog/satablade
 RUN=1;
 while true;
 do
@@ -21,7 +23,7 @@ done
 mkdir ${LOG_DIR}
 echo "Using log dir $LOG_DIR"
 
-TEST_DIR=/tmp/mnt/satablade
+TEST_DIR=/mnt/satablade
 REF_DIR=/tmp/satablade
 
 if [ -d ${TEST_DIR} ] ;
@@ -41,7 +43,7 @@ fi
 
 
 NUM_EVENTS=20000 
-NUM_LOOPS=2000
+NUM_LOOPS=20000
 let LAST_FILE=${NUM_EVENTS}-100
 
 WRITE_LOG=${LOG_DIR}/writeLog.txt

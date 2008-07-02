@@ -1,8 +1,9 @@
 #!/bin/bash
 #Script to test writing to satablades in the bemco test.
 
+cd /home/anita/flightSoft/testing
 
-BASE_LOG_DIR=/home/rjn/bemcoLog/usb
+BASE_LOG_DIR=/home/anita/bemcoLog/usb
 RUN=1;
 while true;
 do
@@ -21,7 +22,7 @@ done
 mkdir ${LOG_DIR}
 echo "Using log dir $LOG_DIR"
 
-TEST_DIR=/tmp/mnt/usbint
+TEST_DIR=/mnt/usbint
 REF_DIR=/tmp/usbint
 
 if [ -d ${TEST_DIR} ] ;
@@ -40,7 +41,7 @@ else
 fi
 
 
-NUM_EVENTS=20000 
+NUM_EVENTS=2000 
 NUM_LOOPS=2000
 let LAST_FILE=${NUM_EVENTS}-100
 
@@ -57,7 +58,7 @@ echo $END_VAL
 for loop in `seq 0 $END_VAL`; do 
     echo "Starting Loop $loop"
     echo "Starting Loop $loop" >> $MAIN_LOG
-    for usbNum in `seq 1 31`; do
+    for usbNum in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31; do
 	usbName=bigint${usbNum}
 	echo "Starting with usb $usbName"
 	echo "Starting with usb $usbName" >> $MAIN_LOG
