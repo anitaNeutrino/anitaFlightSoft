@@ -284,6 +284,7 @@
 
 //Hk Power Lookup
 #define HK_POWER_LOOKUP "/tmp/anita/currentPower"
+#define HK_TEMP_LOOKUP "/tmp/anita/currentTemps"
 
 #endif /* ANITA_FLIGHT_H */
 
