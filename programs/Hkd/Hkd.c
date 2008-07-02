@@ -102,25 +102,38 @@ int hkDiskBitMask;
 AnitaHkWriterStruct_t hkRawWriter;
 AnitaHkWriterStruct_t hkCalWriter;
 
+/* Advanced prettyprinting stuff */
+#define MAX_COLUMN 5
+#define MAX_ROW 20
 
 //Pretty printing stuff for debugging
-
 typedef struct {
   char description[20];
   float conversion;
   float offset;
   int active;
 } ip320_desc; /* IP320 descriptor structure */
-ip320_desc desc[CHANS_PER_IP320];
-char header[180];
+
+
+//Power stuff
+ip320_desc descPower[CHANS_PER_IP320];
+char headerPower[180];
 int isTemp=0;
-int prettyFormat = 0;
-/* Advanced prettyprinting stuff */
-#define MAX_COLUMN 5
-#define MAX_ROW 20
-int numRows = 0;
-int rowaddr[MAX_ROW][MAX_COLUMN];
-void prettyPrintLookupFile();
+int prettyFormatPower = 0;
+int numRowsPower = 0;
+int rowaddrPower[MAX_ROW][MAX_COLUMN];
+
+//Temp stuff
+ip320_desc descTemp[CHANS_PER_IP320];
+char headerTemp[180];
+int prettyFormatTemp = 0;
+int numRowsTemp = 0;
+int rowaddrTemp[MAX_ROW][MAX_COLUMN];
+
+
+
+void prettyPrintPowerLookupFile();
+void prettyPrintTempLookupFile();
 void readHkReadoutConfig();
 
 
@@ -232,8 +245,10 @@ int main (int argc, char *argv[])
 		}
 		ip320Read(writeLookupFile);
 		outputData(IP320_RAW);
-		if(writeLookupFile)
-		  prettyPrintLookupFile();
+		if(writeLookupFile) {
+		  prettyPrintPowerLookupFile();
+		  prettyPrintTempLookupFile();
+		}
 		
 //		dumpValues();
 		//Send down data
@@ -871,45 +886,98 @@ void readHkReadoutConfig()
   char *temp;
   int readout=2;
   char hkreadout[9];
+
+  //First up do the power
+  readout=2;
   kvpReset();
   sprintf(hkreadout,"hkreadout%d",readout);
   status = configLoad("HkReadout.config",hkreadout);
   eString = configErrorString(status);
   if (status == CONFIG_E_OK) {
-    prettyFormat = kvpGetInt("prettyformat",0);
-    numRows= kvpGetInt("numrows",0);
-    if (numRows > MAX_ROW) numRows=MAX_ROW;
-    if (numRows)
+    prettyFormatPower = kvpGetInt("prettyformat",0);
+    numRowsPower= kvpGetInt("numrows",0);
+    if (numRowsPower > MAX_ROW) numRowsPower=MAX_ROW;
+    if (numRowsPower)
       {
 	char configstring[50];
 	int i, nentries;
-	memset(rowaddr, 0, sizeof(unsigned int)*MAX_ROW*MAX_COLUMN);
-	for (i=0;i<numRows;i++)
+	memset(rowaddrPower, 0, sizeof(unsigned int)*MAX_ROW*MAX_COLUMN);
+	for (i=0;i<numRowsPower;i++)
 	  {
 	    nentries=5;
 	    sprintf(configstring,"row%dchannels", i+1);
-	    kvpGetIntArray(configstring,rowaddr[i],&nentries);
+	    kvpGetIntArray(configstring,rowaddrPower[i],&nentries);
 	  }
-	//	for (i=0;i<numRows;i++)
-	//	  printf("%d %d %d %d %d\n", rowaddr[i][0], rowaddr[i][1],
-	//		 rowaddr[i][2], rowaddr[i][3], rowaddr[i][4]);
+	//	for (i=0;i<numRowsPower;i++)
+	//	  printf("%d %d %d %d %d\n", rowaddrPower[i][0], rowaddrPower[i][1],
+	//		 rowaddrPower[i][2], rowaddrPower[i][3], rowaddrPower[i][4]);
       }
     temp = kvpGetString("headername");
     if (temp != NULL) 
-      strncpy(header,temp,179);
+      strncpy(headerPower,temp,179);
     for (i=0;i<CHANS_PER_IP320;i++)
       {
 	char configstring[50];
 	sprintf(configstring, "chan%dname", i+1);
 	temp = kvpGetString(configstring);
 	if (temp != NULL) {
-	  strncpy(desc[i].description,temp,19);
-	  //	  desc[i].description = temp;
-	  desc[i].active = 1;
+	  strncpy(descPower[i].description,temp,19);
+	  //	  descPower[i].description = temp;
+	  descPower[i].active = 1;
 	  sprintf(configstring, "chan%dconvert", i+1);
-	  desc[i].conversion = kvpGetFloat(configstring, 1.0);
+	  descPower[i].conversion = kvpGetFloat(configstring, 1.0);
           sprintf(configstring, "chan%doffset", i+1);
-          desc[i].offset = kvpGetFloat(configstring, 0.0); 
+          descPower[i].offset = kvpGetFloat(configstring, 0.0); 
+	}
+      }
+  }
+  else {
+    printf("Unable to read config file.\n");
+    printf("%s\n", eString);
+    exit(1);
+  }
+
+  //Now the temps
+  readout=3;
+  kvpReset();
+  sprintf(hkreadout,"hkreadout%d",readout);
+  status = configLoad("HkReadout.config",hkreadout);
+  eString = configErrorString(status);
+  if (status == CONFIG_E_OK) {
+    prettyFormatTemp = kvpGetInt("prettyformat",0);
+    numRowsTemp= kvpGetInt("numrows",0);
+    if (numRowsTemp > MAX_ROW) numRowsTemp=MAX_ROW;
+    if (numRowsTemp)
+      {
+	char configstring[50];
+	int i, nentries;
+	memset(rowaddrTemp, 0, sizeof(unsigned int)*MAX_ROW*MAX_COLUMN);
+	for (i=0;i<numRowsTemp;i++)
+	  {
+	    nentries=5;
+	    sprintf(configstring,"row%dchannels", i+1);
+	    kvpGetIntArray(configstring,rowaddrTemp[i],&nentries);
+	  }
+	//	for (i=0;i<numRowsTemp;i++)
+	//	  printf("%d %d %d %d %d\n", rowaddrTemp[i][0], rowaddrTemp[i][1],
+	//		 rowaddrTemp[i][2], rowaddrTemp[i][3], rowaddrTemp[i][4]);
+      }
+    temp = kvpGetString("headername");
+    if (temp != NULL) 
+      strncpy(headerTemp,temp,179);
+    for (i=0;i<CHANS_PER_IP320;i++)
+      {
+	char configstring[50];
+	sprintf(configstring, "chan%dname", i+1);
+	temp = kvpGetString(configstring);
+	if (temp != NULL) {
+	  strncpy(descTemp[i].description,temp,19);
+	  //	  descTemp[i].description = temp;
+	  descTemp[i].active = 1;
+	  sprintf(configstring, "chan%dconvert", i+1);
+	  descTemp[i].conversion = kvpGetFloat(configstring, 1.0);
+          sprintf(configstring, "chan%doffset", i+1);
+          descTemp[i].offset = kvpGetFloat(configstring, 0.0); 
 	}
       }
   }
@@ -920,7 +988,7 @@ void readHkReadoutConfig()
   }
 }
 
-void prettyPrintLookupFile()
+void prettyPrintPowerLookupFile()
 {
   //For now just try and print power values
   time_t rawTime;
@@ -931,21 +999,21 @@ void prettyPrintLookupFile()
   FILE *outFile=fopen(HK_POWER_LOOKUP,"w");
 
   fprintf(outFile,"Date: %s\n",ctime(&rawTime));  
-  if (header)
-    fprintf(outFile,"%s:\n", header);
+  if (headerPower)
+    fprintf(outFile,"%s:\n", headerPower);
   else
     fprintf(outFile,"No description available!\n");
-  if (!numRows || !prettyFormat) {
+  if (!numRowsPower || !prettyFormatPower) {
       for (i=0;i<CHANS_PER_IP320;i++)
       {
-	  if (prettyFormat)
+	  if (prettyFormatPower)
 	  {
-	      if (desc[i].active)
+	      if (descPower[i].active)
 	      {
 		  /* RJN HACK */
-		  fprintf(outFile,"%5.5s: %+7.3f ", desc[i].description, (corDataStruct[board].data[i]*10.0/4095.-5.0*desc[i].conversion+desc[i].offset));
-//	  fprintf(outFile,"%5.5s: %+7.2f ", desc[i].description, (corDataStruct[board].data[i]*20.0/4095.-10.0));
-//	  fprintf(outFile,"%5.5s: %+7.2f ", desc[i].description,corDataStruct[board].data[i]);
+		  fprintf(outFile,"%5.5s: %+7.3f ", descPower[i].description, (corDataStruct[board].data[i]*10.0/4095.-5.0*descPower[i].conversion+descPower[i].offset));
+//	  fprintf(outFile,"%5.5s: %+7.2f ", descPower[i].description, (corDataStruct[board].data[i]*20.0/4095.-10.0));
+//	  fprintf(outFile,"%5.5s: %+7.2f ", descPower[i].description,corDataStruct[board].data[i]);
 		  linecount++;
 		  if (!(linecount%5)) fprintf(outFile,"\n");
 	      }
@@ -959,23 +1027,23 @@ void prettyPrintLookupFile()
       fprintf(outFile,"\n");
   }
   else {
-      for (i=0;i<numRows;i++) {
+      for (i=0;i<numRowsPower;i++) {
       int j;
       for (j=0;j<MAX_COLUMN;j++) {
-          if (rowaddr[i][j]) {
-	      int chan = rowaddr[i][j]-1;  
+          if (rowaddrPower[i][j]) {
+	      int chan = rowaddrPower[i][j]-1;  
 	      /* RJN HACK */
 	      if(isTemp) {
 		  if(useRange==10)
-		      fprintf(outFile,"%4.4s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%4.4s: %+4.2f\t", descPower[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*descPower[chan].conversion+descPower[chan].offset);
 		  else 
-		      fprintf(outFile,"%4.4s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%4.4s: %+4.2f\t", descPower[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*descPower[chan].conversion+descPower[chan].offset);
 	      }
 	      else {
 		  if(useRange==10)
-		      fprintf(outFile,"%7.7s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%7.7s: %+4.2f\t", descPower[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*descPower[chan].conversion+descPower[chan].offset);
 		  else 
-		      fprintf(outFile,"%7.7s: %+4.2f\t", desc[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*desc[chan].conversion+desc[chan].offset);
+		      fprintf(outFile,"%7.7s: %+4.2f\t", descPower[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*descPower[chan].conversion+descPower[chan].offset);
 	      }
 	      	  
 	  }
@@ -984,6 +1052,82 @@ void prettyPrintLookupFile()
       fprintf(outFile,"\n");
       }
   }
+  fclose(outFile);
+  
+}
+
+
+void prettyPrintTempLookupFile()
+{
+  //For now just try and print temp values
+  time_t rawTime;
+  time(&rawTime);
+  int board=2;
+  int useRange=ip320Ranges[board];
+  int i, linecount=0;
+  FILE *outFile=fopen(HK_TEMP_LOOKUP,"w");
+
+  fprintf(outFile,"Date: %s\n",ctime(&rawTime));  
+  if (headerTemp)
+    fprintf(outFile,"%s:\n", headerTemp);
+  else
+    fprintf(outFile,"No description available!\n");
+  if (!numRowsTemp || !prettyFormatTemp) {
+      for (i=0;i<CHANS_PER_IP320;i++)
+      {
+	  if (prettyFormatTemp)
+	  {
+	      if (descTemp[i].active)
+	      {
+		  /* RJN HACK */
+		  fprintf(outFile,"%5.5s: %+7.3f ", descTemp[i].description, (corDataStruct[board].data[i]*10.0/4095.-5.0*descTemp[i].conversion+descTemp[i].offset));
+//	  fprintf(outFile,"%5.5s: %+7.2f ", descTemp[i].description, (corDataStruct[board].data[i]*20.0/4095.-10.0));
+//	  fprintf(outFile,"%5.5s: %+7.2f ", descTemp[i].description,corDataStruct[board].data[i]);
+		  linecount++;
+		  if (!(linecount%5)) fprintf(outFile,"\n");
+	      }
+	  }
+	  else
+	  {
+	      fprintf(outFile,"CH%2.2d: %5.3f ", i+1, (corDataStruct[board].data[i]*10.0/4095.-5.0));
+	      if (!((i+1)%5)) fprintf(outFile,"\n");
+	  }
+      }
+      fprintf(outFile,"\n");
+  }
+  else {
+      for (i=0;i<numRowsTemp;i++) {
+      int j;
+      for (j=0;j<MAX_COLUMN;j++) {
+          if (rowaddrTemp[i][j]) {
+	      int chan = rowaddrTemp[i][j]-1;  
+	      /* RJN HACK */
+	      if(1) {
+		  if(useRange==10)
+		      fprintf(outFile,"%4.4s: %+4.2f\t", descTemp[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*descTemp[chan].conversion+descTemp[chan].offset);
+		  else 
+		      fprintf(outFile,"%4.4s: %+4.2f\t", descTemp[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*descTemp[chan].conversion+descTemp[chan].offset);
+	      }
+	      else {
+		  if(useRange==10)
+		      fprintf(outFile,"%7.7s: %+4.2f\t", descTemp[chan].description, (corDataStruct[board].data[chan]*20.0/4095.-10.0)*descTemp[chan].conversion+descTemp[chan].offset);
+		  else 
+		      fprintf(outFile,"%7.7s: %+4.2f\t", descTemp[chan].description, (corDataStruct[board].data[chan]*10.0/4095.-5.0)*descTemp[chan].conversion+descTemp[chan].offset);
+	      }
+	      	  
+	  }
+	  else fprintf(outFile,"               ");
+      }
+      fprintf(outFile,"\n");
+      }
+  }
+  fprintf(outFile,"\nSBS\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n",
+	  ((float)sbsData.temp[0])*4e-2,
+	  ((float)sbsData.temp[1])*4e-2,
+	  ((float)sbsData.temp[2])*4e-2,
+	  ((float)sbsData.temp[3])*4e-2);
+
+
   fclose(outFile);
   
 }
