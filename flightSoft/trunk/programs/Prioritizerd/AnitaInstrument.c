@@ -9,15 +9,15 @@ int FFTNumChannels; //hack to communicate fft info from the crosscorrelator
 #ifdef ANITA2
 //indices have surf channel counting from zero.
 // 0 is H, 1 is V polarization
-const int topRingIndex[16][2]={{04,00},//phi=1
+const int topRingIndex[16][2]={{ 4, 0},//phi=1
 			       {49,45},//phi=2
 			       {22,18},//phi=3
 			       {67,63},//phi=4
 			       {31,27},//phi=5
 			       {58,54},//phi=6
 			       {40,36},//phi=7
-			       {13,09},//phi=8
-			       {05,01},//phi=9
+			       {13, 9},//phi=8
+			       { 5, 1},//phi=9
 			       {50,46},//phi=10
 			       {23,19},//phi=11
 			       {68,64},//phi=12
@@ -26,7 +26,7 @@ const int topRingIndex[16][2]={{04,00},//phi=1
 			       {41,37},//phi=15
 			       {14,10}};//phi=16
 
-const int botRingIndex[16][2]={{06,02},//phi=1
+const int botRingIndex[16][2]={{ 6, 2},//phi=1
 			       {51,47},//phi=2
 			       {24,20},//phi=3
 			       {69,65},//phi=4
@@ -34,7 +34,7 @@ const int botRingIndex[16][2]={{06,02},//phi=1
 			       {60,56},//phi=6
 			       {42,38},//phi=7
 			       {15,11},//phi=8
-			       {07,03},//phi=9
+			       { 7, 3},//phi=9
 			       {52,48},//phi=10
 			       {25,21},//phi=11
 			       {70,66},//phi=12
@@ -46,15 +46,15 @@ const int botRingIndex[16][2]={{06,02},//phi=1
 // ANITA 1 values
 //indices have surf channel counting from zero.
 // 0 is H, 1 is V polarization
-const int topRingIndex[16][2]={{4,0},//phi=1
-			       {13,9},//phi=2
+const int topRingIndex[16][2]={{ 4, 0},//phi=1
+			       {13, 9},//phi=2
 			       {22,18},//phi=3
 			       {31,27},//phi=4
 			       {40,36},//phi=5
 			       {49,45},//phi=6
 			       {58,54},//phi=7
 			       {67,63},//phi=8
-			       {5,1},//phi=9
+			       { 5, 1},//phi=9
 			       {14,10},//phi=10
 			       {23,19},//phi=11
 			       {32,28},//phi=12
@@ -62,7 +62,7 @@ const int topRingIndex[16][2]={{4,0},//phi=1
 			       {50,46},//phi=14
 			       {59,55},//phi=15
 			       {68,64}};//phi=16
-const int botRingIndex[16][2]={{6,2},//phi=1
+const int botRingIndex[16][2]={{ 6, 2},//phi=1
 			       {15,11},//phi=2
 			       {24,20},//phi=3
 			       {33,29},//phi=4
@@ -70,7 +70,7 @@ const int botRingIndex[16][2]={{6,2},//phi=1
 			       {51,47},//phi=6
 			       {60,56},//phi=7
 			       {69,65},//phi=8
-			       {7,3},//phi=9
+			       { 7, 3},//phi=9
 			       {16,12},//phi=10
 			       {25,21},//phi=11
 			       {34,30},//phi=12
@@ -88,7 +88,7 @@ const int nadirIndex[8][2]={{76,72},//phi=1
 			    {78,74},//phi=9
 			    {86,82},//phi=11
 			    {79,75},//phi=13
-			    {87,83}}//phi=15
+			    {87,83}};//phi=15
 #else //ANITA2
 const int biconeIndex[4]={72,73,74,75}; //phi=2,6,10,14
 const int disconeIndex[4]={77,78,79,76}; //phi=4,8,12,16
@@ -151,7 +151,7 @@ const float nadirPhaseCenter[8][3]=
  {+0.0000000,+0.0000000,+0.0000000},
  {+0.0000000,+0.0000000,+0.0000000},
  {+0.0000000,+0.0000000,+0.0000000},
- {+0.0000000,+0.0000000,+0.0000000}}
+ {+0.0000000,+0.0000000,+0.0000000}};
 
 #else //ANITA2
 
@@ -246,7 +246,7 @@ void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
 	  antennaData->discone[i]=(surfData->ch[disconeIndex[i]]);
 	  //TCF_RMSfill(&antennaData->discone[i]);
      }
-#endif    
+#endif     
 }
 
 /* void CheckRMS(AnitaInstrumentF_t *theData,int thresh,int navg, */
@@ -566,7 +566,7 @@ void DiscriminateChannels(AnitaInstrument3_t *in,
 			  int conethresh,int conewidth)
 //for ANITA2, all antennas are horns so use hornwidth for everything, ignoring conewidth
 {
-     int phi,pol,i, ant,thresh;
+     int phi,pol,i,thresh;
      double dhornthresh;
      dhornthresh= ((double) hornthresh)/100.;
      for (phi=0;phi<16; phi++){
@@ -580,10 +580,10 @@ void DiscriminateChannels(AnitaInstrument3_t *in,
 	  }
      }
 #ifdef ANITA2         
-     for (ant=0;ant<8; ant++){
+     for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
-	       thresh = (int)(RMS(in->nadir[ant][pol])*dhornthresh); 
-	       Discriminate(in->nadir[ant][pol],&(out->nadir[ant][pol]),
+	       thresh = (int)(RMS(in->nadir[i][pol])*dhornthresh); 
+	       Discriminate(in->nadir[i][pol],&(out->nadir[i][pol]),
 			    thresh,hornwidth);
 	  }
      }
@@ -606,7 +606,7 @@ void DiscriminateFChannels(AnitaInstrumentF_t *in,
 			   int hornthresh,int hornwidth,
 			   int conethresh,int conewidth)
 {
-     int phi,pol,i,ant; 
+     int phi,pol,i; 
      float thresh, fhornthresh;
      fhornthresh= ((float) hornthresh)/100.;
      for (phi=0;phi<16; phi++){
@@ -623,12 +623,12 @@ void DiscriminateFChannels(AnitaInstrumentF_t *in,
 	  }
      }
 #ifdef ANITA2
-     for (ant=0;ant<8; ant++){
+     for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
-	       thresh = (RMSF(&(in->nadir[ant][pol]))*fhornthresh); 
+	       thresh = (RMSF(&(in->nadir[i][pol]))*fhornthresh); 
 //	       printf("thresh %f\n",thresh);
-	       DiscriminateF(&(in->nadir[ant][pol]),
-			     &(out->nadir[ant][pol]),
+	       DiscriminateF(&(in->nadir[i][pol]),
+			     &(out->nadir[i][pol]),
 			     thresh,hornwidth);
 	  }
      }
@@ -652,7 +652,7 @@ void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
 			       int conethresh,int conewidth,
 			       int holdoff)
 {
-     int phi,pol,ant,i; 
+     int phi,pol,i; 
      float thresh, fhornthresh;
      fhornthresh= ((float) hornthresh)/100.;
      for (phi=0;phi<16; phi++){
@@ -669,12 +669,12 @@ void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
 	  }
      }
 #ifdef ANITA2
-     for (ant=0;ant<8; ant++){
+     for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
-	       thresh = (RMSF(&(in->nadir[ant][pol]))*fhornthresh); 
+	       thresh = (RMSF(&(in->nadir[i][pol]))*fhornthresh); 
 //	       printf("thresh %f\n",thresh);
-	       DiscriminateF_noup(&(in->nadir[ant][pol]),
-			     &(out->nadir[ant][pol]),
+	       DiscriminateF_noup(&(in->nadir[i][pol]),
+			     &(out->nadir[i][pol]),
 			     thresh,hornwidth,holdoff);
 	  }
      }
@@ -699,7 +699,7 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
 		   int coneWidth,int coneGuardOffset, 
 		   int coneGuardWidth,int coneGuardThresh)
 {
-     int phi,pol,ant,i; 
+     int phi,pol,i; 
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
 	       PeakBoxcarOne(&(in->topRing[phi][pol]),
@@ -713,10 +713,10 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
 	  }
      }
 #ifdef ANITA2
-     for (ant=0;ant<8; ant++){
+     for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
-	       PeakBoxcarOne(&(in->nadir[ant][pol]),
-			     &(out->nadir[ant][pol]),
+	       PeakBoxcarOne(&(in->nadir[i][pol]),
+			     &(out->nadir[i][pol]),
 			     hornWidth,hornGuardOffset,
 			     hornGuardWidth,hornGuardThresh);
 	  }
@@ -762,7 +762,7 @@ extern int MethodMask;
 int RMSCountAll(AnitaInstrumentF_t *in,int thresh, 
 		int begwindow,int endwindow){
      int count=0;
-//     int i;
+     int i;
      int phi,pol;
      float fthresh=(float) thresh*0.01;
      fthresh=fthresh*fthresh; // avoid square roots at the price of one square.
@@ -784,13 +784,13 @@ int RMSCountAll(AnitaInstrumentF_t *in,int thresh,
      }
 #ifdef ANITA2
 // for ANITA 2, include nadirs and add to the count
-     for (ant=0;ant<8; ant++){
+     for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
-	       if (MSRatio(&(in->nadir[ant][pol]),
+	       if (MSRatio(&(in->nadir[i][pol]),
 			begwindow, endwindow)>fthresh){
 		    count++;
 		    if ((MethodMask &0x100)!=0) 
-			 ZeroChannel(&in->nadir[ant][pol]);
+			 ZeroChannel(&in->nadir[i][pol]);
 	       }
 	  }
      }
@@ -840,6 +840,9 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 	  if (horns->data[i]>hornmax) hornmax=horns->data[i];
      }
 
+#ifdef ANITA2
+// ANITA2 code here!!!
+#else //ANITA2
      minvalid=MAX_NUMBER_SAMPLES;
      for (i=0;i<4;i++){
 	  for (j=0;j<(in->bicone[i]).valid_samples; j++){
@@ -854,6 +857,7 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 	       minvalid=(in->discone[i]).valid_samples;
      }
      cones->valid_samples = minvalid;
+#endif
 
      return hornmax;
 }
@@ -907,6 +911,9 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	  }
 	  (out->botRing[sector_phi]).valid_samples = minvalid;
      }
+
+#ifdef ANITA2
+#else //ANITA2
      //bicones
      for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	  (out->bicone).data[j]=0;
@@ -933,6 +940,7 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	       minvalid=(in->discone[i]).valid_samples;
      }
      (out->discone).valid_samples = minvalid;
+#endif
 }
 
 void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
@@ -947,7 +955,8 @@ void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
      for(sector_phi=0;sector_phi<16;sector_phi++){
 	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	       (out->topRing[sector_phi]).data[j]=0;
-	  }
+	
+  }
 	  minvalid=MAX_NUMBER_SAMPLES;
 //	  for(pol=0;pol<2;pol++){
 	  for (i=0;i<sectorWidth;i++){
@@ -984,6 +993,10 @@ void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
 //	  }
 	  (out->botRing[sector_phi]).valid_samples = minvalid;
      }
+#ifdef ANITA2
+//ANITA 2 nadir code goes here
+#else //ANITA2
+
      //bicones
      for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	  (out->bicone).data[j]=0;
@@ -1010,6 +1023,7 @@ void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
 	       minvalid=(in->discone[i]).valid_samples;
      }
      (out->discone).valid_samples = minvalid;
+#endif //not ANITA2
 }
 
 int FormSectorCoincidence(AnitaSectorLogic_t *majority,
@@ -1102,10 +1116,19 @@ void buildEnvelopes(AnitaInstrumentF_t *theInst,AnitaEnvelopeF_t *theEnv){
 			    &theEnv->botRing[i][j]);
 	  }
      }
+#ifdef ANITA2
+     for (i=0;i<8;i++){
+	  for (j=0;j<2;j++){
+	       makeEnvelope(&theInst->nadir[i][j],
+			    &theEnv->nadir[i][j]);
+	  }
+     }
+#else //ANITA2
      for (i=0;i<4;i++){
 	  makeEnvelope(&theInst->bicone[i],&theEnv->bicone[i]);
 	  makeEnvelope(&theInst->discone[i],&theEnv->discone[i]);
      }
+#endif //not ANITA2
 }
 
 void peakTime(TransientChannelF_t *T, Peak_t *peak){
@@ -1135,10 +1158,19 @@ void FindPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak){
 			&thePeak->botRing[i][j]);
 	  }
      }
+#ifdef ANITA2
+     for (i=0;i<8;i++){
+	  for (j=0;j<2;j++){
+	       peakTime(&theInst->nadir[i][j],
+			&thePeak->nadir[i][j]);
+	  }
+     }
+#else //ANITA2
      for (i=0;i<4;i++){
 	  peakTime(&theInst->bicone[i],&thePeak->bicone[i]);
 	  peakTime(&theInst->discone[i],&thePeak->discone[i]);
      }
+#endif //not ANITA2
 }
 
 void MakeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,int dphi){
