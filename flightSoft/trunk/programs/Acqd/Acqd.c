@@ -2520,12 +2520,12 @@ AcqdErrorCode_t readSurfEventData()
      2:129 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read)
      130:1153 -- Chans 1 through 8 128 reads per chan as above
      1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
-     1156:1169 -- Chans 1 through 8 2 reads per chan as above
+     1156:1171 -- Chans 1 through 8 2 reads per chan as above
   */
 
   AcqdErrorCode_t status=ACQD_E_OK;
   unsigned int  dataInt=0;
-  unsigned int eventBuf[1170];
+  unsigned int eventBuf[SURF_EVENT_DATA_SIZE];
 
   unsigned char tempVal;
   int count=0,i=0;
@@ -2557,16 +2557,16 @@ AcqdErrorCode_t readSurfEventData()
        2:129 -- Chan 0 Samps 0-255 (2 x 16 bit words per 32 bit read)
        130:1153 -- Chans 1 through 8 128 reads per chan as above
        1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
-       1156:1169 -- Chans 1 through 8 2 reads per chan as above
+       1156:1171 -- Chans 1 through 8 2 reads per chan as above
     */
     //Read the Event data
-    count = read(surfFds[surf], eventBuf, 1170*sizeof(int));
+    count = read(surfFds[surf], eventBuf, SURF_EVENT_DATA_SIZE*sizeof(int));
     if (count < 0) {
       syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
     }
     if(printToScreen && verbosity>2) {	
-      for(i=0;i<1170;i++) {
+      for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {
 	printf("SURF %d, %d == 0x%x\n",surfIndex[surf],i,eventBuf[i]);
       }
     }

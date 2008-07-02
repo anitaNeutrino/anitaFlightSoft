@@ -55,6 +55,7 @@ int readAcqdConfig();
 int readArchivedConfig();
 int readLosdConfig();
 int readSipdConfig();
+int readGpsdConfig();
 int setEventDiskBitMask(int modOrSet, int bitMask);
 int setHkDiskBitMask(int modOrSet, int bitMask);
 int setPriDiskMask(int pri, int bitmask);
@@ -69,6 +70,7 @@ int setSipdPriorityBandwidth(int pri, int bw);
 int executePrioritizerdCommand(int command, int value);
 int executePlaybackCommand(int command, unsigned int value1, unsigned int value2);
 int executeAcqdRateCommand(int command, unsigned char args[8]);
+int executeGpsPhiMaskCommand(int command, unsigned char args[5]);
 int startNewRun();
 int getNewRunNumber();
 int getLatestEventNumber();
@@ -110,6 +112,13 @@ float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
 int losdBandwidths[NUM_PRIORITIES];
 int sipdBandwidths[NUM_PRIORITIES];
 
+//For GPS phi masking
+int numSources=1;
+float sourceLats[MAX_PHI_SOURCES]={0};
+float sourceLongs[MAX_PHI_SOURCES]={0};
+float sourceAlts[MAX_PHI_SOURCES]={0};
+float sourceDistKm[MAX_PHI_SOURCES]={0};
+int sourcePhiWidth[MAX_PHI_SOURCES]={0};
 
 int hkDiskBitMask;
 int eventDiskBitMask;
@@ -1006,25 +1015,27 @@ int executeCommand(CommandStruct_t *theCmd)
 	    return rawtime;
     case ACQD_RATE_COMMAND:
       return executeAcqdRateCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
-	case PRIORITIZERD_COMMAND:
-	    ivalue=theCmd->cmd[1]; //Command num
-	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
-	    return executePrioritizerdCommand(ivalue,ivalue2);
-	case PLAYBACKD_COMMAND:
-	    ivalue=theCmd->cmd[1]; //Command num	    
-	    utemp=(theCmd->cmd[2]);	    
-	    uvalue=utemp;
-	    utemp=(theCmd->cmd[3]);
-	    uvalue|=(utemp<<8);
-	    utemp=(theCmd->cmd[4]);
-	    uvalue|=(utemp<<16);
-	    utemp=(theCmd->cmd[5]);
-	    uvalue|=(utemp<<24);	    
-	    ivalue2=theCmd->cmd[6];//+(theCmd->cmd[3]<<8); //command value
-	    return executePlaybackCommand(ivalue,uvalue,ivalue2);		    
-	case EVENTD_MATCH_GPS:
-	    ivalue=theCmd->cmd[1];
-	    if(ivalue<0 || ivalue>1) return -1;
+    case GPS_PHI_MASK_COMMAND:
+      return executeGpsPhiMaskCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
+    case PRIORITIZERD_COMMAND:
+      ivalue=theCmd->cmd[1]; //Command num
+      ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
+      return executePrioritizerdCommand(ivalue,ivalue2);
+    case PLAYBACKD_COMMAND:
+      ivalue=theCmd->cmd[1]; //Command num	    
+      utemp=(theCmd->cmd[2]);	    
+      uvalue=utemp;
+      utemp=(theCmd->cmd[3]);
+      uvalue|=(utemp<<8);
+      utemp=(theCmd->cmd[4]);
+      uvalue|=(utemp<<16);
+      utemp=(theCmd->cmd[5]);
+      uvalue|=(utemp<<24);	    
+      ivalue2=theCmd->cmd[6];//+(theCmd->cmd[3]<<8); //command value
+      return executePlaybackCommand(ivalue,uvalue,ivalue2);		    
+    case EVENTD_MATCH_GPS:
+      ivalue=theCmd->cmd[1];
+      if(ivalue<0 || ivalue>1) return -1;
 	    configModifyInt("Eventd.config","eventd","tryToMatchGps",ivalue,&rawtime);	
 	    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
 	    return rawtime;	
@@ -1644,6 +1655,163 @@ int executePrioritizerdCommand(int command, int value)
     return rawtime;
 }
 
+int executeGpsPhiMaskCommand(int command, unsigned char args[5])
+{
+  int retVal=0;
+  unsigned int uvalue[4]={0};
+  unsigned int utemp=0;
+  int ivalue[4]={0};
+  float fvalue=0;
+  time_t rawtime;
+  switch(command) {
+  case GPS_PHI_MASK_ENABLE: 	    
+    ivalue[0]=(int)args[0];
+    if(ivalue[0]==1) {
+      //Enable gpsPhiMasking
+      configModifyInt("GPSd.config","sourceList","enableGpsPhiMasking",1,&rawtime);
+      retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+      if(retVal) return 0;
+    }
+    else {
+      //Disable gpsPhiMasking
+      configModifyInt("GPSd.config","sourceList","enableGpsPhiMasking",0,&rawtime);
+      configModifyInt("Acqd.config","thresholds","gpsPhiTrigMask",0,&rawtime);
+      retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+      retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+      if(retVal) return 0;
+    }
+    return rawtime;
+ case GPS_PHI_MASK_UPDATE_PERIOD: 
+   uvalue[0]=args[0]+(args[1]<<8);	    
+   configModifyInt("GPSd.config","sourceList","phiMaskingPeriod",uvalue[0],&rawtime);
+   retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+   if(retVal) return 0;
+   return rawtime;
+ case GPS_PHI_MASK_SET_SOURCE_LATITUDE: 
+   readGpsdConfig();
+   ivalue[0]=args[0]; //Source number
+   if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
+   if(ivalue[0]<=0) return 0;
+   utemp=(args[0]);	    
+   uvalue[0]=utemp;
+   utemp=(args[1]);
+   uvalue[0]|=(utemp<<8);
+   utemp=(args[2]);
+   uvalue[0]|=(utemp<<16);
+   utemp=(args[3]);
+   uvalue[0]|=(utemp<<24);
+   
+   fvalue=((float)uvalue[0])/1e7;
+   fvalue-=180; //The latitude   
+   if(ivalue[0]>numSources) {
+     numSources=ivalue[0];
+     configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
+   }
+   sourceLats[ivalue[0]-1]=fvalue;     
+   configModifyFloatArray("GPSd.config","sourceList","sourceLats",sourceLats,MAX_PHI_SOURCES,&rawtime);
+   retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+   if(retVal) return 0;
+   return rawtime;
+ case GPS_PHI_MASK_SET_SOURCE_LONGITUDE: 
+   readGpsdConfig();
+   ivalue[0]=args[0]; //Source number
+   if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
+   if(ivalue[0]<=0) return 0;
+   utemp=(args[0]);	    
+   uvalue[0]=utemp;
+   utemp=(args[1]);
+   uvalue[0]|=(utemp<<8);
+   utemp=(args[2]);
+   uvalue[0]|=(utemp<<16);
+   utemp=(args[3]);
+   uvalue[0]|=(utemp<<24);
+   
+   fvalue=((float)uvalue[0])/1e7;
+   fvalue-=180; //The longitude   
+   if(ivalue[0]>numSources) {
+     numSources=ivalue[0];
+     configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
+   }
+   sourceLongs[ivalue[0]-1]=fvalue;     
+   configModifyFloatArray("GPSd.config","sourceList","sourceLongs",sourceLongs,MAX_PHI_SOURCES,&rawtime);
+   retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+   if(retVal) return 0;
+   return rawtime;
+ case GPS_PHI_MASK_SET_SOURCE_ALTITUDE: 
+   readGpsdConfig();
+   ivalue[0]=args[0]; //Source number
+   if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
+   if(ivalue[0]<=0) return 0;
+   utemp=(args[0]);	    
+   uvalue[0]=utemp;
+   utemp=(args[1]);
+   uvalue[0]|=(utemp<<8);
+   utemp=(args[2]);
+   uvalue[0]|=(utemp<<16);
+   utemp=(args[3]);
+   uvalue[0]|=(utemp<<24);
+   
+   fvalue=((float)uvalue[0])/1e3; //Altitude
+   if(ivalue[0]>numSources) {
+     numSources=ivalue[0];
+     configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
+   }
+   sourceAlts[ivalue[0]-1]=fvalue;     
+   configModifyFloatArray("GPSd.config","sourceList","sourceAlts",sourceAlts,MAX_PHI_SOURCES,&rawtime);
+   retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+   if(retVal) return 0;
+   return rawtime;
+ case GPS_PHI_MASK_SET_SOURCE_HORIZON: 
+   readGpsdConfig();
+   ivalue[0]=args[0]; //Source number
+   if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
+   if(ivalue[0]<=0) return 0;
+   utemp=(args[0]);	    
+   uvalue[0]=utemp;
+   utemp=(args[1]);
+   uvalue[0]|=(utemp<<8);
+   utemp=(args[2]);
+   uvalue[0]|=(utemp<<16);
+   utemp=(args[3]);
+   uvalue[0]|=(utemp<<24);
+   
+   fvalue=((float)uvalue[0])/1e3; //Horizon
+   fvalue-=180; //The latitude   
+   if(ivalue[0]>numSources) {
+     numSources=ivalue[0];
+     configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
+   }
+   sourceDistKm[ivalue[0]-1]=fvalue;     
+   configModifyFloatArray("GPSd.config","sourceList","sourceDistKm",sourceDistKm,MAX_PHI_SOURCES,&rawtime);
+   retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+   if(retVal) return 0;
+   return rawtime;
+ case GPS_PHI_MASK_SET_SOURCE_WIDTH: 
+   readGpsdConfig();
+   ivalue[0]=args[0]; //Source number
+   if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
+   if(ivalue[0]<=0) return 0;
+   utemp=(args[0]); //Phi Width
+   if(utemp>8) return 0;
+ 
+   if(ivalue[0]>numSources) {
+     numSources=ivalue[0];
+     configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
+   }
+   sourcePhiWidth[ivalue[0]-1]=utemp;     
+   configModifyIntArray("GPSd.config","sourceList","sourceDistKm",sourcePhiWidth,MAX_PHI_SOURCES,&rawtime);
+   retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+   if(retVal) return 0;
+   return rawtime;
+  default:
+    fprintf(stderr,"Unknown GPS Phi Mask Command -- %d\n",command);
+    syslog(LOG_ERR,"Unknown GPS Phi Mask Command -- %d\n",command);
+    return 0;
+  }
+  return 0;
+}
+
+
 int executeAcqdRateCommand(int command, unsigned char args[8])
 {
   int retVal=0;
@@ -1804,6 +1972,17 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 	configModifyInt("Acqd.config","thresholds","setGlobalThreshold",1,&rawtime);
       else
 	configModifyInt("Acqd.config","thresholds","setGlobalThreshold",0,&rawtime);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
+      if(retVal) return 0;
+      return rawtime;
+    case ACQD_RATE_SET_GPS_PHI_MASK: 	    
+      utemp=(args[0]);	    
+      uvalue[0]=utemp;
+      utemp=(args[1]);
+      uvalue[0]|=(utemp<<8);
+      syslog(LOG_INFO,"ACQD_RATE_SET_GPS_PHI_MASK: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
+      
+      configModifyUnsignedInt("Acqd.config","thresholds","gpsPhiMask",uvalue[0],&rawtime);
       retVal=sendSignal(ID_ACQD,SIGUSR1);
       if(retVal) return 0;
       return rawtime;
@@ -2475,6 +2654,84 @@ int readLosdConfig()
     else {
 	eString=configErrorString (status) ;
 	syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
+    }
+    
+    return status;
+}
+
+
+int readGpsdConfig() 
+/* Load Gpsd config stuff */
+{
+    /* Config file thingies */
+    int status=0,tempNum=0;
+    char* eString ;
+    KvpErrorCode kvpStatus;
+    kvpReset();
+    status = configLoad ("GPSd.config","sourceList") ;
+    if(status == CONFIG_E_OK) {
+      numSources=kvpGetInt("numSources",0);
+      tempNum=MAX_PHI_SOURCES;
+      kvpStatus = kvpGetFloatArray("sourceLats",
+				 sourceLats,&tempNum);	
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetIntArray(sourceLats): %s",
+	       kvpErrorString(kvpStatus));
+	if(printToScreen)
+	  fprintf(stderr,"kvpGetIntArray(sourceLats): %s\n",
+		  kvpErrorString(kvpStatus));
+      }
+
+      tempNum=MAX_PHI_SOURCES;
+      kvpStatus = kvpGetFloatArray("sourceLongs",
+				 sourceLongs,&tempNum);	
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetIntArray(sourceLongs): %s",
+	       kvpErrorString(kvpStatus));
+	if(printToScreen)
+	  fprintf(stderr,"kvpGetIntArray(sourceLongs): %s\n",
+		  kvpErrorString(kvpStatus));
+      }
+
+      tempNum=MAX_PHI_SOURCES;
+      kvpStatus = kvpGetFloatArray("sourceAlts",
+				 sourceAlts,&tempNum);	
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetIntArray(sourceAlts): %s",
+	       kvpErrorString(kvpStatus));
+	if(printToScreen)
+	  fprintf(stderr,"kvpGetIntArray(sourceAlts): %s\n",
+		  kvpErrorString(kvpStatus));
+      }
+
+      tempNum=MAX_PHI_SOURCES;
+      kvpStatus = kvpGetFloatArray("sourceDistKm",
+				 sourceDistKm,&tempNum);	
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetIntArray(sourceDistKm): %s",
+	       kvpErrorString(kvpStatus));
+	if(printToScreen)
+	  fprintf(stderr,"kvpGetIntArray(sourceDistKm): %s\n",
+		  kvpErrorString(kvpStatus));
+      }
+
+      tempNum=MAX_PHI_SOURCES;
+      kvpStatus = kvpGetIntArray("sourcePhiWidth",
+				 sourcePhiWidth,&tempNum);	
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetIntArray(sourcePhiWidth): %s",
+	       kvpErrorString(kvpStatus));
+	if(printToScreen)
+	  fprintf(stderr,"kvpGetIntArray(sourcePhiWidth): %s\n",
+		  kvpErrorString(kvpStatus));
+      }
+
+      
+
+    }
+    else {
+	eString=configErrorString (status) ;
+	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
     }
     
     return status;

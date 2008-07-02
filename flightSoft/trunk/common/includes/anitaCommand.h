@@ -149,6 +149,7 @@ typedef enum {
     //    ACQD_SET_RATE_SERVO = 249, //Was 3
     ACQD_RATE_COMMAND = 250, //Guess at 10 for now
     EVENTD_MATCH_GPS = 251,
+    GPS_PHI_MASK_COMMAND = 252,
     PRIORITIZERD_COMMAND =253,  
     PLAYBACKD_COMMAND =254    
 } CommandCode_t;
@@ -167,7 +168,8 @@ typedef enum {
   ACQD_RATE_SET_DYNAMIC_PHI_MASK_UNDER=11,  //Set under rate and under window
   ACQD_RATE_SET_DYNAMIC_ANT_MASK_OVER=12, //Set over rate and over window
   ACQD_RATE_SET_DYNAMIC_ANT_MASK_UNDER=13, //Set under rate and under window
-  ACQD_RATE_SET_GLOBAL_THRESHOLD=14
+  ACQD_RATE_SET_GLOBAL_THRESHOLD=14,
+  ACQD_RATE_SET_GPS_PHI_MASK=15
 } AcqdRateCommandCode_t;
 
 typedef enum {
@@ -197,7 +199,19 @@ typedef enum {
     PRI_FFT_PEAK_WINDOW_R=24,
     PRI_NU_CUT=25
 } PrioritizerdCommandCode_t;
-    
+  
+typedef enum {
+  GPS_PHI_MASK_ENABLE=1,
+  GPS_PHI_MASK_UPDATE_PERIOD=2,
+  GPS_PHI_MASK_SET_SOURCE_LATITUDE=3,
+  GPS_PHI_MASK_SET_SOURCE_LONGITUDE=4,
+  GPS_PHI_MASK_SET_SOURCE_ALTITUDE=5,
+  GPS_PHI_MASK_SET_SOURCE_HORIZON=6,
+  GPS_PHI_MASK_SET_SOURCE_WIDTH=7
+} GpsPhiMaskCommandCode_t;
+  
+
+  
 typedef enum {
     PLAY_GET_EVENT=1,
     PLAY_START_PRI=2,

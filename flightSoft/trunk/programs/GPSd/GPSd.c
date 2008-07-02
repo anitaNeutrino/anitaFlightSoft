@@ -22,6 +22,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "serialLib/serialLib.h"
 #include "utilLib/utilLib.h"
+#include "mapLib/mapLib.h"
 #include "includes/anitaStructures.h"
 
 // Forward declarations
@@ -58,6 +59,7 @@ int tryToStartNtpd();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 void writeStartTest(time_t startTime);
+void checkPhiSources(GpsAdu5PatStruct_t *patPtr) ;
 
 // Definitions
 #define LEAP_SECONDS 14 //Need to check
@@ -65,6 +67,7 @@ void writeStartTest(time_t startTime);
 #define ADU5_DATA_SIZE 1024
 #define ADU5_RIO "$PASHR,RIO,ADU5-0,____,YG01,D-P12-X--L-,800952(A)AD520033507*33"
 #define G12_RIO "$PASHR,RIO,G12,XM06,,TTOPU--LEGM_C_,VC7200228022*49"
+
 
 // File desciptors for GPS serial ports
 int fdG12,fdAdu5A,fdAdu5B;//,fdMag
@@ -124,6 +127,16 @@ int adu5bGgaTelemEvery=10;
 float adu5bRelV12[3]={0};
 float adu5bRelV13[3]={0};
 float adu5bRelV14[3]={0};
+
+//Stuff for GPS Phi Masking
+int enableGpsPhiMasking=0;
+int phiMaskingPeriod=0;
+int numSources=1;
+float sourceLats[MAX_PHI_SOURCES]={0};
+float sourceLongs[MAX_PHI_SOURCES]={0};
+float sourceAlts[MAX_PHI_SOURCES]={0};
+float sourceDistKm[MAX_PHI_SOURCES]={0};
+int sourcePhiWidth[MAX_PHI_SOURCES]={0};
 
 //Output stuff
 int hkDiskBitMask;
@@ -294,11 +307,12 @@ int readConfigFile()
 /* Load GPSd config stuff */
 {
     /* Config file thingies */
-    int status=0;
+    int kvpStatus=0;
+    int tempNum=0;
     char* eString ;
     kvpReset();
-    status = configLoad ("GPSd.config","output") ;
-    if(status == CONFIG_E_OK) {
+    kvpStatus = configLoad ("GPSd.config","output") ;
+    if(kvpStatus == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",-1);
 	verbosity=kvpGetInt("verbosity",-1);
 	if(printToScreen<0) {
@@ -308,12 +322,12 @@ int readConfigFile()
 	}
     }
     else {
-	eString=configErrorString (status) ;
+	eString=configErrorString (kvpStatus) ;
 	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
     }
     kvpReset();
-    status = configLoad ("GPSd.config","g12");
-    if(status == CONFIG_E_OK) {
+    kvpStatus = configLoad ("GPSd.config","g12");
+    if(kvpStatus == CONFIG_E_OK) {
 	g12EnableTtt=kvpGetInt("enableTtt",1);
 	g12TttEpochRate=kvpGetInt("tttEpochRate",20);
 	if(g12TttEpochRate!=20 && g12TttEpochRate!=10 &&
@@ -339,12 +353,12 @@ int readConfigFile()
 	g12ClockSkew=kvpGetInt("clockSkew",0); // Time difference in seconds
     }
     else {
-	eString=configErrorString (status) ;
+	eString=configErrorString (kvpStatus) ;
 	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
     }
     kvpReset();
-    status = configLoad ("GPSd.config","adu5a") ;    
-    if(status == CONFIG_E_OK) {
+    kvpStatus = configLoad ("GPSd.config","adu5a") ;    
+    if(kvpStatus == CONFIG_E_OK) {
 	adu5aEnableTtt=kvpGetInt("enableTtt",1);
 	adu5aSatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	adu5aZdaPeriod=kvpGetInt("zdaPeriod",600); // in seconds
@@ -369,12 +383,12 @@ int readConfigFile()
 //	printf("v14 %f %f %f\n",adu5aRelV14[0],adu5aRelV14[1],adu5aRelV14[2]);
     }
     else {
-	eString=configErrorString (status) ;
+	eString=configErrorString (kvpStatus) ;
 	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
     }
     kvpReset();
-    status = configLoad ("GPSd.config","adu5b") ;    
-    if(status == CONFIG_E_OK) {
+    kvpStatus = configLoad ("GPSd.config","adu5b") ;    
+    if(kvpStatus == CONFIG_E_OK) {
 	adu5bEnableTtt=kvpGetInt("enableTtt",1);
 	adu5bSatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	adu5bZdaPeriod=kvpGetInt("zdaPeriod",600); // in seconds
@@ -399,10 +413,67 @@ int readConfigFile()
 //	printf("v14 %f %f %f\n",adu5bRelV14[0],adu5bRelV14[1],adu5bRelV14[2]);
     }
     else {
-	eString=configErrorString (status) ;
+	eString=configErrorString (kvpStatus) ;
 	syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
     }
-    return status;
+    kvpReset();
+    kvpStatus = configLoad ("GPSd.config","sourceList") ;    
+    if(kvpStatus == CONFIG_E_OK) {
+      //Stuff for GPS Phi Masking
+      enableGpsPhiMasking=kvpGetInt("enableGpsPhiMasking",0);
+      phiMaskingPeriod=kvpGetInt("phiMaskingPeriod",0);
+      numSources=kvpGetInt("numSources",1);
+      
+      tempNum=MAX_PHI_SOURCES;	       
+      kvpStatus = kvpGetFloatArray("sourceLats",sourceLats,&tempNum);
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetFloatArray(%s): sourceLats",
+	       kvpErrorString(kvpStatus));
+	fprintf(stderr,"kvpGetFloatArray(%s): sourceLats\n",
+		kvpErrorString(kvpStatus));
+      }
+      
+      tempNum=MAX_PHI_SOURCES;	       
+      kvpStatus = kvpGetFloatArray("sourceLongs",sourceLongs,&tempNum);
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetFloatArray(%s): sourceLongs",
+	       kvpErrorString(kvpStatus));
+	fprintf(stderr,"kvpGetFloatArray(%s): sourceLongs\n",
+		kvpErrorString(kvpStatus));
+      }
+      
+      tempNum=MAX_PHI_SOURCES;	       
+      kvpStatus = kvpGetFloatArray("sourceAlts",sourceAlts,&tempNum);
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetFloatArray(%s): sourceAlts",
+	       kvpErrorString(kvpStatus));
+	fprintf(stderr,"kvpGetFloatArray(%s): sourceAlts\n",
+		kvpErrorString(kvpStatus));
+      }      
+      
+      tempNum=MAX_PHI_SOURCES;	       
+      kvpStatus = kvpGetFloatArray("sourceDistKm",sourceDistKm,&tempNum);
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetFloatArray(%s): sourceDistKm",
+	       kvpErrorString(kvpStatus));
+	fprintf(stderr,"kvpGetFloatArray(%s): sourceDistKm\n",
+		kvpErrorString(kvpStatus));
+      }      
+      
+      tempNum=MAX_PHI_SOURCES;	       
+      kvpStatus = kvpGetIntArray("sourcePhiWidth",sourcePhiWidth,&tempNum);
+      if(kvpStatus!=KVP_E_OK) {
+	syslog(LOG_WARNING,"kvpGetFloatArray(%s): sourcePhiWidth",
+	       kvpErrorString(kvpStatus));
+	fprintf(stderr,"kvpGetFloatArray(%s): sourcePhiWidth\n",
+		kvpErrorString(kvpStatus));
+      } 
+    }
+    else {
+      eString=configErrorString (kvpStatus) ;
+      syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
+    } 
+    return kvpStatus;
 }
 
 int openDevices()
@@ -1538,6 +1609,7 @@ void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
 	//Do something
     }	 
   }
+  checkPhiSources(&thePat);
     
 }
 
@@ -1939,3 +2011,69 @@ void writeStartTest(time_t startTime)
   printf("\tTSTmask:\t%#x\n",startStruct.tstBitMask);
   
 }
+
+
+void checkPhiSources(GpsAdu5PatStruct_t *patPtr) {
+  static time_t lastPhiUpdate=0;
+  static unsigned short lastGpsPhiMask=0;
+  unsigned short gpsPhiMask=0;
+  int sourceIndex=0,phiIndex=0;
+  int hotPhiSector[MAX_PHI_SOURCES]={0};
+  double phiDist[MAX_PHI_SOURCES]={0};
+  CommandStruct_t theCmd;
+    
+
+
+  if(!enableGpsPhiMasking) return;
+  if(patPtr->unixTime - lastPhiUpdate < phiMaskingPeriod) return;
+  if(patPtr->heading<0 || patPtr->heading>360) return;
+  if(patPtr->attFlag) return;
+  double anitaLatLonAlt[3]={patPtr->latitude,patPtr->longitude,patPtr->altitude};
+  double anitaHPR[3]={patPtr->heading,patPtr->pitch,patPtr->roll};
+  double sourceLatLonAlt[3]={0};
+
+
+
+  for(sourceIndex=0;sourceIndex<numSources;sourceIndex++) {
+    sourceLatLonAlt[0]=sourceLats[sourceIndex];
+    sourceLatLonAlt[1]=sourceLongs[sourceIndex];
+    sourceLatLonAlt[2]=sourceAlts[sourceIndex];
+    getSourcePhiAndDistance(anitaLatLonAlt,anitaHPR,sourceLatLonAlt,
+			    &hotPhiSector[sourceIndex],&phiDist[sourceIndex]);
+    
+    if(phiDist[sourceIndex]<1e3*sourceDistKm[sourceIndex]) {
+      //Got a source inside our horizon
+      printf("Found source at %f %f %f --- Phi %d -- Dist %f\n",
+	     sourceLatLonAlt[0],sourceLatLonAlt[1],sourceLatLonAlt[2],
+	     hotPhiSector[sourceIndex],phiDist[sourceIndex]/1e3);
+    }
+    
+    //Now need to add it to phiMask
+    //It is either 1,3 (width=2),5 (width=3),7 (width=4),9 sectors wide
+    for(phiIndex=0;phiIndex<PHI_SECTORS;phiIndex++) {
+      if(getPhiSeparation(phiIndex,hotPhiSector[sourceIndex])<sourcePhiWidth[sourceIndex]) {
+	gpsPhiMask |= (1<<phiIndex);
+      }
+    }       
+  }
+
+  if(gpsPhiMask|=lastGpsPhiMask) {
+    //Wahey get to set a new mask
+    syslog(LOG_INFO,"GPSd is going to update gpsPhiMask from %#x to %#x\n",
+	   lastGpsPhiMask,gpsPhiMask);
+    fprintf(stderr,"GPSd is going to update gpsPhiMask from %#x to %#x\n",
+	    lastGpsPhiMask,gpsPhiMask);
+
+    //How do we do it?
+
+    memset(&theCmd,0,sizeof(CommandStruct_t));
+    theCmd.numCmdBytes=10;
+    theCmd.cmd[0]=ACQD_RATE_COMMAND;
+    theCmd.cmd[1]=ACQD_RATE_SET_GPS_PHI_MASK;
+    theCmd.cmd[2]=gpsPhiMask&0xff; //gps phi mask
+    theCmd.cmd[3]=(gpsPhiMask&0xff00)>>8; //gps phi mask
+    writeCommandAndLink(&theCmd);
+    lastGpsPhiMask=gpsPhiMask;
+  }
+}
+  
