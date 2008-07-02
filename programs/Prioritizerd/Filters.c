@@ -79,11 +79,18 @@ void HornMatchedFilterAll(AnitaInstrumentF_t *in,
 	       HornMatchedFilter(&(in->botRing[i][j]),&(out->botRing[i][j]));
 	  }
      }
+#ifdef ANITA2
+     for (i=0;i<8;i++){
+	  for (j=0;j<2;j++){
+	       HornMatchedFilter(&(in->nadir[i][j]),&(out->nadir[i][j]));
+	  }
+     }
+#else //ANITA2
      for (i=0;i<4;i++){
 	  HornMatchedFilter(&(in->bicone[i]),&(out->bicone[i]));
 	  HornMatchedFilter(&(in->discone[i]),&(out->discone[i]));
      }
-			    
+#endif // not ANITA2			    
 }
 
 void HornMatchedFilterSmooth(TransientChannelF_t *inch,TransientChannelF_t *outch)
@@ -149,10 +156,17 @@ void HornMatchedFilterAllSmooth(AnitaInstrumentF_t *in,
 	       HornMatchedFilterSmooth(&(in->botRing[i][j]),&(out->botRing[i][j]));
 	  }
      }
+#ifdef ANITA2
+     for (i=0;i<8;i++){
+	  for (j=0;j<2;j++){
+	       HornMatchedFilterSmooth(&(in->nadir[i][j]),&(out->nadir[i][j]));
+	  }
+     }
+#else //ANITA2
      for (i=0;i<4;i++){
 	  HornMatchedFilterSmooth(&(in->bicone[i]),&(out->bicone[i]));
 	  HornMatchedFilterSmooth(&(in->discone[i]),&(out->discone[i]));
      }
-			    
+#endif //not ANITA2			    
 }
      
