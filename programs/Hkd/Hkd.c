@@ -1124,8 +1124,8 @@ void prettyPrintTempLookupFile()
   fprintf(outFile,"\nSBS\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n",
 	  ((float)sbsData.temp[0])*4e-2,
 	  ((float)sbsData.temp[1])*4e-2,
-	  ((float)sbsData.temp[2])*4e-2,
-	  ((float)sbsData.temp[3])*4e-2);
+	  15+((float)sbsData.temp[2])*4e-2,
+	  15+((float)sbsData.temp[3])*4e-2);
 
 
   fclose(outFile);
