@@ -17,6 +17,8 @@ extern "C" {
 #include "includes/anitaMapping.h"
 #include "includes/anitaStructures.h"
 
+  int getPhiSeparation(int phiA, int phiB);
+
   void fillSurfFromPhiAndTierAndPol(SurfAntMapStruct_t *mapPtr);
   void fillSurfFromAntAndPol(SurfAntMapStruct_t *mapPtr);
   void fillPhiFromSurf(SurfAntMapStruct_t *mapPtr);
@@ -42,6 +44,16 @@ extern "C" {
   //for given latitude, longitude, altitude, heading, pitch and roll
   void aXYZToANWU(double aXYZ[3], double hpr[3], double aNWU[3]);
   void aNWUToAXYZ(double aNWU[3], double hpr[3], double aXYZ[3]);
+
+  //Converts between latitude,longitude and altitude and WGS XYZ my way
+  void convertLtLgAlToGeoXYZ(double latLonAlt[3], double xyz[3]);
+  void getThetaAndPhiPayload(double balloonLatLonAlt[3], double balloonHpr[3],
+			     double sourceLatLonAlt[3], double thetaPhiDist[3]);
+  void rotateX(double input[3], double output[3],double angle);
+  void rotateY(double input[3], double output[3],double angle);
+  void rotateZ(double input[3], double output[3],double angle);
+  double getThetaFromLat(double lat);
+  double getPhiFromLon(double lon);
 
 #ifdef __cplusplus
 }

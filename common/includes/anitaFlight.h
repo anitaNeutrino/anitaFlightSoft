@@ -60,7 +60,7 @@
 //GPS stuff
 #define MAX_SATS 12
 #define MAX_CMD_LENGTH 20
-
+#define MAX_PHI_SOURCES 20
 
 //Acromag stuff
 #define CHANS_PER_IP320 40
