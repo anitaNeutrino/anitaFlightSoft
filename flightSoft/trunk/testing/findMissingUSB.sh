@@ -2,13 +2,13 @@
 dev=/dev/
 name=bigint
 have=0
-echo "Drives 15,17,18 and 20 are not connected"
+echo "Drives 20,32,33,and 35 are not connected"
 for (( i=1; i<10; i++))
 do
   have=0
-  for drive in sdg1 sdh1 sdi1 sdj1 sdk1 sdl1 sdm1 sdn1 sdo1 sdp1 sdq1 sdr1 sds1 sdt1 sdu1 sdv1 sdw1 sdx1 sdy1 sdz1 sdaa1 sdab1 sdac1 sdad1 sdae1 sdaf1 sdag1 sdah1 sdai1 sdaj1 sdak1
+  for drive in sdo1 sdp1 sdq1 sdr1 sds1 sdt1 sdu1 sdv1 sdw1 sdx1 sdy1 sdz1 sdaa1 sdab1 sdac1 sdad1 sdae1 sdaf1 sdag1 sdah1 sdai1 sdaj1 sdak1 sdal1 sdam1 sdan1 sdao1 sdap1 sdaq1 sdar1 sdas1
     do
-    label=`e2label "$dev$drive"`
+    label=`sudo e2label "$dev$drive"`
     #echo $label
     dname="$name""0""$i"
     #echo $dname
@@ -29,7 +29,7 @@ for ((j=10; j<36; j++))
   have=0
     for drive in sdg1 sdh1 sdi1 sdj1 sdk1 sdl1 sdm1 sdn1 sdo1 sdp1 sdq1 sdr1 sds1 sdt1 sdu1 sdv1 sdw1 sdx1 sdy1 sdz1 sdaa1 sdab1 sdac1 sdad1 sdae1 sdaf1 sdag1 sdah1 sdai1 sdaj1 sdak1
     do
-      label=`e2label "$dev$drive"`
+      label=`sudo e2label "$dev$drive"`
       #echo $label
       dname="$name$j"
       #echo $dname

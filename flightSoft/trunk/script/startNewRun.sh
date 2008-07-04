@@ -13,32 +13,40 @@ if [ -d /mnt/pmcdata/current ] ; then
 fi
 ln -sf /mnt/pmcdata/run${run} /mnt/pmcdata/current
 
-mkdir /mnt/satamini/run${run}
-rm -f /mnt/satamini/current
-if [ -d /mnt/satamini/current ] ; then
+
+disabledMini=`getConfigValue anitaSoft.config global disableSatamini`
+if [ $disabledMini -eq 1 ] ; then
+    echo "Satamini disk disabled"   
+else 
+    mkdir /mnt/satamini/run${run}
+    rm -f /mnt/satamini/current
+    if [ -d /mnt/satamini/current ] ; then
 	echo "Moving /mnt/satamini/current"
 	mv /mnt/satamini/current/ /mnt/satamini/current.run${run}
+    fi
+    ln -sf /mnt/satamini/run${run} /mnt/satamini/current
 fi
-ln -sf /mnt/satamini/run${run} /mnt/satamini/current
 
-#mkdir /mnt/satablade/run${run}
-#rm -f /mnt/satablade/current
-#if [ -d /mnt/satablade/current ] ; then
-#	echo "Moving /mnt/satablade/current"
-#	mv /mnt/satablade/current /mnt/satablade/current.run${run}
-	    
-#fi
-#ln -sf /mnt/satablade/run${run} /mnt/satablade/current
+disabledBlade=`getConfigValue anitaSoft.config global disableSatablade`
+if [ $disabledBlade -eq 1 ] ; then
+    echo "Satamini disk disabled"
+else 
+    mkdir /mnt/satablade/run${run}
+    rm -f /mnt/satablade/current
+    if [ -d /mnt/satablade/current ] ; then
+	echo "Moving /mnt/satablade/current"
+	mv /mnt/satablade/current /mnt/satablade/current.run${run}
+	
+    fi
+    ln -sf /mnt/satablade/run${run} /mnt/satablade/current
+fi
 
-#mkdir /mnt/usbint/run${run}
-#rm -f /mnt/usbint/current
-#if [ -d /mnt/usbint/current ] ; then
-#	echo "Moving /mnt/usbint/current"	
-#	mv /mnt/usbint/current /mnt/usbint/current.run${run}
 
-#fi
-#ln -sf /mnt/usbint/run${run} /mnt/usbint/current
-
+disabledUsb=`getConfigValue anitaSoft.config global disableUsb`
+if [ $disabledUsb -eq 1 ] ; then
+    echo "USB disk disabled"
+else  
+    echo "Need to fix this"
 #mkdir /mnt/usbext/run${run}
 #rm -f /mnt/usbext/current
 #if [ -d /mnt/usbext/current ] ; then
@@ -46,6 +54,7 @@ ln -sf /mnt/satamini/run${run} /mnt/satamini/current
 #	mv /mnt/usbext/current /mnt/usbext/current.run${run} 
 #fi
 #ln -sf /mnt/usbext/run${run} /mnt/usbext/current
+fi
 
 rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd
 

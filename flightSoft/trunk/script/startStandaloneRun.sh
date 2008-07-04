@@ -17,6 +17,9 @@ rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
 echo "Making new directories"
 #CmdTest 4
 #sleep 2
+
+
+
 /home/anita/flightSoft/bin/startNewRun.sh
 ls /mnt/satamini/current -l
 mkdir /mnt/data/current/log
