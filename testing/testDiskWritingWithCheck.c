@@ -84,7 +84,12 @@ void fillEventGarbage(PedSubbedEventBody_t *psevPtr) {
 /* Channel Stuff */
    for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
        for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
-	   value=-2094+(4096.0*rand())/RAND_MAX;
+	   value=-2093+(4096.0*rand())/RAND_MAX;
+//	value=2093;
+//	if(samp%3==0)
+//		value+=samp*(samp%4);
+//	else
+//		value-=samp*(samp%4);	
 //	   printf("%d\n",value);
 	   psevPtr->channel[chan].data[samp]=value;
        }
