@@ -9,6 +9,8 @@
 #ifndef UTILLIB_H
 #define UTILLIB_H
 
+#define USE_ZLIB_EVENTS
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,8 +51,13 @@ extern "C" {
     } AnitaHkWriterStruct_t;
 
     typedef struct {
+#ifdef USE_ZLIB_EVENTS
+      	gzFile currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
+	gzFile currentHeaderFilePtr[DISK_TYPES];
+#else
 	FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
 	FILE* currentHeaderFilePtr[DISK_TYPES];
+#endif
 	unsigned int writeBitMask; //1-satablade, 2-satamini,3-usb,4-neobrick,5-pmc
 	unsigned int satabladeCloneMask;
 	unsigned int sataminiCloneMask;
@@ -136,6 +143,9 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
     int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask,int baseInd);
     int zipBufferedFileAndMove(char *nonBufFilename);
     int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask,int baseInd);
+  int cloneAndMoveBufferedFile(char *nonBufFilename,unsigned int cloneMask, int baseInd);
+  int cloneFile(char *filename,unsigned int cloneMask, int baseInd);
+  int moveBufferedFile(char *nonBufFilename,unsigned int cloneMask, int baseInd);
     int makeZippedPacket(char *input, unsigned int numBytes, char *output, unsigned int numBytesOut);
     int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned int numBytesOut);
 // Signal handling routines
