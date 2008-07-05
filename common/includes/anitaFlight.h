@@ -83,7 +83,7 @@
 #define G12A_DEV_NAME "/dev/ttySTDRV002_5"
 #define G12B_DEV_NAME "/dev/ttySTDRV002_6" //These are the two ports
 #define ADU5A_DEV_NAME "/dev/ttySTDRV002_4"
-#define ADU5B_DEV_NAME "/dev/ttySTDRV002_1"  //These are the two ADU5s
+#define ADU5B_DEV_NAME "/dev/ttySTDRV002_0"  //These are the two ADU5s
 #define MAGNETOMETER_DEV_NAME "/dev/ttySTDRV002_3"
 
 #define NUM_PRIORITIES 10
@@ -169,7 +169,7 @@
 #endif
 
 
-#define DISK_BUFFER_DIR "/mnt/bitmicro/buffer"
+#define DISK_BUFFER_DIR "/tmp/buffer"
 
 //Index and pedestal dirs
 #define ANITA_INDEX_DIR "anita/index"

@@ -31,7 +31,7 @@ ProgramStateCode currentState;
 
 int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK};
 char *diskNames[DISK_TYPES]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT};
-int bufferDisk[DISK_TYPES]={0,0,0,0};
+int bufferDisk[DISK_TYPES]={0,1,1,0};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
 //    sync();
@@ -221,34 +221,39 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, An
     
 }
 
-#define USE_ZLIB_EVENTS
-int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
+#ifdef USE_ZLIB_EVENTS
+int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) 
+{
   //    sync();
-  int diskInd;
-  pid_t childPid;    
-  int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
-			      awsPtr->sataminiCloneMask,
-			      awsPtr->usbCloneMask,0};
-  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
-    if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
-    if(awsPtr->currentHeaderFilePtr[diskInd]) {
-      gzclose(awsPtr->currentHeaderFilePtr[diskInd]);
-      awsPtr->currentHeaderFilePtr[diskInd]=0;
-      if(bufferDisk[diskInd]) {
-	//Copy file to buffered location
-	cloneAndMoveBufferedFil(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
-	//	zipBufferedFileAndCloneAndMove(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
-      }
-      
-      if(awsPtr->currentEventFilePtr[diskInd]) {
-	gzclose(awsPtr->currentEventFilePtr[diskInd]);
-	awsPtr->currentEventFilePtr[diskInd]=0;
-	if(bufferDisk[diskInd]) {
-	  //Copy file to buffered location
-	  cloneFile(awsPtr->currentEventFileName[diskInd],cloneMasks[diskInd],diskInd);
+    int diskInd;    
+    int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
+				awsPtr->sataminiCloneMask,
+				awsPtr->usbCloneMask,0};
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+	if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
+	if(awsPtr->currentHeaderFilePtr[diskInd]) {
+	    gzflush(awsPtr->currentHeaderFilePtr[diskInd],Z_SYNC_FLUSH);
+	    gzclose(awsPtr->currentHeaderFilePtr[diskInd]);
+	    awsPtr->currentHeaderFilePtr[diskInd]=0;
+	    if(bufferDisk[diskInd]) {
+		//Copy file to buffered location
+		cloneAndMoveBufferedFile(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
+		//	zipBufferedFileAndCloneAndMove(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
+	    }	    
+	      
+	    
+	    if(awsPtr->currentEventFilePtr[diskInd]) {
+		gzflush(awsPtr->currentEventFilePtr[diskInd],Z_SYNC_FLUSH);
+		gzclose(awsPtr->currentEventFilePtr[diskInd]);
+		awsPtr->currentEventFilePtr[diskInd]=0;
+		if(bufferDisk[diskInd]) {
+		    //Copy file to buffered location
+		    cloneFile(awsPtr->currentEventFileName[diskInd],cloneMasks[diskInd],diskInd);
+		}
+	    }      
 	}
-      }      
     }
+    
     return 0;
 }
 #else
@@ -310,7 +315,7 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
 }
 #endif
 
-#define USE_ZLIB_EVENTS
+#ifdef USE_ZLIB_EVENTS
 int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
     int diskInd,cloneInd;
@@ -431,7 +436,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 	
 	if(errorCounter<100  && awsPtr->currentHeaderFilePtr[diskInd]) {
 	  //	  retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
-	  numObjs=gzwrite(outfile,buffer,numBytes);
+
 	  retVal=gzwrite(awsPtr->currentHeaderFilePtr[diskInd],hdPtr,sizeof(AnitaEventHeader_t));
 	  
 	  if(retVal<0) {
@@ -1838,7 +1843,7 @@ int cloneFile(char *filename,unsigned int cloneMask, int baseInd)
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
     sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
-    normalSingleWrite(buffer,cloneFilename,numBytesIn);
+    normalSingleWrite((unsigned char*)buffer,cloneFilename,numBytesIn);
   }
   free(buffer);
   return retVal;
@@ -1892,7 +1897,7 @@ int zipBufferedFileAndMove(char *filename) {
     sprintf(outputFilename,"%s.gz",filename);
     retVal=zippedSingleWrite((unsigned char*)buffer,bufferZippedFilename,numBytesIn);
     unlink(bufferFilename);
-    printf("move %s %s\n",bufferZippedFilename,outputFilename);
+//    printf("move %s %s\n",bufferZippedFilename,outputFilename);
     copyFileToFile(bufferZippedFilename,outputFilename);
 //    rename(bufferZippedFilename,outputFilename);
     free(buffer);
@@ -1903,7 +1908,6 @@ int zipBufferedFileAndMove(char *filename) {
 int moveBufferedFile(char *filename) {
   int retVal;
   char bufferFilename[FILENAME_MAX];
-  char outputFilename[FILENAME_MAX];
   unsigned int numBytesIn=0;
   sprintf(bufferFilename,"%s/%s",DISK_BUFFER_DIR,filename);
   char *buffer=readFile(bufferFilename,&numBytesIn);
@@ -1912,7 +1916,7 @@ int moveBufferedFile(char *filename) {
     free(buffer);
 	return -1;
   }    
-  normalSingleWrite(buffer,filename,numBytesIn);
+  normalSingleWrite((unsigned char*)buffer,filename,numBytesIn);
   //    rename(bufferZippedFilename,outputFilename);
   free(buffer);
   unlink(bufferFilename);
@@ -1942,12 +1946,12 @@ int cloneAndMoveBufferedFile(char *filename,unsigned int cloneMask, int baseInd)
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
       if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
       sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
-      normalSingleWrite(buffer,cloneFilename,numBytesIn);	
+      normalSingleWrite((unsigned char*)buffer,cloneFilename,numBytesIn);	
       printf("copy %s %s\n",bufferFilename,cloneFilename);
     }
     printf("move2 %s %s\n",bufferFilename,filename);
     //    rename(bufferZippedFilename,outputFilename);
-    normalSingleWrite(buffer,filename,numBytesIn);
+    normalSingleWrite((unsigned char*)buffer,filename,numBytesIn);
     free(buffer);
     unlink(bufferFilename);
     return retVal;

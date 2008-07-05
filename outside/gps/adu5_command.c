@@ -19,7 +19,7 @@
 #define COMMAND "$PASHS,ELM,0\r\n"  /* set elevation mask angle to 0 degree */
 
 int main() { 
-    char devName[]="/dev/ttyUSB0";
+    char devName[]="/dev/ttySTDRV002_0";
     int fd, i; 
     struct termios options;
     char buff[COMMAND_SIZE] = COMMAND;

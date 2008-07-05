@@ -24,8 +24,10 @@ void processGPSCommand(char *tempBuffer, int length);
 int breakdownTimeString(char *subString, int *hour, int *minute, int *second); 
 
 
+#define MYBAUDRATE B9600
+
 int main() { 
-    char devName[]="/dev/ttySTDRV002_5";
+    char devName[]="/dev/ttySTDRV002_0";
 
     int fd, i, retVal,currentIndex ; 
     struct termios options;
@@ -57,8 +59,8 @@ else
 /*  printf("%d %d %d %d %s %d %d\n",options.c_iflag,options.c_oflag,options.c_cflag,options.c_lflag,options.c_cc,options.c_ispeed,options.c_ospeed); */
 /*  printf("Here1\n"); */
 
-cfsetispeed(&options, BAUDRATE); //Set input speed 
-cfsetospeed(&options, BAUDRATE); //Set output speed 
+cfsetispeed(&options, MYBAUDRATE); //Set input speed 
+cfsetospeed(&options, MYBAUDRATE); //Set output speed 
 options.c_cflag &= ~PARENB; //Clear the parity bit 
 options.c_cflag &= ~CSTOPB; //Clear the stop bit 
 options.c_cflag &= ~CSIZE; //Clear the character size 
@@ -72,8 +74,9 @@ tcsetattr(fd, TCSANOW, &options);
  
  
 /* send the commands to G12 */
- strcat(buff, "$PASHS,NME,ALL,B,OFF\n");
- strcat(buff, "$PASHS,NME,ALL,A,OFF\n");
+strcat(buff, "$PASHS,INI\r\n");
+ strcat(buff, "$PASHS,NME,ALL,B,OFF\r\n");
+ strcat(buff, "$PASHS,NME,ALL,A,OFF\r\n");
  strcat(buff, "$PASHQ,PRT\r\n"); 
  strcat(buff, "$PASHQ,RIO\r\n");
  strcat(buff, "$PASHQ,BIT\r\n");
@@ -116,7 +119,7 @@ printf("\n");
      retVal=read(fd, data, DATA_SIZE);
 /*     printf("DATA SIZE %d\t%d\n",DATA_SIZE,retVal); */
      for(i=0; i < retVal; i++) {
- 	 printf("%c", data[i]); 
+// 	 printf("%c", data[i]); 
 	 if(data[i]=='$') {
 /* 	 printf("%d\n",currentIndex); */
 	     if(currentIndex) {

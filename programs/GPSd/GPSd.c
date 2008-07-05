@@ -1121,7 +1121,8 @@ void processAdu5Output(char *tempBuffer, int length, int latestData, int fromAdu
     char gpsCopy[ADU5_DATA_SIZE];
     int gpsLength=0;
     int count=0;
-    char *subString; 
+    char *subString;
+    char gpsDes[3]={' ','A','B'};
     for(count=0;count<length;count++) {
 	if(gpsLength) gpsString[gpsLength++]=tempBuffer[count];
 	else if(tempBuffer[count]=='$') 
@@ -1141,7 +1142,7 @@ void processAdu5Output(char *tempBuffer, int length, int latestData, int fromAdu
 //    printf("GPS Length %d\n",gpsLength);
 
     strncpy(gpsCopy,gpsString,gpsLength);
-    if(printToScreen) printf("ADU5:\t%s\t%d\n",gpsString,gpsLength);
+    if(printToScreen) printf("ADU5%c:\t%s\t%d\n",gpsDes[fromAdu5],gpsString,gpsLength);
     count=0;
     subString = strtok (gpsCopy,",");
     if(!strcmp(subString,"$GPPAT")) {
