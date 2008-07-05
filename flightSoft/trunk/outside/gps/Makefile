@@ -12,7 +12,7 @@ all: $(Targets)
 
 $(Targets): % : %.o
 	@echo "<**Linking**> $@ ..."
-	@$(LD) $@.o $(LDFLAGS) $(ANITA_GPS_LIBS)  -o $@
+	@$(LD) $@.o $(LDFLAGS) $(ANITA_GPS_LIBS) -lm  -o $@
 	@chmod 555 $@
 
 clean: objclean

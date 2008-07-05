@@ -9,7 +9,7 @@
 #ifndef UTILLIB_H
 #define UTILLIB_H
 
-#define USE_ZLIB_EVENTS
+//#define USE_ZLIB_EVENTS
 
 
 #ifdef __cplusplus
@@ -145,7 +145,7 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
     int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask,int baseInd);
   int cloneAndMoveBufferedFile(char *nonBufFilename,unsigned int cloneMask, int baseInd);
   int cloneFile(char *filename,unsigned int cloneMask, int baseInd);
-  int moveBufferedFile(char *nonBufFilename,unsigned int cloneMask, int baseInd);
+  int moveBufferedFile(char *nonBufFilename);
     int makeZippedPacket(char *input, unsigned int numBytes, char *output, unsigned int numBytesOut);
     int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned int numBytesOut);
 // Signal handling routines

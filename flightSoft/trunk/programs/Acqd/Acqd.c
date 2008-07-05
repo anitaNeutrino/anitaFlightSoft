@@ -228,6 +228,7 @@ float intervalDeadtime; //In secs
 
 //Surf Hk Readout
 struct timeval lastSurfHkRead;
+struct timeval lastTurfRateRead;
 
 
 //TURF Rate Readout
@@ -341,6 +342,8 @@ int main(int argc, char **argv) {
   do { //while( currentState==PROG_STATE_INIT
     lastSurfHkRead.tv_sec=0;
     lastSurfHkRead.tv_usec=0;
+    lastTurfRateRead.tv_sec=0;
+    lastTurfRateRead.tv_usec=0;
     unsigned int tempTrigMask=antTrigMask;
     unsigned int tempNadirTrigMask=nadirAntTrigMask;
     // Clear devices 
@@ -504,7 +507,8 @@ int main(int argc, char **argv) {
 			usleep(1000);
 			surfCounter++;
 		    }
-		    printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
+		    if(printToScreen && verbosity>1)
+			printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
 		}
 	    }
 
@@ -598,7 +602,7 @@ int main(int argc, char **argv) {
 	fprintf(stderr,"Problem reading TURF event data\n");
 	syslog(LOG_ERR,"Problem reading TURF event data\n");
       }
-      if(slipCounter!=hdPtr->turfio.trigNum) {
+      if(slipCounter!=hdPtr->turfio.trigNum ) {
 	printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	reInitNeeded=1;
       }
@@ -1707,7 +1711,8 @@ AcqdErrorCode_t runPedestalMode()
 	      usleep(1000);
 	      surfCounter++;
 	      }
-	      printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
+	      if(printToScreen && verbosity>0)
+		  printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
 	  }
       }
       if(status!=ACQD_E_OK) {
@@ -1771,9 +1776,9 @@ AcqdErrorCode_t runPedestalMode()
       hdPtr->eventNumber=getEventNumber();
       bdPtr->eventNumber=hdPtr->eventNumber;
       //      hdPtr->surfMask=surfMask;
-      hdPtr->phiTrigMask=phiTrigMask;
-      hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
-      hdPtr->nadirAntTrigMask=(unsigned char)nadirAntTrigMask;
+//      hdPtr->phiTrigMask=phiTrigMask;
+//      hdPtr->antTrigMask=(unsigned int)antTrigMask;	       
+///      hdPtr->nadirAntTrigMask=(unsigned char)nadirAntTrigMask;
       //Filled by Eventd
       //hdPtr->gpsSubTime;
       //hdPtr->calibStatus;
@@ -1873,7 +1878,8 @@ AcqdErrorCode_t doStartTest()
 		  usleep(1000);
 		  surfCounter++;
 	      }
-	      printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
+	      if(printToScreen && verbosity>1)
+		  printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
 	  }
       }
 
@@ -2573,7 +2579,7 @@ AcqdErrorCode_t readSurfEventData()
             
     //First is the header word
     headerWord=eventBuf[0];
-    if(printToScreen && verbosity) {
+    if(printToScreen && verbosity>0) {
       printf("SURF %d (%d), CHIP %d, CHN %d, Header: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,headerWord);
     }      
     if(surf==0) {
@@ -3130,7 +3136,6 @@ AcqdErrorCode_t readTurfEventDataVer5()
   unsigned char dataChar;
   unsigned short dataShort;
   unsigned int dataInt;
-  static unsigned short lastPPSNum=0;
 
   int wordNum,phi,ring,errCount=0,count=0,nadirAnt;
   TurfioTestPattern_t startPat;
@@ -3415,7 +3420,7 @@ AcqdErrorCode_t readTurfEventDataVer5()
   }
 
     
-  if(verbosity>=0 && printToScreen) {
+  if(verbosity>0 && printToScreen) {
     printf("TURF Data\n\tEvent (software):\t%u\n\tEvent Id (TURF):\t%u\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%u\n\tppsNum:\t\t%u\n\tc3p0Num:\t%u\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\nbufferDepth\t\t%#x\n",
 	   doingEvent,hdPtr->turfEventId,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType&0xf,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime,
 	turfioPtr->bufferDepth);
@@ -3525,7 +3530,9 @@ AcqdErrorCode_t readTurfHkData()
 	    ucvalue4=(uvalue&0xff000000)>>24;
 	    phi=(i-32)*4; //Only counts to 8
 	    turfRates.nadirL2Rates[phi]=ucvalue;
-	    turfRates.nadirL2Rates[phi+1]=ucvalue2;	
+	    turfRates.nadirL2Rates[phi+1]=ucvalue2;
+	    turfRates.nadirL2Rates[phi+2]=ucvalue3;
+	    turfRates.nadirL2Rates[phi+3]=ucvalue4;	
 	}
 	else if(i<38) {
 	    //Reserved for now
@@ -3542,8 +3549,8 @@ AcqdErrorCode_t readTurfHkData()
 	else if(i==41) {
 	    usvalue=uvalue&0xffff;
 	    usvalue2=(uvalue&0xffff0000)>>16;
-	    turfRates.ppsNum=usvalue;	    
-	    turfRates.deadTime=usvalue2;
+	    turfRates.ppsNum=usvalue2;	    
+	    turfRates.deadTime=usvalue;
 	}
 	else if(i==42) {
 	    ucvalue=uvalue&0xff;
@@ -4065,13 +4072,16 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 
 int intersperseTurfRate(struct timeval *tvPtr)
 {
-    static time_t lastTurfRateRead=0;
-    unsigned int timeDiff=tvPtr->tv_sec-lastTurfRateRead;
+    int timeDiff=0;
+    timeDiff=tvPtr->tv_usec-lastTurfRateRead.tv_usec;  
+    timeDiff+=1000000*(tvPtr->tv_sec-lastTurfRateRead.tv_sec);
     int newPhiMask=0;
     if(turfFirmwareVersion>=5) {
-	if(timeDiff>0) {
+	if(timeDiff>100000 || lastTurfRateRead.tv_sec==0) {
 	    readTurfHkData();
-	    lastTurfRateRead=tvPtr->tv_sec;
+	    lastTurfRateRead.tv_sec=tvPtr->tv_sec;
+	    lastTurfRateRead.tv_usec=tvPtr->tv_usec;
+	    turfRates.unixTime=tvPtr->tv_sec;
 	    if(newTurfRateData) {
 	      addTurfRateToAverage(&turfRates);
 	      newPhiMask=checkTurfRates();	
@@ -4292,7 +4302,7 @@ AcqdErrorCode_t checkTurfEventReady(int *turfEventReady)
 	}
     }
     else {
-	if(printToScreen)
+	if(printToScreen && verbosity>1)
 	    printf("Got an event ready in TURFIO\n");
 	*turfEventReady = 1;
     }
