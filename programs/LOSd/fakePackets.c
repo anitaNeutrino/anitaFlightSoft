@@ -31,7 +31,7 @@ void fakeSurfHk(struct timeval *currentTime);
 void fakeTurfRate(struct timeval *currentTime);
 void fakeSlowPackets(struct timeval *currentTime);
 
-void writePackets(AnitaEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
+void writePackets(PedSubbedEventBody_t *bodyPtr, AnitaEventHeader_t *hdPtr);
 int rand_no(int lim);
 void rand_no_seed(unsigned int seed);
 float gaussianRand(float mean, float stdev);
@@ -61,7 +61,7 @@ int slowRatePeriod=10;
 
 // Event structs
 AnitaEventHeader_t theHeader;
-AnitaEventBody_t theBody;
+PedSubbedEventBody_t psBody;
 
 
 //Max Events
@@ -359,15 +359,15 @@ void fakeEvent(int trigType)
 	    for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) {
 		short value=(short)gaussianRand(2048,200);
 //		value+=((evNum%4)<<14);
-		theBody.channel[chan].data[samp]=value;
+		psBody.channel[chan].data[samp]=value;
 		mean+=value;
 		meanSq+=value*value;
-//		printf("%d\t%d\n",samp,theBody.channel[chan].data[samp]);
+//		printf("%d\t%d\n",samp,psBody.channel[chan].data[samp]);
 	    }
 	    meanSq/=(float)MAX_NUMBER_SAMPLES;
 	    mean/=(float)MAX_NUMBER_SAMPLES;
-//	    theBody.channel[chan].header.mean=mean;
-//	    theBody.channel[chan].header.rms=sqrt(meanSq-mean*mean);
+//	    psBody.channel[chan].header.mean=mean;
+//	    psBody.channel[chan].header.rms=sqrt(meanSq-mean*mean);
 	}
     }
     gettimeofday(&timeStruct,NULL);
@@ -413,12 +413,12 @@ void fakeEvent(int trigType)
     if(retVal) 
 	printf("Problem with AnitaEventHeader_t %d\n",retVal);
 
-//    writePackets(&theBody,&theHeader);
+//    writePackets(&psBody,&theHeader);
     
     //Write body and header for Archived
-    sprintf(archiveFilename,"%s/ev_%u.dat",PRIORITIZERD_EVENT_DIR,
+    sprintf(archiveFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	    theHeader.eventNumber);
-    writeStruct(&theBody,archiveFilename,sizeof(AnitaEventBody_t));
+    writeStruct(&psBody,archiveFilename,sizeof(PedSubbedEventBody_t));
     sprintf(archiveFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
 	    theHeader.eventNumber);
     writeStruct(&theHeader,archiveFilename,sizeof(AnitaEventHeader_t));
