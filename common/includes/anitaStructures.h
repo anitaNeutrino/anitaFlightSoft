@@ -507,6 +507,8 @@ typedef struct {
 */
 typedef struct {
   GenericHeader_t gHdr;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
   unsigned int whichBank;
   unsigned int values[TURF_BANK_SIZE];
 } TurfRegisterContents_t;

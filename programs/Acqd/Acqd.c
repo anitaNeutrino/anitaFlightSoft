@@ -222,6 +222,7 @@ AnitaHkWriterStruct_t surfHkWriter;
 AnitaHkWriterStruct_t avgSurfHkWriter;
 AnitaHkWriterStruct_t sumTurfRateWriter;
 AnitaHkWriterStruct_t rawScalerWriter;
+AnitaHkWriterStruct_t rawTurfRegWriter;
 AnitaEventWriterStruct_t eventWriter;
 
 //Deadtime monitoring
@@ -686,6 +687,7 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Error closing devices\n");
   }
 
+  closeHkFilesAndTidy(&rawTurfRegWriter);
   closeHkFilesAndTidy(&rawScalerWriter);
   closeHkFilesAndTidy(&avgSurfHkWriter);
   closeHkFilesAndTidy(&sumTurfRateWriter);
@@ -2487,8 +2489,8 @@ int writeSurfHousekeeping(int dataOrTelem)
 // 2 == telem
 // anything else == both
 {
-  if(printToScreen && verbosity>1)
-    printf("writeSurfHousekeeping(%d) -- theSurfHk.setThreshold[0][0]=%d\n",dataOrTelem,theSurfHk.setThreshold[0][0]);
+    if(printToScreen && verbosity>1)
+	printf("writeSurfHousekeeping(%d) -- %u\n",dataOrTelem,theSurfHk.unixTime);
   char theFilename[FILENAME_MAX];
   int retVal=0;
 
@@ -2845,6 +2847,7 @@ AcqdErrorCode_t readSurfEventData()
 AcqdErrorCode_t readSurfHkData() 
 // Reads the scaler and RF power data from the SURF board
 {
+//    printf("readSurfHkData\n");
   AcqdErrorCode_t status=ACQD_E_OK;
   int surf,rfChan,index,band;
   unsigned int buffer[128];
@@ -3540,14 +3543,20 @@ AcqdErrorCode_t readTurfEventDataVer5()
 AcqdErrorCode_t readTurfHkData()   
 {
     //This fills a TurfRate structure
+    int retVal=0;
     unsigned int uvalue;
     unsigned short usvalue,usvalue2;
     unsigned char ucvalue,ucvalue2,ucvalue3,ucvalue4;
     int ring=0,phi=0;
 
     int i=0;
+    struct timeval timeStruct;
+    gettimeofday(&timeStruct,NULL);
 
     memset(&theTurfReg,0,sizeof(TurfRegisterContents_t));    
+    theTurfReg.unixTime=timeStruct.tv_sec;
+    theTurfReg.unixTimeUs=timeStruct.tv_usec;
+    theTurfReg.whichBank=TurfBankHk;
     memset(&turfRates,0,sizeof(TurfRateStruct_t));
     newTurfRateData=0;
     AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankHk); // set TURF_BANK to Bank 3
@@ -3645,9 +3654,18 @@ AcqdErrorCode_t readTurfHkData()
 	    
     }
     
+
     if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
 	newTurfRateData=1;
+	
+	if(writeRawScalers) {
+	    fillGenericHeader(&theTurfReg,PACKET_TURF_REGISTER,sizeof(TurfRegisterContents_t));
+	    retVal=cleverHkWrite((unsigned char*)&theTurfReg,sizeof(TurfRegisterContents_t),theTurfReg.unixTime,&rawTurfRegWriter);
+	    //      printf("Writing rawScalerWriter %u -- %u\n",theScalers.unixTime
+	}
     }
+
+    
     //Make sure to copy relevant mask data to turfRate struct
     status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
     if(status!=ACQD_E_OK)
@@ -3937,6 +3955,14 @@ void prepWriterStructs() {
   rawScalerWriter.writeBitMask=hkDiskBitMask;
 
 
+  //Raw Turf Register Writer
+  strncpy(rawTurfRegWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
+  sprintf(rawTurfRegWriter.filePrefix,"rawturf");
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+    rawTurfRegWriter.currentFilePtr[diskInd]=0;
+  rawTurfRegWriter.writeBitMask=hkDiskBitMask;
+
+
   //Summed Turf Rate Writer
   strncpy(sumTurfRateWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
   sprintf(sumTurfRateWriter.filePrefix,"sumturfhk");
@@ -4050,6 +4076,7 @@ void handleBadSigs(int sig)
     closeHkFilesAndTidy(&sumTurfRateWriter);
     closeHkFilesAndTidy(&avgSurfHkWriter);
     closeHkFilesAndTidy(&rawScalerWriter);
+    closeHkFilesAndTidy(&rawTurfRegWriter);
     closeHkFilesAndTidy(&surfHkWriter);
     closeHkFilesAndTidy(&turfHkWriter);
   }
