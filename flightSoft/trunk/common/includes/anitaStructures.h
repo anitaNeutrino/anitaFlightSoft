@@ -80,7 +80,7 @@
 #define VER_SURF_PACKET 10
 #define VER_ENC_WAVE_PACKET 10
 #define VER_ENC_SURF_PACKET 10
-#define VER_SURF_HK 13
+#define VER_SURF_HK 14
 #define VER_GPS_GGA 10
 #define VER_ADU5_PAT 10
 #define VER_ADU5_SAT 10
@@ -102,7 +102,7 @@
 #define VER_OTHER_MON 10
 #define VER_GPSD_START 10
 #define VER_LOGWATCHD_START 10
-#define VER_AVG_SURF_HK 13
+#define VER_AVG_SURF_HK 14
 #define VER_SUM_TURF_RATE 16
 #define VER_ACQD_START 10
 #define VER_TURF_REG 10
@@ -980,6 +980,7 @@ typedef struct {
     unsigned short globalThreshold; ///<set to zero if there isn't one
     unsigned short errorFlag; ///<Will define at some point    
     unsigned short scalerGoals[BANDS_PER_ANT]; ///<What are we aiming for with the scaler rate
+    unsigned short scalerGoalsNadir[BANDS_PER_ANT]; ///<What are we aiming for with the scaler rate
     unsigned short upperWords[ACTIVE_SURFS];
     unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
     unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
@@ -1000,7 +1001,8 @@ typedef struct {
   unsigned int hadError; ///<Bit mask to be defined
   unsigned short globalThreshold;
   unsigned short reserved; 
-  unsigned short scalerGoals[BANDS_PER_ANT];
+    unsigned short scalerGoals[BANDS_PER_ANT];
+    unsigned short scalerGoalsNadir[BANDS_PER_ANT]; ///<What are we aiming for with the scaler rate
   unsigned short avgScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short rmsScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short avgThresh[ACTIVE_SURFS][SCALERS_PER_SURF];

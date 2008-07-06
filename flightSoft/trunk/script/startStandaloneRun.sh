@@ -36,7 +36,7 @@ sleep 2
 
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
-daemon -r Archived -n Archived
+nice -n 20 daemon -r Archived -n Archived
 daemon -r Hkd -n Hkd
 daemon -r GPSd -n GPSd
 daemon -r Monitord -n Monitord

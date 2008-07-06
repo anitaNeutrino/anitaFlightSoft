@@ -107,7 +107,8 @@ typedef enum __TURF_trigger_mode {
     TrigNone = 0,
     TrigSoft = 0x1,
     TrigPPS1 = 0x2,
-    TrigPPS2 = 0x4
+    TrigPPS2 = 0x4,
+    TrigDisableExt = 0x8
 } TriggerMode_t;
 
 typedef enum __TURF_clear_mode {
@@ -156,5 +157,7 @@ typedef struct {
       
 int logicalScalerToRawScaler[SCALERS_PER_SURF]={8,10,12,14,9,11,13,15,16,18,20,22,17,19,21,23}; //Note raw counts from 0
 int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={-1,-1,-1,-1,-1,-1,-1,-1,0,4,1,5,2,6,3,7,8,12,9,13,10,14,11,15,-1,-1,-1,-1,-1,-1,-1,-1};
+
+int isNadirTrig[ACTIVE_SURFS]={0,0,0,0,0,0,0,0,1,1};
 
 #endif //ACQDSDDEFS_H

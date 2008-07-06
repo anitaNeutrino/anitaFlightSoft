@@ -25,7 +25,7 @@ AcqdErrorCode_t readTurfEventDataVer3();
 AcqdErrorCode_t readTurfEventDataVer5();
 AcqdErrorCode_t setDACThresholds();
 AcqdErrorCode_t writeAntTrigMask();
-AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold);
+AcqdErrorCode_t setGlobalDACThreshold(unsigned short threshold);
 AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value) ;
 AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
 AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);

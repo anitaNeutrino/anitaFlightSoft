@@ -40,6 +40,7 @@
 
 //Definitions
 #define HK_DEBUG 0
+#define SURFHK_PERIOD 10000
 
 
 void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
@@ -154,6 +155,7 @@ int reprogramTurf = FALSE;
 TriggerMode_t trigMode=TrigNone;
 int pps1TrigFlag = 0;
 int pps2TrigFlag = 0;
+int disableExtTrig = 0;
 
 //Threshold Stuff
 //int thresholdArray[ACTIVE_SURFS][DAC_CHAN][PHYS_DAC];
@@ -163,13 +165,14 @@ float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
 int setGlobalThreshold=0; 
 int globalThreshold=2200;
 DacPidStruct_t thePids[ACTIVE_SURFS][SCALERS_PER_SURF];
-float dacIGain;  // integral gain
-float dacPGain;  // proportional gain
-float dacDGain;  // derivative gain
-int dacIMax;  // maximum intergrator state
-int dacIMin; // minimum integrator state
+float dacIGain[4];  // integral gain
+float dacPGain[4];  // proportional gain
+float dacDGain[4];  // derivative gain
+int dacIMax[4];  // maximum intergrator state
+int dacIMin[4]; // minimum integrator state
 int enableChanServo = FALSE; //Turn on the individual chanel servo
 int pidGoals[BANDS_PER_ANT];
+int nadirPidGoals[BANDS_PER_ANT];
 int pidPanicVal;
 int pidAverage;
 int numEvents=0;
@@ -378,6 +381,7 @@ int main(int argc, char **argv) {
     trigMode=TrigNone;
     if(pps1TrigFlag) trigMode|=TrigPPS1;
     if(pps2TrigFlag) trigMode|=TrigPPS2;
+    if(disableExtTrig) trigMode |=TrigDisableExt;
     // Reenabled the setting of the trigger mode here
     setTurfControl(SetTrigMode);
 
@@ -399,6 +403,10 @@ int main(int argc, char **argv) {
 	printf("PPS 2 Trig Enabled\n");
       else 
 	printf("PPS 2 Trig Disabled\n");		
+      if(disableExtTrig) 
+	  printf("Ext. Trig Disabled\n");
+      else
+	  printf("Ext. Trig Enabled\n");
       if(sendSoftTrigger) 
 	printf("Sending software triggers every %d seconds\n",softTrigPeriod);
     }
@@ -425,7 +433,7 @@ int main(int argc, char **argv) {
 	
     //Set Thresholds
     if(setGlobalThreshold) {
-      setGloablDACThreshold(globalThreshold);
+      setGlobalDACThreshold(globalThreshold);
       theSurfHk.globalThreshold=globalThreshold;
       if(printToScreen) 
 	printf("Setting Global Threshold %d\n",globalThreshold);
@@ -1175,6 +1183,7 @@ int readConfigFile()
       verbosity=kvpGetInt("verbosity",0)+addedVerbosity;
     pps1TrigFlag=kvpGetInt("enablePPS1Trigger",1);
     pps2TrigFlag=kvpGetInt("enablePPS2Trigger",1);
+    disableExtTrig=kvpGetInt("disableExtTrigger",0);
     doThresholdScan=kvpGetInt("doThresholdScan",0);
     doSingleChannelScan=kvpGetInt("doSingleChannelScan",0);
     surfForSingle=kvpGetInt("surfForSingle",0);
@@ -1184,11 +1193,50 @@ int readConfigFile()
     threshSwitchConfigAtEnd=kvpGetInt("threshSwitchConfigAtEnd",1);
     setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
     globalThreshold=kvpGetInt("globalThreshold",0);
-    dacPGain=kvpGetFloat("dacPGain",0);
-    dacIGain=kvpGetFloat("dacIGain",0);
-    dacDGain=kvpGetFloat("dacDGain",0);
-    dacIMin=kvpGetInt("dacIMin",0);
-    dacIMax=kvpGetInt("dacIMax",0);
+    
+    //PID Stuff
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetFloatArray("dacPGain",&dacPGain[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dacPGain): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(dacPGain): %s\n",
+	      kvpErrorString(kvpStatus));
+    }    
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetFloatArray("dacIGain",&dacIGain[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dacIGain): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(dacIGain): %s\n",
+	      kvpErrorString(kvpStatus));
+    }    
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetFloatArray("dacDGain",&dacDGain[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dacDGain): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(dacDGain): %s\n",
+	      kvpErrorString(kvpStatus));
+    }    
+  
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetIntArray("dacIMin",&dacIMin[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dacIMin): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(dacIMin): %s\n",
+	      kvpErrorString(kvpStatus));
+    }     
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetIntArray("dacIMax",&dacIMax[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dacIMax): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(dacIMax): %s\n",
+	      kvpErrorString(kvpStatus));
+    }   
+
     enableChanServo=kvpGetInt("enableChanServo",1);
     if(doThresholdScan)
       enableChanServo=0;
@@ -1220,6 +1268,14 @@ int readConfigFile()
       syslog(LOG_WARNING,"kvpGetIntArray(pidGoals): %s",
 	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(pidGoals): %s\n",
+	      kvpErrorString(kvpStatus));
+    }      
+    tempNum=BANDS_PER_ANT;
+    kvpStatus=kvpGetIntArray("nadirPidGoals",&nadirPidGoals[0],&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(nadirPidGoals): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(nadirPidGoals): %s\n",
 	      kvpErrorString(kvpStatus));
     }      
     tempNum=ACTIVE_SURFS;
@@ -1433,7 +1489,7 @@ AcqdErrorCode_t clearDevices()
   if(verbosity>=0 && printToScreen) printf("*** Clearing devices ***\n");
     
   //Added RJN 24/11/06
-  trigMode=TrigNone;
+  trigMode=TrigNone|TrigDisableExt;
   if(verbosity && printToScreen)
     fprintf(stderr,"Setting trigMode to TrigNone\n");
   if (setTurfControl(SetTrigMode) != ACQD_E_OK) {
@@ -1455,7 +1511,7 @@ AcqdErrorCode_t clearDevices()
   //Added RJN 29/11/06
   if(verbosity && printToScreen)
     fprintf(stderr,"Setting surf thresholds to 1\n");
-  status=setGloablDACThreshold(1); 
+  status=setGlobalDACThreshold(1); 
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to set global DAC thresholds\n");
     fprintf(stderr,"Failed to set global DAC thresholds\n");
@@ -1624,12 +1680,17 @@ AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
     syslog(LOG_ERR,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
     fprintf(stderr,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
   }
-  ioctl(surfFd, SURF_IOCCLEARHK);
+
+  //This is a dirty cheat
+  gettimeofday(&lastSurfHkRead,NULL);
+
+//  usleep(SURFHK_PERIOD);
+//  ioctl(surfFd, SURF_IOCCLEARHK);
   return ACQD_E_OK;
 }
 
 
-AcqdErrorCode_t setGloablDACThreshold(unsigned short threshold) {
+AcqdErrorCode_t setGlobalDACThreshold(unsigned short threshold) {
   unsigned int outBuffer[MAX_SURFS][RAW_SCALERS_PER_SURF+2];
   int surf ;
   if(verbosity && printToScreen) printf("Writing thresholds to SURFs\n");
@@ -1820,7 +1881,7 @@ AcqdErrorCode_t doStartTest()
 {
   AcqdErrorCode_t status=ACQD_E_OK;
   int dacVal=0,chanId,chan,surf,dac,retVal;
-  int tInd=0,firstLoop=1,tmo=0,eventReadyFlag=0;
+  int tInd=0,tmo=0,eventReadyFlag=0;
   struct timeval timeStruct;
   unsigned int tempTrigMask=antTrigMask;
   unsigned int tempNadirTrigMask=nadirAntTrigMask;
@@ -1969,11 +2030,11 @@ AcqdErrorCode_t doStartTest()
     dacVal=2000 + (200*tInd);
     if(printToScreen) 
       printf("Setting Threshold -- %d\r",dacVal);
-    setGloablDACThreshold(dacVal);
-    if(firstLoop) {
-      usleep(30000);
+    setGlobalDACThreshold(dacVal);
+//    if(firstLoop) {
+//    usleep(50000);
       //      firstLoop=0;
-    }
+//    }
     startStruct.threshVals[tInd]=dacVal;
     theSurfHk.globalThreshold=dacVal;
     status=readSurfHkData(); 
@@ -2045,11 +2106,14 @@ AcqdErrorCode_t doGlobalThresholdScan()
   int threshScanCounter=0;
   int dacVal=0,lastDacVal=-1;
   int done=0,surf=0;
-  int firstLoop=1;
+//  int timeDiff=0;
   struct timeval timeStruct;
   currentState=PROG_STATE_RUN;
   fprintf(stderr,"Inside doGlobalThresholdScan\n");
+  lastSurfHkRead.tv_sec=0;
+  lastSurfHkRead.tv_usec=0;
   do {
+      
     //Check if we are trying to leave the event loop
     if(currentState!=PROG_STATE_RUN) 
       break;
@@ -2059,19 +2123,36 @@ AcqdErrorCode_t doGlobalThresholdScan()
     if(dacVal!=lastDacVal) {
       if(printToScreen) 
 	printf("Setting Threshold -- %d\r",dacVal);
-      setGloablDACThreshold(dacVal);	
+      setGlobalDACThreshold(dacVal);	
     }
     theSurfHk.globalThreshold=dacVal;
     lastDacVal=dacVal;
-    if(firstLoop) {
-      usleep(30000);
-      firstLoop=0;
-    }
+//    if(firstLoop) {
+//      usleep(30000);
+//      firstLoop=0;
+//    }
     
     
-    gettimeofday(&timeStruct,NULL);
-    //Actually read and write surfHk here
+    
+
+
+    gettimeofday(&timeStruct,NULL); 
+/*     timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;   */
+/*     timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec); */
+/* //    printf("%d %d -- %d %d\n",timeStruct.tv_sec,timeStruct.tv_usec, */
+/* //	   lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec); */
+/*     while(timeDiff<SURFHK_PERIOD && lastSurfHkRead.tv_sec!=0) { */
+/* 	usleep(1000); */
+/* 	gettimeofday(&timeStruct,NULL); */
+/* 	timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;   */
+/* 	timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec); */
+/* //	printf("timeDiff %d\n",timeDiff); */
+/*     } */
+    //Actually read and write surfHk here    
     status=readSurfHkData();
+//    printf("%d\n",theSurfHk.threshold[0][0]);
+    lastSurfHkRead.tv_usec=timeStruct.tv_usec;
+    lastSurfHkRead.tv_sec=timeStruct.tv_sec;
     //check it
     //Then send clear hk pulse
     for(surf=0;surf<numSurfs;++surf) {
@@ -2216,6 +2297,7 @@ void doSurfHkAverage(int flushData)
       avgSurfHk.unixTime=theSurfHk.unixTime;
       avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
       memcpy(avgSurfHk.scalerGoals,theSurfHk.scalerGoals,sizeof(short)*BANDS_PER_ANT);
+      memcpy(avgSurfHk.scalerGoalsNadir,theSurfHk.scalerGoalsNadir,sizeof(short)*BANDS_PER_ANT);
       memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS);
     }
     //Now add stuff to the average
@@ -2409,12 +2491,14 @@ int writeSurfHousekeeping(int dataOrTelem)
     printf("writeSurfHousekeeping(%d) -- theSurfHk.setThreshold[0][0]=%d\n",dataOrTelem,theSurfHk.setThreshold[0][0]);
   char theFilename[FILENAME_MAX];
   int retVal=0;
+
   fillGenericHeader(&theSurfHk,PACKET_SURF_HK,sizeof(FullSurfHkStruct_t));
   //Write data to disk
   if(dataOrTelem!=2) {
     //	sprintf(theFilename,"%s/surfhk_%d_%d.dat.gz",surfHkArchiveDir,
     //		theSurfHk.unixTime,theSurfHk.unixTimeUs);
     //	retVal+=writeStruct(&theSurfHk,theFilename);
+//      printf("%d -- %d\n",theSurfHk.threshold[0][0],theSurfHk.scaler[0][0]);
     retVal=cleverHkWrite((unsigned char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 			 theSurfHk.unixTime,&surfHkWriter);
   }
@@ -2772,14 +2856,16 @@ AcqdErrorCode_t readSurfHkData()
     printf("Reading Surf HK %d.\n",hkNumber);
   
   if(enableChanServo) {
-    for(band=0;band<ANTS_PER_SURF;band++) 
-      theSurfHk.scalerGoals[band]=pidGoals[band];
+      for(band=0;band<ANTS_PER_SURF;band++) {
+	  theSurfHk.scalerGoals[band]=pidGoals[band];
+	  theSurfHk.scalerGoalsNadir[band]=nadirPidGoals[band];
+      }      
   }
   else {
-    theSurfHk.scalerGoals[0]=0;
-    theSurfHk.scalerGoals[1]=0;
-    theSurfHk.scalerGoals[2]=0;
-    theSurfHk.scalerGoals[3]=0;
+      for(band=0;band<ANTS_PER_SURF;band++) {
+	  theSurfHk.scalerGoals[band]=0;
+	  theSurfHk.scalerGoalsNadir[band]=0;
+      }
   }
   for(surf=0;surf<numSurfs;surf++){  
     count=0;
@@ -3719,7 +3805,11 @@ int updateThresholdsUsingPID() {
     if(dacSurfs[surf]==1) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	band=dac%4;
-	chanGoal=(int)(pidGoals[band]*pidGoalScaleFactors[surf][dac]);
+	int tempGoal=pidGoals[band];
+	if(isNadirTrig[surf]) 
+	    tempGoal=nadirPidGoals[band];
+
+	chanGoal=(int)(tempGoal*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
 	if(chanGoal>16000) chanGoal=16000;
 	if(abs(theSurfHk.scaler[surf][dac]-chanGoal)>pidPanicVal)
@@ -3745,7 +3835,10 @@ int updateThresholdsUsingPID() {
 	printf("SURF %2d: ",surfIndex[surf]);
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {		
 	band=dac%4;
-	chanGoal=(int)(pidGoals[band]*pidGoalScaleFactors[surf][dac]);
+	int tempGoal=pidGoals[band];
+	if(isNadirTrig[surf]) 
+	    tempGoal=nadirPidGoals[band];
+	chanGoal=(int)(tempGoal*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
 	if(chanGoal>16000) chanGoal=16000;
 	if(dacSurfs[surf]==1) {
@@ -3759,19 +3852,19 @@ int updateThresholdsUsingPID() {
 	  //			   avgScalerData[surf][dac],value,error);
 	    
 	  // Proportional term
-	  pTerm = dacPGain * error;
+	  pTerm = dacPGain[band] * error;
 		    
 	  // Calculate integral with limiting factors
 	  thePids[surf][dac].iState+=error;
 	  //		printf("Here %d %d\n",thePids[surf][dac].iState,dacIMax);
-	  if (thePids[surf][dac].iState > dacIMax) 
-	    thePids[surf][dac].iState = dacIMax;
-	  else if (thePids[surf][dac].iState < dacIMin) 
-	    thePids[surf][dac].iState = dacIMin;
+	  if (thePids[surf][dac].iState > dacIMax[band]) 
+	    thePids[surf][dac].iState = dacIMax[band];
+	  else if (thePids[surf][dac].iState < dacIMin[band]) 
+	    thePids[surf][dac].iState = dacIMin[band];
 		    
 	  // Integral and Derivative Terms
-	  iTerm = dacIGain * (float)(thePids[surf][dac].iState);  
-	  dTerm = dacDGain * (float)(value -thePids[surf][dac].dState);
+	  iTerm = dacIGain[band] * (float)(thePids[surf][dac].iState);  
+	  dTerm = dacDGain[band] * (float)(value -thePids[surf][dac].dState);
 	  thePids[surf][dac].dState = value;
 		    
 	  //Put them together		   
@@ -4103,7 +4196,7 @@ void intersperseSurfHk(struct timeval *tvPtr)
 		    		
   //Only read the housekeeping every 50ms, will change this to be configurable.
   //Maybe.
-  if(timeDiff>50000 || lastSurfHkRead.tv_sec==0) {
+  if(timeDiff>SURFHK_PERIOD || lastSurfHkRead.tv_sec==0) {
     //printf("Time Diff %d, %d.%d and %d.%d\n",
     //       timeDiff,tvPtr->tv_sec,tvPtr->tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
     lastSurfHkRead.tv_sec=tvPtr->tv_sec;
@@ -4199,6 +4292,7 @@ int checkTurfRates()
   //The aim of this function is to add the TURF rate to the average and
   //then check if we need to mask out a phi sector  
   int numLastTurfs=0;
+  static int funcCounter=0;
   int phi=0,tInd=0,ring=0;
   int l1HitCount[PHI_SECTORS][2];
   int l1MissCount[PHI_SECTORS][2];  
@@ -4214,7 +4308,7 @@ int checkTurfRates()
   memset(l3HitCount,0,sizeof(int)*PHI_SECTORS);
   memset(l3MissCount,0,sizeof(int)*PHI_SECTORS);
 
-
+  funcCounter++;
   //Number between 0 and NUM_DYN_TURF_RATE-1
   lastTurfRates[turfRateIndex]=turfRates;
   countLastTurfRates++;
@@ -4244,10 +4338,12 @@ int checkTurfRates()
     for(phi=0;phi<PHI_SECTORS;phi++) {
       if(l3HitCount[phi]>dynamicPhiThresholdOverWindow) {
 	//Got a hot channel
-	newPhiMask |= (1<<phi);
+//	  printf("hot channel %d -- %d\n",phi,l3HitCount[phi]);
+	  newPhiMask |= (1<<phi);
       }
       if(l3MissCount[phi]>dynamicPhiThresholdUnderWindow) {
 	//Got a quiet channel
+//	  printf("cold channel %d -- %d\n",phi,l3MissCount[phi]);
 	newPhiMask &= ~(1<<phi);
       }
       for(ring=0;ring<2;ring++) {
@@ -4263,7 +4359,7 @@ int checkTurfRates()
   if(phiTrigMask!=newPhiMask) {
     if(enableDynamicPhiMasking) {
       if(printToScreen) {
-	printf("Changing phi mask from %#x to %#x\n",phiTrigMask,newPhiMask);
+	  printf("Changing phi mask from %#x to %#x (%d)\n",phiTrigMask,newPhiMask,funcCounter);
       }
       phiTrigMask=newPhiMask | gpsPhiTrigMask;
       changedSomething=1;
