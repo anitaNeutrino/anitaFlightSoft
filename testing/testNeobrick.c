@@ -71,7 +71,7 @@ int main(int argc, char**argv) {
     ftp_cd(thisDir);
     printf("%s -- %s\n",thisFile,thisDir);
     ftp_putfile(argv[1],thisFile,0,0);
-    removeFile(argv[1]);
+    unlink(argv[1]);
 
 //  ftp_mkdir("/mnt/data/run3000");
 //  ftp_cd("/mnt/");
