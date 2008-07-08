@@ -100,7 +100,7 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 #define EVENTS_PER_INDEX 10000
-#define DISK_TYPES 4 //neobrick not included in this list
+#define DISK_TYPES 5 //neobrick included in this list
 
 
 
@@ -168,6 +168,7 @@
 #define LAST_RUN_NUMBER_FILE "/mnt/data/numbers/lastRunNumber"
 #endif
 
+#define NEOBRICK_DATA_MOUNT "/tmp/neobrick"
 
 #define DISK_BUFFER_DIR "/tmp/buffer"
 
