@@ -12,6 +12,8 @@ daemon --stop -n Eventd
 
 echo "Sleeping while files are written and zipped"
 sleep 5
+rm -rf /tmp/neobrick/*
+rm -rf /tmp/buffer/*
 rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
 
 echo "Making new directories"

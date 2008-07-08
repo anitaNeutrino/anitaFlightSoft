@@ -3510,9 +3510,9 @@ AcqdErrorCode_t readTurfEventDataVer5()
 
     
   if(verbosity>0 && printToScreen) {
-    printf("TURF Data\n\tEvent (software):\t%u\n\tEvent Id (TURF):\t%u\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%u\n\tppsNum:\t\t%u\n\tc3p0Num:\t%u\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\nbufferDepth\t\t%#x\n",
+    printf("TURF Data\n\tEvent (software):\t%u\n\tEvent Id (TURF):\t%u\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%u\n\tppsNum:\t\t%u\n\tc3p0Num:\t%u\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\nbufferDepth\t\t%#x  %#x\n",
 	   doingEvent,hdPtr->turfEventId,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType&0xf,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime,
-	turfioPtr->bufferDepth);
+	   turfioPtr->bufferDepth&0x3,(turfioPtr->bufferDepth&0xc)>>2);
     printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\n",
 	   turfioPtr->upperL1TrigPattern,
 	   turfioPtr->lowerL2TrigPattern,
