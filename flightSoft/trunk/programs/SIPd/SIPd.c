@@ -672,6 +672,26 @@ int readConfig()
 //	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	headersPerEvent=kvpGetInt("headersPerEvent",30);
 	eventBandwidth=kvpGetInt("eventBandwidth",5);
+	tempNum=20;
+	kvpStatus = kvpGetIntArray("hkTelemOrder",hkTelemOrder,&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(hkTelemOrder): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(hkTelemOrder): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+	tempNum=20;
+	kvpStatus = kvpGetIntArray("hkTelemMaxCopy",hkTelemMaxCopy,&tempNum);
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxCopy): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(hkTelemMaxCopy): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priorityBandwidths",priorityBandwidths,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {

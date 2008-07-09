@@ -34,10 +34,13 @@ int telemType;
 int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
-float priorityFractionDelete[NUM_PRIORITIES];
+float priorityFractionGlobalDecimate[NUM_PRIORITIES];
+float priorityFractionDeleteSatablade[NUM_PRIORITIES];
+float priorityFractionDeleteSatamini[NUM_PRIORITIES];
+float priorityFractionDeleteUsb[NUM_PRIORITIES];
+float priorityFractionDeleteNeobrick[NUM_PRIORITIES];
+float priorityFractionDeletePmc[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
-int alternateUsbs[NUM_PRIORITIES];
-int currentUsb[NUM_PRIORITIES]; // 0 is int, 1 is ext;
 int currentRun;
 
 char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -62,8 +65,13 @@ int sataminiCloneMask;
 int usbCloneMask;
 int priorityPPS1;
 int priorityPPS2;
+int prioritySoft;
 float pps1FractionDelete=0;
 float pps2FractionDelete=0;
+float softFractionDelete=0;
+float pps1FractionTelem=0;
+float pps2FractionTelem=0;
+float softFractionTelem=0;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
@@ -77,8 +85,14 @@ FILE *fpHead=NULL;
 FILE *fpEvent=NULL;
 
 int shouldWeThrowAway(int pri);
+int getDecimatedDiskMask(int pri, int diskMask);
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
+int telemEvent(int trigType);
+
+
+
+int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
 
 int main (int argc, char *argv[])
 {
@@ -159,7 +173,6 @@ int main (int argc, char *argv[])
     
     //Fill event dir names
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
-	currentUsb[pri]=0;
 	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
 		EVENT_PRI_PREFIX,pri);
 	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
@@ -221,6 +234,10 @@ int readConfigFile()
 	priorityPPS2=kvpGetInt("priorityPPS2",2);
 	pps1FractionDelete=kvpGetFloat("pps1FractionDelete",0);
 	pps2FractionDelete=kvpGetFloat("pps2FractionDelete",0);
+	softFractionDelete=kvpGetFloat("softFractionDelete",0);
+	pps1FractionTelem=kvpGetFloat("pps1FractionTelem",0);
+	pps2FractionTelem=kvpGetFloat("pps2FractionTelem",0);
+	softFractionTelem=kvpGetFloat("softFractionTelem",0);
 	tempNum=10;
 	kvpStatus = kvpGetIntArray("priDiskEncodingType",
 				   priDiskEncodingType,&tempNum);	
@@ -255,15 +272,63 @@ int readConfigFile()
 			kvpErrorString(kvpStatus));
 	}
 
-
-	tempNum=10;
-	kvpStatus = kvpGetFloatArray("priorityFractionDelete",
-				     priorityFractionDelete,&tempNum);	
+	tempNum=NUM_PRIORITIES;
+	kvpStatus = kvpGetFloatArray("priorityFractionGlobalDecimate",
+				     priorityFractionGlobalDecimate,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDelete): %s",
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionGlobalDecimate): %s",
 		   kvpErrorString(kvpStatus));
-	    if(printToScreen)
-		fprintf(stderr,"kvpGetFloatArray(priorityFractionDelete): %s\n",
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionGlobalDecimate): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=NUM_PRIORITIES;
+	kvpStatus = kvpGetFloatArray("priorityFractionDeleteSatablade",
+				     priorityFractionDeleteSatablade,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteSatablade): %s",
+		   kvpErrorString(kvpStatus));
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteSatablade): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=NUM_PRIORITIES;
+	kvpStatus = kvpGetFloatArray("priorityFractionDeleteSatamini",
+				     priorityFractionDeleteSatamini,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteSatamini): %s",
+		   kvpErrorString(kvpStatus));
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteSatamini): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=NUM_PRIORITIES;
+	kvpStatus = kvpGetFloatArray("priorityFractionDeleteUsb",
+				     priorityFractionDeleteUsb,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteUsb): %s",
+		   kvpErrorString(kvpStatus));
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteUsb): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=NUM_PRIORITIES;
+	kvpStatus = kvpGetFloatArray("priorityFractionDeleteNeobrick",
+				     priorityFractionDeleteNeobrick,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteNeobrick): %s",
+		   kvpErrorString(kvpStatus));
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteNeobrick): %s\n",
+			kvpErrorString(kvpStatus));
+	}
+
+	tempNum=NUM_PRIORITIES;
+	kvpStatus = kvpGetFloatArray("priorityFractionDeletePmc",
+				     priorityFractionDeletePmc,&tempNum);	
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeletePmc): %s",
+		   kvpErrorString(kvpStatus));
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeletePmc): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
@@ -279,17 +344,6 @@ int readConfigFile()
 			kvpErrorString(kvpStatus));
 	}
 
-
-	tempNum=10;
-	kvpStatus = kvpGetIntArray("alternateUsbs",
-				   alternateUsbs,&tempNum);	
-	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(alternateUsbs): %s",
-		   kvpErrorString(kvpStatus));
-	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(alternateUsbs): %s\n",
-			kvpErrorString(kvpStatus));
-	}
 
 
 
@@ -341,9 +395,8 @@ void checkEvents()
       //Switch to
       sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	      theHead.eventNumber);
-      if(!shouldWeThrowAway(theHead.priority&0xf) ) {
-	    
-	
+
+      if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
 	retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
 	//	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	//		theHead.eventNumber);
@@ -392,14 +445,11 @@ void processEvent()
     int priority=(theHead.priority&0xf);
     if(priority<0 || priority>9) priority=9;
     int thisBitMask=eventDiskBitMask&priDiskEventMask[priority];
-    if(alternateUsbs[priority]) {
-	int notMask= ~(usbBitMasks[currentUsb[priority]]);
-	thisBitMask &= notMask;
-	if(currentUsb[priority]==0) currentUsb[priority]=1;
-	else currentUsb[priority]=0;
-    }
     if((eventDiskBitMask&0x10) && (priDiskEventMask[priority]&0x10))
 	thisBitMask |= 0x10;
+
+    thisBitMask=getDecimatedDiskMask(priority,thisBitMask);
+
     eventWriter.writeBitMask=thisBitMask;
     if(printToScreen) {
       printf("\nEvent %u, priority %d\n",theHead.eventNumber,
@@ -601,18 +651,20 @@ void writeOutputForTelem(int numBytes) {
 	printf("Event %u, (%d bytes) \n",theHead.eventNumber,numBytes);
     }
 
-
-    if(!eventWriter.justHeader) {
+    if(telemEvent(theHead.turfio.trigType)) {
+      
+      if(!eventWriter.justHeader) {
 	sprintf(bodyName,"%s/ev_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
 	sprintf(headName,"%s/hd_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
 	retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
 	if(retVal<0) {
-	    printf("Something wrong while writing %s\n",bodyName);
+	  printf("Something wrong while writing %s\n",bodyName);
 	}
 	else {
 	  writeStruct(&theHead,headName,sizeof(AnitaEventHeader_t));
 	    makeLink(headName,eventTelemLinkDirs[pri]);
 	} 
+      }
     }
 }
 
@@ -684,11 +736,72 @@ char *getFilePrefix(ArchivedDataType_t dataType)
 
 int shouldWeThrowAway(int pri)
 {
-    double testVal=drand48();
-    if(testVal<priorityFractionDelete[pri])
-	return 1;
-    return 0;
+  double testVal=drand48();
+  if(testVal<priorityFractionGlobalDecimate[pri])
+    return 1;
+  return 0;
 }
+
+int getDecimatedDiskMask(int pri, int diskMask)
+{
+  double testVal;
+  int diskInd;
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+    if(diskBitMasks[diskInd]&diskMask) {
+      testVal=drand48();
+      switch(diskInd) {
+      case 0:
+	if(testVal<priorityFractionDeleteSatablade[pri])
+	  diskMask &= ~diskBitMasks[diskInd];
+	break;
+      case 1:
+	if(testVal<priorityFractionDeleteSatamini[pri])
+	  diskMask &= ~diskBitMasks[diskInd];
+	break;
+      case 2:
+	if(testVal<priorityFractionDeleteUsb[pri])
+	  diskMask &= ~diskBitMasks[diskInd];
+	break;
+      case 3:
+	if(testVal<priorityFractionDeletePmc[pri])
+	  diskMask &= ~diskBitMasks[diskInd];
+	break;
+      case 4:
+	if(testVal<priorityFractionDeleteNeobrick[pri])
+	  diskMask &= ~diskBitMasks[diskInd];
+	break;
+      default:
+	break;
+      }
+    }
+  }
+  return diskMask;
+    
+}
+
+int telemEvent(int trigType) 
+{
+  double testVal=drand48();
+  if(trigType&0x1)
+    return 1;
+  if(trigType&0x2) {
+    if(testVal<pps1FractionTelem)
+      return 1;
+    return 0;
+  }
+  if(trigType&0x4) {
+    if(testVal<pps2FractionTelem)
+      return 1;
+    return 0;
+  }
+  if(trigType&0x8) {
+    if(testVal<softFractionTelem)
+      return 1;
+    return 0;
+  }
+  return 1;
+}
+
 
 void handleBadSigs(int sig)
 {
