@@ -712,7 +712,7 @@ void fillBufferWithHk()
   //Now try and send some hk data
   for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
     //Make sure we clear the buffer to leave room for requests
-    if(hkInd==LOS_TELEM_REQUEST && numBytesInBuffer>0)
+    if(hkInd==LOS_TELEM_REQUEST && numBytesInBuffer>1000)
       doWrite();
     
     numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
@@ -726,7 +726,7 @@ void fillBufferWithHk()
     }
   }
    
-  if(numBytesInBuffer>0)
+  if(numBytesInBuffer>1000)
     doWrite();
   if(numBytesInBuffer<0) {
     printf("What the heck does %d bytes mean\n",numBytesInBuffer);

@@ -217,6 +217,7 @@ int readConfigFile()
 /* Load Archived config stuff */
 {
     /* Config file thingies */
+    int pri;
     int status=0,tempNum=0;
     char* eString ;
     KvpErrorCode kvpStatus;
@@ -343,8 +344,7 @@ int readConfigFile()
 		fprintf(stderr,"kvpGetIntArray(priDiskEventMask): %s\n",
 			kvpErrorString(kvpStatus));
 	}
-
-
+	
 
 
     }
@@ -448,6 +448,8 @@ void processEvent()
     if((eventDiskBitMask&0x10) && (priDiskEventMask[priority]&0x10))
 	thisBitMask |= 0x10;
 
+
+//    printf("%#x %#x %#x -- %d \n",thisBitMask,priDiskEventMask[priority],eventDiskBitMask,priority);
     thisBitMask=getDecimatedDiskMask(priority,thisBitMask);
 
     eventWriter.writeBitMask=thisBitMask;
@@ -744,6 +746,7 @@ int shouldWeThrowAway(int pri)
 
 int getDecimatedDiskMask(int pri, int diskMask)
 {
+//    return diskMask;
   double testVal;
   int diskInd;
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
