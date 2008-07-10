@@ -537,6 +537,7 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
     unsigned char seq = buf[1];
     unsigned char cmdbyte = buf[2];
 
+//    printf("seq %d, cmdbyte %d\n",seq,cmdbyte);
     if (seq != *length_so_far) {
 	// Out of sequence packet. Reset everything.
 	syslog(LOG_ERR,"Bad Command Packet %d\n",cmdbyte);

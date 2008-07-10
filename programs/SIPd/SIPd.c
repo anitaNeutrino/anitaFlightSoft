@@ -200,7 +200,7 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
 
 //Will make these configurable soon
 int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,19,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18};
-int hkTelemMaxCopy[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,2,2,2,1,1,1,5,5,3,1,3};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,2,2,2,1,1,1,5,5,3,1,3};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -682,12 +682,12 @@ int readConfig()
 			kvpErrorString(kvpStatus));
 	}
 	tempNum=20;
-	kvpStatus = kvpGetIntArray("hkTelemMaxCopy",hkTelemMaxCopy,&tempNum);
+	kvpStatus = kvpGetIntArray("hkTelemMaxPackets",hkTelemMaxPackets,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxCopy): %s",
+	    syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxPackets): %s",
 		   kvpErrorString(kvpStatus));
 	    if(printToScreen)
-		fprintf(stderr,"kvpGetIntArray(hkTelemMaxCopy): %s\n",
+		fprintf(stderr,"kvpGetIntArray(hkTelemMaxPackets): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
@@ -776,19 +776,19 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	return;
     touchFile(currentTouchname);
 //    printf("%s\n",headerLinkFilename);
-    removeFile(headerLinkFilename);
+    unlink(headerLinkFilename);
 
 //     Next load header 
     theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
     retVal=fillHeader(theHeader,headerFilename); 
         
     if(retVal<0) {
-	syslog(LOG_ERR,"Problem with %s",headerFilename);
+//	syslog(LOG_ERR,"Problem with %s",headerFilename);
 	sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 		thisEventNumber);
 	
-	removeFile(headerFilename);
-	removeFile(waveFilename);
+	unlink(headerFilename);
+	unlink(waveFilename);
 	
 	//Bollocks
 	return;
@@ -821,8 +821,8 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	syslog(LOG_ERR,"Problem reading %s\n",waveFilename);
 
 //	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);	
+	unlink(headerFilename);
+	unlink(waveFilename);	
 	//Bollocks
 	return;
     }
@@ -871,18 +871,18 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	       headerLinkFilename);
 	        
     if(!checkFileExists(currentLOSTouchname)) {
-//	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);
-	removeFile(currentTouchname);
+//	unlink(headerLinkFilename);
+	unlink(headerFilename);
+	unlink(waveFilename);
+	unlink(currentTouchname);
     }
     else {
 	sleep(1);
-//	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);
-	removeFile(currentTouchname);
-	removeFile(currentLOSTouchname);
+//	unlink(headerLinkFilename);
+	unlink(headerFilename);
+	unlink(waveFilename);
+	unlink(currentTouchname);
+	unlink(currentLOSTouchname);
     }
 
 
@@ -1243,7 +1243,7 @@ void sendSomeHk(int maxBytes)
       if(numHkLinks[hkInd] && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
 	//Can try and send it
 	numSent=0;
-	hkCount+=readHkAndTdrss(wdHks[hkInd],hkTelemMaxCopy[hkInd],
+	hkCount+=readHkAndTdrss(wdHks[hkInd],hkTelemMaxPackets[hkInd],
 				telemDirs[hkInd],
 				telemLinkDirs[hkInd],maxPacketSize[hkInd],
 				&numSent);
@@ -1295,10 +1295,10 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 //	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 //		   currentFilename);
 //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-	    removeFile(currentFilename);
+	    unlink(currentFilename);
 
-	    removeFile(currentLinkname);
-	    removeFile(currentTouchname);
+	    unlink(currentLinkname);
+	    unlink(currentTouchname);
 	    continue;
 	}
 	numBytes=retVal;
@@ -1326,16 +1326,16 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	totalBytes+=numBytes;
 
 	if(!checkFileExists(currentLOSTouchname)) {
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	    removeFile(currentTouchname);
+	    unlink(currentLinkname);
+	    unlink(currentFilename);
+	    unlink(currentTouchname);
 	}
 	else {
 	    sleep(1);
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	    removeFile(currentTouchname);
-	    removeFile(currentLOSTouchname);
+	    unlink(currentLinkname);
+	    unlink(currentFilename);
+	    unlink(currentTouchname);
+	    unlink(currentLOSTouchname);
 	}
 	int j;
 	int tempInds[7]={1,3,6,37,19,15,36};
@@ -1424,20 +1424,29 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 
       if(checkFileExists(currentLOSTouchname)) 
 	continue;
+      
       touchFile(currentTouchname);
+      
+      if(checkFileExists(currentLOSTouchname)) {
+	  
+	  unlink(currentTouchname);
+	  
+	  continue;
+      }
 
       retVal=genericReadOfFile((unsigned char*)theBuffer,
 			       currentFilename,
 			       MAX_EVENT_SIZE);
+
       syslog(LOG_DEBUG,"Trying %s",currentFilename);
       if(retVal<=0) {
 	//	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 	//		   currentFilename);
 	//	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-	removeFile(currentFilename);
+	unlink(currentFilename);
 	
-	removeFile(currentLinkname);
-	removeFile(currentTouchname);
+	unlink(currentLinkname);
+	unlink(currentTouchname);
 	continue;
       }
       numBytes=retVal;
@@ -1465,16 +1474,16 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       totalBytes+=numBytes;
       
       if(!checkFileExists(currentLOSTouchname)) {
-	removeFile(currentLinkname);
-	removeFile(currentFilename);
-	removeFile(currentTouchname);
+	unlink(currentLinkname);
+	unlink(currentFilename);
+	unlink(currentTouchname);
       }
       else {
 	sleep(1);
-	removeFile(currentLinkname);
-	removeFile(currentFilename);
-	removeFile(currentTouchname);
-	removeFile(currentLOSTouchname);
+	unlink(currentLinkname);
+	unlink(currentFilename);
+	unlink(currentTouchname);
+	unlink(currentLOSTouchname);
       }
       (*numSent)++;
 
