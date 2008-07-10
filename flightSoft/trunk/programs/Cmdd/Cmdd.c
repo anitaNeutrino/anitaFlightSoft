@@ -167,8 +167,10 @@ int main (int argc, char *argv[])
 
 
      /* Setup log */
-    setlogmask(LOG_UPTO(LOG_INFO));
+    setlogmask(LOG_UPTO(LOG_DEBUG));
     openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
+
+    syslog(LOG_INFO,"Starting Cmdd");
 
     /* Set signal handlers */
     signal(SIGUSR1, sigUsr1Handler);
@@ -1165,7 +1167,8 @@ int sendSignal(ProgramId_t progId, int theSignal)
     }
     fscanf(fpPid,"%d", &thePid) ;
     fclose(fpPid) ;
-    
+        
+    syslog(LOG_INFO,"Sending %d to %s (pid = %d)\n",theSignal,getProgName(progId),thePid);
     retVal=kill(thePid,theSignal);
     if(retVal!=0) {
 	syslog(LOG_ERR,"Error sending %d to pid %d:\t%s",theSignal,thePid,strerror(errno));
@@ -1321,6 +1324,7 @@ int killPrograms(int progMask)
     time_t rawtime;
     time(&rawtime);
     char daemonCommand[FILENAME_MAX];
+    char panicCommand[FILENAME_MAX];
     int retVal=0;
     int errorCount=0;
     ProgramId_t prog;
@@ -1333,7 +1337,8 @@ int killPrograms(int progMask)
 //	printf("%d %d\n",progMask,testMask);
 	if(progMask&testMask) {
 //	    printf("Killing prog %s\n",getProgName(prog));
-	    sendSignal(prog,SIGUSR2);
+//	   
+	    
 	    sprintf(daemonCommand,"daemon --stop -n %s",getProgName(prog));
 	    syslog(LOG_INFO,"Sending command: %s",daemonCommand);
 	    retVal=system(daemonCommand);
@@ -1341,13 +1346,18 @@ int killPrograms(int progMask)
 		errorCount++;
 		syslog(LOG_ERR,"Error killing %s",getProgName(prog));
 		//Maybe do something clever
+		retVal=sendSignal(prog,SIGUSR2);
+		if(retVal==0) {
+		    syslog(LOG_INFO,"Killed %s\n",getProgName(prog));
+		}
+		else {
+		    sleep(1);
+		    sprintf(panicCommand,"killall -9 %s",getProgName(prog));
+		    retVal=system(panicCommand);
+		}
 	    }
 	    else {
 		syslog(LOG_INFO,"Killed %s\n",getProgName(prog));
-	    }
-	    if(prog==ID_EVENTD) {
-		sleep(1);
-		system("killall -9 Eventd");
 	    }
 	}
     }
@@ -1375,11 +1385,14 @@ int reallyKillPrograms(int progMask)
 	if(progMask&testMask) {
 	    sprintf(fileName,"%s",getPidFile(prog));
 	    removeFile(fileName);
-//	    printf("Killing prog %s\n",getProgName(prog));
+	    retVal=sendSignal(prog,-9);
 	    
-	    sprintf(systemCommand,"killall -9 %s",getProgName(prog));
-	    retVal=system(systemCommand);
-	    syslog(LOG_INFO,"killall -9 %s\n",getProgName(prog));
+//	    printf("Killing prog %s\n",getProgName(prog));
+	    if(retVal!=0) {
+		sprintf(systemCommand,"killall -9 %s",getProgName(prog));
+		retVal=system(systemCommand);
+		syslog(LOG_INFO,"killall -9 %s\n",getProgName(prog));
+	    }
 	}
     }
     if(errorCount) return 0;
@@ -1405,7 +1418,12 @@ int startPrograms(int progMask)
 		sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
 			getProgName(prog),getProgName(prog));
 	    }
-	    else {
+	    else if(prog==ID_ACQD) {
+		sprintf(daemonCommand,"nice -n 0 daemon -r %s -n %s ",
+			getProgName(prog),getProgName(prog));
+	    }
+	    else 
+	    {
 		sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
 			getProgName(prog),getProgName(prog));
 	    }
@@ -3299,6 +3317,8 @@ int startNewRun() {
     //For now with system command
     system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd /tmp/neobrick/* /tmp/buffer/*");
     
+    system("/home/anita/flightSoft/bin/createConfigAndLog.sh");
+
     fillGenericHeader(&runStart,PACKET_RUN_START,sizeof(RunStart_t));
     //Write file for Monitord
     normalSingleWrite((unsigned char*)&runStart,RUN_START_FILE,sizeof(RunStart_t));
