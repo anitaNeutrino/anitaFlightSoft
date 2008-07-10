@@ -6,6 +6,8 @@ extern "C"
 #endif
 
 int fftwcorr(float wfm[], float tmpl[], float cout[]);
+int fftwcorr_anal_1x(float wfm[], float tmpl[], float cout[]);
+int fftwcorr_anal_2x(float wfm[], float tmpl[], float cout[]);
 
 #ifdef __cplusplus
 }
