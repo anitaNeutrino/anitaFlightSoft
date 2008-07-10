@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
   
   n=0;
   while(n++<1000000)
-    retval = fftwcorr_anal(wfm_in, tmpl_in, corr_out);
+    retval = fftwcorr_anal_1x(wfm_in, tmpl_in, corr_out);
   
   if(retval){
     fprintf(stderr,"anitaxcor error! will proceed anyway...\n");
