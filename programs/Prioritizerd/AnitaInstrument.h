@@ -28,19 +28,19 @@ typedef struct {
 typedef struct{
      EnvelopeF_t topRing[PHI_SECTORS][2];
      EnvelopeF_t botRing[PHI_SECTORS][2];
-     EnvelopeF_t nadir[8][2];
+     EnvelopeF_t nadir[PHI_SECTORS][2]; //between nadirs,incherently add
 } AnitaEnvelopeF_t;
 
 typedef struct{
      LogicChannel_t topRing[PHI_SECTORS][2];
      LogicChannel_t botRing[PHI_SECTORS][2];
-     LogicChannel_t nadir[8][2];
+     LogicChannel_t nadir[PHI_SECTORS][2]; //between nadirs,incherently add
 } AnitaChannelDiscriminator_t;
 
 typedef struct{
      LogicChannel_t topRing[PHI_SECTORS];
      LogicChannel_t botRing[PHI_SECTORS];
-     LogicChannel_t nadir[8]; //between nadirs, take or of the neighbors
+     LogicChannel_t nadir[PHI_SECTORS]; //between nadirs, incoherently add.
 } AnitaSectorLogic_t;
 
 typedef struct{
@@ -164,6 +164,7 @@ typedef struct{
                              //was rejected
 }BaselineAnalysis_t;
 
+// this is the data structure for old SLAC trigger
 typedef struct {
      int overallPeakSize[3]; //
      int overallPeakLoc[3]; //
