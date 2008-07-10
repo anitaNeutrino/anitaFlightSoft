@@ -11,7 +11,7 @@ FFTW3_LIBDIR=-L $(FFTW3_DIR)/lib
 Targets = Prioritizerd
 Objs= Filters.o AnitaInstrument.o fftwxcor.o GenerateScore.o
 
-CFLAGS= -I ../../common/ 
+CFLAGS= -g -I ../../common/ 
 
 #redefines standard variable
 #INCLUDES= -I$(ANITA_FLIGHT_SOFT_DIR) -I$(ANITA_FLIGHT_SOFT_DIR)/common \
@@ -22,7 +22,7 @@ INCLUDES += -I$(FFTW3_INCDIR)
 CCFLAGS += -D ANITA2
 
 
-all: $(Targets) Pdebug
+all: $(Targets) Pdebug xcorrtest
 
 $(Targets).o : ${Objs}
 
@@ -34,6 +34,9 @@ $(Targets): % : %.o ${Objs}
 
 Pdebug:	Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o
 	$(LD) Pdebug.o SubtractPedestals.o Unwrap.o BaselineSubtract.o  $(LDFLAGS) $(ANITA_LIBS)  -o Pdebug
+
+xcorrtest: xcorrtest.o fftwxcor.o
+	$(LD) xcorrtest.o fftwxcor.o  $(LDFLAGS) $(ANITA_LIBS)$(FFTW3_LIBDIR) $(FFTW_LIB)  -o xcorrtest
 
 clean: objclean
 	@-rm -f $(Targets) Pdebug
