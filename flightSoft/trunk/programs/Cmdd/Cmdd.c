@@ -2191,14 +2191,14 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 	if(uvalue[0]<0 || uvalue[0]>3)
 	    return 0;
 	utemp=(args[1]);	    
-	uvalue[0]=utemp;
+	uvalue[1]=utemp;
 	utemp=(args[2]);
-	uvalue[0]|=(utemp<<8);
+	uvalue[1]|=(utemp<<8);
 	utemp=(args[3]);
-	uvalue[0]|=(utemp<<16);
+	uvalue[1]|=(utemp<<16);
 	utemp=(args[4]);
-	uvalue[0]|=(utemp<<24);
-	fvalue=uvalue[0]/10000.;
+	uvalue[1]|=(utemp<<24);
+	fvalue=uvalue[1]/10000.;
 	dacPGain[uvalue[0]]=fvalue;
 	configModifyFloatArray("Acqd.config","thresholds","dacPGain",dacPGain,BANDS_PER_ANT,&rawtime);
 	retVal=sendSignal(ID_ACQD,SIGUSR1);
@@ -2210,14 +2210,14 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 	if(uvalue[0]<0 || uvalue[0]>3)
 	    return 0;
 	utemp=(args[1]);	    
-	uvalue[0]=utemp;
+	uvalue[1]=utemp;
 	utemp=(args[2]);
-	uvalue[0]|=(utemp<<8);
+	uvalue[1]|=(utemp<<8);
 	utemp=(args[3]);
-	uvalue[0]|=(utemp<<16);
+	uvalue[1]|=(utemp<<16);
 	utemp=(args[4]);
-	uvalue[0]|=(utemp<<24);
-	fvalue=uvalue[0]/10000.;
+	uvalue[1]|=(utemp<<24);
+	fvalue=uvalue[1]/10000.;
 	dacIGain[uvalue[0]]=fvalue;
 	configModifyFloatArray("Acqd.config","thresholds","dacIGain",dacIGain,BANDS_PER_ANT,&rawtime);
 	retVal=sendSignal(ID_ACQD,SIGUSR1);
@@ -2229,14 +2229,14 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 	if(uvalue[0]<0 || uvalue[0]>3)
 	    return 0;
 	utemp=(args[1]);	    
-	uvalue[0]=utemp;
+	uvalue[1]=utemp;
 	utemp=(args[2]);
-	uvalue[0]|=(utemp<<8);
+	uvalue[1]|=(utemp<<8);
 	utemp=(args[3]);
-	uvalue[0]|=(utemp<<16);
+	uvalue[1]|=(utemp<<16);
 	utemp=(args[4]);
-	uvalue[0]|=(utemp<<24);
-	fvalue=uvalue[0]/10000.;
+	uvalue[1]|=(utemp<<24);
+	fvalue=uvalue[1]/10000.;
 	dacDGain[uvalue[0]]=fvalue;
 	configModifyFloatArray("Acqd.config","thresholds","dacDGain",dacDGain,BANDS_PER_ANT,&rawtime);
 	retVal=sendSignal(ID_ACQD,SIGUSR1);
@@ -2248,16 +2248,16 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 	if(uvalue[0]<0 || uvalue[0]>3)
 	    return 0;
 	utemp=(args[1]);	    
-	uvalue[0]=utemp;
+	uvalue[1]=utemp;
 	utemp=(args[2]);
-	uvalue[0]|=(utemp<<8);
+	uvalue[1]|=(utemp<<8);
 	utemp=(args[3]);
-	uvalue[0]|=(utemp<<16);
+	uvalue[1]|=(utemp<<16);
 	utemp=(args[4]);
-	uvalue[0]|=(utemp<<24);
-	fvalue=uvalue[0];
-	dacIMax[uvalue[0]]=fvalue;
-	configModifyFloatArray("Acqd.config","thresholds","dacIMax",dacIMax,BANDS_PER_ANT,&rawtime);
+	uvalue[1]|=(utemp<<24);
+	fvalue=uvalue[1];
+	dacIMax[uvalue[0]]=uvalue[1];
+	configModifyIntArray("Acqd.config","thresholds","dacIMax",dacIMax,BANDS_PER_ANT,&rawtime);
 	retVal=sendSignal(ID_ACQD,SIGUSR1);
 	if(retVal) return 0;
 	return rawtime;
@@ -2267,16 +2267,16 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 	if(uvalue[0]<0 || uvalue[0]>3)
 	    return 0;
 	utemp=(args[1]);	    
-	uvalue[0]=utemp;
+	uvalue[1]=utemp;
 	utemp=(args[2]);
-	uvalue[0]|=(utemp<<8);
+	uvalue[1]|=(utemp<<8);
 	utemp=(args[3]);
-	uvalue[0]|=(utemp<<16);
+	uvalue[1]|=(utemp<<16);
 	utemp=(args[4]);
-	uvalue[0]|=(utemp<<24);
-	fvalue=uvalue[0];
+	uvalue[1]|=(utemp<<24);
+	fvalue=uvalue[1];
 	dacIMin[uvalue[0]]=fvalue*-1;
-	configModifyFloatArray("Acqd.config","thresholds","dacIMin",dacIMin,BANDS_PER_ANT,&rawtime);
+	configModifyIntArray("Acqd.config","thresholds","dacIMin",dacIMin,BANDS_PER_ANT,&rawtime);
 	retVal=sendSignal(ID_ACQD,SIGUSR1);
 	if(retVal) return 0;
 	return rawtime;
@@ -2565,11 +2565,10 @@ int mountNextUsb(int whichUsb) {
 
 //    exit(0);
     //Change to new drive
-    if(intExtFlag&0x1) {
-      sprintf(usbName,"usbint%02d",currentNum[0]);
-      configModifyString("anitaSoft.config","global","usbName",usbName,&rawtime);
-      retVal=system("/home/anita/flightSoft/bin/mountCurrentUsb.sh");
-    }
+    sprintf(usbName,"bigint%02d",currentNum[0]);
+    configModifyString("anitaSoft.config","global","usbName",usbName,&rawtime);
+    retVal=system("/home/anita/flightSoft/bin/mountCurrentUsb.sh");
+
     sleep(5);
     startNewRun();
     sleep(10);
