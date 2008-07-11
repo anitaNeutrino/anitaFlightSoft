@@ -104,7 +104,7 @@
 #define VER_LOGWATCHD_START 10
 #define VER_AVG_SURF_HK 14
 #define VER_SUM_TURF_RATE 16
-#define VER_ACQD_START 10
+#define VER_ACQD_START 11
 #define VER_TURF_REG 10
 #endif
 
@@ -950,6 +950,7 @@ typedef struct {
 */
 typedef struct {
   GenericHeader_t gHdr;
+    unsigned char testBytes[8];
   unsigned int unixTime;
   unsigned int numEvents;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF]; ///<Ped subtracted
