@@ -41,7 +41,7 @@ int main(int argc, char *argv[]){
   fclose(fptmpl);
   
   n=0;
-  while(n++<1000000)
+  while(n++<100000)
     retval = fftwcorr_anal_1x(wfm_in, tmpl_in, corr_out);
   
   if(retval){
