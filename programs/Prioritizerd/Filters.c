@@ -29,7 +29,7 @@ void NullFilter(TransientChannel8_t *inch,TransientChannel3_t *outch)
 
 
 
-
+//modified to use analytic signal version 7/11/08 JJB
 void HornMatchedFilter(TransientChannelF_t *inch,TransientChannelF_t *outch)
 {
 //     int status,i;
@@ -62,7 +62,7 @@ void HornMatchedFilter(TransientChannelF_t *inch,TransientChannelF_t *outch)
 	  fclose(fptmpl);
 	  first=0;
      }
-     fftwcorr(inch->data,template,corr_out);
+     fftwcorr_anal_2x(inch->data,template,corr_out);
      for (i=0;i<inch->valid_samples;i++){
 	  outch->data[i]=corr_out[i];
      }
@@ -93,6 +93,7 @@ void HornMatchedFilterAll(AnitaInstrumentF_t *in,
 #endif // not ANITA2			    
 }
 
+//modified to use analytic signal 7/11/08 JJB
 void HornMatchedFilterSmooth(TransientChannelF_t *inch,TransientChannelF_t *outch)
 {
 //     int status,i;
@@ -126,19 +127,19 @@ void HornMatchedFilterSmooth(TransientChannelF_t *inch,TransientChannelF_t *outc
 	  fclose(fptmpl);
 	  first=0;
      }
-     fftwcorr(inch->data,template,corr_out);
+     fftwcorr_anal_2x(inch->data,template,corr_out);
 //three point binomial smoothing of the absolute value
      for (i=1;i<inch->valid_samples-1;i++){
 	  outch->data[i-1]=0.25*fabsf(corr_out[i-1])
 	       +0.5*fabsf(corr_out[i])+0.25*fabsf(corr_out[i+1]);
      }
      outch->valid_samples=inch->valid_samples-2;
-//now renormailze to the rms of the first ~third
+//now renormailze to the rms of the first ~quarter
      stdev=0.;
-     for (i=0; i<85; i++){
+     for (i=0; i<64; i++){
 	  stdev+=outch->data[i]*outch->data[i];
      }
-     stdev=sqrt(stdev/85.);
+     stdev=sqrt(stdev/64.);
      if (stdev>0){
 	  for (i=0; i<outch->valid_samples;i++){
 	       outch->data[i]=outch->data[i]/stdev;
