@@ -87,6 +87,8 @@ PedSubbedEventBody_t pedSubBody;
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
 AveragedSurfHkStruct_t avgSurfHk;
+TurfioTestPattern_t startPat;
+TurfioTestPattern_t endPat;
 int newTurfRateData=0;
 
 
@@ -350,9 +352,11 @@ int main(int argc, char **argv) {
     lastTurfRateRead.tv_usec=0;
     unsigned int tempTrigMask=antTrigMask;
     unsigned int tempNadirTrigMask=nadirAntTrigMask;
+    unsigned short tempPhiTrigMask=phiTrigMask;
     // Clear devices 
     clearDevices();
 
+    phiTrigMask=tempPhiTrigMask;
     antTrigMask=tempTrigMask;
     nadirAntTrigMask=tempNadirTrigMask;
 
@@ -1498,7 +1502,8 @@ AcqdErrorCode_t clearDevices()
     syslog(LOG_ERR,"Failed to set trigger mode to none on TURF\n") ;
     fprintf(stderr,"Failed to set trigger mode to none on TURF\n");
   }
-
+  
+  phiTrigMask=0xffff;
   antTrigMask=0xffffffff;    
   nadirAntTrigMask=0xff;
   //Mask off all antennas
@@ -1521,31 +1526,6 @@ AcqdErrorCode_t clearDevices()
 
 
 
-
-  // Prepare SURF boards
-  int tempInd;
-  for(tempInd=0;tempInd<numSurfs;tempInd++) {
-    //	i=surfClearIndex[tempInd];
-    i=tempInd;
-    if(i!=surfBusyWatch) {
-      //Here was the strange SP0 thing do we still need this??
-      if(verbosity && printToScreen)
-	fprintf(stderr,"Sending clearAll to SURF %d\n",surfIndex[i]);
-      if (setSurfControl(i, SurfClearAll) != ACQD_E_OK) {
-	syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-	fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-      }
-    }
-  }
-  i=surfBusyWatch;
-  if(verbosity && printToScreen)
-    fprintf(stderr,"Sending clearAll to SURF %d\n",surfIndex[i]);
-  if (setSurfControl(i, SurfClearAll) != ACQD_E_OK) {
-    syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-    fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-  }
-
-
   // Prepare TURF board
   if(verbosity && printToScreen)
     fprintf(stderr,"Sending Clear All pulse to TURF\n");
@@ -1555,15 +1535,56 @@ AcqdErrorCode_t clearDevices()
   }
   
 
+
   //Re mask all antennas
   if(verbosity && printToScreen)
     fprintf(stderr,"Masking off antennas\n");
+  phiTrigMask=0xffff;
   antTrigMask=0xffffffff;    
   nadirAntTrigMask=0xff;
   status=setTriggerMasks();
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
     fprintf(stderr,"Failed to write antenna trigger mask\n");
+  }
+
+  //Check that it cleared
+  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+  unsigned int uvalue=0;
+  if(status==ACQD_E_OK) {  
+      status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
+      printf("TURF Clear Register %#x\n",uvalue);
+  }
+    
+
+  // Prepare SURF boards
+  int tempInd;
+  for(tempInd=0;tempInd<numSurfs;tempInd++) {
+      if(verbosity && printToScreen)
+	  fprintf(stderr,"Sending clearAll to SURF %d\n",surfIndex[tempInd]);
+      if (setSurfControl(tempInd, SurfClearAll) != ACQD_E_OK) {
+	  syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+	fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+      }
+  }
+
+  //Check that it cleared
+  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+  uvalue=0;
+  if(status==ACQD_E_OK) {  
+      status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
+      printf("TURF Clear Register %#x\n",uvalue);
+  }
+
+
+
+
+  //Check that it cleared
+  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+  uvalue=0;
+  if(status==ACQD_E_OK) {  
+      status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
+      printf("TURF Clear Register %#x\n",uvalue);
   }
   return ACQD_E_OK;
 }
@@ -1892,6 +1913,7 @@ AcqdErrorCode_t doStartTest()
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
   char theFilename[FILENAME_MAX];
   int tempGlobalThreshold=setGlobalThreshold;
+  int firstEvent=1,byteCount=0;
   setGlobalThreshold=1;
   startStruct.numEvents=0;
   memset(chanMean,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
@@ -1989,6 +2011,14 @@ AcqdErrorCode_t doStartTest()
       fprintf(stderr,"Problem reading TURF event data\n");
       syslog(LOG_ERR,"Problem reading TURF event data\n");
     }
+    if(firstEvent) {
+	for(byteCount=0;byteCount<8;byteCount++) {
+	    startStruct.testBytes[byteCount]=startPat.test[byteCount];
+	}
+	firstEvent=0;
+    }
+
+
     if(verbosity && printToScreen) printf("Done reading\n");
 	    	    
     //Error checking
@@ -3227,8 +3257,6 @@ AcqdErrorCode_t readTurfEventDataVer5()
   unsigned int dataInt;
 
   int wordNum,phi,ring,errCount=0,count=0,nadirAnt;
-  TurfioTestPattern_t startPat;
-  TurfioTestPattern_t endPat;
   unsigned char turfBuf[TURF_EVENT_DATA_SIZE];
     
   //Read out 256 words and shorts not ints
@@ -3479,6 +3507,12 @@ AcqdErrorCode_t readTurfEventDataVer5()
 	//Second word
 	hdPtr->phiTrigMask+=(dataShort<<8);
       }	    
+    }
+    else if(wordNum==192) {
+	hdPtr->reserved[0]=dataChar;
+    }
+    else if(wordNum==193) {
+	hdPtr->reserved[1]=dataChar;
     }
     else if(wordNum<248) {
       //Reserved 
