@@ -8,6 +8,36 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
+unmount_usb() {
+    umount /mnt/usbint
+    RETVAL=$?
+    return $RETVAL
+}
+
+mount_usb() {
+    if df -h | grep -q "usbint"
+    then
+	umount /mnt/usbint
+    fi
+
+    disabled=`getConfigValue anitaSoft.config global disableUsb`
+    if [ $disabled -eq 1 ] ; then
+	echo "Usbint disk disabled"
+	return 1
+    fi
+
+
+    chmod a-w /mnt/usbint
+    label=`getConfigString anitaSoft.config global usbName`
+#    echo "Trying to mount $label on /mnt/usbint"
+    mount -L $label -o defaults /mnt/usbint
+    RETVAL=$?
+    if df -h | grep -q "usbint"
+    then
+	chmod a+wrx /mnt/usbint
+    fi
+    return $RETVAL
+}
 
 
 unmount_satamini() {
@@ -40,6 +70,8 @@ mount_satamini() {
     fi
     return $RETVAL
 }
+
+
 
 
 unmount_satablade() {
@@ -94,6 +126,7 @@ mount_satablade() {
 mount_anitadisks() {
     action $"Mounting /mnt/satamini..." mount_satamini
     action $"Mounting /mnt/satablade..." mount_satablade
+    action $"Mounting /mnt/usbint..." mount_usb
     action $"Starting Neobrick..." start_neobrick
     RETVAL=$?
     return $RETVAL
@@ -102,6 +135,7 @@ mount_anitadisks() {
 unmount_anitadisks() {
     action $"Unmounting /mnt/satamini..." unmount_satamini
     action $"Unmounting /mnt/satablade..." unmount_satablade
+    action $"Unmounting /mnt/usbint..." unmount_usb
     action $"Stopping Neobrick..." stop_neobrick
     RETVAL=$?
     return $RETVAL

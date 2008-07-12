@@ -40,7 +40,7 @@
 
 //Definitions
 #define HK_DEBUG 0
-#define SURFHK_PERIOD 10000
+#define SURFHK_PERIOD 30000
 
 
 void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
@@ -71,6 +71,7 @@ int surfHkPeriod=0;
 int surfHkAverage=10;
 int surfHkTelemEvery=0;
 int writeRawScalers=0; //period in seconds
+int pauseBeforeEvents=5;
 int lastSurfHk=0;
 int lastTurfHk=0;
 int turfHkCounter=0;
@@ -255,6 +256,7 @@ int main(int argc, char **argv) {
   unsigned short dacVal=2200;
   unsigned int lastEvNum=0;
   struct timeval timeStruct;
+  struct timeval startTimeStruct;
 
  
   int reInitNeeded=0;
@@ -309,6 +311,12 @@ int main(int argc, char **argv) {
     handleBadSigs(1002);
   }    
 
+
+  unsigned int pausePhiMask=phiTrigMask;
+  unsigned int pauseAntTrigMask=antTrigMask;
+  unsigned int pauseNadirAntTrigMask=nadirAntTrigMask;
+  int pauseMasksSet=0;
+
   if(standAloneMode) {
     //Read the command line variables
     init_param(argc, argv,  &numEvents, &dacVal) ;
@@ -331,6 +339,11 @@ int main(int argc, char **argv) {
       usleep(1000);
   }
 
+  //Now set the runNumber
+  setTurfEventCounter();
+
+  
+
   //Setup the output structures
   if(doingEvent==0) prepWriterStructs();
 
@@ -344,6 +357,8 @@ int main(int argc, char **argv) {
     doneStartTest=1;    
   }
 
+
+  
   //Main program loop
   do { //while( currentState==PROG_STATE_INIT
     lastSurfHkRead.tv_sec=0;
@@ -353,12 +368,16 @@ int main(int argc, char **argv) {
     unsigned int tempTrigMask=antTrigMask;
     unsigned int tempNadirTrigMask=nadirAntTrigMask;
     unsigned short tempPhiTrigMask=phiTrigMask;
+    
+    
+   
     // Clear devices 
     clearDevices();
-
-    phiTrigMask=tempPhiTrigMask;
-    antTrigMask=tempTrigMask;
-    nadirAntTrigMask=tempNadirTrigMask;
+    if(!pauseBeforeEvents) {
+	phiTrigMask=tempPhiTrigMask;
+	antTrigMask=tempTrigMask;
+	nadirAntTrigMask=tempNadirTrigMask;
+    }
 
     if(!reInitNeeded && !newPhiMask) {
       retVal=readConfigFile();
@@ -367,6 +386,14 @@ int main(int argc, char **argv) {
 	handleBadSigs(1002);
 	//		return -1;
       }
+    }
+    if(pauseBeforeEvents) {
+	phiTrigMask=0xffff;
+	antTrigMask=0xffffffff;
+	nadirAntTrigMask=0xff;
+	setTriggerMasks();
+	pauseMasksSet=1;
+	gettimeofday(&startTimeStruct,NULL);
     }
     newPhiMask=0;
     reInitNeeded=0;
@@ -492,6 +519,8 @@ int main(int argc, char **argv) {
 
       gettimeofday(&timeStruct,NULL);
      //Send software trigger if we want to
+    
+      
       if(sendSoftTrigger)
 	intersperseSoftTrig(&timeStruct);
 
@@ -506,6 +535,8 @@ int main(int argc, char **argv) {
 	  //somehow changeable
 	
 	    eventReadyFlag=0;
+
+
 	    
 	    if(turfFirmwareVersion==3) {
 		status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
@@ -545,6 +576,24 @@ int main(int argc, char **argv) {
 		       		
 	  //This time getting is quite important as the two bits below rely on having a recent time.
 	  gettimeofday(&timeStruct,NULL);
+
+	  if(pauseMasksSet) {
+	      if(pauseBeforeEvents>0 && timeStruct.tv_sec>startTimeStruct.tv_sec+pauseBeforeEvents) {
+		  
+		  phiTrigMask=pausePhiMask;
+		  antTrigMask=pauseAntTrigMask;
+		  nadirAntTrigMask=pauseNadirAntTrigMask;;
+		  printf("Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
+			 pauseBeforeEvents,phiTrigMask,antTrigMask,nadirAntTrigMask);
+		  syslog(LOG_INFO,
+			 "Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
+			 pauseBeforeEvents,phiTrigMask,antTrigMask,nadirAntTrigMask);
+		  
+		  setTriggerMasks();
+		  pauseMasksSet=0;
+	      }
+	  }
+
 
 	  //Now we have a couple of functions that work out rates and such
 	  //Writes slow rate if approrpriate
@@ -979,7 +1028,7 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	    break;
 	case SetEventEpoch:
 	    uvalue=eventEpoch;
-	    status+=setTurfioReg(TurfRegControlEpoch,uvalue);
+	    status+=setTurfioReg(TurfRegControlEventId,uvalue);
 	    break;
 	    
 	default :
@@ -1153,6 +1202,7 @@ int readConfigFile()
     surfFirmwareVersion=kvpGetInt("surfFirmwareVersion",2);
     turfFirmwareVersion=kvpGetInt("turfFirmwareVersion",2);
     writeRawScalers=kvpGetInt("writeRawScalers",1);
+    pauseBeforeEvents=kvpGetInt("pauseBeforeEvents",5);
     //	printf("%s\n",acqdEventDir);
 
 
@@ -1908,6 +1958,7 @@ AcqdErrorCode_t doStartTest()
   struct timeval timeStruct;
   unsigned int tempTrigMask=antTrigMask;
   unsigned int tempNadirTrigMask=nadirAntTrigMask;
+  unsigned short tempPhiTrigMask=phiTrigMask;
   AcqdStartStruct_t startStruct;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
@@ -1922,9 +1973,8 @@ AcqdErrorCode_t doStartTest()
   //Disable triggers
   antTrigMask=0xffffffff;
   nadirAntTrigMask=0xff;
+  phiTrigMask=0xffff;
   setTriggerMasks(); 
-  antTrigMask=tempTrigMask;
-  nadirAntTrigMask=tempNadirTrigMask;
 
   doingEvent=0;
   //Now have an event loop
@@ -2123,6 +2173,14 @@ AcqdErrorCode_t doStartTest()
       printf("\n");
     }
   }
+
+  
+
+  antTrigMask=tempTrigMask;
+  nadirAntTrigMask=tempNadirTrigMask;
+  phiTrigMask=tempPhiTrigMask;  
+  setDACThresholds();
+
   return ACQD_E_OK;
 } 
 
@@ -3348,6 +3406,7 @@ AcqdErrorCode_t readTurfEventDataVer5()
       if(wordNum%2==0) {
 	//First word
 	turfRates.l1Rates[phi][ring]=dataShort;
+//	printf("readTurfEvent\t%d %d %d %d\n",wordNum,phi,ring,dataShort);
       }
       else if(wordNum%2==1) {
 	//Second word
@@ -3604,11 +3663,12 @@ AcqdErrorCode_t readTurfHkData()
 	    //L1 rates
 	    usvalue=uvalue&0xffff;
 	    usvalue2=(uvalue&0xffff0000)>>16;
-	    ring=(i<8); //0 is upper, 1 is lower
+	    ring=1-(i<8); //0 is upper, 1 is lower
 	    phi=i*2;
 	    if(phi>=16) phi-=16;
 	    turfRates.l1Rates[phi][ring]=usvalue;
-	    turfRates.l1Rates[phi+1][ring]=usvalue2;	
+	    turfRates.l1Rates[phi+1][ring]=usvalue2;
+//	    printf("readTurfHk\t%d %d %d %d %d\n",i,phi,ring,usvalue,usvalue2);
 	}
 	else if(i<20) {
 	    ucvalue=uvalue&0xff;
@@ -3787,6 +3847,8 @@ AcqdErrorCode_t setTriggerMasks()
   New function that sets the antenna and phi trigger masks
 */
 {
+//    printf("Setting Trigger Masks %#x %#x %#x\n",
+//	   phiTrigMask,antTrigMask,nadirAntTrigMask);
   unsigned int uvalue=0;
   int countErrs=0;
   if(turfFirmwareVersion==3)
@@ -4464,4 +4526,20 @@ AcqdErrorCode_t checkTurfEventReady(int *turfEventReady)
 	*turfEventReady = 1;
     }
     return ACQD_E_OK;		
+}
+
+AcqdErrorCode_t setTurfEventCounter()
+{
+  unsigned int runNumber=getRunNumber();
+  unsigned int miniRun=runNumber&0xfff;
+  unsigned int eventNumToWrite=0;
+  eventNumToWrite=(miniRun<<20);
+  printf("Setting Turfio Event Number to %u -- (Run %d)\n",
+	 eventNumToWrite,runNumber);
+  syslog(LOG_INFO,"Setting Turfio Event Number to %u -- (Run %d)\n",
+	 eventNumToWrite,runNumber);
+
+  eventEpoch=eventNumToWrite;
+//  return setTurfControl(SetEventEpoch);
+  return ACQD_E_OK;
 }

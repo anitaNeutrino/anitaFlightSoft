@@ -46,14 +46,14 @@ disabledUsb=`getConfigValue anitaSoft.config global disableUsb`
 if [ $disabledUsb -eq 1 ] ; then
     echo "USB disk disabled"
 else  
-    echo "Need to fix this"
-#mkdir /mnt/usbext/run${run}
-#rm -f /mnt/usbext/current
-#if [ -d /mnt/usbext/current ] ; then
-#	echo "Moving /mnt/usbext/current"
-#	mv /mnt/usbext/current /mnt/usbext/current.run${run} 
-#fi
-#ln -sf /mnt/usbext/run${run} /mnt/usbext/current
+  #  echo "Need to fix this"
+    mkdir /mnt/usbint/run${run}
+    rm -f /mnt/usbint/current
+    if [ -d /mnt/usbint/current ] ; then
+	echo "Moving /mnt/usbint/current"
+	mv /mnt/usbint/current /mnt/usbint/current.run${run} 
+    fi
+    ln -sf /mnt/usbint/run${run} /mnt/usbint/current
 fi
 
 rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd

@@ -746,10 +746,10 @@ char *getCurrentHkDir(char *baseHkDir,unsigned int unixTime)
     int ext=0;
     newDir=malloc(FILENAME_MAX);
     sprintf(newDir,"%s/sub_%u",baseHkDir,unixTime);
-    while(is_dir(newDir)) {
-	ext++;
-	sprintf(newDir,"%s/sub_%u_%d",baseHkDir,unixTime,ext);
-    }
+//    while(is_dir(newDir)) {
+//	ext++;
+//	sprintf(newDir,"%s/sub_%u_%d",baseHkDir,unixTime,ext);
+//    }
     makeDirectories(newDir);
     return newDir;    
 }
@@ -1555,7 +1555,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
     gHdr->code=code;
     gHdr->numBytes=numBytes;
     gHdr->feByte=0xfe;
-    switch(code) {
+    switch(code&BASE_PACKET_MASK) {
 	case PACKET_BD: gHdr->verId=VER_EVENT_BODY; break;
 	case PACKET_HD: gHdr->verId=VER_EVENT_HEADER; break;
 	case PACKET_HD_SLAC: gHdr->verId=SLAC_VER_EVENT_HEADER; break;
@@ -1563,9 +1563,9 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
 	case PACKET_SURF: gHdr->verId=VER_SURF_PACKET; break;
 	case PACKET_SURF_HK: gHdr->verId=VER_SURF_HK; break;
 	case PACKET_TURF_RATE: gHdr->verId=VER_TURF_RATE; break;
-    case PACKET_AVG_SURF_HK: gHdr->verId=VER_AVG_SURF_HK; break;
-    case PACKET_SUM_TURF_RATE: gHdr->verId=VER_SUM_TURF_RATE; break;
-    case PACKET_TURF_REGISTER: gHdr->verId=VER_TURF_REG; break;
+	case PACKET_AVG_SURF_HK: gHdr->verId=VER_AVG_SURF_HK; break;
+	case PACKET_SUM_TURF_RATE: gHdr->verId=VER_SUM_TURF_RATE; break;
+	case PACKET_TURF_REGISTER: gHdr->verId=VER_TURF_REG; break;
 	case PACKET_LAB_PED: gHdr->verId=VER_LAB_PED; break;
 	case PACKET_FULL_PED: gHdr->verId=VER_FULL_PED; break;
 	case PACKET_ENC_WV_PEDSUB: gHdr->verId=VER_ENC_WAVE_PACKET; break;
@@ -1622,7 +1622,7 @@ int checkPacket(void *thePtr)
 	       packetCodeAsString(code),code,intBytes,checksum,gHdr->checksum);	
 	retVal+=PKT_E_CHECKSUM;
     }
-    switch(code) {
+    switch(code&BASE_PACKET_MASK) {
 	case PACKET_BD: packetSize=sizeof(AnitaEventBody_t); break;	    
 	case PACKET_HD: packetSize=sizeof(AnitaEventHeader_t); break;	    
 	case PACKET_WV: packetSize=sizeof(RawWaveformPacket_t); break;
@@ -1630,10 +1630,10 @@ int checkPacket(void *thePtr)
 	case PACKET_PEDSUB_SURF: packetSize=sizeof(PedSubbedSurfPacket_t); break;
 	case PACKET_SURF: packetSize=sizeof(RawSurfPacket_t); break;
 	case PACKET_SURF_HK: packetSize=sizeof(FullSurfHkStruct_t); break;
-    case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
-    case PACKET_TURF_REGISTER: packetSize=sizeof(TurfRegisterContents_t); break;
-    case PACKET_AVG_SURF_HK: packetSize=sizeof(AveragedSurfHkStruct_t); break;
-    case PACKET_SUM_TURF_RATE: packetSize=sizeof(SummedTurfRateStruct_t); break;
+	case PACKET_TURF_RATE: packetSize=sizeof(TurfRateStruct_t); break;
+	case PACKET_TURF_REGISTER: packetSize=sizeof(TurfRegisterContents_t); break;
+	case PACKET_AVG_SURF_HK: packetSize=sizeof(AveragedSurfHkStruct_t); break;
+	case PACKET_SUM_TURF_RATE: packetSize=sizeof(SummedTurfRateStruct_t); break;
 	case PACKET_ENC_WV_PEDSUB: break;
 	case PACKET_ENC_SURF: break;
 	case PACKET_ENC_SURF_PEDSUB: break;
@@ -1683,7 +1683,7 @@ int checkPacket(void *thePtr)
 
 char *packetCodeAsString(PacketCode_t code) {
     char* string ;
-    switch(code) {
+    switch(code&BASE_PACKET_MASK) {
 	case PACKET_BD: string="AnitaEventBody_t"; break;	    
 	case PACKET_HD: string="AnitaEventHeader_t"; break;	    
 	case PACKET_WV: string="RawWaveformPacket_t"; break;
@@ -1715,12 +1715,12 @@ char *packetCodeAsString(PacketCode_t code) {
 	case PACKET_ZIPPED_FILE: string="ZippedFile_t"; break;
 	case PACKET_RUN_START: string="RunStart_t"; break;
 	case PACKET_OTHER_MONITOR: string="OtherMonitorStruct_t"; break;
-    case PACKET_GPSD_START: string="GpsdStartStruct_t"; break;
-    case PACKET_LOGWATCHD_START: string="LogWatchdStart_t"; break;
-    case PACKET_ACQD_START: string="AcqdStartStruct_t"; break;
-    case PACKET_GPS_GGA: string="GpsGgaStruct_t"; break;
-    case PACKET_AVG_SURF_HK: string="AveragedSurfHkStruct_t"; break;
-    case PACKET_SUM_TURF_RATE: string="SummedTurfRateStruct_t"; break;
+	case PACKET_GPSD_START: string="GpsdStartStruct_t"; break;
+	case PACKET_LOGWATCHD_START: string="LogWatchdStart_t"; break;
+	case PACKET_ACQD_START: string="AcqdStartStruct_t"; break;
+	case PACKET_GPS_GGA: string="GpsGgaStruct_t"; break;
+	case PACKET_AVG_SURF_HK: string="AveragedSurfHkStruct_t"; break;
+	case PACKET_SUM_TURF_RATE: string="SummedTurfRateStruct_t"; break;
 
 	default: 
 	    string="Unknown Packet Code"; break;

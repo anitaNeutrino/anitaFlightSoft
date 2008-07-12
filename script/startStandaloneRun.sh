@@ -11,7 +11,17 @@ daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 
 echo "Sleeping while files are written and zipped"
-sleep 5
+while [ 1 ]; do
+ ps x > /tmp/psx
+ if grep -q Archived /tmp/psx; then
+     echo "Archived is still running"
+     sleep 1
+ else
+     break;
+ fi
+done;
+
+
 rm -rf /tmp/neobrick/*
 rm -rf /tmp/buffer/*
 rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd

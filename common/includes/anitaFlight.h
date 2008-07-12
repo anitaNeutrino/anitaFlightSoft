@@ -51,6 +51,8 @@
 #define PED_DEFAULT_VALUE 650
 
 
+#define BASE_PACKET_MASK 0xffff
+
 //Firmware Stuff
 #define TURF_BANK_SIZE 64
 
