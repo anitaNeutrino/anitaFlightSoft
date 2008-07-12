@@ -865,10 +865,11 @@ void processGpvtgString(char *gpsString, int gpsLength, int fromAdu5) {
 	 &(theVtg.trueCourse),&(theVtg.magneticCourse),
 	 &(theVtg.speedInKnots),&(theVtg.speedInKPH));
   
-  fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG,sizeof(GpsAdu5VtgStruct_t));
   
   
   if(fromAdu5==1) {
+      
+      fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG|PACKET_FROM_ADU5A,sizeof(GpsAdu5VtgStruct_t));
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5aVtgTelemEvery) {
@@ -886,6 +887,7 @@ void processGpvtgString(char *gpsString, int gpsLength, int fromAdu5) {
     }
   }
   else if(fromAdu5==2) {
+      fillGenericHeader(&theVtg,PACKET_GPS_ADU5_VTG|PACKET_FROM_ADU5B,sizeof(GpsAdu5VtgStruct_t));
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5bVtgTelemEvery) {
@@ -960,7 +962,6 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
   theGga.timeOfDay+=(float)(1000*60*minute);
   theGga.timeOfDay+=(float)(1000*60*60*hour);  
 
-  fillGenericHeader(&theGga,PACKET_GPS_GGA,sizeof(GpsGgaStruct_t));
   /*     printf("unixTime: %d\ntimeOfDay: %d\nnumSats: %d\nlatitude: %f\nlongitude: %f\naltitute: %f\ngeoidSep: %f\n",  */
 /* 	   theGga.unixTime, */
 /*         theGga.numSats, */
@@ -972,6 +973,8 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
 /*     exit(0); */
   
   if(fromAdu5==0) {
+      
+  fillGenericHeader(&theGga,PACKET_GPS_GGA|PACKET_FROM_G12,sizeof(GpsGgaStruct_t));
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=g12GgaTelemEvery) {
@@ -989,6 +992,7 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
     }
   }
   else if(fromAdu5==1) {
+      fillGenericHeader(&theGga,PACKET_GPS_GGA|PACKET_FROM_ADU5A,sizeof(GpsGgaStruct_t));
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5aGgaTelemEvery) {
@@ -1006,6 +1010,7 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
     }
   }
   else if(fromAdu5==2) {
+      fillGenericHeader(&theGga,PACKET_GPS_GGA|PACKET_FROM_ADU5B,sizeof(GpsGgaStruct_t));
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5bGgaTelemEvery) {
@@ -1517,9 +1522,10 @@ void processAdu5SatString(char *gpsString, int gpsLength, int fromAdu5, int isSa
 	      if(printToScreen) fprintf(stderr,"Incomplete SA4 data from ADU5\n");
 	  }
 	  else {
-	      fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT,sizeof(GpsAdu5SatStruct_t));
+
 	      
 	      if(fromAdu5==1) {
+		  fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT|PACKET_FROM_ADU5A,sizeof(GpsAdu5SatStruct_t));
 		  telemCount[fromAdu5]++;
 		  if(telemCount[fromAdu5]>=adu5aSatTelemEvery) {
 		      //Write file and link for sipd
@@ -1538,6 +1544,7 @@ void processAdu5SatString(char *gpsString, int gpsLength, int fromAdu5, int isSa
 		  }	    
 	      }
 	      else if(fromAdu5==2) {
+		  fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT|PACKET_FROM_ADU5B,sizeof(GpsAdu5SatStruct_t));
 		  telemCount[fromAdu5]++;
 		  if(telemCount[fromAdu5]>=adu5bSatTelemEvery) {
 		      //Write file and link for sipd
@@ -1635,9 +1642,10 @@ void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
 /*     exit(0); */
     
 
-  fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT,sizeof(GpsAdu5PatStruct_t));
+
 
   if(fromAdu5==1) {
+      fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT|PACKET_FROM_ADU5A,sizeof(GpsAdu5PatStruct_t));
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5aPatTelemEvery) {
       //Write file and link for sipd
@@ -1656,6 +1664,7 @@ void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
     }	 
   }
   else if(fromAdu5==2) {
+      fillGenericHeader(&thePat,PACKET_GPS_ADU5_PAT|PACKET_FROM_ADU5B,sizeof(GpsAdu5PatStruct_t));
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5bPatTelemEvery) {
       //Write file and link for sipd

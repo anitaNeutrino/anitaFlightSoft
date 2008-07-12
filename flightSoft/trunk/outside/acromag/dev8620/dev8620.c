@@ -660,7 +660,7 @@ init_module( void )
     if( p8620 )
 	{ 
 	  carrier_address[i] = (unsigned long)p8620->resource[2].start;
-      carrier_address[i]= (unsigned long)__ioremap( carrier_address[i], 4096, _PAGE_PCD ); /* no cache */
+      carrier_address[i]= (unsigned long)ioremap_nocache( carrier_address[i], 4096); /* no cache */
 
       if( carrier_address[i] )
 	  {
@@ -681,7 +681,7 @@ init_module( void )
         ip_mem_address[i] = (unsigned long)p8620->resource[3].start;	/* get IP mem region if present */
         if( ip_mem_address[i] )
 		{
-	      ip_mem_address[i] = (unsigned long)__ioremap( ip_mem_address[i], 0x4000000, _PAGE_PCD ); /* no cache */
+		    ip_mem_address[i] = (unsigned long)ioremap_nocache( ip_mem_address[i], 0x4000000); /* no cache */
 
           if( ip_mem_address[i] )
               printk("%s mapped   MEM=%08lX\n",devnamebuf, (unsigned long)ip_mem_address[i]);

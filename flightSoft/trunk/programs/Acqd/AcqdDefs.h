@@ -65,7 +65,7 @@ typedef enum __TURF_register_control {
   TurfRegControlAntTrigMask=0x4,
   TurfRegControlNadirAntTrigMask=0x5,
   TurfRegControlPhiMask=0x6,
-  TurfRegControlEpoch=0x7,
+  TurfRegControlEventId=0x7,
   TurfRegControlTrigger=0x8,
   TurfRegControlClockStatus=0x9,
   TurfRegControlEventReady=0xa,
