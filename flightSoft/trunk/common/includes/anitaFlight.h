@@ -251,6 +251,8 @@
 #define PLAYBACK_LINK_DIR "/tmp/anita/playbackd/link"
 #define LOGWATCH_DIR "/tmp/anita/logwatchd"
 #define LOGWATCH_LINK_DIR "/tmp/anita/logwatchd/link"
+#define NEOBRICKD_DIR "/tmp/anita/neobrickd"
+#define NEOBRICKD_LINK_DIR "/tmp/anita/neobrickd/link"
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
@@ -266,6 +268,7 @@
 #define SIPD_PID_FILE "/tmp/anita/pid/sipd.pid"
 #define PLAYBACKD_PID_FILE "/tmp/anita/pid/playbackd.pid"
 #define LOGWATCHD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
+#define NEOBRICKD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 
