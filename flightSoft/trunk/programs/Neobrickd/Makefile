@@ -14,7 +14,7 @@ all: $(Targets)
 
 $(Targets): % : %.o
 	@echo "<**Linking**> $@ ..."
-	@$(LD) $@.o $(LDFLAGS) $(ANITA_LIBS)  -o $@
+	@$(LD) $@.o $(LDFLAGS) $(ANITA_LIBS) $(ANITA_FTP_LIBS)  -o $@
 	@chmod 555 $@
 	ln -sf $(shell pwd)/$@ ${ANITA_FLIGHT_SOFT_DIR}/bin
 

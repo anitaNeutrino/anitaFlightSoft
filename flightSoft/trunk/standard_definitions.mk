@@ -73,6 +73,7 @@ ANITA_SIP_LIBS = -lSipcom
 ANITA_LOS_LIBS = -lLos
 ANITA_COMP_LIBS = -lCompress
 ANITA_MAP_LIBS = -lAnitaMap
+ANITA_FTP_LIBS = -lAnitaFtp
 BZ_LIB =  -lbz2
 FFTW_LIB =  -lfftw3
 

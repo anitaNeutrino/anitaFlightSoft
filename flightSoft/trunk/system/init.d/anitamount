@@ -88,12 +88,12 @@ start_neobrick() {
 	return 1
     fi
     
-    /usr/local/bin/daemon -u anita -r /home/anita/flightSoft/testing/simpleNeobrickScript.sh -n Neobrickd
+    /usr/local/bin/daemon -u anita -r /home/anita/flightSoft/testing/simpleNeobrickScript.sh -n NeoScript
     return $RETVAL
 }
 
 stop_neobrick() {
-    /usr/local/bin/daemon -u anita --stop -n Neobrickd
+    /usr/local/bin/daemon -u anita --stop -n NeoScript
     return $RETVAL
 }
 

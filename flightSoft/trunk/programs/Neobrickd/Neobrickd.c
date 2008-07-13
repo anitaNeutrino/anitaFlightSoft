@@ -41,6 +41,9 @@ void makeFtpDirectories(char *theTmpDir);
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 int readConfigFile();
+void sendThisFile(int runNumber, char *tmpFilename);
+int telemeterFile(char *filename, int numLines);
+
 
 int main(int argc, char**argv) {
   int retVal,count;
@@ -48,6 +51,8 @@ int main(int argc, char**argv) {
   char *tempString;
   char linkName[FILENAME_MAX];
   char tmpFilename[FILENAME_MAX];
+  time_t lastStatusUpdate=0;
+  time_t rawTime;
   
   // Log stuff 
   char *progName=basename(argv[0]);
@@ -70,18 +75,13 @@ int main(int argc, char**argv) {
   openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
   
     
-  makeDirectories(NEOBRICKD_LINK_DIR);
+  makeDirectories(NEOBRICKD_LINK_DIR);    
+  makeDirectories(LOGWATCH_LINK_DIR);
   
 
   retVal=readConfigFile();
   
-  if(!disableNeobrick) {
-    // open the FTP connection   
-    if (ftp_open("10.0.0.2", "anonymous", "")) {
-      fprintf(stderr,"ftp_open -- %s\n",strerror(errno));
-      syslog(LOG_ERR,"ftp_open -- %s\n",strerror(errno));
-    }
-  }
+
 
   if(wdNeo==0) {
     wdNeo=setupLinkWatchDir(NEOBRICKD_LINK_DIR);
@@ -96,33 +96,55 @@ int main(int argc, char**argv) {
   do {
     retVal=readConfigFile();
     if(printToScreen) 
-      printf("Initializing Eventd\n");
+	printf("Initializing Neobrickd -- disableNeobrick %d\n",disableNeobrick);
+
+    if(!disableNeobrick) {
+	// open the FTP connection   
+	if (ftp_open("10.0.0.2", "anonymous", "")) {
+	    fprintf(stderr,"ftp_open -- %s\n",strerror(errno));
+	    syslog(LOG_ERR,"ftp_open -- %s\n",strerror(errno));
+	}
+    }
     
     int runNumber=getRunNumber();
     currentState=PROG_STATE_RUN;
     while(currentState==PROG_STATE_RUN) {
+	time(&rawTime);
+	if(rawTime>lastStatusUpdate+30) {
+	    if(!disableNeobrick) {
+		printf("Getting status file\n");
+		ftp_getfile("/neobrick.status","/tmp/anita/neobrick.status",0);
+		telemeterFile("/tmp/anita/neobrick.status",0);
+	    }
+	    lastStatusUpdate=rawTime;
+	}
+		
+
       retVal=checkLinkDirs(1,0);
       numNeos=getNumLinks(wdNeo);
       if(numNeos<1)
 	continue;
-
       
       for(count=0;count<numNeos;count++) {
+	  memset(tmpFilename,0,FILENAME_MAX);
 	tempString=getFirstLink(wdNeo);
 	sprintf(linkName,"%s/%s",NEOBRICKD_LINK_DIR,tempString);
 	readlink(linkName,tmpFilename,FILENAME_MAX);
 
 	printf("readlink returned %s for %s\n",tmpFilename,linkName);
+
+	if(!disableNeobrick) 
+	    sendThisFile(runNumber,tmpFilename);
 	//Now need to find the filename pointed to by link
-	//	unlink(tmpFilename);
+	unlink(tmpFilename);
 	unlink(linkName);
       }
     }
+    ftp_close();
   } while(currentState==PROG_STATE_INIT);
     
   
   // the end 
-  ftp_close();
   unlink(NEOBRICKD_PID_FILE);
   return 0;
 }
@@ -131,7 +153,7 @@ int main(int argc, char**argv) {
 void sendThisFile(int runNumber, char *tmpFilename)
 {
     char fileName[FILENAME_MAX];
-    sprintf(fileName,"/mnt/data/run%d/%s",runNumber,&tmpFilename[21]);    
+    sprintf(fileName,"/data/run%d/%s",runNumber,&tmpFilename[21]);    
     if(printToScreen)
       printf("New file -- %s\n",fileName);
     
@@ -214,4 +236,19 @@ int readConfigFile()
     }
     
     return status;
+}
+
+int telemeterFile(char *filename, int numLines) {
+  static int counter=0;
+  LogWatchRequest_t theRequest;
+  char outName[FILENAME_MAX];
+  time_t rawtime;
+  time(&rawtime);
+  theRequest.numLines=numLines;
+  strncpy(theRequest.filename,filename,179);
+  sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,counter);
+  counter++;
+  writeStruct(&theRequest,outName,sizeof(LogWatchRequest_t));
+  makeLink(outName,LOGWATCH_LINK_DIR);
+  return rawtime;
 }

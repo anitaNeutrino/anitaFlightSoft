@@ -477,7 +477,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
       //		   currentFilename);
       //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
       removeFile(currentFilename);
-
+      removeFile(currentLOSTouchname);
       removeFile(currentLinkname);
       removeFile(currentTouchname);
       continue;
@@ -561,7 +561,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
       //		   currentFilename);
       //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
       removeFile(currentFilename);
-
+      removeFile(currentLOSTouchname);
       removeFile(currentLinkname);
       removeFile(currentTouchname);
       continue;
@@ -858,7 +858,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
   sscanf(justFile,"hd_%u.dat",&thisEventNumber);
   sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 	  thisEventNumber);
-  sprintf(waveFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
+  sprintf(waveFilename,"%s/psev_%d.dat",eventTelemDirs[currentPri], 
 	  thisEventNumber);
     
   sprintf(currentTouchname,"%s.sipd",headerFilename);
@@ -888,7 +888,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
   if(retVal<0) {
     removeFile(headerFilename);
     removeFile(waveFilename);
-	
+    removeFile(currentLOSTouchname);
     //Bollocks
     return;
   }
@@ -908,6 +908,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     fprintf(stderr,"Problem reading %s\n",waveFilename);
     removeFile(headerFilename);
     removeFile(waveFilename);
+    removeFile(currentLOSTouchname);
 	
     //Bollocks
     return;

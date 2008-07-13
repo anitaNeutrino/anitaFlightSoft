@@ -787,6 +787,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
 		thisEventNumber);
 	
+	unlink(currentTouchname);
 	unlink(headerFilename);
 	unlink(waveFilename);
 	
@@ -823,6 +824,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 //	removeFile(headerLinkFilename);
 	unlink(headerFilename);
 	unlink(waveFilename);	
+	unlink(currentTouchname);
 	//Bollocks
 	return;
     }
