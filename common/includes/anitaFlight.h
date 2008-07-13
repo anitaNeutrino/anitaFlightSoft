@@ -268,7 +268,7 @@
 #define SIPD_PID_FILE "/tmp/anita/pid/sipd.pid"
 #define PLAYBACKD_PID_FILE "/tmp/anita/pid/playbackd.pid"
 #define LOGWATCHD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
-#define NEOBRICKD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
+#define NEOBRICKD_PID_FILE "/tmp/anita/pid/neobrickd.pid"
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 
