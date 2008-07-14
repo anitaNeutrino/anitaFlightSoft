@@ -6,6 +6,8 @@
 
 int FFTNumChannels; //hack to communicate fft info from the crosscorrelator
 
+extern int MethodMask;
+
 #ifdef ANITA2
 //indices have surf channel counting from zero.
 // 0 is H, 1 is V polarization
@@ -180,47 +182,6 @@ const float dipangle=-10.; //look angle of antenna in degrees
 const float samples_per_ns=2.6; //SURF nominal
 const float meters_per_ns=0.299792458; //speed of light in meters per ns
 
-void BuildInstrument3(AnitaTransientBody3_t *surfData,
-		      AnitaInstrument3_t  *antennaData)
-{			 
-     int i,j;
-     for (i=0;i<16;i++){
-	  for (j=0; j<2; j++){
-	       antennaData->topRing[i][j]=&(surfData->ch[topRingIndex[i][j]]);
-	       antennaData->botRing[i][j]=&(surfData->ch[botRingIndex[i][j]]);
-	  }
-     }
-#ifdef ANITA2
-     for (i=0;i<8;i++){
-	  for (j=0; j<2; j++){
-	       antennaData->nadir[i][j]=&(surfData->ch[nadirIndex[i][j]]);
-	  }
-     }
-#else //ANITA2
-     for (i=0;i<4;i++){
-	  antennaData->bicone[i]=&(surfData->ch[biconeIndex[i]]);
-	  antennaData->discone[i]=&(surfData->ch[disconeIndex[i]]);
-     }
-#endif //not ANITA2
-}
-
-
-void TCF_RMSfill(TransientChannelFRMS_t *theData){
-     int k;
-     float sum=0., sumsq=0.;
-     for (k=0; k<64; k++){
-	  sum+=theData->data[k];
-	  sumsq+=theData->data[k]*theData->data[k];
-     }
-     theData->RMSpre=sumsq/64.-(sum/64.)*(sum/64.);
-     for (k=64;k<theData->valid_samples;k++){
-	  sum+=theData->data[k];
-	  sumsq+=theData->data[k]*theData->data[k];
-     }
-     theData->RMSall=sqrtf(sumsq/theData->valid_samples
-	  -(sum/theData->valid_samples)*(sum/theData->valid_samples));
-}
-
 void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
 		      AnitaInstrumentF_t  *antennaData)
 {			 
@@ -228,9 +189,7 @@ void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
      for (i=0;i<16;i++){
 	  for (j=0; j<2; j++){
 	       antennaData->topRing[i][j]=(surfData->ch[topRingIndex[i][j]]);
-	       //TCF_RMSfill(&antennaData->topRing[i][j]);
 	       antennaData->botRing[i][j]=(surfData->ch[botRingIndex[i][j]]);
-	       //TCF_RMSfill(&antennaData->botRing[i][j]);
 	  }
      }
 #ifdef ANITA2
@@ -242,148 +201,9 @@ void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
 #else //ANITA2
      for (i=0;i<4;i++){
 	  antennaData->bicone[i]=(surfData->ch[biconeIndex[i]]);
-	  //TCF_RMSfill(&antennaData->bicone[i]);
 	  antennaData->discone[i]=(surfData->ch[disconeIndex[i]]);
-	  //TCF_RMSfill(&antennaData->discone[i]);
      }
 #endif     
-}
-
-/* void CheckRMS(AnitaInstrumentF_t *theData,int thresh,int navg, */
-/* 	 RMScheck_t *RMSall,RMScheck_t *RMSpre) */
-/* { */
-/*      static RMScheck_t cRMSall,cRMSpre; */
-/*      static int nseen=0; // */
-/*      int i,j; */
-/*      float denom; */
-/*      //form moving averages of the RMS */
-/*      //score this event against the moving average; */
-/*      //count the number of antennas that are above threshold percent */
-/*      //of the moving average */
-/*      if (nseen<navg) { */
-/* 	  nseen++; denom=nseen; */
-/*      } */
-/*      else { */
-/* 	  denom=navg; */
-/*      } */
-/*      RMSall->nover=0; */
-/*      RMSpre->nover=0; */
-/*      for (i=0;i<16;i++){ */
-/* 	  for (j=0; j<2; j++){ */
-/* 	       //top all */
-/* 	       cRMSall.topRing[i][j]*=(nseen-1)/denom; */
-/* 	       cRMSall.topRing[i][j]+= */
-/* 		    (theData->topRing[i][j].RMSall/denom); */
-/* 	       RMSall->topRing[i][j]=(theData->topRing[i][j].RMSall/ */
-/* 				      cRMSall.topRing[i][j]); */
-/* 	       if (RMSall->topRing[i][j]*100.> (float) thresh) RMSall->nover++; */
-/* 	       //bottom all */
-/* 	       cRMSall.botRing[i][j]*=(nseen-1)/denom; */
-/* 	       cRMSall.botRing[i][j]+= */
-/* 		     (theData->botRing[i][j].RMSall/denom); */
-/* 	       RMSall->botRing[i][j]=(theData->botRing[i][j].RMSall/ */
-/* 				      cRMSall.botRing[i][j]); */
-/* 	       if (RMSall->botRing[i][j]*100.> (float) thresh) RMSall->nover++; */
-/* 	       //top pre */
-/* 	       cRMSpre.topRing[i][j]*=(nseen-1)/denom; */
-/* 	       cRMSpre.topRing[i][j]+= */
-/* 		    (theData->topRing[i][j].RMSpre/denom); */
-/* 	       RMSpre->topRing[i][j]=(theData->topRing[i][j].RMSpre/ */
-/* 				      cRMSpre.topRing[i][j]); */
-/* 	       if (RMSpre->topRing[i][j]*100.> (float) thresh) RMSpre->nover++; */
-/* 	       //bottom pre */
-/* 	       cRMSpre.botRing[i][j]*=(nseen-1)/denom; */
-/* 	       cRMSpre.botRing[i][j]+= */
-/* 		     (theData->botRing[i][j].RMSpre/denom); */
-/* 	       RMSpre->botRing[i][j]=(theData->botRing[i][j].RMSpre/ */
-/* 				      cRMSpre.botRing[i][j]); */
-/* 	       if (RMSpre->botRing[i][j]*100.> (float) thresh) RMSpre->nover++; */
-/* 	  } */
-/*      } */
-/*      for (i=0;i<4;i++){ */
-/* 	       //bicone all */
-/* 	       cRMSall.bicone[i]*=(nseen-1)/denom; */
-/* 	       cRMSall.bicone[i]+= */
-/* 		    (theData->bicone[i].RMSall/denom); */
-/* 	       RMSall->bicone[i]=(theData->bicone[i].RMSall/ */
-/* 				      cRMSall.bicone[i]); */
-/* 	       if (RMSall->bicone[i]*100.> (float) thresh) RMSall->nover++; */
-/* 	       //bicone pre */
-/* 	       cRMSpre.bicone[i]*=(nseen-1)/denom; */
-/* 	       cRMSpre.bicone[i]+= */
-/* 		    (theData->bicone[i].RMSpre/denom); */
-/* 	       RMSpre->bicone[i]=(theData->bicone[i].RMSpre/ */
-/* 				      cRMSpre.bicone[i]); */
-/* 	       if (RMSpre->bicone[i]*100.> (float) thresh) RMSpre->nover++; */
-/* 	       //discone all */
-/* 	       cRMSall.discone[i]*=(nseen-1)/denom; */
-/* 	       cRMSall.discone[i]+= */
-/* 		    (theData->discone[i].RMSall/denom); */
-/* 	       RMSall->discone[i]=(theData->discone[i].RMSall/ */
-/* 				      cRMSall.discone[i]); */
-/* 	       //discone pre */
-/* 	       if (RMSall->discone[i]*100.> (float) thresh) RMSall->nover++; */
-/* 	       cRMSpre.discone[i]*=(nseen-1)/denom; */
-/* 	       cRMSpre.discone[i]+= */
-/* 		    (theData->discone[i].RMSpre/denom); */
-/* 	       RMSpre->discone[i]=(theData->discone[i].RMSpre/ */
-/* 				      cRMSpre.discone[i]); */
-/*      } */
-     
-/* }  */
-
-/* void Instrument3toF(AnitaInstrument3_t *intData, */
-/* 		    AnitaInstrumentF_t  *floatData) */
-/* {			  */
-/*      int i,j,k; */
-/*      for (i=0;i<16;i++){ */
-/* 	  for (j=0; j<2; j++){ */
-/* 	       for (k=0; k<(intData->topRing[i][j])->valid_samples;k++){ */
-/* 		    (floatData->topRing[i][j]).data[k]=  */
-/* 			 (intData->topRing[i][j])->data[k]/8.; */
-/* 	       } */
-/* 	       (floatData->topRing[i][j]).valid_samples */
-/* 		    =(intData->topRing[i][j])->valid_samples; */
-	  
-/* 	       for (k=0; k<(intData->botRing[i][j])->valid_samples;k++){ */
-/* 		    (floatData->botRing[i][j]).data[k]=  */
-/* 			 (intData->botRing[i][j])->data[k]/8.; */
-/* 	       } */
-/* 	       (floatData->botRing[i][j]).valid_samples */
-/* 		    =(intData->botRing[i][j])->valid_samples; */
-/* 	  } */
-/*      } */
-/*      for (i=0;i<4;i++){ */
-/* 	  for (k=0; k<(intData->bicone[i])->valid_samples;k++){ */
-/* 	       (floatData->bicone[i]).data[k]=  */
-/* 		    (intData->bicone[i])->data[k]/8.; */
-/* 	  } */
-/* 	  (floatData->bicone[i]).valid_samples */
-/* 	       =(intData->bicone[i])->valid_samples; */
-/* 	  for (k=0; k<(intData->discone[i])->valid_samples;k++){ */
-/* 	       (floatData->discone[i]).data[k]=  */
-/* 		    (intData->discone[i])->data[k]/8.; */
-/* 	  } */
-/* 	  (floatData->discone[i]).valid_samples */
-/* 	       =(intData->discone[i])->valid_samples; */
-/*      } */
-/* } */
-
-
-int RMS(TransientChannel3_t *in)
-{
-     int i;
-     double accum=0;
-     double dresult;
-     int result;
-     for (i=0;i<(in->valid_samples); i++){
-	  accum += (in->data[i])*(in->data[i]);
-     }
-     accum /= (in->valid_samples);
-     dresult= sqrt(accum) +0.5;
-     result= dresult;
-     if (result==0) result=1; //don't want zero for the RMS 
-     return result;           // or we get zero threshold!
 }
 
 float RMSF(TransientChannelF_t *in)
@@ -397,26 +217,6 @@ float RMSF(TransientChannelF_t *in)
      accum /= (in->valid_samples);
      result= sqrtf(accum);
      return result;
-}
-
-void Discriminate(TransientChannel3_t *in,LogicChannel_t *out,
-		  int threshold, int width)
-{
-     int i,k;
-     out->valid_samples=in->valid_samples;
-     k=0;
-     for (i=0;i<(in->valid_samples); i++){
-	  if (abs(in->data[i])>threshold){
-	       k=width;
-	  }
-	  if (k>0){
-	       out->data[i]=1;
-	       k--;
-	  }
-	  else{
-	       out->data[i]=0;
-	  }
-     }
 }
 
 void DiscriminateF(TransientChannelF_t *in,LogicChannel_t *out,
@@ -475,7 +275,7 @@ extern int NuCut;
 int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 		   int width, int guardOffset, int guardWidth,int guardThresh)
 {
-// out is a boxcar width wide around the maximum absolute value of the input
+// out is a boxcar width wide after the maximum absolute value of the input
 // Return value is the peak sample number.
 //
 // if guardWidth is greater than zero, looks in a region offset
@@ -486,7 +286,6 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 //
 // hack in a 'neutrinoivity cut'
 // 
-//
 // also hack in a minimum value for the peak SNR, bound to conethresh
 //
      int i,guardLeft,guardRight;
@@ -558,47 +357,6 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
 	  }
      } 
      return peaksample;
-}
-
-void DiscriminateChannels(AnitaInstrument3_t *in,
-			  AnitaChannelDiscriminator_t *out,
-			  int hornthresh,int hornwidth,
-			  int conethresh,int conewidth)
-//for ANITA2, all antennas are horns so use hornwidth for everything, ignoring conewidth
-{
-     int phi,pol,i,thresh;
-     double dhornthresh;
-     dhornthresh= ((double) hornthresh)/100.;
-     for (phi=0;phi<16; phi++){
-	  for (pol=0;pol<2;pol++){
-	       thresh = (int)(RMS(in->topRing[phi][pol])*dhornthresh); 
-	       Discriminate(in->topRing[phi][pol],&(out->topRing[phi][pol]),
-			    thresh,hornwidth);
-	       thresh = (int)(RMS(in->botRing[phi][pol])*dhornthresh); 
-	       Discriminate(in->botRing[phi][pol],&(out->botRing[phi][pol]),
-			    thresh,hornwidth);
-	  }
-     }
-#ifdef ANITA2         
-     for (i=0;i<8; i++){
-	  for (pol=0;pol<2;pol++){
-	       thresh = (int)(RMS(in->nadir[i][pol])*dhornthresh); 
-	       Discriminate(in->nadir[i][pol],&(out->nadir[i][pol]),
-			    thresh,hornwidth);
-	  }
-     }
-#else //ANITA2
-     for (i=0; i<4; i++){	       
-	  thresh= (int)(RMS(in->bicone[i]) 
-			* (double) conethresh/100.);
-	  Discriminate(in->bicone[i],&(out->bicone[i]),
-		       thresh,conewidth);
-	  thresh= (int)(RMS(in->discone[i]) 
-			* (double) conethresh/100.);
-	  Discriminate(in->discone[i],&(out->discone[i]),
-		       thresh,conewidth);
-     }
-#endif //not ANITA2	  
 }
 
 void DiscriminateFChannels(AnitaInstrumentF_t *in,
@@ -716,9 +474,26 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
      for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
 	       PeakBoxcarOne(&(in->nadir[i][pol]),
-			     &(out->nadir[i][pol]),
+			     &(out->nadir[2*i][pol]),
 			     hornWidth,hornGuardOffset,
 			     hornGuardWidth,hornGuardThresh);
+	  }
+     }
+     for (i=0;i<8; i++){
+	  for (pol=0;pol<2; pol++){
+	       int left=2*i; 
+	       int right=(2*i)%16;
+	       int minvalid=((out->nadir[left][pol]).valid_samples<
+			     (out->nadir[right][pol]).valid_samples?
+			     (out->nadir[left][pol]).valid_samples:
+			     (out->nadir[right][pol]).valid_samples);
+	       int k;
+	       for (k=0; k<minvalid; k++){
+		    (out->nadir[2*i+1][pol]).data[k]=
+			 (out->nadir[left][pol]).data[k]|
+			 (out->nadir[right][pol]).data[k];
+	       }
+	       (out->nadir[2*i+1][pol]).valid_samples=minvalid;
 	  }
      }
 #else //ANITA2	  
@@ -737,14 +512,31 @@ float MSRatio(TransientChannelF_t *in,int begwindow,int endwindow){
      float msbeg=0.;
      float msend=0.;
      int i;
-     if (begwindow>100) begwindow=100;
-     if (endwindow>100) endwindow=100;
+     if (begwindow>250) begwindow=250;
+     if (endwindow>250) endwindow=250;
      for (i=0; i<begwindow; i++){
-	  msbeg+=in->data[i]*in->data[i];
+	  msbeg+=in->data[i];
      }
      msbeg /= begwindow;
      for (i=in->valid_samples; i>in->valid_samples-endwindow; i--){
 	  msend+=in->data[i]*in->data[i];
+     }
+     msend /= endwindow;
+     return (msend/msbeg);
+}
+
+float MeanRatio(TransientChannelF_t *in,int begwindow,int endwindow){
+     float msbeg=0.;
+     float msend=0.;
+     int i;
+     if (begwindow>250) begwindow=250;
+     if (endwindow>250) endwindow=250;
+     for (i=0; i<begwindow; i++){
+	  msbeg+=in->data[i];
+     }
+     msbeg /= begwindow;
+     for (i=in->valid_samples; i>in->valid_samples-endwindow; i--){
+	  msend+=in->data[i];
      }
      msend /= endwindow;
      return (msend/msbeg);
@@ -757,7 +549,45 @@ void ZeroChannel(TransientChannelF_t *in){
      }
 }
 
-extern int MethodMask;
+
+
+int MeanCountAll(AnitaInstrumentF_t *in,int thresh, 
+		int begwindow,int endwindow){
+     int count=0;
+     int i;
+     int phi,pol;
+     float fthresh=(float) thresh*0.01;
+     for (phi=0;phi<16; phi++){
+	  for (pol=0;pol<2;pol++){
+	       if (MeanRatio(&(in->topRing[phi][pol]),
+			begwindow, endwindow)>fthresh){
+		    count++;
+		    if ((MethodMask &0x100)!=0) 
+			 ZeroChannel(&in->topRing[phi][pol]);
+	       }
+	       if (MeanRatio(&(in->botRing[phi][pol]),
+			begwindow, endwindow)>fthresh){
+		    count++;
+		    if ((MethodMask &0x100)!=0) 
+			 ZeroChannel(&in->botRing[phi][pol]);
+	       }
+	  }
+     }
+#ifdef ANITA2
+// for ANITA 2, include nadirs and add to the count
+     for (i=0;i<8; i++){
+	  for (pol=0;pol<2;pol++){
+	       if (MeanRatio(&(in->nadir[i][pol]),
+			begwindow, endwindow)>fthresh){
+		    count++;
+		    if ((MethodMask &0x100)!=0) 
+			 ZeroChannel(&in->nadir[i][pol]);
+	       }
+	  }
+     }
+#endif	  
+     return count; 
+}
 
 int RMSCountAll(AnitaInstrumentF_t *in,int thresh, 
 		int begwindow,int endwindow){
@@ -795,15 +625,8 @@ int RMSCountAll(AnitaInstrumentF_t *in,int thresh,
 	  }
      }
 #endif	  
-/*      for (i=0; i<4; i++){	        */
-/* 	       if (MSRatio(&(in->bicone[i]), */
-/* 			begwindow, endwindow)>fthresh) count++; */
-/* 	       if (MSRatio(&(in->discone[i]), */
-/* 			begwindow, endwindow)>fthresh) count++; */
-/*      } */
      return count; 
 }
-
 
 int GlobalMajority(AnitaChannelDiscriminator_t *in,
 		    LogicChannel_t *horns,
@@ -1061,76 +884,6 @@ int FormSectorCoincidence(AnitaSectorLogic_t *majority,
      return max;
 }
 
-/* void makeEnvelope(TransientChannelF_t *volts,EnvelopeF_t *absv){ */
-/*      int i,n; */
-/*      absv->sample[0]=0; */
-/*      absv->data[0]=volts->data[0]*volts->data[0]; */
-/*      n=1; */
-/*      for (i=1;i<volts->valid_samples-1;i++){ */
-/* 	  if (fabsf(volts->data[i])>fabsf(volts->data[i-1]) && */
-/* 	      fabsf(volts->data[i])>fabsf(volts->data[i+1])){ */
-/* 	       absv->sample[n]=i; */
-/* 	       absv->data[n]=fabsf(volts->data[i]); */
-/* 	       n++; */
-/* 	  } */
-/*      } */
-/*      absv->sample[n]=volts->valid_samples-1; */
-/*      absv->npoints=n+1; */
-/* } */
-
-/* void findEnvelopePeak(EnvelopeF_t *absv,int *samp,float *peak){ */
-/*      int i; */
-/*      *peak=0.; */
-/*      *samp=0; */
-/*      for (i=0; i<absv->npoints; i++){ */
-/* 	  if((absv->data[i])>*peak){ */
-/* 	       *peak=absv->data[i]; */
-/* 	       *samp=absv->sample[i]; */
-/* 	  } */
-/*      } */
-/* } */
-
-//return leading edge time _in_ _meters_ (interpolated from power envelope)
-/* float edgeTime(EnvelopeF_t *absv,float thresh){ */
-/*      int i; */
-/*      if (absv->data[0]>thresh) return 0.; */
-/*      for (i=1;i<absv->npoints;i++){ */
-/* 	  if(absv->data[i]>thresh){ */
-/* 	       return (meters_per_ns/samples_per_ns)* */
-/* 		    ((absv->sample[i])- */
-/* 		     (absv->sample[i]-absv->sample[i-1])* */
-/* 		     ((absv->data[i]-thresh) */
-/* 		      /(absv->data[i]-absv->data[i-1]))); */
-/* 	  } */
-/*      } */
-/*      return -1.; */
-/* } */
-
-/* void buildEnvelopes(AnitaInstrumentF_t *theInst,AnitaEnvelopeF_t *theEnv){ */
-/*      int i,j; */
-/*      for (i=0;i<16;i++){ */
-/* 	  for (j=0;j<2;j++){ */
-/* 	       makeEnvelope(&theInst->topRing[i][j], */
-/* 			    &theEnv->topRing[i][j]); */
-/* 	       makeEnvelope(&theInst->botRing[i][j], */
-/* 			    &theEnv->botRing[i][j]); */
-/* 	  } */
-/*      } */
-/* #ifdef ANITA2 */
-/*      for (i=0;i<8;i++){ */
-/* 	  for (j=0;j<2;j++){ */
-/* 	       makeEnvelope(&theInst->nadir[i][j], */
-/* 			    &theEnv->nadir[i][j]); */
-/* 	  } */
-/*      } */
-/* #else //ANITA2 */
-/*      for (i=0;i<4;i++){ */
-/* 	  makeEnvelope(&theInst->bicone[i],&theEnv->bicone[i]); */
-/* 	  makeEnvelope(&theInst->discone[i],&theEnv->discone[i]); */
-/*      } */
-/* #endif //not ANITA2 */
-/* } */
-
 void peakTime(TransientChannelF_t *T, Peak_t *peak){
      int i, peakSample;
      //float total;
@@ -1172,124 +925,6 @@ void FindPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak){
      }
 #endif //not ANITA2
 }
-
-void MakeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,int dphi){
-     //phi is the left edge boresight, counting from zero.
-     //dphi is the number of phi sectors to include, two minimum.
-     int i,j,k,pol,n,curphi;
-     float timediff,sign;
-     typedef struct{int phi; int pol; float value; float time;} Local_t;
-     Local_t best[4]={{0,0,0.,0.},{0,0,0.,0.},
-		      {0,0,0.,0.},{0,0,0.,0.}};
-     for (i=phi; i<phi+dphi; i++){
-	  curphi=i%16;
-	  for(pol=0;pol<2;pol++){
-	       if (fabsf(thePeak->topRing[curphi][pol].value)>fabsf(best[0].value)){
-		    best[0].value=thePeak->topRing[curphi][pol].value;
-		    best[0].time=thePeak->topRing[curphi][pol].time;
-		    best[0].phi=curphi;
-		    best[0].pol=pol;
-	       }
-	       if (fabsf(thePeak->botRing[curphi][pol].value)>fabsf(best[1].value)){
-		    best[1].value=thePeak->botRing[curphi][pol].value;
-		    best[1].time=thePeak->botRing[curphi][pol].time;
-		    best[1].phi=curphi;
-		    best[1].pol=pol;
-	       }
-	  }
-     }
-     //now get the second best from a _different_antenna_ in each ring
-     for (i=phi; i<phi+dphi; i++){
-	  curphi=i%16;
-	  for(pol=0;pol<2;pol++){
-	       if (curphi != best[0].phi){
-		    if (fabsf(thePeak->topRing[curphi][pol].value)>fabsf(best[2].value)){
-			 best[2].value=thePeak->topRing[curphi][pol].value;
-			 best[2].time=thePeak->topRing[curphi][pol].time;
-			 best[2].phi=curphi;
-			 best[2].pol=pol;
-		    }
-	       }
-	       if (curphi != best[1].phi){
-		    if (fabsf(thePeak->botRing[curphi][pol].value)>fabsf(best[3].value)){
-		    best[3].value=thePeak->botRing[curphi][pol].value;
-		    best[3].time=thePeak->botRing[curphi][pol].time;
-		    best[3].phi=curphi;
-		    best[3].pol=pol;
-		    }   
-	       }
-	  }
-     }
-     //we have two antennas selected in each ring
-     //now load all possible pairs into a BaselineAnalysis structure
-     n=0;
-     for (i=0; i<3; i++){
-	  for (j=i+1;j<4; j++){
-	       //NEED SURF DEPENDENT CORRECTIONS!!!
-	       //fill elements corresponding to first member of pair (i)
-	       if (i%2==0){//top ring 
-		    for (k=0;k<3;k++){
-			 theBA->position[n][0][k]=topPhaseCenter[best[i].phi][k];
-		    }
-		    theBA->delay[n][0]=best[i].time
-			 -meters_per_ns*topDelay[best[i].phi][best[i].pol];
-	       }
-	       else{//bottom ring
-		    for (k=0;k<3;k++){
-			 theBA->position[n][0][k]=botPhaseCenter[best[i].phi][k];
-		    }
-		    theBA->delay[n][0]=best[i].time
-			 -meters_per_ns*botDelay[best[i].phi][best[i].pol];
-	       }
-	       //fill elements corresponding to second member of pair (j)
-	       if (j%2==0){//top ring 
-		    for (k=0;k<3;k++){
-			 theBA->position[n][1][k]=topPhaseCenter[best[j].phi][k];
-		    }
-		    theBA->delay[n][1]=best[j].time
-			 -meters_per_ns*topDelay[best[j].phi][best[j].pol];
-	       }
-	       else{//bottom ring
-		    for (k=0;k<3;k++){
-			 theBA->position[n][1][k]=botPhaseCenter[best[j].phi][k];
-		    }
-		    theBA->delay[n][1]=best[j].time
-			 -meters_per_ns*botDelay[best[j].phi][best[j].pol];
-	       }
-	       //fill the elements that depend on both points
-	       timediff=theBA->delay[n][1]-theBA->delay[n][0];
-               //vector should point at earlier antenna
-	       if(timediff !=0.){
-		    sign=-timediff/fabsf(timediff);
-	       }
-	       else{
-		    sign=1.;
-	       } //on exact match 90 degree case
-	       timediff=fabsf(timediff);
-	       theBA->length[n]=0.;
-	       for (k=0;k<3;k++){
-		    theBA->direction[n][k]=sign*(theBA->position[n][1][k]
-						 -theBA->position[n][0][k]);
-		    theBA->length[n]+=theBA->direction[n][k]*theBA->direction[n][k];
-	       }
-	       theBA->length[n]=sqrtf(theBA->length[n]);
-	       for (k=0;k<3;k++){
-		    theBA->direction[n][k]=theBA->direction[n][k]/theBA->length[n];
-	       }
-	       theBA->cosangle[n]=timediff/theBA->length[n];
-	       if (fabsf(theBA->cosangle[n])>1.) {
-		    theBA->bad[n]=1;  //noncausal
-	       }
-	       else{
-		    theBA->bad[n]=0;
-		    theBA->sinangle[n]=sqrtf(1.-theBA->cosangle[n]*theBA->cosangle[n]);
-	       }
-	       n++;
-	  }
-     }
-     theBA->nbaselines=n;
-}
-
 
 int determinePriority(){
      // MethodMask switches
@@ -1340,9 +975,16 @@ int determinePriority(){
      // One can force the priority 7 cut to be ignored after this for promotion
      // consideration--see below.
      else if ((MethodMask & 0x80)!=0){
+#ifdef ANITA2
+// in ANITA 2 we are looking at RMS voltage at baseband already...
+	  RMSnum=MeanCountAll(&theXcorr,RMSMax,
+			      BeginWindow,EndWindow);
+	  if (RMSnum>RMSevents) priority=7;
+#else // ANITA2
 	  RMSnum=RMSCountAll(&theXcorr,RMSMax,
 			     BeginWindow,EndWindow);
 	  if (RMSnum>RMSevents) priority=7;
+#endif //not ANITA2
      }
 // if there are no 'black marks' everything is now priority 6.
 // next block gives three choices for making the initial promotion decision.
