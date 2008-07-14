@@ -1061,75 +1061,75 @@ int FormSectorCoincidence(AnitaSectorLogic_t *majority,
      return max;
 }
 
-void makeEnvelope(TransientChannelF_t *volts,EnvelopeF_t *absv){
-     int i,n;
-     absv->sample[0]=0;
-     absv->data[0]=volts->data[0]*volts->data[0];
-     n=1;
-     for (i=1;i<volts->valid_samples-1;i++){
-	  if (fabsf(volts->data[i])>fabsf(volts->data[i-1]) &&
-	      fabsf(volts->data[i])>fabsf(volts->data[i+1])){
-	       absv->sample[n]=i;
-	       absv->data[n]=fabsf(volts->data[i]);
-	       n++;
-	  }
-     }
-     absv->sample[n]=volts->valid_samples-1;
-     absv->npoints=n+1;
-}
+/* void makeEnvelope(TransientChannelF_t *volts,EnvelopeF_t *absv){ */
+/*      int i,n; */
+/*      absv->sample[0]=0; */
+/*      absv->data[0]=volts->data[0]*volts->data[0]; */
+/*      n=1; */
+/*      for (i=1;i<volts->valid_samples-1;i++){ */
+/* 	  if (fabsf(volts->data[i])>fabsf(volts->data[i-1]) && */
+/* 	      fabsf(volts->data[i])>fabsf(volts->data[i+1])){ */
+/* 	       absv->sample[n]=i; */
+/* 	       absv->data[n]=fabsf(volts->data[i]); */
+/* 	       n++; */
+/* 	  } */
+/*      } */
+/*      absv->sample[n]=volts->valid_samples-1; */
+/*      absv->npoints=n+1; */
+/* } */
 
-void findEnvelopePeak(EnvelopeF_t *absv,int *samp,float *peak){
-     int i;
-     *peak=0.;
-     *samp=0;
-     for (i=0; i<absv->npoints; i++){
-	  if((absv->data[i])>*peak){
-	       *peak=absv->data[i];
-	       *samp=absv->sample[i];
-	  }
-     }
-}
+/* void findEnvelopePeak(EnvelopeF_t *absv,int *samp,float *peak){ */
+/*      int i; */
+/*      *peak=0.; */
+/*      *samp=0; */
+/*      for (i=0; i<absv->npoints; i++){ */
+/* 	  if((absv->data[i])>*peak){ */
+/* 	       *peak=absv->data[i]; */
+/* 	       *samp=absv->sample[i]; */
+/* 	  } */
+/*      } */
+/* } */
 
 //return leading edge time _in_ _meters_ (interpolated from power envelope)
-float edgeTime(EnvelopeF_t *absv,float thresh){
-     int i;
-     if (absv->data[0]>thresh) return 0.;
-     for (i=1;i<absv->npoints;i++){
-	  if(absv->data[i]>thresh){
-	       return (meters_per_ns/samples_per_ns)*
-		    ((absv->sample[i])-
-		     (absv->sample[i]-absv->sample[i-1])*
-		     ((absv->data[i]-thresh)
-		      /(absv->data[i]-absv->data[i-1])));
-	  }
-     }
-     return -1.;
-}
+/* float edgeTime(EnvelopeF_t *absv,float thresh){ */
+/*      int i; */
+/*      if (absv->data[0]>thresh) return 0.; */
+/*      for (i=1;i<absv->npoints;i++){ */
+/* 	  if(absv->data[i]>thresh){ */
+/* 	       return (meters_per_ns/samples_per_ns)* */
+/* 		    ((absv->sample[i])- */
+/* 		     (absv->sample[i]-absv->sample[i-1])* */
+/* 		     ((absv->data[i]-thresh) */
+/* 		      /(absv->data[i]-absv->data[i-1]))); */
+/* 	  } */
+/*      } */
+/*      return -1.; */
+/* } */
 
-void buildEnvelopes(AnitaInstrumentF_t *theInst,AnitaEnvelopeF_t *theEnv){
-     int i,j;
-     for (i=0;i<16;i++){
-	  for (j=0;j<2;j++){
-	       makeEnvelope(&theInst->topRing[i][j],
-			    &theEnv->topRing[i][j]);
-	       makeEnvelope(&theInst->botRing[i][j],
-			    &theEnv->botRing[i][j]);
-	  }
-     }
-#ifdef ANITA2
-     for (i=0;i<8;i++){
-	  for (j=0;j<2;j++){
-	       makeEnvelope(&theInst->nadir[i][j],
-			    &theEnv->nadir[i][j]);
-	  }
-     }
-#else //ANITA2
-     for (i=0;i<4;i++){
-	  makeEnvelope(&theInst->bicone[i],&theEnv->bicone[i]);
-	  makeEnvelope(&theInst->discone[i],&theEnv->discone[i]);
-     }
-#endif //not ANITA2
-}
+/* void buildEnvelopes(AnitaInstrumentF_t *theInst,AnitaEnvelopeF_t *theEnv){ */
+/*      int i,j; */
+/*      for (i=0;i<16;i++){ */
+/* 	  for (j=0;j<2;j++){ */
+/* 	       makeEnvelope(&theInst->topRing[i][j], */
+/* 			    &theEnv->topRing[i][j]); */
+/* 	       makeEnvelope(&theInst->botRing[i][j], */
+/* 			    &theEnv->botRing[i][j]); */
+/* 	  } */
+/*      } */
+/* #ifdef ANITA2 */
+/*      for (i=0;i<8;i++){ */
+/* 	  for (j=0;j<2;j++){ */
+/* 	       makeEnvelope(&theInst->nadir[i][j], */
+/* 			    &theEnv->nadir[i][j]); */
+/* 	  } */
+/*      } */
+/* #else //ANITA2 */
+/*      for (i=0;i<4;i++){ */
+/* 	  makeEnvelope(&theInst->bicone[i],&theEnv->bicone[i]); */
+/* 	  makeEnvelope(&theInst->discone[i],&theEnv->discone[i]); */
+/*      } */
+/* #endif //not ANITA2 */
+/* } */
 
 void peakTime(TransientChannelF_t *T, Peak_t *peak){
      int i, peakSample;
@@ -1290,9 +1290,6 @@ void MakeBaselinesFour(AnitaPeak_t *thePeak,BaselineAnalysis_t *theBA,int phi,in
      theBA->nbaselines=n;
 }
 
-void analyticEnvelope(TransientChannelF_t *T, TransientChannelF_t *E){
-     //just a reminder to do this sometime...   
-}
 
 int determinePriority(){
      // MethodMask switches
