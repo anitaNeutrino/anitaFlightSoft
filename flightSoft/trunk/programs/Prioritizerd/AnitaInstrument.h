@@ -19,17 +19,17 @@ typedef struct{
      TransientChannelF_t nadir[8][2];
 } AnitaInstrumentF_t; 
 
-typedef struct {
-     int sample[MAX_NUMBER_SAMPLES];
-     float data[MAX_NUMBER_SAMPLES];
-     short npoints;
-} EnvelopeF_t;
+/* typedef struct { */
+/*      int sample[MAX_NUMBER_SAMPLES]; */
+/*      float data[MAX_NUMBER_SAMPLES]; */
+/*      short npoints; */
+/* } EnvelopeF_t; */
 
-typedef struct{
-     EnvelopeF_t topRing[PHI_SECTORS][2];
-     EnvelopeF_t botRing[PHI_SECTORS][2];
-     EnvelopeF_t nadir[PHI_SECTORS][2]; //between nadirs,incherently add
-} AnitaEnvelopeF_t;
+/* typedef struct{ */
+/*      EnvelopeF_t topRing[PHI_SECTORS][2]; */
+/*      EnvelopeF_t botRing[PHI_SECTORS][2]; */
+/*      EnvelopeF_t nadir[PHI_SECTORS][2]; //between nadirs,incherently add */
+/* } AnitaEnvelopeF_t; */
 
 typedef struct{
      LogicChannel_t topRing[PHI_SECTORS][2];
