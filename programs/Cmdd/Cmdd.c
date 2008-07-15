@@ -1153,9 +1153,9 @@ int sendSignal(ProgramId_t progId, int theSignal)
 	case ID_SIPD:
 	    sprintf(fileName,"%s",SIPD_PID_FILE);
 	    break;    
-//	case ID_MONITORD:
-//	    sprintf(fileName,"%s",monitord);
-//	    break;    
+	case ID_NEOBRICKD:
+	    sprintf(fileName,"%s",NEOBRICKD_PID_FILE);
+	    break;    
 	default:
 	    fprintf(stderr,"Unknown program id: %d\n",progId);
 	    syslog(LOG_ERR,"Unknown program id: %d\n",progId);

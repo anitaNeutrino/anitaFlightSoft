@@ -45,7 +45,7 @@ int ftp_ls(int long_ls, char* file_or_dir, int (*cons)(char*,unsigned));
 int ftp_getfile(char* remote_name, char* local_name, off_t restart_point);
 
 int ftp_putfile(char* local_name, char* remote_name,
-		off_t restart_point, int append);
+		off_t restart_point, int append, unsigned int *bufsize);
 
 
    /* 'remote_name' is the suggested name to be used by the server
