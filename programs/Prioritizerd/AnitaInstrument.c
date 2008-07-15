@@ -522,7 +522,8 @@ float MSRatio(TransientChannelF_t *in,int begwindow,int endwindow){
 	  msend+=in->data[i]*in->data[i];
      }
      msend /= endwindow;
-     return (msend/msbeg);
+//     return (msend/msbeg);
+     return (msbeg/msend);
 }
 
 float MeanRatio(TransientChannelF_t *in,int begwindow,int endwindow){
@@ -539,7 +540,8 @@ float MeanRatio(TransientChannelF_t *in,int begwindow,int endwindow){
 	  msend+=in->data[i];
      }
      msend /= endwindow;
-     return (msend/msbeg);
+//     return (msend/msbeg);
+     return (msbeg/msend);
 }
 
 void ZeroChannel(TransientChannelF_t *in){
@@ -629,9 +631,9 @@ int RMSCountAll(AnitaInstrumentF_t *in,int thresh,
 }
 
 int GlobalMajority(AnitaChannelDiscriminator_t *in,
-		    LogicChannel_t *horns,
-		    LogicChannel_t *cones,
-		    int delay){
+		   LogicChannel_t *horns,
+		   LogicChannel_t *cones,
+		   int delay){
 // this is used to identify too many antennas peaking at once
      int i,j,minvalid,pol,phi,thisvalid,hornmax;
      for (j=0;j<MAX_NUMBER_SAMPLES; j++){
@@ -646,7 +648,8 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 	       in->botRing[phi][pol].valid_samples)
 	       ?in->topRing[phi][pol].valid_samples-delay 
 	       :in->botRing[phi][pol].valid_samples-delay;
-	       for (j=0;j<(in->topRing[phi][pol]).valid_samples; j++){
+//fix a bounds problem in the line below by subtracting delay from the bound
+	       for (j=0;j<(in->topRing[phi][pol]).valid_samples-delay; j++){
 		    horns->data[j] += (in->topRing[phi][pol]).data[j+delay];
 	       }
 	       for (j=0;j<(in->botRing[phi][pol]).valid_samples; j++){
@@ -656,16 +659,34 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 		    minvalid=thisvalid;
 	  }
      }
-     horns->valid_samples = minvalid;
 
+#ifdef ANITA2
+// only count the even numbered (i.e. real) nadirs
+// for simplicity we don't use a delay here; the difference is small      
+     for (i=0; i<8; i++){
+	  phi=2*i;
+	  for (pol=0; pol<2; pol++){
+	       thisvalid= (in->nadir[phi][pol].valid_samples<
+			   minvalid)
+		    ?in->nadir[phi][pol].valid_samples 
+		    :minvalid;
+	       for (j=0;j<(in->nadir[phi][pol]).valid_samples; j++){
+		    horns->data[j] += (in->nadir[phi][pol]).data[j];
+	       }
+	       if (minvalid > thisvalid) 
+		    minvalid=thisvalid;
+	  }
+     }
+
+#endif
+
+     horns->valid_samples = minvalid;
      hornmax=0;
      for (i=0; i<horns->valid_samples; i++){
 	  if (horns->data[i]>hornmax) hornmax=horns->data[i];
      }
 
-#ifdef ANITA2
-// ANITA2 code here!!!
-#else //ANITA2
+#ifndef ANITA2
      minvalid=MAX_NUMBER_SAMPLES;
      for (i=0;i<4;i++){
 	  for (j=0;j<(in->bicone[i]).valid_samples; j++){
