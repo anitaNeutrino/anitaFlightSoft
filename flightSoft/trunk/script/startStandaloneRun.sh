@@ -9,6 +9,7 @@ daemon --stop -n Calibd
 daemon --stop -n Acqd
 daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
+daemon --stop -n Neobrickd
 
 echo "Sleeping while files are written and zipped"
 while [ 1 ]; do
@@ -59,6 +60,7 @@ daemon -r Prioritizerd -n Prioritizerd
 daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
+daemon -r Neobrickd -n Neobrickd
 
 sleep 2
 

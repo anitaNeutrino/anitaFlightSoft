@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <time.h>
 #include <math.h>
 
@@ -41,7 +42,7 @@ void makeFtpDirectories(char *theTmpDir);
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 int readConfigFile();
-void sendThisFile(int runNumber, char *tmpFilename);
+int sendThisFile(int runNumber, char *tmpFilename); //Returns number of bytes
 int telemeterFile(char *filename, int numLines);
 
 
@@ -53,6 +54,10 @@ int main(int argc, char**argv) {
   char tmpFilename[FILENAME_MAX];
   time_t lastStatusUpdate=0;
   time_t rawTime;
+  unsigned int totalBytes=0;
+  struct timeval firstTime;
+  struct timeval lastTime;
+
   
   // Log stuff 
   char *progName=basename(argv[0]);
@@ -108,6 +113,9 @@ int main(int argc, char**argv) {
     
     int runNumber=getRunNumber();
     currentState=PROG_STATE_RUN;
+
+    gettimeofday(&firstTime,NULL);
+
     while(currentState==PROG_STATE_RUN) {
 	time(&rawTime);
 	if(rawTime>lastStatusUpdate+30) {
@@ -131,10 +139,22 @@ int main(int argc, char**argv) {
 	sprintf(linkName,"%s/%s",NEOBRICKD_LINK_DIR,tempString);
 	readlink(linkName,tmpFilename,FILENAME_MAX);
 
-	printf("readlink returned %s for %s\n",tmpFilename,linkName);
+//	printf("readlink returned %s for %s\n",tmpFilename,linkName);
 
-	if(!disableNeobrick) 
-	    sendThisFile(runNumber,tmpFilename);
+	if(!disableNeobrick) {
+	    totalBytes+=sendThisFile(runNumber,tmpFilename);
+	    gettimeofday(&lastTime,NULL);
+
+	    float timeDiff=lastTime.tv_sec-firstTime.tv_sec;
+	    timeDiff+=1e-6*(lastTime.tv_usec-firstTime.tv_usec);
+	    if(timeDiff>30) {
+		printf("Sent %d bytes in %3.2f secs at %f bytes/sec\n",
+		       totalBytes,timeDiff,totalBytes/timeDiff);
+		totalBytes=0;
+		firstTime=lastTime;
+	    }
+	    
+	}
 	//Now need to find the filename pointed to by link
 	unlink(tmpFilename);
 	unlink(linkName);
@@ -150,19 +170,33 @@ int main(int argc, char**argv) {
 }
 
 
-void sendThisFile(int runNumber, char *tmpFilename)
+int sendThisFile(int runNumber, char *tmpFilename)
 {
+
     char fileName[FILENAME_MAX];
     sprintf(fileName,"/data/run%d/%s",runNumber,&tmpFilename[21]);    
-    if(printToScreen)
-      printf("New file -- %s\n",fileName);
+//    if(printToScreen)
+//      printf("New file -- %s\n",fileName);
     
     char *thisFile=basename(fileName);
     char *thisDir=dirname(fileName);
     makeFtpDirectories(thisDir);
     ftp_cd(thisDir);
-    printf("%s -- %s\n",thisFile,thisDir);
-    ftp_putfile(tmpFilename,thisFile,0,0);
+//    printf("%s -- %s\n",thisFile,thisDir);
+    unsigned int bufSize=0;
+    struct timeval before;
+    struct timeval after;
+
+    gettimeofday(&before,NULL);
+    ftp_putfile(tmpFilename,thisFile,0,0,&bufSize);
+    gettimeofday(&after,NULL);
+
+    float timeDiff=after.tv_sec-before.tv_sec;
+    timeDiff+=1e-6*(after.tv_usec-before.tv_usec);
+//    printf("Sent %d bytes to Neobrick in %3.3f secs, rate %f bytes/s\n",
+//	   bufSize,timeDiff,bufSize/timeDiff);
+    return bufSize;
+
 }
 
 

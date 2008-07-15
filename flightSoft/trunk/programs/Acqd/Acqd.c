@@ -1984,7 +1984,9 @@ AcqdErrorCode_t doStartTest()
 
   gettimeofday(&timeStruct,NULL);
   startStruct.unixTime=timeStruct.tv_sec;
-  
+
+ 
+
   while(currentState==PROG_STATE_RUN && doingEvent<startSoftTrigs) {
     //Fill theEvent with zeros 
     bzero(&theEvent, sizeof(theEvent)) ;    
@@ -2107,7 +2109,7 @@ AcqdErrorCode_t doStartTest()
     }
   }
 
-  //Now do out silly little threshold scan
+ //Now do out silly little threshold scan
   for(tInd=0;tInd<10;tInd++) {
     dacVal=2000 + (200*tInd);
     if(printToScreen) 
@@ -2134,7 +2136,11 @@ AcqdErrorCode_t doStartTest()
       }
     }
   }
-  setGlobalThreshold=tempGlobalThreshold;
+  setGlobalThreshold=tempGlobalThreshold; 
+  setDACThresholds(); 
+
+
+
   fillGenericHeader(&startStruct,PACKET_ACQD_START,sizeof(AcqdStartStruct_t));
   sprintf(theFilename,"%s/acqd_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(AcqdStartStruct_t));  
@@ -2179,7 +2185,6 @@ AcqdErrorCode_t doStartTest()
   antTrigMask=tempTrigMask;
   nadirAntTrigMask=tempNadirTrigMask;
   phiTrigMask=tempPhiTrigMask;  
-  setDACThresholds();
 
   return ACQD_E_OK;
 } 

@@ -393,23 +393,25 @@ read_put_buf(char *buf, unsigned size)
 }
 
 int
-ftp_putfile(char *local_file, char *remote_file, off_t rst, int append)
+ftp_putfile(char *local_file, char *remote_file, off_t rst, int append, unsigned int *filesize)
 {
 	int r;
 	unsigned bufsize;
 	struct stat st;
 
 	if ((fin=fopen(local_file, "r")) == NULL) {
-		fprintf(stderr, "Cannot open local file %s\n", local_file);
-		return 2;
+	    fprintf(stderr, "Cannot open local file %s\n", local_file);
+	    return 2;
 	}
 	if (rst) 
-		if (fseek(fin, (long) rst, SEEK_SET) < 0) return 3;
+	    if (fseek(fin, (long) rst, SEEK_SET) < 0) return 3;
 
 	if (fstat(fileno(fin), &st) < 0 || st.st_blksize == 0)
-		bufsize = BUFSIZ;
-	else
-		bufsize = st.st_blksize;
+	    bufsize = BUFSIZ;
+	else {
+	    bufsize = st.st_blksize;
+	    (*filesize) = st.st_size;
+	}
 
 	r = ftp_put(remote_file, read_put_buf, bufsize, rst, append);
 	fclose(fin);

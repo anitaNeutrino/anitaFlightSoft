@@ -1121,6 +1121,23 @@ void prettyPrintTempLookupFile()
       fprintf(outFile,"\n");
       }
   }
+  int extraTemps[10]={39,19,38,18,37,17,36,16,35,15};
+  for(i=0;i<2;i++) {				
+      int j;
+      for(j=0;j<5;j++) {
+	  int ind=j +5*i;
+	  if(ip320Ranges[0]==10) {
+	      fprintf(outFile," T%d: %+4.2f\t", 41+ind , ((corDataStruct[0].data[extraTemps[ind]]*20.0/4095.-10.0)*100.)-273);
+	  }
+	  else {
+	      fprintf(outFile," T%d: %+4.2f\t", 41+ind , ((corDataStruct[0].data[extraTemps[ind]]*10.0/4095.-5.0)*100.)-273);
+	  }
+      }
+      fprintf(outFile,"\n");
+  }
+
+  
+
   fprintf(outFile,"\nSBS\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n",
 	  ((float)sbsData.temp[0])*25e-3,
 	  ((float)sbsData.temp[1])*25e-3,
