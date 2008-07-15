@@ -1,0 +1,13 @@
+//////////////////////////////////////////////////////////
+//	  Two macros for use with AesopInterface	//
+//		     and prioritizerd 			//
+//////////////////////////////////////////////////////////
+
+Run AesopInterface with defined input event text files and output root file.  Run waveformToPrioritizer, specify input with -i option.  Creates:
+    - AnitaEventHeader
+    - PedSubbedEvent
+in /tmp/anita.
+
+Run Prioritizer, sets priority of generated events
+
+Run prioriziterToRoot, creates rootfile of priorities, 
