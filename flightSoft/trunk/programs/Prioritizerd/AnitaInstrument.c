@@ -228,7 +228,6 @@ void DiscriminateF(TransientChannelF_t *in,LogicChannel_t *out,
      for (i=0;i<(in->valid_samples); i++){
 	  if (fabsf(in->data[i])>threshold){
 	       k=width;
-//	       printf("Here %f\n",in->data[i]);
 	  }
 	  if (k>0){
 	       out->data[i]=1;
@@ -381,15 +380,33 @@ void DiscriminateFChannels(AnitaInstrumentF_t *in,
 	  }
      }
 #ifdef ANITA2
+//real nadirs are at even phi values
      for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
 	       thresh = (RMSF(&(in->nadir[i][pol]))*fhornthresh); 
-//	       printf("thresh %f\n",thresh);
 	       DiscriminateF(&(in->nadir[i][pol]),
-			     &(out->nadir[i][pol]),
+			     &(out->nadir[2*i][pol]),
 			     thresh,hornwidth);
 	  }
      }
+// the fake intermediate nadirs get the OR of their neighbors
+     for (i=0;i<8; i++){
+	  for (pol=0;pol<2; pol++){
+	       int left=2*i; 
+	       int right=(2*i)%16;
+	       int minvalid=((out->nadir[left][pol]).valid_samples<
+			     (out->nadir[right][pol]).valid_samples?
+			     (out->nadir[left][pol]).valid_samples:
+			     (out->nadir[right][pol]).valid_samples);
+	       int k;
+	       for (k=0; k<minvalid; k++){
+		    (out->nadir[2*i+1][pol]).data[k]=
+			 (out->nadir[left][pol]).data[k]|
+			 (out->nadir[right][pol]).data[k];
+	       }
+	       (out->nadir[2*i+1][pol]).valid_samples=minvalid;
+	  }
+     } 
 #else //ANITA2
      for (i=0; i<4; i++){	       
 	  thresh= (RMSF(&(in->bicone[i])) 
@@ -427,13 +444,31 @@ void DiscriminateFChannels_noup(AnitaInstrumentF_t *in,
 	  }
      }
 #ifdef ANITA2
+// real nadirs have even phi
      for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
 	       thresh = (RMSF(&(in->nadir[i][pol]))*fhornthresh); 
-//	       printf("thresh %f\n",thresh);
 	       DiscriminateF_noup(&(in->nadir[i][pol]),
-			     &(out->nadir[i][pol]),
+			     &(out->nadir[2*i][pol]),
 			     thresh,hornwidth,holdoff);
+	  }
+     }
+// the fake intermediate nadirs get the OR of their neighbors
+     for (i=0;i<8; i++){
+	  for (pol=0;pol<2; pol++){
+	       int left=2*i; 
+	       int right=(2*i)%16;
+	       int minvalid=((out->nadir[left][pol]).valid_samples<
+			     (out->nadir[right][pol]).valid_samples?
+			     (out->nadir[left][pol]).valid_samples:
+			     (out->nadir[right][pol]).valid_samples);
+	       int k;
+	       for (k=0; k<minvalid; k++){
+		    (out->nadir[2*i+1][pol]).data[k]=
+			 (out->nadir[left][pol]).data[k]|
+			 (out->nadir[right][pol]).data[k];
+	       }
+	       (out->nadir[2*i+1][pol]).valid_samples=minvalid;
 	  }
      }
 #else //ANITA2	  
@@ -471,6 +506,7 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
 	  }
      }
 #ifdef ANITA2
+//real nadirs are at even phi values
      for (i=0;i<8; i++){
 	  for (pol=0;pol<2;pol++){
 	       PeakBoxcarOne(&(in->nadir[i][pol]),
@@ -479,6 +515,7 @@ void PeakBoxcarAll(AnitaInstrumentF_t *in,
 			     hornGuardWidth,hornGuardThresh);
 	  }
      }
+// the fake intermediate nadirs get the OR of their neighbors
      for (i=0;i<8; i++){
 	  for (pol=0;pol<2; pol++){
 	       int left=2*i; 
@@ -723,13 +760,9 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	  for(pol=0;pol<2;pol++){
 	       for (i=0;i<sectorWidth;i++){
 		    phi=(sector_phi+i)%16;
-		    
-		   
 		    for (j=0;j<(in->topRing[phi][pol]).valid_samples; j++){
-//			 if((in->topRing[phi][pol]).data[j]>0) {
-//			    printf("Wahyyy\n");
-//			 }
-			 (out->topRing[sector_phi]).data[j] += (in->topRing[phi][pol]).data[j];
+			 (out->topRing[sector_phi]).data[j] += 
+			      (in->topRing[phi][pol]).data[j];
 		    }
 		    if (minvalid > (in->topRing[phi][pol]).valid_samples) 
 			 minvalid=(in->topRing[phi][pol]).valid_samples;
@@ -747,7 +780,8 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	       for (i=0;i<sectorWidth;i++){
 		    phi=(sector_phi+i)%16;
 		    for (j=0;j<(in->botRing[phi][pol]).valid_samples; j++){
-			 (out->botRing[sector_phi]).data[j] += (in->botRing[phi][pol]).data[j];
+			 (out->botRing[sector_phi]).data[j] += 
+			      (in->botRing[phi][pol]).data[j];
 		    }
 		    if (minvalid > (in->botRing[phi][pol]).valid_samples) 
 			 minvalid=(in->botRing[phi][pol]).valid_samples;
@@ -755,8 +789,26 @@ void FormSectorMajority(AnitaChannelDiscriminator_t *in,
 	  }
 	  (out->botRing[sector_phi]).valid_samples = minvalid;
      }
-
 #ifdef ANITA2
+     //way-bottom nadir (virtual) ring
+     for(sector_phi=0;sector_phi<16;sector_phi++){
+	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
+	       (out->nadir[sector_phi]).data[j]=0;
+	  }
+	  minvalid=MAX_NUMBER_SAMPLES;
+	  for(pol=0;pol<2;pol++){
+	       for (i=0;i<sectorWidth;i++){
+		    phi=(sector_phi+i)%16;
+		    for (j=0;j<(in->nadir[phi][pol]).valid_samples; j++){
+			 (out->nadir[sector_phi]).data[j] += 
+			      (in->nadir[phi][pol]).data[j];
+		    }
+		    if (minvalid > (in->nadir[phi][pol]).valid_samples) 
+			 minvalid=(in->nadir[phi][pol]).valid_samples;
+	       }
+	  }
+	  (out->nadir[sector_phi]).valid_samples = minvalid;
+     }
 #else //ANITA2
      //bicones
      for (j=0;j<MAX_NUMBER_SAMPLES; j++){
@@ -799,46 +851,54 @@ void FormSectorMajorityPol(AnitaChannelDiscriminator_t *in,
      for(sector_phi=0;sector_phi<16;sector_phi++){
 	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	       (out->topRing[sector_phi]).data[j]=0;
-	
-  }
+	  }
 	  minvalid=MAX_NUMBER_SAMPLES;
-//	  for(pol=0;pol<2;pol++){
 	  for (i=0;i<sectorWidth;i++){
 	       phi=(sector_phi+i)%16;
-		    
-		   
 	       for (j=0;j<(in->topRing[phi][pol]).valid_samples; j++){
-//			 if((in->topRing[phi][pol]).data[j]>0) {
-//			    printf("Wahyyy\n");
-//			 }
-		    (out->topRing[sector_phi]).data[j] += (in->topRing[phi][pol]).data[j];
+		    (out->topRing[sector_phi]).data[j] += 
+			 (in->topRing[phi][pol]).data[j];
 	       }
 	       if (minvalid > (in->topRing[phi][pol]).valid_samples) 
 		    minvalid=(in->topRing[phi][pol]).valid_samples;
 	  }
-     (out->topRing[sector_phi]).valid_samples = minvalid;
+	  (out->topRing[sector_phi]).valid_samples = minvalid;
      }
-//     }
      //bottom ring
      for(sector_phi=0;sector_phi<16;sector_phi++){
 	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	       (out->botRing[sector_phi]).data[j]=0;
 	  }
 	  minvalid=MAX_NUMBER_SAMPLES;
-//	  for(pol=0;pol<2;pol++){
 	  for (i=0;i<sectorWidth;i++){
 	       phi=(sector_phi+i)%16;
 	       for (j=0;j<(in->botRing[phi][pol]).valid_samples; j++){
-		    (out->botRing[sector_phi]).data[j] += (in->botRing[phi][pol]).data[j];
+		    (out->botRing[sector_phi]).data[j] += 
+			 (in->botRing[phi][pol]).data[j];
 	       }
 	       if (minvalid > (in->botRing[phi][pol]).valid_samples) 
 		    minvalid=(in->botRing[phi][pol]).valid_samples;
 	  }
-//	  }
 	  (out->botRing[sector_phi]).valid_samples = minvalid;
      }
 #ifdef ANITA2
-//ANITA 2 nadir code goes here
+//way-bottom (nadir) virtual ring
+     for(sector_phi=0;sector_phi<16;sector_phi++){
+	  for (j=0;j<MAX_NUMBER_SAMPLES; j++){
+	       (out->nadir[sector_phi]).data[j]=0;
+	  }
+	  minvalid=MAX_NUMBER_SAMPLES;
+	  for (i=0;i<sectorWidth;i++){
+	       phi=(sector_phi+i)%16;
+	       for (j=0;j<(in->nadir[phi][pol]).valid_samples; j++){
+		    (out->nadir[sector_phi]).data[j] += 
+			 (in->nadir[phi][pol]).data[j];
+	       }
+	       if (minvalid > (in->nadir[phi][pol]).valid_samples) 
+		    minvalid=(in->nadir[phi][pol]).valid_samples;
+	  }
+	  (out->nadir[sector_phi]).valid_samples = minvalid;
+     }
 #else //ANITA2
 
      //bicones
@@ -878,6 +938,10 @@ int FormSectorCoincidence(AnitaSectorLogic_t *majority,
 // add the values and place it in  the sample corresponding to
 // the bottom sample index.
 // Return the maximum value found in any sector at any time.
+// The hack here doesn't make sense with three rings, especially
+// as the nadir is half ORs so for sectors of two or three one horn
+// is enough to satisfy a twofold for odd phi or threefold 
+// for even phi
      int phi,k,max;
      //delay must be positive, but...
      delay=abs(delay);
