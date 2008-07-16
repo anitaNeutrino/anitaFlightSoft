@@ -1094,8 +1094,9 @@ int determinePriority(){
      BuildInstrumentF(&unwrappedBody,&theInstrument);
 // quick check on rms in middle of record versus beginning
      float MaxRMS;
-     MaxRMS=CheckRMSRatio(&theInstrument,5,50,165);
-     if (MaxRMS<1.3) return 7;
+     MaxRMS=CheckRMSRatio(&theInstrument,LowRMSChan,
+			  MidRMSChan,HighRMSChan);
+     if (MaxRMS<0.01*CutRMS) return 7;
 // there is something in a sector; go to industrial strength tests
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks
