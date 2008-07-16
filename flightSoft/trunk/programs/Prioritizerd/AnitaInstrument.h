@@ -227,6 +227,10 @@ extern "C"
 
      int determinePriority();
 
+     float RMSRatio(TransientChannelF_t *theChan,int low, int mid, int high);
+
+     float CheckRMSRatio(AnitaInstrumentF_t *theInst, 
+			 int low, int mid, int high);
 #ifdef __cplusplus
 }
 #endif
