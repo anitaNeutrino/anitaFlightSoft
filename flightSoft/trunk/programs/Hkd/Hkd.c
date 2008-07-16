@@ -1126,7 +1126,7 @@ void prettyPrintTempLookupFile()
       int j;
       for(j=0;j<5;j++) {
 	  int ind=j +5*i;
-	  if(ip320Ranges[0]==10) {
+	  if(ip320Ranges[0]==10 || 1) {
 	      fprintf(outFile," T%d: %+4.2f\t", 41+ind , ((corDataStruct[0].data[extraTemps[ind]]*20.0/4095.-10.0)*100.)-273);
 	  }
 	  else {
