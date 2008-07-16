@@ -1011,6 +1011,68 @@ void FindPeaks(AnitaInstrumentF_t *theInst, AnitaPeak_t *thePeak){
 #endif //not ANITA2
 }
 
+float RMSRatio(TransientChannelF_t *theChan,int low, int mid, int high){
+//Peter's check on RMS mid over early, cast as variance ratio
+     int i;
+     float mean1,np1,rms1,var1;
+     float mean2,np2,rms2,var2;
+     mean1=np1=rms1=var1=0.0;
+     mean2=np2=rms2=var2=0.0;
+//low to mid region
+     for (i=low;i<mid;i++){
+	  mean1 += theChan->data[i];
+	  var1 += theChan->data[i]+theChan->data[i];
+	  np1 += 1;
+     }
+     mean1 /= np1;
+     rms1 /= sqrt(var1/np1 -mean1*mean1);
+//mid to high region
+     for (i=mid;i<high;i++){
+	  mean2 += theChan->data[i];
+	  var2 += theChan->data[i]+theChan->data[i];
+	  np2 += 1;
+     }
+     mean2 /= np2;
+     rms2 /= sqrt(var2/np2 -mean2*mean2);
+//return  late/early
+     return rms2/rms1;
+}
+
+float CheckRMSRatio(AnitaInstrumentF_t *theInst, int low, int mid, int high)
+{
+//Peter's check on RMS mid over early, with the nadir in the sector included
+//Returns the highest average RMS ratio found in any two-wide phi sector slice
+     int phi,pol;
+     float RMStop[16][2],RMSbot[16][2],RMSnadir[8][2];
+     for (phi=0;phi<16; phi++){
+	  for(pol=0;pol<2;pol++){
+	       RMStop[phi][pol]=RMSRatio(&(theInst->topRing[phi][pol]),
+					 low,mid,high);
+	       RMSbot[phi][pol]=RMSRatio(&(theInst->topRing[phi][pol]),
+					 low,mid,high);
+	  }
+     }
+     for (phi=0;phi<8; phi++){
+	  for(pol=0;pol<2;pol++){
+	       RMSnadir[phi][pol]=RMSRatio(&(theInst->nadir[phi][pol]),
+					 low,mid,high);
+	  }
+     }
+     //now go around the instrument in sectors of width 2, averaging the
+     //horns in the sector
+     float maxRMSavg=0.;
+     for (phi=0;phi<16;phi++){
+	  for(pol=0;pol<2;pol++){
+	       int phiNadir=(phi+1)/2; //note integer division
+	       float RMSavg=(RMStop[phi][pol]+RMStop[(phi+1)%16][pol]+
+			     RMSbot[phi][pol]+RMSbot[(phi+1)%16][pol]+
+			     RMStop[phiNadir][pol])/5.;
+	       if (RMSavg>maxRMSavg) maxRMSavg=RMSavg;
+	  }
+     }
+     return maxRMSavg;
+}
+
 int determinePriority(){
      // MethodMask switches
      // 0x1--peak boxcar (pri 1 and 3)
@@ -1030,6 +1092,11 @@ int determinePriority(){
      int priority,score,score3,score4;
      unwrapAndBaselinePedSubbedEvent(&pedSubBody,&unwrappedBody);
      BuildInstrumentF(&unwrappedBody,&theInstrument);
+// quick check on rms in middle of record versus beginning
+     float MaxRMS;
+     MaxRMS=CheckRMSRatio(&theInstrument,5,50,165);
+     if (MaxRMS<1.3) return 7;
+// there is something in a sector; go to industrial strength tests
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks
      if (MethodMask & 0x1000){
@@ -1220,3 +1287,4 @@ int determinePriority(){
      }
      return priority;
 }
+
