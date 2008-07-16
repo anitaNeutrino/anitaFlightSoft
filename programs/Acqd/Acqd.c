@@ -4545,6 +4545,6 @@ AcqdErrorCode_t setTurfEventCounter()
 	 eventNumToWrite,runNumber);
 
   eventEpoch=eventNumToWrite;
-//  return setTurfControl(SetEventEpoch);
+  return setTurfControl(SetEventEpoch);
   return ACQD_E_OK;
 }

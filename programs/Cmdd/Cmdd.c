@@ -563,10 +563,6 @@ int executeCommand(CommandStruct_t *theCmd)
 	    ivalue=theCmd->cmd[1];
 	    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
 	    return setPriEncodingType(ivalue,ivalue2);
-	case ARCHIVE_ALTERNATE_USB:
-	    ivalue=theCmd->cmd[1];
-	    ivalue2=theCmd->cmd[2];
-	    return setAlternateUsb(ivalue,ivalue2);
 
 	case ARCHIVE_DECIMATE_PRI:
 	    ivalue=theCmd->cmd[1];
@@ -1588,15 +1584,15 @@ int setPriEncodingType(int pri, int encType)
     return rawtime;
 }
 
-int setAlternateUsb(int pri, int altUsb)
-{
-    time_t rawtime;
-    readArchivedConfig();
-    alternateUsbs[pri]=altUsb;
-    configModifyIntArray("Archived.config","archived","alternateUsbs",alternateUsbs,NUM_PRIORITIES,&rawtime);
-    sendSignal(ID_ARCHIVED,SIGUSR1);
-    return rawtime;
-}
+/* int setAlternateUsb(int pri, int altUsb) */
+/* { */
+/*     time_t rawtime; */
+/*     readArchivedConfig(); */
+/*     alternateUsbs[pri]=altUsb; */
+/*     configModifyIntArray("Archived.config","archived","alternateUsbs",alternateUsbs,NUM_PRIORITIES,&rawtime); */
+/*     sendSignal(ID_ARCHIVED,SIGUSR1); */
+/*     return rawtime; */
+/* } */
 
 
 int setArchiveGlobalDecimate(int pri, float frac)

@@ -158,6 +158,10 @@ extern int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
 extern LogicChannel_t HornCounter,ConeCounter;
 extern int HornMax;
 extern int RMSnum;
+extern int LowRMSChan;
+extern int MidRMSChan;
+extern int HighRMSChan;
+extern int CutRMS;
 
 #ifdef __cplusplus
 extern "C"
