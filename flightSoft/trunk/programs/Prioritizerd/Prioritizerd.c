@@ -56,6 +56,12 @@ int EndWindow=0;
 int MethodMask=0;
 int NuCut=0;
 
+//parameters for the quick cut on mid/early RMS for priority 7
+int LowRMSChan=5;
+int MidRMSChan=50;
+int HighRMSChan=165;
+int CutRMS=130;
+
 int priorityPPS1=2;
 int priorityPPS2=3;
 
@@ -349,8 +355,12 @@ int readConfig()
     WindowCut=kvpGetInt("WindowCut",400);
     BeginWindow=kvpGetInt("BeginWindow",100);
     EndWindow=kvpGetInt("EndWindow",100);
-    MethodMask=kvpGetInt("MethodMask",0xFFFF);
+    MethodMask=kvpGetInt("MethodMask",0x0867);
     NuCut=kvpGetInt("NuCut",100);
+    LowRMSChan=kvpGetInt("LowRMSChan",5);
+    MidRMSChan=kvpGetInt("MidRMSChan",50);
+    HighRMSChan=kvpGetInt("HighRMSChan",165);
+    CutRMS=kvpGetInt("CutRMS",130);
   }
   else {
     eString=configErrorString (status) ;
