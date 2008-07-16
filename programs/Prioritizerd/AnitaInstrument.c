@@ -177,7 +177,7 @@ const float sectorPhiACS[16]={ +292.5,+315.0,+337.5,  +0.0,
 			       +112.5,+135.0,+157.5,+180.0
 			       +202.5,+225.0,+247.5,+270.0};
 
-const float dipangle=-10.; //look angle of antenna in degrees
+const float dipangle = -10.; //look angle of antenna in degrees
 
 const float samples_per_ns=2.6; //SURF nominal
 const float meters_per_ns=0.299792458; //speed of light in meters per ns
@@ -188,8 +188,10 @@ void BuildInstrumentF(AnitaTransientBodyF_t *surfData,
      int i,j;
      for (i=0;i<16;i++){
 	  for (j=0; j<2; j++){
-	       antennaData->topRing[i][j]=(surfData->ch[topRingIndex[i][j]]);
-	       antennaData->botRing[i][j]=(surfData->ch[botRingIndex[i][j]]);
+	       antennaData->topRing[i][j]=
+		    (surfData->ch[topRingIndex[i][j]]);
+	       antennaData->botRing[i][j]=
+		    (surfData->ch[botRingIndex[i][j]]);
 	  }
      }
 #ifdef ANITA2
@@ -272,9 +274,10 @@ extern int MethodMask;
 extern int NuCut;
 
 int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
-		   int width, int guardOffset, int guardWidth,int guardThresh)
+		   int width, int guardOffset, 
+		  int guardWidth,int guardThresh)
 {
-// out is a boxcar width wide after the maximum absolute value of the input
+// out is a boxcar width after the maximum absolute value of the input
 // Return value is the peak sample number.
 //
 // if guardWidth is greater than zero, looks in a region offset
@@ -351,7 +354,8 @@ int PeakBoxcarOne(TransientChannelF_t *in,LogicChannel_t *out,
      }
      if (!(guardvalue>guardThresh*peakvalue/100.) && (neutrinoish>0) 
 	 && !peakcut){
-	  for (i=peaksample;(i<peaksample+width)&&(i<out->valid_samples);i++){
+	  for (i=peaksample;
+	       (i<peaksample+width)&&(i<out->valid_samples);i++){
 	       out->data[i]=1;
 	  }
      } 
@@ -588,8 +592,6 @@ void ZeroChannel(TransientChannelF_t *in){
      }
 }
 
-
-
 int MeanCountAll(AnitaInstrumentF_t *in,int thresh, 
 		int begwindow,int endwindow){
      int count=0;
@@ -634,7 +636,8 @@ int RMSCountAll(AnitaInstrumentF_t *in,int thresh,
      int i;
      int phi,pol;
      float fthresh=(float) thresh*0.01;
-     fthresh=fthresh*fthresh; // avoid square roots at the price of one square.
+// avoid square roots at the price of one square.
+     fthresh=fthresh*fthresh; 
      for (phi=0;phi<16; phi++){
 	  for (pol=0;pol<2;pol++){
 	       if (MSRatio(&(in->topRing[phi][pol]),
@@ -685,9 +688,12 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 	       in->botRing[phi][pol].valid_samples)
 	       ?in->topRing[phi][pol].valid_samples-delay 
 	       :in->botRing[phi][pol].valid_samples-delay;
-//fix a bounds problem in the line below by subtracting delay from the bound
-	       for (j=0;j<(in->topRing[phi][pol]).valid_samples-delay; j++){
-		    horns->data[j] += (in->topRing[phi][pol]).data[j+delay];
+//fix a bounds problem in the line below 
+//by subtracting delay from the bound
+	       for (j=0;
+		    j<(in->topRing[phi][pol]).valid_samples-delay; j++){
+		    horns->data[j] += 
+			 (in->topRing[phi][pol]).data[j+delay];
 	       }
 	       for (j=0;j<(in->botRing[phi][pol]).valid_samples; j++){
 		    horns->data[j] += (in->botRing[phi][pol]).data[j];
@@ -1038,10 +1044,13 @@ float RMSRatio(TransientChannelF_t *theChan,int low, int mid, int high){
      return rms2/rms1;
 }
 
-float CheckRMSRatio(AnitaInstrumentF_t *theInst, int low, int mid, int high)
+float CheckRMSRatio(AnitaInstrumentF_t *theInst, 
+		    int low, int mid, int high)
 {
-//Peter's check on RMS mid over early, with the nadir in the sector included
-//Returns the highest average RMS ratio found in any two-wide phi sector slice
+//Peter's check on RMS mid over early, 
+//with the nadir in the sector included
+//Returns the highest average RMS ratio 
+//found in any two-wide phi sector slice
      int phi,pol;
      float RMStop[16][2],RMSbot[16][2],RMSnadir[8][2];
      for (phi=0;phi<16; phi++){
@@ -1084,7 +1093,8 @@ int determinePriority(){
      // 0x40--blast remover (pri 8)
      // 0x80--late vs. early RMS counter (pri 7)
      // 0x100--also cut channels involved in 0x80
-     // 0x200--cut channels with wide crosscorrelator peaks (not neutrinoish)
+     // 0x200--cut channels with wide crosscorrelator peaks 
+     //(not neutrinoish)
      // 0x400--look at events which fail 0x80 for promotion to pri 5,
      //                             with the offending channels cut 
      // 0x800--cut on minimum SNR for peak on boxcar, bound to conethresh
@@ -1105,7 +1115,8 @@ int determinePriority(){
      }else{
 	  HornMatchedFilterAll(&theInstrument,&theXcorr);
      }
-     priority=6; // default for others not satisfied; thermal goes here we hope
+     priority=6; // default for others not satisfied; 
+                 // thermal goes here we hope
      if (((MethodMask & 0x2) !=0) && (FFTNumChannels>FFTMaxChannels)){
 	  // reject this event as narrowband crap
 	  priority=9;
@@ -1122,11 +1133,14 @@ int determinePriority(){
 	  if (HornMax>WindowCut) //too many horns peaking simultaneously
 	       priority=8;
      }
-     // cut on late vs. early RMS to reject blast starting during the record   
+     // old cut on late vs. early RMS to reject blast starting in 
+     // the record   
      // this can also be given the side effect of taking the channels
      // involved out of the priority 1-4 (boxcar) decision. See RMSCountAll
-     // One can force the priority 7 cut to be ignored after this for promotion
+     // One can force the priority 7 cut to be ignored after this for 
+     // promotion
      // consideration--see below.
+     // for ANITA1 the inequality was wrong, so this was turned off.
      else if ((MethodMask & 0x80)!=0){
 #ifdef ANITA2
 // in ANITA 2 we are looking at RMS voltage at baseband already...
@@ -1140,12 +1154,12 @@ int determinePriority(){
 #endif //not ANITA2
      }
 // if there are no 'black marks' everything is now priority 6.
-// next block gives three choices for making the initial promotion decision.
+// next block gives three choices for making the initial promotion.
 // to go from priority 6 to priority 5
 // score4 is ~SLAC priority 1
 // score3 is next group of SLAC priorities
 // the nonupdating discriminator thingee is like those but rejects blast, 
-//     but the blast rejector above for priority 8 seems to work well enough.
+// but the blast rejector above for priority 8 seems to work well enough.
      if (priority==6 || (priority==7 && MethodMask&0x400)) {
           // Ordinary coincidence and scoring a al SLAC
 	  if ((MethodMask&0x4)!=0){
@@ -1204,7 +1218,8 @@ int determinePriority(){
 	       MaxAll=0; MaxH=0; MaxV=0;
 	  }
 	  if(score4>=600 || score3>=600 || 
-	     MaxH>=2*(hornSectorWidth-1)-2 || MaxV>=2*(hornSectorWidth-1)-2) 
+	     MaxH>=2*(hornSectorWidth-1)-2 || 
+	     MaxV>=2*(hornSectorWidth-1)-2) 
 	       priority=5;
      }
 
@@ -1222,7 +1237,7 @@ int determinePriority(){
 			coneGuardWidth,coneGuardThresh);
      }
      if ((MethodMask & 0x1)!=0 && priority==5){
-//			      FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
+//	  FormSectorMajority(&theBoxcar,&theMajorityBoxcar,
 //						 hornSectorWidth);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH,
 				hornSectorWidth,0);
@@ -1246,16 +1261,16 @@ int determinePriority(){
      }
      //xcorr peak boxcar method with narrowed sector
      if ((MethodMask & 0x20)!=0  && priority==5){
-//			FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
+//	  FormSectorMajority(&theBoxcar,&theMajorityBoxcar2,
 //					   hornSectorWidth-1);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarH2,
 				hornSectorWidth-1,0);
 	  FormSectorMajorityPol(&theBoxcar,&theMajorityBoxcarV2,
 				hornSectorWidth-1,1);
-//			MaxBoxAll2=FormSectorCoincidence(&theMajorityBoxcar2,
-//							&theCoincidenceBoxcarAll2,
-//							8,2*hornSectorWidth-3,
-//							2*hornSectorWidth-3);
+//	  MaxBoxAll2=FormSectorCoincidence(&theMajorityBoxcar2,
+//			       &theCoincidenceBoxcarAll2,
+//			       8,2*hornSectorWidth-3,
+//			       2*hornSectorWidth-3);
 	  MaxBoxH2=FormSectorCoincidence(&theMajorityBoxcarH2,
 					 &theCoincidenceBoxcarH2,
 					 delay,hornSectorWidth-2,
@@ -1273,7 +1288,8 @@ int determinePriority(){
 	  if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
 	       //3 for 3 in both rings
 	       priority=1;
-	  else if (MaxBoxH2>=2*(hornSectorWidth-1) || MaxBoxV2>=2*(hornSectorWidth-1)) 
+	  else if (MaxBoxH2>=2*(hornSectorWidth-1) || 
+		   MaxBoxV2>=2*(hornSectorWidth-1)) 
 	       // 2 for 2 in both rings
 	       priority=2;
 	  else if (/*MaxBoxAll>=4*hornSectorWidth-4 ||*/

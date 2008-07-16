@@ -24,11 +24,6 @@ void NullFilter(TransientChannel8_t *inch,TransientChannel3_t *outch)
      outch->valid_samples=inch->valid_samples;
 }
 
-
-
-
-
-
 //modified to use analytic signal version 7/11/08 JJB
 void HornMatchedFilter(TransientChannelF_t *inch,TransientChannelF_t *outch)
 {
