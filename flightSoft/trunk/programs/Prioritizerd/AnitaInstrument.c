@@ -1027,7 +1027,7 @@ float RMSRatio(TransientChannelF_t *theChan,int low, int mid, int high){
 //low to mid region
      for (i=low;i<mid;i++){
 	  mean1 += theChan->data[i];
-	  var1 += theChan->data[i]+theChan->data[i];
+	  var1 += theChan->data[i]*theChan->data[i];
 	  np1 += 1;
      }
      mean1 /= np1;
@@ -1035,7 +1035,7 @@ float RMSRatio(TransientChannelF_t *theChan,int low, int mid, int high){
 //mid to high region
      for (i=mid;i<high;i++){
 	  mean2 += theChan->data[i];
-	  var2 += theChan->data[i]+theChan->data[i];
+	  var2 += theChan->data[i]*theChan->data[i];
 	  np2 += 1;
      }
      mean2 /= np2;
