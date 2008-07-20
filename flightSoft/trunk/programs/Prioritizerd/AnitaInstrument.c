@@ -1106,7 +1106,7 @@ int determinePriority(){
      float MaxRMS;
      MaxRMS=CheckRMSRatio(&theInstrument,LowRMSChan,
 			  MidRMSChan,HighRMSChan);
-     if (MaxRMS<0.01*(float)CutRMS) return 7;
+//     if (MaxRMS<0.01*(float)CutRMS) return 7;
 // there is something in a sector; go to industrial strength tests
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks

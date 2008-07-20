@@ -230,12 +230,13 @@ int main (int argc, char *argv[])
 		
 /* 		//Send down calibration info */
 /* 	    } */
+	    if(fdMag) retVal=checkMagnetometer(); 
 	    if((millisecs % readoutPeriod)==0) {
 		
 		time(&rawTime);		
-		if(fdMag && sendMagRequests) sendMagnetometerRequest();
+//		if(fdMag && sendMagRequests) sendMagnetometerRequest();
 		readSBSTemps();
-		if(fdMag) retVal=checkMagnetometer(); 
+
 //		printf("Mag Ret: %d\n",retVal);
 		if((rawTime-lastCal)>calibrationPeriod) {
 		    ip320Calibrate();
@@ -648,6 +649,83 @@ int setupMagnetometer()
     int retVal=0;
     char setupCommand[128];
     char tempData[256];
+
+    sprintf(setupCommand,"*\n");
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	if(printToScreen)
+	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
+    }
+
+sprintf(setupCommand,"M?\n");
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	if(printToScreen)
+	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
+    }
+
+    usleep(1000);
+    retVal=isThereDataNow(fdMag);
+    if(retVal) {
+	retVal=read(fdMag,tempData,256);
+	printf("%s\n",tempData);
+    }
+
+    sprintf(setupCommand,"A\n"); //Start autosend data
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	if(printToScreen)
+//	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
+    }
+    usleep(1000);
+
+   
+    usleep(1000);
+    retVal=isThereDataNow(fdMag);
+    if(retVal) {
+	retVal=read(fdMag,tempData,256);
+	printf("%s\n",tempData);
+    }
+    sprintf(setupCommand,"M=T\n");
+    retVal=write(fdMag, setupCommand, strlen(setupCommand));
+    if(retVal<0) {
+	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
+	if(printToScreen)
+	    fprintf(stderr,"Unable to write to Magnetometer Serial port\n");
+	return -1;
+    }
+    else {
+//	syslog(LOG_INFO,"Sent %d bytes to Magnetometer serial port",retVal);
+//	if(printToScreen)
+	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
+    }
+    usleep(1000);
+    retVal=isThereDataNow(fdMag);
+    if(retVal) {
+	retVal=read(fdMag,tempData,256);
+	printf("%s\n",tempData);
+    }
     sprintf(setupCommand,"M=C\n");
     retVal=write(fdMag, setupCommand, strlen(setupCommand));
     if(retVal<0) {
@@ -665,7 +743,7 @@ int setupMagnetometer()
     retVal=isThereDataNow(fdMag);
     if(retVal) {
 	retVal=read(fdMag,tempData,256);
-//	printf("%s\n",tempData);
+	printf("%s\n",tempData);
     }
 
     sprintf(setupCommand,"M=E\n");
@@ -685,6 +763,7 @@ int setupMagnetometer()
     retVal=isThereDataNow(fdMag);
     if(retVal) {
 	retVal=read(fdMag,tempData,256);
+	printf("%s\n",tempData);
     }
 
     sprintf(setupCommand,"P=FFFF\n"); //Will need to play with this
@@ -775,6 +854,7 @@ int sendMagnetometerRequest()
 int checkMagnetometer()
 {
     char tempData[256];
+//    char tempData2[256];
     int retVal=1,i;
     float x,y,z;
     int checksum,otherChecksum;
@@ -791,7 +871,8 @@ int checkMagnetometer()
     if(retVal>10) {
 //	printf("Retval %d\n",retVal);
 //	strcpy(tempData,"0.23456 0.78900 0.23997 4C");
-	sscanf(tempData,"D\n%f %f %f %x",&x,&y,&z,&checksum);
+	sscanf(tempData,"%f %f %f %x",&x,&y,&z,&checksum);
+//	printf("%s\n",tempData);
 	if(printToScreen) printf("Mag:\t%f %f %f\t%d\n",x,y,z,checksum);
 	magData.x=x;
 	magData.y=y;
@@ -814,8 +895,8 @@ int checkMagnetometer()
 //	    printf("%d %c %d\n",otherChecksum,tempData[i],countSpaces);
 	}
 	if(checksum!=otherChecksum) {
-	    syslog(LOG_WARNING,"Bad Magnetometer Checksum %s",tempData);
-	    return -1;
+//	    syslog(LOG_WARNING,"Bad Magnetometer Checksum %s",tempData);
+//	    return -1;
 	}
 	if(printToScreen) printf("Checksums:\t%d %d\n",checksum,otherChecksum);
     }

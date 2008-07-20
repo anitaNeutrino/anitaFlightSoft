@@ -5,22 +5,22 @@ stateRFCM3#I1=1;
 stateRFCM4#I1=1;
 stateVeto#I1=1;
 stateGPS#I1=1;
-stateCalPulser#I1=1;
+stateCalPulser#I1=0;
 </relays>
 
 
 <attenuator>
-attenLoop#I1=1;
-attenStartState#I1=1;
+attenLoop#I1=0;
+attenStartState#I1=0;
 attenPeriod#I1=10;
 attenLoopMap#I8=1,1,1,1,1,1,1,1;
 </attenuator>
 
 
 <rfSwitch>
-steadyState#I1=0;
-switchPeriod#I1=80;
-offPeriod#I1=3280;
+steadyState#I1=4;
+switchPeriod#I1=60;
+offPeriod#I1=0;
 </rfSwitch>
 
 
@@ -30,5 +30,6 @@ printToScreen#I1=1;
 
 
 <calibd>
+digitalCarrierNum#I1=0;
 writePeriod#I1=60;
 </calibd>

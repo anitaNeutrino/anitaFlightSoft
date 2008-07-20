@@ -14,7 +14,7 @@
 
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
-
+#include "utilLib/utilLib.h"
 
 int main (void)
 {    
@@ -109,6 +109,16 @@ int main (void)
 /* 	   (int)&(header.calibStatus)-(int)&header, */
 /* 	   (int)&(header.turfio)-(int)&header, */
 /* 	   (int)&(header.priority)-(int)&header); */
+
+    unsigned int numbers[10]={0,1,2,3,4,5,6,7,8,9};
+    printf("simpleIntCrc: %u\n",simpleIntCrc(numbers,10));
+
+    AnitaEventHeader_t theHeader;
+    memset(&theHeader,0,sizeof(AnitaEventHeader_t));
+    theHeader.eventNumber=10;
+    fillGenericHeader(&theHeader,PACKET_HD,sizeof(AnitaEventHeader_t));
+    printf("theHeader.gHdr.checksum:\t%u\n",theHeader.gHdr.checksum);
+    printf("checkPacket: %d\n",checkPacket(&theHeader));
 
     return 0;
 }

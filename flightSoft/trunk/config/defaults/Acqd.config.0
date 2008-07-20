@@ -6,47 +6,61 @@ writeScalers#I1=1;
 writeFullHk#I1=1;
 justWriteHeader#I1=0;
 verbosity#I1=0;
+printPidStuff#I1=0;
 </output>
 
 
 <locations>
 turfioSlot#I1=10;
-turfioBus#I1=3;
-surfSlot#I12=11,13,14,8,9,11,14,15,8,-1,-1,-1;
-surfBus#I12=3,3,3,3,2,2,2,2,2,-1,-1,-1;
+turfioBus#I1=10;
+surfSlot#I12=11,13,14,8,14,15,8,9,9,11,-1,-1;
+surfBus#I12=10,10,10,10,9,9,9,8,9,9,-1,-1;
 </locations>
 
 
 <trigger>
 enablePPS1Trigger#I1=0;
-enablePPS2Trigger#I1=0;
+enablePPS2Trigger#I1=1;
+disableExtTrigger#I1=1;
 sendSoftTrigger#I1=0;
-softTrigSleepPeriod#I1=200000;
+softTrigPeriod#I1=2;
 </trigger>
 
 
 <debug>
+pauseBeforeEvents#I1=5;
 dontWaitForEvtF#I1=0;
 dontWaitForLabF#I1=0;
+writeRawScalers#I1=1;
 </debug>
 
 
 <thresholdScan>
 doThresholdScan#I1=0;
 thresholdScanStepSize#I1=1;
-thresholdScanPointsPerStep#I1=1;
+thresholdScanPointsPerStep#I1=10;
 doSingleChannelScan#I1=0;
 surfForSingle#I1=100;
 dacForSingle#I1=32;
-threshSwitchConfigAtEnd#I1=1;
+threshSwitchConfigAtEnd#I1=0;
 </thresholdScan>
 
 
 <rates>
+enableDynamicPhiMasking#I1=0;
+enableDynamicAntMasking#I1=0;
+dynamicPhiThresholdOverRate#I1=6;
+dynamicPhiThresholdOverWindow#I1=20;
+dynamicPhiThresholdUnderRate#I1=2;
+dynamicPhiThresholdUnderWindow#I1=40;
+dynamicAntThresholdOverRate#I1=500000;
+dynamicAntThresholdOverWindow#I1=30;
+dynamicAntThresholdUnderRate#I1=100000;
+dynamicAntThresholdUnderWindow#I1=50;
 enableRateServo#I1=0;
 rateGoal#F1=5;
 servoRateCalcPeriod#I1=120;
-ratePGain#F1=1;
+ratePGain#F1=0.5;
 rateIGain#F1=0.01;
 rateDGain#F1=0.00;
 rateIMax#F1=100;
@@ -56,40 +70,45 @@ rateIMin#F1=-100;
 
 <thresholds>
 enableChanServo#I1=1;
-pidGoal#I1=2700;
+pidGoals#I4=12000,5000,5000,500;
+nadirPidGoals#I4=500,500,500,300;
 pidPanicVal#I1=200;
 pidAverage#I1=8;
-dacSurfs#I12=1,1,1,1,1,1,1,1,2,0,0,0;
+dacSurfs#I12=1,1,1,1,1,1,1,1,1,1,0,0;
 setGlobalThreshold#I1=0;
-globalThreshold#I1=0;
-dacPGain#F1=0.01;
-dacIGain#F1=0.0001;
-dacDGain#F1=0.00;
-dacIMax#I1=10000;
-dacIMin#I1=-10000;
-antTrigMask#I1=0x0;
-surfTrigBandMasks#I18=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-threshSurf1#I32=2383,2401,2035,2079,2216,2296,1953,1930,1567,1641,1875,1921,2255,2256,2041,2180,1633,1633,1794,2021,2182,2063,2024,2187,2292,2275,2149,1888,2071,2049,1963,2015;
-threshSurf2#I32=2464,2144,2120,2238,2389,2448,2068,2375,2368,1939,2052,1920,2208,2317,1989,2291,1980,1971,2141,1919,2229,2367,1910,1820,2279,2103,1863,1911,2336,2151,2025,1968;
-threshSurf3#I32=1655,1666,1818,1851,2255,2240,1891,1961,2049,2128,1873,1982,2112,2407,2006,2049,1913,2169,1889,2148,2284,2100,2184,1937,1842,1684,1848,1792,2097,2004,2080,1980;
-threshSurf4#I32=2080,2167,1956,2041,2208,2241,2236,2082,1849,1843,1711,1879,2160,2235,1920,1935,2078,1955,2112,2186,2232,2307,2064,2265,2426,2405,2080,2122,2403,2492,2228,2360;
-threshSurf5#I32=1377,1191,1504,1553,1922,1903,1585,1889,1609,1709,1457,1636,2127,1976,1905,2064,1701,1674,1594,1808,2130,2229,1844,1797,1512,1695,1632,1413,2761,2020,1801,1906;
-threshSurf6#I32=1503,1449,1820,1825,2186,2146,2000,1864,1481,1473,1573,1720,1903,1929,1748,2003,1473,1215,1591,1753,1989,1946,1794,1922,1503,1473,1535,1652,1937,2052,1869,1929;
-threshSurf7#I32=1862,1802,1619,1902,2232,1966,2181,2095,1783,1588,1473,1337,2067,2102,1483,1953,1559,1527,1149,1792,2088,1977,1710,1722,836,1002,1342,1376,1497,1875,1535,1396;
-threshSurf8#I32=1311,2686,1731,2625,1897,2950,2001,2829,1419,1217,1505,1649,1820,1901,1664,1724,1001,807,1185,1072,1868,1844,1712,1751,1536,1215,1356,1313,1524,1583,1788,1604;
-threshSurf9#I32=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-threshSurf10#I32=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-threshSurf11#I32=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-threshSurf12#I32=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-pidGoalScaleSurf1#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf2#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.5,1,1,1,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf3#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf4#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf5#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf6#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf7#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.349,0.349;
-pidGoalScaleSurf8#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.449,0.449,1,1,1,1,1,1,1,0.3,1,1,1,1,1,1,1,1;
-pidGoalScaleSurf9#F32=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+globalThreshold#I1=1;
+dacPGain#F4=0.001,0.005,0.003,0.02;
+dacIGain#F4=0.0001,0.0001,0.0001,0.0005;
+dacDGain#F4=0.00,0,0,0;
+dacIMax#I4=50000,50000,50000,50000;
+dacIMin#I4=-50000,-50000,-50000,-50000;
+gpsPhiTrigMask#I1=0;
+phiTrigMask#I1=0;
+antTrigMask#I1=0;
+nadirAntTrigMask#I1=0;
+surfTrigBandMasks#I10=0,0,0,0,0,0,0,0,0,0;
+threshSurf1#I16=3334,3339,3339,3303,3334,3323,3344,3320,3299,3318,3316,3318,3332,3326,3290,3354;
+threshSurf2#I16=3356,3344,3339,3328,3313,3313,3345,3309,3335,3335,3304,3302,3316,3340,3333,3312;
+threshSurf3#I16=3312,3308,3343,3336,3283,3276,3343,3320,3332,3289,3313,3308,3313,3279,3286,3282;
+threshSurf4#I16=3300,3264,3286,3085,3296,3264,3287,3056,3315,3253,3294,3103,3299,3265,3301,3164;
+threshSurf5#I16=3341,3344,3317,3291,3334,3334,3365,3337,3313,3325,3320,3299,3337,3325,3332,3359;
+threshSurf6#I16=3331,3319,3318,3350,3279,3293,3377,3336,3320,3323,3344,3351,3297,3344,3292,3289;
+threshSurf7#I16=3307,3300,3317,3317,3307,3334,3345,3348,3329,3284,3346,3299,3296,3313,3324,3279;
+threshSurf8#I16=3324,3301,3348,3325,3341,3329,3313,3339,3349,3328,3356,3299,3337,3361,3339,3319;
+threshSurf9#I16=3252,3213,3279,3060,3241,3110,3173,2884,3277,3184,3225,2916,3283,3189,3248,3007;
+threshSurf10#I16=3253,3134,3194,2878,3247,3109,3177,2906,3250,3192,3272,2989,3225,3177,3167,2865;
+threshSurf11#I16=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+threshSurf12#I16=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+pidGoalScaleSurf1#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf2#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf3#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf4#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf5#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf6#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf7#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf8#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf9#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
+pidGoalScaleSurf10#F16=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1;
 </thresholds>
 
 
@@ -100,18 +119,27 @@ niceValue#I1=-10;
 pedestalMode#I1=0;
 useInterrupts#I1=0;
 firmwareVersion#I1=3;
-turfFirmwareVersion#I1=3;
+turfFirmwareVersion#I1=5;
 reprogramTurf#I1=0;
-surfHkPeriod#I1=1;
-surfHkAverage#I1=0;
-surfHkTelemEvery#I1=10;
-turfRateTelemEvery#I1=60;
+surfHkPeriod#I1=0;
+surfHkAverage#I1=3000;
+surfHkTelemEvery#I1=1000;
+turfRateTelemEvery#I1=10;
 turfRateTelemInterval#I1=10;
+turfRateAverage#I1=60;
 </acqd>
 
 
 <pedestal>
+pedUsePPS2Trig#I1=0;
+pedSoftTrigSleepMs#I1=10;
 writeDebugData#I1=1;
 numPedEvents#I1=4000;
-pedSwitchConfigAtEnd#I1=1;
+pedSwitchConfigAtEnd#I1=0;
 </pedestal>
+
+
+<starttest>
+enableStartTest#I1=1;
+startSoftTrigs#I1=10;
+</starttest>

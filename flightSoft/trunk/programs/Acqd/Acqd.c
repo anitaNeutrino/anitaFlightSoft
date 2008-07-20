@@ -40,7 +40,7 @@
 
 //Definitions
 #define HK_DEBUG 0
-#define SURFHK_PERIOD 30000
+#define SURFHK_PERIOD 100000
 
 
 void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
@@ -357,7 +357,7 @@ int main(int argc, char **argv) {
     doneStartTest=1;    
   }
 
-
+  int firstTimeThrough=1;
   
   //Main program loop
   do { //while( currentState==PROG_STATE_INIT
@@ -368,15 +368,17 @@ int main(int argc, char **argv) {
     unsigned int tempTrigMask=antTrigMask;
     unsigned int tempNadirTrigMask=nadirAntTrigMask;
     unsigned short tempPhiTrigMask=phiTrigMask;
-    
+    pauseMasksSet=0;
     
    
     // Clear devices 
     clearDevices();
-    if(!pauseBeforeEvents) {
+    if(!pauseBeforeEvents || !firstTimeThrough) {
+	printf("Resetting phi mask after clear\n");
 	phiTrigMask=tempPhiTrigMask;
 	antTrigMask=tempTrigMask;
 	nadirAntTrigMask=tempNadirTrigMask;
+	setTriggerMasks();
     }
 
     if(!reInitNeeded && !newPhiMask) {
@@ -387,7 +389,8 @@ int main(int argc, char **argv) {
 	//		return -1;
       }
     }
-    if(pauseBeforeEvents) {
+    if(pauseBeforeEvents && firstTimeThrough) {
+	printf("Masking off triggers at start\n");
 	phiTrigMask=0xffff;
 	antTrigMask=0xffffffff;
 	nadirAntTrigMask=0xff;
@@ -577,9 +580,9 @@ int main(int argc, char **argv) {
 	  //This time getting is quite important as the two bits below rely on having a recent time.
 	  gettimeofday(&timeStruct,NULL);
 
-	  if(pauseMasksSet) {
+	  if(pauseMasksSet && firstTimeThrough) {	     
 	      if(pauseBeforeEvents>0 && timeStruct.tv_sec>startTimeStruct.tv_sec+pauseBeforeEvents) {
-		  
+	 	  firstTimeThrough=0; 
 		  phiTrigMask=pausePhiMask;
 		  antTrigMask=pauseAntTrigMask;
 		  nadirAntTrigMask=pauseNadirAntTrigMask;;
@@ -961,7 +964,7 @@ AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action)
 
 
 AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
-    unsigned int uvalue=0;   
+    unsigned int uvalue=0,uvalue2;   
     //Now need to actually do something
     AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
     if(status!=ACQD_E_OK)
@@ -1029,6 +1032,13 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	case SetEventEpoch:
 	    uvalue=eventEpoch;
 	    status+=setTurfioReg(TurfRegControlEventId,uvalue);
+	    readTurfioReg(TurfRegControlEventId,&uvalue2);
+	    syslog(LOG_INFO,"Set Turfio Event Id to %u read %u\n",
+		   uvalue,uvalue2);
+	    printf("Set Turfio Event Id to %u read %u\n",
+		   uvalue,uvalue2);
+	    
+
 	    break;
 	    
 	default :
@@ -2121,6 +2131,7 @@ AcqdErrorCode_t doStartTest()
 //    }
     startStruct.threshVals[tInd]=dacVal;
     theSurfHk.globalThreshold=dacVal;
+    usleep(SURFHK_PERIOD);
     status=readSurfHkData(); 
     theSurfHk.globalThreshold=0; //Just to avoid error message
     //Then send clear hk pulse
@@ -2138,7 +2149,6 @@ AcqdErrorCode_t doStartTest()
   }
   setGlobalThreshold=tempGlobalThreshold; 
   setDACThresholds(); 
-
 
 
   fillGenericHeader(&startStruct,PACKET_ACQD_START,sizeof(AcqdStartStruct_t));
@@ -2201,7 +2211,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
   int threshScanCounter=0;
   int dacVal=0,lastDacVal=-1;
   int done=0,surf=0;
-//  int timeDiff=0;
+  int timeDiff=0;
   struct timeval timeStruct;
   currentState=PROG_STATE_RUN;
   fprintf(stderr,"Inside doGlobalThresholdScan\n");
@@ -2232,17 +2242,17 @@ AcqdErrorCode_t doGlobalThresholdScan()
 
 
     gettimeofday(&timeStruct,NULL); 
-/*     timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;   */
-/*     timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec); */
-/* //    printf("%d %d -- %d %d\n",timeStruct.tv_sec,timeStruct.tv_usec, */
-/* //	   lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec); */
-/*     while(timeDiff<SURFHK_PERIOD && lastSurfHkRead.tv_sec!=0) { */
-/* 	usleep(1000); */
-/* 	gettimeofday(&timeStruct,NULL); */
-/* 	timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;   */
-/* 	timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec); */
-/* //	printf("timeDiff %d\n",timeDiff); */
-/*     } */
+    timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
+    timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec);
+//    printf("%d %d -- %d %d\n",timeStruct.tv_sec,timeStruct.tv_usec,
+//	   lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
+    while(timeDiff<SURFHK_PERIOD && lastSurfHkRead.tv_sec!=0) {
+	usleep(1000);
+	gettimeofday(&timeStruct,NULL);
+	timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
+	timeDiff+=1000000*(timeStruct.tv_sec-lastSurfHkRead.tv_sec);
+//	printf("timeDiff %d\n",timeDiff);
+    }
     //Actually read and write surfHk here    
     status=readSurfHkData();
 //    printf("%d\n",theSurfHk.threshold[0][0]);
@@ -4537,8 +4547,8 @@ AcqdErrorCode_t setTurfEventCounter()
 {
   unsigned int runNumber=getRunNumber();
   unsigned int miniRun=runNumber&0xfff;
-  unsigned int eventNumToWrite=0;
-  eventNumToWrite=(miniRun<<20);
+  unsigned int eventNumToWrite=miniRun;
+//  eventNumToWrite=(miniRun<<20);
   printf("Setting Turfio Event Number to %u -- (Run %d)\n",
 	 eventNumToWrite,runNumber);
   syslog(LOG_INFO,"Setting Turfio Event Number to %u -- (Run %d)\n",

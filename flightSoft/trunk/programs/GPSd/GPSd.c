@@ -51,7 +51,8 @@ void processGppatString(char *gpsString, int length, int fromAdu5);
 void processTttString(char *gpsString, int gpsLength,int fromAdu5);
 void processGpggaString(char *gpsString, int gpsLength, int fromAdu5);
 void processGpvtgString(char *gpsString, int gpsLength, int fromAdu5);
-void processAdu5SatString(char *gpsString, int gpsLength, int fromAdu5, int isSat);
+void processAdu5aSatString(char *gpsString, int gpsLength, int isSat);
+void processAdu5bSatString(char *gpsString, int gpsLength, int isSat);
 void processG12SatString(char *gpsString, int gpsLength);
 void processGpzdaString(char *gpsString, int gpsLength, int latestData, int fromAdu5);
 void processPosString(char *gpsString, int gpsLength);
@@ -1172,11 +1173,17 @@ void processAdu5Output(char *tempBuffer, int length, int latestData, int fromAdu
 	}
 	if(!strcmp(subString,"SA4")) {
 //	    printf("And got Sat\n");
-	    processAdu5SatString(gpsString,gpsLength,fromAdu5,0);
+	    if(fromAdu5==1)
+		processAdu5aSatString(gpsString,gpsLength,0);
+	    else if(fromAdu5==2)
+		processAdu5bSatString(gpsString,gpsLength,0);
 	}
 	if(!strcmp(subString,"SAT")) {
 //	    printf("And got Sat\n");
-	    processAdu5SatString(gpsString,gpsLength,fromAdu5,1);
+	    if(fromAdu5==1)
+		processAdu5aSatString(gpsString,gpsLength,1);
+	    else if(fromAdu5==2)
+		processAdu5bSatString(gpsString,gpsLength,1);
 	}
 	if(!strcmp(subString,"ACK")) {
 	  processAckString(gpsString,gpsLength,fromAdu5);
@@ -1391,7 +1398,191 @@ void processG12SatString(char *gpsString, int gpsLength) {
 }
 
 
-void processAdu5SatString(char *gpsString, int gpsLength, int fromAdu5, int isSat) {
+
+void processAdu5aSatString(char *gpsString, int gpsLength,  int isSat) {
+    int fromAdu5=1;
+    static int telemCount[3]={0};
+  char gpsCopy[ADU5_DATA_SIZE];
+  char *subString;
+  char theFilename[FILENAME_MAX];
+  int retVal;
+  int count=0;
+  int doingSat=0;
+  int doingAnt=-1;
+  int satInd=0;
+  static int satellitePrns[MAX_SATS]={0};
+  static int satelliteAzimuths[MAX_SATS]={0};
+  static int satelliteElevations[MAX_SATS]={0};
+  static int totalSats=0;
+  strncpy(gpsCopy,&gpsString[11],gpsLength-11);
+//    printf("%s\n",gpsCopy);
+  static GpsAdu5SatStruct_t theSat;
+  static int reZero=1;
+  static int whichDone[4];
+  if(reZero) {
+    //	printf("\n\nRe-zeroing\n\n");
+    bzero(&theSat,sizeof(GpsAdu5SatStruct_t));
+    theSat.gHdr.code=PACKET_GPS_ADU5_SAT;
+    reZero=0;	
+    time_t rawtime;
+    time ( &rawtime );
+    theSat.unixTime=rawtime;
+    for(doingAnt=0;doingAnt<4;doingAnt++) whichDone[doingAnt]=0;
+    doingAnt=-1;
+  }
+
+  if(isSat) {
+      memset(satellitePrns,0,sizeof(int)*MAX_SATS);
+      memset(satelliteAzimuths,0,sizeof(int)*MAX_SATS);
+      memset(satelliteElevations,0,sizeof(int)*MAX_SATS);
+      totalSats=0;
+//  $PASHR,SAT,12,25,319,47,47,U,16,041,32,43,U,20,201,20,36,U,06,087,42,43,U,23,151,88,50,U,03,110,49,45,U,19,147,33,37,U,27,297,25,44,U,07,299,32,45,U,13,322,54,48,U,32,181,09,36,U,51,201,51,46,U*18
+    subString = strtok (gpsCopy,",");    
+    while (subString != NULL) {
+//	printf("%d\t%s\n",count,subString);
+	
+	switch(count) {
+	    case 0:		
+//		theSat.numSats=atoi(subString);
+		break;
+	    case 1:
+		satellitePrns[doingSat]=atoi(subString);
+		break;
+	    case 2:
+		satelliteAzimuths[doingSat]=atoi(subString);
+		break;
+	    case 3:
+		satelliteElevations[doingSat]=atoi(subString);
+		break;
+	    case 4:
+//		theSat.sat[doingSat].snr=atoi(subString);
+		break;
+	    case 5:
+//		theSat.sat[doingSat].flag=subString[0];
+//		if(subString[0]=='U') theSat.sat[doingSat].flag=1;
+//		if(subString[0]=='-') theSat.sat[doingSat].flag=0;
+		doingSat++;
+		count=0;
+		break;
+	    default:
+		break;
+	}
+	if(subString[1]=='*') break;
+	count++;
+	subString = strtok (NULL, ",");	
+    }
+    totalSats=doingSat;
+
+  }
+  else {
+      subString = strtok (gpsCopy,",");    
+      while (subString != NULL) {
+	  //	printf("%d\t%s\n",count,subString);	
+	  switch(count) {
+	      case 0:		
+		  doingAnt=atoi(subString)-1;
+		  break;
+	      case 1:		
+		  theSat.numSats[doingAnt]=atoi(subString);
+		  break;
+	      case 2:
+		  theSat.sat[doingAnt][doingSat].prn=atoi(subString);
+		  for(satInd=0;satInd<totalSats;satInd++) {
+		      if(theSat.sat[doingAnt][doingSat].prn == satellitePrns[satInd]) {
+			  
+			  theSat.sat[doingAnt][doingSat].azimuth=satelliteAzimuths[satInd];
+			  theSat.sat[doingAnt][doingSat].elevation=satelliteElevations[satInd];
+			  break;
+		      }
+		  }
+
+		  break;
+	      case 3:
+		  //		theSat.sat[doingAnt][doingSat].azimuth=atoi(subString);
+		  //		break;
+		  //	    case 4:
+		  //		theSat.sat[doingAnt][doingSat].elevation=atoi(subString);
+		  //		break;
+		  //	    case 5:
+		  theSat.sat[doingAnt][doingSat].snr=atoi(subString);
+		  doingSat++;
+		  count=1;
+		  break;
+	      default:
+		  break;
+	  }
+	  if(doingAnt<0 || doingAnt>3) break;
+	  if(subString[1]=='*') break;
+	  count++;
+	  subString = strtok (NULL, ",");	
+      }
+      
+      /*     for(count=0;count<theSat.numSats;count++) { */
+      /* 	printf("Number:\t%d\nPRN:\t%d\nAzimuth:\t%d\nElevation:\t%d\nSNR:\t%d\nFlag:\t%d\n\n",count+1,theSat.sat[count].prn,theSat.sat[count].azimuth,theSat.sat[count].elevation,theSat.sat[count].snr,theSat.sat[count].flag); */
+      /*     } */
+      if(doingAnt>=0 && doingAnt<=3) whichDone[doingAnt]=1;
+      
+      if(doingAnt==3) {
+	  reZero=1;
+	  count=0;
+	  for(doingAnt=0;doingAnt<4;doingAnt++) count+=whichDone[doingAnt];
+	  if(count!=4) {
+	      syslog(LOG_WARNING,"Incomplete SA4 data from ADU5");
+	      if(printToScreen) fprintf(stderr,"Incomplete SA4 data from ADU5\n");
+	  }
+	  else {
+
+	      
+	      if(fromAdu5==1) {
+		  fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT|PACKET_FROM_ADU5A,sizeof(GpsAdu5SatStruct_t));
+		  telemCount[fromAdu5]++;
+		  if(telemCount[fromAdu5]>=adu5aSatTelemEvery) {
+		      //Write file and link for sipd
+		      sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5A_SAT_TELEM_DIR,theSat.unixTime);
+		      retVal=writeStruct(&theSat,theFilename,sizeof(GpsAdu5SatStruct_t));  
+		      retVal=makeLink(theFilename,ADU5A_SAT_TELEM_LINK_DIR);  
+		      telemCount[fromAdu5]=0;
+		  }
+		  
+		  //Write file to main disk
+		  retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsAdu5SatStruct_t),
+			     theSat.unixTime,&adu5aSatWriter);
+		  if(retVal<0) {
+		      //Had an error
+		      //Do something
+		  }	    
+	      }
+	      else if(fromAdu5==2) {
+		  fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT|PACKET_FROM_ADU5B,sizeof(GpsAdu5SatStruct_t));
+		  telemCount[fromAdu5]++;
+		  if(telemCount[fromAdu5]>=adu5bSatTelemEvery) {
+		      //Write file and link for sipd
+		      sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5B_SAT_TELEM_DIR,theSat.unixTime);
+		      retVal=writeStruct(&theSat,theFilename,sizeof(GpsAdu5SatStruct_t));  
+		      retVal=makeLink(theFilename,ADU5B_SAT_TELEM_LINK_DIR);  
+		      telemCount[fromAdu5]=0;
+		  }
+		  
+		  //Write file to main disk
+		  retVal=cleverHkWrite((unsigned char*)&theSat,sizeof(GpsAdu5SatStruct_t),
+				       theSat.unixTime,&adu5bSatWriter);
+		  if(retVal<0) {
+		      //Had an error
+		      //Do something
+		  }	    
+		  
+	      }
+	  }
+      }
+  }
+
+}
+
+
+
+
+void processAdu5bSatString(char *gpsString, int gpsLength,  int isSat) {
+    int fromAdu5=2;
   static int telemCount[3]={0};
   char gpsCopy[ADU5_DATA_SIZE];
   char *subString;
