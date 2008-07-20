@@ -70,7 +70,7 @@
 
 //Trigger Stuff
 #define ANTS_PER_SURF 4
-#define TRIGGER_SURFS 8
+#define TRIGGER_SURFS ACTIVE_SURFS
 #define PHI_SECTORS 16
 #define NADIR_ANTS 8
 
@@ -147,7 +147,7 @@
 #ifdef USE_FAKE_DATA_DIR
 #define DATA_LINK "/tmp/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
-#define SAFE_DATA_MOUNT "/tmp/mnt/bitmicro"
+#define SAFE_DATA_MOUNT "/tmp/mnt/pmcdata"
 #define SATAMINI_DATA_MOUNT "/tmp/mnt/satamini"
 #define SATABLADE_DATA_MOUNT "/tmp/mnt/satablade"
 #define USB_DATA_MOUNT "/tmp/mnt/usbint"
@@ -159,7 +159,7 @@
 #else
 #define DATA_LINK "/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
-#define SAFE_DATA_MOUNT "/mnt/bitmicro"
+#define SAFE_DATA_MOUNT "/mnt/pmcdata"
 #define SATAMINI_DATA_MOUNT "/mnt/satamini"
 #define SATABLADE_DATA_MOUNT "/mnt/satablade"
 #define USB_DATA_MOUNT "/mnt/usbint"

@@ -425,7 +425,7 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     int diskNum;   
     unsigned int megaBytes=0;
     unsigned short megaBytes_short=0;
-    for(diskNum=0;diskNum<8;diskNum++) {
+    for(diskNum=0;diskNum<7;diskNum++) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
 //	printf("%u\n",megaBytes);
 	if(megaBytes>0) {
@@ -438,7 +438,8 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	dsPtr->diskSpace[diskNum]=megaBytes_short;
 	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes_short);
 	if(((short)megaBytes)==-1) errFlag--;
-    }    
+    }  
+    dsPtr->diskSpace[7]=0;
     strncpy(dsPtr->satabladeLabel,satabladeName,11);
     strncpy(dsPtr->sataminiLabel,sataminiName,11);
     strncpy(dsPtr->usbLabel,usbName,11);

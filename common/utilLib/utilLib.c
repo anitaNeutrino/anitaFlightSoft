@@ -743,7 +743,7 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
 char *getCurrentHkDir(char *baseHkDir,unsigned int unixTime)
 {
     char *newDir;   
-    int ext=0;
+//    int ext=0;
     newDir=malloc(FILENAME_MAX);
     sprintf(newDir,"%s/sub_%u",baseHkDir,unixTime);
 //    while(is_dir(newDir)) {
@@ -1552,6 +1552,8 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
     unsigned int intBytes=(numBytes-sizeof(GenericHeader_t))/4;
     GenericHeader_t *gHdr= (GenericHeader_t*)thePtr;
     unsigned int *dataPtr=(unsigned int*) (thePtr+sizeof(GenericHeader_t));
+//    printf("%u -- %u\n",thePtr,dataPtr);
+//    printf("%u -- %u -- %u\n",thePtr,dataPtr,((unsigned int)(dataPtr)-(unsigned int)(thePtr)));
     gHdr->code=code;
     gHdr->numBytes=numBytes;
     gHdr->feByte=0xfe;
@@ -2080,6 +2082,7 @@ char *getProgName(ProgramId_t prog) {
 	case ID_MONITORD: string="Monitord"; break;
 	case ID_PLAYBACKD: string="Playbackd"; break;
 	case ID_LOGWATCHD: string="LogWatchd"; break;
+	case ID_NEOBRICKD: string="Neobrickd"; break;
 	default: string=NULL; break;
     }
     return string;
@@ -2100,6 +2103,7 @@ char *getPidFile(ProgramId_t prog) {
 	case ID_MONITORD: return MONITORD_PID_FILE;
 	case ID_PLAYBACKD: return PLAYBACKD_PID_FILE;
 	case ID_LOGWATCHD: return LOGWATCHD_PID_FILE;
+	case ID_NEOBRICKD: return NEOBRICKD_PID_FILE;
 	default: break;
     }
     return NULL;
