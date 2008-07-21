@@ -1052,6 +1052,7 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	    uvalue=0;
 	    status=readTurfioReg(TurfRegControlEventId,&uvalue);
 	    if((uvalue&0xfff00000)>>20!=eventEpoch) {
+		uvalue=eventEpoch;
 		status+=setTurfioReg(TurfRegControlEventId,uvalue);	    
 		readTurfioReg(TurfRegControlEventId,&uvalue2);
 		syslog(LOG_INFO,"Set Turfio Event Id to %u read %u\n",
