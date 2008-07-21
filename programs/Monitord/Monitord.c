@@ -109,6 +109,7 @@ int eventDiskBitMask=0;
 int disableSatablade=0;
 int disableSatamini=0;
 int disableUsb=0;
+int disableNeobrick=0;
 AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
@@ -393,6 +394,11 @@ int readConfigFile()
 	if(disableUsb) {
 	  hkDiskBitMask&=(~USB_DISK_MASK);
 	  eventDiskBitMask&=(~USB_DISK_MASK);
+	}
+	disableNeobrick=kvpGetInt("disableNeobrick",0);
+	if(disableNeobrick) {
+	  hkDiskBitMask&=(~NEOBRICK_DISK_MASK);
+	  eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
 	}
 
     }

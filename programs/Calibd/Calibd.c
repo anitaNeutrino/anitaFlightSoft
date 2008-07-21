@@ -79,6 +79,10 @@ int printToScreen=1;
 int writePeriod=60;
 
 int hkDiskBitMask;
+int disableSatablade=0;
+int disableSatamini=0;
+int disableUsb=0;
+int disableNeobrick=0;
 AnitaHkWriterStruct_t calibWriter;
 
 int main (int argc, char *argv[])
@@ -125,6 +129,19 @@ int main (int argc, char *argv[])
     // Get Calibd output dirs
     if (status == CONFIG_E_OK) {
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
+
+	disableUsb=kvpGetInt("disableUsb",1);
+	if(disableUsb)
+	    hkDiskBitMask&=~USB_DISK_MASK;
+	disableNeobrick=kvpGetInt("disableNeobrick",1);
+	if(disableNeobrick)
+	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
+	disableSatamini=kvpGetInt("disableSatamini",1);
+	if(disableSatamini)
+	    hkDiskBitMask&=~SATAMINI_DISK_MASK;
+	disableSatablade=kvpGetInt("disableSatablade",1);
+	if(disableSatablade)
+	    hkDiskBitMask&=~SATABLADE_DISK_MASK;
     }
 
     makeDirectories(CALIBD_STATUS_LINK_DIR);

@@ -60,6 +60,11 @@ int verbosity=0;
 int writeTelem=0;
 
 int eventDiskBitMask;
+int eventDiskBitMask=0;
+int disableSatablade=0;
+int disableSatamini=0;
+int disableUsb=0;
+int disableNeobrick=0;
 int satabladeCloneMask;
 int sataminiCloneMask;
 int usbCloneMask;
@@ -134,6 +139,24 @@ int main (int argc, char *argv[])
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
+	disableSatablade=kvpGetInt("disableSatablade",0);
+	if(disableSatablade) {
+	  eventDiskBitMask&=(~SATABLADE_DISK_MASK);
+	}
+	disableSatamini=kvpGetInt("disableSatamini",0);
+	if(disableSatamini) {
+	  eventDiskBitMask&=(~SATAMINI_DISK_MASK);
+	}
+	disableUsb=kvpGetInt("disableUsb",0);
+	if(disableUsb) {
+	  eventDiskBitMask&=(~USB_DISK_MASK);
+	}
+	disableNeobrick=kvpGetInt("disableNeobrick",0);
+	if(disableNeobrick) {
+	  eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
+	}
+
+
 	satabladeCloneMask=kvpGetInt("satabladeCloneMask",0);
 	sataminiCloneMask=kvpGetInt("sataminiCloneMask",0);
 	usbCloneMask=kvpGetInt("usbCloneMask",0);
@@ -217,7 +240,6 @@ int readConfigFile()
 /* Load Archived config stuff */
 {
     /* Config file thingies */
-    int pri;
     int status=0,tempNum=0;
     char* eString ;
     KvpErrorCode kvpStatus;

@@ -80,6 +80,10 @@ int surfMask;
 int hkDiskBitMask=0;
 int useInterrupts=0;
 int niceValue=-20;
+int disableUsb=0;
+int disableNeobrick=0;
+int disableSatamini=0;
+int disableSatablade=0;
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -255,6 +259,7 @@ int main(int argc, char **argv) {
   int eventReadyFlag=0;
   unsigned short dacVal=2200;
   unsigned int lastEvNum=0;
+  time_t lastNewPhiMask=0;
   struct timeval timeStruct;
   struct timeval startTimeStruct;
 
@@ -671,11 +676,7 @@ int main(int argc, char **argv) {
 	printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	reInitNeeded=1;
       }
-      if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
-	fprintf(stderr,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
-	syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
-	currentState=PROG_STATE_INIT;
-      }
+
       hdPtr->errorFlag=0;
       if(reInitNeeded) {
 	hdPtr->errorFlag=0x1;
@@ -693,10 +694,7 @@ int main(int argc, char **argv) {
 	addTurfRateToAverage(&turfRates);
 	newPhiMask=checkTurfRates();	
       }
-	  
-      if(newPhiMask) {
-	currentState=PROG_STATE_INIT;
-      }
+
   
       //Error checking
       if(status!=ACQD_E_OK) {
@@ -729,7 +727,28 @@ int main(int argc, char **argv) {
 	    
       // Clear boards
       sendClearEvent();     
-	    
+
+
+      if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
+	  fprintf(stderr,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
+	  syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
+
+	  // Clear devices 
+	  currentState=PROG_STATE_INIT;
+      }
+	 
+	  
+      if(newPhiMask) {
+	  time(&lastNewPhiMask);
+	  printf("Dynamically setting phi mask to %#x at %u\n",phiTrigMask,
+		 (unsigned int)lastNewPhiMask);
+	  setTriggerMasks();
+	  doSurfHkAverage(1); //Flush the surf hk average
+	  doTurfRateSum(1); //Flush the turf rate sum    
+//	  memset(lastTurfRates,0,NUM_DYN_TURF_RATE*sizeof(TurfRateStruct_t));
+//	  countLastTurfRates=0;
+      }
+   
     }  //while(currentState==PROG_STATE_RUN)
 
 	
@@ -1030,15 +1049,22 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	    status+=setTurfioReg(TurfRegControlNadirAntTrigMask,uvalue);
 	    break;
 	case SetEventEpoch:
-	    uvalue=eventEpoch;
-	    status+=setTurfioReg(TurfRegControlEventId,uvalue);
-	    readTurfioReg(TurfRegControlEventId,&uvalue2);
-	    syslog(LOG_INFO,"Set Turfio Event Id to %u read %u\n",
-		   uvalue,uvalue2);
-	    printf("Set Turfio Event Id to %u read %u\n",
-		   uvalue,uvalue2);
-	    
-
+	    uvalue=0;
+	    status=readTurfioReg(TurfRegControlEventId,&uvalue);
+	    if((uvalue&0xfff00000)>>20!=eventEpoch) {
+		status+=setTurfioReg(TurfRegControlEventId,uvalue);	    
+		readTurfioReg(TurfRegControlEventId,&uvalue2);
+		syslog(LOG_INFO,"Set Turfio Event Id to %u read %u\n",
+		       uvalue,uvalue2);
+		printf("Set Turfio Event Id to %u read %u\n",
+		       uvalue,uvalue2);
+	    }
+	    else {
+		syslog(LOG_INFO,"Turfio Event Id already set to %u (%u)\n",
+		       eventEpoch,uvalue);
+		printf("Turfio Event Id already set to %u (%u)\n",
+		       eventEpoch,uvalue);
+	    }			    
 	    break;
 	    
 	default :
@@ -1204,6 +1230,19 @@ int readConfigFile()
     eventsBeforeClear=kvpGetInt("eventsBeforeClear",1000);
     numEvents=kvpGetInt("numEvents",1);
     hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
+    disableUsb=kvpGetInt("disableUsb",1);
+    if(disableUsb)
+	hkDiskBitMask&=~USB_DISK_MASK;
+    disableNeobrick=kvpGetInt("disableNeobrick",1);
+    if(disableNeobrick)
+	hkDiskBitMask&=~NEOBRICK_DISK_MASK;
+    disableSatamini=kvpGetInt("disableSatamini",1);
+    if(disableSatamini)
+	hkDiskBitMask&=~SATAMINI_DISK_MASK;
+    disableSatablade=kvpGetInt("disableSatablade",1);
+    if(disableSatablade)
+	hkDiskBitMask&=~SATABLADE_DISK_MASK;
+    
     niceValue=kvpGetInt("niceValue",-20);
     pedestalMode=kvpGetInt("pedestalMode",0);
     pedUsePPS2Trig=kvpGetInt("pedUsePPS2Trig",0);
@@ -4493,23 +4532,24 @@ int checkTurfRates()
 	}
       }
     }
-  }
-  if(phiTrigMask!=newPhiMask) {
-    if(enableDynamicPhiMasking) {
-      if(printToScreen) {
-	  printf("Changing phi mask from %#x to %#x (%d)\n",phiTrigMask,newPhiMask,funcCounter);
-      }
-      phiTrigMask=newPhiMask | gpsPhiTrigMask;
-      changedSomething=1;
+  
+    if(phiTrigMask!=newPhiMask) {
+	if(enableDynamicPhiMasking) {
+	    if(printToScreen) {
+		printf("Changing phi mask from %#x to %#x (%d -- %d)\n",phiTrigMask,newPhiMask,funcCounter,countLastTurfRates);
+	    }
+	    phiTrigMask=newPhiMask | gpsPhiTrigMask;
+	    changedSomething=1;
+	}
     }
-  }
-  if(newAntTrigMask!=antTrigMask) {
-    if(enableDynamicAntMasking) {
-      if(printToScreen) {
-	printf("Changing antenna mask from %#x to %#x\n",antTrigMask,newAntTrigMask);
-      }
-      antTrigMask=newAntTrigMask;
-      changedSomething=1;
+    if(newAntTrigMask!=antTrigMask) {
+	if(enableDynamicAntMasking) {
+	    if(printToScreen) {
+		printf("Changing antenna mask from %#x to %#x\n",antTrigMask,newAntTrigMask);
+	    }
+	    antTrigMask=newAntTrigMask;
+	    changedSomething=1;
+	}
     }
   }
   return changedSomething;  

@@ -98,7 +98,11 @@ int readoutPeriod; //in ms
 int telemEvery;
 int calibrationPeriod;
 
-int hkDiskBitMask;
+int hkDiskBitMask=0;
+int disableUsb=0;
+int disableNeobrick=0;
+int disableSatablade=0;
+int disableSatamini=0;
 AnitaHkWriterStruct_t hkRawWriter;
 AnitaHkWriterStruct_t hkCalWriter;
 
@@ -192,6 +196,18 @@ int main (int argc, char *argv[])
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
+	disableUsb=kvpGetInt("disableUsb",1);
+	if(disableUsb)
+	    hkDiskBitMask&=~USB_DISK_MASK;
+	disableNeobrick=kvpGetInt("disableNeobrick",1);
+	if(disableNeobrick)
+	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
+	disableSatamini=kvpGetInt("disableSatamini",1);
+	if(disableSatamini)
+	    hkDiskBitMask&=~SATAMINI_DISK_MASK;
+	disableSatablade=kvpGetInt("disableSatablade",1);
+	if(disableSatablade)
+	    hkDiskBitMask&=~SATABLADE_DISK_MASK;
     }
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;

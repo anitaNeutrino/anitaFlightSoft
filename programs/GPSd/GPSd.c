@@ -141,6 +141,11 @@ int sourcePhiWidth[MAX_PHI_SOURCES]={0};
 
 //Output stuff
 int hkDiskBitMask;
+int disableUsb=0;
+int disableNeobrick=0;
+int disableSatablade=0;
+int disableSatamini=0;
+
 
 //Hk Writers
 AnitaHkWriterStruct_t adu5aPatWriter;
@@ -211,6 +216,20 @@ int main (int argc, char *argv[])
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
 	hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
+	
+	disableUsb=kvpGetInt("disableUsb",1);
+	if(disableUsb)
+	    hkDiskBitMask&=~USB_DISK_MASK;
+	disableNeobrick=kvpGetInt("disableNeobrick",1);
+	if(disableNeobrick)
+	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
+	disableSatamini=kvpGetInt("disableSatamini",1);
+	if(disableSatamini)
+	    hkDiskBitMask&=~SATAMINI_DISK_MASK;
+	disableSatablade=kvpGetInt("disableSatablade",1);
+	if(disableSatablade)
+	    hkDiskBitMask&=~SATABLADE_DISK_MASK;
+
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
     makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
