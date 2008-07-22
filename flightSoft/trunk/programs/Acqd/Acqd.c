@@ -1649,6 +1649,16 @@ AcqdErrorCode_t clearDevices()
     fprintf(stderr,"Failed to write antenna trigger mask\n");
   }
 
+  //Added RJN 24/11/06
+  trigMode=TrigNone|TrigDisableExt;
+  if(verbosity && printToScreen)
+    fprintf(stderr,"Setting trigMode to TrigNone\n");
+  if (setTurfControl(SetTrigMode) != ACQD_E_OK) {
+    syslog(LOG_ERR,"Failed to set trigger mode to none on TURF\n") ;
+    fprintf(stderr,"Failed to set trigger mode to none on TURF\n");
+  }
+
+
   //Check that it cleared
   status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
   unsigned int uvalue=0;
@@ -1677,9 +1687,6 @@ AcqdErrorCode_t clearDevices()
       printf("TURF Clear Register %#x\n",uvalue);
   }
 
-
-
-
   //Check that it cleared
   status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
   uvalue=0;
@@ -1687,6 +1694,9 @@ AcqdErrorCode_t clearDevices()
       status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
       printf("TURF Clear Register %#x\n",uvalue);
   }
+  
+  sleep(1);
+
   return ACQD_E_OK;
 }
 
