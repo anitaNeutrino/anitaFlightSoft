@@ -674,6 +674,7 @@ int main(int argc, char **argv) {
       }
       if(slipCounter!=hdPtr->turfio.trigNum ) {
 	printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
+	syslog(LOG_INFO,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	reInitNeeded=1;
       }
 
@@ -3676,13 +3677,13 @@ AcqdErrorCode_t readTurfEventDataVer5()
   }
 
   if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
-    newTurfRateData=1;
+//    newTurfRateData=1;
   }
   //Make sure to copy relevant mask data to turfRate struct
   turfRates.antTrigMask=hdPtr->antTrigMask;
   turfRates.nadirAntTrigMask=hdPtr->nadirAntTrigMask;
   turfRates.phiTrigMask=hdPtr->phiTrigMask;
-  lastPPSNum=turfRates.ppsNum;
+//  lastPPSNum=turfRates.ppsNum;
   return status;	
 }
 
