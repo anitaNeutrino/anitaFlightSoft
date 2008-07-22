@@ -47,7 +47,7 @@ threshSwitchConfigAtEnd#I1=0;
 
 
 <rates>
-enableDynamicPhiMasking#I1=1;
+enableDynamicPhiMasking#I1=0;
 enableDynamicAntMasking#I1=0;
 dynamicPhiThresholdOverRate#I1=6;
 dynamicPhiThresholdOverWindow#I1=20;
@@ -122,7 +122,7 @@ firmwareVersion#I1=3;
 turfFirmwareVersion#I1=5;
 reprogramTurf#I1=0;
 surfHkPeriod#I1=0;
-surfHkAverage#I1=3000;
+surfHkAverage#I1=300;
 surfHkTelemEvery#I1=1000;
 turfRateTelemEvery#I1=10;
 turfRateTelemInterval#I1=10;
