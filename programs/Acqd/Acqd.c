@@ -672,7 +672,7 @@ int main(int argc, char **argv) {
 	fprintf(stderr,"Problem reading TURF event data\n");
 	syslog(LOG_ERR,"Problem reading TURF event data\n");
       }
-      if(slipCounter!=hdPtr->turfio.trigNum ) {
+      if((slipCounter%65536)!=hdPtr->turfio.trigNum ) {
 	printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	syslog(LOG_INFO,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	reInitNeeded=1;
