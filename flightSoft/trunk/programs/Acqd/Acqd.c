@@ -674,14 +674,33 @@ int main(int argc, char **argv) {
       }
       if((slipCounter%65536)!=hdPtr->turfio.trigNum ) {
 	printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
-	syslog(LOG_INFO,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
+	syslog(LOG_ERR,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	reInitNeeded=1;
       }
+     
+      for(surf=0;surf<ACTIVE_SURFS;surf++) {
+	  if((hdPtr->turfEventId) != bdPtr->surfEventId[surf]) {
+	      
+	      syslog(LOG_ERR,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
+		     hdPtr->turfEventId,
+		     surfIndex[surf],
+		     bdPtr->surfEventId[surf]);
+	      fprintf(stderr,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
+		      hdPtr->turfEventId,
+		      surfIndex[surf],
+		      bdPtr->surfEventId[surf]);
+	      reInitNeeded=1;	      
+	  }
+      }
+
+
 
       hdPtr->errorFlag=0;
       if(reInitNeeded) {
 	hdPtr->errorFlag=0x1;
       }
+
+
             
       //Switched for timing test
       gettimeofday(&timeStruct,NULL);
