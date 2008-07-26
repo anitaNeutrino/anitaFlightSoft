@@ -686,7 +686,7 @@ int main(int argc, char **argv) {
 		     surfIndex[surf],
 		     bdPtr->surfEventId[surf]);
 	      fprintf(stderr,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
-		      hdPtr->turfEventId,
+		      hdPtr>turfEventId,
 		      surfIndex[surf],
 		      bdPtr->surfEventId[surf]);
 	      reInitNeeded=1;	      
