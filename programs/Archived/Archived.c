@@ -414,38 +414,58 @@ void checkEvents()
       sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,tempString);
       retVal=fillHeader(&theHead,currentHeadname);
 
-      //Switch to
-      sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
-	      theHead.eventNumber);
+      unlink(currentHeadname);
+      unlink(currentLinkname);
 
-      if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
-	retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
-	//	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
-	//		theHead.eventNumber);
-	//	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
-	//	printf("Event %u, Body %u, PS Body %u\n",theHead.eventNumber,
-	//	       theBody.eventNumber,pedSubBody.eventNumber);
-	
-	//Subtract Pedestals
-	//	subtractCurrentPeds(&theBody,&pedSubBody);
-	
-	
-	processEvent();
-      }
+
+      if(retVal==0) {
+	  //Switch to
+	  sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
+		  theHead.eventNumber);
+	  
+	  
+	  if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
+	      retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
+	      //	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
+	      //		theHead.eventNumber);
+	      //	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
+	      //	printf("Event %u, Body %u, PS Body %u\n",theHead.eventNumber,
+	      //	       theBody.eventNumber,pedSubBody.eventNumber);
+	      
+	      //Subtract Pedestals
+	      //	subtractCurrentPeds(&theBody,&pedSubBody);
+	      
+	      if(retVal==0) {
+		  processEvent();
+	      }
+	      else {
+		  syslog(LOG_ERR,"Error getting event from %s\n",currentBodyname);
+		  fprintf(stderr,"Error getting event from %s\n",currentBodyname);
+		  eventWriter.justHeader=1;
+		  processEvent();
+	      }
+
+	  }
+	  else {
+	      eventWriter.justHeader=1;
+	      processEvent();	
+	  }
+	  unlink(currentBodyname);
+
+      }	
       else {
-	eventWriter.justHeader=1;
-	processEvent();	
+	  syslog(LOG_ERR,"Error getting header from %s\n",currentHeadname);
+	  fprintf(stderr,"Error getting header from %s\n",currentHeadname);
       }
+      
 
-      removeFile(currentLinkname);
-      removeFile(currentBodyname);
       //	removeFile(currentPSBodyname);
-      removeFile(currentHeadname);
+
     }
 }
 
 void processEvent() 
-// This just fills the buffer with 9 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
+// This just fills the buffer with 10 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
 {
 
     CompressErrorCode_t retVal=0;

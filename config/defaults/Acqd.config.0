@@ -71,7 +71,7 @@ rateIMin#F1=-100;
 <thresholds>
 enableChanServo#I1=1;
 pidGoals#I4=3000,3000,3000,500;
-nadirPidGoals#I4=500,500,500,300;
+nadirPidGoals#I4=20,20,20,10;
 pidPanicVal#I1=200;
 pidAverage#I1=8;
 dacSurfs#I12=1,1,1,1,1,1,1,1,1,1,0,0;
