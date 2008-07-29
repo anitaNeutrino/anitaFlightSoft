@@ -244,7 +244,7 @@ int main (int argc, char *argv[])
 		if((monData.unixTime-satabladeMountCmdTime)>300) {
 		  theCmd.numCmdBytes=3;
 		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
-		  theCmd.cmd[1]=SATABLADE_DISK_MASK;
+		  theCmd.cmd[1]=0;
 		  theCmd.cmd[2]=0; //Next disk
 		  writeCommandAndLink(&theCmd);
 		  satabladeMountCmdTime=monData.unixTime;
@@ -260,7 +260,7 @@ int main (int argc, char *argv[])
 		if((monData.unixTime-sataminiMountCmdTime)>300) {
 		  theCmd.numCmdBytes=3;
 		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
-		  theCmd.cmd[1]=SATAMINI_DISK_MASK;
+		  theCmd.cmd[1]=1;
 		  theCmd.cmd[2]=0; //Next disk
 		  writeCommandAndLink(&theCmd);
 		  sataminiMountCmdTime=monData.unixTime;
