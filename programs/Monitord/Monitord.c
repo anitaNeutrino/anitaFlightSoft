@@ -678,6 +678,7 @@ void checkProcesses(int dontStart)
 	  if(startProcesses && !dontStart) {
 	    if(prog==ID_CMDD) {
 	      //Probably not much sense in sending a command
+	      retVal=system("daemon --stop -n Cmdd");
 	      retVal=system("daemon -r Cmdd -n Cmdd");
 	      syslog(LOG_ERR,"Cmdd isn't running tried to restart it with daemon -r Cmdd -n Cmdd -- %d",retVal);
 	    }
@@ -705,9 +706,10 @@ void checkProcesses(int dontStart)
 	    if(startProcesses && !dontStart) {
 	      if(prog==ID_CMDD) {
 		//Probably not much sense in sending a command
-	      retVal=system("daemon -r Cmdd -n Cmdd");
-	      syslog(LOG_ERR,"Cmdd isn't running tried to restart it with daemon -r Cmdd -n Cmdd -- %d",retVal);
-	    }
+		retVal=system("daemon --stop -n Cmdd");
+		retVal=system("daemon -r Cmdd -n Cmdd");
+		syslog(LOG_ERR,"Cmdd isn't running tried to restart it with daemon -r Cmdd -n Cmdd -- %d",retVal);
+	      }
 	      else {
 		if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
 		  syslog(LOG_WARNING,"%s not present will restart process\n",
