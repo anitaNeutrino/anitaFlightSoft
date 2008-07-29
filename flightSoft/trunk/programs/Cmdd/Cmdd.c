@@ -3184,7 +3184,7 @@ int makeNewRunDirs() {
   runStart.eventNumber*=100; //Roughly
 
   //First make dirs
-  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
+  for(diskInd=0;diskInd<DISK_TYPES-1;diskInd++) {
     if(!(hkDiskBitMask&diskBitMasks[diskInd]) &&
        !(eventDiskBitMask&diskBitMasks[diskInd]))
       continue; // Disk not enabled
