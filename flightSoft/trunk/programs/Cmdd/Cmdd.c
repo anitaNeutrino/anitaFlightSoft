@@ -2398,7 +2398,7 @@ int mountNextSatablade(int whichSatablade) {
   //Change to new drive
   sprintf(satabladeName,"satablade%d",currentNum);
   configModifyString("anitaSoft.config","global","satabladeName",satabladeName,&rawtime);
-  retVal=system("/home/anita/flightSoft/bin/mountCurrentSatablade.sh");
+  retVal=system("/home/anita/flightSoft/bin/mountCurrentSataBlade.sh");
   sleep(2);
   makeNewRunDirs();
   sleep(2);
