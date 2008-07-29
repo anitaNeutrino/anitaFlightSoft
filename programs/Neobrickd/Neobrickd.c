@@ -412,7 +412,9 @@ int sendThisFile(char *tmpFilename)
   //  timeDiff+=1e-6*(after.tv_usec-before.tv_usec);
   //    printf("Sent %d bytes to Neobrick in %3.3f secs, rate %f bytes/s\n",
   //	   bufSize,timeDiff,bufSize/timeDiff);
-  return bufSize;
+  static struct stat64 staty;
+  stat64(tmpFilename,&staty);
+  return staty.st_size;
  
 }
 
