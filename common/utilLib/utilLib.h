@@ -169,6 +169,9 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
 
     char *packetCodeAsString(PacketCode_t code);
 
+  //Other stuff
+  int telemeterFile(char *filename, int numLines);
+
 #ifdef __cplusplus
 }
 #endif

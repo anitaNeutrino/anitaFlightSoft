@@ -171,6 +171,7 @@
 #endif
 
 #define NEOBRICK_DATA_MOUNT "/tmp/neobrick"
+#define NEOBRICK_WATCH_DIR "/tmp/neobrick/current"
 
 #define DISK_BUFFER_DIR "/tmp/buffer"
 
