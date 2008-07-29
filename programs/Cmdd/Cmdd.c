@@ -418,14 +418,19 @@ int executeCommand(CommandStruct_t *theCmd)
 			   EVENTD_ID_MASK,
 			   ACQD_ID_MASK,
 			   PLAYBACKD_ID_MASK,
-			   NEOBRICKD_ID_MASK};
+			   LOGWATCHD_ID_MASK};
     
     
-    char *dataPidFiles[10]={HKD_PID_FILE,GPSD_PID_FILE,ARCHIVED_PID_FILE,
-			    CALIBD_PID_FILE,MONITORD_PID_FILE,
+    char *dataPidFiles[10]={HKD_PID_FILE,
+			    GPSD_PID_FILE,
+			    ARCHIVED_PID_FILE,
+			    CALIBD_PID_FILE,
+			    MONITORD_PID_FILE,
 			    PRIORITIZERD_PID_FILE,
-			    EVENTD_PID_FILE,ACQD_PID_FILE,
-			    PLAYBACKD_PID_FILE,LOGWATCHD_PID_FILE};
+			    EVENTD_PID_FILE,
+			    ACQD_PID_FILE,
+			    PLAYBACKD_PID_FILE,
+			    LOGWATCHD_PID_FILE};
 			    
     
     
@@ -458,7 +463,9 @@ int executeCommand(CommandStruct_t *theCmd)
 		    }
 		}
 		while(fileExists && sleepCount<20);
-	    }	   
+	    }
+	    //Now kill Neobrickd
+	    killPrograms(NEOBRICKD_ID_MASK);
 	    sleep(5);
 	    retVal=makeNewRunDirs();
 	    if(retVal==-1) return 0;	    
@@ -466,6 +473,7 @@ int executeCommand(CommandStruct_t *theCmd)
 	    for(index=0;index<numDataProgs;index++) {
 		startPrograms(dataProgMasks[index]);
 	    }
+	    startPrograms(NEOBRICKD_ID_MASK);
 	    return rawtime;
 	}
 	case CMD_TAIL_VAR_LOG_MESSAGES:
@@ -3430,8 +3438,8 @@ int getLatestEventNumber() {
 
 void handleBadSigs(int sig)
 {
-    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
     unlink(CMDD_PID_FILE);
     syslog(LOG_INFO,"Cmdd terminating");
     exit(0);
