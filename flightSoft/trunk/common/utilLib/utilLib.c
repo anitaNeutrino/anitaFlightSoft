@@ -2108,3 +2108,19 @@ char *getPidFile(ProgramId_t prog) {
     }
     return NULL;
 }
+
+
+int telemeterFile(char *filename, int numLines) {
+  static int counter=0;
+  LogWatchRequest_t theRequest;
+  char outName[FILENAME_MAX];
+  time_t rawtime;
+  time(&rawtime);
+  theRequest.numLines=numLines;
+  strncpy(theRequest.filename,filename,179);
+  sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,counter);
+  counter++;
+  writeStruct(&theRequest,outName,sizeof(LogWatchRequest_t));
+  makeLink(outName,LOGWATCH_LINK_DIR);
+  return rawtime;
+}
