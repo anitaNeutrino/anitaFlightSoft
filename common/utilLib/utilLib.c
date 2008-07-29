@@ -2060,6 +2060,7 @@ int getIdMask(ProgramId_t prog) {
 	case ID_MONITORD: return MONITORD_ID_MASK;
 	case ID_PLAYBACKD: return PLAYBACKD_ID_MASK;
 	case ID_LOGWATCHD: return LOGWATCHD_ID_MASK;
+	case ID_NEOBRICKD: return NEOBRICKD_ID_MASK;
 	default: break;
     }
     return 0;
