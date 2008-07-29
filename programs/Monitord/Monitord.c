@@ -676,6 +676,12 @@ void checkProcesses(int dontStart)
 	  fprintf(stderr,"%s is not present\n",pidFile);
 	  syslog(LOG_INFO,"%s not present what will I do\n",pidFile);
 	  if(startProcesses && !dontStart) {
+	    if(prog==ID_CMDD) {
+	      //Probably not much sense in sending a command
+	      retVal=system("daemon -r Cmdd -n Cmdd");
+	      syslog(LOG_ERR,"Cmdd isn't running tried to restart it with daemon -r Cmdd -n Cmdd -- %d",retVal);
+	    }
+	    else {	      
 	      if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
 		fprintf(stderr,"%s not present will restart process\n",
 			pidFile);
@@ -685,6 +691,7 @@ void checkProcesses(int dontStart)
 		value|=idMask;	    
 	      }
 	    }
+	  }
 	}
 	else {
 	  fscanf(test,"%d", &testPid) ;
@@ -696,13 +703,20 @@ void checkProcesses(int dontStart)
 	    syslog(LOG_INFO,"%s present, but process %d isn't\n",pidFile,testPid);
 	    removeFile(pidFile);
 	    if(startProcesses && !dontStart) {
-	      if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
-		syslog(LOG_WARNING,"%s not present will restart process\n",
-		       pidFile);
-		sendCommand=1;
-		value|=idMask;	    
-	      }
-	    }	    
+	      if(prog==ID_CMDD) {
+		//Probably not much sense in sending a command
+	      retVal=system("daemon -r Cmdd -n Cmdd");
+	      syslog(LOG_ERR,"Cmdd isn't running tried to restart it with daemon -r Cmdd -n Cmdd -- %d",retVal);
+	    }
+	      else {
+		if(prog!=ID_ACQD || (prog==ID_ACQD && !killedAcqd)) {
+		  syslog(LOG_WARNING,"%s not present will restart process\n",
+			 pidFile);
+		  sendCommand=1;
+		  value|=idMask;	    
+		}
+	      }	 
+	    }   
 	  }
 	}
     }
