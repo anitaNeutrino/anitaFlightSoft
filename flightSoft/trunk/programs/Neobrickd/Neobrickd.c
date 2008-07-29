@@ -447,8 +447,8 @@ void makeFtpDirectories(char *theTmpDir)
 void handleBadSigs(int sig)
 {
   
-    fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
     unlink(NEOBRICKD_PID_FILE);
     syslog(LOG_INFO,"Neobrickd terminating");    
     exit(0);
