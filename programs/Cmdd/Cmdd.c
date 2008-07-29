@@ -1360,6 +1360,9 @@ int startPrograms(int progMask)
     testMask=getIdMask(prog);
     if(progMask&testMask) {
       //Match
+      //RJN note -- should test if program is already running, in particular if it isn't we should stop the daemon and the continue
+
+
       if(prog==ID_PRIORITIZERD) {
 	sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
@@ -1368,12 +1371,11 @@ int startPrograms(int progMask)
 	sprintf(daemonCommand,"nice -n 0 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
-      else 
-	{
-	  sprintf(daemonCommand,"nice -n 0 daemon -r %s -n %s ",
-		  getProgName(prog),getProgName(prog));
-	}
-
+      else {
+	sprintf(daemonCommand,"nice -n 5 daemon -r %s -n %s ",
+		getProgName(prog),getProgName(prog));
+      }
+      
       syslog(LOG_INFO,"Sending command: %s",daemonCommand);
       retVal=system(daemonCommand);
       if(retVal!=0) {
