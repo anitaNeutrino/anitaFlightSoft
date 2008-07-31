@@ -199,8 +199,6 @@ int main (int argc, char *argv[])
 	      checkProcesses(1);
 
 	    fillOtherStruct(&otherData);
-	    writeFileAndLink(&monData);
-	    writeOtherFileAndLink(&otherData);
 
 	    printf("ramDiskSpace: %d mb\n",monData.diskInfo.diskSpace[0]);
 	    if(!killedAcqd) {
@@ -236,8 +234,8 @@ int main (int argc, char *argv[])
 	    }
 
 	    //Now check if we need to change disks
-	    printf("satablade %d\t%d\n",monData.diskInfo.diskSpace[5],satabladeSwitchMB);
-	    if(monData.diskInfo.diskSpace[5]<satabladeSwitchMB) {
+	    printf("satablade %d\t%d\n",monData.diskInfo.diskSpace[4],satabladeSwitchMB);
+	    if(monData.diskInfo.diskSpace[4]<satabladeSwitchMB) {
 	      readConfigFile();
 	      //Change blade if in use
 	      if((hkDiskBitMask&SATABLADE_DISK_MASK || eventDiskBitMask&SATABLADE_DISK_MASK)) {
@@ -288,6 +286,9 @@ int main (int argc, char *argv[])
 		}
 	    }
 	    
+	    writeFileAndLink(&monData);
+	    writeOtherFileAndLink(&otherData);
+
 
 //	    exit(0);
 //	    usleep(1);
