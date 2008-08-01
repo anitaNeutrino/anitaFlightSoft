@@ -2308,6 +2308,7 @@ void checkPhiSources(GpsAdu5PatStruct_t *patPtr) {
   int hotPhiSector[MAX_PHI_SOURCES]={0};
   double phiDist[MAX_PHI_SOURCES]={0};
   CommandStruct_t theCmd;
+  theCmd.fromSipd=0;
     
 
 

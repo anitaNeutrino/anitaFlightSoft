@@ -2525,6 +2525,8 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
   char filename[FILENAME_MAX];
   char cmdString[100];
   theEcho.gHdr.code=PACKET_CMD_ECHO;
+  if(theCmd->fromSipd==0)
+      theEcho.gHdr.code|=CMD_FROM_PAYLOAD;
   sprintf(cmdString,"%d",theCmd->cmd[0]);
   theEcho.numCmdBytes=theCmd->numCmdBytes;
   theEcho.cmd[0]=theCmd->cmd[0];
@@ -2568,7 +2570,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     }
   }
   printf("Writing to file %s\n",filename);
-  fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
+  fillGenericHeader(&theEcho,PACKET_CMD_ECHO|CMD_FROM_PAYLOAD,sizeof(CommandEcho_t));
   writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
   makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
 
@@ -2587,7 +2589,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     }
   }
   printf("Writing to file %s\n",filename);
-  fillGenericHeader(&theEcho,PACKET_CMD_ECHO,sizeof(CommandEcho_t));
+  fillGenericHeader(&theEcho,PACKET_CMD_ECHO|CMD_FROM_PAYLOAD,sizeof(CommandEcho_t));
   writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
   makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
     

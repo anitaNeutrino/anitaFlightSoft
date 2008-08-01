@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
     makeDirectories(CMDD_COMMAND_LINK_DIR);
 
     theCmd.numCmdBytes=0;
+    theCmd.fromSipd=0;
     if(argc>1) {
        for(count=1;count<argc;count++) {
            theCmd.cmd[count-1]=(unsigned char)atoi(argv[count]);
