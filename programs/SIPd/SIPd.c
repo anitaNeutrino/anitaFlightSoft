@@ -511,6 +511,7 @@ void commandHandler(unsigned char *cmd)
     CommandStruct_t theCmd;
     int byteNum=0;
     int retVal=0;
+    theCmd.fromSipd=1;
     theCmd.numCmdBytes=cmdLengths[cmd[0]];
     for(byteNum=0;byteNum<cmdLengths[cmd[0]];byteNum++) 
 	theCmd.cmd[byteNum]=cmd[byteNum];

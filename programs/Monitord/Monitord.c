@@ -125,6 +125,7 @@ OtherMonitorStruct_t otherData;
 int main (int argc, char *argv[])
 {
     CommandStruct_t theCmd;
+    theCmd.fromSipd=0;
     int retVal,pri;
 //    DiskSpaceStruct_t diskSpace;
 
@@ -660,6 +661,7 @@ void checkProcesses(int dontStart)
     int testPid=0;
     int retVal=0;
     CommandStruct_t theCmd;    
+    theCmd.fromSipd=0;
     theCmd.numCmdBytes=3;
     theCmd.cmd[0]=CMD_START_PROGS;
     unsigned int value=0;
@@ -774,6 +776,7 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
     static int archivedLastVal=0;
     static int killedPrioritizerd=0;
     int retVal=0;
+    theCmd.fromSipd=0;
     otherPtr->unixTime=time(NULL);
     otherPtr->ramDiskInodes=getRamdiskInodes();
     if(printToScreen)

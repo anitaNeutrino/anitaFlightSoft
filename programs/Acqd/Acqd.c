@@ -2018,6 +2018,7 @@ AcqdErrorCode_t runPedestalMode()
   if(pedSwitchConfigAtEnd) {
     //Arrrghhh		
     CommandStruct_t theCmd;
+    theCmd.fromSipd=0;
     theCmd.numCmdBytes=3;
     theCmd.cmd[0]=LAST_CONFIG;
     theCmd.cmd[1]=1;
@@ -2364,6 +2365,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
   if(threshSwitchConfigAtEnd) {
     //Arrrghhh		
     CommandStruct_t theCmd;
+    theCmd.fromSipd=0;
     theCmd.numCmdBytes=3;
     theCmd.cmd[0]=LAST_CONFIG;
     theCmd.cmd[1]=1;
