@@ -30,6 +30,7 @@
 //#define SEND_TEST_PACKET 1
 #define LOS_MAX_BYTES 8000
 #define TIMEOUT_IN_MILLISECONDS 1000
+#define REFRESH_LINKS_EVERY 600
 
 #define LOS_DEVICE "/dev/los"
 
@@ -128,6 +129,8 @@ void sendWakeUpBuffer();
  int main(int argc, char *argv[])
  {
    int pri,retVal,firstTime=1;
+   time_t lastRefresh=0;
+   time_t currentTime=0;
    char *tempString=0;
    char *progName=basename(argv[0]);
 
@@ -202,22 +205,30 @@ void sendWakeUpBuffer();
      sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
      makeDirectories(eventTelemLinkDirs[pri]);
 
-     //And setup inotify watches
-     if(wdEvents[pri]==0) {
-       wdEvents[pri]=setupLinkWatchDir(eventTelemLinkDirs[pri]);
-       if(wdEvents[pri]<=0) {
-	 fprintf(stderr,"Unable to watch %s\n",eventTelemLinkDirs[pri]);
-	 syslog(LOG_ERR,"Unable to watch %s\n",eventTelemLinkDirs[pri]);
-	 handleBadSigs(0);
-       }
-       numLinks[pri]=getNumLinks(wdEvents[pri]);
+
+     if(sendData) {
+	 //And setup inotify watches
+	 if(wdEvents[pri]==0) {
+	     wdEvents[pri]=setupLinkWatchDir(eventTelemLinkDirs[pri]);
+	     if(wdEvents[pri]<=0) {
+		 fprintf(stderr,"Unable to watch %s\n",eventTelemLinkDirs[pri]);
+		 syslog(LOG_ERR,"Unable to watch %s\n",eventTelemLinkDirs[pri]);
+		 handleBadSigs(0);
+	     }
+	     numLinks[pri]=getNumLinks(wdEvents[pri]);
+	 }
      }
    }
+   time(&lastRefresh);
 
 
    do {
      if(verbosity) printf("Initializing LOSd\n");
+     int lastSendData=sendData;
      retVal=readConfig();
+     if(lastSendData!=sendData) {
+	 break; //Lets restart LOSd
+     }
      if(firstTime) {
        sendWakeUpBuffer();
        firstTime=0;
@@ -230,6 +241,14 @@ void sendWakeUpBuffer();
 	 sleep(1);
 	 continue;
        }
+       
+       //Check to see if we need to refresh the links
+       time(&currentTime);
+       if(currentTime>lastRefresh+REFRESH_LINKS_EVERY) {
+	   refreshLinkDirs();
+	   lastRefresh=currentTime;
+       }
+
        //Work which priority we're doing
        currentPri=priorityOrder[orderIndex];
 

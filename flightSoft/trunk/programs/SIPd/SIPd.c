@@ -37,6 +37,7 @@
 
 #define SEND_REAL_SLOW_DATA 1
 #define NUM_HK_TELEM_DIRS 20 
+#define REFRESH_LINKS_EVERY 600
 
 typedef enum {
   TDRSS_TELEM_FIRST=0,
@@ -351,6 +352,8 @@ void highrateHandler(int *ignore)
     int totalEventLinks=0;
     int totalHkLinks=0;
     int totalEventsSent=0;
+    time_t currentTime=0;
+    time_t lastRefresh=0;
 
     int pri=0,hkInd=0;
     char *tempString=0;
@@ -396,6 +399,7 @@ void highrateHandler(int *ignore)
 	numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
       }      
     }
+    time(&lastRefresh);
 
     int hkCount=0;
    
@@ -414,6 +418,12 @@ void highrateHandler(int *ignore)
 	  printf("\n");
 	}
 
+	//Check to see if we need to refresh the links
+	time(&currentTime);
+	if(currentTime>lastRefresh+REFRESH_LINKS_EVERY) {
+	    refreshLinkDirs();
+	    lastRefresh=currentTime;
+	}
 
 	//Update the link lists
 	//or some time has passed
