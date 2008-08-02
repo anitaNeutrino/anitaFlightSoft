@@ -53,7 +53,7 @@ EXCEPTION     =
 
 #Toggle as necessary
 #PROFILER=
-PROFILER=-lprofiler
+PROFILER=-lprofiler -ltcmalloc
 
 ifdef USE_FAKE_DATA_DIR
 FAKEFLAG = -DUSE_FAKE_DATA_DIR

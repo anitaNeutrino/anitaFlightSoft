@@ -123,7 +123,20 @@ int setupLinkWatchDir(char *linkDir)
   return wd;
 }    
 
-
+int refreshLinkDirs()
+{
+    //First step is delete (from memory not disk) all the items in the list
+    int watchInd=0,watchNumber=0;
+    char *testVal=0;
+    for(watchInd=0;watchInd<numWatches;watchInd++) {
+	watchNumber=wdArray[watchInd];
+	do {
+	    testVal=getLastLink(watchNumber);
+	} while(testVal!=NULL);
+	prepLinkList(watchInd);
+    }       	       
+    return 0;
+}
 
 
 int checkLinkDirs(int timeoutSec, int timeOutUSec)
