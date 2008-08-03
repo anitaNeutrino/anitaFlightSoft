@@ -130,6 +130,7 @@ void sendWakeUpBuffer();
  {
    int pri,retVal,firstTime=1;
    time_t lastRefresh=0;
+   time_t lastUpdate=0;
    time_t currentTime=0;
    char *tempString=0;
    char *progName=basename(argv[0]);
@@ -257,7 +258,10 @@ void sendWakeUpBuffer();
        hkCount++;
 
        //Check the link dirs
-       checkLinkDirs(0,1); //Maybe I don't need to do this every time
+       if(currentTime>lastUpdate+10 || totalEventLinks<1) {
+	   checkLinkDirs(0,1); //Maybe I don't need to do this every time
+	   lastUpdate=currentTime;
+       }
 
        totalEventLinks=0;
        for(pri=0;pri<NUM_PRIORITIES;pri++) {
@@ -286,7 +290,7 @@ void sendWakeUpBuffer();
 
        //Again I need to improve the bandwidth sharing between data and hk
        fillBufferWithHk();
-       if(totalEventLinks<1) usleep(100);
+//       if(totalEventLinks<1) usleep(100);
        //	    printf("totalEventLinks %d\n",totalEventLinks);
        orderIndex++;
        if(orderIndex>=numOrders) orderIndex=0;

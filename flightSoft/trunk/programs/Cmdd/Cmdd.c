@@ -1140,6 +1140,10 @@ int sendConfig(int progMask)
   char *fullFilename;
   int testMask;	
 
+  //As a freebie I'll send down anitaSoft.config
+  sprintf(configFile,"anitaSoft.config");
+  fullFilename=configFileSpec(configFile);
+  requestFile(fullFilename,0);
   printf("sendConfig %d\n",progMask);
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
     testMask=getIdMask(prog);
@@ -1151,7 +1155,7 @@ int sendConfig(int progMask)
       rawtime=requestFile(fullFilename,0);
     }
   }
-  if(errorCount) return 0;
+  if(errorCount) return 0; 
   return rawtime;
 
 }

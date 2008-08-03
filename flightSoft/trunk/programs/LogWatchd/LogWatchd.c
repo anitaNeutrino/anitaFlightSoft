@@ -118,7 +118,22 @@ int main (int argc, char *argv[])
 	  tailFile("/var/log/anita.log",startAnitaTailLines);
 	if(startBootTailLines)
 	  tailFile("/var/log/boot.log",startBootTailLines);
-
+	
+	catFile("/home/anita/flightSoft/config/anitaSoft.config");
+	catFile("/home/anita/flightSoft/config/Acqd.config");
+	catFile("/home/anita/flightSoft/config/Archived.config");
+	catFile("/home/anita/flightSoft/config/Calibd.config");
+	catFile("/home/anita/flightSoft/config/Cmdd.config");
+	catFile("/home/anita/flightSoft/config/Eventd.config");
+	catFile("/home/anita/flightSoft/config/GPSd.config");
+	catFile("/home/anita/flightSoft/config/Hkd.config");
+	catFile("/home/anita/flightSoft/config/LogWatchd.config");
+	catFile("/home/anita/flightSoft/config/LOSd.config");
+	catFile("/home/anita/flightSoft/config/Monitord.config");
+	catFile("/home/anita/flightSoft/config/Neobrickd.config");
+	catFile("/home/anita/flightSoft/config/Playbackd.config");
+	catFile("/home/anita/flightSoft/config/Prioritizerd.config");
+	catFile("/home/anita/flightSoft/config/SIPd.config");
 	
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
@@ -247,13 +262,25 @@ int tailFile(char *filename, int numLines) {
 
 int catFile(char *filename) {
     static int counter=0;
- /*    char catFilename[FILENAME_MAX]; */
-/*     sprintf(catFilename,"/tmp/cat_%s",basename(filename)); */
-/*     char theCommand[FILENAME_MAX]; */
-/*     sprintf(theCommand,"cat %s > %s",filename,catFilename); */
-/*     system(theCommand); */
-/*     rawtime=makeZippedFilePackets(catFilename,counter); */
-    makeZippedFilePackets(filename,counter);
+    FILE *fp = fopen(filename,"r");
+    int testBytes=0;
+    if(fp) {
+	fseek(fp,0,SEEK_END);
+	testBytes=ftell(fp);
+	fclose(fp);
+    }
+    if(testBytes==0) {
+	char catFilename[FILENAME_MAX];
+	sprintf(catFilename,"/tmp/cat_%s",basename(filename));
+	char theCommand[FILENAME_MAX];
+	sprintf(theCommand,"cat %s > %s",filename,catFilename);
+	system(theCommand);
+	makeZippedFilePackets(catFilename,counter);
+	unlink(catFilename);
+    }
+    else {
+	makeZippedFilePackets(filename,counter);
+    }
     counter++;    
     return 0;
 }
@@ -265,8 +292,8 @@ int makeZippedFilePackets(char *filename,int fileTag)
     time(&rawtime);
     ZippedFile_t *zipFilePtr;
     char outputName[FILENAME_MAX];
-    char *inputBuffer;
-    char *tempBuffer;
+    char *inputBuffer=0;
+    char *tempBuffer=0;
     char bufferToSend[100+MAX_RAW_BUFFER];
     char zippedBuffer[1000+MAX_RAW_BUFFER];
     
@@ -281,7 +308,11 @@ int makeZippedFilePackets(char *filename,int fileTag)
     //      if(inputBuffer[count]=='\n')
     //	printf("Line ends at %d\n",count);
     //    }
-    if(!inputBuffer || !numBytesIn) return 0;
+    if(!inputBuffer || !numBytesIn) {
+	syslog(LOG_ERR,"Couldn't send %s, numBytesIn %d\n",filename,
+	       numBytesIn);	
+	return 0;
+    }
 
 
     tempBuffer=inputBuffer;
