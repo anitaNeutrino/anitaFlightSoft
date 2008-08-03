@@ -125,7 +125,7 @@ int main(int argc, char**argv) {
 
     while(currentState==PROG_STATE_RUN) {
       time(&rawTime);
-      if(rawTime>lastStatusUpdate+30) {
+      if(rawTime>lastStatusUpdate+300) {
 	if(!disableNeobrick) {
 	  printf("Getting status file\n");
 	  ftp_getfile("/neobrick.status","/tmp/anita/neobrick.status",0);
