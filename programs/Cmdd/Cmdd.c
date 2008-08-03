@@ -157,9 +157,9 @@ int main (int argc, char *argv[])
   time_t lastCmdTime=0;
   time_t nowTime;
   int retVal;
-  int count;
+  int count,ind=0;
   int numCmds;
-
+  char logMessage[180];
   /* Log stuff */
   char *progName=basename(argv[0]);
   retVal=sortOutPidFile(progName);
@@ -199,11 +199,16 @@ int main (int argc, char *argv[])
 	  printf("Got %d commands\n",numCmds);		
 	//Got at least one command
 	for(count=0;count<numCmds;count++) {
-	  if(printToScreen) 
-	    printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
-	  syslog(LOG_INFO,"Checking Cmd %d %d, numBytes %d\n",
-		 theCmds[count].cmd[0],theCmds[count].cmd[1],
-		 theCmds[count].numCmdBytes);
+	    if(printToScreen) 
+		printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
+	    sprintf(logMessage,"Checking Cmd (%d bytes from SIPd %d)",
+		    theCmds[count].numCmdBytes,
+		    theCmds[count].fromSipd);
+	    
+	    for(ind=0;ind<theCmds[count].numCmdBytes;ind++) 
+		sprintf(logMessage,"%s %d",logMessage,(int)theCmds[count].cmd[ind]);
+	  
+	    syslog(LOG_INFO,logMessage);
 		    
 	  if(checkCommand(&theCmds[count])) {
 	    if(printToScreen) 
@@ -2574,7 +2579,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     }
   }
   printf("Writing to file %s\n",filename);
-  fillGenericHeader(&theEcho,PACKET_CMD_ECHO|CMD_FROM_PAYLOAD,sizeof(CommandEcho_t));
+  fillGenericHeader(&theEcho,theEcho.gHdr.code,sizeof(CommandEcho_t));
   writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
   makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
 
@@ -2593,7 +2598,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     }
   }
   printf("Writing to file %s\n",filename);
-  fillGenericHeader(&theEcho,PACKET_CMD_ECHO|CMD_FROM_PAYLOAD,sizeof(CommandEcho_t));
+  fillGenericHeader(&theEcho,theEcho.gHdr.code,sizeof(CommandEcho_t));
   writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
   makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
     
