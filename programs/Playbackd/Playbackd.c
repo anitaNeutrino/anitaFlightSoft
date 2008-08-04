@@ -41,6 +41,8 @@ int printToScreen=0;
 int verbosity=0;
 int sendData=0;
 int useDisk=0;
+int msSleepPeriod=200;
+
 
 char satabladeName[FILENAME_MAX];
 char sataminiName[FILENAME_MAX];
@@ -144,6 +146,7 @@ int readConfigFile()
     if(status == CONFIG_E_OK) {
 	sendData=kvpGetInt("sendData",0);
 	useDisk=kvpGetInt("useDisk",0);
+	msSleepPeriod=kvpGetInt("msSleepPeriod",0);
 	tempString=kvpGetString("satabladeName");
 	if(tempString) {
 	    strncpy(satabladeName,tempString,FILENAME_MAX);
@@ -235,7 +238,7 @@ int checkForRequests() {
 
 void sendEvent(PlaybackRequest_t *pReq)
 {
-  int retVal=0;
+    int retVal=0;
     AnitaEventHeader_t theHead;
     PedSubbedEventBody_t psBody;
     char indexName[FILENAME_MAX];
@@ -247,8 +250,8 @@ void sendEvent(PlaybackRequest_t *pReq)
 
     sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",subDirNum,dirNum,fileNum);
     
-    syslog(LOG_INFO,"Trying to send event %u, with priority %d\n",
-	   pReq->eventNumber,pReq->pri);
+//    syslog(LOG_INFO,"Trying to send event %u, with priority %d\n",
+//	   pReq->eventNumber,pReq->pri);
     fprintf(stderr,"Trying to send event %u, with priority %d\n",
 	   pReq->eventNumber,pReq->pri);
     
@@ -257,6 +260,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     gzFile *indFile=gzopen(indexName,"rb");
     if(!indFile) {
 	fprintf(stderr,"Couldn't open: %s\n",indexName);
+	syslog(LOG_ERR,"Couldn't open: %s\n",indexName);
 	return;
     }
     
@@ -271,6 +275,8 @@ void sendEvent(PlaybackRequest_t *pReq)
 	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));
 	if(test<0) {
 	    fprintf(stderr,"Couldn't read from: %s\n",indexName);
+	    syslog(LOG_ERR,"Couldn't read from: %s\n",indexName);
+	    
 	    gzclose(indFile);
 	    return;
 	}
@@ -469,7 +475,8 @@ void startPlayback()
 				   evNumAsString,pReq.eventNumber);
 			    pReq.pri=0;
 //			    printf("Freda\n");
-			    sendEvent(&pReq);
+			    sendEvent(&pReq);			    
+			    usleep(1000*msSleepPeriod);
 			    eventCount++;
 //			    printf("Fred: eventCount: %d\n",eventCount);
 			    if(eventCount+numPri0Links>100) {
@@ -477,6 +484,7 @@ void startPlayback()
 				numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
 				eventCount=0;
 			    }
+			    
 //			    printf("Fredrick\n");
 			}
 //			printf("Here\n");

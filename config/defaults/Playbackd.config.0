@@ -2,4 +2,7 @@
 <playbackd>
 sendData#I1=0;
 useDisk#I1=0;
+msSleepPeriod#I1=1000;
+startPriority#I1=1;
+stopPriority#I1=4;
 </playbackd>
