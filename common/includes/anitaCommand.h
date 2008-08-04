@@ -245,7 +245,11 @@ typedef enum {
     PLAY_GET_EVENT=1,    
     PLAY_START_PRI=2,
     PLAY_STOP_PRI=3,
-    PLAY_USE_DISK=4
+    PLAY_USE_DISK=4,
+    PLAY_START_EVENT=5,
+    PLAY_START_PLAY=6,
+    PLAY_STOP_PLAY=7,
+    PLAY_SLEEP_PERIOD=8
 } PlaybackCommandCode_t;
 
 typedef enum {

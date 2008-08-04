@@ -42,6 +42,9 @@ int verbosity=0;
 int sendData=0;
 int useDisk=0;
 int msSleepPeriod=200;
+int startPriority=1;
+int stopPriority=8;
+int startEvent=0;
 
 
 char satabladeName[FILENAME_MAX];
@@ -147,6 +150,9 @@ int readConfigFile()
 	sendData=kvpGetInt("sendData",0);
 	useDisk=kvpGetInt("useDisk",0);
 	msSleepPeriod=kvpGetInt("msSleepPeriod",0);
+	startPriority=kvpGetInt("startPriority",0);
+	stopPriority=kvpGetInt("stopPriority",8);
+	startEvent=kvpGetInt("startEvent",0);
 	tempString=kvpGetString("satabladeName");
 	if(tempString) {
 	    strncpy(satabladeName,tempString,FILENAME_MAX);
@@ -449,7 +455,7 @@ void startPlayback()
 //	printf("Here\n");
 	if(numPri0Links<100) {
 //	    printf("Here\n");
-	    for(priority=0;priority<=9;priority++) {		
+	    for(priority=startPriority;priority<=stopPriority;priority++) {		
 		
 		int numLinks=getListofPurgeFiles(priorityPurgeDirs[priority],
 						 &linkList);
@@ -462,7 +468,7 @@ void startPlayback()
 					
 		    printf("Got purgeFile: %s\n",purgeFile);
 		    gzFile Purge=gzopen(purgeFile,"r");
-		    
+		    int sentFiles=0;
 		    if(Purge) {
 			
 			while(1) {
@@ -471,25 +477,31 @@ void startPlayback()
 			    if(test==Z_NULL) break;
 //			    printf("%d %d\n",test,evNumAsString);
 			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
-			    printf("Got string: %s num: %u\n",
-				   evNumAsString,pReq.eventNumber);
-			    pReq.pri=0;
+			    if(pReq.eventNumber>=startEvent) {
+				printf("Got string: %s num: %u\n",
+				       evNumAsString,pReq.eventNumber);
+				pReq.pri=0;
 //			    printf("Freda\n");
-			    sendEvent(&pReq);			    
-			    usleep(1000*msSleepPeriod);
-			    eventCount++;
+				sendEvent(&pReq);			    
+				usleep(1000*msSleepPeriod);
+				eventCount++;
 //			    printf("Fred: eventCount: %d\n",eventCount);
-			    if(eventCount+numPri0Links>100) {
+				if(eventCount+numPri0Links>100) {
 //				printf("sleep\n");sleep(60);
-				numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
-				eventCount=0;
+				    numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
+				    eventCount=0;
+				}
+				sentFiles=1;
 			    }
-			    
 //			    printf("Fredrick\n");
 			}
 //			printf("Here\n");
 			gzclose(Purge);
-			removeFile(purgeFile);
+			if(sentFiles) 
+			    removeFile(purgeFile);
+		    }
+		    else {
+			unlink(purgeFile);
 		    }
 
 

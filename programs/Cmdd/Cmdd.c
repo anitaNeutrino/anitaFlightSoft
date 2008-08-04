@@ -1722,16 +1722,32 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
     makeLink(filename,PLAYBACK_LINK_DIR);
     rawtime=time(NULL);
     break;
-  case PLAY_START_PRI:
-      
+  case PLAY_START_PLAY:      
     configModifyInt("Playbackd.config","playbackd","sendData",1,&rawtime);
     respawnPrograms(PLAYBACKD_ID_MASK);
     break;
-  case PLAY_STOP_PRI:
-    configModifyInt("Playbackd.config","playbackd","sendData",0,&rawtime);	    
-      
+  case PLAY_STOP_PLAY:
+    configModifyInt("Playbackd.config","playbackd","sendData",0,&rawtime); 
     respawnPrograms(PLAYBACKD_ID_MASK);
     break;
+  case PLAY_START_PRI:      
+      if(value1>=0 && value1<NUM_PRIORITIES) {
+	  configModifyInt("Playbackd.config","playbackd","startPriority",(int)value1,&rawtime);
+	  respawnPrograms(PLAYBACKD_ID_MASK);
+      }
+      else return -1;
+    break;
+  case PLAY_STOP_PRI:
+      if(value1>=0 && value1<NUM_PRIORITIES) {
+	  configModifyInt("Playbackd.config","playbackd","stopPriority",(int)value1,&rawtime); 
+	  respawnPrograms(PLAYBACKD_ID_MASK);
+      }
+      else return -1;
+      break;
+  case PLAY_SLEEP_PERIOD:
+      configModifyInt("Playbackd.config","playbackd","msSleepPeriod",(int)value1,&rawtime); 
+      respawnPrograms(PLAYBACKD_ID_MASK);
+      break;
   case PLAY_USE_DISK:
     if(value1<0 || value1>2) 
       return 0;
@@ -2013,6 +2029,19 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     pidGoals[2]=uvalue[2];
     pidGoals[3]=uvalue[3];      
     configModifyIntArray("Acqd.config","thresholds","pidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case ACQD_SET_NADIR_PID_GOALS: 	    
+    uvalue[0]=args[0]+(args[1]<<8);
+    uvalue[1]=args[2]+(args[3]<<8);
+    uvalue[2]=args[4]+(args[5]<<8);
+    uvalue[3]=args[6]+(args[7]<<8);      
+    pidGoals[0]=uvalue[0];
+    pidGoals[1]=uvalue[1];
+    pidGoals[2]=uvalue[2];
+    pidGoals[3]=uvalue[3];      
+    configModifyIntArray("Acqd.config","thresholds","nadirPidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;

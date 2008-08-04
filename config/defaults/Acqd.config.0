@@ -22,8 +22,8 @@ surfBus#I12=10,10,10,10,9,9,9,8,9,9,-1,-1;
 enablePPS1Trigger#I1=1;
 enablePPS2Trigger#I1=0;
 disableExtTrigger#I1=1;
-sendSoftTrigger#I1=0;
-softTrigPeriod#I1=2;
+sendSoftTrigger#I1=1;
+softTrigPeriod#I1=10;
 </trigger>
 
 
@@ -71,7 +71,7 @@ rateIMin#F1=-100;
 <thresholds>
 enableChanServo#I1=1;
 pidGoals#I4=3000,3000,3000,500;
-nadirPidGoals#I4=20,20,20,10;
+nadirPidGoals#I4=100,100,100,40;
 pidPanicVal#I1=200;
 pidAverage#I1=8;
 dacSurfs#I12=1,1,1,1,1,1,1,1,1,1,0,0;
