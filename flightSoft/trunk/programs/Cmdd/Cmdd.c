@@ -1377,11 +1377,15 @@ int startPrograms(int progMask)
 		getProgName(prog),getProgName(prog));
       }
       else if(prog==ID_ACQD) {
-	sprintf(daemonCommand,"nice -n 0 daemon -r %s -n %s ",
+	sprintf(daemonCommand,"nice -n 10 daemon -r %s -n %s ",
+		getProgName(prog),getProgName(prog));
+      }
+      else if(prog==ID_ARCHIVED) {
+	sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
       else {
-	sprintf(daemonCommand,"nice -n 5 daemon -r %s -n %s ",
+	sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
       

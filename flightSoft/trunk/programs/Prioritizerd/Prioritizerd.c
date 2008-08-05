@@ -26,6 +26,7 @@ int readConfig();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 
+int panicQueueLength=5000;
 
 //Global Control Variables
 int printToScreen=0;
@@ -202,7 +203,11 @@ int main (int argc, char *argv[])
       retVal=checkLinkDirs(1,0);
       if(retVal || numEventLinks)
 	numEventLinks=getNumLinks(wd);
-	       
+	   
+      if(numEventLinks>=panicQueueLength) {
+	  syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
+      }
+    
       if(!numEventLinks) {
 	usleep(1000);
 	continue;
@@ -238,7 +243,9 @@ int main (int argc, char *argv[])
 		
 	// all priority determination is now in AnitaInstrument.c
 	// communication is via global variables
-	theHeader.priority=determinePriority();		
+	if(numEventLinks<panicQueueLength)
+	    theHeader.priority=determinePriority();		
+	theHeader.priority=7;
 	// handle queue forcing of PPS here
 	int pri=theHeader.priority&0xf;
 	if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
@@ -332,6 +339,7 @@ int readConfig()
   kvpReset();
   status = configLoad ("Prioritizerd.config","prioritizerd");
   if(status == CONFIG_E_OK) {
+      panicQueueLength=kvpGetInt("panicQueueLength",5000);
     hornThresh=kvpGetFloat("hornThresh",250);
     coneThresh=kvpGetFloat("coneThresh",250);
     hornDiscWidth=kvpGetInt("hornDiscWidth",16);

@@ -224,7 +224,7 @@ int main (int argc, char *argv[])
 		}
 	    }
 	    else {
-		if(monData.diskInfo.diskSpace[0]>100 || (monData.unixTime-acqdKillTime)>maxAcqdWaitPeriod) {	
+		if(monData.diskInfo.diskSpace[0]>ramdiskKillAcqd+200 || (monData.unixTime-acqdKillTime)>maxAcqdWaitPeriod) {	
 		    theCmd.numCmdBytes=3;
 		    theCmd.cmd[0]=CMD_START_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
@@ -550,7 +550,7 @@ void purgeHkDirectory(char *dirName,char *linkDirName)
     if(numLinks>maxHkQueueSize) {
 	syslog(LOG_INFO,"Telemetry not keeping up removing %d links from queue %s\n",numLinks-50,dirName);
 	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-50,dirName);
-	for(count=0;count<numLinks-50;count++) {
+	for(count=0;count<numLinks-200;count++) {
 	    sprintf(currentLink,"%s/%s",linkDirName,linkList[count]->d_name);
 	    sprintf(currentFile,"%s/%s",dirName,linkList[count]->d_name);
 	    removeFile(currentFile);
@@ -585,7 +585,7 @@ void purgeDirectory(int priority) {
 	sprintf(purgeFile,"%s/purged_%u.txt.gz",priorityPurgeDirs[priority],eventNumber);
 	gzFile Purge=gzopen(purgeFile,"w");
 
-	for(count=0;count<numLinks-100;
+	for(count=0;count<numLinks-500;
 	    count++) {
 	    
 	    sscanf(linkList[count]->d_name,
