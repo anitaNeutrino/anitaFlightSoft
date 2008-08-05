@@ -6,6 +6,7 @@ verbosity#I1=1;
 
 
 <prioritizerd>
+panicQueueLength#I1=5000;
 hornThresh#F1=300;
 hornDiscWidth#I1=20;
 hornSectorWidth#I1=3;
