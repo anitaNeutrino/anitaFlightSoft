@@ -572,8 +572,7 @@ void fakeSlowPackets(struct timeval *currentTime) {
     }
 
     for(i=0;i<PHI_SECTORS;i++) {
-	slowRate.rf.avgUpperL2Rates[i]=255-i;
-	slowRate.rf.avgLowerL2Rates[i]=i;
+	slowRate.rf.avgL2Rates[i]=255-i;
 	slowRate.rf.avgL3Rates[i]=128+i;
     }
 

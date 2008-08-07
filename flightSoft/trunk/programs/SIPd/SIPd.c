@@ -1353,7 +1353,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	int j;
 	int tempInds[7]={1,3,6,37,19,15,36};
 	int powerInds[4]={37,36,15,16};
-	float powerCal[4]={18.252,10.1377,20,20};
+//	float powerCal[4]={18.252,10.1377,20,20};
 	float tempVal;
 	//Now fill low rate structs
 	switch (gHdr->code) {
@@ -1504,7 +1504,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       int j;
       int tempInds[7]={1,3,6,37,19,15,36};
       int powerInds[4]={37,36,15,16};
-      float powerCal[4]={18.252,10.1377,20,20};
+//      float powerCal[4]={18.252,10.1377,20,20};
       float tempVal;
       //Now fill low rate structs
       switch (gHdr->code) {
