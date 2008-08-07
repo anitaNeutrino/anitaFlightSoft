@@ -476,11 +476,11 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 
 
   numLinks=getListofLinks(linkDir,&linkList); 
-  if(numLinks<=0) {
+  if(numLinks<=1) {
     return 0;
   }
         
-  for(count=numLinks-1;count>=0;count--) {
+  for(count=numLinks-1;count>=1;count--) {
     sprintf(currentFilename,"%s/%s",telemDir,
 	    linkList[count]->d_name);
     sprintf(currentTouchname,"%s.sipd",currentFilename);
@@ -561,11 +561,11 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
   //Both of these two checks should be uneccesary
   if((numBytesInBuffer+fileSize)>LOS_MAX_BYTES) return 0;
   numLinks=getNumLinks(wd);
-  if(numLinks<=0) {
+  if(numLinks<=1) {
     return 0;
   }
-        
-  for(count=numLinks-1;count>=0;count--) {
+  
+  for(count=numLinks-1;count>=1;count--) {
     tempString=getLastLink(wd);
     sprintf(currentFilename,"%s/%s",telemDir,tempString);
     sprintf(currentTouchname,"%s.sipd",currentFilename);

@@ -487,7 +487,14 @@ void highrateHandler(int *ignore)
 	    if(numHkLinks[TDRSS_TELEM_HK])
 	      readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
 			     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t),&numSent);
-	    numHksSent[TDRSS_TELEM_HK]+=numSent;
+
+	    numSent=0;
+	    if(numHkLinks[TDRSS_TELEM_ADU5A_PAT])
+	      readHkAndTdrss(wdHks[TDRSS_TELEM_ADU5A_PAT],1,
+			     ADU5A_PAT_TELEM_DIR,
+			     ADU5A_PAT_TELEM_LINK_DIR,
+			     sizeof(GpsAdu5PatStruct_t),&numSent);
+	    numHksSent[TDRSS_TELEM_ADU5A_PAT]+=numSent;
 	    
 	    numSent=0;
 	    if(numHkLinks[TDRSS_TELEM_MONITOR])
@@ -1250,9 +1257,9 @@ void sendSomeHk(int maxBytes)
 
     for(i=0;i<NUM_HK_TELEM_DIRS;i++) {
       hkInd=hkTelemOrder[i];
-      //      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
+//      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
       numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
-      //      fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
+      fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
       if(numHkLinks[hkInd] && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
 	//Can try and send it
 	numSent=0;
@@ -1351,22 +1358,30 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	    unlink(currentLOSTouchname);
 	}
 	int j;
-	int tempInds[7]={1,3,6,37,19,15,36};
+	int tempInds[3]={1,3,6};
 	int powerInds[4]={37,36,15,16};
 //	float powerCal[4]={18.252,10.1377,20,20};
 	float tempVal;
 	//Now fill low rate structs
-	switch (gHdr->code) {
+	printf("Got code: %#x %#x\n",gHdr->code&BASE_PACKET_MASK,PACKET_GPS_ADU5_PAT);
+	switch (gHdr->code&BASE_PACKET_MASK) {
 	    case PACKET_GPS_ADU5_PAT:
 		patPtr=(GpsAdu5PatStruct_t*)gHdr;
-		slowRateData.hk.altitude=patPtr->altitude;
+		slowRateData.hk.altitude=(short)patPtr->altitude;
 		slowRateData.hk.longitude=patPtr->longitude;
 		slowRateData.hk.latitude=patPtr->latitude;
+		fprintf(stderr,"GPS %d %f %f - %f %f %f\n",
+			slowRateData.hk.altitude,
+			slowRateData.hk.longitude,
+			slowRateData.hk.latitude,
+			patPtr->altitude,
+			patPtr->longitude,
+			patPtr->latitude);
 		break;
 	    case PACKET_HKD:
 		hkPtr=(HkDataStruct_t*)gHdr;
 		slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
-		for(j=0;j<7;j++) {
+		for(j=0;j<3;j++) {
 		    tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
 		    //tempVal*=10;
 		    //tempVal/=4096;
@@ -1464,7 +1479,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       }
       numBytes=retVal;
 
-      if(printToScreen && verbosity>1) {
+      if(printToScreen && verbosity>=0) {
 	printf("Read File: %s -- (%d bytes)\n",currentFilename,numBytes);
       }
       
@@ -1502,22 +1517,31 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 
       //This bit here is just for the slow rate data
       int j;
-      int tempInds[7]={1,3,6,37,19,15,36};
+      int tempInds[3]={1,3,6};
       int powerInds[4]={37,36,15,16};
 //      float powerCal[4]={18.252,10.1377,20,20};
       float tempVal;
       //Now fill low rate structs
-      switch (gHdr->code) {
+      printf("Got code: %#x %#x\n",gHdr->code&BASE_PACKET_MASK,PACKET_GPS_ADU5_PAT);
+      switch (gHdr->code&BASE_PACKET_MASK) {
+	  
       case PACKET_GPS_ADU5_PAT:
 	patPtr=(GpsAdu5PatStruct_t*)gHdr;
 	slowRateData.hk.altitude=patPtr->altitude;
 	slowRateData.hk.longitude=patPtr->longitude;
 	slowRateData.hk.latitude=patPtr->latitude;
+	fprintf(stderr,"GPS %d %f %f - %f %f %f\n",
+		slowRateData.hk.altitude,
+		slowRateData.hk.longitude,
+		slowRateData.hk.latitude,
+		patPtr->altitude,
+		patPtr->longitude,
+		patPtr->latitude);
 	break;
       case PACKET_HKD:
 	hkPtr=(HkDataStruct_t*)gHdr;
 	slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
-	for(j=0;j<7;j++) {
+	for(j=0;j<3;j++) {
 	  tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
 	  //tempVal*=10;
 	  //tempVal/=4096;
