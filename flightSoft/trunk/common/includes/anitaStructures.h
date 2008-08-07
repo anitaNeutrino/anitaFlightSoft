@@ -626,10 +626,10 @@ typedef struct {
   Slow rate hk Stuff. May need updating for ANITA-II
 */
 typedef struct {
-    short latitude;
-    short longitude;
+    float latitude;
+    float longitude;
     short altitude;
-    unsigned char temps[8];  ///<{SBS,SURF,TURF,RAD,RFCM1,RFCM5,RFCM12,RFCM15}
+    unsigned char temps[4];  ///<{SBS,SURF,TURF,RAD}
     unsigned char powers[4]; ///<{PV V, +24V, BAT I, 24 I}
 } SlowRateHkStruct_t;
 
