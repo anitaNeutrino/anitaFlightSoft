@@ -75,8 +75,7 @@ typedef struct {
     float scalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; 
     float scalerRatesSq[TRIGGER_SURFS][ANTS_PER_SURF];
     float avgL1Rates[TRIGGER_SURFS]; // 3 of 8 counters
-    float avgUpperL2Rates[PHI_SECTORS];
-    float avgLowerL2Rates[PHI_SECTORS];
+    float avgL2Rates[PHI_SECTORS];
     float avgL3Rates[PHI_SECTORS]; 
 } SlowRateRFCalcStruct_t;
 
@@ -196,8 +195,8 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	}
 	
 	for(phi=0;phi<PHI_SECTORS;phi++) {
-	  slowCalc.avgUpperL2Rates[phi]+=theTurfRates[i].upperL2Rates[phi];
-	  slowCalc.avgLowerL2Rates[phi]+=theTurfRates[i].lowerL2Rates[phi];
+	  slowCalc.avgL2Rates[phi]+=theTurfRates[i].upperL2Rates[phi];
+	  slowCalc.avgL2Rates[phi]+=theTurfRates[i].lowerL2Rates[phi];
 	  slowCalc.avgL3Rates[phi]+=theTurfRates[i].l3Rates[phi];
 	}
       }
@@ -215,19 +214,12 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
       }
 	
 	for(phi=0;phi<PHI_SECTORS;phi++) {
-	    slowCalc.avgUpperL2Rates[phi]/=((float)numTurfRates);
-	    if(slowCalc.avgUpperL2Rates[phi]<0) 
-		slowCalc.avgUpperL2Rates[phi]=0;
-	    if(slowCalc.avgUpperL2Rates[phi]>255) 
-		slowCalc.avgUpperL2Rates[phi]=255;
-	    slowRf.avgUpperL2Rates[phi]=slowCalc.avgUpperL2Rates[phi];
-	    
-	    slowCalc.avgLowerL2Rates[phi]/=((float)numTurfRates);
-	    if(slowCalc.avgLowerL2Rates[phi]<0) 
-		slowCalc.avgLowerL2Rates[phi]=0;
-	    if(slowCalc.avgLowerL2Rates[phi]>255) 
-		slowCalc.avgLowerL2Rates[phi]=255;
-	    slowRf.avgLowerL2Rates[phi]=slowCalc.avgLowerL2Rates[phi];
+	    slowCalc.avgL2Rates[phi]/=((float)2*numTurfRates);
+	    if(slowCalc.avgL2Rates[phi]<0) 
+		slowCalc.avgL2Rates[phi]=0;
+	    if(slowCalc.avgL2Rates[phi]>255) 
+		slowCalc.avgL2Rates[phi]=255;
+	    slowRf.avgL2Rates[phi]=slowCalc.avgL2Rates[phi];
 
 	    slowCalc.avgL3Rates[phi]/=((float)numTurfRates);
 	    slowCalc.avgL3Rates[phi]*=((float)32);
