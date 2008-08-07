@@ -604,7 +604,7 @@ void comm1Handler()
 
     slowRateData.unixTime=time(NULL);
     fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
-    printf("SlowRateFull_t %u\n",slowRateData.unixTime);
+    printf("SlowRateFull_t %u -- %f %f\n",slowRateData.unixTime,slowRateData.hk.latitude,slowRateData.hk.longitude);
     ret = sipcom_slowrate_write(COMM1, (unsigned char*)&slowRateData, sizeof(SlowRateFull_t));
 
     if (ret) {
@@ -635,6 +635,7 @@ void comm2Handler()
     }
     slowRateData.unixTime=time(NULL);
     fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
+    printf("SlowRateFull_t %u -- %f %f\n",slowRateData.unixTime,slowRateData.hk.latitude,slowRateData.hk.longitude);
     ret = sipcom_slowrate_write(COMM2,(unsigned char*) &slowRateData, sizeof(SlowRateFull_t));
 
     if (ret) {
@@ -1361,7 +1362,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	int tempInds[3]={1,3,6};
 	int powerInds[4]={37,36,15,16};
 //	float powerCal[4]={18.252,10.1377,20,20};
-	float tempVal;
+	int tempVal;
 	//Now fill low rate structs
 	printf("Got code: %#x %#x\n",gHdr->code&BASE_PACKET_MASK,PACKET_GPS_ADU5_PAT);
 	switch (gHdr->code&BASE_PACKET_MASK) {
@@ -1390,6 +1391,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 		    //tempVal+=273.15;
 		    //if(tempVal<-127) tempVal=-127;
 		    //if(tempVal>127) tempVal=127;
+		    fprintf(stderr,"HK %d %d\n",j,tempVal);
 		    slowRateData.hk.temps[j+1]=(char)tempVal;
 		}
 		for(j=0;j<4;j++) {		    
@@ -1520,7 +1522,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       int tempInds[3]={1,3,6};
       int powerInds[4]={37,36,15,16};
 //      float powerCal[4]={18.252,10.1377,20,20};
-      float tempVal;
+      int tempVal;
       //Now fill low rate structs
       printf("Got code: %#x %#x\n",gHdr->code&BASE_PACKET_MASK,PACKET_GPS_ADU5_PAT);
       switch (gHdr->code&BASE_PACKET_MASK) {
@@ -1550,6 +1552,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 	  //tempVal+=273.15;
 	  //if(tempVal<-127) tempVal=-127;
 	  //if(tempVal>127) tempVal=127;
+	  fprintf(stderr,"HK %d %d\n",j,tempVal);
 	  slowRateData.hk.temps[j+1]=(char)tempVal;
 	}
 	for(j=0;j<4;j++) {		    
