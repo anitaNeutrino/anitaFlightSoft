@@ -380,6 +380,7 @@ int readConfigFile()
  
 void checkEvents() 
 {
+    static int lastEventNumber=0;
     int count,retVal;
     static int wd=0;
     /* Directory reading things */
@@ -423,6 +424,10 @@ void checkEvents()
 	  sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 		  theHead.eventNumber);
 	  
+	  if(lastEventNumber>0 && theHead.eventNumber!=lastEventNumber+1) {
+	      syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
+		     lastEventNumber,theHead.eventNumber);
+	  }
 	  
 	  if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
 	      retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);

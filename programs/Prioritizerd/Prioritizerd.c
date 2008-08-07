@@ -116,6 +116,7 @@ int RMSnum;
 int main (int argc, char *argv[])
 {
   int retVal,count;
+  int lastEventNumber=0;
   char linkFilename[FILENAME_MAX];
   char hdFilename[FILENAME_MAX];
   char bodyFilename[FILENAME_MAX];
@@ -219,6 +220,12 @@ int main (int argc, char *argv[])
 	tempString=getFirstLink(wd);
 	// 	    printf("%s\n",eventLinkList[count]->d_name); 
 	sscanf(tempString,"hd_%d.dat",&doingEvent);
+	if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
+	    syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
+		   lastEventNumber,doingEvent);
+	}
+	lastEventNumber=doingEvent;
+
 	sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
 		tempString);		 
 	sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
@@ -244,8 +251,9 @@ int main (int argc, char *argv[])
 	// all priority determination is now in AnitaInstrument.c
 	// communication is via global variables
 	if(numEventLinks<panicQueueLength)
-	    theHeader.priority=determinePriority();		
-	theHeader.priority=7;
+	    theHeader.priority=determinePriority();
+	else 
+	    theHeader.priority=7;
 	// handle queue forcing of PPS here
 	int pri=theHeader.priority&0xf;
 	if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
@@ -263,12 +271,11 @@ int main (int argc, char *argv[])
 	//Rename body and write header for Archived
 	sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader.eventNumber);
-	rename(bodyFilename,archiveBodyFilename);
-	//	    unlink(bodyFilename);
-
-	//	    sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
-	//                    theHeader.eventNumber);
-	//	    writeStruct(&pedSubBody,archiveBodyFilename,sizeof(PedSubbedEventBody_t));
+	if(rename(bodyFilename,archiveBodyFilename)==-1)
+	{
+	    syslog(LOG_ERR,"Error moving file %s -- %s",archiveBodyFilename,
+		   strerror(errno));
+	}
 
 	sprintf(archiveHdFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader.eventNumber);
@@ -284,17 +291,11 @@ int main (int argc, char *argv[])
 	    
 	/* Delete input */
 	removeFile(linkFilename);
-
-	//	    removeFile(bodyFilename);
 	removeFile(hdFilename);
-
-
-	//	    wasteTime(&theBody);
 
 
       }
 	
-      //	usleep(10000);
     }
   } while(currentState==PROG_STATE_INIT); 
   unlink(PRIORITIZERD_PID_FILE);    

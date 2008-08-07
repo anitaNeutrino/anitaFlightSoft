@@ -776,20 +776,20 @@ char *getCurrentHkFilename(char *currentDir, char *prefix,
 int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
 {
     static int errorCounter=0;
-   int numObjs;    
-   FILE *outfile = fopen (filename, "wb");
-   if(outfile == NULL) {
+    int numObjs;    
+    FILE *outfile = fopen (filename, "wb");
+    if(outfile == NULL) {
        if(errorCounter<100) {
 	   syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),filename);
 	   fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),filename);
 	   errorCounter++;
        }
        return -1;
-   }   
-   numObjs=fwrite(buffer,numBytes,1,outfile);
-   fclose(outfile);
-   return 0;
-   
+    }   
+    numObjs=fwrite(buffer,numBytes,1,outfile);
+    fclose(outfile);
+    return 0;
+    
 }
 
 int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes) 
@@ -839,12 +839,20 @@ void makeDirectories(char *theTmpDir)
 
 int makeLink(const char *theFile, const char *theLinkDir)
 {
+    static int errorCounter=0;
     char *justFile=basename((char *)theFile);
     char newFile[FILENAME_MAX];
     sprintf(newFile,"%s/%s",theLinkDir,justFile);
 //    printf("Linking %s to %s\n",theFile,newFile);
-    return symlink(theFile,newFile);
-
+    int retVal=symlink(theFile,newFile);
+    if(retVal!=0) {
+	if(errorCounter<100) {
+	    syslog(LOG_ERR,"Error (%d of 100) linking %s to %s:\t%s",errorCounter,theFile,newFile,strerror(errno));
+	    fprintf(stderr,"Error (%d of 100) linking %s to %s:\t%s\n",errorCounter,theFile,newFile,strerror(errno));
+	    errorCounter++;
+	}
+    }
+    return retVal;
 }
 
 
