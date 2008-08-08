@@ -759,12 +759,21 @@ int main(int argc, char **argv) {
 	 
 	  
       if(newPhiMask) {
-	  time(&lastNewPhiMask);
-	  printf("Dynamically setting phi mask to %#x at %u\n",phiTrigMask,
-		 (unsigned int)lastNewPhiMask);
-	  setTriggerMasks();
-	  doSurfHkAverage(1); //Flush the surf hk average
-	  doTurfRateSum(1); //Flush the turf rate sum    
+	unsigned int tempAntTrigMask=antTrigMask;
+	unsigned int tempNadirAntTrigMask=nadirAntTrigMask;
+	antTrigMask=0xffffffff;
+	nadirAntTrigMask=0xff;
+	time(&lastNewPhiMask);
+	printf("Dynamically setting phi mask to %#x at %u\n",phiTrigMask,
+	       (unsigned int)lastNewPhiMask);
+	setTriggerMasks();
+	doSurfHkAverage(1); //Flush the surf hk average
+	doTurfRateSum(1); //Flush the turf rate sum    
+
+	antTrigMask=tempAntTrigMask;
+	nadirAntTrigMask=tempNadirAntTrigMask;
+	setTriggerMasks();
+
 //	  memset(lastTurfRates,0,NUM_DYN_TURF_RATE*sizeof(TurfRateStruct_t));
 //	  countLastTurfRates=0;
       }
@@ -1635,14 +1644,15 @@ AcqdErrorCode_t clearDevices()
     fprintf(stderr,"Failed to write antenna trigger mask\n");
   }
 
+  //Removed by RJN on 08/08/08
   //Added RJN 29/11/06
-  if(verbosity && printToScreen)
-    fprintf(stderr,"Setting surf thresholds to 1\n");
-  status=setGlobalDACThreshold(1); 
-  if(status!=ACQD_E_OK) {
-    syslog(LOG_ERR,"Failed to set global DAC thresholds\n");
-    fprintf(stderr,"Failed to set global DAC thresholds\n");
-  }   
+  //  if(verbosity && printToScreen)
+  //    fprintf(stderr,"Setting surf thresholds to 1\n");
+  //  status=setGlobalDACThreshold(1); 
+  //  if(status!=ACQD_E_OK) {
+  //    syslog(LOG_ERR,"Failed to set global DAC thresholds\n");
+  //    fprintf(stderr,"Failed to set global DAC thresholds\n");
+  //  }   
 
 
 
