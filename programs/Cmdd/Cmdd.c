@@ -40,7 +40,6 @@ int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
 int logRequestCommand(int logNum, int numLines);
 int writeCommandEcho(CommandStruct_t *theCommand, int unixTime);
-int sendSignal(ProgramId_t progId, int theSignal); 
 int readConfig();
 int cleanDirs();
 int clearRamdisk();
@@ -1068,66 +1067,6 @@ int executeCommand(CommandStruct_t *theCmd)
   return -1;
 }
 
-int sendSignal(ProgramId_t progId, int theSignal) 
-{
-  int retVal=0;
-  FILE *fpPid ;
-  char fileName[FILENAME_MAX];
-  pid_t thePid;
-  switch(progId) {
-  case ID_ACQD:
-    sprintf(fileName,"%s",ACQD_PID_FILE);
-    break;
-  case ID_ARCHIVED:
-    sprintf(fileName,"%s",ARCHIVED_PID_FILE);
-    break;
-  case ID_EVENTD:
-    sprintf(fileName,"%s",EVENTD_PID_FILE);
-    break;
-  case ID_CALIBD:
-    sprintf(fileName,"%s",CALIBD_PID_FILE);
-    break;
-  case ID_GPSD:
-    sprintf(fileName,"%s",GPSD_PID_FILE);
-    break;
-  case ID_HKD:
-    sprintf(fileName,"%s",HKD_PID_FILE);
-    break;
-  case ID_LOSD:
-    sprintf(fileName,"%s",LOSD_PID_FILE);
-    break;
-  case ID_PRIORITIZERD:
-    sprintf(fileName,"%s",PRIORITIZERD_PID_FILE);
-    break;
-  case ID_MONITORD:
-    sprintf(fileName,"%s",MONITORD_PID_FILE);
-    break;
-  case ID_SIPD:
-    sprintf(fileName,"%s",SIPD_PID_FILE);
-    break;    
-  case ID_NEOBRICKD:
-    sprintf(fileName,"%s",NEOBRICKD_PID_FILE);
-    break;    
-  default:
-    fprintf(stderr,"Unknown program id: %d\n",progId);
-    syslog(LOG_ERR,"Unknown program id: %d\n",progId);
-  }
-  if (!(fpPid=fopen(fileName, "r"))) {
-    fprintf(stderr," failed to open a file for PID, %s\n", fileName);
-    syslog(LOG_ERR," failed to open a file for PID, %s\n", fileName);
-    return -1;
-  }
-  fscanf(fpPid,"%d", &thePid) ;
-  fclose(fpPid) ;
-        
-  syslog(LOG_INFO,"Sending %d to %s (pid = %d)\n",theSignal,getProgName(progId),thePid);
-  retVal=kill(thePid,theSignal);
-  if(retVal!=0) {
-    syslog(LOG_ERR,"Error sending %d to pid %d:\t%s",theSignal,thePid,strerror(errno));
-    fprintf(stderr,"Error sending %d to pid %d:\t%s\n",theSignal,thePid,strerror(errno));
-  }
-  return retVal;
-} 
 
 int cleanDirs()
 {

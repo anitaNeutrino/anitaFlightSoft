@@ -336,8 +336,8 @@ int readConfigFile()
 
     if(status == CONFIG_E_OK) {
 	startProcesses=kvpGetInt("startProcesses",0);
-	maxEventQueueSize=kvpGetInt("maxEventQueueSize",300);
-	maxHkQueueSize=kvpGetInt("maxHkQueueSize",200);
+	maxEventQueueSize=kvpGetInt("maxEventQueueSize",600);
+	maxHkQueueSize=kvpGetInt("maxHkQueueSize",1000);
 
 	tempString=kvpGetString("satabladeName");
 	if(tempString) {
@@ -465,6 +465,7 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 
 int checkQueues(QueueStruct_t *queuePtr) {
   int retVal=0,pri=0,hkInd=0;
+  int purged=0;
   unsigned short numLinks=0;
   
   static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
@@ -520,6 +521,7 @@ int checkQueues(QueueStruct_t *queuePtr) {
     if(((short)numLinks)==-1) retVal--;
     else if(numLinks>maxHkQueueSize) {
       purgeHkDirectory(telemDirs[hkInd],telemLinkDirs[hkInd]);
+      purged++;
     }
   }
   
@@ -534,8 +536,14 @@ int checkQueues(QueueStruct_t *queuePtr) {
     else if(numLinks>maxEventQueueSize) {
       //purge directory
       purgeDirectory(pri);
+      purged++;
     }
   }
+  if(purged) {
+    sendSignal(ID_SIPD,SIGRTMIN);
+
+  }
+
   return retVal;
 }
 
@@ -547,10 +555,14 @@ void purgeHkDirectory(char *dirName,char *linkDirName)
     struct dirent **linkList;
     int numLinks=getListofLinks(linkDirName,
 				&linkList);
+
+    int linksToSave=maxHkQueueSize-100;
+    if(linksToSave<0)
+      linksToSave=100;
     if(numLinks>maxHkQueueSize) {
-	syslog(LOG_INFO,"Telemetry not keeping up removing %d links from queue %s\n",numLinks-50,dirName);
-	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-50,dirName);
-	for(count=0;count<numLinks-200;count++) {
+	syslog(LOG_INFO,"Telemetry not keeping up removing %d links from queue %s\n",numLinks-linksToSave,dirName);
+	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-linksToSave,dirName);
+	for(count=0;count<numLinks-linksToSave;count++) {
 	    sprintf(currentLink,"%s/%s",linkDirName,linkList[count]->d_name);
 	    sprintf(currentFile,"%s/%s",dirName,linkList[count]->d_name);
 	    removeFile(currentFile);
@@ -575,9 +587,13 @@ void purgeDirectory(int priority) {
     struct dirent **linkList;
     int numLinks=getListofLinks(eventTelemLinkDirs[priority],
 				&linkList);
+    int linksToSave=maxEventQueueSize-100;
+    if(linksToSave<0) 
+      linksToSave=100;
+
     if(numLinks>maxEventQueueSize) {
-	syslog(LOG_INFO,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
-	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-100,eventTelemLinkDirs[priority]);
+	syslog(LOG_INFO,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-linksToSave,eventTelemLinkDirs[priority]);
+	fprintf(stderr,"Telemetry not keeping up removing %d event links from queue %s\n",numLinks-linksToSave,eventTelemLinkDirs[priority]);
 	
 	
 	sscanf(linkList[0]->d_name,
@@ -585,7 +601,7 @@ void purgeDirectory(int priority) {
 	sprintf(purgeFile,"%s/purged_%u.txt.gz",priorityPurgeDirs[priority],eventNumber);
 	gzFile Purge=gzopen(purgeFile,"w");
 
-	for(count=0;count<numLinks-500;
+	for(count=0;count<numLinks-linksToSave;
 	    count++) {
 	    
 	    sscanf(linkList[count]->d_name,

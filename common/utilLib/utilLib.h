@@ -85,6 +85,7 @@ extern "C" {
   int getIdMask(ProgramId_t prog);
   char *getPidFile(ProgramId_t prog);
   char *getProgName(ProgramId_t prog);
+  int sendSignal(ProgramId_t progId, int theSignal); 
 
 
     unsigned int getDiskSpace(char *dirName);
