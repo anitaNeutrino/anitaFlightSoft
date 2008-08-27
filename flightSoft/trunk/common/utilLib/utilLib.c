@@ -407,7 +407,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
 	if(errorCounter<100) {
 	  errorCounter++;
-	  printf("Error (%d of 100) trying to open file %s\n",
+	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
 		 errorCounter,awsPtr->currentHeaderFileName[diskInd]);
 	}
       }
@@ -453,7 +453,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
 	if(errorCounter<100) {
 	  errorCounter++;
-	  printf("Error (%d of 100) trying to open file %s\n",
+	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
 		 errorCounter,awsPtr->currentEventFileName[diskInd]);
 	}
 	      
@@ -468,7 +468,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 	  
       if(retVal<0) {
 	errorCounter++;
-	printf("Error (%d of 100) writing to file -- %s (%d)\n",
+	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
 	       errorCounter,
 	       strerror(errno),retVal);
       }
@@ -481,7 +481,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       retVal=gzwrite(awsPtr->currentEventFilePtr[diskInd],outputBuffer,numBytes);
       if(retVal<0) {
 	errorCounter++;
-	printf("Error (%d of 100) writing to file -- %s (%d)\n",
+	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
 	       errorCounter,
 	       strerror(errno),retVal);
       }
@@ -558,7 +558,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
 	if(errorCounter<100) {
 	  errorCounter++;
-	  printf("Error (%d of 100) trying to open file %s\n",
+	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
 		 errorCounter,awsPtr->currentHeaderFileName[diskInd]);
 	}
       }
@@ -604,7 +604,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
 	if(errorCounter<100) {
 	  errorCounter++;
-	  printf("Error (%d of 100) trying to open file %s\n",
+	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
 		 errorCounter,awsPtr->currentEventFileName[diskInd]);
 	}
 	    
@@ -617,7 +617,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
       if(retVal<0) {
 	errorCounter++;
-	printf("Error (%d of 100) writing to file -- %s (%d)\n",
+	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
 	       errorCounter,
 	       strerror(errno),retVal);
       }
@@ -630,7 +630,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr[diskInd]);
       if(retVal<0) {
 	errorCounter++;
-	printf("Error (%d of 100) writing to file -- %s (%d)\n",
+	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
 	       errorCounter,
 	       strerror(errno),retVal);
       }
@@ -682,7 +682,7 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
       if(awsPtr->currentFilePtr[diskInd]<0) {	    
 	if(errorCounter<100) {
 	  errorCounter++;
-	  printf("Error (%d of 100) trying to open file %s\n",
+	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
 		 errorCounter,awsPtr->currentFileName[diskInd]);
 	}
       }
@@ -737,7 +737,7 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
 	if(awsPtr->currentFilePtr[diskInd]<0) {	    
 	  if(errorCounter<100) {
 	    errorCounter++;
-	    printf("Error (%d of 100) trying to open file %s\n",
+	    syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
 		   errorCounter,awsPtr->currentFileName[diskInd]);
 	  }
 	}
@@ -750,7 +750,7 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
 	retVal=fwrite(indPtr,sizeof(IndexEntry_t),1,awsPtr->currentFilePtr[diskInd]);
 	if(retVal<0) {
 	  errorCounter++;
-	  printf("Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
+	  syslog(LOG_ERR,"Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		 errorCounter,awsPtr->writeCount[diskInd],
 		 strerror(errno),retVal);
 	}
