@@ -32,7 +32,11 @@
 #define TIMEOUT_IN_MILLISECONDS 1000
 #define REFRESH_LINKS_EVERY 600
 
+#ifdef FAKE_LOS
+#define LOS_DEVICE "/tmp/dev_los"
+#else
 #define LOS_DEVICE "/dev/los"
+#endif
 
 #define NUM_HK_TELEM_DIRS 20 
 
@@ -259,8 +263,11 @@ void sendWakeUpBuffer();
 
        //Check the link dirs
        if(currentTime>lastUpdate+10 || totalEventLinks<1) {
+	 if(totalEventLinks<1) 
+	   checkLinkDirs(1,0);
+	 else
 	   checkLinkDirs(0,1); //Maybe I don't need to do this every time
-	   lastUpdate=currentTime;
+	 lastUpdate=currentTime;
        }
 
        totalEventLinks=0;
@@ -572,6 +579,9 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
     sprintf(currentLOSTouchname,"%s.losd",currentFilename);
     sprintf(currentLinkname,"%s/%s",linkDir,tempString);
 
+    if(!checkFileExists(currentLinkname))
+      continue;
+
     if(checkFileExists(currentTouchname)) continue;
     touchFile(currentLOSTouchname);
 
@@ -762,6 +772,10 @@ void readAndSendEvent(char *headerFilename, unsigned int eventNumber) {
   EncodedSurfPacketHeader_t *surfHdPtr;
   int numBytes,count=0,surf=0,retVal;//,useGzip=0;
   char waveFilename[FILENAME_MAX];
+
+  if(!checkFileExists(headerFilename))
+    return;
+
   //    FILE *eventFile;
   //    gzFile gzippedEventFile;
 
@@ -1309,7 +1323,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
       buffer[i]=i;
 #endif
 
-  printf("Sending buffer length %d\n",numBytesSci);
+  //  printf("Sending buffer length %d\n",numBytesSci);
 
   nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci);
   if (nbytes < 0) {
@@ -1337,5 +1351,12 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
       return -1;
     }
   }
+#ifdef FAKE_LOS
+  //Need to sleep to mimic the actual writing speed
+  int microseconds=nbytes*8;
+  usleep(microseconds);
+  //  printf("Sleeping %d us",microseconds);
+#endif
+
   return 0;
 }
