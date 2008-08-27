@@ -1,0 +1,13 @@
+<output>
+printToScreen#I1=1;
+verbosity#I1=0;
+</output>
+
+<eventd>
+tryToMatchGps#I1=1;
+g12Offset#I1=0;
+adu52Offset#I1=0;
+</eventd>
+
+
+

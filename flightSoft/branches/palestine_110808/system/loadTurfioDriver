@@ -1,0 +1,56 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  loadTurfioDriver
+#      Abstract     :  Loads Patrick's turfio driver and makes characters
+#      Last Revision:  02-01-07
+#-----------------------------------------------------------------------------
+
+
+
+TURFIO_DRIVER_DIR=/usr/local/turfioDriver
+
+# Path to the driver nodes
+deviceName=/dev/turfio
+
+
+# Registered name of driver
+name=turfioDriver
+
+# Name of module to load
+module=${name}${debug}.ko
+
+# Install the module
+echo "Installing module ($module)...."
+/sbin/insmod ${TURFIO_DRIVER_DIR}/${module} 
+echo
+
+# Get the major number
+echo -n "Getting Module major number..... "
+major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
+
+# Check if valid
+if [ "$major" = "" ]; then
+    echo "ERROR: Module not loaded or no device found"
+    echo
+    exit
+fi
+
+# Display Major ID
+echo "Ok (MajorID = $major)"
+
+
+
+# Create the device nodes (up to 10 by default)
+echo -n "Creating device nodes........... "
+     
+rm -f ${deviceName}*
+mknod ${deviceName} c $major 0
+echo "mknod ${deviceName} c $major 0"
+
+chmod 777 ${deviceName}*
+echo "Ok ($deviceName)"
+
+echo
+echo Module load complete.
+echo
+echo

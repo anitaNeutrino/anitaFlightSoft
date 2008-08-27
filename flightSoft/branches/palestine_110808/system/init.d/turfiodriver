@@ -1,0 +1,87 @@
+#!/bin/sh
+# Startup script for turfioDriver
+#
+# description: Load/unload the turfioDriver  and make appropriate
+# device nodes
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+driver=turfioDriver
+deviceName=/dev/turfio
+TURFIO_DRIVER_DIR=/usr/local/turfioDriver
+
+
+load_turfioDriver() {
+#	echo -n $"Loading $driver: "
+	# Registered name of driver
+	name=turfioDriver
+	
+        # Name of module to load
+        module=${name}${debug}.ko
+
+        # Install the module
+        #echo "Installing module ($module)...."
+        /sbin/insmod ${TURFIO_DRIVER_DIR}/${module} 
+	RETVAL=$?
+        #echo
+
+	 #Get the major number
+         #echo -n "Getting Module major number..... "
+         major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
+
+         # Check if valid
+         if [ "$major" = "" ]; then
+              echo "ERROR: Module not loaded or no device found"
+              echo
+	      exit
+	 fi
+
+# Display Major ID
+	 #echo "Ok (MajorID = $major)"
+
+# Create the device nodes (up to 15 by default)
+#echo -n "Creating device nodes........... "
+     
+	 rm -f ${deviceName}
+	 mknod ${deviceName} c $major 0
+	 chmod 777 ${deviceName}
+#	 echo
+	 return $RETVAL
+}
+
+unload_turfioDriver() {
+#	echo -n $"Unloading $driver: "
+	rmmod ${driver}	
+	RETVAL=$?
+	rm -f ${deviceName}
+#	 echo
+	return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	    action $"Loading turfioDriver..." load_turfioDriver
+	    ;;
+
+	stop)
+	    action $"Unloading turfioDriver..." unload_turfioDriver
+	    ;;
+
+	restart)
+	    action $"Unloading turfioDriver..." unload_turfioDriver
+	    action $"Loading turfioDriver..." load_turfioDriver
+	    ;;
+
+    
+
+
+	*)
+	    echo $"Usage: $0 {start|stop|restart}"
+	    exit 1
+
+esac
+
+exit $RETVAL

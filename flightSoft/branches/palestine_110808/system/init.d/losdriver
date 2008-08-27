@@ -1,0 +1,87 @@
+#!/bin/sh
+# Startup script for losDriver
+#
+# description: Load/unload the losDriver  and make appropriate
+# device nodes
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+driver=losDriver
+deviceName=/dev/los
+LOS_DRIVER_DIR=/usr/local/losDriver
+
+
+load_losDriver() {
+#	echo -n $"Loading $driver: "
+	# Registered name of driver
+	name=losDriver
+	
+        # Name of module to load
+        module=${name}${debug}.ko
+
+        # Install the module
+        #echo "Installing module ($module)...."
+        /sbin/insmod ${LOS_DRIVER_DIR}/${module} 
+	RETVAL=$?
+        #echo
+
+	 #Get the major number
+         #echo -n "Getting Module major number..... "
+         major=`cat /proc/devices | awk "\\$2==\"$name\" {print \\$1}"`
+
+         # Check if valid
+         if [ "$major" = "" ]; then
+              echo "ERROR: Module not loaded or no device found"
+              echo
+	      exit
+	 fi
+
+# Display Major ID
+	 #echo "Ok (MajorID = $major)"
+
+# Create the device nodes (up to 15 by default)
+#echo -n "Creating device nodes........... "
+     
+	 rm -f ${deviceName}
+	 mknod ${deviceName} c $major 0
+	 chmod 777 ${deviceName}
+#	 echo
+	 return $RETVAL
+}
+
+unload_losDriver() {
+#	echo -n $"Unloading $driver: "
+	rmmod ${driver}	
+	RETVAL=$?
+	rm -f ${deviceName}
+#	 echo
+	return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	    action $"Loading losDriver..." load_losDriver
+	    ;;
+
+	stop)
+	    action $"Unloading losDriver..." unload_losDriver
+	    ;;
+
+	restart)
+	    action $"Unloading losDriver..." unload_losDriver
+	    action $"Loading losDriver..." load_losDriver
+	    ;;
+
+    
+
+
+	*)
+	    echo $"Usage: $0 {start|stop|restart}"
+	    exit 1
+
+esac
+
+exit $RETVAL

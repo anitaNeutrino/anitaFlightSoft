@@ -1,0 +1,160 @@
+#!/bin/sh
+# Startup script for anitamount
+#
+# description: Mounts the ANITA data disks, for now just the satamini disk
+#
+#              
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+unmount_usb() {
+    umount /mnt/usbint
+    RETVAL=$?
+    return $RETVAL
+}
+
+mount_usb() {
+    if df -h | grep -q "usbint"
+    then
+	umount /mnt/usbint
+    fi
+
+    disabled=`getConfigValue anitaSoft.config global disableUsb`
+    if [ $disabled -eq 1 ] ; then
+	echo "Usbint disk disabled"
+	return 1
+    fi
+
+
+    chmod a-w /mnt/usbint
+    label=`getConfigString anitaSoft.config global usbName`
+#    echo "Trying to mount $label on /mnt/usbint"
+    mount -L $label -o defaults /mnt/usbint
+    RETVAL=$?
+    if df -h | grep -q "usbint"
+    then
+	chmod a+wrx /mnt/usbint
+    fi
+    return $RETVAL
+}
+
+
+unmount_satamini() {
+    umount /mnt/satamini
+    RETVAL=$?
+    return $RETVAL
+}
+
+mount_satamini() {
+    if df -h | grep -q "satamini"
+    then
+	umount /mnt/satamini
+    fi
+
+    disabled=`getConfigValue anitaSoft.config global disableSatamini`
+    if [ $disabled -eq 1 ] ; then
+	echo "Satamini disk disabled"
+	return 1
+    fi
+
+
+    chmod a-w /mnt/satamini
+    label=`getConfigString anitaSoft.config global sataminiName`
+#    echo "Trying to mount $label on /mnt/satamini"
+    mount -L $label -o defaults /mnt/satamini
+    RETVAL=$?
+    if df -h | grep -q "satamini"
+    then
+	chmod a+wrx /mnt/satamini
+    fi
+    return $RETVAL
+}
+
+
+
+
+unmount_satablade() {
+    umount /mnt/satablade
+    RETVAL=$?
+    return $RETVAL
+}
+
+
+start_neobrick() {
+    disabled=`getConfigValue anitaSoft.config global disableNeobrick`
+    if [ $disabled -eq 1 ] ; then
+	echo "Neobrick disk disabled"
+	return 1
+    fi
+    
+    /usr/local/bin/daemon -u anita -r /home/anita/flightSoft/testing/simpleNeobrickScript.sh -n NeoScript
+    return $RETVAL
+}
+
+stop_neobrick() {
+    /usr/local/bin/daemon -u anita --stop -n NeoScript
+    return $RETVAL
+}
+
+
+mount_satablade() {
+    if df -h | grep -q "satablade"
+    then
+	umount /mnt/satablade
+    fi
+
+    disabled=`getConfigValue anitaSoft.config global disableSatablade`
+    if [ $disabled -eq 1 ] ; then
+	echo "Satablade disk disabled"
+	return 1
+    fi
+
+
+    chmod a-w /mnt/satablade
+    label=`getConfigString anitaSoft.config global satabladeName`
+#    echo "Trying to mount $label on /mnt/satablade"
+    mount -L $label -o defaults /mnt/satablade
+    RETVAL=$?
+    if df -h | grep -q "satablade"
+    then
+	chmod a+wrx /mnt/satablade
+    fi
+    return $RETVAL
+}
+
+mount_anitadisks() {
+    action $"Mounting /mnt/satamini..." mount_satamini
+    action $"Mounting /mnt/satablade..." mount_satablade
+    action $"Mounting /mnt/usbint..." mount_usb
+    action $"Starting Neobrick..." start_neobrick
+    RETVAL=$?
+    return $RETVAL
+}
+
+unmount_anitadisks() {
+    action $"Unmounting /mnt/satamini..." unmount_satamini
+    action $"Unmounting /mnt/satablade..." unmount_satablade
+    action $"Unmounting /mnt/usbint..." unmount_usb
+    action $"Stopping Neobrick..." stop_neobrick
+    RETVAL=$?
+    return $RETVAL
+}
+
+
+case "$1" in
+	start)
+	    mount_anitadisks
+	    ;;
+
+	stop)
+	    unmount_anitadisks
+	    ;;
+
+	*)
+	    echo $"Usage: $0 {start|stop}"
+	    exit 1
+
+esac
+
+exit $RETVAL

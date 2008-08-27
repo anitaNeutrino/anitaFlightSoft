@@ -1,0 +1,27 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  unloadSurfDriver
+#      Abstract     :  Unloads Patrick's surf driver and makes characters
+#      Last Revision:  02-01-07
+#-----------------------------------------------------------------------------
+
+SURF_DRIVER_DIR=/usr/local/surfDriver
+
+# Path to the driver nodes
+deviceName=/dev/surf
+
+
+# Registered name of driver
+name=surfDriver
+
+# Name of module to load
+module=${name}${debug}.ko
+
+
+# Uninstall the module
+rmmod ${module}
+rm -f ${deviceName}*
+
+echo
+echo Module unload complete.
+

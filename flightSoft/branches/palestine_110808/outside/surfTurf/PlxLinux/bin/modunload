@@ -1,0 +1,127 @@
+#-----------------------------------------------------------------------------
+#
+#      File         :  modunload
+#      Abstract     :  Unloads the PLX installable module
+#      Last Revision:  10-01-03
+#      SDK Version  :  4.20
+#
+#-----------------------------------------------------------------------------
+
+clear
+
+# Remove comment to display script commands as it runs
+#set -x
+
+# Path to the driver nodes
+path=/dev/plx
+
+
+# Verify command-line
+if [ "$1" = "" ]; then
+    plx_error=1
+else
+    plx_error=1
+
+    if [ "$1" = "9050" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9030" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9080" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9054" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9056" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "9656" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "6000" ]; then
+        plx_error=0
+    fi
+
+    if [ "$1" = "PlxPci" ]; then
+        plx_error=0
+    fi
+fi
+
+if [ "${plx_error}" == "1" ]; then
+    echo
+    echo "PLX Linux module unload script"
+    echo "Copyright (c) 2002, PLX Technology, Inc."
+    echo
+    echo "  Usage: modunload {PLX_Chip_Type} [DebugOption]"
+    echo
+    echo "        PLX_Chip_Type = 9050"
+    echo "                        9030"
+    echo "                        9080"
+    echo "                        9054"
+    echo "                        9056"
+    echo "                        9656"
+    echo "                        6000"
+    echo
+    echo "        DebugOption   = <none> : Unload Release build of module"
+    echo "                        'd'    : Unload Debug build of module"
+    echo
+    echo "  E.g.: modunload 9054 d   - Unload 9054 module debug version"
+    echo "        modunload 9656     - Unload 9656 module release version"
+    echo
+    exit
+fi
+
+# PLX Chip to load module for
+plx_chip=$1
+
+# Check for debug version
+if [ "$2" != "" ]; then
+    debug=_dbg
+fi
+
+# Registered name of driver
+if [ "$1" == "PlxPci" ]; then
+    name=PlxPci
+else
+    name=Pci${plx_chip}
+fi
+
+# Name of module to unload
+module=${name}${debug}
+
+
+echo
+echo "   ****************************************************"
+echo "   * NOTE:  You must be superuser, logged in as root, *"
+echo "   *        or have sufficient rights to remove       *"
+echo "   *        modules or this script will not work.     *"
+echo "   ****************************************************"
+echo
+echo
+echo -n "Clear existing device nodes..... "
+rm -f $path/${name}*
+echo Ok
+
+# Delete the directory only if empty
+if [ -d ${path} ]; then
+    echo -n "Delete device node path......... "
+    rmdir --ignore-fail-on-non-empty ${path}
+    echo "Ok (Path = ${path})"
+fi
+
+echo -n "Remove module................... "
+/sbin/rmmod $module
+echo "Ok (Module = $module)"
+
+echo
+echo Module unload complete.
+echo
+echo
