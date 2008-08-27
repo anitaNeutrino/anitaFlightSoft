@@ -386,6 +386,7 @@ typedef struct {
   //!  chip id bitmask
   /*!
     0:1  LABRADOR chip
+    2 RCO
     3 HITBUS wrap
     4-7 HITBUS offset
   */
@@ -738,6 +739,8 @@ typedef struct {
     Bit 2 is sync slip between SURF 1 and software
     Bit 3 is sync slip between SURF 10 and SURF 1
     Bit 4 is non matching TURF test pattern
+    Bit 5 is startBitGood;
+    Bit 6 is stopBitGood;
   */
   unsigned char errorFlag; 
   unsigned char surfSlipFlag; ///< Sync Slip between SURF 2-9 and SURF 1

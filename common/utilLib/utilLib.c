@@ -1504,21 +1504,46 @@ void writePidFile(char *fileName)
 
 int checkPidFile(char *fileName)
 {
-    FILE *fpPid ;
-    char tempFileName[FILENAME_MAX];
-    strncpy(tempFileName,fileName,FILENAME_MAX-1);
+  int retVal=0;
+  FILE *fpPid ;
+  char procDir[FILENAME_MAX];
+  
+  //    pid_t thePid;
+  int theNaughtyPid;
+  if (!(fpPid=fopen(fileName, "r"))) {
+    return 0;
+  }
+  else {
+    //There shouldn't be a pidFile here
+    retVal=fscanf(fpPid,"%d", &theNaughtyPid) ;
+    if(retVal>0) {
+      retVal=fclose(fpPid) ;
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error closing %s (%d) -- %s",fileName,fpPid,strerror(errno));
+      }
+      
+      //Now check to see the process is running
+      retVal=snprintf(procDir,sizeof(procDir),"/proc/%d",theNaughtyPid);
+      if(retVal<=0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
     
-//    pid_t thePid;
-    int theNaughtyPid;
-    if (!(fpPid=fopen(fileName, "r"))) {
-	return 0;
-    }
-    else {
-	//There shouldn't be a pidFile here
-	fscanf(fpPid,"%d", &theNaughtyPid) ;
-	fclose(fpPid) ;
+      retVal=access(procDir,F_OK);
+      if(retVal==0) {
+	//The process is running
 	return theNaughtyPid;
+      }
+      else {
+	syslog(LOG_ERR,"%s exists but %d is running, will delete",fileName,theNaughtyPid);
+	retVal=unlink(fileName);
+	if(retVal<=0) {
+	  syslog(LOG_ERR,"Error trying to unlink %s -- %s",fileName,strerror(errno));
+	}
+	return 0;
+      }
     }
+    return -1;
+	  
 }
 
 
