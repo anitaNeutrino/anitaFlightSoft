@@ -72,7 +72,7 @@ void comm1Handler();
 void comm2Handler();
 void highrateHandler(int *ignore);
 int readConfig();
-void readAndSendEventRamdisk(char *headerLinkFilename);
+int readAndSendEventRamdisk(char *headerLinkFilename);
 int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSize);
 int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSize, int *numSent);
 void sendWakeUpBuffer();
@@ -487,93 +487,98 @@ void highrateHandler(int *ignore)
 	if(totalEventLinks) {
 	  //Which priority are we sending
 	  currentPri=priorityOrder[orderIndex];	
-	  while(numLinks[currentPri]==0) {
-	    orderIndex++;
-	    if(orderIndex>=numOrders) orderIndex=0;
-	    currentPri=priorityOrder[orderIndex];	
-	  }
-	  printf("Trying priority %d -- numLinks %d\n",currentPri,numLinks[currentPri]);
-	  if(numLinks[currentPri]) {
-	    //Got an event	    
-	    tempString=getLastLink(wdEvents[currentPri]);
-	    retVal=snprintf(currentHeader,sizeof(currentHeader),"%s/%s",eventTelemLinkDirs[currentPri],tempString);
-	    if(retVal<0) {
-	      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+	  int doneEvent=0;
+	  while(!doneEvent && totalEventLinks>0) {
+	    while(numLinks[currentPri]==0) {
+	      orderIndex++;
+	      if(orderIndex>=numOrders) orderIndex=0;
+	      currentPri=priorityOrder[orderIndex];	
 	    }
-	    //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
-	    readAndSendEventRamdisk(currentHeader); //Also deletes
-	    numEventsSent[currentPri]++;
-	    totalEventsSent++;
-	    numLinks[currentPri]--;
-	    totalEventLinks--;
-	    
-	    if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || 
-	       needToRefreshLinks) {
-	      refreshLinkDirs();
-	      lastRefresh=currentTime;
-	      needToRefreshLinks=0;
-
-	      totalHkLinks=0;
-	      for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
-		numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
-		totalHkLinks+=numHkLinks[hkInd];
+	    printf("Trying priority %d -- numLinks %d\n",currentPri,numLinks[currentPri]);
+	    if(numLinks[currentPri]) {
+	      //Got an event	    
+	      tempString=getLastLink(wdEvents[currentPri]);
+	      retVal=snprintf(currentHeader,sizeof(currentHeader),"%s/%s",eventTelemLinkDirs[currentPri],tempString);
+	      if(retVal<0) {
+		syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
 	      }
-	      
+	      //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
+	      doneEvent=readAndSendEventRamdisk(currentHeader); //Also deletes
+	      if(doneEvent) {
+		numEventsSent[currentPri]++;
+		totalEventsSent++;
+	      }
+	      numLinks[currentPri]--;
+	      totalEventLinks--;
 	    }
-	    
-
-	    //Now try to send some stuff I like
-	    numSent=0;
-	    if(numHkLinks[TDRSS_TELEM_HEADER])
-	      readHkAndTdrss(wdHks[TDRSS_TELEM_HEADER],
-			     headersPerEvent,HEADER_TELEM_DIR,
-			     HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t),&numSent);
-	    numHksSent[TDRSS_TELEM_HEADER]+=numSent;
-
-	    numSent=0;
-	    if(numHkLinks[TDRSS_TELEM_CMD_ECHO])
-	      readHkAndTdrss(wdHks[TDRSS_TELEM_CMD_ECHO],echoesPerEvent,
-			     SIPD_CMD_ECHO_TELEM_DIR,
-			     SIPD_CMD_ECHO_TELEM_LINK_DIR,
-			     sizeof(CommandEcho_t),&numSent);
-	    numHksSent[TDRSS_TELEM_CMD_ECHO]+=numSent;
-	    
-	    numSent=0;
-	    if(numHkLinks[TDRSS_TELEM_HK])
-	      readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
-			     HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t),&numSent);
-
-	    numSent=0;
-	    if(numHkLinks[TDRSS_TELEM_ADU5A_PAT])
-	      readHkAndTdrss(wdHks[TDRSS_TELEM_ADU5A_PAT],1,
-			     ADU5A_PAT_TELEM_DIR,
-			     ADU5A_PAT_TELEM_LINK_DIR,
-			     sizeof(GpsAdu5PatStruct_t),&numSent);
-	    numHksSent[TDRSS_TELEM_ADU5A_PAT]+=numSent;
-	    
-	    numSent=0;
-	    if(numHkLinks[TDRSS_TELEM_MONITOR])
-	      readHkAndTdrss(wdHks[TDRSS_TELEM_MONITOR],monitorPerEvent,
-			     MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
-			     sizeof(MonitorStruct_t),&numSent); 
-	    numHksSent[TDRSS_TELEM_MONITOR]+=numSent;
-	    
 	  }
+	  
+	  if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || 
+	     needToRefreshLinks) {
+	    refreshLinkDirs();
+	    lastRefresh=currentTime;
+	    needToRefreshLinks=0;
+	    
+	    totalHkLinks=0;
+	    for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
+	      numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+	      totalHkLinks+=numHkLinks[hkInd];
+	    }	    
+	  }
+	    
+
+	  //Now try to send some stuff I like
+	  numSent=0;
+	  if(numHkLinks[TDRSS_TELEM_HEADER])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_HEADER],
+			   headersPerEvent,HEADER_TELEM_DIR,
+			   HEADER_TELEM_LINK_DIR,sizeof(AnitaEventHeader_t),&numSent);
+	  numHksSent[TDRSS_TELEM_HEADER]+=numSent;
+	  
+	  numSent=0;
+	  if(numHkLinks[TDRSS_TELEM_CMD_ECHO])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_CMD_ECHO],echoesPerEvent,
+			   SIPD_CMD_ECHO_TELEM_DIR,
+			   SIPD_CMD_ECHO_TELEM_LINK_DIR,
+			   sizeof(CommandEcho_t),&numSent);
+	  numHksSent[TDRSS_TELEM_CMD_ECHO]+=numSent;
+	  
+	  numSent=0;
+	  if(numHkLinks[TDRSS_TELEM_HK])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_HK],hkPerEvent,HK_TELEM_DIR,
+			   HK_TELEM_LINK_DIR,sizeof(HkDataStruct_t),&numSent);
+	  
+	  numSent=0;
+	  if(numHkLinks[TDRSS_TELEM_ADU5A_PAT])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_ADU5A_PAT],1,
+			   ADU5A_PAT_TELEM_DIR,
+			   ADU5A_PAT_TELEM_LINK_DIR,
+			   sizeof(GpsAdu5PatStruct_t),&numSent);
+	  numHksSent[TDRSS_TELEM_ADU5A_PAT]+=numSent;
+	  
+	  numSent=0;
+	  if(numHkLinks[TDRSS_TELEM_MONITOR])
+	    readHkAndTdrss(wdHks[TDRSS_TELEM_MONITOR],monitorPerEvent,
+			   MONITOR_TELEM_DIR,MONITOR_TELEM_LINK_DIR,
+			   sizeof(MonitorStruct_t),&numSent); 
+	  numHksSent[TDRSS_TELEM_MONITOR]+=numSent;
+	  
+	
 	  //	else if(totalEventLinks==0) {
-	  //	  usleep(1000);
-	  //	}
+	//	  usleep(1000);
+	//	}
 	  
 	  orderIndex++;
 	  if(orderIndex>=numOrders) orderIndex=0;
 	}
-
+    
+	
 	//Now we try and send some data
 	//I'm going to try and modify this but for now
 	if(hkCount%eventBandwidth==0)
 	  sendSomeHk(10000);
 	hkCount++;
-    }	
-
+    }       
 }
 
 
@@ -889,7 +894,7 @@ int readConfig()
 }
 
 
-void readAndSendEventRamdisk(char *headerLinkFilename) {
+int readAndSendEventRamdisk(char *headerLinkFilename) {
     static int errorCounter=0;
     AnitaEventHeader_t *theHeader;
     GenericHeader_t *gHdr;
@@ -901,7 +906,12 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 //    char crapBuffer[FILENAME_MAX];
     char justFile[FILENAME_MAX];
     unsigned int thisEventNumber;
+    
 
+    //First up we test if the link still exists
+    if(!checkFileExists(headerLinkFilename))
+      return 0;
+    
     retVal=snprintf(justFile,sizeof(justFile),"%s",basename(headerLinkFilename));
     if(retVal<0) {
       syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
@@ -938,7 +948,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     
     
     if(checkFileExists(currentLOSTouchname)) 
-      return;
+      return 0;
     touchFile(currentTouchname);
 //    printf("%s\n",headerLinkFilename);
     removeFile(headerLinkFilename);
@@ -959,7 +969,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
       removeFile(waveFilename);
       
       //Bollocks
-      return;
+      return 0;
     }
     
     
@@ -997,7 +1007,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	removeFile(waveFilename);	
 	removeFile(currentTouchname);
 	//Bollocks
-	return;
+	return 0;
     }
 
 
@@ -1058,7 +1068,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	removeFile(currentLOSTouchname);
     }
 
-
+    return 1;
 
 }
 
@@ -1596,22 +1606,23 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 /* fileSize is the maximum size of a packet in the directory */
 {
   fprintf(stderr,"readHkAndTdrss %s -- %d\n",linkDir,maxCopy);
-    char currentFilename[FILENAME_MAX];
-    char currentTouchname[FILENAME_MAX];
-    char currentLOSTouchname[FILENAME_MAX];
-    char currentLinkname[FILENAME_MAX];
-    int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
-    char *tempString;
-    GenericHeader_t *gHdr;    
-    GpsAdu5PatStruct_t *patPtr;
-    HkDataStruct_t *hkPtr;
-    *numSent=0;
+  char currentFilename[FILENAME_MAX];
+  char currentTouchname[FILENAME_MAX];
+  char currentLOSTouchname[FILENAME_MAX];
+  char currentLinkname[FILENAME_MAX];
+  int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
+  char *tempString;
+  GenericHeader_t *gHdr;    
+  GpsAdu5PatStruct_t *patPtr;
+  HkDataStruct_t *hkPtr;
+  *numSent=0;
     
-    numLinks=getNumLinks(wd);
-    if(numLinks<=0) {
+  numLinks=getNumLinks(wd);
+  if(numLinks<=0) {
 	return 0;
-    }
-    int counter=0;
+  }
+
+  int counter=0;
     for(count=numLinks-1;count>=0;count--) {
       //Get last link name
       tempString=getLastLink(wd);
@@ -1631,6 +1642,9 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       if(retVal<0) {
 	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
       }
+
+      if(!checkFileExists(currentLinkname))
+	continue;
 
       if(checkFileExists(currentLOSTouchname)) 
 	continue;

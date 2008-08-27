@@ -1827,13 +1827,14 @@ int touchFile(char *filename) {
   return 0;
 }
 
-int checkFileExists(char *filename) {
-  struct stat fileStat ;
-  if(stat (filename, &fileStat) != 0) {
-    //File doesn't exist
-    return 0;
-  }
-  return 1;
+int checkFileExists(char *filename) 
+// Returns 1 if file exists, 0 otherwise
+
+{
+  int retVal=access(filename,F_OK);
+  if(retVal==0)
+    return 1;
+  return 0;
 }
 
 int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
