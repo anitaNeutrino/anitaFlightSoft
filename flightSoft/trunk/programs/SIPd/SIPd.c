@@ -88,6 +88,8 @@ void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
+void refreshLinksHandler(int sig);
+
 
 // Config Thingies
 int cmdLengths[256];
@@ -110,6 +112,9 @@ int headersPerEvent=30;
 int echoesPerEvent=100;
 int hkPerEvent=1;
 int monitorPerEvent=1;
+
+//Refresh links, cause monitord told us to
+int needToRefreshLinks=0;
 
 
 int eventBandwidth=5;
@@ -234,6 +239,7 @@ int main(int argc, char *argv[])
     signal(SIGTERM, handleBadSigs);
     signal(SIGINT, handleBadSigs);
     signal(SIGSEGV, handleBadSigs);
+    signal(SIGRTMIN, refreshLinksHandler);
 
 
     /* Setup log */
@@ -451,9 +457,10 @@ void highrateHandler(int *ignore)
 
 	//Check to see if we need to refresh the links
 	time(&currentTime);
-	if(currentTime>lastRefresh+REFRESH_LINKS_EVERY) {
+	if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || needToRefreshLinks) {
 	    refreshLinkDirs();
 	    lastRefresh=currentTime;
+	    needToRefreshLinks=0;
 	}
 
 	//Update the link lists
@@ -472,7 +479,7 @@ void highrateHandler(int *ignore)
 	}
 	if(!retVal && totalHkLinks==0 && totalEventLinks==0) {
 	  //No data
-	  sleep(1);
+	  usleep(1000);
 	  continue;
 	}
 	printf("%d %d %d\n",totalEventLinks,totalHkLinks,retVal);
@@ -500,6 +507,21 @@ void highrateHandler(int *ignore)
 	    numLinks[currentPri]--;
 	    totalEventLinks--;
 	    
+	    if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || 
+	       needToRefreshLinks) {
+	      refreshLinkDirs();
+	      lastRefresh=currentTime;
+	      needToRefreshLinks=0;
+
+	      totalHkLinks=0;
+	      for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
+		numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+		totalHkLinks+=numHkLinks[hkInd];
+	      }
+	      
+	    }
+	    
+
 	    //Now try to send some stuff I like
 	    numSent=0;
 	    if(numHkLinks[TDRSS_TELEM_HEADER])
@@ -1573,6 +1595,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 /* Looks in the specified directroy and TDRSS's up to maxCopy bytes of data */
 /* fileSize is the maximum size of a packet in the directory */
 {
+  fprintf(stderr,"readHkAndTdrss %s -- %d\n",linkDir,maxCopy);
     char currentFilename[FILENAME_MAX];
     char currentTouchname[FILENAME_MAX];
     char currentLOSTouchname[FILENAME_MAX];
@@ -1730,7 +1753,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       if(counter>=maxCopy) break;
       //	break;
     }
-    
+    fprintf(stderr,"readHkAndTdrss %s -- %d\n",linkDir,*numSent);
     return totalBytes;
 }
 
@@ -1785,7 +1808,7 @@ int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   //Actually send some data
   retVal=sipcom_highrate_write(buf,nbytes);
   if(retVal<=0) {
-    syslog(LOG_ERR,"Error sending high rate data %s",sipcom_strerror());
+    syslog(LOG_ERR,"Error sending high rate data %d (%s)",retVal,sipcom_strerror());
   }
 #else
   //Just dump it into a tmp file
@@ -1817,4 +1840,10 @@ float getTimeDiff(struct timeval oldTime, struct timeval currentTime) {
   float timeDiff=currentTime.tv_sec-oldTime.tv_sec;
   timeDiff+=1e-6*(float)(currentTime.tv_usec-oldTime.tv_usec);
   return timeDiff;
+}
+
+void refreshLinksHandler(int sig)
+{
+  syslog(LOG_INFO,"Got signal %d, so will refresh links",sig);
+  needToRefreshLinks=1;
 }

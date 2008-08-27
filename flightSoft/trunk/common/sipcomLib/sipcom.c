@@ -25,10 +25,15 @@
 #include <signal.h>
 #include <wait.h>
 
+#ifdef FAKE_SERIALS
+#define COMM1_PORT	"/tmp/ttyS1"
+#define COMM2_PORT	"/tmp/ttySTDRV002_7"
+#define HIGHRATE_PORT	"/tmp/ttyS0"
+#else
 #define COMM1_PORT	"/dev/ttyS1"
 #define COMM2_PORT	"/dev/ttySTDRV002_7"
 #define HIGHRATE_PORT	"/dev/ttyS0"
-
+#endif
 // SLOWRATE_BAUD - line speed for the slow rate ports COMM1 and COMM2.
 #define SLOWRATE_BAUD 1200
 
