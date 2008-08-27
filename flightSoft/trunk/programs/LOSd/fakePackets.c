@@ -478,7 +478,7 @@ void fakeSurfHk(struct timeval *currentTime) {
     retVal=checkPacket(&theSurfHk);
     if(retVal) 
 	printf("Problem with FullSurfHkStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/surfhk_%d_%.dat",
+    sprintf(theFilename,"%s/surfhk_%d_%d.dat",
 	    SURFHK_TELEM_DIR,theSurfHk.unixTime,theSurfHk.unixTimeUs);
     int numBytes=makeZippedPacket((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 				  buffer,10000);
