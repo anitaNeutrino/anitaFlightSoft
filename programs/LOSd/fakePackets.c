@@ -244,11 +244,11 @@ int main(int argc, char *argv[])
 	  lastG12Gga=currentTime;
 	}
 	if(getTimeDiff(lastAdu5aGga,currentTime)>adu5aGgaPeriod) {
-	  fakeGpsGga(&currentTime,0);
+	  fakeGpsGga(&currentTime,1);
 	  lastAdu5aGga=currentTime;
 	}
 	if(getTimeDiff(lastAdu5bGga,currentTime)>adu5bGgaPeriod) {
-	  fakeGpsGga(&currentTime,0);
+	  fakeGpsGga(&currentTime,2);
 	  lastAdu5bGga=currentTime;
 	}
 	
@@ -381,9 +381,7 @@ void fakeEvent(int trigType)
 //    theHeader.numChannels=16;
     theHeader.eventNumber=evNum;
     thePriority++;
-    if(thePriority<12) 
-	theHeader.priority=0;
-    else if(thePriority<22) 
+    if(thePriority<22) 
 	theHeader.priority=1;
     else if(thePriority<30) 
 	theHeader.priority=2;
@@ -402,7 +400,7 @@ void fakeEvent(int trigType)
     else if(thePriority<60) 
 	theHeader.priority=9;
     else if(thePriority>=60) {
-	theHeader.priority=0;
+	theHeader.priority=1;
 	thePriority=0;
     }
     evNum++;      
@@ -480,8 +478,8 @@ void fakeSurfHk(struct timeval *currentTime) {
     retVal=checkPacket(&theSurfHk);
     if(retVal) 
 	printf("Problem with FullSurfHkStruct_t %d\n",retVal);
-    sprintf(theFilename,"%s/surfhk_%d.dat",
-	    SURFHK_TELEM_DIR,theSurfHk.unixTime);
+    sprintf(theFilename,"%s/surfhk_%d_%.dat",
+	    SURFHK_TELEM_DIR,theSurfHk.unixTime,theSurfHk.unixTimeUs);
     int numBytes=makeZippedPacket((char*)&theSurfHk,sizeof(FullSurfHkStruct_t),
 				  buffer,10000);
     if(numBytes>0) {
@@ -764,17 +762,17 @@ void fakeGpsGga(struct timeval *currentTime, int fromAdu5) {
 	printf("Problem with GpsGgaStruct_t %d\n",retVal);
 
     if(fromAdu5==0) {
-      sprintf(theFilename,"%s/pat_%d_%d.dat",G12_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
+      sprintf(theFilename,"%s/gga_%d_%d.dat",G12_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
       retVal=writeStruct(&theGga,theFilename,sizeof(GpsGgaStruct_t));  
       retVal=makeLink(theFilename,G12_GGA_TELEM_LINK_DIR); 
     }
     else if(fromAdu5==1) {
-      sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5A_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
+      sprintf(theFilename,"%s/gga_%d_%d.dat",ADU5A_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
       retVal=writeStruct(&theGga,theFilename,sizeof(GpsGgaStruct_t));  
       retVal=makeLink(theFilename,ADU5A_GGA_TELEM_LINK_DIR); 
     }
     else if(fromAdu5==2) {
-      sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5B_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
+      sprintf(theFilename,"%s/gga_%d_%d.dat",ADU5B_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
       retVal=writeStruct(&theGga,theFilename,sizeof(GpsGgaStruct_t));  
       retVal=makeLink(theFilename,ADU5B_GGA_TELEM_LINK_DIR); 
     }

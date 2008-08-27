@@ -465,7 +465,11 @@ void highrateHandler(int *ignore)
 
 	//Update the link lists
 	//or some time has passed
-	retVal=checkLinkDirs(0,1);
+	if(totalEventLinks==0)
+	  retVal=checkLinkDirs(1,0);
+	else
+	  retVal=checkLinkDirs(0,1);
+	  
 	totalEventLinks=0;
 	for(pri=0;pri<NUM_PRIORITIES;pri++) {
 	  numLinks[pri]=getNumLinks(wdEvents[pri]);
@@ -479,6 +483,7 @@ void highrateHandler(int *ignore)
 	}
 	if(!retVal && totalHkLinks==0 && totalEventLinks==0) {
 	  //No data
+	  needToRefreshLinks=1;
 	  usleep(1000);
 	  continue;
 	}
@@ -1821,7 +1826,7 @@ int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
 #ifndef COMPLETELY_FAKE
   //Actually send some data
   retVal=sipcom_highrate_write(buf,nbytes);
-  if(retVal<=0) {
+  if(retVal<0) {
     syslog(LOG_ERR,"Error sending high rate data %d (%s)",retVal,sipcom_strerror());
   }
 #else
