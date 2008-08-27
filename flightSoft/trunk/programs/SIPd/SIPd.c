@@ -263,10 +263,15 @@ int main(int argc, char *argv[])
     
     //Fill event dir names
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
-	sprintf(eventTelemDirs[pri],"%s/%s%d",BASE_EVENT_TELEM_DIR,
-		EVENT_PRI_PREFIX,pri);
-	sprintf(eventTelemLinkDirs[pri],"%s/link",eventTelemDirs[pri]);
-	makeDirectories(eventTelemLinkDirs[pri]);
+      retVal=snprintf(eventTelemDirs[pri],sizeof(eventTelemDirs[pri]),"%s/%s%d",BASE_EVENT_TELEM_DIR,EVENT_PRI_PREFIX,pri);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(eventTelemLinkDirs[pri],sizeof(eventTelemLinkDirs[pri]),"%s/link",eventTelemDirs[pri]);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      makeDirectories(eventTelemLinkDirs[pri]);
     }
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(HEADER_TELEM_LINK_DIR);
@@ -307,11 +312,6 @@ int main(int argc, char *argv[])
     }
 
     sipcom_set_cmd_callback(commandHandler);
-    if (retVal) {
-	char *s = sipcom_strerror();
-	syslog(LOG_ERR,"Couldn't set COMM2 Handler -- %s\n",s);
-	fprintf(stderr,"Couldn't set COMM2 Handler -- %s\n",s);
-    }
     for(count=0;count<numCmds;count++) {
 	if(cmdLengths[count]) {
 	    printf("%d\t%d\n",count,cmdLengths[count]);
@@ -324,17 +324,41 @@ int main(int argc, char *argv[])
     if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
+	syslog(LOG_ERR, "%s\n", s);
 	handleBadSigs(1);
     }
      // Start the high rate writer process. 
-    pthread_create(&Hr_thread, NULL, (void *)highrateHandler, NULL);
-    pthread_detach(Hr_thread);
+    retVal = pthread_create(&Hr_thread, NULL, (void *)highrateHandler, NULL);
+    if(retVal) {
+      //No idea what we'd do here
+      syslog(LOG_ERR,"Can't create the high rate handler thread -- We're all going to die -- %s",strerror(errno));
+      fprintf(stderr,"Can't create the high rate handler thread -- We're all going to die -- %s",strerror(errno));
+    }
+    retVal=pthread_detach(Hr_thread);
+    if(retVal) {
+      //No idea what we'd do here
+      syslog(LOG_ERR,"Error detaching high rate handler -- %s",strerror(errno));
+      fprintf(stderr,"Error detaching high rate handler -- %s",strerror(errno));
+    }
+      
 
 
     sipcom_wait();
-    pthread_cancel(Hr_thread);
+    retVal=pthread_cancel(Hr_thread);
+    if(retVal) {
+      //Who knows just log it
+      syslog(LOG_ERR,"Error canceling the high rate thread, should probably do soemthing clever -- %s",strerror(errno));
+      fprintf(stderr,"Error canceling the high rate thread, should probably do soemthing clever -- %s",strerror(errno));
+    }
     fprintf(stderr, "Bye bye\n");
-    unlink(SIPD_PID_FILE);
+    retVal=unlink(SIPD_PID_FILE);
+    if(retVal) {
+      syslog(LOG_ERR,"Error deleting %s -- %s",SIPD_PID_FILE,strerror(errno));
+      retVal=unlink(SIPD_PID_FILE);
+      if(retVal)
+	syslog(LOG_ERR,"Error deleting %s -- %s",SIPD_PID_FILE,strerror(errno));
+    }
+    
     syslog(LOG_INFO,"SIPd terminating");
 #else
     highrateHandler(&retVal);
@@ -367,8 +391,15 @@ void highrateHandler(int *ignore)
         // release.
         int oldtype;
         int oldstate;
-        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+        retVal=pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+	if(retVal) {
+	  syslog(LOG_ERR,"Error setting thread cancel type -- %s",strerror(errno));
+	}
+        retVal=pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+	if(retVal) {
+	  syslog(LOG_ERR,"Error setting thread cancel type -- %s",strerror(errno));
+	}
+	  
     }
     
     //First let the world know we're alive
@@ -458,8 +489,10 @@ void highrateHandler(int *ignore)
 	  if(numLinks[currentPri]) {
 	    //Got an event	    
 	    tempString=getLastLink(wdEvents[currentPri]);
-	    sprintf(currentHeader,"%s/%s",eventTelemLinkDirs[currentPri],
-		    tempString);
+	    retVal=snprintf(currentHeader,sizeof(currentHeader),"%s/%s",eventTelemLinkDirs[currentPri],tempString);
+	    if(retVal<0) {
+	      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+	    }
 	    //	    syslog(LOG_INFO,"Trying %s\n",currentHeader);
 	    readAndSendEventRamdisk(currentHeader); //Also deletes
 	    numEventsSent[currentPri]++;
@@ -534,19 +567,86 @@ void commandHandler(unsigned char *cmd)
 	theCmd.cmd[byteNum]=cmd[byteNum];
     
 
-    
-    //Need to add here
-
     if (cmd[0] == CMD_SIPD_REBOOT) {
 	syslog(LOG_INFO,"Received command %d -- SIPd reboot",cmd[0]);
-	system("daemon --stop -n Monitord");
-	system("daemon --stop -n Acqd");
-	system("daemon --stop -n Archived");
-	system("daemon --stop -n GPSd");
-	system("daemon --stop -n Eventd");
-	system("daemon --stop -n Prioritizerd");
-	system("rm -rf /tmp/anita/acqd /tmp/anita/prioritizerd /tmp/anita/eventd");
-	system("sudo reboot");	
+	retVal=system("daemon --stop -n Monitord");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error trying to stop Monitord");
+	  retVal=system("daemon --stop -n Monitord");
+	  if(retVal<0 || retVal==127) {	  
+	    syslog(LOG_ERR,"Error trying to stop Monitord");
+	  }
+	}
+
+	retVal=system("daemon --stop -n Acqd");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error trying to stop Acqd");
+	  retVal=system("daemon --stop -n Acqd");
+	  if(retVal<0 || retVal==127) {	  
+	    syslog(LOG_ERR,"Error trying to stop Acqd");
+	  }
+	}
+
+	retVal=system("daemon --stop -n Archived");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error trying to stop Archived");
+	  retVal=system("daemon --stop -n Archived");
+	  if(retVal<0 || retVal==127) {	  
+	    syslog(LOG_ERR,"Error trying to stop Archived");
+	  }
+	}
+	  
+
+	retVal=system("daemon --stop -n GPSd");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error trying to stop GPSd");
+	  retVal=system("daemon --stop -n GPSd");
+	  if(retVal<0 || retVal==127) {	  
+	    syslog(LOG_ERR,"Error trying to stop GPSd");
+	  }
+	}
+
+
+	retVal=system("daemon --stop -n Eventd");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error trying to stop Eventd");
+	  retVal=system("daemon --stop -n Eventd");
+	  if(retVal<0 || retVal==127) {	  
+	    syslog(LOG_ERR,"Error trying to stop Eventd");
+	  }
+	}
+
+
+	retVal=system("daemon --stop -n Prioritizerd");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error trying to stop Prioritizerd");
+	  retVal=system("daemon --stop -n Prioritizerd");
+	  if(retVal<0 || retVal==127) {	  
+	    syslog(LOG_ERR,"Error trying to stop Prioritizerd");
+	  }
+	}
+	  
+	retVal=system("rm -rf /tmp/anita/acqd /tmp/anita/prioritizerd /tmp/anita/eventd");
+	if(retVal<0 || retVal==127) {
+	  syslog(LOG_ERR,"Error deleting tmp directories -- Who cares we're going down for reboot anyhow");	    
+	}
+	retVal=system("sudo reboot");	
+	if(retVal<0 || retVal==127) {
+	  //This is bad, maybe we can change this to be a c call directly
+	  //For now we'll just try again
+	  syslog(LOG_ERR,"Error sending reboot command");
+	  int tryNumber=0;
+	  for(tryNumber=0;tryNumber<100;tryNumber++) {
+	    sleep(1);
+	    retVal=system("sudo reboot");	
+	    if(retVal<0 || retVal==127) {
+	      syslog(LOG_ERR,"Error sending reboot command %d of %d",
+		     tryNumber,100);
+	    }
+	  }
+	  
+	}
+	
     } else if (cmd[0] == CMD_RESPAWN_PROGS && cmd[2]&0x2) {
 	// Use this command to quit.
 	syslog(LOG_INFO,"SIPd received respawn cmd\n");  
@@ -562,8 +662,7 @@ void commandHandler(unsigned char *cmd)
     }
     else {
 	retVal=writeCommandAndLink(&theCmd);
-    }
-	
+    }	
 }
 
 void comm1Handler()
@@ -628,10 +727,13 @@ void comm2Handler()
     FILE *fp =fopen(SLOW_RF_FILE,"rb");
     if(fp) {
 	int numObjs=fread(&(slowRateData.rf),sizeof(SlowRateRFStruct_t),1,fp);
-	if(numObjs<0) {
-	    syslog(LOG_ERR,"Error reading %s: %s\n",SLOW_RF_FILE,strerror(errno));
+	if(numObjs!=1) {
+	  syslog(LOG_ERR,"Error reading %s: %s\n",SLOW_RF_FILE,strerror(errno));
 	}
-	fclose(fp);
+	ret=fclose(fp);
+	if(ret==EOF) {
+	  syslog(LOG_ERR,"Error closing file: %s (%s)\n",SLOW_RF_FILE,strerror(errno));
+	}
     }
     slowRateData.unixTime=time(NULL);
     fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
@@ -778,24 +880,46 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     char justFile[FILENAME_MAX];
     unsigned int thisEventNumber;
 
-    sprintf(justFile,"%s",basename(headerLinkFilename));
-    sscanf(justFile,"hd_%u.dat",&thisEventNumber);
-    if(thisEventNumber==0) {
-	printf("Why is this zero -- %s\n",headerLinkFilename);
+    retVal=snprintf(justFile,sizeof(justFile),"%s",basename(headerLinkFilename));
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
     }
-    sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
-	    thisEventNumber);
-    sprintf(waveFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
-	    thisEventNumber);
-    sprintf(currentTouchname,"%s.sipd",headerFilename);
-    sprintf(currentLOSTouchname,"%s.losd",headerFilename);
+    retVal=sscanf(justFile,"hd_%u.dat",&thisEventNumber);
+    if(retVal<=0) {
+      syslog(LOG_ERR,"Error reading eventNumber from %s",justFile);
+      thisEventNumber=0;
+    }
 
+    if(thisEventNumber==0) {
+      printf("Why is this zero -- %s\n",headerLinkFilename);
+    }
+
+    retVal=snprintf(headerFilename,sizeof(headerFilename),"%s/hd_%d.dat",eventTelemDirs[currentPri],thisEventNumber);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+    }
+
+    retVal=snprintf(waveFilename,sizeof(waveFilename),"%s/hd_%d.dat",eventTelemDirs[currentPri], thisEventNumber);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+    }
+
+    retVal=snprintf(currentTouchname,sizeof(currentTouchname),"%s.sipd",headerFilename);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+    }
+
+    retVal=snprintf(currentLOSTouchname,sizeof(currentLOSTouchname),"%s.losd",headerFilename);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+    }
+    
     
     if(checkFileExists(currentLOSTouchname)) 
-	return;
+      return;
     touchFile(currentTouchname);
 //    printf("%s\n",headerLinkFilename);
-    unlink(headerLinkFilename);
+    removeFile(headerLinkFilename);
 
 //     Next load header 
     theHeader=(AnitaEventHeader_t*) &theBuffer[0]; 
@@ -803,18 +927,20 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
         
     if(retVal<0) {
 //	syslog(LOG_ERR,"Problem with %s",headerFilename);
-	sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
-		thisEventNumber);
-	
-	unlink(currentTouchname);
-	unlink(headerFilename);
-	unlink(waveFilename);
-	
-	//Bollocks
-	return;
+      retVal=snprintf(headerFilename,sizeof(headerFilename),"%s/hd_%d.dat",eventTelemDirs[currentPri],thisEventNumber);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      
+      removeFile(currentTouchname);
+      removeFile(headerFilename);
+      removeFile(waveFilename);
+      
+      //Bollocks
+      return;
     }
-
-
+    
+    
     theHeader->gHdr.packetNumber=getTdrssNumber();
     retVal = highRateWrite((unsigned char*)theHeader,sizeof(AnitaEventHeader_t),0);
     if(retVal<0) {
@@ -829,10 +955,14 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     
 
     //Now get event file
-    sprintf(headerFilename,"%s/hd_%d.dat",eventTelemDirs[currentPri], 
- 	    thisEventNumber);
-    sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], 
- 	    thisEventNumber);
+    retVal=snprintf(headerFilename,sizeof(headerFilename),"%s/hd_%d.dat",eventTelemDirs[currentPri], thisEventNumber);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+    }
+    retVal=snprintf(waveFilename,sizeof(waveFilename),"%s/ev_%d.dat",eventTelemDirs[currentPri], thisEventNumber);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+    }
 
 
     retVal=genericReadOfFile((unsigned char*)theBuffer,waveFilename,MAX_EVENT_SIZE);
@@ -841,9 +971,9 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	syslog(LOG_ERR,"Problem reading %s\n",waveFilename);
 
 //	removeFile(headerLinkFilename);
-	unlink(headerFilename);
-	unlink(waveFilename);	
-	unlink(currentTouchname);
+	removeFile(headerFilename);
+	removeFile(waveFilename);	
+	removeFile(currentTouchname);
 	//Bollocks
 	return;
     }
@@ -892,18 +1022,18 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 	       headerLinkFilename);
 	        
     if(!checkFileExists(currentLOSTouchname)) {
-//	unlink(headerLinkFilename);
-	unlink(headerFilename);
-	unlink(waveFilename);
-	unlink(currentTouchname);
+//	removeFile(headerLinkFilename);
+	removeFile(headerFilename);
+	removeFile(waveFilename);
+	removeFile(currentTouchname);
     }
     else {
 	sleep(1);
-//	unlink(headerLinkFilename);
-	unlink(headerFilename);
-	unlink(waveFilename);
-	unlink(currentTouchname);
-	unlink(currentLOSTouchname);
+//	removeFile(headerLinkFilename);
+	removeFile(headerFilename);
+	removeFile(waveFilename);
+	removeFile(currentTouchname);
+	removeFile(currentLOSTouchname);
     }
 
 
@@ -1251,27 +1381,31 @@ void sendWakeUpBuffer()
 
 void sendSomeHk(int maxBytes) 
 {
-    int hkCount=0;
-    int hkInd=0,i;
-    int numHkLinks[NUM_HK_TELEM_DIRS];
-    int numSent=0;
+  int retVal=0; 
+  int hkCount=0;
+  int hkInd=0,i;
+  int numHkLinks[NUM_HK_TELEM_DIRS];
+  int numSent=0;
 
-    for(i=0;i<NUM_HK_TELEM_DIRS;i++) {
-      hkInd=hkTelemOrder[i];
-//      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
-      numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
-      fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
-      if(numHkLinks[hkInd] && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
-	//Can try and send it
-	numSent=0;
-	hkCount+=readHkAndTdrss(wdHks[hkInd],hkTelemMaxPackets[hkInd],
-				telemDirs[hkInd],
-				telemLinkDirs[hkInd],maxPacketSize[hkInd],
-				&numSent);
-	numHksSent[hkInd]+=numSent;
-      }
-    }   
-    hkDataSent+=hkCount;   
+  for(i=0;i<NUM_HK_TELEM_DIRS;i++) {
+    hkInd=hkTelemOrder[i];
+    //      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
+    numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+    retVal=fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error using fprintf -- %s",strerror(errno));
+    }
+    if(numHkLinks[hkInd]>0 && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
+      //Can try and send it
+      numSent=0;
+      hkCount+=readHkAndTdrss(wdHks[hkInd],hkTelemMaxPackets[hkInd],
+			      telemDirs[hkInd],
+			      telemLinkDirs[hkInd],maxPacketSize[hkInd],
+			      &numSent);
+      numHksSent[hkInd]+=numSent;
+    }
+  }   
+  hkDataSent+=hkCount;   
 }
 
 
@@ -1297,18 +1431,30 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
     }
     int counter=0;
     for(count=numLinks-1;count>=0;count--) {
-	sprintf(currentFilename,"%s/%s",telemDir,
-		linkList[count]->d_name);
-	sprintf(currentTouchname,"%s.sipd",currentFilename);
-	sprintf(currentLOSTouchname,"%s.losd",currentFilename);
-	sprintf(currentLinkname,"%s/%s",
-		linkDir,linkList[count]->d_name);
-
-	if(checkFileExists(currentLOSTouchname)) 
-	    continue;
-	touchFile(currentTouchname);
-
-	retVal=genericReadOfFile((unsigned char*)theBuffer,
+      retVal=snprintf(currentFilename,sizeof(currentFilename),"%s/%s",telemDir,
+	       linkList[count]->d_name);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(currentTouchname,sizeof(currentTouchname),"%s.sipd",currentFilename);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(currentLOSTouchname,sizeof(currentLOSTouchname),"%s.losd",currentFilename);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(currentLinkname,sizeof(currentLinkname),"%s/%s",
+		      linkDir,linkList[count]->d_name);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      
+      if(checkFileExists(currentLOSTouchname)) 
+	continue;
+      touchFile(currentTouchname);
+      
+      retVal=genericReadOfFile((unsigned char*)theBuffer,
 				 currentFilename,
 				 MAX_EVENT_SIZE);
 	syslog(LOG_DEBUG,"Trying %s",currentFilename);
@@ -1316,10 +1462,9 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 //	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 //		   currentFilename);
 //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-	    unlink(currentFilename);
-
-	    unlink(currentLinkname);
-	    unlink(currentTouchname);
+	    removeFile(currentFilename);
+	    removeFile(currentLinkname);
+	    removeFile(currentTouchname);
 	    continue;
 	}
 	numBytes=retVal;
@@ -1347,16 +1492,16 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	totalBytes+=numBytes;
 
 	if(!checkFileExists(currentLOSTouchname)) {
-	    unlink(currentLinkname);
-	    unlink(currentFilename);
-	    unlink(currentTouchname);
+	    removeFile(currentLinkname);
+	    removeFile(currentFilename);
+	    removeFile(currentTouchname);
 	}
 	else {
 	    sleep(1);
-	    unlink(currentLinkname);
-	    unlink(currentFilename);
-	    unlink(currentTouchname);
-	    unlink(currentLOSTouchname);
+	    removeFile(currentLinkname);
+	    removeFile(currentFilename);
+	    removeFile(currentTouchname);
+	    removeFile(currentLOSTouchname);
 	}
 	int j;
 	int tempInds[3]={1,3,6};
@@ -1447,20 +1592,30 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
     for(count=numLinks-1;count>=0;count--) {
       //Get last link name
       tempString=getLastLink(wd);
-      sprintf(currentFilename,"%s/%s",telemDir,tempString);
-      sprintf(currentTouchname,"%s.sipd",currentFilename);
-      sprintf(currentLOSTouchname,"%s.losd",currentFilename);
-      sprintf(currentLinkname,"%s/%s",linkDir,tempString);
+      retVal=snprintf(currentFilename,sizeof(currentFilename),"%s/%s",telemDir,tempString);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(currentTouchname,sizeof(currentTouchname),"%s.sipd",currentFilename);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(currentLOSTouchname,sizeof(currentLOSTouchname),"%s.losd",currentFilename);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
+      retVal=snprintf(currentLinkname,sizeof(currentLinkname),"%s/%s",linkDir,tempString);
+      if(retVal<0) {
+	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
+      }
 
       if(checkFileExists(currentLOSTouchname)) 
 	continue;
       
       touchFile(currentTouchname);
       
-      if(checkFileExists(currentLOSTouchname)) {
-	  
-	  unlink(currentTouchname);
-	  
+      if(checkFileExists(currentLOSTouchname)) {	  
+	  removeFile(currentTouchname);	  
 	  continue;
       }
 
@@ -1473,10 +1628,9 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 	//	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 	//		   currentFilename);
 	//	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-	unlink(currentFilename);
-	
-	unlink(currentLinkname);
-	unlink(currentTouchname);
+	removeFile(currentFilename);	
+	removeFile(currentLinkname);
+	removeFile(currentTouchname);
 	continue;
       }
       numBytes=retVal;
@@ -1504,16 +1658,16 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       totalBytes+=numBytes;
       
       if(!checkFileExists(currentLOSTouchname)) {
-	unlink(currentLinkname);
-	unlink(currentFilename);
-	unlink(currentTouchname);
+	removeFile(currentLinkname);
+	removeFile(currentFilename);
+	removeFile(currentTouchname);
       }
       else {
 	sleep(1);
-	unlink(currentLinkname);
-	unlink(currentFilename);
-	unlink(currentTouchname);
-	unlink(currentLOSTouchname);
+	removeFile(currentLinkname);
+	removeFile(currentFilename);
+	removeFile(currentTouchname);
+	removeFile(currentLOSTouchname);
       }
       (*numSent)++;
 
@@ -1583,11 +1737,16 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 
 void handleBadSigs(int sig)
 {
-    fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
-    syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
-    unlink(SIPD_PID_FILE);
-    syslog(LOG_INFO,"SIPd terminating");
-    exit(0);
+  int retVal=0;
+  fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
+  syslog(LOG_CRIT,"Received sig %d -- will exit immediately\n",sig); 
+  retVal=unlink(SIPD_PID_FILE);
+  if(retVal<0) {
+    syslog(LOG_ERR,"Error deleting %s -- %s",SIPD_PID_FILE,strerror(errno));
+    //No idea what to do here, if you can't delete it you are pretty much buggered
+  }
+  syslog(LOG_INFO,"SIPd terminating");
+  exit(0);
 }
 
 
@@ -1623,8 +1782,13 @@ int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
 
   //Now send the data
 #ifndef COMPLETELY_FAKE
+  //Actually send some data
   retVal=sipcom_highrate_write(buf,nbytes);
+  if(retVal<=0) {
+    syslog(LOG_ERR,"Error sending high rate data %s",sipcom_strerror());
+  }
 #else
+  //Just dump it into a tmp file
   int fd=open("/tmp/sipdDump", O_CREAT | O_WRONLY);
   write(fd,buf,nbytes);
   close(fd);

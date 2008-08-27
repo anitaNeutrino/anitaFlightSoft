@@ -274,8 +274,10 @@ int main(int argc, char **argv) {
   /* Log stuff */
   char *progName=basename(argv[0]);
   retVal=sortOutPidFile(progName);
-  if(retVal<0)
+  if(retVal<0) {
+    syslog(LOG_INFO,"Acqd already running exiting with -1");
     return -1;
+  }
 
   //Initialize handy pointers
   hdPtr=&(theEvent.header);
@@ -496,6 +498,7 @@ int main(int argc, char **argv) {
 	syslog(LOG_ERR,"Error running threshold scan\n");
 	fprintf(stderr,"Error running threshold scan\n");
       }
+      syslog(LOG_INFO,"Switching to PROG_STATE_TERMINATE after threshold scan");
       currentState=PROG_STATE_TERMINATE;
     }
 	
@@ -507,6 +510,7 @@ int main(int argc, char **argv) {
 	syslog(LOG_ERR,"Error running pedestal mode\n");
 	fprintf(stderr,"Error running pedestal mode\n");
       }
+      syslog(LOG_INFO,"Switching to PROG_STATE_TERMINATE after pedestal run");
       currentState=PROG_STATE_TERMINATE;
     }
 	
@@ -514,6 +518,7 @@ int main(int argc, char **argv) {
     while (currentState==PROG_STATE_RUN) {
       //This is the start of the main event loop
       if(numEvents && numEvents<doingEvent) {
+	syslog(LOG_INFO,"Switching to PROG_STATE_TERMINATE after taking %d of %d events",doingEvent,numEvents);
 	currentState=PROG_STATE_TERMINATE;
 	break;
 	//This is one way out of the main event loop
@@ -798,7 +803,7 @@ int main(int argc, char **argv) {
   closeHkFilesAndTidy(&surfHkWriter);
   closeHkFilesAndTidy(&turfHkWriter);
   unlink(ACQD_PID_FILE);
-  syslog(LOG_INFO,"Acqd terminating");
+  syslog(LOG_INFO,"Acqd terminating... reached end of main");
   return 1 ;
 }
 
@@ -4275,7 +4280,7 @@ void handleBadSigs(int sig)
   }
   unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating");
-  exit(0);
+  exit(sig);
 }
 
 

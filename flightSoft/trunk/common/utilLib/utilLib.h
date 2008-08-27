@@ -110,7 +110,6 @@ extern "C" {
     int readSingleEncodedEvent(unsigned char *buffer, char *filename);
 
     int writeStruct(void *thePtr, char *filename, int numBytes);
-         
   
     
   
