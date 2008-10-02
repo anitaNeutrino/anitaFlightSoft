@@ -1,0 +1,8 @@
+LABEL=/sysroot1                 /                       ext3    defaults        1 1
+LABEL=/sysboot1             /boot                   ext3    defaults        1 2
+LABEL=pmcdata           /mnt/pmcdata                ext3    defaults        1 2
+LABEL=pmclog             /mnt/logpart               ext3    defaults        1 2
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+sysfs                   /sys                    sysfs   defaults        0 0
