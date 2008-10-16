@@ -6,11 +6,11 @@
 //#define SYS_INOTIFY_H_EXISTS_AND_WORKS 1
 
 
-#ifdef SYS_INOTIFY_H_EXISTS_AND_WORKS
-#include <sys/inotify.h>
-#else
+//#ifdef SYS_INOTIFY_H_EXISTS_AND_WORKS
+//#include <sys/inotify.h>
+//#else
 #include "linkWatchLib/inotify-nosys.h"
-#endif // SYS_INOTIFY_H_EXISTS_AND_WORKS
+//#endif // SYS_INOTIFY_H_EXISTS_AND_WORKS
 
 
 #endif

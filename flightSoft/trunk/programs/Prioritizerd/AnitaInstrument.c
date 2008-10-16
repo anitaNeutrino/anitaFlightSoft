@@ -675,7 +675,7 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 		   LogicChannel_t *cones,
 		   int delay){
 // this is used to identify too many antennas peaking at once
-     int i,j,minvalid,pol,phi,thisvalid,hornmax;
+     int i,j,minvalid,pol,phi,thisvalid,hornmax,thissample,firsthorn=-1,opphorn=0;
      for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	  horns->data[j]=0;
 	  cones->data[j]=0;
@@ -726,8 +726,33 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
      horns->valid_samples = minvalid;
      hornmax=0;
      for (i=0; i<horns->valid_samples; i++){
-	  if (horns->data[i]>hornmax) hornmax=horns->data[i];
+	  if (horns->data[i]>hornmax){
+	    hornmax=horns->data[i];
+	    thissample=i;
+	  }
      }
+
+
+     /*
+     //now check for where the horns are that peaked
+//COMMENT FROM HERE
+     for (phi=0;phi<8;phi++){
+	if((in->topRing[phi][0]).data[thissample+delay]==1 || (in->botRing[phi][0]).data[thissample]==1){
+          firsthorn=phi;
+        }
+        if(firsthorn==phi){
+	  if((in->topRing[(phi+8)%16][0]).data[thissample+delay]==1 || (in->botRing[(phi+8)%16][0]).data[thissample]==1){
+	    opphorn=1;
+	    //printf("phi sectors %d and %d peaked\n",phi,(phi+8)%16);
+          }
+        }
+      }
+
+     //only send back the hornmax value if horns on opposite sides peak, otherwise set to zero
+     if(opphorn!=1) hornmax=0;
+//TO HERE OUT TO GO TO DEFAULT PRIORITIZER
+*/
+
 
 #ifndef ANITA2
      minvalid=MAX_NUMBER_SAMPLES;
@@ -1285,6 +1310,8 @@ int determinePriority(){
      }
 
      if (priority == 5){ //consider promotion
+       //printf("maxboxH %d maxboxV %d\n",MaxBoxH,MaxBoxV);
+       //printf("maxboxH2 %d maxboxV2 %d\n",MaxBoxH2,MaxBoxV2);
 	  if (MaxBoxH>=2*hornSectorWidth || MaxBoxV>=2*hornSectorWidth) 
 	       //3 for 3 in both rings
 	       priority=1;
@@ -1302,6 +1329,7 @@ int determinePriority(){
 	       // 2 for 2 in one ring and 1/2 in other
 	       priority=4;
      }
+     //printf("priority is %d\n",priority);
      return priority;
 }
 

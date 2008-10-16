@@ -3,6 +3,7 @@
 #
 
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
+#include /home/mottram/work/matt/flightSoft/standard_definitions.mk
 
 SUBDIRS = common outside/acromag programs #testing
 

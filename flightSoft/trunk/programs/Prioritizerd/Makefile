@@ -6,7 +6,7 @@ FFTW3_INCDIR=$(FFTW3_DIR)/include
 FFTW3_LIBDIR=-L $(FFTW3_DIR)/lib
 
 #Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
-Targets = Prioritizerd
+Targets = Prioritizerd 
 Objs= Filters.o AnitaInstrument.o fftwxcor.o GenerateScore.o
 
 CFLAGS= -g -I ../../common/ 
