@@ -27,9 +27,11 @@ ifeq ($(MACOSX_MINOR),5)
 MACOSX_MINOR  = 4
 endif
 CXX           = gcc
-CXXFLAGS      = $(OPT2) -pipe -Wall -W -Woverloaded-virtual -I/usr/include/sys/ -I/sw/include
+
+CXXFLAGS      =  $(OPT2) -pipe -Wall -W -Woverloaded-virtual -I/usr/include/sys/
+#SYSCCFLAGS        = -I/usr/include/sys/
 LD            = gcc
-LDFLAGS       = $(OPT2) -bind_at_load
+LDFLAGS       =  $(OPT2) -bind_at_load
 SYSCCFLAGS        = -I/sw/include -I/usr/include/malloc -I/usr/include/sys
 SYS_LIBS = -L/sw/lib
 # The SOFLAGS will be used to create the .dylib,
@@ -52,8 +54,8 @@ NOOPT         =
 EXCEPTION     = 
 
 #Toggle as necessary
-#PROFILER=
-PROFILER=-lprofiler -ltcmalloc
+PROFILER=
+#PROFILER=-lprofiler -ltcmalloc
 
 ifdef USE_FAKE_DATA_DIR
 FAKEFLAG = -DUSE_FAKE_DATA_DIR
