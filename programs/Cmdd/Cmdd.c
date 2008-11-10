@@ -34,6 +34,7 @@ int executeCommand(CommandStruct_t *theCmd); //Returns unixTime or 0
 int executePrioritizerdCommand(int command, int value);
 int executePlaybackCommand(int command, unsigned int value1, unsigned int value2);
 int executeAcqdRateCommand(int command, unsigned char args[8]);
+int executeAcqdExtraCommand(int command, unsigned char arg);
 int executeGpsPhiMaskCommand(int command, unsigned char args[5]);
 int executeSipdControlCommand(int command, unsigned char args[2]);
 int executeLosdControlCommand(int command, unsigned char args[2]);
@@ -1015,6 +1016,8 @@ int executeCommand(CommandStruct_t *theCmd)
     return rawtime;
   case ACQD_RATE_COMMAND:
     return executeAcqdRateCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
+  case ACQD_EXTRA_COMMAND:
+    return executeAcqdExtraCommand(theCmd->cmd[1],theCmd->cmd[2]);
   case GPS_PHI_MASK_COMMAND:
     return executeGpsPhiMaskCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
   case PRIORITIZERD_COMMAND:
@@ -1643,8 +1646,18 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
     configModifyInt("GPSd.config","g12","posTelemEvery",ivalue2,&rawtime);
     sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;              
+  case GPS_SET_INI_RESET_FLAG:
+    if(ivalue==1)
+      configModifyInt("GPSd.config","adu5a","iniReset",ivalue2,&rawtime);
+    else if(ivalue==2)
+      configModifyInt("GPSd.config","adu5b","iniReset",ivalue2,&rawtime);
+    else if(ivalue==3)
+      configModifyInt("GPSd.config","g12","iniReset",ivalue2,&rawtime);
+    sendSignal(ID_GPSD,SIGUSR1);
+    return rawtime;              
   default:
-    break;
+    syslog(LOG_ERR,"Unknown GPSd Extra Command -- %d",command);
+    break;    
   }
   return 0;
 
@@ -1944,6 +1957,47 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5])
     return 0;
   }
   return 0;
+}
+
+
+
+int executeAcqdExtraCommand(int command, unsigned char arg)
+{
+  int retVal=0;
+  //  unsigned int utemp=0;
+  int ivalue=0;
+  time_t rawtime;
+  switch(command) {
+  case ACQD_SET_PHOTO_SHUTTER_MASK: 	    
+    ivalue=arg&0x7;
+    configModifyInt("Acqd.config","turfio","photoShutterMask",ivalue,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    if(retVal) return 0;
+    return rawtime;
+  case ACQD_SET_PPS_SOURCE: 	    
+    ivalue=arg&0x3;
+    configModifyInt("Acqd.config","turfio","ppsSource",ivalue,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    if(retVal) return 0;
+    return rawtime;
+  case ACQD_SET_REF_CLOCK_SOURCE: 	    
+    ivalue=arg&0x1;
+    configModifyInt("Acqd.config","turfio","refClockSource",ivalue,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    if(retVal) return 0;
+    return rawtime;
+  case ACQD_SET_TURF_RATE_AVERAGE: 	    
+    ivalue=arg;
+    configModifyInt("Acqd.config","acqd","turfRateAverage",ivalue,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    if(retVal) return 0;
+    return rawtime;	
+  default:
+    syslog(LOG_ERR,"Unknown Acqd extra command -- %d\n",command);
+    fprintf(stderr,"Unknown Acqd extra command -- %d\n",command);
+    return -1;
+  }  
+  return rawtime;
 }
 
 

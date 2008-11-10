@@ -739,15 +739,16 @@ typedef struct {
     Bit 2 is sync slip between SURF 1 and software
     Bit 3 is sync slip between SURF 10 and SURF 1
     Bit 4 is non matching TURF test pattern
-    Bit 5 is startBitGood;
-    Bit 6 is stopBitGood;
+    Bit 5 is startBitGood (1 is good, 0 is bad);
+    Bit 6 is stopBitGood (1 is good, 0 is bad);
+    Bit 7-8 TURFIO photo shutter output
   */
   unsigned char errorFlag; 
   unsigned char surfSlipFlag; ///< Sync Slip between SURF 2-9 and SURF 1
   unsigned char nadirAntTrigMask; ///< 8-bit nadir phi mask (from TURF)
   unsigned int antTrigMask; ///< 2x 16-bit phi ant mask (from TURF)
   unsigned short phiTrigMask; ///< 16-bit phi mask (from TURF)
-  unsigned char reserved[2];
+  unsigned char reserved[2]; ///< reserved[0] is 
   TurfioStruct_t turfio; ///<The X byte TURFIO data
 } AnitaEventHeader_t;
 

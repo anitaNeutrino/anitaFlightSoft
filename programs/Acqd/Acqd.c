@@ -223,6 +223,11 @@ unsigned int antTrigMask=0; //antennas 1-32
 unsigned int nadirAntTrigMask=0; //antennas 33-40
 
 
+//TURFIO Register Magic
+unsigned int photoShutterMask=0x0; ///< 3-bit mask to veto ADU5A, ADU5B, G12 photo-shutter signals
+unsigned int ppsSource=0; ///< Source of the PPS signal 0=ADU5A, 1=ADU5B and 2=G12
+unsigned int refClockSource=0; ///< Source of the reference clock broadcast to the SURFs, 0 is external clock, 1 is 33MHz system clock
+
 //File writing structures
 AnitaHkWriterStruct_t turfHkWriter;
 AnitaHkWriterStruct_t surfHkWriter;
@@ -1019,7 +1024,7 @@ AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action)
 AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
     unsigned int uvalue=0,uvalue2;   
     //Now need to actually do something
-    AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
+    AcqdErrorCode_t status=setTurfioReg(TurfioRegTurfBank, TurfBankControl);
     if(status!=ACQD_E_OK)
 	return status;
 
@@ -1526,6 +1531,19 @@ int readConfigFile()
 	    
   }
 
+
+  kvpReset();
+  status = configLoad ("Acqd.config","turfio");
+  if(status == CONFIG_E_OK) {
+    photoShutterMask=kvpGetInt("photoShutterMask",0);
+    ppsSource=kvpGetInt("ppsSource",0);
+    refClockSource=kvpGetInt("refClockSource",0);
+  }
+  else {
+    eString=configErrorString (status) ;
+    syslog(LOG_ERR,"Error reading Acqd.config <turfio>: %s\n",eString);
+    fprintf(stderr,"Error reading Acqd.config <turfio>: %s\n",eString);
+  }
     
   kvpReset();
   status = configLoad ("Acqd.config","rates");
@@ -1694,7 +1712,7 @@ AcqdErrorCode_t clearDevices()
 
 
   //Check that it cleared
-  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+  status=setTurfioReg(TurfioRegTurfBank, TurfBankControl); // set TURF_BANK to Bank 0
   unsigned int uvalue=0;
   if(status==ACQD_E_OK) {  
       status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
@@ -1714,7 +1732,7 @@ AcqdErrorCode_t clearDevices()
   }
 
   //Check that it cleared
-  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+  status=setTurfioReg(TurfioRegTurfBank, TurfBankControl); // set TURF_BANK to Bank 0
   uvalue=0;
   if(status==ACQD_E_OK) {  
       status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
@@ -1722,7 +1740,7 @@ AcqdErrorCode_t clearDevices()
   }
 
   //Check that it cleared
-  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+  status=setTurfioReg(TurfioRegTurfBank, TurfBankControl); // set TURF_BANK to Bank 0
   uvalue=0;
   if(status==ACQD_E_OK) {  
       status=readTurfioReg(TurfRegControlEventReady,&uvalue);   
@@ -3019,7 +3037,26 @@ AcqdErrorCode_t readSurfEventData()
       }		
     }	 
   }  
-	
+
+  //Test start and stop bits  	
+  int numStarts=0;
+  int numStops=0;
+  for(surf=0;surf<numSurfs;surf++){
+    for(chan=0;chan<N_CHAN;chan++) {
+      if(GetStartBit(GetLower16(labData[surf][chan][0])))
+	numStarts++;
+      if(GetStopBit(GetLower16(labData[surf][chan][259])))
+	numStops++;
+    }
+  }
+  
+  if(numStarts==numSurfs*N_CHAN) 
+    hdPtr->errorFlag|=0x10;
+  if(numStops==numSurfs*N_CHAN) 
+    hdPtr->errorFlag|=0x20;
+      
+
+
   if(printToScreen && verbosity>1) {	
     for(surf=0;surf<numSurfs;surf++){
       for(chan=0;chan<N_CHAN;chan++) {
@@ -3373,6 +3410,20 @@ AcqdErrorCode_t readTurfEventDataVer3()
     hdPtr->errorFlag|=(1<<3);
   }
 
+  //Readout TURFIO photo-shutter
+  unsigned int photoShutter;
+  AcqdErrorCode_t regStatus=ACQD_E_OK;
+  regStatus=readTurfioReg(TurfioRegPhotoShutter,&photoShutter);
+  if(regStatus!=ACQD_E_OK) {
+    syslog(LOG_ERR,"Error reading TURFIO Photo Shutter");
+    fprintf(stderr,"Error reading TURFIO Photo Shutter");
+  }
+  else {
+    ///Steal the top two bits of the error 
+    unsigned int tempVal=(photoShutter&0x30000)>>16;
+    hdPtr->errorFlag |= (tempVal<<6);
+  }
+
 
   if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {
     intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
@@ -3696,6 +3747,20 @@ AcqdErrorCode_t readTurfEventDataVer5()
     hdPtr->errorFlag|=(1<<3);
   }
 
+ //Readout TURFIO photo-shutter
+  unsigned int photoShutter;
+  AcqdErrorCode_t regStatus=ACQD_E_OK;
+  regStatus=readTurfioReg(TurfioRegPhotoShutter,&photoShutter);
+  if(regStatus!=ACQD_E_OK) {
+    syslog(LOG_ERR,"Error reading TURFIO Photo Shutter");
+    fprintf(stderr,"Error reading TURFIO Photo Shutter");
+  }
+  else {
+    ///Steal the top two bits of the error 
+    unsigned int tempVal=(photoShutter&0x30000)>>16;
+    hdPtr->errorFlag |= (tempVal<<6);
+  }
+
   if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {
     intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
     if(printToScreen && verbosity>1)
@@ -3754,7 +3819,7 @@ AcqdErrorCode_t readTurfHkData()
     theTurfReg.whichBank=TurfBankHk;
     memset(&turfRates,0,sizeof(TurfRateStruct_t));
     newTurfRateData=0;
-    AcqdErrorCode_t status=setTurfioReg(TURF_BANK_CHANGE, TurfBankHk); // set TURF_BANK to Bank 3
+    AcqdErrorCode_t status=setTurfioReg(TurfioRegTurfBank, TurfBankHk); // set TURF_BANK to Bank 3
     if(status!=ACQD_E_OK)
 	return status;
     
@@ -3863,7 +3928,7 @@ AcqdErrorCode_t readTurfHkData()
 
     
     //Make sure to copy relevant mask data to turfRate struct
-    status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl); // set TURF_BANK to Bank 0
+    status=setTurfioReg(TurfioRegTurfBank, TurfBankControl); // set TURF_BANK to Bank 0
     if(status!=ACQD_E_OK)
 	return status;
 
@@ -3964,7 +4029,7 @@ AcqdErrorCode_t setTriggerMasks()
 
 
   //Now check them
-  status=setTurfioReg(TURF_BANK_CHANGE, TurfBankControl);
+  status=setTurfioReg(TurfioRegTurfBank, TurfBankControl);
   if(status!=ACQD_E_OK)
       return status;
 
@@ -4645,4 +4710,81 @@ AcqdErrorCode_t setTurfEventCounter()
   eventEpoch=eventNumToWrite;
   return setTurfControl(SetEventEpoch);
   return ACQD_E_OK;
+}
+
+AcqdErrorCode_t setupTurfio()
+{
+  AcqdErrorCode_t status=ACQD_E_OK;
+  unsigned int photoShutter=0;
+  unsigned int ppsSourceVal=0;
+  unsigned int refClockSourceVal=0;
+  status=readTurfioReg(TurfioRegPhotoShutter,&photoShutter);
+  if(status!=ACQD_E_OK) {
+    syslog(LOG_ERR,"Error reading TURFIO Photo Shutter");
+    fprintf(stderr,"Error reading TURFIO Photo Shutter");
+  }
+  else {
+    if((photoShutter&0x7) != (photoShutterMask&0x7)) {
+      status=setTurfioReg(TurfioRegPhotoShutter,TURFIO_DISABLE_PHOTO_SHUTTER);
+      if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"Error disabling TURFIO Photo Shutter");
+	fprintf(stderr,"Error disabling TURFIO Photo Shutter");
+      }
+      unsigned int tempVal=(photoShutterMask&0x7) | TURFIO_DISABLE_PHOTO_SHUTTER;
+      status=setTurfioReg(TurfioRegPhotoShutter,tempVal);
+      if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"Error setting TURFIO Photo Shutter");
+	fprintf(stderr,"Error setting TURFIO Photo Shutter");
+      }
+      tempVal=(photoShutterMask&0x7) | TURFIO_DISABLE_PHOTO_SHUTTER | TURFIO_RESET_PHOTO_SHUTTER;
+      status=setTurfioReg(TurfioRegPhotoShutter,tempVal);
+      if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"Error resetting TURFIO Photo Shutter");
+	fprintf(stderr,"Error resetting TURFIO Photo Shutter");
+      }
+      tempVal=(photoShutterMask&0x7); 
+      status=setTurfioReg(TurfioRegPhotoShutter,tempVal);
+      if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"Error setting TURFIO Photo Shutter");
+	fprintf(stderr,"Error setting TURFIO Photo Shutter");
+      }
+    }
+  }
+
+
+  status=readTurfioReg(TurfioRegPps,&ppsSourceVal);
+  if(status!=ACQD_E_OK) {
+    syslog(LOG_ERR,"Error reading TURFIO PPS Source");
+    fprintf(stderr,"Error reading TURFIO PPS Source");
+  }
+  else {
+    if((ppsSourceVal&0x3) != (ppsSource&0x3)) {
+      //Need to change the PPS source
+      status=setTurfioReg(TurfioRegPps,(ppsSource&0x3));
+      if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"Error setting TURFIO PPS");
+	fprintf(stderr,"Error setting TURFIO PPS");
+      }      
+    }
+  }
+
+
+  status=readTurfioReg(TurfioRegClock,&refClockSourceVal);
+  if(status!=ACQD_E_OK) {
+    syslog(LOG_ERR,"Error reading TURFIO Reference Clock Source");
+    fprintf(stderr,"Error reading TURFIO Reference Clock Source");
+  }
+  else {
+    if((refClockSourceVal&0x1) != (refClockSource&0x1)) {
+      //Need to change the PPS source
+      status=setTurfioReg(TurfioRegClock,(refClockSource&0x1));
+      if(status!=ACQD_E_OK) {
+	syslog(LOG_ERR,"Error setting TURFIO Reference Clock Source");
+	fprintf(stderr,"Error setting TURFIO Reference Clock Source");
+      }      
+    }
+  }
+    
+  return status;
+
 }
