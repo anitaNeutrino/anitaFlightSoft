@@ -50,7 +50,6 @@
 #define N_CHIP 4
 
 //TURF Register Thingies
-#define TURF_BANK_CHANGE 262
 typedef enum __TURF_register_bank {
   TurfBankControl=0,
   TurfBankEvent=2,
@@ -73,7 +72,20 @@ typedef enum __TURF_register_control {
   TurfRegControlClear=0xc
 } TurfRegsiterControl_t;
 
-
+typedef enum __TURFIO_register {
+  TurfioRegId = 0x100,
+  TurfioRegVersion = 0x101,
+  TurfioRegNull = 0x102,
+  TurfioRegNumber = 0x103,
+  TurfioRegPhotoShutter = 0x104,
+  TurfioRegPps = 0x105,
+  TurfioRegTurfBank = 0x106,
+  TurfioRegClock = 0x107,
+  TurfioRegDynPhase = 0x108
+} TurfioRegister_t;
+  
+#define TURFIO_DISABLE_PHOTO_SHUTTER 0x8
+#define TURFIO_RESET_PHOTO_SHUTTER 0x10
 
 typedef enum __SURF_control_act {  
     SurfClearAll,

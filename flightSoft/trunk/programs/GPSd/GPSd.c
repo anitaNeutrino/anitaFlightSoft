@@ -97,6 +97,7 @@ int g12UpdateClock=0;
 int g12ClockSkew=0;
 int g12EnableTtt=0;
 int g12TttEpochRate=20;
+int g12IniReset=0;
 
 // Config stuff for ADU5A
 int adu5aEnableTtt=0;
@@ -112,7 +113,7 @@ int adu5aGgaTelemEvery=10;
 float adu5aRelV12[3]={0};
 float adu5aRelV13[3]={0};
 float adu5aRelV14[3]={0};
-
+int adu5aIniReset=0;
 
 // Config stuff for ADU5B
 int adu5bEnableTtt=0;
@@ -128,6 +129,7 @@ int adu5bGgaTelemEvery=10;
 float adu5bRelV12[3]={0};
 float adu5bRelV13[3]={0};
 float adu5bRelV14[3]={0};
+int adu5bIniReset=0;
 
 //Stuff for GPS Phi Masking
 int enableGpsPhiMasking=0;
@@ -272,6 +274,44 @@ int main (int argc, char *argv[])
 	retVal=setupAdu5B();
 	time(&startTime);
 	
+	if(g12IniReset) {	  
+	  sleep(10);
+	  CommandStruct_t theCmd;
+	  theCmd.fromSipd=0;
+	  theCmd.numCmdBytes=4;
+	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
+	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
+	  theCmd.cmd[2]=2;
+	  theCmd.cmd[3]=0;
+	  writeCommandAndLink(&theCmd);
+	}
+
+	if(adu5aIniReset) {	  
+	  sleep(10);
+	  CommandStruct_t theCmd;
+	  theCmd.fromSipd=0;
+	  theCmd.numCmdBytes=4;
+	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
+	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
+	  theCmd.cmd[2]=0;
+	  theCmd.cmd[3]=0;
+	  writeCommandAndLink(&theCmd);
+	}
+
+
+	if(adu5bIniReset) {	  
+	  sleep(10);
+	  CommandStruct_t theCmd;
+	  theCmd.fromSipd=0;
+	  theCmd.numCmdBytes=4;
+	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
+	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
+	  theCmd.cmd[2]=1;
+	  theCmd.cmd[3]=0;
+	  writeCommandAndLink(&theCmd);
+	}
+
+
 //	printf("Here\n");
 	currentState=PROG_STATE_RUN;
 //	currentState=PROG_STATE_TERMINATE;
@@ -348,6 +388,7 @@ int readConfigFile()
     kvpReset();
     kvpStatus = configLoad ("GPSd.config","g12");
     if(kvpStatus == CONFIG_E_OK) {
+      g12IniReset=kvpGetInt("iniReset",0);
 	g12EnableTtt=kvpGetInt("enableTtt",1);
 	g12TttEpochRate=kvpGetInt("tttEpochRate",20);
 	if(g12TttEpochRate!=20 && g12TttEpochRate!=10 &&
@@ -379,28 +420,29 @@ int readConfigFile()
     kvpReset();
     kvpStatus = configLoad ("GPSd.config","adu5a") ;    
     if(kvpStatus == CONFIG_E_OK) {
-	adu5aEnableTtt=kvpGetInt("enableTtt",1);
-	adu5aSatPeriod=kvpGetInt("satPeriod",600); // in seconds
-	adu5aZdaPeriod=kvpGetInt("zdaPeriod",600); // in seconds
-	adu5aGgaPeriod=kvpGetInt("ggaPeriod",600); // in seconds
-	adu5aPatPeriod=kvpGetFloat("patPeriod",10); // in seconds
-	adu5aVtgPeriod=kvpGetFloat("vtgPeriod",10); // in seconds
-	adu5aSatTelemEvery=kvpGetInt("satTelemEvery",1); // send every nth one
-	adu5aPatTelemEvery=kvpGetInt("patTelemEvery",10); // send every nth one
-	adu5aVtgTelemEvery=kvpGetInt("vtgTelemEvery",10);// send every nth one
-	adu5aGgaTelemEvery=kvpGetInt("ggaTelemEvery",10);// send every nth one
-	adu5aRelV12[0]=kvpGetFloat("calibV12_1",0);
-	adu5aRelV12[1]=kvpGetFloat("calibV12_2",0);
-	adu5aRelV12[2]=kvpGetFloat("calibV12_3",0);
-	adu5aRelV13[0]=kvpGetFloat("calibV13_1",0);
-	adu5aRelV13[1]=kvpGetFloat("calibV13_2",0);
-	adu5aRelV13[2]=kvpGetFloat("calibV13_3",0);
-	adu5aRelV14[0]=kvpGetFloat("calibV14_1",0);
-	adu5aRelV14[1]=kvpGetFloat("calibV14_2",0);
-	adu5aRelV14[2]=kvpGetFloat("calibV14_3",0);
-//	printf("v12 %f %f %f\n",adu5aRelV12[0],adu5aRelV12[1],adu5aRelV12[2]);
-//	printf("v13 %f %f %f\n",adu5aRelV13[0],adu5aRelV13[1],adu5aRelV13[2]);
-//	printf("v14 %f %f %f\n",adu5aRelV14[0],adu5aRelV14[1],adu5aRelV14[2]);
+      adu5aIniReset=kvpGetInt("iniReset",0);
+      adu5aEnableTtt=kvpGetInt("enableTtt",1);
+      adu5aSatPeriod=kvpGetInt("satPeriod",600); // in seconds
+      adu5aZdaPeriod=kvpGetInt("zdaPeriod",600); // in seconds
+      adu5aGgaPeriod=kvpGetInt("ggaPeriod",600); // in seconds
+      adu5aPatPeriod=kvpGetFloat("patPeriod",10); // in seconds
+      adu5aVtgPeriod=kvpGetFloat("vtgPeriod",10); // in seconds
+      adu5aSatTelemEvery=kvpGetInt("satTelemEvery",1); // send every nth one
+      adu5aPatTelemEvery=kvpGetInt("patTelemEvery",10); // send every nth one
+      adu5aVtgTelemEvery=kvpGetInt("vtgTelemEvery",10);// send every nth one
+      adu5aGgaTelemEvery=kvpGetInt("ggaTelemEvery",10);// send every nth one
+      adu5aRelV12[0]=kvpGetFloat("calibV12_1",0);
+      adu5aRelV12[1]=kvpGetFloat("calibV12_2",0);
+      adu5aRelV12[2]=kvpGetFloat("calibV12_3",0);
+      adu5aRelV13[0]=kvpGetFloat("calibV13_1",0);
+      adu5aRelV13[1]=kvpGetFloat("calibV13_2",0);
+      adu5aRelV13[2]=kvpGetFloat("calibV13_3",0);
+      adu5aRelV14[0]=kvpGetFloat("calibV14_1",0);
+      adu5aRelV14[1]=kvpGetFloat("calibV14_2",0);
+      adu5aRelV14[2]=kvpGetFloat("calibV14_3",0);
+      //	printf("v12 %f %f %f\n",adu5aRelV12[0],adu5aRelV12[1],adu5aRelV12[2]);
+      //	printf("v13 %f %f %f\n",adu5aRelV13[0],adu5aRelV13[1],adu5aRelV13[2]);
+      //	printf("v14 %f %f %f\n",adu5aRelV14[0],adu5aRelV14[1],adu5aRelV14[2]);
     }
     else {
 	eString=configErrorString (kvpStatus) ;
@@ -409,6 +451,7 @@ int readConfigFile()
     kvpReset();
     kvpStatus = configLoad ("GPSd.config","adu5b") ;    
     if(kvpStatus == CONFIG_E_OK) {
+      adu5bIniReset=kvpGetInt("iniReset",0);
 	adu5bEnableTtt=kvpGetInt("enableTtt",1);
 	adu5bSatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	adu5bZdaPeriod=kvpGetInt("zdaPeriod",600); // in seconds
@@ -559,6 +602,11 @@ int setupG12()
     else {
 	sprintf(g12Command,"$PASHS,POP,10\n");
     }
+
+    if(g12IniReset) {
+      strcat(g12Command,"$PASHS,INI,5,4,1\n");
+    }
+
     strcat(g12Command,"$PASHQ,PRT\n");
     strcat(g12Command,"$PASHQ,RIO\n");
 //    strcat(g12Command,"$PASHQ,PRT,B\n");
@@ -1965,6 +2013,9 @@ int setupAdu5A()
     char adu5aCommand[1024]="";
     char tempCommand[128]="";
     int retVal;
+    if(adu5aIniReset) {
+      strcat(adu5aCommand,"$PASHS,INI\r\n");
+    }
 
     strcat(adu5aCommand,"$PASHQ,PRT\r\n");
     strcat(adu5aCommand,"$PASHQ,RIO\r\n");
@@ -2027,6 +2078,9 @@ int setupAdu5B()
     int retVal;
 
 
+    if(adu5bIniReset) {
+      strcat(adu5bCommand,"$PASHS,INI\r\n");
+    }
     strcat(adu5bCommand,"$PASHQ,PRT\r\n");
     strcat(adu5bCommand,"$PASHQ,RIO\r\n");
     strcat(adu5bCommand,"$PASHQ,BIT\r\n");
