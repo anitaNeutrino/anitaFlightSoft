@@ -297,6 +297,7 @@ int main (int argc, char *argv[])
 	}
     } while(currentState==PROG_STATE_INIT);    
     closeHkFilesAndTidy(&monWriter);
+    closeHkFilesAndTidy(&otherMonWriter);
     unlink(MONITORD_PID_FILE);
     return 0;
 }
