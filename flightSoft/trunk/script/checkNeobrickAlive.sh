@@ -18,4 +18,6 @@ if grep -q "no link" /tmp/testneo; then
     chown anita.anita /tmp/anita/neobrick.status
 else
     echo "eth1 is up and maybe Neobrick is alive"
+    cd /home/anita/flightSoft/system/neobrick
+   sudo -u anita ./patchnb.pl
 fi
