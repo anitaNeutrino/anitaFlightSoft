@@ -121,7 +121,7 @@ if ($checkstrings[0] cmp "5008eeaba2e1ce2b5cbfe8abdbc657a9") {
 	$telnet->close;
 	exit 1;
 }
-$telnet->cmd('nohup /usr/bin/neobrickd &');
+$telnet->cmd('/usr/bin/neobrickd < /dev/null > /dev/null 2>&1 &');
 print "neobrickd patching complete.\n";
 print "All patching complete.\n";
 
