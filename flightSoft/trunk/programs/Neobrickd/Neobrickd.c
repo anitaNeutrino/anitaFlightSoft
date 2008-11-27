@@ -122,14 +122,19 @@ int main(int argc, char**argv) {
     currentState=PROG_STATE_RUN;
 
     gettimeofday(&firstTime,NULL);
-
+    int nbCounter=0;
     while(currentState==PROG_STATE_RUN) {
       time(&rawTime);
-      if(rawTime>lastStatusUpdate+300) {
+      if(rawTime>lastStatusUpdate+60) {
 	if(!disableNeobrick) {
 	  printf("Getting status file\n");
 	  ftp_getfile("/neobrick.status","/tmp/anita/neobrick.status",0);
-	  telemeterFile("/tmp/anita/neobrick.status",0);
+	  system("/home/anita/flightSoft/bin/nbextract.sh /tmp/anita/neobrick.status > /tmp/anita/neobrickSum.txt");
+	  nbCounter++;
+	  if(nbCounter==10) {
+	      telemeterFile("/tmp/anita/neobrick.status",0);
+	      nbCounter=0;
+	  }
 	}
 	lastStatusUpdate=rawTime;
       }

@@ -434,12 +434,19 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     int diskNum;   
     unsigned int megaBytes=0;
     unsigned short megaBytes_short=0;
+    FILE *neoFile=0;
+    unsigned int neoTime;
+    unsigned long long neoSpaceUsed;
+    unsigned long long neoSpaceAvailable;
+    long long neoSpaceTotal;
+    float neoTemp;
+    float neoPress;
     for(diskNum=0;diskNum<7;diskNum++) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
 //	printf("%u\n",megaBytes);
 	if(megaBytes>0) {
-	    if(diskNum==4)
-		megaBytes/=16;
+	    if(diskNum==4 || diskNum==5)
+		megaBytes/=2;
 	    if(megaBytes<65535) megaBytes_short=megaBytes;
 	    else megaBytes_short=65535;
 	}
@@ -448,7 +455,21 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes_short);
 	if(((short)megaBytes)==-1) errFlag--;
     }  
-    dsPtr->diskSpace[7]=0;
+    neoFile=fopen("/tmp/anita/neobrickSum.txt","r");
+    if(neoFile) {
+	fscanf(neoFile,"%u %llu %llu %llu %f %f",&neoTime,&neoSpaceUsed,&neoSpaceAvailable,&neoSpaceTotal,&neoTemp,&neoPress);
+	megaBytes=neoSpaceAvailable/(1024*1024);
+	megaBytes/=16;
+	if(megaBytes<65535) megaBytes_short=megaBytes;
+	else megaBytes_short=65535;
+	dsPtr->diskSpace[7]=megaBytes_short;
+	if(printToScreen) printf("Neobick\t%u\n",megaBytes_short);
+	
+	
+    }
+    else {
+	dsPtr->diskSpace[7]=0;
+    }
     strncpy(dsPtr->satabladeLabel,satabladeName,11);
     strncpy(dsPtr->sataminiLabel,sataminiName,11);
     strncpy(dsPtr->usbLabel,usbName,11);
