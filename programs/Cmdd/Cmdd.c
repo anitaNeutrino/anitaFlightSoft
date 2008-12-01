@@ -80,12 +80,15 @@ int setSipdHkTelemOrder(int hk, int order);
 int setSipdHkTelemMaxPackets(int hk, int numPackets);
 int killDataPrograms();
 int startDataPrograms();
+int tryAndMountSatadrives();
 
 int makeNewRunDirs();
 int getNewRunNumber();
 int getLatestEventNumber();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
+
+
 
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
@@ -487,6 +490,8 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2];
     return disableDisk(ivalue,ivalue2);
+      case CMD_MOUNT_ARGH:
+	  return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_SATA:
     ivalue=theCmd->cmd[1];	    
     ivalue2=theCmd->cmd[2];	    
@@ -3508,4 +3513,25 @@ int startDataPrograms() {
     startPrograms(progMask);
   }
   return 0;
+}
+
+int tryAndMountSatadrives()
+{
+    time_t rawtime;
+    configModifyInt("anitaSoft.config","global","disableSatablade",0,&rawtime);
+    sleep(1);
+    configModifyInt("anitaSoft.config","global","disableSatamini",0,&rawtime);
+    sleep(1);
+
+    char theCommand[180];
+    sprintf(theCommand,"sudo /etc/init.d/anitamount start");
+    int retVal=system(theCommand);    
+    sleep(10);
+
+    killDataPrograms();
+    retVal=makeNewRunDirs();
+    if(retVal==-1) return 0;	    	    
+    time(&rawtime);
+    startDataPrograms();
+    return rawtime;
 }

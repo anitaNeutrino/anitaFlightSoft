@@ -9,7 +9,7 @@ SUBDIRS = common outside/acromag programs #testing
 
 ANITA_INSTALL_LIBS=libAcromag.a libAnitaMap.a libAnitaMap.so libCompress.a libCompress.so libConfig.a libConfig.so libkvp.a libkvp.so libPedestal.a libPedestal.so libSerial.a libSipcom.a libSlow.a libSlow.so libUtil.a libUtil.so libLinkWatch.so libAnitaFtp.so libAnitaFtp.a
 
-ANITA_INSTALL_BINS=SIPd LogWatchd Cmdd getConfigValue getConfigString setConfigValue CmdTest
+ANITA_INSTALL_BINS=SIPd LogWatchd Cmdd getConfigValue getConfigString setConfigValue CmdTest setConfigString
 
 all: subdirs scripts
 
