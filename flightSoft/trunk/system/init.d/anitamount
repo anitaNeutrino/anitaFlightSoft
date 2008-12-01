@@ -30,7 +30,7 @@ mount_usb() {
     chmod a-w /mnt/usbint
     label=`getConfigString anitaSoft.config global usbName`
 #    echo "Trying to mount $label on /mnt/usbint"
-    mount -L $label -o defaults /mnt/usbint
+    mount /dev/disk/by-label/$label -o defaults /mnt/usbint
     RETVAL=$?
     if df -h | grep -q "usbint"
     then
@@ -47,6 +47,8 @@ unmount_satamini() {
 }
 
 mount_satamini() {
+    sudo -u anita /home/anita/flightSoft/bin/testSataminis.sh
+    sleep 1
     if df -h | grep -q "satamini"
     then
 	umount /mnt/satamini
@@ -62,7 +64,8 @@ mount_satamini() {
     chmod a-w /mnt/satamini
     label=`getConfigString anitaSoft.config global sataminiName`
 #    echo "Trying to mount $label on /mnt/satamini"
-    mount -L $label -o defaults /mnt/satamini
+    /home/anita/flightSoft/bin/mountKiller.sh &
+    mount /dev/disk/by-label/$label -o defaults /mnt/satamini
     RETVAL=$?
     if df -h | grep -q "satamini"
     then
@@ -87,6 +90,7 @@ load_sata_sil() {
     fi
 
     insmod /usr/local/sata/sata_sil.ko
+    sleep 5
     RETVAL=$?
     return $RETVAL
 }
@@ -118,7 +122,9 @@ stop_neobrick() {
 }
 
 
-mount_satablade() {
+mount_satablade() {    
+    sudo -u anita /home/anita/flightSoft/bin/testSatablades.sh
+    sleep 1
     if df -h | grep -q "satablade"
     then
 	umount /mnt/satablade
@@ -134,7 +140,8 @@ mount_satablade() {
     chmod a-w /mnt/satablade
     label=`getConfigString anitaSoft.config global satabladeName`
 #    echo "Trying to mount $label on /mnt/satablade"
-    mount -L $label -o defaults /mnt/satablade
+    /home/anita/flightSoft/bin/mountKiller.sh &
+    mount /dev/disk/by-label/$label -o defaults /mnt/satablade
     RETVAL=$?
     if df -h | grep -q "satablade"
     then

@@ -66,7 +66,7 @@ typedef enum {
     CMD_KILL_PROGS = 131,
     CMD_RESPAWN_PROGS =132,
     CMD_START_PROGS = 133,
-//    CMD_MOUNT = 134,
+    CMD_MOUNT_ARGH = 134,
     CMD_DISABLE_DISK= 135,
     CMD_MOUNT_NEXT_USB = 136,
     CMD_MOUNT_NEXT_SATA = 137, //Switch for blade v mini

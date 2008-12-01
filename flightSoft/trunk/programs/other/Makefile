@@ -6,7 +6,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
 #Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
-Targets = makeFakeTrigger getConfigValue setConfigValue fakeEvent getConfigString
+Targets = makeFakeTrigger getConfigValue setConfigValue fakeEvent getConfigString setConfigString
 
 
 all: $(Targets)
