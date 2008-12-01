@@ -71,6 +71,25 @@ mount_satamini() {
     return $RETVAL
 }
 
+load_sata_sil() {
+    if lsmod | grep -q "sata_sil"
+    then
+	return 0
+    fi
+
+    disabledSatamini=`getConfigValue anitaSoft.config global disableSatamini`
+    disabledSatablade=`getConfigValue anitaSoft.config global disableSatablade`
+    if [ $disabledSatamini -eq 1  ] ; then
+	if [ $disabledSatablade -eq 1  ] ; then
+	    echo "All Sata disks disabled won't try and load sata_sil"
+	    return 1
+	fi
+    fi
+
+    insmod /usr/local/sata/sata_sil.ko
+    RETVAL=$?
+    return $RETVAL
+}
 
 
 
@@ -82,18 +101,19 @@ unmount_satablade() {
 
 
 start_neobrick() {
+    /home/anita/flightSoft/script/checkNeobrickAlive.sh
     disabled=`getConfigValue anitaSoft.config global disableNeobrick`
     if [ $disabled -eq 1 ] ; then
 	echo "Neobrick disk disabled"
 	return 1
     fi
     
-    /usr/local/bin/daemon -u anita -r /home/anita/flightSoft/testing/simpleNeobrickScript.sh -n NeoScript
-    return $RETVAL
+    #/usr/local/bin/daemon -u anita -r /home/anita/flightSoft/testing/simpleNeobrickScript.sh -n NeoScript
+    return 0
 }
 
 stop_neobrick() {
-    /usr/local/bin/daemon -u anita --stop -n NeoScript
+    #/usr/local/bin/daemon -u anita --stop -n NeoScript
     return $RETVAL
 }
 
@@ -110,7 +130,7 @@ mount_satablade() {
 	return 1
     fi
 
-
+    
     chmod a-w /mnt/satablade
     label=`getConfigString anitaSoft.config global satabladeName`
 #    echo "Trying to mount $label on /mnt/satablade"
@@ -124,9 +144,10 @@ mount_satablade() {
 }
 
 mount_anitadisks() {
+    action $"Loading sata_sil..." load_sata_sil 
     action $"Mounting /mnt/satamini..." mount_satamini
     action $"Mounting /mnt/satablade..." mount_satablade
-    action $"Mounting /mnt/usbint..." mount_usb
+ #   action $"Mounting /mnt/usbint..." mount_usb
     action $"Starting Neobrick..." start_neobrick
     RETVAL=$?
     return $RETVAL
@@ -135,7 +156,7 @@ mount_anitadisks() {
 unmount_anitadisks() {
     action $"Unmounting /mnt/satamini..." unmount_satamini
     action $"Unmounting /mnt/satablade..." unmount_satablade
-    action $"Unmounting /mnt/usbint..." unmount_usb
+#    action $"Unmounting /mnt/usbint..." unmount_usb
     action $"Stopping Neobrick..." stop_neobrick
     RETVAL=$?
     return $RETVAL
