@@ -1563,7 +1563,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 		break;
 	    case PACKET_HKD:
 		hkPtr=(HkDataStruct_t*)gHdr;
-		slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
+		slowRateData.hk.temps[0]=(char)(hkPtr->sbs.temp[0]/25000);
 		for(j=0;j<3;j++) {
 		    tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
 		    //tempVal*=10;
@@ -1738,7 +1738,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 	break;
       case PACKET_HKD:
 	hkPtr=(HkDataStruct_t*)gHdr;
-	slowRateData.hk.temps[0]=(char)hkPtr->sbs.temp[0];
+	slowRateData.hk.temps[0]=(char)(hkPtr->sbs.temp[0]/25000);
 	for(j=0;j<3;j++) {
 	  tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
 	  //tempVal*=10;

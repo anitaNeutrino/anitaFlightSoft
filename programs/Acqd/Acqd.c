@@ -352,6 +352,7 @@ int main(int argc, char **argv) {
   }
 
   //Now set the runNumber
+  setupTurfio();
   setTurfEventCounter();
 
   
@@ -4776,7 +4777,7 @@ AcqdErrorCode_t setupTurfio()
   }
   else {
     if((refClockSourceVal&0x1) != (refClockSource&0x1)) {
-      //Need to change the PPS source
+      //Need to change the PPS 
       status=setTurfioReg(TurfioRegClock,(refClockSource&0x1));
       if(status!=ACQD_E_OK) {
 	syslog(LOG_ERR,"Error setting TURFIO Reference Clock Source");
