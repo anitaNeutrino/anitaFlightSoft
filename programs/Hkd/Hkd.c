@@ -569,6 +569,9 @@ int outputData(AnalogueCode_t code)
 	    
     theHkData.mag=magData;
     theHkData.sbs=sbsData;
+
+//    if(printToScreen) printf("Mag here:\t%f %f %f\n",theHkData.mag.x,theHkData.mag.y,theHkData.mag.z);
+//    if(printToScreen) printf("Mag there:\t%f %f %f\n",magData.x,magData.y,magData.z);
     if(printToScreen) printf("%s\n",theFilename);
 
     fillGenericHeader(&theHkData,PACKET_HKD,sizeof(HkDataStruct_t));
@@ -875,9 +878,9 @@ int checkMagnetometer()
     float x,y,z;
     int checksum,otherChecksum;
     int countSpaces=0;
-    magData.x=0;
-    magData.y=0;
-    magData.z=0;
+//    magData.x=0;
+//    magData.y=0;
+//    magData.z=0;
     retVal=isThereDataNow(fdMag);
 //    printf("We think there is %d in the way of data\n",retVal);
     if(retVal!=1) return 0;
