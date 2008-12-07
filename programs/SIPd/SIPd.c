@@ -1151,7 +1151,7 @@ int sendEncodedPedSubbedWavePackets(int bufSize)
     EncodedSurfChannelHeader_t *chanHdPtr2;
     int numBytes,count=0,surf=0,retVal,chan,count2=0;
     int chanNumBytes=0;
-    // Remember what the file contains is actually 9 EncodedPedSubbedSurfPacketHeader_t's
+    // Remember what the file contains is actually 10 EncodedPedSubbedSurfPacketHeader_t's
 //    count=0;
     count=sizeof(EncodedEventWrapper_t);
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -1563,7 +1563,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 		break;
 	    case PACKET_HKD:
 		hkPtr=(HkDataStruct_t*)gHdr;
-		slowRateData.hk.temps[0]=(char)(hkPtr->sbs.temp[0]/25000);
+		slowRateData.hk.temps[0]=(char)((25*hkPtr->sbs.temp[0])/1000);
 		for(j=0;j<3;j++) {
 		    tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
 		    //tempVal*=10;
@@ -1738,7 +1738,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 	break;
       case PACKET_HKD:
 	hkPtr=(HkDataStruct_t*)gHdr;
-	slowRateData.hk.temps[0]=(char)(hkPtr->sbs.temp[0]/25000);
+	slowRateData.hk.temps[0]=(char)((25*hkPtr->sbs.temp[0])/1000);
 	for(j=0;j<3;j++) {
 	  tempVal=((hkPtr->ip320.board[2].data[tempInds[j]])>>8);
 	  //tempVal*=10;
