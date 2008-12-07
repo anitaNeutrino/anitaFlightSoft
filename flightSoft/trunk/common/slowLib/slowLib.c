@@ -140,8 +140,8 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	    for(surf=0;surf<TRIGGER_SURFS;surf++) {
 		for(scl=0;scl<SCALERS_PER_SURF;scl++) {
 		    float rate=theSurfHks[i].scaler[surf][scl];
-		    slowCalc.scalerRates[surf][scl/8]+=rate;
-		    slowCalc.scalerRatesSq[surf][scl/8]+=rate*rate;
+		    slowCalc.scalerRates[surf][scl/4]+=rate;
+		    slowCalc.scalerRatesSq[surf][scl/4]+=rate*rate;
 		}
 	    }
 	}    
@@ -159,8 +159,8 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	}
 	for(surf=0;surf<TRIGGER_SURFS;surf++) {
 	    for(ant=0;ant<ANTS_PER_SURF;ant++) {
-		slowCalc.scalerRates[surf][ant]/=((float)8*numSurfHks);
-		slowCalc.scalerRatesSq[surf][ant]/=((float)8*numSurfHks);
+		slowCalc.scalerRates[surf][ant]/=((float)4*numSurfHks);
+		slowCalc.scalerRatesSq[surf][ant]/=((float)4*numSurfHks);
 
 		float tempAvg=slowCalc.scalerRates[surf][ant]/128.;
 		if(tempAvg<0)
