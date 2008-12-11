@@ -90,7 +90,7 @@
 
 #define NUM_PRIORITIES 10
 #define NUM_SATABLADES 8
-#define NUM_SATAMINIS 4
+#define NUM_SATAMINIS 8
 #define NUM_USBS 31
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"

@@ -19,7 +19,7 @@ surfBus#I12=10,10,10,10,9,9,9,8,9,9,-1,-1;
 
 
 <trigger>
-enablePPS1Trigger#I1=1;
+enablePPS1Trigger#I1=0;
 enablePPS2Trigger#I1=0;
 disableExtTrigger#I1=1;
 sendSoftTrigger#I1=1;
@@ -47,7 +47,7 @@ threshSwitchConfigAtEnd#I1=0;
 
 
 <rates>
-enableDynamicPhiMasking#I1=1;
+enableDynamicPhiMasking#I1=0;
 enableDynamicAntMasking#I1=0;
 dynamicPhiThresholdOverRate#I1=20;
 dynamicPhiThresholdOverWindow#I1=20;
@@ -70,7 +70,7 @@ rateIMin#F1=-100;
 
 <thresholds>
 enableChanServo#I1=1;
-pidGoals#I4=3000,3000,3000,500;
+pidGoals#I4=8000,8000,8000,800;
 nadirPidGoals#I4=100,100,100,40;
 pidPanicVal#I1=200;
 pidAverage#I1=8;
@@ -131,7 +131,7 @@ turfRateAverage#I1=60;
 
 
 <pedestal>
-pedUsePPS2Trig#I1=0;
+pedUsePPS2Trig#I1=1;
 pedSoftTrigSleepMs#I1=10;
 writeDebugData#I1=1;
 numPedEvents#I1=4000;
