@@ -492,11 +492,12 @@ int executeCommand(CommandStruct_t *theCmd)
     return disableDisk(ivalue,ivalue2);
       case CMD_MOUNT_ARGH:
 	  return tryAndMountSatadrives();
-  case CMD_MOUNT_NEXT_SATA:
-    ivalue=theCmd->cmd[1];	    
-    ivalue2=theCmd->cmd[2];	    
-    return mountNextSata(ivalue,ivalue2);
-  case CMD_MOUNT_NEXT_USB:
+      case CMD_MOUNT_NEXT_SATA:
+	  printf("mount next sata\n");
+	  ivalue=theCmd->cmd[1];	    
+	  ivalue2=theCmd->cmd[2];	    
+	  return mountNextSata(ivalue,ivalue2);
+      case CMD_MOUNT_NEXT_USB:
     ivalue=theCmd->cmd[1];
     return mountNextUsb(ivalue);
   case CMD_EVENT_DISKTYPE:
@@ -2451,6 +2452,7 @@ int mountNextSatablade(int whichSatablade) {
 
 
 int mountNextSatamini(int whichSatamini) {
+    //    printf("mountNextSatamini\n");
   int retVal;
   time_t rawtime;
   int currentNum=0;
@@ -2462,7 +2464,8 @@ int mountNextSatamini(int whichSatamini) {
   else {
     currentNum=whichSatamini;
   }
-       
+//  printf("%s %d\n",sataminiName,currentNum);
+  
   if(currentNum>NUM_SATAMINIS) return -1;
 
   //Kill all programs that write to disk
@@ -2473,7 +2476,7 @@ int mountNextSatamini(int whichSatamini) {
   //Change to new drive
   sprintf(sataminiName,"satamini%d",currentNum);
   configModifyString("anitaSoft.config","global","sataminiName",sataminiName,&rawtime);
-  retVal=system("/home/anita/flightSoft/bin/mountCurrentSatamini.sh");
+  retVal=system("/home/anita/flightSoft/bin/mountCurrentSataMini.sh");
   sleep(2);
   makeNewRunDirs();
   sleep(2);

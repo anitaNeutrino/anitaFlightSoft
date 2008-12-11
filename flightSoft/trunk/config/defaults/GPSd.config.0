@@ -27,7 +27,7 @@ clockSkew#I1=100;
 
 <adu5a>
 enableTtt#I1=1;
-satPeriod#I1=10;
+satPeriod#I1=60;
 ggaPeriod#I1=1;
 vtgPeriod#F1=1;
 patPeriod#F1=1;
@@ -49,7 +49,7 @@ calibV14_3#F1=0.008;
 
 <adu5b>
 enableTtt#I1=1;
-satPeriod#I1=10;
+satPeriod#I1=60;
 ggaPeriod#I1=1;
 vtgPeriod#F1=1;
 patPeriod#F1=1;

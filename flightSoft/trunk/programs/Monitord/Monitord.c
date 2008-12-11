@@ -246,6 +246,7 @@ int main (int argc, char *argv[])
 		  theCmd.cmd[1]=0;
 		  theCmd.cmd[2]=0; //Next disk
 		  writeCommandAndLink(&theCmd);
+		  syslog(LOG_INFO,"Sending cmd %d -- mount next satablade",CMD_MOUNT_NEXT_SATA);
 		  satabladeMountCmdTime=monData.unixTime;
 		}
 	      }
@@ -253,14 +254,18 @@ int main (int argc, char *argv[])
 
 	    printf("satamini %d\t%d\n",monData.diskInfo.diskSpace[5],sataminiSwitchMB);
 	    if(monData.diskInfo.diskSpace[5]<sataminiSwitchMB) {
+//		printf("Here\n");
 	      readConfigFile();
 	      //Change blade if in use
 	      if((hkDiskBitMask&SATAMINI_DISK_MASK || eventDiskBitMask&SATAMINI_DISK_MASK)) {
+//		printf("Here2\n");
 		if((monData.unixTime-sataminiMountCmdTime)>300) {
+//		    printf("Here3\n");
 		  theCmd.numCmdBytes=3;
 		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
 		  theCmd.cmd[1]=1;
 		  theCmd.cmd[2]=0; //Next disk
+		  syslog(LOG_INFO,"Sending cmd %d -- mount next satamini",CMD_MOUNT_NEXT_SATA);
 		  writeCommandAndLink(&theCmd);
 		  sataminiMountCmdTime=monData.unixTime;
 		}
