@@ -234,10 +234,12 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, An
       else {
 	retVal=fflush(awsPtr->currentFilePtr[diskInd]);  
 	if(retVal<0) {
+	    errorCounter++;
 	  if(errorCounter<100  || errorCounter%1000==0) {
 	    syslog(LOG_ERR,"Error (%d of 100) flushing to file (write %d) -- %s (%d)\n",
 		   errorCounter,awsPtr->writeCount[diskInd],
 		   strerror(errno),retVal);
+	    
 	  }	    
 	}
       }
