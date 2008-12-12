@@ -65,10 +65,12 @@ void checkProcesses(int dontStart);
 int getRamdiskInodes();
 void fillOtherStruct(OtherMonitorStruct_t *otherPtr);
 int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr);
-void purgeHkDirectory(char *dirName,char *linkDirName);
+void purgeHkDirectory(char *dirName,char *linkDirName, int deleteAll);
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 int getProcessInfo(ProgramId_t prog, int progPid);
+void checkSatasAreWorking();
+
 
 
 // Global Variables
@@ -194,8 +196,10 @@ int main (int argc, char *argv[])
 	    retVal=checkDisks(&(monData.diskInfo));	    
 	    //Do something
 	    retVal=checkQueues(&(monData.queueInfo));
-	    if((monData.unixTime-startTime)>60) 
+	    if((monData.unixTime-startTime)>60) {
 	      checkProcesses(0);
+	      checkSatasAreWorking();
+	    }
 	    else
 	      checkProcesses(1);
 
@@ -547,7 +551,7 @@ int checkQueues(QueueStruct_t *queuePtr) {
     if(printToScreen) printf("%s\t%u\n",telemLinkDirs[hkInd],numLinks);
     if(((short)numLinks)==-1) retVal--;
     else if(numLinks>maxHkQueueSize) {
-      purgeHkDirectory(telemDirs[hkInd],telemLinkDirs[hkInd]);
+	purgeHkDirectory(telemDirs[hkInd],telemLinkDirs[hkInd],0);
       purged++;
     }
   }
@@ -574,7 +578,7 @@ int checkQueues(QueueStruct_t *queuePtr) {
   return retVal;
 }
 
-void purgeHkDirectory(char *dirName,char *linkDirName) 
+void purgeHkDirectory(char *dirName,char *linkDirName, int deleteAll) 
 {
     int count=0;
     char currentLink[FILENAME_MAX];
@@ -584,6 +588,7 @@ void purgeHkDirectory(char *dirName,char *linkDirName)
 				&linkList);
 
     int linksToSave=maxHkQueueSize-100;
+    if(deleteAll) linksToSave=0;
     if(linksToSave<0)
       linksToSave=100;
     if(numLinks>maxHkQueueSize) {
@@ -879,9 +884,27 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 	else {
 	    archivedCheckCount=0;
 	}
-
-
     }	
+
+    //Add a check for number of cmds
+    
+    numLinks=countFilesInDir("/tmp/anita/cmdd/link");
+    printf("Cmdd has %d commands to process\n",numLinks);
+    if(numLinks>100) 
+    {
+	//Bad stuff is happening
+	syslog(LOG_INFO,"Cmdd has %d links to process, bad things are probably happening\n",numLinks);
+
+	retVal=system("daemon --stop -n Cmdd");
+	sleep(3);
+	retVal=system("killall -9 Cmmd");
+	sleep(2);
+	purgeHkDirectory("/tmp/anita/cmdd","/tmp/anita/cmdd/link",1);
+	retVal=system("daemon -r Cmdd -n Cmdd");
+    }
+
+
+
 }
 
 int writeOtherFileAndLink(OtherMonitorStruct_t *otherPtr) {
@@ -945,4 +968,162 @@ int sortOutPidFile(char *progName)
   }
   writePidFile(MONITORD_PID_FILE);  
   return 0;
+}
+
+#define TEST_PATTERN_SIZE 4096
+
+void checkSatasAreWorking()
+{   
+    CommandStruct_t theCmd;
+    theCmd.fromSipd=0;
+    char testFilename[FILENAME_MAX];
+    FILE *fp=0;
+    int numObjs=0;
+    int shouldDisableMini=0;
+    int shouldDisableBlade=0;
+    static int bladeErrCounter=0;
+    static int miniErrCounter=0;
+    unsigned int increment;
+    unsigned char testPattern[TEST_PATTERN_SIZE]={0};
+    unsigned char readBackPattern[TEST_PATTERN_SIZE]={0};
+    
+    for(increment=0;increment<TEST_PATTERN_SIZE;increment++) {
+	testPattern[increment]=increment%256;
+    }
+
+    if(!disableSatamini) {
+	sprintf(testFilename,"%s/diskTestFile.dat",SATAMINI_DATA_MOUNT);
+	fp=fopen(testFilename,"wb");
+	if(fp==NULL) {
+
+	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
+	    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
+	    shouldDisableMini=1;
+	}
+	else {
+	    numObjs=fwrite(testPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
+	    if(numObjs!=TEST_PATTERN_SIZE) {	
+		syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),testFilename);
+		fprintf(stderr,"fwrite: %s -- %s\n",strerror(errno),testFilename);
+		shouldDisableMini=1;
+		fclose(fp);
+	    }	
+	    else {
+		fclose(fp);
+		//Time for the read test
+		fp=fopen(testFilename,"rb");
+		if(fp==NULL) {
+
+		    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
+		    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
+		    shouldDisableMini=1;
+		}
+		else {
+		    numObjs=fread(readBackPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
+		    if(numObjs!=TEST_PATTERN_SIZE) {	
+			syslog (LOG_ERR,"fread: %s ---  %s\n",strerror(errno),testFilename);
+			fprintf(stderr,"fread: %s -- %s\n",strerror(errno),testFilename);
+			shouldDisableMini=1;
+			fclose(fp);
+		    }	
+		    else {
+			//Time to check pattern
+			fclose(fp);
+			for(increment=0;increment<TEST_PATTERN_SIZE;increment++) {
+			    if(readBackPattern[increment]!=testPattern[increment]) {
+				shouldDisableMini=1;
+				break;
+			    }
+			}
+		    }
+		}	    					
+	    }
+	}	
+    }
+
+    if(!disableSatablade) {
+	sprintf(testFilename,"%s/diskTestFile.dat",SATABLADE_DATA_MOUNT);
+	fp=fopen(testFilename,"wb");
+	if(fp==NULL) {
+
+	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
+	    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
+	    shouldDisableBlade=1;
+	}
+	else {
+	    numObjs=fwrite(testPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
+	    if(numObjs!=TEST_PATTERN_SIZE) {	
+		syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),testFilename);
+		fprintf(stderr,"fwrite: %s -- %s\n",strerror(errno),testFilename);
+		shouldDisableBlade=1;
+		fclose(fp);
+	    }	
+	    else {
+		fclose(fp);
+		//Time for the read test
+		fp=fopen(testFilename,"rb");
+		if(fp==NULL) {
+
+		    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
+		    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
+		    shouldDisableBlade=1;
+		}
+		else {
+		    numObjs=fread(readBackPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
+		    if(numObjs!=TEST_PATTERN_SIZE) {	
+			syslog (LOG_ERR,"fread: %s ---  %s\n",strerror(errno),testFilename);
+			fprintf(stderr,"fread: %s -- %s\n",strerror(errno),testFilename);
+			shouldDisableBlade=1;
+			fclose(fp);
+		    }	
+		    else {
+			//Time to check pattern
+			fclose(fp);
+			for(increment=0;increment<TEST_PATTERN_SIZE;increment++) {
+			    if(readBackPattern[increment]!=testPattern[increment]) {
+				shouldDisableBlade=1;
+				break;
+			    }
+			}
+		    }
+		}	    					
+	    }
+	}
+
+    }
+   
+
+    if(!disableSatablade) {
+	if(shouldDisableBlade==1) {
+	    bladeErrCounter++;
+	    if(bladeErrCounter>3) {
+		syslog(LOG_INFO,"Problem with satabblade -- will disable\n");
+		theCmd.cmd[0]=CMD_DISABLE_DISK;
+		theCmd.cmd[1]=SATABLADE_DISK_MASK;
+		theCmd.cmd[2]=1;
+		writeCommandAndLink(&theCmd);
+	    
+	    }
+	}
+    }
+
+
+
+    if(!disableSatamini) {
+	if(shouldDisableMini==1) {
+	    miniErrCounter++;
+	    if(miniErrCounter>3) {
+		syslog(LOG_INFO,"Problem with satabmini -- will disable\n");
+		theCmd.cmd[0]=CMD_DISABLE_DISK;
+		theCmd.cmd[1]=SATAMINI_DISK_MASK;
+		theCmd.cmd[2]=1;
+		writeCommandAndLink(&theCmd);
+	    
+	    }
+	}
+    }
+
+
+    printf("Sata check mini (%d %d) and blade (%d %d)\n",
+	   shouldDisableMini,miniErrCounter,shouldDisableBlade,bladeErrCounter);
 }

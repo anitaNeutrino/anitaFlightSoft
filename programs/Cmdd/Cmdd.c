@@ -1444,6 +1444,12 @@ int disableDisk(int diskMask, int disFlag)
       }
     }
   }
+
+  killDataPrograms();
+  sleep(2);
+  makeNewRunDirs();
+  sleep(2);
+  startDataPrograms();
   return rawtime;
 
 }
