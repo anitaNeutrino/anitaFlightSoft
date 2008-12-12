@@ -9,7 +9,6 @@ daemon --stop -n Calibd
 daemon --stop -n Acqd
 daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
-daemon --stop -n Neobrickd
 daemon --stop -n LogWatchd
 
 
@@ -25,6 +24,10 @@ while [ 1 ]; do
      break;
  fi
 done;
+
+daemon --stop -n Neobrickd
+
+sleep 2
 
 ps x > /tmp/psx
 
