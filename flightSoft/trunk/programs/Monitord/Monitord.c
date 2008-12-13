@@ -447,6 +447,7 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     unsigned int neoTime;
     unsigned long long neoSpaceUsed;
     unsigned long long neoSpaceAvailable;
+    static unsigned long long lastNeoSpaceAvailable=0;
     long long neoSpaceTotal;
     float neoTemp;
     float neoPress;
@@ -467,7 +468,13 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     neoFile=fopen("/tmp/anita/neobrickSum.txt","r");
     if(neoFile) {
 	fscanf(neoFile,"%u %llu %llu %llu %f %f",&neoTime,&neoSpaceUsed,&neoSpaceAvailable,&neoSpaceTotal,&neoTemp,&neoPress);
-	megaBytes=neoSpaceAvailable/(1024*1024);
+	if(neoSpaceAvailable>0) {
+	    megaBytes=neoSpaceAvailable/(1024*1024);
+	    lastNeoSpaceAvailable=neoSpaceAvailable;
+	}
+	else {
+	    megaBytes=lastNeoSpaceAvailable/(1024*1024);
+	}
 	megaBytes/=16;
 	if(megaBytes<65535) megaBytes_short=megaBytes;
 	else megaBytes_short=65535;
