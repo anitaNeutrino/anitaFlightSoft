@@ -4,7 +4,7 @@
 cd /home/anita/flightSoft/testing
 
 
-BASE_LOG_DIR=/home/anita/bemcoLog/satablade
+BASE_LOG_DIR=/home/anita/antarcticLog/mtron
 RUN=1;
 while true;
 do
@@ -23,7 +23,7 @@ done
 mkdir ${LOG_DIR}
 echo "Using log dir $LOG_DIR"
 
-TEST_DIR=/mnt/satablade
+TEST_DIR=/mnt/test
 REF_DIR=/tmp/satablade
 
 if [ -d ${TEST_DIR} ] ;

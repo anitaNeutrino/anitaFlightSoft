@@ -57,20 +57,20 @@ sleep 2
 
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
-nice -n 20 daemon -r Archived -n Archived
-daemon -r Hkd -n Hkd
-daemon -r GPSd -n GPSd
-daemon -r Monitord -n Monitord
-daemon -r Calibd -n Calibd
-daemon -r LogWatchd -n LogWatchd
+nice -n 15 daemon -r Archived -n Archived
+nice -n 20 daemon -r Hkd -n Hkd
+nice -n 20 daemon -r GPSd -n GPSd
+nice -n 20 daemon -r Monitord -n Monitord
+nice -n 20 daemon -r Calibd -n Calibd
+nice -n 20 daemon -r LogWatchd -n LogWatchd
 
 #Just to make sure
-daemon -r Prioritizerd -n Prioritizerd 
-daemon -r Eventd -n Eventd
-daemon -r LOSd -n LOSd
-daemon -r SIPd -n SIPd
-daemon -r Neobrickd -n Neobrickd
-daemon -r Playbackd -n Playbackd
+nice -n 15 daemon -r Prioritizerd -n Prioritizerd 
+nice -n 20 daemon -r Eventd -n Eventd
+nice -n 20 daemon -r LOSd -n LOSd
+nice -n 20 daemon -r SIPd -n SIPd
+nice -n 20 daemon -r Neobrickd -n Neobrickd
+nice -n 20 daemon -r Playbackd -n Playbackd
 sleep 2
 
-Acqd 
+nice -n 10 Acqd 
