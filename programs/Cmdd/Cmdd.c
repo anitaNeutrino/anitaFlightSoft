@@ -1332,6 +1332,10 @@ int startPrograms(int progMask)
 	sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
+      else if(prog==ID_SIPD) {
+	sprintf(daemonCommand,"nice daemon -r %s -n %s ",
+		getProgName(prog),getProgName(prog));
+      }
       else {
 	sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
