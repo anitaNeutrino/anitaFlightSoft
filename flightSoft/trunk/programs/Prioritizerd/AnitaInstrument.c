@@ -1054,18 +1054,24 @@ float RMSRatio(TransientChannelF_t *theChan,int low, int mid, int high){
 	  mean1 += theChan->data[i];
 	  var1 += theChan->data[i]*theChan->data[i];
 	  np1 += 1;
+	  //	  printf("i %d -- %f %f\n",i,mean1,var1);
      }
      mean1 /= np1;
-     rms1 /= sqrt(var1/np1 -mean1*mean1);
+     var1 /= np1;
+     rms1 = sqrt(var1 -(mean1*mean1));
 //mid to high region
      for (i=mid;i<high;i++){
 	  mean2 += theChan->data[i];
 	  var2 += theChan->data[i]*theChan->data[i];
 	  np2 += 1;
+	  //	  printf("i %d -- %f %f\n",i,mean2,var2);
      }
      mean2 /= np2;
-     rms2 /= sqrt(var2/np2 -mean2*mean2);
+     var2 /= np2;
+     //     printf("var2 %f mean2 %f\n",var2,mean2);
+     rms2 = sqrt(var2 -(mean2*mean2));
 //return  late/early
+//     printf ("rms2 %f rms1 %f\n",rms2,rms1);
      return rms2/rms1;
 }
 
@@ -1084,6 +1090,7 @@ float CheckRMSRatio(AnitaInstrumentF_t *theInst,
 					 low,mid,high);
 	       RMSbot[phi][pol]=RMSRatio(&(theInst->botRing[phi][pol]),
 					 low,mid,high);
+	       //	       printf("%d %d -- %f %f\n",phi,pol,RMStop[phi][pol],RMSbot[phi][pol]);
 	  }
      }
      for (phi=0;phi<8; phi++){
@@ -1131,7 +1138,8 @@ int determinePriority(){
      float MaxRMS;
      MaxRMS=CheckRMSRatio(&theInstrument,LowRMSChan,
 			  MidRMSChan,HighRMSChan);
-//     if (MaxRMS<0.01*(float)CutRMS) return 7;
+     //     printf("%f - %d %d %d %d\n",MaxRMS,LowRMSChan,MidRMSChan,HighRMSChan,CutRMS);
+     if (MaxRMS<0.01*(float)CutRMS) return 7;
 // there is something in a sector; go to industrial strength tests
      FFTNumChannels=0.;
      // the next function has the side effect of counting the bad FFT peaks
