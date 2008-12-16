@@ -1270,8 +1270,8 @@ void quickAddNeobrickPressAndTemp()
     }
     float tempVolt=(neoTemp+273.15)/100.;
     float presVolt=(neoPress/400.);
-    unsigned short tempAdc=(unsigned short)(tempVolt*(4055-2048)/4.9)+2048;
-    unsigned short presAdc=(unsigned short)(presVolt*(4055-2048)/4.9)+2048;
+    unsigned short tempAdc=((unsigned short)(tempVolt*(4055-2048)/4.9)+2048)<<4;
+    unsigned short presAdc=((unsigned short)(presVolt*(4055-2048)/4.9)+2048)<<4;
     rawDataStruct.board[1].data[38]=tempAdc;
     rawDataStruct.board[1].data[39]=presAdc;
 }
