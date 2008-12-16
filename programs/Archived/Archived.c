@@ -253,8 +253,9 @@ int readConfigFile()
 	verbosity=kvpGetInt("verbosity",0);
 	onboardStorageType=kvpGetInt("onboardStorageType",1);
 	telemType=kvpGetInt("telemType",1);
-	priorityPPS1=kvpGetInt("priorityPPS1",3);
-	priorityPPS2=kvpGetInt("priorityPPS2",2);
+	priorityPPS1=kvpGetInt("priorityPPS1",-1);
+	priorityPPS2=kvpGetInt("priorityPPS2",-1);
+	prioritySoft=kvpGetInt("prioritySoft",-1);
 	pps1FractionDelete=kvpGetFloat("pps1FractionDelete",0);
 	pps2FractionDelete=kvpGetFloat("pps2FractionDelete",0);
 	softFractionDelete=kvpGetFloat("softFractionDelete",0);
@@ -693,6 +694,8 @@ void writeOutputForTelem(int numBytes) {
 	pri=priorityPPS1;
     if((theHead.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
 	pri=priorityPPS2;
+    if((theHead.turfio.trigType&0x8) && (prioritySoft>=0 && prioritySoft<=9))
+	pri=prioritySoft;
     if(pri<0 || pri>9) pri=9;
     //this step is now done in Prioritizerd
 //    theHead.priority=(16*theHead.priority)+pri;

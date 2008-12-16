@@ -488,8 +488,8 @@ int executeCommand(CommandStruct_t *theCmd)
     return retVal;      
   case CMD_DISABLE_DISK:
     ivalue=theCmd->cmd[1];
-    ivalue2=theCmd->cmd[2];
-    return disableDisk(ivalue,ivalue2);
+    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
+    return disableDisk(ivalue2,ivalue);
       case CMD_MOUNT_ARGH:
 	  return tryAndMountSatadrives();
       case CMD_MOUNT_NEXT_SATA:
@@ -559,29 +559,30 @@ int executeCommand(CommandStruct_t *theCmd)
     configModifyInt("Archived.config","archived","prioritySoft",ivalue3,&rawtime);
     retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
     return rawtime;
-  case ARCHIVE_PPS_DECIMATE:
+  case ARCHIVE_PPS_DECIMATE:      
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2];
     if(ivalue<1 || ivalue>2) return -1;
     ivalue3=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
-    fvalue=((float)ivalue2)/1000.;
+    fvalue=((float)ivalue3)/1000.;
+    printf("decimate -- %d %d %d %f\n",ivalue,ivalue2,ivalue3,fvalue);
     if(ivalue2==1) {
       if(ivalue==1)
-	configModifyInt("Archived.config","archived","pps1FractionDelete",fvalue,&rawtime);
+	configModifyFloat("Archived.config","archived","pps1FractionDelete",fvalue,&rawtime);
       else if(ivalue==2)
-	configModifyInt("Archived.config","archived","pps1FractionTelem",fvalue,&rawtime);
+	configModifyFloat("Archived.config","archived","pps1FractionTelem",fvalue,&rawtime);
     }
     else if(ivalue2==2) {
       if(ivalue==1)
-	configModifyInt("Archived.config","archived","pps2FractionDelete",fvalue,&rawtime);
+	configModifyFloat("Archived.config","archived","pps2FractionDelete",fvalue,&rawtime);
       else if(ivalue==2)
-	configModifyInt("Archived.config","archived","pps2FractionTelem",fvalue,&rawtime);
+	configModifyFloat("Archived.config","archived","pps2FractionTelem",fvalue,&rawtime);
     }
     else if(ivalue2==3) {
       if(ivalue==1)
-	configModifyInt("Archived.config","archived","softFractionDelete",fvalue,&rawtime);
+	configModifyFloat("Archived.config","archived","softFractionDelete",fvalue,&rawtime);
       else if(ivalue==1)
-	configModifyInt("Archived.config","archived","softFractionTelem",fvalue,&rawtime);
+	configModifyFloat("Archived.config","archived","softFractionTelem",fvalue,&rawtime);
     }
     retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
     return rawtime;
@@ -1412,6 +1413,7 @@ int setEventDiskBitMask(int modOrSet, int bitMask)
 
 int disableDisk(int diskMask, int disFlag)
 {
+    printf("disableDisk %#x %d\n",diskMask,disFlag);
   int diskInd=0;
   time_t rawtime=0;
   if(disFlag<0 || disFlag>1) 
@@ -1613,20 +1615,22 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
 
 int executeGpsdExtracommand(int command, unsigned char arg[2])
 {
+    printf("executeGpsdExtracommand %d %d %d\n",command,arg[0],arg[1]);
   time_t rawtime;    
   int ivalue=arg[0];
   int ivalue2=arg[1];
   switch(command) {
-  case GPS_SET_GGA_PERIOD:
-    if(ivalue==1)
-      configModifyInt("GPSd.config","adu5a","ggaPeriod",ivalue2,&rawtime);
-    else if(ivalue==2)
-      configModifyInt("GPSd.config","adu5b","ggaPeriod",ivalue2,&rawtime);
-    else if(ivalue==3)
-      configModifyInt("GPSd.config","g12","ggaPeriod",ivalue2,&rawtime);
-    sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;        
-  case GPS_SET_PAT_TELEM_EVERY:
+      case GPS_SET_GGA_PERIOD:
+	  printf("GPS_SET_GGA_PERIOD %d %d\n",ivalue,ivalue2);
+	  if(ivalue==1)
+	      configModifyInt("GPSd.config","adu5a","ggaPeriod",ivalue2,&rawtime);
+	  else if(ivalue==2)
+	      configModifyInt("GPSd.config","adu5b","ggaPeriod",ivalue2,&rawtime);
+	  else if(ivalue==3)
+	      configModifyInt("GPSd.config","g12","ggaPeriod",ivalue2,&rawtime);
+	  sendSignal(ID_GPSD,SIGUSR1);
+	  return rawtime;        
+      case GPS_SET_PAT_TELEM_EVERY:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","patTelemEvery",ivalue2,&rawtime);
     else if(ivalue==2)

@@ -1260,18 +1260,19 @@ void quickAddNeobrickPressAndTemp()
     unsigned long long neoSpaceUsed;
     unsigned long long neoSpaceAvailable;
     long long neoSpaceTotal;
-    float neoTemp;
-    float neoPress; 
+    float neoTemp=0;
+    float neoPress=0; 
     neoFile=fopen("/tmp/anita/neobrickSum.txt","r");
     if(neoFile) {
 	fscanf(neoFile,"%u %llu %llu %llu %f %f",&neoTime,&neoSpaceUsed,&neoSpaceAvailable,&neoSpaceTotal,&neoTemp,&neoPress);
-	if(printToScreen) printf("Neobrick\t%f\t%f\n",neoTemp,neoPress);	
 	fclose(neoFile);
     }
     float tempVolt=(neoTemp+273.15)/100.;
     float presVolt=(neoPress/400.);
     unsigned short tempAdc=((unsigned short)(tempVolt*(4055-2048)/4.9)+2048)<<4;
     unsigned short presAdc=((unsigned short)(presVolt*(4055-2048)/4.9)+2048)<<4;
+    if(printToScreen) printf("Neobrick\t%f\t%f\t%u\t%u\n",neoTemp,neoPress,(tempAdc>>4),(presAdc>>4));	
+
     rawDataStruct.board[1].data[38]=tempAdc;
     rawDataStruct.board[1].data[39]=presAdc;
 }
