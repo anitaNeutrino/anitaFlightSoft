@@ -479,9 +479,8 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	if(megaBytes<65535) megaBytes_short=megaBytes;
 	else megaBytes_short=65535;
 	dsPtr->diskSpace[7]=megaBytes_short;
-	if(printToScreen) printf("Neobick\t%u\n",megaBytes_short);
-	
-	
+	if(printToScreen) printf("Neobick\t%u\n",megaBytes_short);	
+	fclose(neoFile);
     }
     else {
 	dsPtr->diskSpace[7]=0;
