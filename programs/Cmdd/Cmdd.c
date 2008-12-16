@@ -3442,24 +3442,26 @@ int logRequestCommand(int logNum, int numLines)
 
 int killDataPrograms()
 {
-  int numDataProgs=10;
-  int dataProgs[10]={ID_HKD,
+  int numDataProgs=11;
+  int dataProgs[11]={ID_MONITORD,
+		     ID_HKD,
 		     ID_GPSD,
 		     ID_ARCHIVED,
 		     ID_CALIBD,
-		     ID_MONITORD,
 		     ID_PRIORITIZERD,
 		     ID_EVENTD,
 		     ID_ACQD,
 		     ID_PLAYBACKD,
-		     ID_LOGWATCHD};
-
+		     ID_LOGWATCHD,
+		     ID_NEOBRICKD};
+  
   int index=0,sleepCount=0;
   
   //Kill the disk writing programs
   for(index=0;index<numDataProgs;index++) {
     int progMask=getIdMask(dataProgs[index]);
     killPrograms(progMask);
+    if(index==0) sleep(1);
   }
   //Give them some time
   sleep(5); 
