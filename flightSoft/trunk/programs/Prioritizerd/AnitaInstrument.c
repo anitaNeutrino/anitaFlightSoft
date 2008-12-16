@@ -1136,6 +1136,7 @@ int determinePriority(){
      BuildInstrumentF(&unwrappedBody,&theInstrument);
 // quick check on rms in middle of record versus beginning
      float MaxRMS;
+//     printf("RMS Chan's -- %d %d %d\n"
      MaxRMS=CheckRMSRatio(&theInstrument,LowRMSChan,
 			  MidRMSChan,HighRMSChan);
      //     printf("%f - %d %d %d %d\n",MaxRMS,LowRMSChan,MidRMSChan,HighRMSChan,CutRMS);

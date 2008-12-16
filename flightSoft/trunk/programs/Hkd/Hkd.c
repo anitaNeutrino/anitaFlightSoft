@@ -61,6 +61,9 @@ void prepWriterStructs();
 /* Signal Handle */
 void handleBadSigs(int sig);
 
+//Neobrick Nonsense
+void quickAddNeobrickPressAndTemp();
+
 //Magnetometer Stuff
 int fdMag; //Magnetometer
 int sendMagRequests=1;
@@ -261,6 +264,7 @@ int main (int argc, char *argv[])
 		    lastCal=rawTime;
 		}
 		ip320Read(writeLookupFile);
+		quickAddNeobrickPressAndTemp();
 		outputData(IP320_RAW);
 		if(writeLookupFile) {
 		  prettyPrintPowerLookupFile();
@@ -1249,4 +1253,26 @@ void prettyPrintTempLookupFile()
   
 }
 
+void quickAddNeobrickPressAndTemp()
+{
+    FILE *neoFile=0;
+    unsigned int neoTime;
+    unsigned long long neoSpaceUsed;
+    unsigned long long neoSpaceAvailable;
+    long long neoSpaceTotal;
+    float neoTemp;
+    float neoPress; 
+    neoFile=fopen("/tmp/anita/neobrickSum.txt","r");
+    if(neoFile) {
+	fscanf(neoFile,"%u %llu %llu %llu %f %f",&neoTime,&neoSpaceUsed,&neoSpaceAvailable,&neoSpaceTotal,&neoTemp,&neoPress);
+	if(printToScreen) printf("Neobrick\t%f\t%f\n",neoTemp,neoPress);	
+	fclose(neoFile);
+    }
+    float tempVolt=(neoTemp+273.15)/100.;
+    float presVolt=(neoPress/400.);
+    unsigned short tempAdc=(unsigned short)(tempVolt*(4055-2048)/4.9)+2048;
+    unsigned short presAdc=(unsigned short)(presVolt*(4055-2048)/4.9)+2048;
+    rawDataStruct.board[1].data[38]=tempAdc;
+    rawDataStruct.board[1].data[39]=presAdc;
+}
 
