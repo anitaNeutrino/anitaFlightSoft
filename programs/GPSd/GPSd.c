@@ -284,38 +284,38 @@ int main (int argc, char *argv[])
 	time(&startTime);
 	
 	if(g12IniReset) {	  
-	  sleep(10);
+//	  sleep(10);
 	  CommandStruct_t theCmd;
 	  theCmd.fromSipd=0;
 	  theCmd.numCmdBytes=4;
 	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
 	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
-	  theCmd.cmd[2]=2;
+	  theCmd.cmd[2]=3;
 	  theCmd.cmd[3]=0;
 	  writeCommandAndLink(&theCmd);
 	}
 
 	if(adu5aIniReset) {	  
-	  sleep(10);
-	  CommandStruct_t theCmd;
-	  theCmd.fromSipd=0;
-	  theCmd.numCmdBytes=4;
-	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
-	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
-	  theCmd.cmd[2]=0;
-	  theCmd.cmd[3]=0;
-	  writeCommandAndLink(&theCmd);
-	}
-
-
-	if(adu5bIniReset) {	  
-	  sleep(10);
+//	  sleep(10);
 	  CommandStruct_t theCmd;
 	  theCmd.fromSipd=0;
 	  theCmd.numCmdBytes=4;
 	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
 	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
 	  theCmd.cmd[2]=1;
+	  theCmd.cmd[3]=0;
+	  writeCommandAndLink(&theCmd);
+	}
+
+
+	if(adu5bIniReset) {	  
+//	  sleep(10);
+	  CommandStruct_t theCmd;
+	  theCmd.fromSipd=0;
+	  theCmd.numCmdBytes=4;
+	  theCmd.cmd[0]=GPSD_EXTRA_COMMAND;
+	  theCmd.cmd[1]=GPS_SET_INI_RESET_FLAG;
+	  theCmd.cmd[2]=2;
 	  theCmd.cmd[3]=0;
 	  writeCommandAndLink(&theCmd);
 	}
