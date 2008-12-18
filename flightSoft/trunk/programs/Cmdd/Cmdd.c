@@ -1671,6 +1671,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","iniReset",ivalue2,&rawtime);
     sendSignal(ID_GPSD,SIGUSR1);           
+    return rawtime;
   case GPS_SET_ELEVATION_MASK:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","elevationMask",ivalue2,&rawtime);
@@ -1679,6 +1680,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","elevationMask",ivalue2,&rawtime);
     sendSignal(ID_GPSD,SIGUSR1);           
+    return rawtime;
   case GPS_SET_CYC_PHASE_ERROR:
       fvalue=((float)(2*ivalue2))/1000.;
       if(ivalue==1)
