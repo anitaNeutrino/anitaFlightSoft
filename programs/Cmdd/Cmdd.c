@@ -883,17 +883,13 @@ int executeCommand(CommandStruct_t *theCmd)
     return rawtime;
   case ACQD_SOFT_TRIG_FLAG: 	    
     ivalue=theCmd->cmd[1];
-    configModifyInt("Acqd.config","trigger","enableSoftTrigger",ivalue,&rawtime);
+    configModifyInt("Acqd.config","trigger","sendSoftTrigger",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
   case ACQD_SOFT_TRIG_PERIOD:
     ivalue=theCmd->cmd[1];
-    configModifyInt("Acqd.config","trigger","softTrigSleepPeriod",ivalue,NULL);
-    if(ivalue>0) 
-      configModifyInt("Acqd.config","trigger","sendSoftTrig",1,&rawtime);
-    else
-      configModifyInt("Acqd.config","trigger","sendSoftTrig",0,&rawtime);
+    configModifyInt("Acqd.config","trigger","softTrigPeriod",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -1619,6 +1615,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
   time_t rawtime;    
   int ivalue=arg[0];
   int ivalue2=arg[1];
+  float fvalue=0;
   switch(command) {
       case GPS_SET_GGA_PERIOD:
 	  printf("GPS_SET_GGA_PERIOD %d %d\n",ivalue,ivalue2);
@@ -1673,7 +1670,38 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       configModifyInt("GPSd.config","adu5b","iniReset",ivalue2,&rawtime);
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","iniReset",ivalue2,&rawtime);
-    sendSignal(ID_GPSD,SIGUSR1);
+    sendSignal(ID_GPSD,SIGUSR1);           
+  case GPS_SET_ELEVATION_MASK:
+    if(ivalue==1)
+      configModifyInt("GPSd.config","adu5a","elevationMask",ivalue2,&rawtime);
+    else if(ivalue==2)
+      configModifyInt("GPSd.config","adu5b","elevationMask",ivalue2,&rawtime);
+    else if(ivalue==3)
+      configModifyInt("GPSd.config","g12","elevationMask",ivalue2,&rawtime);
+    sendSignal(ID_GPSD,SIGUSR1);           
+  case GPS_SET_CYC_PHASE_ERROR:
+      fvalue=((float)(2*ivalue2))/1000.;
+      if(ivalue==1)
+	  configModifyFloat("GPSd.config","adu5a","cycPhaseErrorThreshold",fvalue,&rawtime);
+      else if(ivalue==2)
+	  configModifyFloat("GPSd.config","adu5b","cycPhaseErrorThreshold",fvalue,&rawtime);
+      sendSignal(ID_GPSD,SIGUSR1);
+    return rawtime;                         
+  case GPS_SET_MXB_BASELINE_ERROR:
+      fvalue=((float)(ivalue2))/1000.;
+      if(ivalue==1)
+	  configModifyFloat("GPSd.config","adu5a","mxbBaselineError",fvalue,&rawtime);
+      else if(ivalue==2)
+	  configModifyFloat("GPSd.config","adu5b","mxbBaselineError",fvalue,&rawtime);
+      sendSignal(ID_GPSD,SIGUSR1);
+    return rawtime;                                
+  case GPS_SET_MXM_PHASE_ERROR:
+      fvalue=((float)(ivalue2))/1000.;
+      if(ivalue==1)
+	  configModifyFloat("GPSd.config","adu5a","mxmPhaseError",fvalue,&rawtime);
+      else if(ivalue==2)
+	  configModifyFloat("GPSd.config","adu5b","mxmPhaseError",fvalue,&rawtime);
+      sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;              
   default:
     syslog(LOG_ERR,"Unknown GPSd Extra Command -- %d",command);

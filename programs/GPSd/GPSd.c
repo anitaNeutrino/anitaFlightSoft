@@ -98,6 +98,7 @@ int g12ClockSkew=0;
 int g12EnableTtt=0;
 int g12TttEpochRate=20;
 int g12IniReset=0;
+int g12ElevationMask=0;
 
 // Config stuff for ADU5A
 int adu5aEnableTtt=0;
@@ -114,6 +115,10 @@ float adu5aRelV12[3]={0};
 float adu5aRelV13[3]={0};
 float adu5aRelV14[3]={0};
 int adu5aIniReset=0;
+float adu5aCycPhaseErrorThreshold=0.2;
+float adu5aMxbBaselineError=0.035;
+float adu5aMxmPhaseError=0.005;
+int adu5aElevationMask=0;
 
 // Config stuff for ADU5B
 int adu5bEnableTtt=0;
@@ -130,6 +135,10 @@ float adu5bRelV12[3]={0};
 float adu5bRelV13[3]={0};
 float adu5bRelV14[3]={0};
 int adu5bIniReset=0;
+float adu5bCycPhaseErrorThreshold=0.2;
+float adu5bMxbBaselineError=0.035;
+float adu5bMxmPhaseError=0.005;
+int adu5bElevationMask=0;
 
 //Stuff for GPS Phi Masking
 int enableGpsPhiMasking=0;
@@ -388,7 +397,8 @@ int readConfigFile()
     kvpReset();
     kvpStatus = configLoad ("GPSd.config","g12");
     if(kvpStatus == CONFIG_E_OK) {
-      g12IniReset=kvpGetInt("iniReset",0);
+	g12ElevationMask=kvpGetInt("elevationMask",0);
+	g12IniReset=kvpGetInt("iniReset",0);
 	g12EnableTtt=kvpGetInt("enableTtt",1);
 	g12TttEpochRate=kvpGetInt("tttEpochRate",20);
 	if(g12TttEpochRate!=20 && g12TttEpochRate!=10 &&
@@ -420,6 +430,10 @@ int readConfigFile()
     kvpReset();
     kvpStatus = configLoad ("GPSd.config","adu5a") ;    
     if(kvpStatus == CONFIG_E_OK) {
+	adu5aElevationMask=kvpGetInt("elevationMask",0);
+	adu5aCycPhaseErrorThreshold=kvpGetFloat("cycPhaseErrorThreshold",0.2);
+	adu5aMxbBaselineError=kvpGetFloat("mxbBaselineError",0.035);
+	adu5aMxmPhaseError=kvpGetFloat("mxmPhaseError",0.005);
       adu5aIniReset=kvpGetInt("iniReset",0);
       adu5aEnableTtt=kvpGetInt("enableTtt",1);
       adu5aSatPeriod=kvpGetInt("satPeriod",600); // in seconds
@@ -451,7 +465,11 @@ int readConfigFile()
     kvpReset();
     kvpStatus = configLoad ("GPSd.config","adu5b") ;    
     if(kvpStatus == CONFIG_E_OK) {
-      adu5bIniReset=kvpGetInt("iniReset",0);
+	adu5aElevationMask=kvpGetInt("elevationMask",0);
+	adu5aCycPhaseErrorThreshold=kvpGetFloat("cycPhaseErrorThreshold",0.2);
+	adu5aMxbBaselineError=kvpGetFloat("mxbBaselineError",0.035);
+	adu5aMxmPhaseError=kvpGetFloat("mxmPhaseError",0.005);
+	adu5bIniReset=kvpGetInt("iniReset",0);
 	adu5bEnableTtt=kvpGetInt("enableTtt",1);
 	adu5bSatPeriod=kvpGetInt("satPeriod",600); // in seconds
 	adu5bZdaPeriod=kvpGetInt("zdaPeriod",600); // in seconds
@@ -588,6 +606,26 @@ int setupG12()
     char ppsEdge='R';
     int retVal;
 
+    
+    if(g12IniReset) {
+      strcat(tempCommand,"$PASHS,INI,5,4,1\n");
+      retVal=write(fdG12, tempCommand, strlen(tempCommand));
+      if(retVal<0) {
+	  syslog(LOG_ERR,"Unable to write to G12 Serial port\n, write: %s",
+		 strerror(errno));
+	  fprintf(stderr,"Unable to write to G12 Serial port\n, write: %s",
+		  strerror(errno));
+	  
+      }
+      else {
+	  syslog(LOG_INFO,"Sent $PASHS,INI to G12 serial port");
+	  printf("Sent $PASHS,INI to G12 serial port\n");
+	  
+      }
+      sleep(20);
+    }
+
+
     if(g12NtpPort==1 || g12NtpPort==2) ntpPort=portNames[g12NtpPort-1];
     if(g12DataPort==1 || g12DataPort==2) dataPort=portNames[g12DataPort-1];
     if(g12PpsRisingOrFalling==1 || g12PpsRisingOrFalling==2)
@@ -603,14 +641,12 @@ int setupG12()
 	sprintf(g12Command,"$PASHS,POP,10\n");
     }
 
-    if(g12IniReset) {
-      strcat(g12Command,"$PASHS,INI,5,4,1\n");
-    }
 
     strcat(g12Command,"$PASHQ,PRT\n");
     strcat(g12Command,"$PASHQ,RIO\n");
 //    strcat(g12Command,"$PASHQ,PRT,B\n");
-    strcat(g12Command,"$PASHS,ELM,0\n");
+    sprintf(tempCommand,"$PASHS,ELM,%d\n",g12ElevationMask);
+    strcat(g12Command,tempCommand);
 
     sprintf(tempCommand,"$PASHS,NME,ALL,%c,OFF\n",dataPort);
     strcat(g12Command,tempCommand);
@@ -2010,18 +2046,39 @@ int updateClockFromG12(time_t gpsRawTime)
 int setupAdu5A()
 /*! Initializes the ADU5A with the correct settings */
 {
-    char adu5aCommand[1024]="";
+    char adu5aCommand[2048]="";
     char tempCommand[128]="";
     int retVal;
     if(adu5aIniReset) {
-      strcat(adu5aCommand,"$PASHS,INI\r\n");
+	strcat(tempCommand,"$PASHS,INI\r\n");
+	retVal=write(fdAdu5A, tempCommand, strlen(tempCommand));
+	if(retVal<0) {
+	    syslog(LOG_ERR,"Unable to write to ADU5A Serial port\n, write: %s",
+		   strerror(errno));
+	    if(printToScreen)
+		fprintf(stderr,"Unable to write to ADU5A Serial port\n");
+	}
+	else {
+	    syslog(LOG_INFO,"Sent $PASHS,INI to ADU5A serial port");
+	    if(printToScreen)
+		printf("Sent $PASHS,INI  to ADU5A serial port\n");
+	    sleep(20);
+	}
     }
 
     strcat(adu5aCommand,"$PASHQ,PRT\r\n");
     strcat(adu5aCommand,"$PASHQ,RIO\r\n");
     strcat(adu5aCommand,"$PASHQ,BIT\r\n");
     strcat(adu5aCommand,"$PASHQ,TST\r\n");
-    strcat(adu5aCommand,"$PASHS,ELM,0\r\n"); 
+    sprintf(tempCommand,"$PASHS,ELM,%d\r\n",adu5aElevationMask); 
+    strcat(adu5aCommand,tempCommand);
+    sprintf(tempCommand,"$PASHS,3DF,CYC,%1.3f\r\n",adu5aCycPhaseErrorThreshold);
+    strcat(adu5aCommand,tempCommand);
+    sprintf(tempCommand,"$PASHS,3DF,MXM,%1.3f\r\n",adu5aMxmPhaseError);
+    strcat(adu5aCommand,tempCommand);
+    sprintf(tempCommand,"$PASHS,3DF,MXB,%1.3f\r\n",adu5aMxbBaselineError);
+    strcat(adu5aCommand,tempCommand);
+
     strcat(adu5aCommand,"$PASHS,KFP,ON\r\n");
     
     sprintf(tempCommand,"$PASHS,3DF,V12,%2.3f,%2.3f,%2.3f\r\n",
@@ -2073,19 +2130,39 @@ int setupAdu5A()
 int setupAdu5B()
 /*! Initializes the ADU5B with the correct settings */
 {
-    char adu5bCommand[1024]="";
+    char adu5bCommand[2048]="";
     char tempCommand[128]="";
     int retVal;
 
-
     if(adu5bIniReset) {
-      strcat(adu5bCommand,"$PASHS,INI\r\n");
+	strcat(tempCommand,"$PASHS,INI\r\n");
+	retVal=write(fdAdu5B, tempCommand, strlen(tempCommand));
+	if(retVal<0) {
+	    syslog(LOG_ERR,"Unable to write to ADU5B Serial port\n, write: %s",
+		   strerror(errno));
+	    if(printToScreen)
+		fprintf(stderr,"Unable to write to ADU5B Serial port\n");
+	}
+	else {
+	    syslog(LOG_INFO,"Sent $PASHS,INI to ADU5B serial port");
+	    if(printToScreen)
+		printf("Sent $PASHS,INI to ADU5B serial port\n");
+	    sleep(20);
+	}
     }
+
     strcat(adu5bCommand,"$PASHQ,PRT\r\n");
     strcat(adu5bCommand,"$PASHQ,RIO\r\n");
     strcat(adu5bCommand,"$PASHQ,BIT\r\n");
     strcat(adu5bCommand,"$PASHQ,TST\r\n");
-    strcat(adu5bCommand,"$PASHS,ELM,0\r\n"); 
+    sprintf(tempCommand,"$PASHS,ELM,%d\r\n",adu5bElevationMask); 
+    strcat(adu5bCommand,tempCommand);
+    sprintf(tempCommand,"$PASHS,3DF,CYC,%1.3f\r\n",adu5bCycPhaseErrorThreshold);
+    strcat(adu5bCommand,tempCommand);
+    sprintf(tempCommand,"$PASHS,3DF,MXM,%1.3f\r\n",adu5bMxmPhaseError);
+    strcat(adu5bCommand,tempCommand);
+    sprintf(tempCommand,"$PASHS,3DF,MXB,%1.3f\r\n",adu5bMxbBaselineError);
+    strcat(adu5bCommand,tempCommand);
     strcat(adu5bCommand,"$PASHS,KFP,ON\r\n");    
     sprintf(tempCommand,"$PASHS,3DF,V12,%2.3f,%2.3f,%2.3f\r\n",
 	    adu5bRelV12[0],adu5bRelV12[1],adu5bRelV12[2]);
