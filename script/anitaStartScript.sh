@@ -22,23 +22,23 @@ sudo -u anita cp /home/anita/flightSoft/config/defaults/Prioritizerd.config.0 /h
 sudo -u anita cp /home/anita/flightSoft/config/defaults/SIPd.config.0 /home/anita/flightSoft/config/SIPd.config
 
 sudo -u anita /home/anita/flightSoft/script/startNewRun.sh
-
+sudo -u anita /home/anita/flightSoft/script/createConfigAndLog.sh
 
 #Start Cmdd
-nice -n -20 daemon -u anita -r Cmdd -n Cmdd
+daemon -u anita -r Cmdd -n Cmdd
 
 #Will have to change this to move 
 sleep 10
 
-daemon -u anita -A 20 -L 30 -r Archived -n Archived
-daemon -u anita -A 20 -L 30 -r Eventd -n Eventd
-daemon -u anita -r GPSd -n GPSd
-daemon -u anita -r Hkd -n Hkd
-daemon -u anita -r LOSd -n LOSd
-nice -n -5 daemon -u anita -r Prioritizerd -n Prioritizerd
-daemon -u anita -r Monitord -n Monitord
-daemon -u anita -r Calibd -n Calibd
-daemon -u anita -r Playbackd -n Playbackd
-daemon -u anita -r Neobrickd -n Neobrickd
+nice -n 15 daemon -u anita -A 20 -L 30 -r Archived -n Archived
+nice -n 20 daemon -u anita -A 20 -L 30 -r Eventd -n Eventd
+nice -n 20 daemon -u anita -r GPSd -n GPSd
+nice -n 20 daemon -u anita -r Hkd -n Hkd
+nice -n 20 daemon -u anita -r LOSd -n LOSd
+nice -n 15 daemon -u anita -r Prioritizerd -n Prioritizerd
+nice -n 20 daemon -u anita -r Monitord -n Monitord
+nice -n 20 daemon -u anita -r Calibd -n Calibd
+nice -n 20 daemon -u anita -r Playbackd -n Playbackd
+nice -n 20 daemon -u anita -r Neobrickd -n Neobrickd
 sleep 5
-daemon -u anita -r Acqd -n Acqd
+nice -n 10 daemon -u anita -r Acqd -n Acqd
