@@ -122,7 +122,7 @@ int getSurfStatusFlag(int surfFd, SurfStatusFlag_t flag) ;
 int setSurfControl(int surfFd, SurfControlAction_t action);
 int setDACThresholds(int surfFd, unsigned int thresholdArray[]);
 int setGlobalDACThreshold(int surfFd, int thresVal);
-void quickThresholdScan(int surfFd);
+void quickThresholdScan(int surfFd, int printScaler);
 void otherThresholdScan(int surfFd);
 int simpleReadHk(int surfFd, unsigned int hkVals[]);
 void quickTimeTest(int surfFd);
@@ -142,12 +142,13 @@ int main(int argc, char **argv) {
     int retVal=0;
     unsigned long start,opened;
 
-    if(argc<3) {
-      printf("Usage: %s <bus> <slot>\n",argv[0]);
+    if(argc<4) {
+      printf("Usage: %s <bus> <slot> <scaler>\n",argv[0]);
       return -1;
     }
     int bus=atoi(argv[1]);
     int slot=atoi(argv[2]);
+    int scaler=atoi(argv[3]);
 	
     char devName[180];
     sprintf(devName,"/dev/%d:%d",bus,slot);
@@ -164,7 +165,7 @@ int main(int argc, char **argv) {
     //Send Clear All
     setSurfControl(surfFd,SurfClearAll);
 
-    quickThresholdScan(surfFd);
+    quickThresholdScan(surfFd,scaler);
 //    otherThresholdScan(surfFd);
     printSlotAndBus(surfFd);
   
@@ -216,9 +217,9 @@ void quickTimeTest(int surfFd) {
     printf("Hk Reading took %lu %lu %lu cycles\n",afterRead,beforeRead,afterRead-beforeRead);
 }
 
-void quickThresholdScan(int surfFd) {
+void quickThresholdScan(int surfFd, int printScaler) {
     int globVal=0;
-    int trigChan=0,i;
+    //    int trigChan=0,i;
     unsigned int hkVals[72];
     for(globVal=0;globVal<4096;globVal+=1) {
 	setGlobalDACThreshold(surfFd,globVal);
@@ -229,8 +230,8 @@ void quickThresholdScan(int surfFd) {
 	
 	//Check scalers look OK.
 	int readBackErrCount=0;
-	for(i=0;i<72;i++) 
-	  printf("%d %d 0x%x\t(%d)\n",globVal,i,hkVals[i],(hkVals[i]&0xffff));
+	//	for(i=0;i<72;i++) 
+	printf("%d %d 0x%x\t(%d)\n",globVal,printScaler,hkVals[printScaler],(hkVals[printScaler]&0xffff));
 	/* for(trigChan=0;trigChan<N_RFTRIG;trigChan++) { */
 
 	/*     int dacVal=hkVals[trigChan+N_RFTRIG]&0xffff; */
