@@ -141,13 +141,23 @@ int main(int argc, char **argv) {
     int surfFd=0;
     int retVal=0;
     unsigned long start,opened;
+
+    if(argc<3) {
+      printf("Usage: %s <bus> <slot>\n",argv[0]);
+      return -1;
+    }
+    int bus=atoi(argv[1]);
+    int slot=atoi(argv[2]);
 	
+    char devName[180];
+    sprintf(devName,"/dev/%d:%d",bus,slot);
+
     start=readTSC();
     
-    surfFd = open("/dev/surf-1", O_RDWR);
+    surfFd = open(devName, O_RDWR);
     if (surfFd < 0) {
-	fprintf(stderr,"Can't open surf-0\n");
-	exit(1);
+      fprintf(stderr,"Can't open %s\n",devName);
+      exit(1);
     }
     opened=readTSC();
     
