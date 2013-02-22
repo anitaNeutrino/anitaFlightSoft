@@ -252,7 +252,7 @@ void quickThresholdScan(int surfFd) {
 
 void otherThresholdScan(int surfFd) {
     unsigned int thresholdArray[32];
-    int trigChanSet=0,trigChanTest;
+    int trigChanSet=0,trigChanTest,i;
     int setDacVal=0;
     unsigned int hkVals[72];
     for(trigChanSet=0;trigChanSet<N_RFTRIG;trigChanSet++) {
