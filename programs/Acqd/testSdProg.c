@@ -218,7 +218,7 @@ void quickTimeTest(int surfFd) {
 
 void quickThresholdScan(int surfFd) {
     int globVal=0;
-    int trigChan=0;
+    int trigChan=0,i;
     unsigned int hkVals[72];
     for(globVal=0;globVal<4096;globVal+=1) {
 	setGlobalDACThreshold(surfFd,globVal);
@@ -229,21 +229,21 @@ void quickThresholdScan(int surfFd) {
 	
 	//Check scalers look OK.
 	int readBackErrCount=0;
-//	for(i=0;i<72;i++) 
-//	    printf("%d %d 0x%x\t(%d)\n",globVal,i,hkVals[i],(hkVals[i]&0xffff));
-	for(trigChan=0;trigChan<N_RFTRIG;trigChan++) {
+	for(i=0;i<72;i++) 
+	  printf("%d %d 0x%x\t(%d)\n",globVal,i,hkVals[i],(hkVals[i]&0xffff));
+	/* for(trigChan=0;trigChan<N_RFTRIG;trigChan++) { */
 
-	    int dacVal=hkVals[trigChan+N_RFTRIG]&0xffff;
-	    if(dacVal!=globVal) {
-		readBackErrCount++;
-		printf("Error: Chan %d (%d != %d) -- hkVal 0x%x\n",trigChan,dacVal,globVal,hkVals[trigChan+N_RFTRIG]);
-	    }
-	    int scalerVal=hkVals[trigChan]&0xffff;
-	    if(trigChan==0) {
-		printf("Chan %d -- Threshold %d (%d) -- Scaler %d\n",
-		       trigChan,dacVal,globVal,scalerVal);
-	    }
-	}
+	/*     int dacVal=hkVals[trigChan+N_RFTRIG]&0xffff; */
+	/*     if(dacVal!=globVal) { */
+	/* 	readBackErrCount++; */
+	/* 	printf("Error: Chan %d (%d != %d) -- hkVal 0x%x\n",trigChan,dacVal,globVal,hkVals[trigChan+N_RFTRIG]); */
+	/*     } */
+	/*     int scalerVal=hkVals[trigChan]&0xffff; */
+	/*     if(trigChan==0) { */
+	/* 	printf("Chan %d -- Threshold %d (%d) -- Scaler %d\n", */
+	/* 	       trigChan,dacVal,globVal,scalerVal); */
+	/*     } */
+	/* } */
 	
 
     }    
@@ -267,8 +267,6 @@ void otherThresholdScan(int surfFd) {
 	    
 	    //Check scalers look OK.
 	    int readBackErrCount=0;
-	for(i=0;i<72;i++) 
-	  printf("%d %d 0x%x\t(%d)\n",globVal,i,hkVals[i],(hkVals[i]&0xffff));
 	    /* for(trigChanTest=0;trigChanTest<N_RFTRIG;trigChanTest++) { */
 	    /* 	int dacVal=hkVals[trigChanTest+N_RFTRIG]&0xffff; */
 	    /* 	if(dacVal!=thresholdArray[trigChanTest]) { */
