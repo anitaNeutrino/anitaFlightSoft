@@ -267,21 +267,21 @@ void otherThresholdScan(int surfFd) {
 	    
 	    //Check scalers look OK.
 	    int readBackErrCount=0;
-//	for(i=0;i<72;i++) 
-//	    printf("%d %d 0x%x\t(%d)\n",globVal,i,hkVals[i],(hkVals[i]&0xffff));
-	    for(trigChanTest=0;trigChanTest<N_RFTRIG;trigChanTest++) {
-		int dacVal=hkVals[trigChanTest+N_RFTRIG]&0xffff;
-		if(dacVal!=thresholdArray[trigChanTest]) {
-		    readBackErrCount++;
-		    printf("Error: Chan %d (%d != %d) -- hkVal 0x%x\n",trigChanTest,dacVal,thresholdArray[trigChanTest],hkVals[trigChanTest+N_RFTRIG]);
-		}
-		int scalerVal=hkVals[trigChanTest]&0xffff;
-		if(trigChanTest==trigChanSet) {
-		    printf("Chan %d -- Threshold %d (%d) -- Scaler %d\n",
-			   trigChanTest,dacVal,thresholdArray[trigChanTest],scalerVal);
-		}
+	for(i=0;i<72;i++) 
+	  printf("%d %d 0x%x\t(%d)\n",globVal,i,hkVals[i],(hkVals[i]&0xffff));
+	    /* for(trigChanTest=0;trigChanTest<N_RFTRIG;trigChanTest++) { */
+	    /* 	int dacVal=hkVals[trigChanTest+N_RFTRIG]&0xffff; */
+	    /* 	if(dacVal!=thresholdArray[trigChanTest]) { */
+	    /* 	    readBackErrCount++; */
+	    /* 	    printf("Error: Chan %d (%d != %d) -- hkVal 0x%x\n",trigChanTest,dacVal,thresholdArray[trigChanTest],hkVals[trigChanTest+N_RFTRIG]); */
+	    /* 	} */
+	    /* 	int scalerVal=hkVals[trigChanTest]&0xffff; */
+	    /* 	if(trigChanTest==trigChanSet) { */
+	    /* 	    printf("Chan %d -- Threshold %d (%d) -- Scaler %d\n", */
+	    /* 		   trigChanTest,dacVal,thresholdArray[trigChanTest],scalerVal); */
+	    /* 	} */
 		
-	    }
+	    /* } */
 	}	
     }        
 }
@@ -512,3 +512,4 @@ void printSlotAndBus(int surfFd)
 	    PCI_SLOT(slot&0xFF),
 	    PCI_FUNC(slot&0xFF));
 }
+
