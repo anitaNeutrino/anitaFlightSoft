@@ -122,8 +122,8 @@ int getSurfStatusFlag(int surfFd, SurfStatusFlag_t flag) ;
 int setSurfControl(int surfFd, SurfControlAction_t action);
 int setDACThresholds(int surfFd, unsigned int thresholdArray[]);
 int setGlobalDACThreshold(int surfFd, int thresVal);
-void quickThreholdScan(int surfFd);
-void otherThreholdScan(int surfFd);
+void quickThresholdScan(int surfFd);
+void otherThresholdScan(int surfFd);
 int simpleReadHk(int surfFd, unsigned int hkVals[]);
 void quickTimeTest(int surfFd);
 void printSlotAndBus(int surfFd);
@@ -164,8 +164,8 @@ int main(int argc, char **argv) {
     //Send Clear All
     setSurfControl(surfFd,SurfClearAll);
 
-//    quickThreholdScan(surfFd);
-//    otherThreholdScan(surfFd);
+    quickThresholdScan(surfFd);
+//    otherThresholdScan(surfFd);
     printSlotAndBus(surfFd);
   
     retVal=close(surfFd);
@@ -216,7 +216,7 @@ void quickTimeTest(int surfFd) {
     printf("Hk Reading took %lu %lu %lu cycles\n",afterRead,beforeRead,afterRead-beforeRead);
 }
 
-void quickThreholdScan(int surfFd) {
+void quickThresholdScan(int surfFd) {
     int globVal=0;
     int trigChan=0;
     unsigned int hkVals[72];
@@ -250,7 +250,7 @@ void quickThreholdScan(int surfFd) {
 }
 
 
-void otherThreholdScan(int surfFd) {
+void otherThresholdScan(int surfFd) {
     unsigned int thresholdArray[32];
     int trigChanSet=0,trigChanTest;
     int setDacVal=0;
