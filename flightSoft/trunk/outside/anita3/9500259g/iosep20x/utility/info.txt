@@ -1,0 +1,50 @@
+
+
+
+                                    Acromag, Inc.
+                                 30765 S.Wixom Road
+                                    P.O. Box 437
+                              Wixom, Michigan 48393-7037
+
+                                Phone: (248)295-0310
+                                 FAX: (248)624-9234
+
+                               Linux Software Library
+
+
+                                        V1.0
+                                      04/01/09
+
+
+
+               The  information  in this manual is subject to  change
+               without notice.   Acromag,  Inc.  makes no warranty of
+               any kind with regard to this material and accompanying
+               software,  including, but not limited to , the implied
+               warranties  of  merchantability  and  fitness  for   a
+               particular   purpose.    Acromag,   Inc.   assumes  no
+               responsibility for any errors that may appear in  this
+               manual and accompanying software.
+
+               See GPL.txt and LGPL.txt.
+
+
+
+
+
+
+      HFileGenerator.c  - Source  code for the HFileGenerator  program.
+      The  source  code  may  be  compiled  to  produce  an  executable
+      HFileGenerator program on most operating systems.
+
+      HFileGenerator -  This application is used to create  a 'C'  style
+      '.h' source file that contains the data parsed from an 'Intel.hex'
+      file.      The  resulting  '.h'  file  can  be  used  to  compile
+      configuration data into the application.
+      The  user   then   writes   the   contents   of  the   array   to
+      the board.  The file pldcfgep20x.c expects the file 'ninek528a.h'
+      ( output from  HFileGenerator )  to  be  located in  the same
+      directory.
+
+      Examine buildxxxx.bat files for command line syntax.
+
