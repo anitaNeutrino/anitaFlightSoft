@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+#
+touch /var/lock/subsys/local
+#
+# Create persistent device nodes for Acromag PCIe board products.
+#
+# For model APCe8650
+# Create a device node in the /dev directory using
+# /bin/mknod apc8650_0 c 45 0
+# /bin/mknod apc8650_1 c 45 1
+# /bin/mknod apc8650_2 c 45 2
+# /bin/mknod apc8650_3 c 45 3
+#
+# The command line items are as follows:
+# apc8650_x - Device name x = instance of the device.
+#  c        - Character device driver.
+# 45        - Major number defined in the device driver file.
+#  x        - Minor number 0 to 3.
+#
+# You may also need to change the permissions of this file.
+# From a console use 'sudo nautilus --browser'
+#
+# Owner = root
+# Group = root
+# Execute = Allow executing as a program
+# SELinux Context = initrc_exec_t
+#
+#Acromag apc8650
+if [ ! -r /dev/apc8650_0 ]; then
+echo "apc8650_0 thru 3"
+/bin/mknod -m 666 /dev/apc8650_0 c 45 0
+/bin/mknod -m 666 /dev/apc8650_1 c 45 1
+/bin/mknod -m 666 /dev/apc8650_2 c 45 2
+/bin/mknod -m 666 /dev/apc8650_3 c 45 3
+fi
