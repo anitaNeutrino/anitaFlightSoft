@@ -22,13 +22,15 @@ int main (int argc, char **argv)
   for(tempIndex=0;tempIndex<NUM_SBS_TEMPS;tempIndex++) {
     printf("%s\t",getSBSTemperatureLabel(tempIndex));
   }  
-
+  printf("\n");
+    
   while(1) {
     printf("%u\t",time(NULL));
     for(tempIndex=0;tempIndex<NUM_SBS_TEMPS;tempIndex++) {
-      printf("%d\t",readSBSTemperature(tempIndex));
+      printf("%3.1f\t",convertAnitaToHuman(readSBSTemperature(tempIndex)));
     }  
     printf("\n");
+
     sleep(dt);
     
   }

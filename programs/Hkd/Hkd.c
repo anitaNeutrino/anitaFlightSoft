@@ -340,13 +340,12 @@ int readConfigFile()
 
 int readSBSTemps ()
 {  
-  sbsData.temp[0]=readSBSTemperatureFile("/sys/class/hwmon/hwmon0/device/temp1_input");
-  sbsData.temp[1]=readSBSTemperatureFile("/sys/class/hwmon/hwmon0/device/temp2_input");
-  sbsData.temp[2]=readSBSTemperatureFile("/sys/class/hwmon/hwmon1/device/temp1_input");
-  sbsData.temp[3]=readSBSTemperatureFile("/sys/class/hwmon/hwmon2/device/temp1_input");
+  int tempIndex=0;
+  for(tempIndex=0;tempIndex<NUM_SBS_TEMPS;tempIndex++) {
+    sbsData.temp[tempIndex]=readSBSTemperature(tempIndex);
+  }
   if(printToScreen) {
-    printf("SBS Temps:\t%d %d %d %d\n",25*sbsData.temp[0],25*sbsData.temp[1],
-	   25*sbsData.temp[2],25*sbsData.temp[3]);
+    printf("SBS Temps:\t%%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
   }
   return 0;
 }
@@ -358,8 +357,7 @@ void printSBSTemps (void)
     retVal=readSBSTemps();
     unixTime=time(NULL);
     if(!retVal) 
-      printf("%d %d %d %d %d\n",unixTime,sbsData.temp[0],sbsData.temp[1],
-	     sbsData.temp[2],sbsData.temp[3]);
+      printf("SBS Temps:\t%%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
     /* Don't know what to do if it doesn't work */
 }
 
@@ -1222,12 +1220,12 @@ void prettyPrintTempLookupFile()
 
   
 
-  fprintf(outFile,"\nSBS\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n",
-	  ((float)sbsData.temp[0])*25e-3,
-	  ((float)sbsData.temp[1])*25e-3,
-	  15+((float)sbsData.temp[2])*25e-3,
-	  15+((float)sbsData.temp[3])*25e-3);
-
+  fprintf(outFile,"\nSBS\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n",
+	  convertAnitaToHuman(sbsData.temp[0])),
+	  convertAnitaToHuman(sbsData.temp[1])),
+	  convertAnitaToHuman(sbsData.temp[2])),
+	  convertAnitaToHuman(sbsData.temp[3])),
+	  convertAnitaToHuman(sbsData.temp[4])));
 
   fclose(outFile);
   
