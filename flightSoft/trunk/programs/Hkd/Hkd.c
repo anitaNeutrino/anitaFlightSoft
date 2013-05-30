@@ -345,7 +345,7 @@ int readSBSTemps ()
     sbsData.temp[tempIndex]=readSBSTemperature(tempIndex);
   }
   if(printToScreen) {
-    printf("SBS Temps:\t%%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
+    printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
   }
   return 0;
 }
@@ -357,7 +357,7 @@ void printSBSTemps (void)
     retVal=readSBSTemps();
     unixTime=time(NULL);
     if(!retVal) 
-      printf("SBS Temps:\t%%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
+      printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
     /* Don't know what to do if it doesn't work */
 }
 
