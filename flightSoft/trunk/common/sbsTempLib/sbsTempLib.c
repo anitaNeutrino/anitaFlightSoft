@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <syslog.h>
 #include <libgen.h> //For Mac OS X
 
 #include "sbsTempLib.h"
