@@ -20,13 +20,13 @@ int main (int argc, char **argv)
 
   printf("unixTime\t");
   for(tempIndex=0;tempIndex<NUM_SBS_TEMPS;tempIndex++) {
-    printf("%s\t",getSbsTemperatureLabel(tempIndex));
+    printf("%s\t",getSBSTemperatureLabel(tempIndex));
   }  
 
   while(1) {
     printf("%u\t",time(NULL));
     for(tempIndex=0;tempIndex<NUM_SBS_TEMPS;tempIndex++) {
-      printf("%d\t",readSbsTemperature(tempIndex));
+      printf("%d\t",readSBSTemperature(tempIndex));
     }  
     printf("\n");
     sleep(dt);

@@ -21,7 +21,7 @@ typedef enum {
 } SbsTempIndex_t;
 
 
-const char *getSbsTemperatureLabel(SbsTempIndex_t index);
+const char *getSBSTemperatureLabel(SbsTempIndex_t index);
 int readSBSTemperature(SbsTempIndex_t index);
 int readSBSTemperatureFile(const char *tempFile);
 
