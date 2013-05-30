@@ -24,6 +24,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "serialLib/serialLib.h"
+#include "sbsTempLib/sbsTempLib.h"
 #include "includes/anitaStructures.h"
 
 /* Vendor includes */
@@ -35,10 +36,6 @@
 int readConfigFile();
 int sortOutPidFile(char *progName);
 
-/* SBS Temperature Reading Functions */
-void printSBSTemps (void);
-int readSBSTemps ();
-int readSBSTemperatureFile(const char *tempFile);
 
 /* Acromag Functions */
 void acromagSetup();
@@ -63,6 +60,11 @@ void handleBadSigs(int sig);
 
 //Neobrick Nonsense
 void quickAddNeobrickPressAndTemp();
+
+
+/* SBS Temperature Reading Functions */
+void printSBSTemps (void);
+int readSBSTemps ();
 
 //Magnetometer Stuff
 int fdMag; //Magnetometer
@@ -335,28 +337,6 @@ int readConfigFile()
 }
 
 
-int readSBSTemperatureFile(const char *tempFile)
-{
-  static int errorCounter=0;
-  int fd,retVal=0;
-  char temp[6];
-  int temp_con;
-  fd = open(tempFile, O_RDONLY);
-  if(fd<0) {
-    if(errorCounter<100) {
-      fprintf(stderr,"Error opening %s -- %s (Error %d of 100)",tempFile,strerror(errno),errorCounter);
-      syslog(LOG_ERR,"Error opening %s -- %s (Error %d of 100)",tempFile,strerror(errno),errorCounter);
-    }
-  }
-  else {    
-    retVal=read(fd, temp, 6);   
-    temp[5] = 0x0;
-    temp_con = (atoi(temp)*4)/100;  // Reflects the accuracy of the temperature
-    close(fd);
-    return temp_con;
-  }
-  return 0;
-}
 
 int readSBSTemps ()
 {  
