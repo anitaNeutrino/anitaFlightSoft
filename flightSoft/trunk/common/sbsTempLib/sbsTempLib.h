@@ -10,6 +10,7 @@
 #ifndef SBSTEMPLIB_H
 #define SBSTEMPLIB_H
 
+#define NUM_SBS_TEMPS 5
 ///< Will give them more meaningfull enumerations soon
 typedef enum {
   SBS_TEMP_0 = 0,
