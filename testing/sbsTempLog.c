@@ -26,7 +26,7 @@ int main (int argc, char **argv)
   while(1) {
     printf("%u\t",time(NULL));
     for(tempIndex=0;tempIndex<NUM_SBS_TEMPS;tempIndex++) {
-      printf("%d\t",getSbsTemperature(tempIndex));
+      printf("%d\t",readSbsTemperature(tempIndex));
     }  
     printf("\n");
     sleep(dt);
