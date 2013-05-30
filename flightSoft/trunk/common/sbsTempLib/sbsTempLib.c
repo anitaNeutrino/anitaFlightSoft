@@ -17,7 +17,7 @@
 
 
 
-const char *getSbsTemperatureLabel(SbsTempIndex_t index)
+const char *getSBSTemperatureLabel(SbsTempIndex_t index)
 {
   switch(index) {
   case SBS_TEMP_0:
