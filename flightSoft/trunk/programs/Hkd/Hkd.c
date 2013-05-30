@@ -1221,11 +1221,11 @@ void prettyPrintTempLookupFile()
   
 
   fprintf(outFile,"\nSBS\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n",
-	  convertAnitaToHuman(sbsData.temp[0])),
-	  convertAnitaToHuman(sbsData.temp[1])),
-	  convertAnitaToHuman(sbsData.temp[2])),
-	  convertAnitaToHuman(sbsData.temp[3])),
-	  convertAnitaToHuman(sbsData.temp[4])));
+	  convertAnitaToHuman(sbsData.temp[0]),
+	  convertAnitaToHuman(sbsData.temp[1]),
+	  convertAnitaToHuman(sbsData.temp[2]),
+	  convertAnitaToHuman(sbsData.temp[3]),
+	  convertAnitaToHuman(sbsData.temp[4]));
 
   fclose(outFile);
   
