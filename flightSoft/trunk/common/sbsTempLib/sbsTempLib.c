@@ -37,15 +37,15 @@ int readSBSTemperature(SbsTempIndex_t index)
 {
   switch(index) {
   case SBS_TEMP_0:
-    return readSBSTemperature("/sys/devices/platform/coretemp.0/temp1_input");
+    return readSBSTemperatureFile("/sys/devices/platform/coretemp.0/temp1_input");
   case SBS_TEMP_1:
-    return readSBSTemperature("/sys/devices/platform/coretemp.0/temp2_input");
+    return readSBSTemperatureFile("/sys/devices/platform/coretemp.0/temp2_input");
   case SBS_TEMP_2:
-    return readSBSTemperature("/sys/devices/platform/coretemp.0/temp3_input");
+    return readSBSTemperatureFile("/sys/devices/platform/coretemp.0/temp3_input");
   case SBS_TEMP_3:
-    return readSBSTemperature("/sys/devices/virtual/hwmon/hwmon0/temp1_input");
+    return readSBSTemperatureFile("/sys/devices/virtual/hwmon/hwmon0/temp1_input");
   case SBS_TEMP_4:
-    return readSBSTemperature("/sys/devices/virtual/hwmon/hwmon0/temp2_input");
+    return readSBSTemperatureFile("/sys/devices/virtual/hwmon/hwmon0/temp2_input");
   default :
     return -1;
   }
