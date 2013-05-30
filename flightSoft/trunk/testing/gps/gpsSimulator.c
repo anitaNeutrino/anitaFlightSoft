@@ -94,9 +94,9 @@ float adu5RelV14[3]={0};
 //const char *G12_NTP_PORT="/dev/ttyUSB1";
 //const char *ADU5_PORT="/dev/ttyUSB2";
 
-char *G12_PORT="/tmp/ttyUSB0";
-char *G12_NTP_PORT="/tmp/ttyUSB1";
-char *ADU5_PORT="/tmp/ttyUSB2";
+char *G12_PORT="/dev/ttyUSB0";
+char *G12_NTP_PORT="/dev/ttyUSB1";
+char *ADU5_PORT="/dev/ttyUSB2";
 
 
 int justSendLimitIsReached=0;
