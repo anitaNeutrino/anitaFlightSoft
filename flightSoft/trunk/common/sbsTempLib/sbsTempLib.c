@@ -70,7 +70,8 @@ int readSBSTemperatureFile(const char *tempFile)
   else {    
     retVal=read(fd, temp, 6);   
     temp[5] = 0x0;
-    temp_con = (atoi(temp)*4)/100;  // Reflects the accuracy of the temperature
+    temp_con = convertRawToAnita(atoi(temp)); // temp_con is in 0.1 degree steps
+
     close(fd);
     return temp_con;
   }
