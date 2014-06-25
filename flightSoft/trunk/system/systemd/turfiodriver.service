@@ -1,0 +1,10 @@
+[Unit]
+Description=Load TURFIO Driver
+Before=surfdriver.service
+
+[Service]
+Type=simple
+ExecStart=/home/anita/flightSoft/system/loadTurfioDriver
+
+[Install]
+WantedBy=multi-user.target

@@ -5,13 +5,14 @@ echo $run
 let "run += 1"
 echo $run
 
-mkdir /mnt/pmcdata/run${run}
-rm -f /mnt/pmcdata/current
-if [ -d /mnt/pmcdata/current ] ; then
-	echo "Moving /mnt/pmcdata/current"
-	mv /mnt/pmcdata/current /mnt/pmcdata/current.run${run}
+
+mkdir /mnt/data/run${run}
+rm -f /mnt/data/current
+if [ -d /mnt/data/current ] ; then
+    echo "Moving /mnt/data/current"
+    mv /mnt/data/current/ /mnt/data/current.run${run}
 fi
-ln -sf /mnt/pmcdata/run${run} /mnt/pmcdata/current
+ln -sf /mnt/data/run${run} /mnt/data/current
 
 
 disabledMini=`getConfigValue anitaSoft.config global disableSatamini`

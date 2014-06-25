@@ -77,6 +77,15 @@ int main(int argc, char **argv) {
   value = readTurfioReg(tiofd, 0x6);
   printf("DEAD_CNT: %u   PPS_CNT: %u\n", value & 0xFFFF,
 	 (value & 0xFFFF0000)>>16);
+
+  int regId=0;
+  for(regId=0;regId<64;regId++) {
+    value = readTurfioReg(tiofd, regId);
+    printf("regId %#x : %5.5d  -- %5.5d\n",regId, (value & 0xFFFF), (value & 0xFFFF0000)>>16);
+  }
+	 
+
+
   close(tiofd);
 }
 
