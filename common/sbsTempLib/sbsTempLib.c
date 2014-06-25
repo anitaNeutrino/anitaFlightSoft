@@ -57,7 +57,7 @@ int readSBSTemperature(SbsTempIndex_t index)
 int readSBSTemperatureFile(const char *tempFile)
 {
   static int errorCounter=0;
-  int fd;
+  int fd,retVal;
   char temp[6];
   int temp_con;
   fd = open(tempFile, O_RDONLY);

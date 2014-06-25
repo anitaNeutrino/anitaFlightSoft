@@ -1,3 +1,4 @@
+#!/bin/sh -
 #-----------------------------------------------------------------------------
 #
 #      File         :  loadTurfioDriver
@@ -21,7 +22,7 @@ module=${name}${debug}.ko
 
 # Install the module
 echo "Installing module ($module)...."
-/sbin/insmod ${TURFIO_DRIVER_DIR}/${module} 
+/sbin/insmod ${TURFIO_DRIVER_DIR}/${module} device=04:0A 
 echo
 
 # Get the major number

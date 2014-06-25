@@ -1206,6 +1206,8 @@ AcqdErrorCode_t initializeDevices(int *numDevPtr)
     turfioFd=testFd;
     countDevices++;
   }
+  fprintf(stderr,"turfioFd %d\n",turfioFd);
+
   *numDevPtr=countDevices ;
   if(errorCounter==0)
     return ACQD_E_OK;
