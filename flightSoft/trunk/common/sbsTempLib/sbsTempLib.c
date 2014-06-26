@@ -62,6 +62,7 @@ int readSBSTemperatureFile(const char *tempFile)
 {
   static int errorCounter=0;
   int fd,retVal;
+  int retVal=0;
   char temp[6];
   int temp_con;
   fd = open(tempFile, O_RDONLY);
@@ -70,7 +71,8 @@ int readSBSTemperatureFile(const char *tempFile)
       fprintf(stderr,"Error opening %s -- %s (Error %d of 100)",tempFile,strerror(errno),errorCounter);
       syslog(LOG_ERR,"Error opening %s -- %s (Error %d of 100)",tempFile,strerror(errno),errorCounter);
     }
-    return -1;
+    retVal=-1;
+    return retVal;
   }
   else {    
     retVal=read(fd, temp, 6);   

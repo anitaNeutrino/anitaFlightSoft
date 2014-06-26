@@ -57,6 +57,8 @@ char copyright[] =
 #include <sys/ioctl.h>
 #include <assert.h>
 
+#include "ftplib.h"
+
 
 //extern int ftp_safeput;
 //extern int ftp_verbose;
