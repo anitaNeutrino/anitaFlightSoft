@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 #include /home/mottram/work/matt/flightSoft/standard_definitions.mk
 
-SUBDIRS = common outside/acromag programs #testing
+SUBDIRS = common outside/anita3/9500256u programs #testing
 
 ANITA_INSTALL_LIBS=libAcromag.a libAnitaMap.a libAnitaMap.so libCompress.a libCompress.so libConfig.a libConfig.so libkvp.a libkvp.so libPedestal.a libPedestal.so libSerial.a libSipcom.a libSlow.a libSlow.so libUtil.a libUtil.so libLinkWatch.so libAnitaFtp.so libAnitaFtp.a
 ANITA_INSTALL_BINS=SIPd LogWatchd Cmdd getConfigValue getConfigString setConfigValue CmdTest setConfigString
