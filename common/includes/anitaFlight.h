@@ -107,19 +107,14 @@
 
 
 //Relay Bit Masks
-#define RFCM1_MASK 0x1
-#define RFCM2_MASK 0x2
-#define RFCM3_MASK 0x4
-#define RFCM4_MASK 0x8
-#define VETO_MASK 0x10
-#define GPS_MASK 0x20
-#define CAL_PULSER_MASK 0x40
-
-#define RFSWITCH_MASK 0xf00
-#define RFSWITCH_SHIFT 8
-
-#define ATTEN_MASK 0xf000
-#define ATTEN_SHIFT 12
+#define AMPLITE1_MASK 0x1
+#define AMPLITE2_MASK 0x2
+#define BZAMPA1_MASK 0x4
+#define BZAMPA2_MASK 0x8
+#define SB_MASK 0x10
+#define NTU_SSD_5V_MASK 0x20
+#define NTU_SSD_12V_MASK 0x40
+#define NTU_SSD_SHUTDOWN_MASK 0x80
 
 #define WAKEUP_LOS_BUFFER_SIZE 4000
 #define WAKEUP_TDRSS_BUFFER_SIZE 500
