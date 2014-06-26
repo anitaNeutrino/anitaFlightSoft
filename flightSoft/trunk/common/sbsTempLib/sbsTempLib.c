@@ -30,6 +30,8 @@ const char *getSBSTemperatureLabel(SbsTempIndex_t index)
     return "Temp 1";
   case SBS_TEMP_4:
     return "Temp 2";
+  case SBS_TEMP_5:
+    return "GPU";
   default :
     return "Unknown";
   }
@@ -48,6 +50,8 @@ int readSBSTemperature(SbsTempIndex_t index)
     return readSBSTemperatureFile("/sys/devices/virtual/hwmon/hwmon0/temp1_input");
   case SBS_TEMP_4:
     return readSBSTemperatureFile("/sys/devices/virtual/hwmon/hwmon0/temp2_input");
+  case SBS_TEMP_5:
+    return readSBSTemperatureFile("/sys/devices/pci0000:00/0000:00:1c.0/0000:06:00.0/hwmon/hwmon1/temp1_input");
   default :
     return -1;
   }

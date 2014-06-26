@@ -528,7 +528,7 @@ typedef struct {
   The XCR14 temperatue structure is in (4/100) * milli deg C
 */
 typedef struct {
-  short temp[5]; ///< 
+  short temp[6]; ///< 
 } SBSTemperatureDataStruct_t;
 #endif
 

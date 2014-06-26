@@ -1,0 +1,10 @@
+[Unit]
+Description=Load Acromag Driver
+After=turfiodriver.service
+
+[Service]
+Type=simple
+ExecStart=/home/anita/flightSoft/system/loadAcromagDriver
+
+[Install]
+WantedBy=multi-user.target
