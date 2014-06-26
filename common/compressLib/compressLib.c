@@ -961,7 +961,7 @@ CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int num
     int overflowBit=0;
     overflowChar=currentChar+(MAX_NUMBER_SAMPLES*bitSize)/8;
     overflowBit=(MAX_NUMBER_SAMPLES*bitSize)%8;
-    int numOverflows=numBytes-(int)(overflowChar-input);
+    //    int numOverflows=numBytes-(int)(overflowChar-input);
 //    cout << "numOverflows:  " << numOverflows << endl;
 
     int overflowNum=0;
@@ -1016,7 +1016,7 @@ CompressErrorCode_t decodePSWaveLosslessBinFibCombo(unsigned char *input,int num
 	overflowNum++;
 //	if(overflowNum>4) break;
     }
-    numOverflows=overflowNum;
+    //    numOverflows=overflowNum;
 //    cout << "numOverflows:  " << numOverflows << endl;
     overflowNum=0;
     //Loop through binary

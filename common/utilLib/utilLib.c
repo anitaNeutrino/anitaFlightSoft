@@ -1,4 +1,3 @@
-
 /*! \file utilLib.c
   \brief Utility library, full of (hopefully) useful stuff
     
@@ -815,6 +814,14 @@ int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
     return -1;
   }   
   numObjs=fwrite(buffer,numBytes,1,outfile);
+  if(numObjs!=1) {
+    if(errorCounter<100) {
+      syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),filename);
+      fprintf(stderr,"fwrite: %s -- %s\n",strerror(errno),filename);
+      errorCounter++;
+    }
+  }
+    
   fclose(outfile);
   return 0;
     
@@ -823,7 +830,7 @@ int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
 int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes) 
 {
   static int errorCounter=0;
-  int numObjs;    
+  int numWritten;    
   gzFile outfile = gzopen (filename, "wb");  
   if(outfile == NULL) { 
     if(errorCounter<100) {
@@ -833,7 +840,15 @@ int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes)
     }
     return -1;
   } 
-  numObjs=gzwrite(outfile,buffer,numBytes);
+  numWritten=gzwrite(outfile,buffer,numBytes);
+  if(numWritten!=numBytes) {
+    if(errorCounter<100) {
+      syslog (LOG_ERR,"gzwrite: wrote %d of %d ---  %s\n",numWritten,numBytes,filename);
+      fprintf(stderr,"gzwrite: wrote %d of %d-- %s\n",numWritten,numBytes,filename);
+      errorCounter++;
+    }
+  }
+    
   gzclose(outfile);  
   return 0;   
 }
@@ -1893,7 +1908,7 @@ int cloneFile(char *filename,unsigned int cloneMask, int baseInd)
 {
   //Doesn't clone yet
   if(cloneMask==0) return 0; 
-  int retVal;
+  int retVal=0;
   char cloneFilename[FILENAME_MAX];
   int diskInd;
   char *relPath=strstr(filename,"current");
@@ -1972,7 +1987,7 @@ int zipBufferedFileAndMove(char *filename) {
 }
 
 int moveBufferedFile(char *filename) {
-  int retVal;
+  int retVal=0;
   char bufferFilename[FILENAME_MAX];
   unsigned int numBytesIn=0;
   sprintf(bufferFilename,"%s/%s",DISK_BUFFER_DIR,filename);
@@ -1996,7 +2011,7 @@ int cloneAndMoveBufferedFile(char *filename,unsigned int cloneMask, int baseInd)
   if(cloneMask==0) return moveBufferedFile(filename);
   //    printf("Here\n");
   //Doesn't actually clone yet
-  int retVal;
+  int retVal=0;
   char bufferFilename[FILENAME_MAX];
   char cloneFilename[FILENAME_MAX];
   int diskInd;

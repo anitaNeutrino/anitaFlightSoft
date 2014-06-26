@@ -5,6 +5,7 @@
 */
 
 #include "linkWatchLib/linkWatchLib.h"
+#include <dirent.h>
 #include <linkWatchLib/inotify.h>
 
 #include <stdlib.h>
@@ -21,7 +22,7 @@
 //#include <inotifytools/inotifytools.h>
 
 
-extern  int versionsort(const void *a, const void *b);
+extern  int versionsort(const struct dirent **a, const struct dirent **b);
 
 
 #define MAX_WATCHES 100
