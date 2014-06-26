@@ -126,6 +126,7 @@ typedef struct {
 
 //Power stuff
 ip320_desc descPower[CHANS_PER_IP320];
+int gotHeaderPower=0;
 char headerPower[180];
 int isTemp=0;
 int prettyFormatPower = 0;
@@ -134,6 +135,7 @@ int rowaddrPower[MAX_ROW][MAX_COLUMN];
 
 //Temp stuff
 ip320_desc descTemp[CHANS_PER_IP320];
+int gotHeaderTemp=0;
 char headerTemp[180];
 int prettyFormatTemp = 0;
 int numRowsTemp = 0;
@@ -196,7 +198,6 @@ int main (int argc, char *argv[])
     /* Load Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
 
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
@@ -213,6 +214,11 @@ int main (int argc, char *argv[])
 	disableSatablade=kvpGetInt("disableSatablade",1);
 	if(disableSatablade)
 	    hkDiskBitMask&=~SATABLADE_DISK_MASK;
+    }
+    else {
+      eString = configErrorString (status) ;
+      syslog(LOG_ERR,"Error reading %s: %s\n",GLOBAL_CONF_FILE,eString);
+     
     }
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;
@@ -299,7 +305,7 @@ int readConfigFile()
     int status=0;
     int tempNum=3,count=0;
     KvpErrorCode kvpStatus=0;
-    char* eString ;
+    char* eString = NULL;
     kvpReset();
     status = configLoad ("Hkd.config","output") ;
     status &= configLoad ("Hkd.config","hkd") ;
@@ -329,8 +335,8 @@ int readConfigFile()
     }
 
     else {
-	eString=configErrorString (status) ;
-	syslog(LOG_ERR,"Error reading Hkd.config: %s\n",eString);
+      eString=configErrorString (status) ;
+      syslog(LOG_ERR,"Error reading Hkd.config: %s\n",eString);
     }
     return status;
    
@@ -353,11 +359,11 @@ int readSBSTemps ()
 
 void printSBSTemps (void)
 {
-    int retVal,unixTime;
+    int retVal;
     retVal=readSBSTemps();
-    unixTime=time(NULL);
+    //    unixTime=time(NULL);
     if(!retVal) 
-      printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
+      printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]),convertAnitaToHuman(sbsData.temp[5]));
     /* Don't know what to do if it doesn't work */
 }
 
@@ -964,7 +970,7 @@ void readHkReadoutConfig()
 {
   //For now we'll only print out the power things
   int status,i=0;
-  char *eString;
+  char *eString=NULL;
   char *temp;
   int readout=2;
   char hkreadout[9];
@@ -974,7 +980,6 @@ void readHkReadoutConfig()
   kvpReset();
   sprintf(hkreadout,"hkreadout%d",readout);
   status = configLoad("HkReadout.config",hkreadout);
-  eString = configErrorString(status);
   if (status == CONFIG_E_OK) {
     prettyFormatPower = kvpGetInt("prettyformat",0);
     numRowsPower= kvpGetInt("numrows",0);
@@ -995,8 +1000,10 @@ void readHkReadoutConfig()
 	//		 rowaddrPower[i][2], rowaddrPower[i][3], rowaddrPower[i][4]);
       }
     temp = kvpGetString("headername");
-    if (temp != NULL) 
+    if (temp != NULL) { 
       strncpy(headerPower,temp,179);
+      gotHeaderPower=1;
+    }
     for (i=0;i<CHANS_PER_IP320;i++)
       {
 	char configstring[50];
@@ -1015,6 +1022,7 @@ void readHkReadoutConfig()
   }
   else {
     printf("Unable to read config file.\n");
+    eString = configErrorString(status);
     printf("%s\n", eString);
     exit(1);
   }
@@ -1045,8 +1053,10 @@ void readHkReadoutConfig()
 	//		 rowaddrTemp[i][2], rowaddrTemp[i][3], rowaddrTemp[i][4]);
       }
     temp = kvpGetString("headername");
-    if (temp != NULL) 
+    if (temp != NULL) { 
       strncpy(headerTemp,temp,179);
+      gotHeaderTemp=1;
+    }
     for (i=0;i<CHANS_PER_IP320;i++)
       {
 	char configstring[50];
@@ -1081,7 +1091,7 @@ void prettyPrintPowerLookupFile()
   FILE *outFile=fopen(HK_POWER_LOOKUP,"w");
 
   fprintf(outFile,"Date: %s\n",ctime(&rawTime));  
-  if (headerPower)
+  if (gotHeaderPower)
     fprintf(outFile,"%s:\n", headerPower);
   else
     fprintf(outFile,"No description available!\n");
@@ -1150,7 +1160,7 @@ void prettyPrintTempLookupFile()
   FILE *outFile=fopen(HK_TEMP_LOOKUP,"w");
 
   fprintf(outFile,"Date: %s\n",ctime(&rawTime));  
-  if (headerTemp)
+  if (gotHeaderTemp)
     fprintf(outFile,"%s:\n", headerTemp);
   else
     fprintf(outFile,"No description available!\n");

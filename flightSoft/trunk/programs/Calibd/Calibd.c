@@ -443,8 +443,8 @@ void ip470Setup()
       cblk_470.ev_control[i] = 0;/* event control registers */
       cblk_470.deb_duration[i] = 0;/* debounce duration registers */
     }
-  for(i = 0; i < 6; i++)
-    cblk_470.event_status[i] = 0; /* initialize event status flags */
+  //  for(i = 0; i < 6; i++)
+  //    cblk_470.event_status[i] = 0; /* initialize event status flags */
 }
 
 
