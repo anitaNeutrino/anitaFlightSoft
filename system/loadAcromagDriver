@@ -1,0 +1,18 @@
+#!/bin/sh -
+#-----------------------------------------------------------------------------
+#
+#      File         :  loadAcromagDriver
+#      Abstract     :  Loads the Acromag driver
+#      Last Revision:  26/06/14
+#-----------------------------------------------------------------------------
+
+#Load the kernel module
+insmod /home/anita/flightSoft/outside/anita3/9500256u/dev8620/apc8620.ko 
+
+#Create the devices
+if [ ! -r /dev/apc8620_0 ]; then
+    /bin/mknod -m 666 /dev/apc8620_0 c 46 0 #(1st carrier)
+    /bin/mknod -m 666 /dev/apc8620_1 c 46 1 #(2nd carrier)
+    /bin/mknod -m 666 /dev/apc8620_2 c 46 2 #(3rd carrier)
+    /bin/mknod -m 666 /dev/apc8620_3 c 46 3 #(4th carrier)
+fi

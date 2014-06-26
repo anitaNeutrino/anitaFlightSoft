@@ -57,7 +57,7 @@ echo "Starting Programs"
 #Cmdd > /tmp/cmdd.log 2>&1 </dev/null &
 Archived > /tmp/archived.log 2>&1 </dev/null &
 #Monitord > /tmp/monitord.log 2>&1 </dev/null&
-#Hkd > /tmp/hkd.log 2>&1 </dev/null &
+Hkd > /tmp/hkd.log 2>&1 </dev/null &
 #GPSd > /tmp/gpsd.log 2>&1 </dev/null &
 Calibd > /tmp/calibd.log 2>&1 </dev/null &
 #LogWatchd > /tmp/logwatchd.log 2>&1 </dev/null &
