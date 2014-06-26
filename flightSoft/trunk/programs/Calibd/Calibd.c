@@ -1,10 +1,9 @@
 /*! \file Calibd.c
-    \brief First version of the Calibd program 
+    \brief First version of the Calibd program for ANITA-3
     
     Calibd is the daemon that controls the digital acromag and so it's role is 
-    to toggle relays, set sunsensor gains and switch between the ports on the 
-    RF switch.
-    April 2006  rjn@mps.ohio-state.edu
+    to toggle relays.
+    June 2014  r.nichol@ucl.ac.uk
 */
 #define _GNU_SOURCE
 
@@ -44,33 +43,23 @@ struct cblk470 cblk_470;
 void prepWriterStructs();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
+int setLevel(int port, int channel, int level);
 
 // Global (config) variables
 int digitalCarrierNum=1;
 
 
 // Relay states
-int stateRFCM1=0;
-int stateRFCM2=0;
-int stateRFCM3=0;
-int stateRFCM4=0;
-int stateVeto=0;
-int stateGPS=0;
-int stateCalPulser=0;
+int stateAmplite1=0;
+int stateAmplite2=0;
+int stateBZAmpa1=0;
+int stateBZAmpa2=0;
+int stateNTUAmpa=0;
+int stateSB=0;
+int stateNTUSSD5V=0;
+int stateNTUSSD12V=0;
+int stateNTUSSDShutdown=0;
 
-// RF Switch
-int steadyState=0;
-int switchPeriod=60;
-int offPeriod=60;
-int switchState=1;
-int currentPort=1;
-
-//Attenuator
-int attenLoop=1;
-int attenState=1;
-int attenPeriod=10;
-int currentAtten=1;
-int attenLoopMap[8]={1,1,1,1,1,1,1,1};
 
 //Debug
 int printToScreen=1;
@@ -89,11 +78,7 @@ int main (int argc, char *argv[])
 {
     int retVal=0;
     int relaysChanged=0;
-    int switchChanged=0;
-    int attenChanged=0;
     int firstTime=1;
-    int switchSec=0;
-    int attenSec=0;
     int writeSec=0;
        
     // Config file thingies 
@@ -156,71 +141,26 @@ int main (int argc, char *argv[])
 	if(printToScreen) printf("Initializing Calibd\n");
 	retVal=readConfigFile();
 	relaysChanged=1;
-	switchChanged=1;
-	attenChanged=1;
 	currentState=PROG_STATE_RUN;
 	writeSec=0;
-	attenSec=0;
-	switchSec=0;
 	while(currentState==PROG_STATE_RUN) {	  
 	    if(printToScreen) {
-		printf("RFCM1 (%d)  RFCM2 (%d)  RFCM3 (%d)  RFCM4 (%d)  VETO (%d)\tCP (%d)  GPS (%d)\n",stateRFCM1,stateRFCM2,stateRFCM3,stateRFCM4,stateVeto,stateCalPulser,stateGPS);
-		printf("   Switch %d (%d) Atten %d (%d)\n",switchState,currentPort,attenState,currentAtten);
-//		printf("switchState %d\tsteadyState %d\tstateCalPulse %d\trelaysChanged %d\n",switchState,steadyState,stateCalPulser,relaysChanged);
+		printf("Amplite1 (%d)  Amplite2 (%d)  BZAmpa1 (%d)  BZAmpa2 (%d)  VETO (%d)\tSB (%d) SSD_5V (%d) SSD_12V (%d) SSD_Shutdown (%d)\n",stateAmplite1,stateAmplite2,stateBZAmpa1,stateBZAmpa2,stateNTUAmpa,state);
 	    }
 	    //Set Relays to correct state
 	    if(relaysChanged || firstTime) retVal=setRelays();
-	    if(switchChanged || firstTime) setSwitchState();
-	    if(attenChanged || firstTime) setAttenuatorState();
 
-	    if(relaysChanged || switchChanged || 
-	       attenChanged || writeSec==writePeriod) {
+	    if(relaysChanged || writeSec>=writePeriod) {
 		writeStatus();
 		relaysChanged=0;
-		switchChanged=0;
-		attenChanged=0;
 		writeSec=0;
 	    }
 	    
 
 	    if(firstTime) firstTime=0;
-	    if(stateCalPulser && attenSec>=attenPeriod && attenLoop) {
-		currentAtten++;
-		while(!attenLoopMap[currentAtten-1] && currentAtten<9) {
-		    currentAtten++;
-		}
-		if(currentAtten>8) 
-		    currentAtten=1;
-		attenChanged=1;
-		attenSec=0;
-	    }
 
-	    if(stateCalPulser && switchSec>=switchPeriod) {
-		if(steadyState==0) {
-		    currentPort++;
-		    if(currentPort>4) {
-			currentPort=1;
-			if(offPeriod) stateCalPulser=0;
-			relaysChanged=1;
-		    }
-		    switchChanged=1;
-		}
-		else {
-		    currentPort=steadyState;
-		    stateCalPulser=0;
-		    relaysChanged=1;
-		}
-		switchSec=-1;
-	    }
-	    else if(!stateCalPulser && switchSec>=offPeriod && offPeriod) {
-		stateCalPulser=1;
-		relaysChanged=1;
-		switchSec=-1;
-	    }
 	    sleep(1);
-	    writeSec++;		
-	    switchSec++;
-	    attenSec++;
+	    writeSec++;	
 	}
     } while(currentState==PROG_STATE_INIT);
     closeHkFilesAndTidy(&calibWriter);
@@ -243,26 +183,25 @@ void writeStatus()
     theStatus.unixTime=unixTime;
     theStatus.status=0;
 
-    if(stateRFCM1) 
-	theStatus.status|=RFCM1_MASK;
-    if(stateRFCM2) 
-	theStatus.status|=RFCM2_MASK;
-    if(stateRFCM3) 
-	theStatus.status|=RFCM3_MASK;
-    if(stateRFCM4) 
-	theStatus.status|=RFCM4_MASK;
-    if(stateVeto) 
-	theStatus.status|=VETO_MASK;
-    if(stateGPS) 
-	theStatus.status|=GPS_MASK;
-    if(stateCalPulser) 
-	theStatus.status|=CAL_PULSER_MASK;
+    if(stateAmplite1) 
+	theStatus.status|=AMPLITE1_MASK;
+    if(stateAmplite2) 
+	theStatus.status|=AMPLITE2_MASK;
+    if(stateBZAmpa1) 
+	theStatus.status|=BZAMPA1_MASK;
+    if(stateBZAmpa2) 
+	theStatus.status|=BZAMPA2_MASK;
+    if(stateNTUAmpa) 
+	theStatus.status|=NTUAMPA_MASK;
+    if(stateSB) 
+      theStatus.status|=SB_MASK;
+    if(stateNTUSSD5V) 
+      theStatus.status|=NTU_SSD_5V_MASK;
+    if(stateNTUSSD12V) 
+      theStatus.status|=NTU_SSD_12V_MASK;
+    if(stateNTUSSDShutdown) 
+      theStatus.status|=NTU_SSD_SHUTDOWN_MASK;
     
-    //Might change the below so that it only needs 2 bits
-    theStatus.status |= (((switchState)&0xf)<<RFSWITCH_SHIFT); 
-    
-    //Might change the below when we have any idea what it is doing
-    theStatus.status |= (((attenState)&0xf)<<ATTEN_SHIFT); 
     
     sprintf(filename,"%s/calib_%u.dat",CALIBD_STATUS_DIR,theStatus.unixTime);
     writeStruct(&theStatus,filename,sizeof(CalibStruct_t));
@@ -287,7 +226,6 @@ int readConfigFile()
     status = configLoad ("Calibd.config","output") ;
     status = configLoad ("Calibd.config","calibd") ;
     status |= configLoad ("Calibd.config","relays") ;
-    status |= configLoad ("Calibd.config","rfSwitch") ;
 
     if(status == CONFIG_E_OK) {
 	//Which board is the digital acromag?
@@ -300,22 +238,16 @@ int readConfigFile()
 	writePeriod=kvpGetInt("writePeriod",60);
 
 	//Relay States
-	stateRFCM1=kvpGetInt("stateRFCM1",0);
-	stateRFCM2=kvpGetInt("stateRFCM2",0);
-	stateRFCM3=kvpGetInt("stateRFCM3",0);
-	stateRFCM4=kvpGetInt("stateRFCM4",0);
-	stateVeto=kvpGetInt("stateVeto",0);
-	stateGPS=kvpGetInt("stateGPS",0);
-	stateCalPulser=kvpGetInt("stateCalPulser",0);
-		
-	//RF Switch
-	steadyState=kvpGetInt("steadyState",0);
-	if(steadyState>=1 && steadyState<=4)
-	    currentPort=steadyState;
-	switchPeriod=kvpGetInt("switchPeriod",60);
-	offPeriod=kvpGetInt("offPeriod",60);
+	stateAmplite1=kvpGetInt("stateAmplite1",0);
+	stateAmplite2=kvpGetInt("stateAmplite2",0);
+	stateBZAmpa1=kvpGetInt("stateBZAmpa1",0);
+	stateBZAmpa2=kvpGetInt("stateBZAmpa2",0);
+	stateNTUAmpa=kvpGetInt("stateNTUAmpa",0);
+	stateSB=kvpGetInt("stateSB",0);
 
-
+	stateNTUSSD5V=kvpGetInt("stateNTUSSD5V",0);
+	stateNTUSSD12V=kvpGetInt("stateNTUSSD12V",0);
+	stateNTUSSDShutdown=kvpGetInt("stateNTUSSDShutdown",0);
 
     }
     else {
@@ -452,43 +384,46 @@ int setRelays()
 // Sets the relays to the state specified in Calibd.config
 {
     int retVal=0;
-    if(stateRFCM1)
-	retVal+=toggleRelay(RFCM1_ON_LOGIC/8,RFCM1_ON_LOGIC%8);
+    if(stateAmplite1)
+	retVal+=toggleRelay(AMPLITE1_ON_LOGIC/8,AMPLITE1_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(RFCM1_OFF_LOGIC/8,RFCM1_OFF_LOGIC%8);
+	retVal+=toggleRelay(AMPLITE1_OFF_LOGIC/8,AMPLITE1_OFF_LOGIC%8);
 
-    if(stateRFCM2)
-	retVal+=toggleRelay(RFCM2_ON_LOGIC/8,RFCM2_ON_LOGIC%8);
+    if(stateAmplite2)
+	retVal+=toggleRelay(AMPLITE2_ON_LOGIC/8,AMPLITE2_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(RFCM2_OFF_LOGIC/8,RFCM2_OFF_LOGIC%8);
+	retVal+=toggleRelay(AMPLITE2_OFF_LOGIC/8,AMPLITE2_OFF_LOGIC%8);
 
-    if(stateRFCM3)
-	retVal+=toggleRelay(RFCM3_ON_LOGIC/8,RFCM3_ON_LOGIC%8);
+    if(stateBZAmpa1)
+	retVal+=toggleRelay(BZAMPA1_ON_LOGIC/8,BZAMPA1_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(RFCM3_OFF_LOGIC/8,RFCM3_OFF_LOGIC%8);
+	retVal+=toggleRelay(BZAMPA1_OFF_LOGIC/8,BZAMPA1_OFF_LOGIC%8);
 
-    if(stateRFCM4)
-	retVal+=toggleRelay(RFCM4_ON_LOGIC/8,RFCM4_ON_LOGIC%8);
+    if(stateBZAmpa2)
+	retVal+=toggleRelay(BZAMPA2_ON_LOGIC/8,BZAMPA2_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(RFCM4_OFF_LOGIC/8,RFCM4_OFF_LOGIC%8);
+	retVal+=toggleRelay(BZAMPA2_OFF_LOGIC/8,BZAMPA2_OFF_LOGIC%8);
    
-    if(stateVeto)
-	retVal+=toggleRelay(VETO_ON_LOGIC/8,VETO_ON_LOGIC%8);
+    if(stateNTUAmpa)
+	retVal+=toggleRelay(NTUAMPA_ON_LOGIC/8,NTUAMPA_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(VETO_OFF_LOGIC/8,VETO_OFF_LOGIC%8);
+	retVal+=toggleRelay(NTUAMPA_OFF_LOGIC/8,NTUAMPA_OFF_LOGIC%8);
    
-    if(stateGPS)
-	retVal+=toggleRelay(GPS_ON_LOGIC/8,GPS_ON_LOGIC%8);
-    else
-	retVal+=toggleRelay(GPS_OFF_LOGIC/8,GPS_OFF_LOGIC%8);
-   
-    if(stateCalPulser)
-	retVal+=toggleRelay(CAL_PULSER_ON_LOGIC/8,CAL_PULSER_ON_LOGIC%8);
-    else
-	retVal+=toggleRelay(CAL_PULSER_OFF_LOGIC/8,CAL_PULSER_OFF_LOGIC%8);
+
+    //These ones operate on levels
+    retVal=setLevel(SB_LOGIC/8,SB_LOGIC%8,stateSB);    
+    retVal=setLevel(SSD_5V_LOGIC/8,SSD_5V_LOGIC%8,stateNTUSSD5V);
+    retVal=setLevel(SSD_12V_LOGIC/8,SSD_12V_LOGIC%8,stateNTUSSD12V);
+    retVal=setLevel(SSD_SHUTDOWN_LOGIC/8,SSD_SHUTDOWN_LOGIC%8,stateNTUSSDShutdown);
 
     return retVal;
 
+}
+
+int setLevel(int port, int channel, int level)
+//Just sets one level
+{
+  return wpnt470(&cblk_470,port,chan,level);
 }
 
 
@@ -517,23 +452,6 @@ int setMultipleLevels(int basePort, int baseChan, int nbits, int value) {
 	       basePort,current,toWrite);
     }
     return wprt470(&cblk_470, basePort, toWrite);
-}
-
-int setSwitchState() 
-//Sets RF Switch state
-{
-    switchState=rfSwitchPortMap[currentPort-1];
-    return setMultipleLevels(RFSWITCH_LSB/8,RFSWITCH_LSB%8,4,switchState);
-
-}
-
-
-int setAttenuatorState() 
-//Sets Cal Pulser Attenuator state
-{
-    attenState=attenuatorSettingsMap[currentAtten-1];
-    return setMultipleLevels(ATTENUATOR_LSB/8,ATTENUATOR_LSB%8,3,attenState);
-
 }
 
 void prepWriterStructs() {
