@@ -15,7 +15,10 @@ int setRelays();
 int toggleRelay(int port, int chan);
 int setMultipleLevels(int basePort, int baseChan, int nbits, int value);
 int setLevel(int port, int channel, int level);
-
+int ip320Setup();
+int ip320Calibrate();
+int ip320Read(int fillCor);
+void dumpValues();
 
 // Config stuff
 int readConfigFile();
@@ -29,7 +32,7 @@ int readConfigFile();
 #define BZAMPA1_ON_LOGIC 18
 #define BZAMPA1_OFF_LOGIC 17
 #define BZAMPA2_ON_LOGIC 7
-#define BZAMPA1_OFF_LOGIC 6
+#define BZAMPA2_OFF_LOGIC 6
 #define NTUAMPA_ON_LOGIC 5
 #define NTUAMPA_OFF_LOGIC 4
 
@@ -42,5 +45,6 @@ int readConfigFile();
 //Acromag
 #define IP470_CARRIER "/dev/apc8620_1"
 #define IP470_SLOT 'A'
+#define IP320_SLOT 'C'
 
 

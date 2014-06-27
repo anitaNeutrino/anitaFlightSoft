@@ -28,7 +28,6 @@
 #include "includes/anitaStructures.h"
 
 /* Vendor includes */
-//#include "cr7.h"
 #include "carrier/apc8620.h"
 #include "ip320/ip320.h"
 
@@ -151,8 +150,6 @@ void readHkReadoutConfig();
 int main (int argc, char *argv[])
 {
     int retVal;
-
-
 
 /*     int localSBSTemp,remoteSBSTemp; */
     /* Config file thingies */
