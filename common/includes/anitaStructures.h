@@ -139,7 +139,7 @@
 #define VER_LOGWATCHD_START 30
 #define VER_AVG_SURF_HK 30
 #define VER_SUM_TURF_RATE 30
-#define VER_ACQD_START 30
+#define VER_ACQD_START 31
 #define VER_TURF_REG 30
 #endif
 
@@ -508,6 +508,16 @@ typedef struct {
     AnalogueCode_t code;
     AnalogueDataStruct_t board[NUM_IP320_BOARDS];
 } FullAnalogueStruct_t;
+
+
+//!  Single Acromag data structure
+/*!
+  Single Acromag data structure comes in data, or calibration flavour.
+*/
+typedef struct {
+    AnalogueCode_t code;
+    AnalogueDataStruct_t board;
+} SingleAnalogueStruct_t;
 
 
 #ifdef ANITA_1_DATA
@@ -1005,7 +1015,11 @@ typedef struct {
 */
 typedef struct {
   GenericHeader_t gHdr;
-    unsigned char testBytes[8];
+  unsigned char turfIdBytes[4];
+  unsigned int turfIdVersion;
+  unsigned char turfioIdBytes[4];
+  unsigned int turfioIdVersion;
+  unsigned char testBytes[8];
   unsigned int unixTime;
   unsigned int numEvents;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF]; ///<Ped subtracted
@@ -1026,6 +1040,18 @@ typedef struct {
     MagnetometerDataStruct_t mag;
     SBSTemperatureDataStruct_t sbs;
 } HkDataStruct_t;
+
+
+//! SS Hk Data Struct -- Telemetered
+/*!
+  The main housekeeping data structure with acromag + SBS temps + magnetometer data
+*/
+typedef struct {    
+    GenericHeader_t gHdr;
+    unsigned int unixTime;
+    unsigned int unixTimeUs;
+    SingleAnalogueStruct_t ip320;
+} SSHkDataStruct_t;
 
 //! SURF Hk -- Telemetered
 /*!

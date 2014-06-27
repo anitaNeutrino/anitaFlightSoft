@@ -2073,6 +2073,7 @@ AcqdErrorCode_t doStartTest()
   int dacVal=0,chanId,chan,surf,dac,retVal;
   int tInd=0,tmo=0,eventReadyFlag=0;
   struct timeval timeStruct;
+  unsigned int value=0;
   unsigned int tempTrigMask=antTrigMask;
   unsigned int tempNadirTrigMask=nadirAntTrigMask;
   unsigned short tempPhiTrigMask=phiTrigMask;
@@ -2092,6 +2093,31 @@ AcqdErrorCode_t doStartTest()
   nadirAntTrigMask=0xff;
   phiTrigMask=0xffff;
   setTriggerMasks(); 
+
+  //Readout versions
+  setTurfioReg(TurfioRegTurfBank, TurfBankControl); // set TURF_BANK to Bank 3
+
+  readTurfioReg(TurfRegControlFrut,&value);
+  printf("TURF: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+  startStruct.turfIdBytes[0]=(value&0xFF000000)>>24;
+  startStruct.turfIdBytes[1]=(value&0xFF0000)>>16;
+  startStruct.turfIdBytes[2]=(value&0xFF00)>>8;
+  startStruct.turfIdBytes[3]=(value&0xFF);
+  readTurfioReg(TurfRegControlVersion,&value);
+  startStruct.turfIdVersion=value;
+  printf("Version: %x\n",value);
+  printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+
+  readTurfioReg(TurfioRegId,&value);
+  startStruct.turfioIdBytes[0]=(value&0xFF000000)>>24;
+  startStruct.turfioIdBytes[1]=(value&0xFF0000)>>16;
+  startStruct.turfioIdBytes[2]=(value&0xFF00)>>8;
+  startStruct.turfioIdBytes[3]=(value&0xFF);
+  printf("TURFIO: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+  readTurfioReg(TurfioRegVersion,&value);
+  startStruct.turfioIdVersion=value;
+  printf("Version: %x\n",value);
+  printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
 
   doingEvent=0;
   //Now have an event loop
@@ -2155,12 +2181,7 @@ AcqdErrorCode_t doStartTest()
       continue;		
     }
     
-    //Deprecated in version 3.6
-    //Now load event into ram
-//    if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
-//      fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
-//      syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
-//    }
+  
 	    
     //Now actually read the event data
     status+=readSurfEventData();
