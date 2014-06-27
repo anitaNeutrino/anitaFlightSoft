@@ -123,6 +123,7 @@
 #define VER_G12_POS 30
 #define VER_G12_SAT 30
 #define VER_HK_FULL 30
+#define VER_HK_SS 30
 #define VER_CMD_ECHO 30
 #define VER_MONITOR 30
 #define VER_TURF_RATE 30
@@ -178,6 +179,7 @@ typedef enum {
     PACKET_GPS_G12_SAT = 0x204,///<GpsG12SatStruct_t -- Yes
     PACKET_GPS_GGA = 0x205, ///<GpsGgaStruct_t -- Yes
     PACKET_HKD = 0x300, ///< HkDataStruct_t -- Yes
+    PACKET_HKD_SS = 0x301, ///< SSHkDataStruct_t -- Yes
     PACKET_CMD_ECHO = 0x400,///< CommandEcho_t -- Yes
     PACKET_MONITOR = 0x500, ///< MonitorStruct_t -- Yes
     PACKET_WAKEUP_LOS = 0x600,
