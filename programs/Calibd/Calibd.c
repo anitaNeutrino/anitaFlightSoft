@@ -452,6 +452,14 @@ int setRelays()
 // Sets the relays to the state specified in Calibd.config
 {
     int retVal=0;
+
+    //These ones operate on levels, so will do them first
+    retVal=setLevel(SB_LOGIC/8,SB_LOGIC%8,stateSB);    
+    retVal=setLevel(NTU_SSD_5V_LOGIC/8,NTU_SSD_5V_LOGIC%8,stateNTUSSD5V);
+    retVal=setLevel(NTU_SSD_12V_LOGIC/8,NTU_SSD_12V_LOGIC%8,stateNTUSSD12V);
+    retVal=setLevel(NTU_SSD_SHUTDOWN_LOGIC/8,NTU_SSD_SHUTDOWN_LOGIC%8,stateNTUSSDShutdown);
+
+
     if(stateAmplite1)
 	retVal+=toggleRelay(AMPLITE1_ON_LOGIC/8,AMPLITE1_ON_LOGIC%8);
     else
@@ -478,11 +486,6 @@ int setRelays()
 	retVal+=toggleRelay(NTUAMPA_OFF_LOGIC/8,NTUAMPA_OFF_LOGIC%8);
    
 
-    //These ones operate on levels
-    retVal=setLevel(SB_LOGIC/8,SB_LOGIC%8,stateSB);    
-    retVal=setLevel(NTU_SSD_5V_LOGIC/8,NTU_SSD_5V_LOGIC%8,stateNTUSSD5V);
-    retVal=setLevel(NTU_SSD_12V_LOGIC/8,NTU_SSD_12V_LOGIC%8,stateNTUSSD12V);
-    retVal=setLevel(NTU_SSD_SHUTDOWN_LOGIC/8,NTU_SSD_SHUTDOWN_LOGIC%8,stateNTUSSDShutdown);
 
     return retVal;
 
