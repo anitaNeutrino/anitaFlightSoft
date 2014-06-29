@@ -133,7 +133,10 @@ int main (int argc, char *argv[])
     signal(SIGTERM, handleBadSigs);
     signal(SIGINT, handleBadSigs);
     signal(SIGSEGV, handleBadSigs);
-    
+
+    //Dont' wait for children
+    signal(SIGCLD, SIG_IGN);     
+
     //Sort out PID File
     retVal=sortOutPidFile(progName);
     if(retVal!=0) {
