@@ -3,7 +3,8 @@ Description=Load SURF Driver
 After=turfiodriver.service
 
 [Service]
-Type=simple
+Type=oneshot
+RemainAfterExit=yes
 ExecStart=/home/anita/flightSoft/system/loadSurfDriver
 
 [Install]

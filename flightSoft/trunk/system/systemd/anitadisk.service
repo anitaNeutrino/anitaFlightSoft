@@ -1,0 +1,11 @@
+[Unit]
+Description=Mounts ANITA data disks
+After=acromagdriver.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/anita/flightSoft/system/mountAnitaDisks.sh
+
+[Install]
+WantedBy=multi-user.target

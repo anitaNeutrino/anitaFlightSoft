@@ -3,7 +3,8 @@ Description=Load TURFIO Driver
 Before=surfdriver.service
 
 [Service]
-Type=simple
+Type=oneshot
+RemainAfterExit=yes
 ExecStart=/home/anita/flightSoft/system/loadTurfioDriver
 
 [Install]
