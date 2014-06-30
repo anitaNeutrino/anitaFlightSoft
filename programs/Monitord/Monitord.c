@@ -92,8 +92,7 @@ int maxHkQueueSize=200;
 
 //
 int usbSwitchMB=50;
-int satabladeSwitchMB=50;
-int sataminiSwitchMB=50;
+int ntuSwitchMB=50;
 
 //Link Directories
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -101,22 +100,21 @@ char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 char priorityPurgeDirs[NUM_PRIORITIES][FILENAME_MAX];
 
-char satabladeName[FILENAME_MAX];
-char sataminiName[FILENAME_MAX];
 char usbName[FILENAME_MAX];
+char ntuName[FILENAME_MAX];
 
 
 int hkDiskBitMask=0;
 int eventDiskBitMask=0;
-int disableSatablade=0;
-int disableSatamini=0;
+int disableHelium1=0;
+int disableHelium2=0;
 int disableUsb=0;
 int disableNeobrick=0;
 AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
 
-char *diskLocations[7]={"/tmp","/var","/home",SAFE_DATA_MOUNT,SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT};
+char *diskLocations[7]={"/tmp","/var","/home",SAFE_DATA_MOUNT,HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT};
 char *otherDirLoc[3]={ACQD_EVENT_DIR,EVENTD_EVENT_DIR,PRIORITIZERD_EVENT_DIR};
 char *otherLinkLoc[3]={ACQD_EVENT_LINK_DIR,EVENTD_EVENT_LINK_DIR,PRIORITIZERD_EVENT_LINK_DIR};
 
@@ -135,8 +133,6 @@ int main (int argc, char *argv[])
     /* Log stuff */
     char *progName=basename(argv[0]);
     unsigned int startTime=time(NULL);
-    int satabladeMountCmdTime=0;
-    int sataminiMountCmdTime=0;
     int usbMountCmdTime=0;
 
     retVal=sortOutPidFile(progName);
@@ -239,43 +235,7 @@ int main (int argc, char *argv[])
 	    }
 
 	    //Now check if we need to change disks
-	    printf("satablade %d\t%d\n",monData.diskInfo.diskSpace[4],satabladeSwitchMB);
-	    if(monData.diskInfo.diskSpace[4]<satabladeSwitchMB) {
-	      readConfigFile();
-	      //Change blade if in use
-	      if((hkDiskBitMask&SATABLADE_DISK_MASK || eventDiskBitMask&SATABLADE_DISK_MASK)) {
-		if((monData.unixTime-satabladeMountCmdTime)>300) {
-		  theCmd.numCmdBytes=3;
-		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
-		  theCmd.cmd[1]=0;
-		  theCmd.cmd[2]=0; //Next disk
-		  writeCommandAndLink(&theCmd);
-		  syslog(LOG_INFO,"Sending cmd %d -- mount next satablade",CMD_MOUNT_NEXT_SATA);
-		  satabladeMountCmdTime=monData.unixTime;
-		}
-	      }
-	    }
-
-	    printf("satamini %d\t%d\n",monData.diskInfo.diskSpace[5],sataminiSwitchMB);
-	    if(monData.diskInfo.diskSpace[5]<sataminiSwitchMB) {
-//		printf("Here\n");
-	      readConfigFile();
-	      //Change blade if in use
-	      if((hkDiskBitMask&SATAMINI_DISK_MASK || eventDiskBitMask&SATAMINI_DISK_MASK)) {
-//		printf("Here2\n");
-		if((monData.unixTime-sataminiMountCmdTime)>300) {
-//		    printf("Here3\n");
-		  theCmd.numCmdBytes=3;
-		  theCmd.cmd[0]=CMD_MOUNT_NEXT_SATA;
-		  theCmd.cmd[1]=1;
-		  theCmd.cmd[2]=0; //Next disk
-		  syslog(LOG_INFO,"Sending cmd %d -- mount next satamini",CMD_MOUNT_NEXT_SATA);
-		  writeCommandAndLink(&theCmd);
-		  sataminiMountCmdTime=monData.unixTime;
-		}
-	      }
-	    }
-
+	    //RJN Must add something for NTU disk
 
 	    printf("usb %d\t%d\n",monData.diskInfo.diskSpace[6],usbSwitchMB);
 
@@ -349,23 +309,6 @@ int readConfigFile()
 	maxEventQueueSize=kvpGetInt("maxEventQueueSize",600);
 	maxHkQueueSize=kvpGetInt("maxHkQueueSize",1000);
 
-	tempString=kvpGetString("satabladeName");
-	if(tempString) {
-	    strncpy(satabladeName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get satabladeName");
-	    fprintf(stderr,"Couldn't get satabladeName\n");
-	}
-
-	tempString=kvpGetString("sataminiName");
-	if(tempString) {
-	    strncpy(sataminiName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get sataminiName");
-	    fprintf(stderr,"Couldn't get sataminiName\n");
-	}
 
 	tempString=kvpGetString("usbName");
 	if(tempString) {
@@ -384,23 +327,22 @@ int readConfigFile()
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",0);
 	monitorPeriod=kvpGetInt("monitorPeriod",60);
 	usbSwitchMB=kvpGetInt("usbSwitchMB",50);
-	satabladeSwitchMB=kvpGetInt("satabladeSwitchMB",50);
-	sataminiSwitchMB=kvpGetInt("sataminiSwitchMB",50);
+	ntuSwitchMB=kvpGetInt("ntuSwitchMB",50);
 	ramdiskKillAcqd=kvpGetInt("ramdiskKillAcqd",50);
 	ramdiskDumpData=kvpGetInt("ramdiskDumpData",5);
 	maxAcqdWaitPeriod=kvpGetInt("maxAcqdWaitPeriod",180);
 	inodesKillAcqd=kvpGetInt("inodesKillAcqd",10000);
 	inodesDumpData=kvpGetInt("inodesDumpData",2000);
 	
-	disableSatablade=kvpGetInt("disableSatablade",0);
-	if(disableSatablade) {
-	  hkDiskBitMask&=(~SATABLADE_DISK_MASK);
-	  eventDiskBitMask&=(~SATABLADE_DISK_MASK);
+	disableHelium1=kvpGetInt("disableHelium1",0);
+	if(disableHelium1) {
+	  hkDiskBitMask&=(~HELIUM1_DISK_MASK);
+	  eventDiskBitMask&=(~HELIUM1_DISK_MASK);
 	}
-	disableSatamini=kvpGetInt("disableSatamini",0);
-	if(disableSatamini) {
-	  hkDiskBitMask&=(~SATAMINI_DISK_MASK);
-	  eventDiskBitMask&=(~SATAMINI_DISK_MASK);
+	disableHelium2=kvpGetInt("disableHelium2",0);
+	if(disableHelium2) {
+	  hkDiskBitMask&=(~HELIUM2_DISK_MASK);
+	  eventDiskBitMask&=(~HELIUM2_DISK_MASK);
 	}
 	disableUsb=kvpGetInt("disableUsb",0);
 	if(disableUsb) {
@@ -485,12 +427,11 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     else {
 	dsPtr->diskSpace[7]=0;
     }
-    strncpy(dsPtr->satabladeLabel,satabladeName,11);
-    strncpy(dsPtr->sataminiLabel,sataminiName,11);
+    strncpy(dsPtr->ntuLabel,ntuName,11);
     strncpy(dsPtr->usbLabel,usbName,11);
     if(printToScreen) {
-	printf("usb -- %s\nsatamini -- %s\nsatablade -- %s\n",
-	       usbName,sataminiName,satabladeName);
+	printf("usb -- %s\n",
+	       usbName);
     }
     
     
@@ -985,8 +926,8 @@ void checkSatasAreWorking()
     char testFilename[FILENAME_MAX];
     FILE *fp=0;
     int numObjs=0;
-    int shouldDisableMini=0;
-    int shouldDisableBlade=0;
+    int shouldDisableHelium2=0;
+    int shouldDisableHelium1=0;
     static int bladeErrCounter=0;
     static int miniErrCounter=0;
     unsigned int increment;
@@ -997,21 +938,21 @@ void checkSatasAreWorking()
 	testPattern[increment]=increment%256;
     }
 
-    if(!disableSatamini) {
-	sprintf(testFilename,"%s/diskTestFile.dat",SATAMINI_DATA_MOUNT);
+    if(!disableHelium2) {
+	sprintf(testFilename,"%s/diskTestFile.dat",HELIUM2_DATA_MOUNT);
 	fp=fopen(testFilename,"wb");
 	if(fp==NULL) {
 
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
 	    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
-	    shouldDisableMini=1;
+	    shouldDisableHelium2=1;
 	}
 	else {
 	    numObjs=fwrite(testPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
 	    if(numObjs!=TEST_PATTERN_SIZE) {	
 		syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),testFilename);
 		fprintf(stderr,"fwrite: %s -- %s\n",strerror(errno),testFilename);
-		shouldDisableMini=1;
+		shouldDisableHelium2=1;
 		fclose(fp);
 	    }	
 	    else {
@@ -1022,14 +963,14 @@ void checkSatasAreWorking()
 
 		    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
 		    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
-		    shouldDisableMini=1;
+		    shouldDisableHelium2=1;
 		}
 		else {
 		    numObjs=fread(readBackPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
 		    if(numObjs!=TEST_PATTERN_SIZE) {	
 			syslog (LOG_ERR,"fread: %s ---  %s\n",strerror(errno),testFilename);
 			fprintf(stderr,"fread: %s -- %s\n",strerror(errno),testFilename);
-			shouldDisableMini=1;
+			shouldDisableHelium2=1;
 			fclose(fp);
 		    }	
 		    else {
@@ -1037,7 +978,7 @@ void checkSatasAreWorking()
 			fclose(fp);
 			for(increment=0;increment<TEST_PATTERN_SIZE;increment++) {
 			    if(readBackPattern[increment]!=testPattern[increment]) {
-				shouldDisableMini=1;
+				shouldDisableHelium2=1;
 				break;
 			    }
 			}
@@ -1047,21 +988,21 @@ void checkSatasAreWorking()
 	}	
     }
 
-    if(!disableSatablade) {
-	sprintf(testFilename,"%s/diskTestFile.dat",SATABLADE_DATA_MOUNT);
+    if(!disableHelium1) {
+	sprintf(testFilename,"%s/diskTestFile.dat",HELIUM1_DATA_MOUNT);
 	fp=fopen(testFilename,"wb");
 	if(fp==NULL) {
 
 	    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
 	    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
-	    shouldDisableBlade=1;
+	    shouldDisableHelium1=1;
 	}
 	else {
 	    numObjs=fwrite(testPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
 	    if(numObjs!=TEST_PATTERN_SIZE) {	
 		syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),testFilename);
 		fprintf(stderr,"fwrite: %s -- %s\n",strerror(errno),testFilename);
-		shouldDisableBlade=1;
+		shouldDisableHelium1=1;
 		fclose(fp);
 	    }	
 	    else {
@@ -1072,14 +1013,14 @@ void checkSatasAreWorking()
 
 		    syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),testFilename);
 		    fprintf(stderr,"fopen: %s -- %s\n",strerror(errno),testFilename);
-		    shouldDisableBlade=1;
+		    shouldDisableHelium1=1;
 		}
 		else {
 		    numObjs=fread(readBackPattern,sizeof(char),TEST_PATTERN_SIZE,fp);
 		    if(numObjs!=TEST_PATTERN_SIZE) {	
 			syslog (LOG_ERR,"fread: %s ---  %s\n",strerror(errno),testFilename);
 			fprintf(stderr,"fread: %s -- %s\n",strerror(errno),testFilename);
-			shouldDisableBlade=1;
+			shouldDisableHelium1=1;
 			fclose(fp);
 		    }	
 		    else {
@@ -1087,7 +1028,7 @@ void checkSatasAreWorking()
 			fclose(fp);
 			for(increment=0;increment<TEST_PATTERN_SIZE;increment++) {
 			    if(readBackPattern[increment]!=testPattern[increment]) {
-				shouldDisableBlade=1;
+				shouldDisableHelium1=1;
 				break;
 			    }
 			}
@@ -1099,13 +1040,13 @@ void checkSatasAreWorking()
     }
    
 
-    if(!disableSatablade) {
-	if(shouldDisableBlade==1) {
+    if(!disableHelium1) {
+	if(shouldDisableHelium1==1) {
 	    bladeErrCounter++;
 	    if(bladeErrCounter>3) {
 		syslog(LOG_INFO,"Problem with satabblade -- will disable\n");
 		theCmd.cmd[0]=CMD_DISABLE_DISK;
-		theCmd.cmd[1]=SATABLADE_DISK_MASK;
+		theCmd.cmd[1]=HELIUM1_DISK_MASK;
 		theCmd.cmd[2]=1;
 		writeCommandAndLink(&theCmd);
 	    
@@ -1115,13 +1056,13 @@ void checkSatasAreWorking()
 
 
 
-    if(!disableSatamini) {
-	if(shouldDisableMini==1) {
+    if(!disableHelium2) {
+	if(shouldDisableHelium2==1) {
 	    miniErrCounter++;
 	    if(miniErrCounter>3) {
 		syslog(LOG_INFO,"Problem with satabmini -- will disable\n");
 		theCmd.cmd[0]=CMD_DISABLE_DISK;
-		theCmd.cmd[1]=SATAMINI_DISK_MASK;
+		theCmd.cmd[1]=HELIUM2_DISK_MASK;
 		theCmd.cmd[2]=1;
 		writeCommandAndLink(&theCmd);
 	    
@@ -1130,6 +1071,6 @@ void checkSatasAreWorking()
     }
 
 
-    printf("Sata check mini (%d %d) and blade (%d %d)\n",
-	   shouldDisableMini,miniErrCounter,shouldDisableBlade,bladeErrCounter);
+    printf("Sata check Helium2 (%d %d) and Helium1 (%d %d)\n",
+	   shouldDisableHelium2,miniErrCounter,shouldDisableHelium1,bladeErrCounter);
 }

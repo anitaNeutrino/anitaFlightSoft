@@ -125,7 +125,7 @@
 #define VER_HK_FULL 30
 #define VER_HK_SS 30
 #define VER_CMD_ECHO 30
-#define VER_MONITOR 30
+#define VER_MONITOR 31
 #define VER_TURF_RATE 30
 #define VER_LAB_PED 30
 #define VER_FULL_PED 30
@@ -584,8 +584,8 @@ typedef struct {
 */
 typedef struct {
     unsigned short diskSpace[8]; ///<In units of 10 MegaBytes
-    char sataminiLabel[12];
-    char satabladeLabel[12];
+    char ntuLabel[12];
+    char otherLabel[12];
     char usbLabel[12];
 } DiskSpaceStruct_t;
 
@@ -647,8 +647,8 @@ typedef struct {
     unsigned int eventNumber;
     unsigned int runNumber;
     int eventDiskBitMask; ///<Which disks was it written to?
-    char satabladeLabel[12];
-    char sataminiLabel[12];
+    char ntuLabel[12];
+    char otherLabel[12];
     char usbLabel[12];
 } IndexEntry_t;
 

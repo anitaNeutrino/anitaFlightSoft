@@ -48,8 +48,8 @@ int startLsusb=1;
 int hkDiskBitMask=0;
 int disableUsb=0;
 int disableNeobrick=0;
-int disableSatablade=0;
-int disableSatamini=0;
+int disableHelium1=0;
+int disableHelium2=0;
 
 
 int main (int argc, char *argv[])
@@ -194,12 +194,12 @@ int readConfigFile()
 	disableNeobrick=kvpGetInt("disableNeobrick",1);
 	if(disableNeobrick)
 	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
-	disableSatamini=kvpGetInt("disableSatamini",1);
-	if(disableSatamini)
-	    hkDiskBitMask&=~SATAMINI_DISK_MASK;
-	disableSatablade=kvpGetInt("disableSatablade",1);
-	if(disableSatablade)
-	    hkDiskBitMask&=~SATABLADE_DISK_MASK;
+	disableHelium2=kvpGetInt("disableHelium2",1);
+	if(disableHelium2)
+	    hkDiskBitMask&=~HELIUM2_DISK_MASK;
+	disableHelium1=kvpGetInt("disableHelium1",1);
+	if(disableHelium1)
+	    hkDiskBitMask&=~HELIUM1_DISK_MASK;
     }
     kvpReset () ;
     status = configLoad ("LogWatchd.config","output") ;

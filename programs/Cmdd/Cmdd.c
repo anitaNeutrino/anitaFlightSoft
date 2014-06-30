@@ -54,9 +54,7 @@ int reallyKillPrograms(int progMask);
 int startPrograms(int progMask);
 int respawnPrograms(int progMask);
 int disableDisk(int diskMask, int disFlag);
-int mountNextSata(int bladeOrMini, int whichNumber);
-int mountNextSatablade(int whichSatablade);
-int mountNextSatamini(int whichSatamini);
+int mountNextNtu(int whichNumber);
 int mountNextUsb(int whichUsb);
 void prepWriterStructs();
 int requestFile(char *filename, int numLines);
@@ -104,13 +102,12 @@ int numCmds=256;
 int printToScreen=1;
 int verbosity=1;
 
-int disableSatablade;
+int disableHelium1;
 int disableUsb;
-int disableSatamini;
+int disableHelium2;
 int disableNeobrick;
-char satabladeName[FILENAME_MAX];
 char usbName[FILENAME_MAX];
-char sataminiName[FILENAME_MAX];
+char ntuName[FILENAME_MAX];
 
 //Needed for commands
 int pidGoals[BANDS_PER_ANT];
@@ -119,8 +116,8 @@ int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
 float priorityFractionGlobalDecimate[NUM_PRIORITIES];
-float priorityFractionDeleteSatablade[NUM_PRIORITIES];
-float priorityFractionDeleteSatamini[NUM_PRIORITIES];
+float priorityFractionDeleteHelium1[NUM_PRIORITIES];
+float priorityFractionDeleteHelium2[NUM_PRIORITIES];
 float priorityFractionDeleteUsb[NUM_PRIORITIES];
 float priorityFractionDeleteNeobrick[NUM_PRIORITIES];
 float priorityFractionDeletePmc[NUM_PRIORITIES];
@@ -150,8 +147,8 @@ int eventDiskBitMask;
 AnitaHkWriterStruct_t cmdWriter;
 
 
-int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
-char *diskNames[DISK_TYPES]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NEOBRICK_DATA_MOUNT};
+int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
+char *diskNames[DISK_TYPES]={HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NEOBRICK_DATA_MOUNT};
 
 
 int main (int argc, char *argv[])
@@ -329,14 +326,6 @@ int readConfig() {
     
   if (status == CONFIG_E_OK) {
 
-    tempString=kvpGetString("satabladeName");
-    if(tempString) {
-      strncpy(satabladeName,tempString,FILENAME_MAX);
-    }
-    else {
-      syslog(LOG_ERR,"Couldn't get satabladeName");
-      fprintf(stderr,"Couldn't get satabladeName\n");
-    }
 
     tempString=kvpGetString("usbName");
     if(tempString) {
@@ -346,30 +335,21 @@ int readConfig() {
       syslog(LOG_ERR,"Couldn't get usbName");
       fprintf(stderr,"Couldn't get usbName\n");
     }
-
-    tempString=kvpGetString("sataminiName");
-    if(tempString) {
-      strncpy(sataminiName,tempString,FILENAME_MAX);
-    }
-    else {
-      syslog(LOG_ERR,"Couldn't get sataminiName");
-      fprintf(stderr,"Couldn't get sataminiName\n");
-    }
 	
 	
 	
     hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
     eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 
-    disableSatablade=kvpGetInt("disableSatablade",0);
-    if(disableSatablade) {
-      hkDiskBitMask&=(~SATABLADE_DISK_MASK);
-      eventDiskBitMask&=(~SATABLADE_DISK_MASK);
+    disableHelium1=kvpGetInt("disableHelium1",0);
+    if(disableHelium1) {
+      hkDiskBitMask&=(~HELIUM1_DISK_MASK);
+      eventDiskBitMask&=(~HELIUM1_DISK_MASK);
     }
-    disableSatamini=kvpGetInt("disableSatamini",0);
-    if(disableSatamini) {
-      hkDiskBitMask&=(~SATAMINI_DISK_MASK);
-      eventDiskBitMask&=(~SATAMINI_DISK_MASK);
+    disableHelium2=kvpGetInt("disableHelium2",0);
+    if(disableHelium2) {
+      hkDiskBitMask&=(~HELIUM2_DISK_MASK);
+      eventDiskBitMask&=(~HELIUM2_DISK_MASK);
     }
     disableUsb=kvpGetInt("disableUsb",0);
     if(disableUsb) {
@@ -492,12 +472,11 @@ int executeCommand(CommandStruct_t *theCmd)
     return disableDisk(ivalue2,ivalue);
       case CMD_MOUNT_ARGH:
 	  return tryAndMountSatadrives();
-      case CMD_MOUNT_NEXT_SATA:
-	  printf("mount next sata\n");
-	  ivalue=theCmd->cmd[1];	    
-	  ivalue2=theCmd->cmd[2];	    
-	  return mountNextSata(ivalue,ivalue2);
-      case CMD_MOUNT_NEXT_USB:
+  case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
+    printf("mount next ntu\n");
+    ivalue=theCmd->cmd[1];	    
+    return mountNextNtu(ivalue);
+  case CMD_MOUNT_NEXT_USB:
     ivalue=theCmd->cmd[1];
     return mountNextUsb(ivalue);
   case CMD_EVENT_DISKTYPE:
@@ -991,13 +970,11 @@ int executeCommand(CommandStruct_t *theCmd)
     configModifyInt("Monitord.config","monitord","usbSwitchMB",ivalue,&rawtime);	
     retVal=sendSignal(ID_MONITORD,SIGUSR1);    
     return rawtime;		    
-  case MONITORD_SATA_THRESH:
+  case MONITORD_NTU_THRESH:
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2];
     if(ivalue==0) 
-      configModifyInt("Monitord.config","monitord","satabladeSwitchMB",ivalue2,&rawtime);	
-    else if(ivalue==1) 
-      configModifyInt("Monitord.config","monitord","sataminiSwitchMB",ivalue2,&rawtime);	
+      configModifyInt("Monitord.config","monitord","ntuSwitchMB",ivalue2,&rawtime);	
     else
       return -1;
     retVal=sendSignal(ID_MONITORD,SIGUSR1);    
@@ -1426,12 +1403,12 @@ int disableDisk(int diskMask, int disFlag)
       //Have a disk
       switch(diskInd) {
       case 0:
-	//Disable satablade
-	configModifyInt("anitaSoft.config","global","disableSatablade",disFlag,&rawtime);
+	//Disable helium1
+	configModifyInt("anitaSoft.config","global","disableHelium1",disFlag,&rawtime);
 	break;
       case 1:
-	//Disable satamini
-	configModifyInt("anitaSoft.config","global","disableSatamini",disFlag,&rawtime);
+	//Disable helium2
+	configModifyInt("anitaSoft.config","global","disableHelium2",disFlag,&rawtime);
 	break;
       case 2:
 	//Disable USB
@@ -1535,12 +1512,12 @@ int setArchiveDecimatePri(int diskMask, int pri, float frac)
     if(diskBitMasks[diskInd]&diskMask) {
       switch(diskInd) {
       case 0:
-	priorityFractionDeleteSatablade[pri]=frac;
-	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteSatablade",priorityFractionDeleteSatablade,NUM_PRIORITIES,&rawtime);
+	priorityFractionDeleteHelium1[pri]=frac;
+	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteHelium1",priorityFractionDeleteHelium1,NUM_PRIORITIES,&rawtime);
 	break;
       case 1:
-	priorityFractionDeleteSatamini[pri]=frac;
-	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteSatamini",priorityFractionDeleteSatamini,NUM_PRIORITIES,&rawtime);
+	priorityFractionDeleteHelium2[pri]=frac;
+	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteHelium2",priorityFractionDeleteHelium2,NUM_PRIORITIES,&rawtime);
 	break;
       case 2:
 	priorityFractionDeleteUsb[pri]=frac;
@@ -2453,39 +2430,30 @@ int setPidGoalScaleFactor(int surf, int dac, float scaleFactor)
 }
 
 
-int mountNextSata(int bladeOrMini,int whichNumber) {
-  //0 is blade, 1 is mini
-  if(bladeOrMini==0)
-    return mountNextSatablade(whichNumber);
-  else if(bladeOrMini==1)
-    return mountNextSatamini(whichNumber);
-  return -1;
-}
-
-int mountNextSatablade(int whichSatablade) {
+int mountNextNtu(int whichDrive) {
   int retVal;
   time_t rawtime;
   int currentNum=0;
   readConfig(); // Get latest names and status
-  //    if(disableSatablade) return -1;
+  //    if(disableHelium1) return -1;
 
-  sscanf(satabladeName,"satablade%d",&currentNum);
-  if(whichSatablade==0)
+  sscanf(ntuName,"disk%d",&currentNum);
+  if(whichDrive==0)
     currentNum++;
   else {
-    currentNum=whichSatablade;
+    currentNum=whichDrive;
   }
        
-  if(currentNum>NUM_SATABLADES) return -1;
+  if(currentNum>NUM_NTU_SSD) return -1;
 
   //Kill all programs that write to disk
   killDataPrograms();
   closeHkFilesAndTidy(&cmdWriter);    
   sleep(1);
   //Change to new drive
-  sprintf(satabladeName,"satablade%d",currentNum);
-  configModifyString("anitaSoft.config","global","satabladeName",satabladeName,&rawtime);
-  retVal=system("/home/anita/flightSoft/bin/mountCurrentSataBlade.sh");
+  sprintf(ntuName,"disk%d",currentNum);
+  configModifyString("anitaSoft.config","global","ntuName",ntuName,&rawtime);
+  retVal=system("/home/anita/flightSoft/bin/mountCurrentNtu.sh");
   sleep(2);
   makeNewRunDirs();
   sleep(2);
@@ -2495,39 +2463,6 @@ int mountNextSatablade(int whichSatablade) {
 }
 
 
-int mountNextSatamini(int whichSatamini) {
-    //    printf("mountNextSatamini\n");
-  int retVal;
-  time_t rawtime;
-  int currentNum=0;
-  readConfig(); // Get latest names and status
-  //    if(disableSatamini) return -1;
-  sscanf(sataminiName,"satamini%d",&currentNum);
-  if(whichSatamini==0)
-    currentNum++;
-  else {
-    currentNum=whichSatamini;
-  }
-//  printf("%s %d\n",sataminiName,currentNum);
-  
-  if(currentNum>NUM_SATAMINIS) return -1;
-
-  //Kill all programs that write to disk
-  killDataPrograms();
-  closeHkFilesAndTidy(&cmdWriter);    
-  sleep(2); //Let them gzip their data
-
-  //Change to new drive
-  sprintf(sataminiName,"satamini%d",currentNum);
-  configModifyString("anitaSoft.config","global","sataminiName",sataminiName,&rawtime);
-  retVal=system("/home/anita/flightSoft/bin/mountCurrentSataMini.sh");
-  sleep(2);
-  makeNewRunDirs();
-  sleep(2);
-  prepWriterStructs();
-  startDataPrograms();
-  return rawtime;
-}
 
 int mountNextUsb(int whichUsb) {
   int retVal;
@@ -3016,22 +2951,22 @@ int readArchivedConfig()
     }
 
     tempNum=NUM_PRIORITIES;
-    kvpStatus = kvpGetFloatArray("priorityFractionDeleteSatablade",
-				 priorityFractionDeleteSatablade,&tempNum);	
+    kvpStatus = kvpGetFloatArray("priorityFractionDeleteHelium1",
+				 priorityFractionDeleteHelium1,&tempNum);	
     if(kvpStatus!=KVP_E_OK) {
-      syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteSatablade): %s",
+      syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteHelium1): %s",
 	     kvpErrorString(kvpStatus));
-      fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteSatablade): %s\n",
+      fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteHelium1): %s\n",
 	      kvpErrorString(kvpStatus));
     }
 
     tempNum=NUM_PRIORITIES;
-    kvpStatus = kvpGetFloatArray("priorityFractionDeleteSatamini",
-				 priorityFractionDeleteSatamini,&tempNum);	
+    kvpStatus = kvpGetFloatArray("priorityFractionDeleteHelium2",
+				 priorityFractionDeleteHelium2,&tempNum);	
     if(kvpStatus!=KVP_E_OK) {
-      syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteSatamini): %s",
+      syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteHelium2): %s",
 	     kvpErrorString(kvpStatus));
-      fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteSatamini): %s\n",
+      fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteHelium2): %s\n",
 	      kvpErrorString(kvpStatus));
     }
 
@@ -3567,9 +3502,9 @@ int startDataPrograms() {
 int tryAndMountSatadrives()
 {
     time_t rawtime;
-    configModifyInt("anitaSoft.config","global","disableSatablade",0,&rawtime);
+    configModifyInt("anitaSoft.config","global","disableHelium1",0,&rawtime);
     sleep(1);
-    configModifyInt("anitaSoft.config","global","disableSatamini",0,&rawtime);
+    configModifyInt("anitaSoft.config","global","disableHelium2",0,&rawtime);
     sleep(1);
 
     char theCommand[180];

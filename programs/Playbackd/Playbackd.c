@@ -47,8 +47,6 @@ int stopPriority=8;
 int startEvent=0;
 
 
-char satabladeName[FILENAME_MAX];
-char sataminiName[FILENAME_MAX];
 char usbName[FILENAME_MAX];
 char playbackName[FILENAME_MAX];
 int playbackMounted=0;
@@ -63,8 +61,8 @@ unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
 char priorityPurgeDirs[NUM_PRIORITIES][FILENAME_MAX];
 
-int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK};
-char *diskNames[DISK_TYPES+1]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,PLAYBACK_MOUNT};
+int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK};
+char *diskNames[DISK_TYPES+1]={HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,PLAYBACK_MOUNT};
 
 int main (int argc, char *argv[])
 {
@@ -153,23 +151,7 @@ int readConfigFile()
 	startPriority=kvpGetInt("startPriority",0);
 	stopPriority=kvpGetInt("stopPriority",8);
 	startEvent=kvpGetInt("startEvent",0);
-	tempString=kvpGetString("satabladeName");
-	if(tempString) {
-	    strncpy(satabladeName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get satabladeName");
-	    fprintf(stderr,"Couldn't get satabladeName\n");
-	}
 
-	tempString=kvpGetString("sataminiName");
-	if(tempString) {
-	    strncpy(sataminiName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get sataminiName");
-	    fprintf(stderr,"Couldn't get sataminiName\n");
-	}
 
 	tempString=kvpGetString("usbName");
 	if(tempString) {
@@ -296,21 +278,15 @@ void sendEvent(PlaybackRequest_t *pReq)
     //Here we're going to have to add something that checks if the file we want is on one of the already mounted disks. If it is we'll go ahead and read it from there, if not we'll have to mount the disk specified by usedisk on /mnt/playback and read the file from there
     int diskInd=0;
     int gotDisk=-1;
-    //    char *currentNames[3]={satabladeName,sataminiName,usbName};
+
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
       if(indEntry.eventDiskBitMask & diskBitMasks[diskInd]) {
 	//So the event was allegedly written to this disk type
 	if(diskInd==0) {
-	  if(strncmp(satabladeName,indEntry.satabladeLabel,12)==0) {
-	    gotDisk=0;
-	    break;
-	  }
+	  gotDisk=0;
 	}
 	else if(diskInd==1) {
-	  if(strncmp(sataminiName,indEntry.sataminiLabel,12)==0) {
-	    gotDisk=1;
-	    break;
-	  }
+	  gotDisk=1;
 	}
 	else if(diskInd==2) {
 	  if(strncmp(usbName,indEntry.usbLabel,12)==0) {
@@ -327,16 +303,11 @@ void sendEvent(PlaybackRequest_t *pReq)
 
     if(gotDisk==-1) {
       //The file isn't on one of the mounted disks will try and mount
-      //a disk on /mnt/playback 
-      if(useDisk==0) 
-	retVal=cleverMountPlaybackDisk(indEntry.satabladeLabel);
-      else if(useDisk==1) 
-	retVal=cleverMountPlaybackDisk(indEntry.sataminiLabel);
-      else if(useDisk==2) 
+      //a disk on /mnt/playback
+      if(useDisk==2)  {
 	retVal=cleverMountPlaybackDisk(indEntry.usbLabel);
-      
-      if(retVal>=0)
-	gotDisk=4;
+      	gotDisk=4;
+      }
     }
 
 
