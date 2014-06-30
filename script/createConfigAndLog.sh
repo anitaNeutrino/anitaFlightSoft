@@ -14,18 +14,18 @@ if [ -d /mnt/data/current ]; then
     cp /tmp/simpleLog.txt /mnt/data/current/log/simpleLog.txt
 fi
 
-if [ -d /mnt/satamini/current ]; then
-    mkdir /mnt/satamini/current/log
-    cp /tmp/simpleLog.txt /mnt/satamini/current/log
-    mkdir /mnt/satamini/current/config
-    cp /home/anita/flightSoft/config/*.config /mnt/satamini/current/config
+if [ -d /mnt/helium2/current ]; then
+    mkdir /mnt/helium2/current/log
+    cp /tmp/simpleLog.txt /mnt/helium2/current/log
+    mkdir /mnt/helium2/current/config
+    cp /home/anita/flightSoft/config/*.config /mnt/helium2/current/config
 fi    
 
-if [ -d /mnt/satablade/current ]; then
-    mkdir /mnt/satablade/current/log
-    cp /tmp/simpleLog.txt /mnt/satablade/current/log
-    mkdir /mnt/satablade/current/config
-    cp /home/anita/flightSoft/config/*.config /mnt/satablade/current/config
+if [ -d /mnt/helium1/current ]; then
+    mkdir /mnt/helium1/current/log
+    cp /tmp/simpleLog.txt /mnt/helium1/current/log
+    mkdir /mnt/helium1/current/config
+    cp /home/anita/flightSoft/config/*.config /mnt/helium1/current/config
 fi    
 
 

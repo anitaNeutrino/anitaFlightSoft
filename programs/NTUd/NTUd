@@ -1,0 +1,36 @@
+f#!/bin/bash
+
+NTU_IP=192.168.20.211
+
+disabled=`getConfigValue anitaSoft.config global disableNtu`
+if [ $disabled -eq 1 ] ; then
+    echo "Ntu disk disabled"
+    exit 0
+fi
+
+
+ntuName=`getConfigString anitaSoft.config global ntuName`
+ntuCopyDir=`getConfigString anitaSoft.config global ntuCopyDir`
+
+echo "ntuName: $ntuName"
+echo "ntuCopyDir: $ntuCopyDir:"
+
+
+while :
+do
+    rsync -av $NTU_IP:lastCopiedRun /tmp/lastCopiedRun
+
+
+    LAST_RUN=`cat /mnt/data/numbers/lastRunNumber`
+    START_RUN=`cat /tmp/lastCopiedRun`
+    PENULTIMATE_RUN=`expr $LAST_RUN - 1`
+    for run in `seq $START_RUN $PENULTIMATE_RUN`; do
+	rsync -av ${ntuCopyDir}/run$run anita@${NTU_IP}:${ntuName}/  > /tmp/getRawData.log
+	if  test `cat /tmp/getRawData.log  | wc -l` -gt 04 ; then	    
+	    echo "Copied Run $run"
+	    echo  $run > /tmp/lastCopiedRun
+	    rsync -av /tmp/lastCopiedRun  $NTU_IP:lastCopiedRun	    
+	fi
+    done
+    sleep 60
+done
