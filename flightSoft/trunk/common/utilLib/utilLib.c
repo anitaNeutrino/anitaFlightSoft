@@ -29,8 +29,8 @@ ProgramStateCode currentState;
 
 //
 
-int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
-char *diskNames[DISK_TYPES]={SATABLADE_DATA_MOUNT,SATAMINI_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NEOBRICK_DATA_MOUNT};
+int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
+char *diskNames[DISK_TYPES]={HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NEOBRICK_DATA_MOUNT};
 int bufferDisk[DISK_TYPES]={0,0,0,0,1};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
@@ -254,8 +254,8 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr)
 {
   //    sync();
   int diskInd;    
-  int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
-			      awsPtr->sataminiCloneMask,
+  int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
+			      awsPtr->helium2CloneMask,
 			      awsPtr->usbCloneMask,0};
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
@@ -289,8 +289,8 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
   //    sync();
   int diskInd;
   pid_t childPid;    
-  int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
-			      awsPtr->sataminiCloneMask,
+  int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
+			      awsPtr->helium2CloneMask,
 			      awsPtr->usbCloneMask,0};
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
@@ -356,8 +356,8 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
   char fullBasename[FILENAME_MAX];
   char bufferName[FILENAME_MAX];
 
-  int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
-			      awsPtr->sataminiCloneMask,
+  int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
+			      awsPtr->helium2CloneMask,
 			      awsPtr->usbCloneMask,0};
     
   if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {
@@ -507,8 +507,8 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
   char fullBasename[FILENAME_MAX];
   char bufferName[FILENAME_MAX];
 
-  int cloneMasks[DISK_TYPES]={awsPtr->satabladeCloneMask,
-			      awsPtr->sataminiCloneMask,
+  int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
+			      awsPtr->helium2CloneMask,
 			      awsPtr->usbCloneMask,0};
     
   if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {

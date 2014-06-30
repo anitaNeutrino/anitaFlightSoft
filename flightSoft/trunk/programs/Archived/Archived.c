@@ -35,8 +35,8 @@ int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
 float priorityFractionGlobalDecimate[NUM_PRIORITIES];
-float priorityFractionDeleteSatablade[NUM_PRIORITIES];
-float priorityFractionDeleteSatamini[NUM_PRIORITIES];
+float priorityFractionDeleteHelium1[NUM_PRIORITIES];
+float priorityFractionDeleteHelium2[NUM_PRIORITIES];
 float priorityFractionDeleteUsb[NUM_PRIORITIES];
 float priorityFractionDeleteNeobrick[NUM_PRIORITIES];
 float priorityFractionDeletePmc[NUM_PRIORITIES];
@@ -61,12 +61,12 @@ int writeTelem=0;
 
 int eventDiskBitMask;
 int eventDiskBitMask=0;
-int disableSatablade=0;
-int disableSatamini=0;
+int disableHelium1=0;
+int disableHelium2=0;
 int disableUsb=0;
 int disableNeobrick=0;
-int satabladeCloneMask;
-int sataminiCloneMask;
+int helium1CloneMask;
+int helium2CloneMask;
 int usbCloneMask;
 int priorityPPS1;
 int priorityPPS2;
@@ -80,9 +80,9 @@ float softFractionTelem=0;
 AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
-char satabladeName[FILENAME_MAX];
+
 char usbName[FILENAME_MAX];
-char sataminiName[FILENAME_MAX];
+
 
 int usbBitMasks[2]={0x4,0x8};
 
@@ -97,7 +97,7 @@ int telemEvent(int trigType);
 
 
 
-int diskBitMasks[DISK_TYPES]={SATABLADE_DISK_MASK,SATAMINI_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
+int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
 
 int main (int argc, char *argv[])
 {
@@ -139,13 +139,13 @@ int main (int argc, char *argv[])
     eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
-	disableSatablade=kvpGetInt("disableSatablade",0);
-	if(disableSatablade) {
-	  eventDiskBitMask&=(~SATABLADE_DISK_MASK);
+	disableHelium1=kvpGetInt("disableHelium1",0);
+	if(disableHelium1) {
+	  eventDiskBitMask&=(~HELIUM1_DISK_MASK);
 	}
-	disableSatamini=kvpGetInt("disableSatamini",0);
-	if(disableSatamini) {
-	  eventDiskBitMask&=(~SATAMINI_DISK_MASK);
+	disableHelium2=kvpGetInt("disableHelium2",0);
+	if(disableHelium2) {
+	  eventDiskBitMask&=(~HELIUM2_DISK_MASK);
 	}
 	disableUsb=kvpGetInt("disableUsb",0);
 	if(disableUsb) {
@@ -157,17 +157,9 @@ int main (int argc, char *argv[])
 	}
 
 
-	satabladeCloneMask=kvpGetInt("satabladeCloneMask",0);
-	sataminiCloneMask=kvpGetInt("sataminiCloneMask",0);
+	helium1CloneMask=kvpGetInt("helium1CloneMask",0);
+	helium2CloneMask=kvpGetInt("helium2CloneMask",0);
 	usbCloneMask=kvpGetInt("usbCloneMask",0);
-	tempString=kvpGetString("satabladeName");
-	if(tempString) {
-	    strncpy(satabladeName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get satabladeName");
-	    fprintf(stderr,"Couldn't get satabladeName\n");
-	}
 
 
 	tempString=kvpGetString("usbName");
@@ -178,18 +170,6 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Couldn't get usbName");
 	    fprintf(stderr,"Couldn't get usbName\n");
 	}
-
-
-
-	tempString=kvpGetString("sataminiName");
-	if(tempString) {
-	    strncpy(sataminiName,tempString,FILENAME_MAX);
-	}
-	else {
-	    syslog(LOG_ERR,"Couldn't get sataminiName");
-	    fprintf(stderr,"Couldn't get sataminiName\n");
-	}
-
 
 
     }
@@ -307,22 +287,22 @@ int readConfigFile()
 	}
 
 	tempNum=NUM_PRIORITIES;
-	kvpStatus = kvpGetFloatArray("priorityFractionDeleteSatablade",
-				     priorityFractionDeleteSatablade,&tempNum);	
+	kvpStatus = kvpGetFloatArray("priorityFractionDeleteHelium1",
+				     priorityFractionDeleteHelium1,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteSatablade): %s",
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteHelium1): %s",
 		   kvpErrorString(kvpStatus));
-		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteSatablade): %s\n",
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteHelium1): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
 	tempNum=NUM_PRIORITIES;
-	kvpStatus = kvpGetFloatArray("priorityFractionDeleteSatamini",
-				     priorityFractionDeleteSatamini,&tempNum);	
+	kvpStatus = kvpGetFloatArray("priorityFractionDeleteHelium2",
+				     priorityFractionDeleteHelium2,&tempNum);	
 	if(kvpStatus!=KVP_E_OK) {
-	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteSatamini): %s",
+	    syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteHelium2): %s",
 		   kvpErrorString(kvpStatus));
-		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteSatamini): %s\n",
+		fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteHelium2): %s\n",
 			kvpErrorString(kvpStatus));
 	}
 
@@ -479,15 +459,15 @@ void processEvent()
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
 
-    //Stuff for satamini
+    //Stuff for helium2
     //    static int errorCounter=0;
     //    static int fileEpoch=0;
     //    static int fileNum=0;
     //    static int dirNum=0;
     //    static int otherDirNum=0;
-    //    static char sataminiDirName[FILENAME_MAX];
-    //    static char sataminiHeaderFileName[FILENAME_MAX];
-    //    static char sataminiEventFileName[FILENAME_MAX];
+    //    static char helium2DirName[FILENAME_MAX];
+    //    static char helium2HeaderFileName[FILENAME_MAX];
+    //    static char helium2EventFileName[FILENAME_MAX];
     
 
     int priority=(theHead.priority&0xf);
@@ -558,19 +538,19 @@ void processEvent()
     else numBytes=0;
 
     if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
-/* 	if(eventWriter.writeBitMask & SATAMINI_DISK_MASK) { */
-/* 	    //Now write to satamini */
+/* 	if(eventWriter.writeBitMask & HELIUM2_DISK_MASK) { */
+/* 	    //Now write to helium2 */
 /* 	    if(pedSubBody.eventNumber>fileEpoch) { */
 /* 		if(fileEpoch) { */
 /* 		    //Close file and zip */
 /* 		    if(fpHead) { */
 /* 			fclose(fpHead); */
-/* 			zipFileInPlace(sataminiHeaderFileName); */
+/* 			zipFileInPlace(helium2HeaderFileName); */
 /* 			fpHead=NULL; */
 /* 		    } */
 /* 		    if(fpEvent) { */
 /* 			fclose(fpEvent); */
-/* 			zipFileInPlace(sataminiEventFileName); */
+/* 			zipFileInPlace(helium2EventFileName); */
 /* 			fpEvent=NULL; */
 /* 		    }			 */
 /* 		} */
@@ -578,16 +558,16 @@ void processEvent()
 /* 		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)); */
 /* 		//Make sub dir */
 /* 		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)); */
-/* 		sprintf(sataminiDirName,"%s/current/event/ev%d/ev%d",SATAMINI_DATA_MOUNT,dirNum,otherDirNum); */
-/* 		makeDirectories(sataminiDirName); */
+/* 		sprintf(helium2DirName,"%s/current/event/ev%d/ev%d",HELIUM2_DATA_MOUNT,dirNum,otherDirNum); */
+/* 		makeDirectories(helium2DirName); */
 		
 /* 		//Make files */
 /* 		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE); */
-/* 		sprintf(sataminiEventFileName,"%s/psev_%d.dat",sataminiDirName,fileNum); */
-/* 		sprintf(sataminiHeaderFileName,"%s/hd_%d.dat",sataminiDirName,fileNum); */
+/* 		sprintf(helium2EventFileName,"%s/psev_%d.dat",helium2DirName,fileNum); */
+/* 		sprintf(helium2HeaderFileName,"%s/hd_%d.dat",helium2DirName,fileNum); */
 /* 		fileEpoch=fileNum+EVENTS_PER_FILE; */
-/* 		fpHead=fopen(sataminiHeaderFileName,"ab"); */
-/* 		fpEvent=fopen(sataminiEventFileName,"ab"); */
+/* 		fpHead=fopen(helium2HeaderFileName,"ab"); */
+/* 		fpEvent=fopen(helium2EventFileName,"ab"); */
 /* 	    } */
 	    
 /* 	    if(fpHead) { */
@@ -615,7 +595,7 @@ void processEvent()
 	    
 
 /* 	} */
-/* 	eventWriter.writeBitMask &= ~SATAMINI_DISK_MASK; */
+/* 	eventWriter.writeBitMask &= ~HELIUM2_DISK_MASK; */
 	writeOutputToDisk(numBytes);
     }
     else {
@@ -677,9 +657,8 @@ void writeOutputToDisk(int numBytes) {
     indEnt.runNumber=currentRun;
     indEnt.eventNumber=theHead.eventNumber;
     indEnt.eventDiskBitMask=eventWriter.writeBitMask;
-    strncpy(indEnt.satabladeLabel,satabladeName,11);
     strncpy(indEnt.usbLabel,usbName,11);
-    strncpy(indEnt.sataminiLabel,sataminiName,11);
+    //RJN need to add ntu Label
     cleverIndexWriter(&indEnt,&indexWriter);
 
  
@@ -734,8 +713,8 @@ void prepWriterStructs() {
 	eventWriter.currentHeaderFilePtr[diskInd]=0;
 	eventWriter.currentEventFilePtr[diskInd]=0;
     }
-    eventWriter.satabladeCloneMask=satabladeCloneMask;
-    eventWriter.sataminiCloneMask=sataminiCloneMask;
+    eventWriter.helium1CloneMask=helium1CloneMask;
+    eventWriter.helium2CloneMask=helium2CloneMask;
     eventWriter.usbCloneMask=usbCloneMask;   
     eventWriter.gotData=0;
     eventWriter.writeBitMask=eventDiskBitMask;
@@ -804,11 +783,11 @@ int getDecimatedDiskMask(int pri, int diskMask)
       testVal=drand48();
       switch(diskInd) {
       case 0:
-	if(testVal<priorityFractionDeleteSatablade[pri])
+	if(testVal<priorityFractionDeleteHelium1[pri])
 	  diskMask &= ~diskBitMasks[diskInd];
 	break;
       case 1:
-	if(testVal<priorityFractionDeleteSatamini[pri])
+	if(testVal<priorityFractionDeleteHelium2[pri])
 	  diskMask &= ~diskBitMasks[diskInd];
 	break;
       case 2:

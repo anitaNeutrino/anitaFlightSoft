@@ -89,9 +89,8 @@
 #define MAGNETOMETER_DEV_NAME "/dev/ttySTDRV002_3"
 
 #define NUM_PRIORITIES 10
-#define NUM_SATABLADES 8
-#define NUM_SATAMINIS 8
 #define NUM_USBS 31
+#define NUM_NTU_SSD 6
 
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
@@ -132,8 +131,8 @@
 #define TRIG_BUF_SHIFT_FINAL 0
 
 //Disk Bit Masks
-#define SATABLADE_DISK_MASK 0x1
-#define SATAMINI_DISK_MASK 0x2
+#define HELIUM1_DISK_MASK 0x1
+#define HELIUM2_DISK_MASK 0x2
 #define USB_DISK_MASK 0x4
 #define NEOBRICK_DISK_MASK 0x8
 #define PMC_DISK_MASK 0x10
@@ -144,8 +143,8 @@
 #define DATA_LINK "/tmp/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
 #define SAFE_DATA_MOUNT "/tmp/mnt/pmcdata"
-#define SATAMINI_DATA_MOUNT "/tmp/mnt/satamini"
-#define SATABLADE_DATA_MOUNT "/tmp/mnt/satablade"
+#define HELIUM2_DATA_MOUNT "/tmp/mnt/helium2"
+#define HELIUM1_DATA_MOUNT "/tmp/mnt/helium1"
 #define USB_DATA_MOUNT "/tmp/mnt/usbint"
 #define PLAYBACK_MOUNT "/tmp/mnt/playback"
 #define LAST_EVENT_NUMBER_FILE "/tmp/mnt/data/numbers/lastEventNumber"
@@ -156,8 +155,8 @@
 #define DATA_LINK "/mnt/data" //Where the index and peds are written
 #define DATABACKUP_LINK "/tmp/mnt/dataBackup" //Where the index and peds are written
 #define SAFE_DATA_MOUNT "/mnt/pmcdata"
-#define SATAMINI_DATA_MOUNT "/mnt/satamini"
-#define SATABLADE_DATA_MOUNT "/mnt/satablade"
+#define HELIUM2_DATA_MOUNT "/mnt/helium2"
+#define HELIUM1_DATA_MOUNT "/mnt/helium1"
 #define USB_DATA_MOUNT "/mnt/usbint"
 #define PLAYBACK_MOUNT "/mnt/playback"
 #define LAST_EVENT_NUMBER_FILE "/mnt/data/numbers/lastEventNumber"
