@@ -15,31 +15,31 @@ fi
 ln -sf /mnt/data/run${run} /mnt/data/current
 
 
-disabledMini=`getConfigValue anitaSoft.config global disableSatamini`
-if [ $disabledMini -eq 1 ] ; then
-    echo "Satamini disk disabled"   
+disabledHelium2=`getConfigValue anitaSoft.config global disableHelium2`
+if [ $disabledHelium2 -eq 1 ] ; then
+    echo "Helium2 disk disabled"   
 else 
-    mkdir /mnt/satamini/run${run}
-    rm -f /mnt/satamini/current
-    if [ -d /mnt/satamini/current ] ; then
-	echo "Moving /mnt/satamini/current"
-	mv /mnt/satamini/current/ /mnt/satamini/current.run${run}
+    mkdir /mnt/helium2/run${run}
+    rm -f /mnt/helium2/current
+    if [ -d /mnt/helium2/current ] ; then
+	echo "Moving /mnt/helium2/current"
+	mv /mnt/helium2/current/ /mnt/helium2/current.run${run}
     fi
-    ln -sf /mnt/satamini/run${run} /mnt/satamini/current
+    ln -sf /mnt/helium2/run${run} /mnt/helium2/current
 fi
 
-disabledBlade=`getConfigValue anitaSoft.config global disableSatablade`
-if [ $disabledBlade -eq 1 ] ; then
-    echo "Satamini disk disabled"
+disabledHelium1=`getConfigValue anitaSoft.config global disableHelium1`
+if [ $disabledHelium1 -eq 1 ] ; then
+    echo "Helium1 disk disabled"
 else 
-    mkdir /mnt/satablade/run${run}
-    rm -f /mnt/satablade/current
-    if [ -d /mnt/satablade/current ] ; then
-	echo "Moving /mnt/satablade/current"
-	mv /mnt/satablade/current /mnt/satablade/current.run${run}
+    mkdir /mnt/helium1/run${run}
+    rm -f /mnt/helium1/current
+    if [ -d /mnt/helium1/current ] ; then
+	echo "Moving /mnt/helium1/current"
+	mv /mnt/helium1/current /mnt/helium1/current.run${run}
 	
     fi
-    ln -sf /mnt/satablade/run${run} /mnt/satablade/current
+    ln -sf /mnt/helium1/run${run} /mnt/helium1/current
 fi
 
 

@@ -42,13 +42,13 @@ echo "Making new directories"
 
 
 /home/anita/flightSoft/bin/startNewRun.sh
-ls /mnt/satablade/current -l
+ls /mnt/helium1/current -l
 mkdir /mnt/data/current/log
 /home/anita/flightSoft/bin/simpleLog /mnt/data/current/log/simpleLog.txt
-mkdir /mnt/satablade/current/log
-cp /mnt/data/current/log/simpleLog.txt /mnt/satablade/current/log/simpleLog.txt
-mkdir /mnt/satablade/current/config
-cp /home/anita/flightSoft/config/*.config /mnt/satablade/current/config
+mkdir /mnt/helium1/current/log
+cp /mnt/data/current/log/simpleLog.txt /mnt/helium1/current/log/simpleLog.txt
+mkdir /mnt/helium1/current/config
+cp /home/anita/flightSoft/config/*.config /mnt/helium1/current/config
 mkdir /mnt/data/current/config
 cp /home/anita/flightSoft/config/*.config /mnt/data/current/config
 
