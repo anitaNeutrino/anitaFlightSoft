@@ -1,4 +1,7 @@
 #!/bin/bash
+echo "Not currently enabled"
+exit
+
 echo "Killing Programs"
 daemon --stop -n Archived
 daemon --stop -n Hkd
