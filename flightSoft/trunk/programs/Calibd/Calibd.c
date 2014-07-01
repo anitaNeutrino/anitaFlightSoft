@@ -95,7 +95,7 @@ int hkDiskBitMask;
 int disableHelium1=0;
 int disableHelium2=0;
 int disableUsb=0;
-int disableNeobrick=0;
+//int disableNeobrick=0;
 AnitaHkWriterStruct_t calibWriter;
 AnitaHkWriterStruct_t hkRawWriter;
 AnitaHkWriterStruct_t hkCalWriter;
@@ -156,9 +156,9 @@ int main (int argc, char *argv[])
 	disableUsb=kvpGetInt("disableUsb",1);
 	if(disableUsb)
 	    hkDiskBitMask&=~USB_DISK_MASK;
-	disableNeobrick=kvpGetInt("disableNeobrick",1);
-	if(disableNeobrick)
-	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
+	//	disableNeobrick=kvpGetInt("disableNeobrick",1);
+	//	if(disableNeobrick)
+	//	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
 	disableHelium2=kvpGetInt("disableHelium2",1);
 	if(disableHelium2)
 	    hkDiskBitMask&=~HELIUM2_DISK_MASK;

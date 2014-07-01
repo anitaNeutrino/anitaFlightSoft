@@ -64,7 +64,7 @@ int eventDiskBitMask=0;
 int disableHelium1=0;
 int disableHelium2=0;
 int disableUsb=0;
-int disableNeobrick=0;
+//int disableNeobrick=0;
 int helium1CloneMask;
 int helium2CloneMask;
 int usbCloneMask;
@@ -97,7 +97,7 @@ int telemEvent(int trigType);
 
 
 
-int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
+int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NTU_DISK_MASK};
 
 int main (int argc, char *argv[])
 {
@@ -151,10 +151,10 @@ int main (int argc, char *argv[])
 	if(disableUsb) {
 	  eventDiskBitMask&=(~USB_DISK_MASK);
 	}
-	disableNeobrick=kvpGetInt("disableNeobrick",0);
-	if(disableNeobrick) {
-	  eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
-	}
+	//	disableNeobrick=kvpGetInt("disableNeobrick",0);
+	//	if(disableNeobrick) {
+	//	  eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
+	//	}
 
 
 	helium1CloneMask=kvpGetInt("helium1CloneMask",0);

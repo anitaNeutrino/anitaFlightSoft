@@ -134,7 +134,7 @@
 #define HELIUM1_DISK_MASK 0x1
 #define HELIUM2_DISK_MASK 0x2
 #define USB_DISK_MASK 0x4
-#define NEOBRICK_DISK_MASK 0x8
+#define NTU_DISK_MASK 0x8
 #define PMC_DISK_MASK 0x10
 
 
@@ -165,8 +165,8 @@
 #define LAST_RUN_NUMBER_FILE "/mnt/data/numbers/lastRunNumber"
 #endif
 
-#define NEOBRICK_DATA_MOUNT "/tmp/neobrick"
-#define NEOBRICK_WATCH_DIR "/tmp/neobrick/current"
+#define NTU_DATA_MOUNT "/tmp/ntu"
+#define NTU_WATCH_DIR "/tmp/ntu/current"
 
 #define DISK_BUFFER_DIR "/tmp/buffer"
 

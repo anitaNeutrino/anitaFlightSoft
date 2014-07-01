@@ -104,7 +104,7 @@ int calibrationPeriod;
 
 int hkDiskBitMask=0;
 int disableUsb=0;
-int disableNeobrick=0;
+//int disableNeobrick=0;
 int disableHelium1=0;
 int disableHelium2=0;
 AnitaHkWriterStruct_t hkRawWriter;
@@ -202,9 +202,9 @@ int main (int argc, char *argv[])
 	disableUsb=kvpGetInt("disableUsb",1);
 	if(disableUsb)
 	    hkDiskBitMask&=~USB_DISK_MASK;
-	disableNeobrick=kvpGetInt("disableNeobrick",1);
-	if(disableNeobrick)
-	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
+	//	disableNeobrick=kvpGetInt("disableNeobrick",1);
+	//	if(disableNeobrick)
+	//	    hkDiskBitMask&=~NEOBRICK_DISK_MASK;
 	disableHelium2=kvpGetInt("disableHelium2",1);
 	if(disableHelium2)
 	    hkDiskBitMask&=~HELIUM2_DISK_MASK;
@@ -269,7 +269,7 @@ int main (int argc, char *argv[])
 		    lastCal=rawTime;
 		}
 		ip320Read(writeLookupFile);
-		quickAddNeobrickPressAndTemp();
+		//		quickAddNeobrickPressAndTemp();
 		outputData(IP320_RAW);
 		if(writeLookupFile) {
 		  prettyPrintPowerLookupFile();

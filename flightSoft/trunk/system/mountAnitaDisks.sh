@@ -8,7 +8,7 @@
 
 
 # For now this justs mounts the external hard drive.
-mount LABEL=rjndata /mnt/data
-mount --bind /mnt/data/helium1 /mnt/helium1
+mount LABEL=HELIUM1 /mnt/helium1
+mount --bind /mnt/helium1/data /mnt/data
 
 

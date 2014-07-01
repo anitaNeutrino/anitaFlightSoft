@@ -54,9 +54,9 @@ cp /home/anita/flightSoft/config/*.config /mnt/data/current/config
 sleep 2
 
 echo "Starting Programs"
-#Cmdd > /tmp/cmdd.log 2>&1 </dev/null &
+Cmdd > /tmp/cmdd.log 2>&1 </dev/null &
 Archived > /tmp/archived.log 2>&1 </dev/null &
-#Monitord > /tmp/monitord.log 2>&1 </dev/null&
+Monitord > /tmp/monitord.log 2>&1 </dev/null&
 Hkd > /tmp/hkd.log 2>&1 </dev/null &
 #GPSd > /tmp/gpsd.log 2>&1 </dev/null &
 Calibd > /tmp/calibd.log 2>&1 </dev/null &
@@ -64,7 +64,7 @@ Calibd > /tmp/calibd.log 2>&1 </dev/null &
 
 
 #Just to make sure
-#SIPd > /tmp/sipd 2>&1 </dev/null &
+SIPd > /tmp/sipd 2>&1 </dev/null &
 #LOSd > /tmp/losd 2>&1 </dev/null &
 Calibd > /tmp/calibd.log 2>&1 </dev/null &
 Eventd > /tmp/eventd.log 2>&1 </dev/null &

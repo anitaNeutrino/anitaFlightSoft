@@ -109,7 +109,7 @@ int eventDiskBitMask=0;
 int disableHelium1=0;
 int disableHelium2=0;
 int disableUsb=0;
-int disableNeobrick=0;
+//int disableNeobrick=0;
 AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
@@ -349,11 +349,11 @@ int readConfigFile()
 	  hkDiskBitMask&=(~USB_DISK_MASK);
 	  eventDiskBitMask&=(~USB_DISK_MASK);
 	}
-	disableNeobrick=kvpGetInt("disableNeobrick",0);
-	if(disableNeobrick) {
-	  hkDiskBitMask&=(~NEOBRICK_DISK_MASK);
-	  eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
-	}
+	//	disableNeobrick=kvpGetInt("disableNeobrick",0);
+	//	if(disableNeobrick) {
+	//	  hkDiskBitMask&=(~NEOBRICK_DISK_MASK);
+	//	  eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
+	//	}
 
     }
     else {
