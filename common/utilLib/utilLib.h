@@ -39,7 +39,7 @@ extern "C" {
 
     typedef struct {
 	FILE *currentFilePtr[DISK_TYPES]; //For the 5 disk types
-	unsigned int writeBitMask; //1-helium1, 2-helium2,3-usb,4-neobrick,5-pmc
+	unsigned int writeBitMask; //1-helium1, 2-helium2,3-usb,4-ntu,5-pmc
 	int writeCount[DISK_TYPES];
 	int fileCount[DISK_TYPES];
 	int dirCount[DISK_TYPES];
@@ -58,7 +58,7 @@ extern "C" {
 	FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
 	FILE* currentHeaderFilePtr[DISK_TYPES];
 #endif
-	unsigned int writeBitMask; //1-helium1, 2-helium2,3-usb,4-neobrick,5-pmc
+	unsigned int writeBitMask; //1-helium1, 2-helium2,3-usb,4-ntu,5-pmc
 	unsigned int helium1CloneMask;
 	unsigned int helium2CloneMask;
 	unsigned int usbCloneMask;

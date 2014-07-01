@@ -105,7 +105,7 @@ int verbosity=1;
 int disableHelium1;
 int disableUsb;
 int disableHelium2;
-int disableNeobrick;
+//int disableNeobrick;
 char usbName[FILENAME_MAX];
 char ntuName[FILENAME_MAX];
 
@@ -147,8 +147,8 @@ int eventDiskBitMask;
 AnitaHkWriterStruct_t cmdWriter;
 
 
-int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NEOBRICK_DISK_MASK};
-char *diskNames[DISK_TYPES]={HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NEOBRICK_DATA_MOUNT};
+int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NTU_DISK_MASK};
+char *diskNames[DISK_TYPES]={HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NTU_DATA_MOUNT};
 
 
 int main (int argc, char *argv[])
@@ -356,11 +356,11 @@ int readConfig() {
       hkDiskBitMask&=(~USB_DISK_MASK);
       eventDiskBitMask&=(~USB_DISK_MASK);
     }
-    disableNeobrick=kvpGetInt("disableNeobrick",0);
-    if(disableNeobrick) {
-      hkDiskBitMask&=(~NEOBRICK_DISK_MASK);
-      eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
-    }
+    //    disableNeobrick=kvpGetInt("disableNeobrick",0);
+    //    if(disableNeobrick) {
+    //      hkDiskBitMask&=(~NEOBRICK_DISK_MASK);
+    //      eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
+    //    }
 	  
 	
 
