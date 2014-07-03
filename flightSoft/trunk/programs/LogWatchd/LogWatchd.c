@@ -29,6 +29,7 @@ int readConfigFile();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 int tailFile(char *filename, int numLines);
+int tailJournal(char *journalctlOption, int numLines);
 int catFile(char *filename);
 int makeZippedFilePackets(char *filename,int fileTag);
 void sendStartStruct(LogWatchdStart_t *startPtr);
@@ -254,6 +255,19 @@ int tailFile(char *filename, int numLines) {
     sprintf(tailFilename,"/tmp/tail_%s",basename(filename));
     char theCommand[FILENAME_MAX];
     sprintf(theCommand,"tail -n %d %s > %s",numLines,filename,tailFilename);
+    system(theCommand);
+    makeZippedFilePackets(tailFilename,counter);
+    counter++;    
+    return 0;
+}
+
+
+int tailJournal(char *journalctlOption, int numLines) {
+    static int counter=0;
+    char tailFilename[FILENAME_MAX];
+    sprintf(tailFilename,"/tmp/tail_%s",journalctlOption);
+    char theCommand[FILENAME_MAX];
+    sprintf(theCommand,"journalctl %s %d > %s",journalctlOption,numLines,tailFilename);
     system(theCommand);
     makeZippedFilePackets(tailFilename,counter);
     counter++;    
