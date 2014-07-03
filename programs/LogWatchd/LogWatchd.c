@@ -22,6 +22,7 @@
 #include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
+#include "includes/anitaCommand.h"
 
 #define MAX_RAW_BUFFER 4000
 
@@ -64,6 +65,7 @@ int main (int argc, char *argv[])
 
     /* Log stuff */
     char *progName=basename(argv[0]);
+    char journalCtlArgument[180];
     LogWatchdStart_t theStart;
     LogWatchRequest_t theRequest;
 
@@ -154,10 +156,24 @@ int main (int argc, char *argv[])
 
 	    //Do something
 	    if(!fillLogWatchRequest(&theRequest,currentFilename)) {
-	      if(theRequest.numLines==0)
-		catFile(theRequest.filename);
-	      else
-		tailFile(theRequest.filename,theRequest.numLines);
+	      if(theRequest.logReq==LOG_REQUEST_FILE) {
+		if(theRequest.numLines==0)
+		  catFile(theRequest.filename);
+		else
+		  tailFile(theRequest.filename,theRequest.numLines);
+	      }
+	      else if(theRequest.logReq==LOG_REQUEST_JOURNALCTL) {
+		//Need to do something here
+		switch(theRequest.jclOpt) {
+		case JOURNALCTL_OPT_CMDLINE:
+		  sprintf(journalCtlArgument,"_CMDLINE=%s",getProgName(theRequest.optArg));
+		  tailJournal(journalCtlArgument,theRequest.numLines);
+		default:
+		  tailJournal("",theRequest.numLines);
+		}
+		
+		
+	      }
 	    }
 
 	    //Delete Files

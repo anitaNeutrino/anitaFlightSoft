@@ -58,6 +58,7 @@ int mountNextNtu(int whichNumber);
 int mountNextUsb(int whichUsb);
 void prepWriterStructs();
 int requestFile(char *filename, int numLines);
+int requestJournalCtl(JournalctlOptionCommand_t jcOpt, int cmdArg, int numLines);
 int readAcqdConfig();
 int readArchivedConfig();
 int readLosdConfig();
@@ -2520,16 +2521,39 @@ int mountNextUsb(int whichUsb) {
 
 }
 
-int requestFile(char *filename, int numLines) {
-  static int counter=0;
+
+static int requestCounter=0;
+
+int requestJournalCtl(JournalctlOptionCommand_t jcOpt, int cmdArg, int numLines)
+{
+
   LogWatchRequest_t theRequest;
   char outName[FILENAME_MAX];
   time_t rawtime;
   time(&rawtime);
   theRequest.numLines=numLines;
+  theRequest.logReq=LOG_REQUEST_JOURNALCTL;
+  theRequest.jclOpt=jcOpt;
+  theRequest.optArg=cmdArg;
+  sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,requestCounter);
+  requestCounter++;
+  writeStruct(&theRequest,outName,sizeof(LogWatchRequest_t));
+  makeLink(outName,LOGWATCH_LINK_DIR);
+  return rawtime;
+
+}
+
+
+int requestFile(char *filename, int numLines) {
+  LogWatchRequest_t theRequest;
+  char outName[FILENAME_MAX];
+  time_t rawtime;
+  time(&rawtime);
+  theRequest.numLines=numLines;
+  theRequest.logReq=LOG_REQUEST_FILE;
   strncpy(theRequest.filename,filename,179);
-  sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,counter);
-  counter++;
+  sprintf(outName,"%s/request_%d.dat",LOGWATCH_DIR,requestCounter);
+  requestCounter++;
   writeStruct(&theRequest,outName,sizeof(LogWatchRequest_t));
   makeLink(outName,LOGWATCH_LINK_DIR);
   return rawtime;
@@ -3339,7 +3363,7 @@ void handleBadSigs(int sig)
 int logRequestCommand(int logNum, int numLines)
 {
   switch(logNum) {
-  case LOG_REQUEST_MESSAGES:
+  case LOG_REQUEST_JOURNALCTL:
     return requestFile("/var/log/messages",numLines);
   case LOG_REQUEST_ANITA:
     return requestFile("/var/log/anita.log",numLines);

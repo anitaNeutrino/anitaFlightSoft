@@ -1,15 +1,16 @@
 #!/bin/bash
 echo "Killing Programs"
-killall Archived
-killall Hkd
-killall GPSd
-killall Monitord
-killall Cmdd
-killall Calibd
-killall Acqd
-killall Prioritizerd
-killall Eventd
-killall LogWatchd
+daemon --stop -n Archived
+daemon --stop -n Hkd
+daemon --stop -n GPSd
+daemon --stop -n Monitord
+daemon --stop -n Cmdd
+daemon --stop -n Calibd
+daemon --stop -n Acqd
+daemon --stop -n Prioritizerd
+daemon --stop -n Eventd
+daemon --stop -n LogWatchd
+
 
 
 echo "Sleeping while files are written and zipped"
@@ -23,7 +24,7 @@ while [ 1 ]; do
  fi
 done;
 
-killall Neobrickd
+daemon --stop -n Neobrickd
 
 sleep 2
 
@@ -54,21 +55,21 @@ cp /home/anita/flightSoft/config/*.config /mnt/data/current/config
 sleep 2
 
 echo "Starting Programs"
-Cmdd > /tmp/cmdd.log 2>&1 </dev/null &
-Archived > /tmp/archived.log 2>&1 </dev/null &
-Monitord > /tmp/monitord.log 2>&1 </dev/null&
-Hkd > /tmp/hkd.log 2>&1 </dev/null &
-#GPSd > /tmp/gpsd.log 2>&1 </dev/null &
-Calibd > /tmp/calibd.log 2>&1 </dev/null &
-#LogWatchd > /tmp/logwatchd.log 2>&1 </dev/null &
+daemon -r Cmdd -n Cmdd
+daemon -r Archived -n Archived
+daemon -r Hkd -n Hkd
+#daemon -r GPSd -n GPSd
+daemon -r Monitord -n Monitord
+daemon -r Calibd -n Calibd
+daemon -r LogWatchd -n LogWatchd
 
 
-#Just to make sure
-SIPd > /tmp/sipd 2>&1 </dev/null &
-#LOSd > /tmp/losd 2>&1 </dev/null &
-Calibd > /tmp/calibd.log 2>&1 </dev/null &
-Eventd > /tmp/eventd.log 2>&1 </dev/null &
-Prioritizerd > /tmp/prioritizerd.log 2>&1 </dev/null &
+daemon -r Prioritizerd -n Prioritizerd 
+daemon -r Eventd -n Eventd
+#daemon -r LOSd -n LOSd
+daemon -r SIPd -n SIPd
+daemon -r Neobrickd -n Neobrickd
+daemon -r Playbackd -n Playbackd
 
 
-nice -n 10 Acqd 
+Acqd 

@@ -624,6 +624,9 @@ typedef struct {
 */
 typedef struct {
   unsigned int numLines; ///<0 results in a cat, otherwise a tail
+  int logReq;
+  int jclOpt;
+  int optArg;
   char filename[180];
 } LogWatchRequest_t;
 
