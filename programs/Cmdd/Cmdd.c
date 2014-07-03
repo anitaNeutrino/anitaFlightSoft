@@ -470,7 +470,7 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
     return disableDisk(ivalue2,ivalue);
-      case CMD_MOUNT_ARGH:
+  case CMD_MOUNT_ARGH:
 	  return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
     printf("mount next ntu\n");
