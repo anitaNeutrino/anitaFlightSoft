@@ -671,11 +671,11 @@ typedef struct {
 typedef struct {
     unsigned int eventNumber;
     unsigned char rfPwrAvg[ACTIVE_SURFS][RFCHAN_PER_SURF];
-    unsigned char avgScalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; ///< * 2^7
-    unsigned char rmsScalerRates[TRIGGER_SURFS][ANTS_PER_SURF];
-    unsigned char avgL1Rates[TRIGGER_SURFS]; ///< 3 of 8 counters --fix later
-    unsigned char avgL2Rates[PHI_SECTORS]; ///< average of upper and lower
-    unsigned char avgL3Rates[PHI_SECTORS];    
+    unsigned char avgScalerRates[TRIGGER_SURFS][TRIGGERS_PER_SURF]; ///< * 2^7
+  //unsigned char rmsScalerRates[TRIGGER_SURFS][TRIGGERS_PER_SURF];
+  //    unsigned char avgL1Rates[TRIGGER_SURFS]; ///< 3 of 8 counters --fix later
+  //    unsigned char avgL2Rates[PHI_SECTORS]; ///< average of upper and lower
+  //    unsigned char avgL3Rates[PHI_SECTORS];    
     unsigned char eventRate1Min; ///<Multiplied by 8
     unsigned char eventRate10Min; ///<Multiplied by 8
 } SlowRateRFStruct_t;

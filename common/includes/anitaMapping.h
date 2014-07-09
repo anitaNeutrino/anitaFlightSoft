@@ -49,29 +49,5 @@ int lowerPhiNums[NUM_PHI]={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 int coneAntNums[NUM_PHI]={-1,4,-1,1,-1,5,-1,2,-1,6,-1,3,-1,7,-1,0};
 int conePhiNums[8]={15,3,7,11,1,5,9,13};
 
-typedef enum {    
-    kUpperTier=1,
-    kMiddleTier=2,
-    kLowerTier=4,
-    kDisconeTier=8,
-    kBiconeTier=16,
-    kUnknownTier=-1
-} AntennaTier_t;
- 
-typedef enum {
-    kHorizontal=0,
-    kVertical=1,
-    kUnknownPol=-1
-} AntennaPol_t;
-
-typedef struct {
-    int surf;
-    int channel;
-    int index;
-    int phi;
-    AntennaTier_t tier;
-    int antenna;
-    AntennaPol_t pol;    
-} SurfAntMapStruct_t;
 
 #endif //ANITA_MAPPING_H

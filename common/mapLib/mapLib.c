@@ -6,6 +6,7 @@
 */
 
 #include "mapLib/mapLib.h"
+#include "includes/anitaMapping.h"
 #include "includes/anitaStructures.h"
 #include <stdio.h>
 #include <stdlib.h>

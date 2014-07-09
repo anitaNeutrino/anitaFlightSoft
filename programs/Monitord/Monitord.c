@@ -55,6 +55,10 @@ typedef enum {
 } MONTelemType_t;
 
 
+#ifndef SIGRTMIN
+#define SIGRTMIN 32
+#endif
+
 int readConfigFile();
 int checkDisks(DiskSpaceStruct_t *dsPtr);
 int checkQueues(QueueStruct_t *queuePtr);
@@ -114,7 +118,7 @@ AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
 
-char *diskLocations[7]={"/tmp","/var","/home",SAFE_DATA_MOUNT,HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT};
+char *diskLocations[7]={"/tmp","/var","/home","/",HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT};
 char *otherDirLoc[3]={ACQD_EVENT_DIR,EVENTD_EVENT_DIR,PRIORITIZERD_EVENT_DIR};
 char *otherLinkLoc[3]={ACQD_EVENT_LINK_DIR,EVENTD_EVENT_LINK_DIR,PRIORITIZERD_EVENT_LINK_DIR};
 

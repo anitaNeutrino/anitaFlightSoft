@@ -16,6 +16,35 @@
 typedef void (*slowrate_callback)(void);
 
 /*
+  Type: gps_callback
+  	Signature of the GPS data callback.
+
+	The GPS data callback function must be of the form
+>		void func(float longi, float lat, float alt);
+ */
+typedef void (*gps_callback)(float longi, float lat, float alt);
+
+/*
+  Type: gpstime_callback
+  	Signature of the GPS time callback.
+
+	The GPS time callback function must be of the form
+            void func(float time_of_week, unsigned short,
+>                       week_number, float utc_time_offset, float cpu_time);
+ */
+typedef void (*gpstime_callback)(float time_of_week, unsigned short
+    week_number, float utc_time_offset, float cpu_time);
+
+/*
+  Type: mks_press_alt_callback
+  	Signature of the mks pressure altitude callback.
+
+	The mks pressure altitude callback function must be of the form
+>	void func(unsigned short hi, unsigned short mid, unsigned short lo);
+ */
+typedef void (*mks_press_alt_callback)(unsigned short hi,
+                                unsigned short mid, unsigned short lo);
+/*
   Type: cmd_callback
   	Signature of the command callback function.
  
@@ -39,6 +68,7 @@ typedef void (*cmd_callback)(unsigned char *);
 #define COMM1 0
 #define COMM2 1
 #define HIGHRATE 2
+#define VERY_HIGHRATE 3
 
 /*
  * Function: sipcom_init
@@ -46,15 +76,34 @@ typedef void (*cmd_callback)(unsigned char *);
  *
  * Description:
  *
- *   	- Initializes the serial ports for COMM1, COMM2, and high rate
- *   	  TDRSS data.
+ *   	- Initializes the serial ports for COMM1, COMM2, high rate (OMNI)
+ *   	  TDRSS data, and very high rate (HGA) tdrss data.
  *   	- Initializes the SIP throttling module.
  *   	- Starts two threads that read input from COMM1 and COMM2.
  *
  * Parameters:
  * 	throttle_rate - maximum number of bytes/sec to write to SIP.
- * 	See <sipcom_highrate_set_throttle> for an important warning on
- * 	the value of the throttle rate.
+ * 	    See <sipcom_highrate_set_throttle> for an important warning on
+ * 	    the value of the throttle rate.
+ *
+ * 	config_dir - name of directory containing configuration	files that
+ * 	    tell us the serial line assignments.
+ *
+ * 	enable - a bitmask of which lines to enable. If a bit is set to 1,
+ * 	    then that line will use the SIPMUX protocol for data transfer,
+ * 	    else, if the bit is cleared to zero, it will not use SIPMUX on
+ * 	    that line.
+ *
+ * 	    The COMM1, COMM2, HIGHRATE (OMNI), and VERY_HIGHRATE (HGA)
+ * 	    macros should be used to access the bits. For example, to set
+ * 	    only HGA to use SIPMUX:
+ * 	        unsigned char enable = 0;
+ * 	        enable |= (1 << VERY_HIGHRATE);
+ *
+ * 	    or to enable SIPMUX on COMM1 and COMM2:
+ * 	        unsigned char enable = 0;
+ * 	        enable |= (1 << COMM1);
+ * 	        enable |= (1 << COMM2);
  *
  * Returns:
  *	0 - all went well
@@ -65,7 +114,8 @@ typedef void (*cmd_callback)(unsigned char *);
  * 	- <sipcom_reset>
  * 	- <sipcom_highrate_set_throttle> for IMPORTANT WARNING!
  */
-int sipcom_init(unsigned long throttle_rate);
+int sipcom_init(unsigned long throttle_rate, char *config_dir,
+                                                unsigned char sipmux_enable);
 
 /*
  * Function: sipcom_end
@@ -149,6 +199,28 @@ void sipcom_reset();
  */
 int sipcom_highrate_write(unsigned char *buf, unsigned short nbytes);
 
+/*
+ * Function: sipcom_very_highrate_write
+ * 	Write data to the SIP very high rate (HGA antenna) TDRSS port.
+ *
+ * Description:
+ *
+ * 	Use this function to write data to the very high rate (HGA antenna)
+ * 	TDRSS port. No throttling is necessary for writing to this port.
+ *
+ * Parameters:
+ * 	buf - pointer to data to be written
+ * 	nbytes - number of bytes to write.
+ *
+ * Returns:
+ *	0 - all went well
+ *	< 0 - there were problems, in which case, use <sipcom_strerror> to
+ *		retrieve a hopefully meaningful error message.
+ */
+int sipcom_very_highrate_write(unsigned char *buf, unsigned short nbytes);
+
+unsigned short * sipcom_wrap_buffer(
+        unsigned char *buf, unsigned short nbytes, short *wrapbytes);
 /*
  * Function: sipcom_highrate_set_throttle
  * 	Change the maximum rate at which we write high rate data to SIP
@@ -280,5 +352,12 @@ int sipcom_slowrate_write(int comm, unsigned char *buf, unsigned char nbytes);
  * 	- <slowrate_callback>
  */
 int sipcom_set_slowrate_callback(int comm, slowrate_callback f);
+
+void sipcom_set_gps_callback(gps_callback f);
+void sipcom_set_gpstime_callback(gpstime_callback f);
+void sipcom_set_mks_press_alt_callback(mks_press_alt_callback f);
+int sipcom_request_gps_pos(void);
+int sipcom_request_gps_time(void);
+int sipcom_request_mks_pressure_altitude(void);
 
 #endif // SIPCOM_H_

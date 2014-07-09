@@ -200,16 +200,16 @@ int main (int argc, char *argv[])
 	  printf("Got %d commands\n",numCmds);		
 	//Got at least one command
 	for(count=0;count<numCmds;count++) {
-	    if(printToScreen) 
-		printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
-	    sprintf(logMessage,"Checking Cmd (%d bytes from SIPd %d)",
-		    theCmds[count].numCmdBytes,
-		    theCmds[count].fromSipd);
+	  if(printToScreen) 
+	    printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
+	  sprintf(logMessage,"Checking Cmd (%d bytes from SIPd %d)",
+		  theCmds[count].numCmdBytes,
+		  theCmds[count].fromSipd);
 	    
-	    for(ind=0;ind<theCmds[count].numCmdBytes;ind++) 
-		sprintf(logMessage,"%s %d",logMessage,(int)theCmds[count].cmd[ind]);
+	  for(ind=0;ind<theCmds[count].numCmdBytes;ind++) 
+	    sprintf(logMessage,"%s %d",logMessage,(int)theCmds[count].cmd[ind]);
 	  
-	    syslog(LOG_INFO,logMessage);
+	  syslog(LOG_INFO,"%s",logMessage);
 		    
 	  if(checkCommand(&theCmds[count])) {
 	    if(printToScreen) 
@@ -472,7 +472,7 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
     return disableDisk(ivalue2,ivalue);
   case CMD_MOUNT_ARGH:
-	  return tryAndMountSatadrives();
+    return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
     printf("mount next ntu\n");
     ivalue=theCmd->cmd[1];	    
@@ -551,18 +551,34 @@ int executeCommand(CommandStruct_t *theCmd)
 	configModifyFloat("Archived.config","archived","pps1FractionDelete",fvalue,&rawtime);
       else if(ivalue==2)
 	configModifyFloat("Archived.config","archived","pps1FractionTelem",fvalue,&rawtime);
+      else {
+	syslog(LOG_ERR,"Invalid ARCHIVE_PPS_DECIMATE argument %d %d",ivalue,ivalue2);
+	return 0;
+      }
     }
     else if(ivalue2==2) {
       if(ivalue==1)
 	configModifyFloat("Archived.config","archived","pps2FractionDelete",fvalue,&rawtime);
       else if(ivalue==2)
 	configModifyFloat("Archived.config","archived","pps2FractionTelem",fvalue,&rawtime);
+      else {
+	syslog(LOG_ERR,"Invalid ARCHIVE_PPS_DECIMATE argument %d %d",ivalue,ivalue2);
+	return 0;
+      }
     }
     else if(ivalue2==3) {
       if(ivalue==1)
 	configModifyFloat("Archived.config","archived","softFractionDelete",fvalue,&rawtime);
-      else if(ivalue==1)
+      else if(ivalue==2)
 	configModifyFloat("Archived.config","archived","softFractionTelem",fvalue,&rawtime);
+      else {
+	syslog(LOG_ERR,"Invalid ARCHIVE_PPS_DECIMATE argument %d %d",ivalue,ivalue2);
+	return 0;
+      }
+    }
+    else {
+      syslog(LOG_ERR,"Invalid ARCHIVE_PPS_DECIMATE argument %d",ivalue);
+      return 0;
     }
     retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
     return rawtime;
@@ -1024,10 +1040,12 @@ int executeCommand(CommandStruct_t *theCmd)
     retVal=sendSignal(ID_EVENTD,SIGUSR1);    
     return rawtime;	
   case CLEAN_DIRS: 	    
-    cleanDirs();	    
+    cleanDirs();
+    time(&rawtime);	    
     return rawtime;
   case CLEAR_RAMDISK: 	    
     clearRamdisk();
+    time(&rawtime);
     return rawtime;
   case SEND_CONFIG: 
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
@@ -1387,7 +1405,7 @@ int setEventDiskBitMask(int modOrSet, int bitMask)
 
 int disableDisk(int diskMask, int disFlag)
 {
-    printf("disableDisk %#x %d\n",diskMask,disFlag);
+  printf("disableDisk %#x %d\n",diskMask,disFlag);
   int diskInd=0;
   time_t rawtime=0;
   if(disFlag<0 || disFlag>1) 
@@ -1589,27 +1607,35 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
 
 int executeGpsdExtracommand(int command, unsigned char arg[2])
 {
-    printf("executeGpsdExtracommand %d %d %d\n",command,arg[0],arg[1]);
+  printf("executeGpsdExtracommand %d %d %d\n",command,arg[0],arg[1]);
   time_t rawtime;    
   int ivalue=arg[0];
   int ivalue2=arg[1];
   float fvalue=0;
   switch(command) {
-      case GPS_SET_GGA_PERIOD:
-	  printf("GPS_SET_GGA_PERIOD %d %d\n",ivalue,ivalue2);
-	  if(ivalue==1)
-	      configModifyInt("GPSd.config","adu5a","ggaPeriod",ivalue2,&rawtime);
-	  else if(ivalue==2)
-	      configModifyInt("GPSd.config","adu5b","ggaPeriod",ivalue2,&rawtime);
-	  else if(ivalue==3)
-	      configModifyInt("GPSd.config","g12","ggaPeriod",ivalue2,&rawtime);
-	  sendSignal(ID_GPSD,SIGUSR1);
-	  return rawtime;        
-      case GPS_SET_PAT_TELEM_EVERY:
+  case GPS_SET_GGA_PERIOD:
+    printf("GPS_SET_GGA_PERIOD %d %d\n",ivalue,ivalue2);
+    if(ivalue==1)
+      configModifyInt("GPSd.config","adu5a","ggaPeriod",ivalue2,&rawtime);
+    else if(ivalue==2)
+      configModifyInt("GPSd.config","adu5b","ggaPeriod",ivalue2,&rawtime);
+    else if(ivalue==3)
+      configModifyInt("GPSd.config","g12","ggaPeriod",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_GGA_PERIOD argument %d",ivalue);
+      return 0;
+    }
+    sendSignal(ID_GPSD,SIGUSR1);
+    return rawtime;        
+  case GPS_SET_PAT_TELEM_EVERY:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","patTelemEvery",ivalue2,&rawtime);
     else if(ivalue==2)
       configModifyInt("GPSd.config","adu5b","patTelemEvery",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_PAT_TELEM_EVERY argument %d",ivalue);
+      return 0;
+    }
     sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;           
   case GPS_SET_VTG_TELEM_EVERY:
@@ -1617,6 +1643,10 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       configModifyInt("GPSd.config","adu5a","vtgTelemEvery",ivalue2,&rawtime);
     else if(ivalue==2)
       configModifyInt("GPSd.config","adu5b","vtgTelemEvery",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_VTG_TELEM_EVERY argument %d",ivalue);
+      return 0;
+    }
     sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;               
   case GPS_SET_SAT_TELEM_EVERY:
@@ -1626,6 +1656,10 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       configModifyInt("GPSd.config","adu5b","satTelemEvery",ivalue2,&rawtime);
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","satTelemEvery",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_SAT_TELEM_EVERY argument %d",ivalue);
+      return 0;
+    }
     sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;                
   case GPS_SET_GGA_TELEM_EVERY:
@@ -1635,6 +1669,10 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       configModifyInt("GPSd.config","adu5b","ggaTelemEvery",ivalue2,&rawtime);
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","ggaTelemEvery",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_GGA_TELEM_EVERY argument %d",ivalue);
+      return 0;
+    }
     sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;              
   case GPS_SET_POS_TELEM_EVERY:
@@ -1648,6 +1686,10 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       configModifyInt("GPSd.config","adu5b","iniReset",ivalue2,&rawtime);
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","iniReset",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_INI_RESET_FLAG argument %d",ivalue);
+      return 0;
+    }
     sendSignal(ID_GPSD,SIGUSR1);           
     return rawtime;
   case GPS_SET_ELEVATION_MASK:
@@ -1657,31 +1699,47 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       configModifyInt("GPSd.config","adu5b","elevationMask",ivalue2,&rawtime);
     else if(ivalue==3)
       configModifyInt("GPSd.config","g12","elevationMask",ivalue2,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_ELEVATION_MASK argument %d",ivalue);
+      return 0;
+    }
     sendSignal(ID_GPSD,SIGUSR1);           
     return rawtime;
   case GPS_SET_CYC_PHASE_ERROR:
-      fvalue=((float)(2*ivalue2))/1000.;
-      if(ivalue==1)
-	  configModifyFloat("GPSd.config","adu5a","cycPhaseErrorThreshold",fvalue,&rawtime);
-      else if(ivalue==2)
-	  configModifyFloat("GPSd.config","adu5b","cycPhaseErrorThreshold",fvalue,&rawtime);
-      sendSignal(ID_GPSD,SIGUSR1);
+    fvalue=((float)(2*ivalue2))/1000.;
+    if(ivalue==1)
+      configModifyFloat("GPSd.config","adu5a","cycPhaseErrorThreshold",fvalue,&rawtime);
+    else if(ivalue==2)
+      configModifyFloat("GPSd.config","adu5b","cycPhaseErrorThreshold",fvalue,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_CYC_PHASE_ERROR argument %d",ivalue);
+      return 0;
+    }
+    sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;                         
   case GPS_SET_MXB_BASELINE_ERROR:
-      fvalue=((float)(ivalue2))/1000.;
-      if(ivalue==1)
-	  configModifyFloat("GPSd.config","adu5a","mxbBaselineError",fvalue,&rawtime);
-      else if(ivalue==2)
-	  configModifyFloat("GPSd.config","adu5b","mxbBaselineError",fvalue,&rawtime);
-      sendSignal(ID_GPSD,SIGUSR1);
+    fvalue=((float)(ivalue2))/1000.;
+    if(ivalue==1)
+      configModifyFloat("GPSd.config","adu5a","mxbBaselineError",fvalue,&rawtime);
+    else if(ivalue==2)
+      configModifyFloat("GPSd.config","adu5b","mxbBaselineError",fvalue,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_MXB_BASELINE_ERROR argument %d",ivalue);
+      return 0;
+    }
+    sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;                                
   case GPS_SET_MXM_PHASE_ERROR:
-      fvalue=((float)(ivalue2))/1000.;
-      if(ivalue==1)
-	  configModifyFloat("GPSd.config","adu5a","mxmPhaseError",fvalue,&rawtime);
-      else if(ivalue==2)
-	  configModifyFloat("GPSd.config","adu5b","mxmPhaseError",fvalue,&rawtime);
-      sendSignal(ID_GPSD,SIGUSR1);
+    fvalue=((float)(ivalue2))/1000.;
+    if(ivalue==1)
+      configModifyFloat("GPSd.config","adu5a","mxmPhaseError",fvalue,&rawtime);
+    else if(ivalue==2)
+      configModifyFloat("GPSd.config","adu5b","mxmPhaseError",fvalue,&rawtime);
+    else {
+      syslog(LOG_ERR,"Invalid GPS_SET_MXM_PHASE_ERROR argument %d",ivalue);
+      return 0;
+    }
+    sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;              
   default:
     syslog(LOG_ERR,"Unknown GPSd Extra Command -- %d",command);
@@ -1691,16 +1749,16 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
 
 }
 
-int executePlaybackCommand(int command, unsigned int value1, unsigned int value2)
+int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalue2)
 {
   PlaybackRequest_t pReq;
   time_t rawtime;    
   char filename[FILENAME_MAX];
   switch(command) {
   case PLAY_GET_EVENT:
-    pReq.eventNumber=value1;
-    pReq.pri=value2;
-    //	    printf("event %u, pri %d\n",value1,value2);
+    pReq.eventNumber=uvalue1;
+    pReq.pri=uvalue2;
+    //	    printf("event %u, pri %d\n",uvalue1,uvalue2);
     sprintf(filename,"%s/play_%u.dat",PLAYBACK_DIR,pReq.eventNumber);
     normalSingleWrite((unsigned char*)&pReq,filename,sizeof(PlaybackRequest_t));
     makeLink(filename,PLAYBACK_LINK_DIR);
@@ -1715,27 +1773,27 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
     respawnPrograms(PLAYBACKD_ID_MASK);
     break;
   case PLAY_START_PRI:      
-      if(value1>=0 && value1<NUM_PRIORITIES) {
-	  configModifyInt("Playbackd.config","playbackd","startPriority",(int)value1,&rawtime);
-	  respawnPrograms(PLAYBACKD_ID_MASK);
-      }
-      else return -1;
+    if(uvalue1<NUM_PRIORITIES) {
+      configModifyInt("Playbackd.config","playbackd","startPriority",(int)uvalue1,&rawtime);
+      respawnPrograms(PLAYBACKD_ID_MASK);
+    }
+    else return -1;
     break;
   case PLAY_STOP_PRI:
-      if(value1>=0 && value1<NUM_PRIORITIES) {
-	  configModifyInt("Playbackd.config","playbackd","stopPriority",(int)value1,&rawtime); 
-	  respawnPrograms(PLAYBACKD_ID_MASK);
-      }
-      else return -1;
-      break;
-  case PLAY_SLEEP_PERIOD:
-      configModifyInt("Playbackd.config","playbackd","msSleepPeriod",(int)value1,&rawtime); 
+    if(uvalue1<NUM_PRIORITIES) {
+      configModifyInt("Playbackd.config","playbackd","stopPriority",(int)uvalue1,&rawtime); 
       respawnPrograms(PLAYBACKD_ID_MASK);
-      break;
+    }
+    else return -1;
+    break;
+  case PLAY_SLEEP_PERIOD:
+    configModifyInt("Playbackd.config","playbackd","msSleepPeriod",(int)uvalue1,&rawtime); 
+    respawnPrograms(PLAYBACKD_ID_MASK);
+    break;
   case PLAY_USE_DISK:
-    if(value1<0 || value1>2) 
+    if(uvalue1>2) 
       return 0;
-    configModifyInt("Playbackd.config","playbackd","useDisk",value1,&rawtime);	    
+    configModifyInt("Playbackd.config","playbackd","useDisk",uvalue1,&rawtime);	    
     return rawtime;
       
   default:
@@ -2217,7 +2275,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
   case ACQD_SET_PID_PGAIN: 
     readAcqdConfig();
     uvalue[0]=(args[0]);
-    if(uvalue[0]<0 || uvalue[0]>3)
+    if(uvalue[0]>3)
       return 0;
     utemp=(args[1]);	    
     uvalue[1]=utemp;
@@ -2236,7 +2294,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
   case ACQD_SET_PID_IGAIN: 
     readAcqdConfig();
     uvalue[0]=(args[0]);
-    if(uvalue[0]<0 || uvalue[0]>3)
+    if(uvalue[0]>3)
       return 0;
     utemp=(args[1]);	    
     uvalue[1]=utemp;
@@ -2255,7 +2313,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
   case ACQD_SET_PID_DGAIN: 
     readAcqdConfig();
     uvalue[0]=(args[0]);
-    if(uvalue[0]<0 || uvalue[0]>3)
+    if(uvalue[0]>3)
       return 0;
     utemp=(args[1]);	    
     uvalue[1]=utemp;
@@ -2274,7 +2332,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
   case ACQD_SET_PID_IMAX: 
     readAcqdConfig();
     uvalue[0]=(args[0]);
-    if(uvalue[0]<0 || uvalue[0]>3)
+    if(uvalue[0]>3)
       return 0;
     utemp=(args[1]);	    
     uvalue[1]=utemp;
@@ -2293,7 +2351,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
   case ACQD_SET_PID_IMIN: 
     readAcqdConfig();
     uvalue[0]=(args[0]);
-    if(uvalue[0]<0 || uvalue[0]>3)
+    if(uvalue[0]>3)
       return 0;
     utemp=(args[1]);	    
     uvalue[1]=utemp;
@@ -2572,7 +2630,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
   char cmdString[100];
   theEcho.gHdr.code=PACKET_CMD_ECHO;
   if(theCmd->fromSipd==0)
-      theEcho.gHdr.code|=CMD_FROM_PAYLOAD;
+    theEcho.gHdr.code|=CMD_FROM_PAYLOAD;
   sprintf(cmdString,"%d",theCmd->cmd[0]);
   theEcho.numCmdBytes=theCmd->numCmdBytes;
   theEcho.cmd[0]=theCmd->cmd[0];
@@ -3525,21 +3583,21 @@ int startDataPrograms() {
 
 int tryAndMountSatadrives()
 {
-    time_t rawtime;
-    configModifyInt("anitaSoft.config","global","disableHelium1",0,&rawtime);
-    sleep(1);
-    configModifyInt("anitaSoft.config","global","disableHelium2",0,&rawtime);
-    sleep(1);
+  time_t rawtime;
+  configModifyInt("anitaSoft.config","global","disableHelium1",0,&rawtime);
+  sleep(1);
+  configModifyInt("anitaSoft.config","global","disableHelium2",0,&rawtime);
+  sleep(1);
 
-    char theCommand[180];
-    sprintf(theCommand,"sudo /etc/init.d/anitamount start");
-    int retVal=system(theCommand);    
-    sleep(10);
+  char theCommand[180];
+  sprintf(theCommand,"sudo /etc/init.d/anitamount start");
+  int retVal=system(theCommand);    
+  sleep(10);
 
-    killDataPrograms();
-    retVal=makeNewRunDirs();
-    if(retVal==-1) return 0;	    	    
-    time(&rawtime);
-    startDataPrograms();
-    return rawtime;
+  killDataPrograms();
+  retVal=makeNewRunDirs();
+  if(retVal==-1) return 0;	    	    
+  time(&rawtime);
+  startDataPrograms();
+  return rawtime;
 }

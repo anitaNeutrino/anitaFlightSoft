@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 #include <sys/types.h>
@@ -36,59 +37,59 @@ int main (void)
 //    TurfioStruct_t turfio;
 //    AnitaEventHeader_t header;
 
-    printf("Size of int %d  (long %d)\n",sizeof(int),sizeof(long)); 
-    printf("Size of GenericHeader_t: %d\n",sizeof(GenericHeader_t));
-    printf("Size of SlowRateHkStruct_t: %d\n",sizeof(SlowRateHkStruct_t)); 
-    printf("Size of SlowRateRFStruct_t: %d\n",sizeof(SlowRateRFStruct_t));  
-    printf("Size of SlowRateFull_t: %d\n",sizeof(SlowRateFull_t)); 
-    printf("Size of TurfioStruct_t: %d\n",sizeof(TurfioStruct_t));  
-    printf("Size of SlacTurfioStruct_t: %d\n",sizeof(SlacTurfioStruct_t)); 
-    printf("Size of SurfChannelFull_t: %d\n",sizeof(SurfChannelFull_t));
-    printf("Size of RawSurfChannelHeader_t: %d\n",
+    printf("Size of int %ld  (long %ld)\n",sizeof(int),sizeof(long)); 
+    printf("Size of GenericHeader_t: %ld\n",sizeof(GenericHeader_t));
+    printf("Size of SlowRateHkStruct_t: %ld\n",sizeof(SlowRateHkStruct_t)); 
+    printf("Size of SlowRateRFStruct_t: %ld\n",sizeof(SlowRateRFStruct_t));  
+    printf("Size of SlowRateFull_t: %ld\n",sizeof(SlowRateFull_t)); 
+    printf("Size of TurfioStruct_t: %ld\n",sizeof(TurfioStruct_t));  
+    printf("Size of SlacTurfioStruct_t: %ld\n",sizeof(SlacTurfioStruct_t)); 
+    printf("Size of SurfChannelFull_t: %ld\n",sizeof(SurfChannelFull_t));
+    printf("Size of RawSurfChannelHeader_t: %ld\n",
 	   sizeof(RawSurfChannelHeader_t));
-    printf("Size of EncodedSurfChannelHeader_t: %d\n",
+    printf("Size of EncodedSurfChannelHeader_t: %ld\n",
 	   sizeof(EncodedSurfChannelHeader_t));
-    printf("Size of EncodedSurfPacketHeader_t: %d\n",
+    printf("Size of EncodedSurfPacketHeader_t: %ld\n",
 	   sizeof(EncodedSurfPacketHeader_t));
-    printf("Size of EncodedPedSubbedSurfPacketHeader_t: %d\n",
+    printf("Size of EncodedPedSubbedSurfPacketHeader_t: %ld\n",
 	   sizeof(EncodedPedSubbedSurfPacketHeader_t));
-    printf("Size of EncodedPedSubbedChannelPacketHeader_t: %d\n",
+    printf("Size of EncodedPedSubbedChannelPacketHeader_t: %ld\n",
 	   sizeof(EncodedPedSubbedChannelPacketHeader_t));
-    printf("Size of RawWaveformPacket_t: %d\n",sizeof(RawWaveformPacket_t));
-    printf("Size of RawSurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
-    printf("Size of AnitaEventHeader_t: %d\n",sizeof(AnitaEventHeader_t));
-    printf("Size of TurfRateStruct_t: %d\n",sizeof(TurfRateStruct_t));
-    printf("Size of SummedTurfRateStruct_t: %d\n",sizeof(SummedTurfRateStruct_t));
-    printf("Size of FullSurfHkStruct_t: %d\n",sizeof(FullSurfHkStruct_t));
-    printf("Size of AveragedSurfHkStruct_t: %d\n",sizeof(AveragedSurfHkStruct_t));
-    printf("Size of AnitaEventBody_t: %d\n",sizeof(AnitaEventBody_t));
-    printf("Size of PedSubbedEventBody_t: %d\n",sizeof(PedSubbedEventBody_t));
-    printf("Size of SurfPacket_t: %d\n",sizeof(RawSurfPacket_t));
-    printf("Size of GpsSatInfo_t: %d\n",sizeof(GpsSatInfo_t));    
-    printf("Size of GpsG12PosStruct_t: %d\n",sizeof(GpsG12PosStruct_t));
-    printf("Size of GpsAdu5PatStruct_t: %d\n",sizeof(GpsAdu5PatStruct_t));
-    printf("Size of GpsAdu5VtgStruct_t: %d\n",sizeof(GpsAdu5VtgStruct_t));
-    printf("Size of GpsG12SatStruct_t: %d\n",sizeof(GpsG12SatStruct_t));
-    printf("Size of GpsAdu5SatStruct_t: %d\n",sizeof(GpsAdu5SatStruct_t));   
-    printf("Size of AnalogueDataStruct_t: %d\n",sizeof(AnalogueDataStruct_t));
-    printf("Size of FullAnalogueStruct_t: %d\n",sizeof(FullAnalogueStruct_t));
-    printf("Size of SBSTemperatureDataStruct_t: %d\n",sizeof(SBSTemperatureDataStruct_t));
-    printf("Size of MagnetometerDataStruct_t: %d\n",sizeof(MagnetometerDataStruct_t));
-    printf("Size of HkDataStruct_t: %d\n",sizeof(HkDataStruct_t));
-    printf("Size of CommandEcho_t: %d\n",sizeof(CommandEcho_t));
-    printf("Size of DiskSpaceStruct_t: %d\n",sizeof(DiskSpaceStruct_t));
-    printf("Size of QueueStruct_t: %d\n",sizeof(QueueStruct_t));
-    printf("Size of ProcessInfo_t: %d\n",sizeof(ProcessInfo_t));
-    printf("Size of MonitorStruct_t: %d\n",sizeof(MonitorStruct_t));
-    printf("Size of OtherMonitorStruct_t: %d\n",sizeof(OtherMonitorStruct_t));
-    printf("Size of RunStart_t: %d\n",sizeof(RunStart_t));
-    printf("Size of LabChipChannelPedStruct_t: %d\n",sizeof(LabChipChannelPedStruct_t));
-    printf("Size of FullLabChipPedStruct_t: %d\n",sizeof(FullLabChipPedStruct_t));
-    printf("Size of FullPedStruct_t: %d\n",sizeof(FullPedStruct_t));
-    printf("Size of AcqdStartStruct_t: %d\n",sizeof(AcqdStartStruct_t));
-    printf("Size of LogWatchdStart_t: %d\n",sizeof(LogWatchdStart_t));
-    printf("Size of ZippedPacket_t: %d\n",sizeof(ZippedPacket_t));
-    printf("Size of ZippedFile_t: %d\n",sizeof(ZippedFile_t));
+    printf("Size of RawWaveformPacket_t: %ld\n",sizeof(RawWaveformPacket_t));
+    printf("Size of RawSurfPacket_t: %ld\n",sizeof(RawSurfPacket_t));
+    printf("Size of AnitaEventHeader_t: %ld\n",sizeof(AnitaEventHeader_t));
+    printf("Size of TurfRateStruct_t: %ld\n",sizeof(TurfRateStruct_t));
+    printf("Size of SummedTurfRateStruct_t: %ld\n",sizeof(SummedTurfRateStruct_t));
+    printf("Size of FullSurfHkStruct_t: %ld\n",sizeof(FullSurfHkStruct_t));
+    printf("Size of AveragedSurfHkStruct_t: %ld\n",sizeof(AveragedSurfHkStruct_t));
+    printf("Size of AnitaEventBody_t: %ld\n",sizeof(AnitaEventBody_t));
+    printf("Size of PedSubbedEventBody_t: %ld\n",sizeof(PedSubbedEventBody_t));
+    printf("Size of SurfPacket_t: %ld\n",sizeof(RawSurfPacket_t));
+    printf("Size of GpsSatInfo_t: %ld\n",sizeof(GpsSatInfo_t));    
+    printf("Size of GpsG12PosStruct_t: %ld\n",sizeof(GpsG12PosStruct_t));
+    printf("Size of GpsAdu5PatStruct_t: %ld\n",sizeof(GpsAdu5PatStruct_t));
+    printf("Size of GpsAdu5VtgStruct_t: %ld\n",sizeof(GpsAdu5VtgStruct_t));
+    printf("Size of GpsG12SatStruct_t: %ld\n",sizeof(GpsG12SatStruct_t));
+    printf("Size of GpsAdu5SatStruct_t: %ld\n",sizeof(GpsAdu5SatStruct_t));   
+    printf("Size of AnalogueDataStruct_t: %ld\n",sizeof(AnalogueDataStruct_t));
+    printf("Size of FullAnalogueStruct_t: %ld\n",sizeof(FullAnalogueStruct_t));
+    printf("Size of SBSTemperatureDataStruct_t: %ld\n",sizeof(SBSTemperatureDataStruct_t));
+    printf("Size of MagnetometerDataStruct_t: %ld\n",sizeof(MagnetometerDataStruct_t));
+    printf("Size of HkDataStruct_t: %ld\n",sizeof(HkDataStruct_t));
+    printf("Size of CommandEcho_t: %ld\n",sizeof(CommandEcho_t));
+    printf("Size of DiskSpaceStruct_t: %ld\n",sizeof(DiskSpaceStruct_t));
+    printf("Size of QueueStruct_t: %ld\n",sizeof(QueueStruct_t));
+    printf("Size of ProcessInfo_t: %ld\n",sizeof(ProcessInfo_t));
+    printf("Size of MonitorStruct_t: %ld\n",sizeof(MonitorStruct_t));
+    printf("Size of OtherMonitorStruct_t: %ld\n",sizeof(OtherMonitorStruct_t));
+    printf("Size of RunStart_t: %ld\n",sizeof(RunStart_t));
+    printf("Size of LabChipChannelPedStruct_t: %ld\n",sizeof(LabChipChannelPedStruct_t));
+    printf("Size of FullLabChipPedStruct_t: %ld\n",sizeof(FullLabChipPedStruct_t));
+    printf("Size of FullPedStruct_t: %ld\n",sizeof(FullPedStruct_t));
+    printf("Size of AcqdStartStruct_t: %ld\n",sizeof(AcqdStartStruct_t));
+    printf("Size of LogWatchdStart_t: %ld\n",sizeof(LogWatchdStart_t));
+    printf("Size of ZippedPacket_t: %ld\n",sizeof(ZippedPacket_t));
+    printf("Size of ZippedFile_t: %ld\n",sizeof(ZippedFile_t));
 
 /*     printf("\n\n");   */
 /*     printf("\n&turfio:\t\t%u\n&turfio.otherBits:\t%u\n&turfio.trigType:\t%u\n&turfio.trigNum:\t%u\n&turfio.trigTime:\t%u\n&turfio.ppsNum:\t%u\n&turfio.c3poNum:\t%u\n", */

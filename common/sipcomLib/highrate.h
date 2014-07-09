@@ -10,5 +10,6 @@
 #define ID_HDR		0xAE00
 #define SW_END_HDR	0xAEFF
 #define END_HDR		0xC0FE
+#define END_HDR2	0xF1EA
 
 #endif // _HIGHRATE_IMPL_H

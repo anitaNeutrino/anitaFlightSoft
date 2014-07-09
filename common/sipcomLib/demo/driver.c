@@ -3,7 +3,7 @@
  * Marty Olevitch, May '05
  */
 
-char Usage_msg[] = "[-p port]";
+char Usage_msg[] = "[-d] [-e enables] [-h] [-o] [-p port] [-r throttle_rate]";
 
 #include <sipcom.h>
 
@@ -13,14 +13,24 @@ char Usage_msg[] = "[-p port]";
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdlib.h>
+
+#include "rand_no.h"
 
 char *Progname;
+int Debug = 0;
 pthread_t Hr_thread;
+pthread_t Vhr_thread;
+
+int Do_Vhr = 1;
+int Do_Hr = 1;
 
 #define SLBUF_SIZE 240
 
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
+
+#define CONFIG_DIR "/usr/local/anita/sipcom"
 
 void
 usage()
@@ -32,6 +42,7 @@ void handle_command(unsigned char *cmd);
 void handle_slowrate_comm1();
 void handle_slowrate_comm2();
 void write_highrate(int *ignore);
+void write_very_highrate(int *ignore);
 
 int
 main(int argc, char *argv[])
@@ -40,17 +51,37 @@ main(int argc, char *argv[])
     int c;
     extern char *optarg;
     extern int optind;
+    int rate = MAX_WRITE_RATE;	// bytes/sec throttle rate
+    unsigned char sipmux_enable = 0;
 
     int ret;
 
     Progname = argv[0];
 
-    while ((c = getopt(argc, argv, "p:")) != EOF) {
+    while ((c = getopt(argc, argv, "de:hop:r:")) != EOF) {
 	switch (c) {
+	    case 'd':
+	    	Debug = 1;
+		break;
+	    case 'e':
+                sipmux_enable = (unsigned char)atoi(optarg);
+		break;
+	    case 'h':
+	    	Do_Vhr = 0;
+		fprintf(stderr, "Not doing HGA (very high rate).\n");
+		break;
+	    case 'o':
+	    	Do_Hr = 0;
+		fprintf(stderr, "Not doing OMNI (high rate).\n");
+		break;
 	    case 'p':
 		fprintf(stderr, "Sorry, port option not implemented.\n");
 		usage();
 		exit(1);
+		break;
+	    case 'r':
+	    	rate = atoi(optarg);
+		fprintf(stderr, "throttle rate = %d bytes/sec\n", rate);
 		break;
 	    default:
 	    case '?':
@@ -60,38 +91,58 @@ main(int argc, char *argv[])
 	}
     }
 
-    ret = sipcom_set_slowrate_callback(COMM1, handle_slowrate_comm1);
-    if (ret) {
-	char *s = sipcom_strerror();
-	fprintf(stderr, "%s\n", s);
-	exit(1);
-    }
+    printf("sipmux_enable = %02x\n", sipmux_enable);
 
-    ret = sipcom_set_slowrate_callback(COMM2, handle_slowrate_comm2);
-    if (ret) {
-	char *s = sipcom_strerror();
-	fprintf(stderr, "%s\n", s);
-	exit(1);
+    if (!Debug) {
+	ret = sipcom_set_slowrate_callback(COMM1, handle_slowrate_comm1);
+	if (ret) {
+	    char *s = sipcom_strerror();
+	    fprintf(stderr, "%s\n", s);
+	    exit(1);
+	}
+
+	ret = sipcom_set_slowrate_callback(COMM2, handle_slowrate_comm2);
+	if (ret) {
+	    char *s = sipcom_strerror();
+	    fprintf(stderr, "%s\n", s);
+	    exit(1);
+	}
     }
 
     sipcom_set_cmd_callback(handle_command);
     sipcom_set_cmd_length(129, 1);
     sipcom_set_cmd_length(159, 3);
     sipcom_set_cmd_length(138, 1);
-    ret = sipcom_init(MAX_WRITE_RATE);
+    ret = sipcom_init(rate, CONFIG_DIR, sipmux_enable);
     if (ret) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
 	exit(1);
     }
 
+    // Start the very high rate writer process.
+    if (Do_Vhr) {
+	pthread_create(&Vhr_thread, NULL, (void *)write_very_highrate, NULL);
+	pthread_detach(Vhr_thread);
+    }
+
     // Start the high rate writer process.
-    pthread_create(&Hr_thread, NULL, (void *)write_highrate, NULL);
-    pthread_detach(Hr_thread);
+    if (Do_Hr) {
+	pthread_create(&Hr_thread, NULL, (void *)write_highrate, NULL);
+	pthread_detach(Hr_thread);
+    }
 
     fprintf(stderr, "I am pid %d\n", getpid());
     sipcom_wait();
-    pthread_cancel(Hr_thread);
+
+    if (Do_Hr) {
+	pthread_cancel(Hr_thread);
+    }
+
+    if (Do_Vhr) {
+	pthread_cancel(Vhr_thread);
+    }
+
     fprintf(stderr, "Bye bye\n");
     exit(0);
 }
@@ -102,9 +153,7 @@ write_highrate(int *ignore)
     unsigned short amtb;
 #define BSIZE 2048
     unsigned char buf[BSIZE];
-    long bufno = 1;
     int lim;
-    int bytes_avail;
     int retval;
 
     //memset(buf, 'a', BSIZE);
@@ -114,7 +163,11 @@ write_highrate(int *ignore)
 	    buf[i] = i % 256;
 	}
     }
-    rand_no_seed(getpid());
+    if (Debug) {
+	rand_no_seed(0);
+    } else {
+	rand_no_seed(getpid());
+    }
     
     lim = 2000;
 
@@ -159,8 +212,55 @@ write_highrate(int *ignore)
 	fprintf(stderr, "=== high rate ===> amtb = %u\n", amtb);
 	retval = sipcom_highrate_write(buf, amtb);
 	if (retval != 0) {
-	    fprintf(stderr, "Bad write\n");
+	    fprintf(stderr, "Bad write: %s", sipcom_strerror());
 	}
+    }
+
+}
+
+void
+write_very_highrate(int *ignore)
+{
+    unsigned short amtb;
+#define BSIZE 2048
+    unsigned char buf[BSIZE];
+    int lim;
+    int retval;
+
+    //memset(buf, 'a', BSIZE);
+    {
+	int i;
+	for (i=0; i<2048; i++) {
+	    buf[i] = i % 256;
+	}
+    }
+    if (Debug) {
+	rand_no_seed(0);
+    } else {
+	rand_no_seed(getpid());
+    }
+    
+    lim = 2000;
+
+    {
+	// We make this thread cancellable by any thread, at any time. This
+	// should be okay since we don't have any state to undo or locks to
+	// release.
+	int oldtype;
+	int oldstate;
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+    }
+
+    while (1) {
+	amtb = rand_no(lim);
+	fprintf(stderr, "=== very high rate ===> amtb = %u\n", amtb);
+	retval = sipcom_very_highrate_write(buf, amtb);
+	if (retval != 0) {
+	    fprintf(stderr, "Bad write: %s", sipcom_strerror());
+	}
+
+	//usleep(100);
     }
 
 }
