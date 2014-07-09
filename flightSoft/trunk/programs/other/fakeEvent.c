@@ -117,7 +117,7 @@ void fakeEvent(int trigType)
 //    printf("Here\n");
     int chan=0;
     int samp=0;
-    int retVal=0;
+    //    int retVal=0;
     struct timeval timeStruct;
     static int evNum=1;    
     char archiveHdFilename[FILENAME_MAX];
@@ -147,8 +147,8 @@ void fakeEvent(int trigType)
 		evNum);
 	sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventArchiveDir,
 		evNum);	    
-	retVal=writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
-	retVal=writeStruct(&theBody,archiveBodyFilename,sizeof(AnitaEventBody_t));
+	writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
+	writeStruct(&theBody,archiveBodyFilename,sizeof(AnitaEventBody_t));
     }
     if(useUsbDisks) {
 	sprintf(archiveHdFilename,"%s/hd_%d.dat",eventUSBArchiveDir,
@@ -156,8 +156,8 @@ void fakeEvent(int trigType)
 	sprintf(archiveBodyFilename,"%s/ev_%d.dat",eventUSBArchiveDir,
 		evNum);	    
 //	printf("Writing %s\n",archiveHdFilename);
-	retVal=writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
-	retVal=writeStruct(&theBody,archiveBodyFilename,sizeof(AnitaEventBody_t));
+	writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
+	writeStruct(&theBody,archiveBodyFilename,sizeof(AnitaEventBody_t));
     }     
     
     evNum++; 

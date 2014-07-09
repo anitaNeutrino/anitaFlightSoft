@@ -266,6 +266,14 @@ int main(int argc, char *argv[])
 
     if (status == CONFIG_E_OK) {
 	kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);	
+;
+	if(kvpStatus!=KVP_E_OK) {
+	    syslog(LOG_ERR,"kvpGetIntArray(cmdLengths): %s",
+		   kvpErrorString(kvpStatus));
+	    if(printToScreen)
+		fprintf(stderr,"kvpGetIntArray(cmdLengths): %s\n",
+			kvpErrorString(kvpStatus));
+	}
     }
     else {
 	syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -714,20 +722,20 @@ void comm1Handler()
 {
 
     static unsigned char start = 0;
-    unsigned char buf[SLBUF_SIZE + 6];
-    int i;
+    //    unsigned char buf[SLBUF_SIZE + 6];
+    //    int i;
     int ret;
     static unsigned char count = 0;
 
-    buf[0] = 0xbe;
-    buf[1] = 0xef;
-    buf[2] = count;
-    for (i=3; i<SLBUF_SIZE+3; i++) {
-	buf[i] = start + i;
-    }
-    buf[SLBUF_SIZE+3] = 0xca;
-    buf[SLBUF_SIZE+4] = 0xfe;
-    buf[SLBUF_SIZE+5] = count;
+    /* buf[0] = 0xbe; */
+    /* buf[1] = 0xef; */
+    /* buf[2] = count; */
+    /* for (i=3; i<SLBUF_SIZE+3; i++) { */
+    /* 	buf[i] = start + i; */
+    /* } */
+    /* buf[SLBUF_SIZE+3] = 0xca; */
+    /* buf[SLBUF_SIZE+4] = 0xfe; */
+    /* buf[SLBUF_SIZE+5] = count; */
     ++count;
 
     ++start;
@@ -759,13 +767,13 @@ void comm1Handler()
 void comm2Handler()
 {
     static unsigned char start = 255;
-    unsigned char buf[SLBUF_SIZE];
-    int i;
+    //    unsigned char buf[SLBUF_SIZE];
+    //    int i;
     int ret;
 
-    for (i=0; i<SLBUF_SIZE; i++) {
-	buf[i] = start - i;
-    }
+    //    for (i=0; i<SLBUF_SIZE; i++) {
+    //	buf[i] = start - i;
+    //    }
     --start;
     fprintf(stderr, "comm2Handler %02x\n", start);
    

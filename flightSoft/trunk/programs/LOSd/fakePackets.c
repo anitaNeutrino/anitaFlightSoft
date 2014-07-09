@@ -564,15 +564,15 @@ void fakeSlowPackets(struct timeval *currentTime) {
     for(i=0;i<TRIGGER_SURFS;i++) {
 	for(j=0;j<ANTS_PER_SURF;j++) {
 	    slowRate.rf.avgScalerRates[i][j]=15+j;
-	    slowRate.rf.rmsScalerRates[i][j]=10;
+	    //	    slowRate.rf.rmsScalerRates[i][j]=10;
 	}
-	slowRate.rf.avgL1Rates[i]=i;
+	//	slowRate.rf.avgL1Rates[i]=i;
     }
 
-    for(i=0;i<PHI_SECTORS;i++) {
-	slowRate.rf.avgL2Rates[i]=255-i;
-	slowRate.rf.avgL3Rates[i]=128+i;
-    }
+    //    for(i=0;i<PHI_SECTORS;i++) {
+    //	slowRate.rf.avgL2Rates[i]=255-i;
+    //	slowRate.rf.avgL3Rates[i]=128+i;
+    //    }
 
     fillGenericHeader(&slowRate,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
     retVal=checkPacket(&slowRate);

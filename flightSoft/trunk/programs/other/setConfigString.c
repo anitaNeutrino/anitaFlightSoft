@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 
   char *eString;
   int status=0;
-  int result=0;
+  //  int result=0;
   char modString[180];
   time_t rawtime;
 
@@ -35,7 +35,6 @@ int main(int argc, char **argv)
 
   kvpReset();
   status = configLoad(configFile, configBranch);
-  eString = configErrorString(status);
 
   if (status == CONFIG_E_OK)
     {
@@ -48,8 +47,9 @@ int main(int argc, char **argv)
     }
   else 
     {
-    fprintf(stderr,"Error setting %s %s %s to %s\n",configFile,configBranch,
-		configItem,modString);
+      eString = configErrorString(status);
+      fprintf(stderr,"Error setting %s %s %s to %s -- %s\n",configFile,configBranch,
+	      configItem,modString,eString);
   }
   return 0;
 }

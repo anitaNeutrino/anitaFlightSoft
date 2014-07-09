@@ -1640,8 +1640,8 @@ AcqdErrorCode_t clearDevices()
 // Clears boards for start of data taking 
 {
   //    int testVal=0;
-  int i;
   AcqdErrorCode_t status;
+  int tempInd;
 
   if(verbosity>=0 && printToScreen) printf("*** Clearing devices ***\n");
     
@@ -1720,13 +1720,13 @@ AcqdErrorCode_t clearDevices()
     
 
   // Prepare SURF boards
-  int tempInd;
+
   for(tempInd=0;tempInd<numSurfs;tempInd++) {
       if(verbosity && printToScreen)
 	  fprintf(stderr,"Sending clearAll to SURF %d\n",surfIndex[tempInd]);
       if (setSurfControl(tempInd, SurfClearAll) != ACQD_E_OK) {
-	  syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
-	fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[i]) ;
+	  syslog(LOG_ERR,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[tempInd]) ;
+	fprintf(stderr,"Failed to send clear all event pulse on SURF %d.\n",surfIndex[tempInd]) ;
       }
   }
 
@@ -2278,8 +2278,17 @@ AcqdErrorCode_t doStartTest()
   fillGenericHeader(&startStruct,PACKET_ACQD_START,sizeof(AcqdStartStruct_t));
   sprintf(theFilename,"%s/acqd_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(AcqdStartStruct_t));  
-  retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR); 
-  retVal=simpleMultiDiskWrite(&startStruct,sizeof(AcqdStartStruct_t),startStruct.unixTime,STARTUP_ARCHIVE_DIR,"acqd",hkDiskBitMask);
+  if(retVal!=0) {
+    syslog(LOG_ERR,"Error writing %s %s",theFilename,strerror(errno));
+  }
+  retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);   
+  if(retVal!=0) {
+    syslog(LOG_ERR,"Error linking %s %s",theFilename,strerror(errno));
+  }
+  retVal=simpleMultiDiskWrite(&startStruct,sizeof(AcqdStartStruct_t),startStruct.unixTime,STARTUP_ARCHIVE_DIR,"acqd",hkDiskBitMask);  
+  if(retVal!=0) {
+    syslog(LOG_ERR,"Error writing AcqdStartStruct_t %s",strerror(errno));
+  }
 
 
   printf("\n\n\nAcqd Start Info\n\n");
@@ -2532,9 +2541,10 @@ void doSurfHkAverage(int flushData)
     }
     //Now add stuff to the average
     numSurfHksInAvg++;
-    if(theSurfHk.errorFlag & (1<<surf))
-      avgSurfHk.hadError |= (1<<(surf+16));
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {      
+      if(theSurfHk.errorFlag & (1<<surf))
+	avgSurfHk.hadError |= (1<<(surf+16));
+
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	scalerMean[surf][dac]+=theSurfHk.scaler[surf][dac];
 	scalerMeanSq[surf][dac]+=(theSurfHk.scaler[surf][dac]*theSurfHk.scaler[surf][dac]);
@@ -2630,6 +2640,9 @@ void outputSurfHkData() {
   if(writeRawScalers) {
     if((theScalers.unixTime-lastRawScaler)>=writeRawScalers) {
       retVal=cleverHkWrite((unsigned char*)&theScalers,sizeof(SimpleScalerStruct_t),theScalers.unixTime,&rawScalerWriter);
+      if(retVal!=0) {
+	syslog(LOG_ERR,"Error writing SimpleScalerStruct_t\n");
+      }
       //      printf("Writing rawScalerWriter %u -- %u\n",theScalers.unixTime
       lastRawScaler=theScalers.unixTime;
 
@@ -3942,6 +3955,10 @@ AcqdErrorCode_t readTurfHkData()
 	if(writeRawScalers) {
 	    fillGenericHeader(&theTurfReg,PACKET_TURF_REGISTER,sizeof(TurfRegisterContents_t));
 	    retVal=cleverHkWrite((unsigned char*)&theTurfReg,sizeof(TurfRegisterContents_t),theTurfReg.unixTime,&rawTurfRegWriter);
+
+	    if(retVal!=0) {
+	      syslog(LOG_ERR,"Error writing TurfRegisterContents_t\n");
+	    }
 	    //      printf("Writing rawScalerWriter %u -- %u\n",theScalers.unixTime
 	}
     }
@@ -4513,7 +4530,12 @@ void intersperseSurfHk(struct timeval *tvPtr)
     lastSurfHkRead.tv_usec=tvPtr->tv_usec;
     status=readSurfHkData();
     //Should check status
-	
+    if(status!=ACQD_E_OK) {
+      syslog(LOG_ERR,"readSurfHkData returned %d",status);
+    }
+
+
+
     for(surf=0;surf<numSurfs;++surf) {
       if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
 	fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;

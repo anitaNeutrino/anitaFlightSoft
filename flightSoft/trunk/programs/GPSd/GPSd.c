@@ -222,7 +222,6 @@ int main (int argc, char *argv[])
     /* Load Global Config */
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
 
     /* Get Device Names and config stuff */
     if (status == CONFIG_E_OK) {
@@ -241,6 +240,10 @@ int main (int argc, char *argv[])
 	if(disableHelium1)
 	    hkDiskBitMask&=~HELIUM1_DISK_MASK;
 
+    }
+    else {
+      eString = configErrorString (status) ;
+      syslog(LOG_ERR,"Error reading %s -- %s",GLOBAL_CONF_FILE,eString);
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
     makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
@@ -2418,8 +2421,12 @@ void writeStartTest(time_t startTime)
   fillGenericHeader(&startStruct,PACKET_GPSD_START,sizeof(GpsdStartStruct_t));
   sprintf(theFilename,"%s/gps_%d.dat",REQUEST_TELEM_DIR,startStruct.unixTime);
   retVal=writeStruct(&startStruct,theFilename,sizeof(GpsdStartStruct_t));  
-  retVal=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);  
-  retVal=simpleMultiDiskWrite(&startStruct,sizeof(GpsdStartStruct_t),startStruct.unixTime,STARTUP_ARCHIVE_DIR,"gpsd",hkDiskBitMask);
+  retVal|=makeLink(theFilename,REQUEST_TELEM_LINK_DIR);  
+  retVal|=simpleMultiDiskWrite(&startStruct,sizeof(GpsdStartStruct_t),startStruct.unixTime,STARTUP_ARCHIVE_DIR,"gpsd",hkDiskBitMask);
+  if(retVal!=0) {
+    syslog(LOG_ERR,"Error writing GpsdStartStruct_t %s",strerror(errno));
+  }
+
 
   printf("\n\nGPSd Start Test\n");
   printf("\tunixTime %u\n",startStruct.unixTime);

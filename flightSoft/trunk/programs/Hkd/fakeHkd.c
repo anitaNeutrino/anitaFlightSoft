@@ -140,7 +140,7 @@ int main (int argc, char *argv[])
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
     status &= configLoad (GLOBAL_CONF_FILE,"whiteheat") ;
-    eString = configErrorString (status) ;
+
 
     /* Get Port Numbers */
     if (status == CONFIG_E_OK) {
@@ -156,6 +156,12 @@ int main (int argc, char *argv[])
 	}
 	    
     }
+    else {
+      eString = configErrorString (status) ;
+      syslog(LOG_ERR,"Error reading %s %s",GLOBAL_CONF_FILE,eString);
+    }
+    
+
     autoZeroStruct.code=IP320_AVZ;
     rawDataStruct.code=IP320_RAW;
     calDataStruct.code=IP320_CAL;
@@ -221,7 +227,7 @@ int main (int argc, char *argv[])
 //	    printf("%d\n",millisecs);
 	}
     } while(currentState==PROG_STATE_INIT);
-    return 0;
+    return retVal;
 }
 
 int readConfigFile() 

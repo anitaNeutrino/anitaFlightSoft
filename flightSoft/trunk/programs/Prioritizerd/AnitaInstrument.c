@@ -675,7 +675,7 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
 		   LogicChannel_t *cones,
 		   int delay){
 // this is used to identify too many antennas peaking at once
-     int i,j,minvalid,pol,phi,thisvalid,hornmax,thissample,firsthorn=-1,opphorn=0;
+  int i,j,minvalid,pol,phi,thisvalid,hornmax;//,thissample;//,firsthorn=-1,opphorn=0;
      for (j=0;j<MAX_NUMBER_SAMPLES; j++){
 	  horns->data[j]=0;
 	  cones->data[j]=0;
@@ -728,7 +728,7 @@ int GlobalMajority(AnitaChannelDiscriminator_t *in,
      for (i=0; i<horns->valid_samples; i++){
 	  if (horns->data[i]>hornmax){
 	    hornmax=horns->data[i];
-	    thissample=i;
+	    //	    thissample=i;
 	  }
      }
 
@@ -1083,7 +1083,7 @@ float CheckRMSRatio(AnitaInstrumentF_t *theInst,
 //Returns the highest average RMS ratio 
 //found in any two-wide phi sector slice
      int phi,pol;
-     float RMStop[16][2],RMSbot[16][2],RMSnadir[8][2];
+     float RMStop[16][2],RMSbot[16][2];//,RMSnadir[8][2];
      for (phi=0;phi<16; phi++){
 	  for(pol=0;pol<2;pol++){
 	       RMStop[phi][pol]=RMSRatio(&(theInst->topRing[phi][pol]),
@@ -1093,12 +1093,12 @@ float CheckRMSRatio(AnitaInstrumentF_t *theInst,
 	       //	       printf("%d %d -- %f %f\n",phi,pol,RMStop[phi][pol],RMSbot[phi][pol]);
 	  }
      }
-     for (phi=0;phi<8; phi++){
-	  for(pol=0;pol<2;pol++){
-	       RMSnadir[phi][pol]=RMSRatio(&(theInst->nadir[phi][pol]),
-					 low,mid,high);
-	  }
-     }
+     /* for (phi=0;phi<8; phi++){ */
+     /* 	  for(pol=0;pol<2;pol++){ */
+     /* 	       RMSnadir[phi][pol]=RMSRatio(&(theInst->nadir[phi][pol]), */
+     /* 					 low,mid,high); */
+     /* 	  } */
+     /* } */
      //now go around the instrument in sectors of width 2, averaging the
      //horns in the sector
      float maxRMSavg=0.;

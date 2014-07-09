@@ -152,7 +152,7 @@ void sendWakeUpBuffer();
    int numLinks[NUM_PRIORITIES]={0};
    int totalEventLinks=0;
    int wdEvents[NUM_PRIORITIES]={0};
-   int sillyEvNum[NUM_PRIORITIES]={0};
+   //   int sillyEvNum[NUM_PRIORITIES]={0};
 
 
    /* Set signal handlers */
@@ -281,7 +281,7 @@ void sendWakeUpBuffer();
 	 printf("Got %d links in %s\n",numLinks[currentPri],
 		eventTelemLinkDirs[currentPri]);
        }
-       sillyEvNum[currentPri]=0;
+       //       sillyEvNum[currentPri]=0;
 
        if(numLinks[currentPri]>0) {
 	 //Got an event
@@ -1316,7 +1316,7 @@ int sortOutPidFile(char *progName)
 int writeLosData(unsigned char *buffer, int numBytesSci)
 {
 
-  int nbytes, retVal,ret;
+  int nbytes, retVal;
   
 #ifdef SEND_TEST_PACKET
   int i=0;
@@ -1339,7 +1339,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
     retVal = poll(&writepoll, 1, TIMEOUT_IN_MILLISECONDS);
     if (retVal > 0) {
       // write will now not block
-      ret = write(fdLos, wrappedBuffer, nbytes);
+      write(fdLos, wrappedBuffer, nbytes);
     } else if (retVal == 0) {
       // timeout, do something else, maybe check LOS status using
       // status = ioctl(fd, LOS_IOCSTATUS);
