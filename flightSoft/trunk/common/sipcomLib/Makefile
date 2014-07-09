@@ -10,7 +10,9 @@ USE_STOR =
 CFLAGS = -g $(USE_STOR) -I/usr/inclyde/sys
 #ND = /usr/local/src/new/naturaldocs-1.35/NaturalDocs
 
-OBJS = crc_simple.o serial.o sipcom.o sipthrottle.o
+OBJS =  conf_simple.c crc_simple.c serial.c sipcom.c sipthrottle.c \
+	telemwrap.c
+
 
 Target       = $(ANITA_LIB_DIR)/libSipcom.a
 

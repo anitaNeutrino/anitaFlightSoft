@@ -2476,7 +2476,7 @@ void checkPhiSources(GpsAdu5PatStruct_t *patPtr) {
     }       
   }
 
-  if(gpsPhiMask|=lastGpsPhiMask) {
+  if(gpsPhiMask!=lastGpsPhiMask) {
     //Wahey get to set a new mask
     syslog(LOG_INFO,"GPSd is going to update gpsPhiMask from %#x to %#x\n",
 	   lastGpsPhiMask,gpsPhiMask);

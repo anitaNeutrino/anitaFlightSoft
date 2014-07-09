@@ -28,6 +28,12 @@
 #include "includes/anitaStructures.h"
 #include "includes/anitaCommand.h"
   
+
+#ifndef SIGRTMIN
+#define SIGRTMIN 32
+#endif
+
+
 #define SLBUF_SIZE 240
 // MAX_WRITE_RATE - maximum rate (bytes/sec) to write to SIP
 #define MAX_WRITE_RATE	680L
@@ -325,8 +331,15 @@ int main(int argc, char *argv[])
 	}
     }
 
+    unsigned char enable = 0;
+    enable |= (1 << COMM1);
+    enable |= (1 << COMM2);
+    enable |= (1 << HIGHRATE);
+
+
+    syslog(LOG_INFO,"SIPd setting sipcom enable mask to %#x",enable);
     printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
-    retVal = sipcom_init(MAX_WRITE_RATE);
+    retVal = sipcom_init(MAX_WRITE_RATE,".",enable);
     if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);

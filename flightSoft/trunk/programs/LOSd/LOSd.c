@@ -176,6 +176,7 @@ void sendWakeUpBuffer();
      }
    }
    else {
+     retVal=0;
      printf("Running in debug mode not actually trying to talk to device\n");
      makeDirectories(fakeOutputDir);
    }
@@ -347,6 +348,7 @@ void sendWakeUpBuffer();
     }
   }
   else {
+    retVal=0;
     //	retVal=fake_los_write(losBuffer,numBytesInBuffer,fakeOutputDir);
   }	
 
@@ -1314,7 +1316,7 @@ int sortOutPidFile(char *progName)
 int writeLosData(unsigned char *buffer, int numBytesSci)
 {
 
-  unsigned int nbytes, retVal,ret;
+  int nbytes, retVal,ret;
   
 #ifdef SEND_TEST_PACKET
   int i=0;

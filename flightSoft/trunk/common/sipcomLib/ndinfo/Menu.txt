@@ -27,7 +27,7 @@ Footer: Copyright 2005 Martin A. Olevitch, Physics Dept, Washington University i
 # --------------------------------------------------------------------------
 
 
-File: SIP COMmuncation library  (sipcom.txt)
+File: "SIP COMmuncation library"  (sipcom.txt)
 File: sipcom.h  (sipcom.h)
 
 Group: Index  {

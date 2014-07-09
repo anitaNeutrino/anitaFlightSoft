@@ -13,6 +13,11 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+//RJN Hack for mack
+#ifndef __flexarr
+#define __flexarr [1]
+#endif
+
 /*
  * struct inotify_event - structure read from the inotify device for each event
  *

@@ -39,13 +39,15 @@ INCLUDE FILES: <place list of any relevant header files here>
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
-#include <pwd.h>
-#include <string.h>
-#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <pwd.h>
 #include <errno.h>
+#include <sys/stat.h> 
+#include <string.h>
+#include <fcntl.h>
 #include <time.h>
+
 
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"

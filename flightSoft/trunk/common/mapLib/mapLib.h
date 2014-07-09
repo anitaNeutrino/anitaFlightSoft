@@ -14,8 +14,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "includes/anitaMapping.h"
 #include "includes/anitaStructures.h"
+#include "includes/anitaMappingDefs.h"
 
   int getPhiSeparation(int phiA, int phiB);
 

@@ -8,16 +8,18 @@
 #include "serial.h"
 #include "highrate.h"
 #include "sipthrottle.h"
+#include "telemwrap.h"
 #include "crc_simple.h"
+#include "conf_simple.h"
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <stdlib.h>	// malloC
-#include <string.h>
+#include <stdlib.h>	// malloc
+
 #include <pthread.h>
 #include <unistd.h>
-#include <syslog.h>
+#include <string.h>
 
 #include <assert.h>
 
@@ -25,23 +27,35 @@
 #include <signal.h>
 #include <wait.h>
 
-#ifdef FAKE_SERIALS
-#define COMM1_PORT	"/tmp/ttyS1"
-#define COMM2_PORT	"/tmp/ttySTDRV002_7"
-#define HIGHRATE_PORT	"/tmp/ttyS0"
-#else
-#define COMM1_PORT	"/dev/ttyS1"
-#define COMM2_PORT	"/dev/ttySTDRV002_7"
-#define HIGHRATE_PORT	"/dev/ttyS0"
-#endif
+// Default port values
+#define COMM1_PORT	"/dev/ttyS0"
+#define COMM2_PORT	"/dev/ttyS1"
+#define HIGHRATE_PORT	"/dev/ttyS2"
+#define VERY_HIGHRATE_PORT	"/dev/ttyS3"
+
+/* Sipmux_enable - a bitmask of which lines to enable.
+ *    If a bit is set to 1, then that line will use the SIPMUX protocol for
+ *    data transfer, else, if the bit is cleared to zero, it will not use
+ *    SIPMUX on that line.
+ *    
+ *    The COMM1, COMM2, HIGHRATE (OMNI), and VERY_HIGHRATE (HGA) macros (in
+ *    sipcom.h) should be used to access the bits.
+ */
+static unsigned char Sipmux_enable = 0;
+
 // SLOWRATE_BAUD - line speed for the slow rate ports COMM1 and COMM2.
 #define SLOWRATE_BAUD 1200
 
-// HIGHRATE_BAUD - line speed for the high rate TDRSS port.
-#define HIGHRATE_BAUD 19200
+// HIGHRATE_BAUD - line speed for the high rate OMNI antenna port.
+// Goes via TDRSS.
+#define HIGHRATE_BAUD 115200
 
-// Fd - file descriptors for COMM1, COMM2, and highrate TDRSS.
-static int Fd[3];
+// VERY_HIGHRATE_BAUD - line speed for the high rate HGA antenna port.
+// Goes via TDRSS.
+#define VERY_HIGHRATE_BAUD 115200
+
+// Fd - file descriptors for COMM1, COMM2, highrate OMNI, and highrate HGA.
+static int Fd[4];
 
 // Reader_thread - thread handles for the COMM1 and COMM2 reader threads.
 static pthread_t *Reader_thread[2] = {NULL, NULL};
@@ -50,15 +64,44 @@ static pthread_t *Reader_thread[2] = {NULL, NULL};
 // sipcom_set_slowrate_callback(). One for each of COMM1 and COMM2.
 static slowrate_callback Slowrate_callback[2] = { NULL, NULL};
 
+// Gps_callback - gps callback function pointer. Set by
+// sipcom_set_gps_callback().
+static gps_callback Gps_callback = NULL;
+
+// Gpstime_callback - gpstime callback function pointer. Set by
+// sipcom_set_gpstime_callback().
+static gpstime_callback Gpstime_callback = NULL;
+
+// Mks_press_alt_callback - mks pressure altitude callback function
+// pointer. Set by sipcom_set_mks_press_alt_callback().
+static mks_press_alt_callback Mks_press_alt_callback = NULL;
+
 // Init - nonzero if we have already been initialized.
 static int Init = 0;
 
 static void cancel_thread(int comm);
 static int get_mesg(int comm, unsigned char *buf, int n, char *mesgtype);
 static int highrate_write_bytes(unsigned char *p, int bytes_to_write);
+static int very_highrate_write_bytes(unsigned char *p, int bytes_to_write);
+
+#ifndef PTHREAD_CREATE_SEEMS_TO_WORK
+    /*
+     * Kludge: I don't know why, but the last parameter to pthread_create()
+     * is not getting passed correctly to the read_comm() function. Made a
+     * intermediate function read_comm1() and read_comm2() to do it. The
+     * original code, which worked under Redhat 9, is below in start_reader().
+     * (MAO 2-21-08)
+     *
+     * It seems to be working again with Debian 5.0.
+     * (MAO 7-7-10)
+     */
+    static void read_comm1(int *dummy);
+    static void read_comm2(int *dummy);
+#endif
+
 static void read_comm(int *comm);  // parse the input from COMM1 or COMM2
 static int readn(int fd, unsigned char *buf, int n);
-static void showbuf(unsigned char *buf, int size);
+//static void showbuf(unsigned char *buf, int size);
 static int start_reader(int comm); // start threads to read COMM1 or COMM2
 				   // slow rate lines.
 
@@ -127,6 +170,9 @@ char *Comm_data_dir[2] = {
 
 FILE *Highrate_stor_pipe;
 char *Highrate_data_dir = "/data/highrate";
+
+FILE *Very_highrate_stor_pipe;
+char *Very_highrate_data_dir = "/data/very_highrate";
 #endif
 
 // Quit is non-zero until sipcom_end() sets it to 1. Quit_mutex guards the
@@ -137,8 +183,11 @@ static int Quit = 0;
 static pthread_mutex_t Quit_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t Quit_cv = PTHREAD_COND_INITIALIZER;
 
+static int Conf_token = -1;
+
 int
-sipcom_init(unsigned long throttle_rate)
+sipcom_init(unsigned long throttle_rate, char *config_dir,
+                                                unsigned char _sipmux_enable)
 {
     if (Init) {
 	set_error_string(
@@ -148,12 +197,102 @@ sipcom_init(unsigned long throttle_rate)
 
     Init = 1;
 
+    Conf_token = conf_set_dir(config_dir);
+
     // Initialize the serial ports.
-    Fd[0] = serial_init(COMM1_PORT, SLOWRATE_BAUD);
-    Fd[1] = serial_init(COMM2_PORT, SLOWRATE_BAUD);
-    Fd[2] = serial_init(HIGHRATE_PORT, HIGHRATE_BAUD);
-    if (Fd[0] < 0 || Fd[1] < 0 || Fd[2] < 0) {
+    long slowrate_baud = SLOWRATE_BAUD;
+    long highrate_baud = HIGHRATE_BAUD;
+    long very_highrate_baud = VERY_HIGHRATE_BAUD;
+    
+    char Comm1_port[CONF_SIMPLE_VALUE_SIZE];
+    char Comm2_port[CONF_SIMPLE_VALUE_SIZE];
+    char Highrate_port[CONF_SIMPLE_VALUE_SIZE];
+    char Very_highrate_port[CONF_SIMPLE_VALUE_SIZE];
+
+    {
+	int ret;
+        char tmpstr[CONF_SIMPLE_VALUE_SIZE];
+
+	ret = conf_read(Conf_token, "Comm1_port", Comm1_port);
+	if (ret) {
+	    // Use default.
+	    strncpy(Comm1_port, COMM1_PORT, CONF_SIMPLE_VALUE_SIZE);
+	}
+
+	ret = conf_read(Conf_token, "Comm2_port", Comm2_port);
+	if (ret) {
+	    // Use default.
+	    strncpy(Comm2_port, COMM2_PORT, CONF_SIMPLE_VALUE_SIZE);
+	}
+
+	ret = conf_read(Conf_token, "Highrate_port", Highrate_port);
+	if (ret) {
+	    // Use default.
+	    strncpy(Highrate_port, HIGHRATE_PORT, CONF_SIMPLE_VALUE_SIZE);
+	}
+
+	ret = conf_read(Conf_token, "Very_highrate_port", Very_highrate_port);
+	if (ret) {
+	    // Use default.
+	    strncpy(Very_highrate_port, VERY_HIGHRATE_PORT,
+	    						CONF_SIMPLE_VALUE_SIZE);
+	}
+
+	ret = conf_read(Conf_token, "Slowrate_baud", tmpstr);
+	if (!ret) {
+	    // Use value from config file.
+            slowrate_baud = atol(tmpstr);
+	}
+	ret = conf_read(Conf_token, "Highrate_baud", tmpstr);
+	if (!ret) {
+	    // Use value from config file.
+            highrate_baud = atol(tmpstr);
+	}
+	ret = conf_read(Conf_token, "Very_highrate_baud", tmpstr);
+	if (!ret) {
+	    // Use value from config file.
+            very_highrate_baud = atol(tmpstr);
+	}
+
+        //fprintf(stderr, "                   SIPCOM: s %ld  h %ld  vh %ld\n",
+        //    slowrate_baud, highrate_baud, very_highrate_baud);
+
+    }
+
+    Sipmux_enable = _sipmux_enable;
+
+    Fd[0] = serial_init(Comm1_port, slowrate_baud, Sipmux_enable & (1<<COMM1));
+    if (Fd[0] < 0) {
+	set_error_string("sipcom_init: Bad serial_init for comm1 (%s)",
+								Comm1_port);
+    }
+
+    Fd[1] = serial_init(Comm2_port, slowrate_baud, Sipmux_enable & (1<<COMM2));
+    if (Fd[1] < 0) {
+	set_error_string("sipcom_init: Bad serial_init for comm2 (%s)",
+								Comm2_port);
+    }
+
+    Fd[2] = serial_init(Highrate_port, highrate_baud,
+                                                Sipmux_enable & (1<<HIGHRATE));
+    if (Fd[2] < 0) {
+	set_error_string("sipcom_init: Bad serial_init for highrate (%s)",
+								Highrate_port);
+    }
+
+    Fd[3] = serial_init(Very_highrate_port, very_highrate_baud,
+                                            Sipmux_enable & (1<<VERY_HIGHRATE));
+    if (Fd[3] < 0) {
+	set_error_string("sipcom_init: Bad serial_init for very highrate (%s)",
+							    Very_highrate_port);
+    }
+
+    if (Fd[0] < 0 || Fd[1] < 0 || Fd[2] < 0 || Fd[3] < 0) {
 	return -1;
+    }
+
+    if (telemwrap_init(TW_SIP)) {
+	return -2;
     }
     
     sipthrottle_init(throttle_rate, 1.0);
@@ -182,6 +321,14 @@ sipcom_init(unsigned long throttle_rate)
 	if (Highrate_stor_pipe == NULL) {
 	    set_error_string(
 	    	"sipcom_init: Highrate_stor_pipe '%s' failed.\n", cmdstr);
+	    return -4;
+	}
+
+	sprintf(cmdstr, "storstuff %s 200000 4096", Very_highrate_data_dir);
+	Very_highrate_stor_pipe = popen(cmdstr, "w");
+	if (Very_highrate_stor_pipe == NULL) {
+	    set_error_string(
+	    	"sipcom_init: Very_highrate_stor_pipe '%s' failed.\n", cmdstr);
 	    return -4;
 	}
     }
@@ -255,6 +402,21 @@ sipcom_set_slowrate_callback(int comm, slowrate_callback f)
     return 0;
 }
 
+void sipcom_set_gps_callback(gps_callback f)
+{
+    Gps_callback = f;
+}
+
+void sipcom_set_gpstime_callback(gpstime_callback f)
+{
+    Gpstime_callback = f;
+}
+
+void sipcom_set_mks_press_alt_callback(mks_press_alt_callback f)
+{
+    Mks_press_alt_callback = f;
+}
+
 char *
 sipcom_strerror()
 {
@@ -266,7 +428,7 @@ start_reader(int comm)
 {
     int ret;
 
-    assert(COMM1 == comm || COMM2 == comm);
+    //assert(COMM1 == comm || COMM2 == comm);
 
     Reader_thread[comm] = (pthread_t *)malloc(sizeof(pthread_t));
 
@@ -276,8 +438,18 @@ start_reader(int comm)
 	return -1;
     }
 
+#ifdef PTHREAD_CREATE_SEEMS_TO_WORK
     ret = pthread_create(Reader_thread[comm], NULL,
 	(void *)read_comm, (void *)&comm);
+#else
+    if (COMM1 == comm) {
+	ret = pthread_create(Reader_thread[comm], NULL,
+	    (void *)read_comm1, NULL);
+    } else {
+	ret = pthread_create(Reader_thread[comm], NULL,
+	    (void *)read_comm2, NULL);
+    }
+#endif
     if (ret) {
 	set_error_string("start_reader(%d): bad pthread_create (%s)\n",
 	    comm, strerror(errno));
@@ -305,6 +477,31 @@ sipcom_set_cmd_length(unsigned char id, unsigned char len)
     return 0;
 }
 
+#ifndef PTHREAD_CREATE_SEEMS_TO_WORK
+static void
+read_comm1(int *dummy)
+{
+    int comm = COMM1;
+    read_comm(&comm);
+}
+
+static void
+read_comm2(int *dummy)
+{
+    int comm = COMM2;
+    read_comm(&comm);
+}
+#endif // PTHREAD_CREATE_SEEMS_TO_WORK
+
+static void
+ swapw(unsigned short *valp)
+{
+    unsigned char *p = (unsigned char *)valp;
+    unsigned char tmp = *p;
+    *p = *(p+1);
+    *(p+1) = tmp;
+}
+
 static void
 read_comm(int *comm)
 {
@@ -312,6 +509,7 @@ read_comm(int *comm)
     unsigned char ch;
     int state;	// automaton state
     int mycomm = *comm;
+    //static unsigned int reqcount = 0;
 
 #define CMD_MAX_LEN 32
     unsigned char cmd_so_far[CMD_MAX_LEN];
@@ -320,7 +518,8 @@ read_comm(int *comm)
 #define MESGBUFSIZE 32
     unsigned char mesgbuf[MESGBUFSIZE];
 
-    assert(COMM1 == mycomm || COMM2 == mycomm);
+    //assert(COMM1 == mycomm || COMM2 == mycomm);
+
     memset(mesgbuf, '\0', MESGBUFSIZE);
     state = WANT_DLE;
 
@@ -358,19 +557,56 @@ read_comm(int *comm)
 		if (get_mesg(mycomm,mesgbuf, 15, "GPS_POS") == -1) {
 		    continue;
 		}
-		fprintf(stderr, "GPS_POS (%d): \n", mycomm);
+		if (Gps_callback != NULL) {
+		    float longi, lat, alt;
+		    //unsigned char satstat1, satstat2;
+		    memcpy(&longi, mesgbuf,   4);
+		    memcpy(&lat,   mesgbuf+4, 4);
+		    memcpy(&alt,   mesgbuf+8, 4);
+//		    printf("sipcom: GPS longi %.2f  lat %.2f  alt %.2f "
+//		           "sat1 %u  sat2 %u\n"
+//			   , longi, lat, alt, satstat1, satstat2);
+		    Gps_callback(longi, lat, alt);
+		}
+		//fprintf(stderr, "GPS_POS (%d): \n", mycomm);
 	    
 	    } else if (ch == GPS_TIME) {
 		if (get_mesg(mycomm,mesgbuf, 15, "GPS_TIME") == -1) {
 		    continue;
 		}
-		fprintf(stderr, "GPS_TIME (%d): \n", mycomm);
+		if (Gpstime_callback != NULL) {
+		    float time_of_week, utc_time_offset, cpu_time;
+		    unsigned short week_number;
+		    memcpy(&time_of_week,      mesgbuf,    4);
+		    memcpy(&week_number,       mesgbuf+4,  2);
+		    memcpy(&utc_time_offset,   mesgbuf+6,  4);
+		    memcpy(&cpu_time,          mesgbuf+10, 4);
+//		    printf(
+//		       "sipcom: tow %.2f  week_no %u  offset %.2f  cpu %.2f\n",
+//			 time_of_week, week_number, utc_time_offset, cpu_time);
+		    Gpstime_callback( time_of_week, week_number,
+		    				utc_time_offset, cpu_time);
+		}
+		//fprintf(stderr, "GPS_TIME (%d): \n", mycomm);
 
 	    } else if (ch == MKS_ALT) {
-		if (get_mesg(mycomm,mesgbuf, 6, "MKS_ALT") == -1) {
+		if (get_mesg(mycomm,mesgbuf, 7, "MKS_ALT") == -1) {
 		    continue;
 		}
-		fprintf(stderr, "MKS_ALT (%d): \n", mycomm);
+                if (Mks_press_alt_callback != NULL) {
+                    unsigned short hi, mid, lo;
+                    memcpy(&hi,  mesgbuf,    2);
+                    memcpy(&mid, mesgbuf+2,  2);
+                    memcpy(&lo,  mesgbuf+4,  2);
+		    // We hvae to swap the bytes of the three MKS words.
+		    swapw(&hi);
+		    swapw(&mid);
+		    swapw(&lo);
+                    Mks_press_alt_callback(hi, mid , lo);
+                    //printf("sipcom: mks hi %u  mks mid %u  mks lo %u\n",
+                    //    hi, mid, lo);
+                }
+		//fprintf(stderr, "MKS_ALT (%d): \n", mycomm);
 
 	    } else if (ch == REQ_DATA) {
 		if (get_mesg(mycomm,mesgbuf, 1, "REQ_DATA") == -1) {
@@ -379,7 +615,8 @@ read_comm(int *comm)
 		if (Slowrate_callback[mycomm] != NULL) {
 		    Slowrate_callback[mycomm]();
 		}
-		//fprintf(stderr, "REQ_DATA (%d): \n", mycomm);
+//		fprintf(stderr, "REQ_DATA (COMM%d) [%u]: \n",
+//						    mycomm+1, reqcount++);
 
 	    } else if (ch == SCI_CMD) {
 		if (get_mesg(mycomm,mesgbuf, 4, "SCI_CMD") == -1) {
@@ -401,10 +638,10 @@ static int
 get_mesg(int comm, unsigned char *buf, int n, char *mesgtype)
 {
     int nrd;
-    assert(COMM1 == comm || COMM2 == comm);
+    //assert(COMM1 == comm || COMM2 == comm);
     nrd = readn(Fd[comm], buf, n);
     if (buf[n-1] != ETX) {
-	fprintf(stderr, "No ETX at end of %s\n", mesgtype);
+	//fprintf(stderr, "No ETX at end of %s\n", mesgtype);
 	return -1;
     }
     return 0;
@@ -426,13 +663,70 @@ readn(int fd, unsigned char *buf, int n)
     return n;
 }
 
+static int
+do_request(int req, char *caller_name)
+{
+    unsigned char xferbuf[3];
+    xferbuf[0] = DLE;
+    xferbuf[1] = req;
+    xferbuf[2] = ETX;
+
+    int comm = COMM2;
+    int ret = 0;
+
+    if (Sipmux_enable & (1 << comm)) {
+        ret = serial_sipmux_begin(Fd[comm], 500000L);
+        if (ret) {
+            // serial_sipmux_begin() should have set the error string.
+            return -5;
+        }
+    }
+
+    //showbuf(xferbuf, nbytes + OVERHEAD_BYTES);
+    ret = write(Fd[comm], xferbuf, 3);
+    if (ret != 3) {
+	set_error_string("%s: write error (%s)\n",
+	    caller_name, strerror(errno));
+	return -4;
+    }
+
+    if (Sipmux_enable & (1 << comm)) {
+        ret = serial_sipmux_end(Fd[comm], 500000L);
+        if (ret) {
+            // serial_sipmux_end() should have set the error string.
+            return -5;
+        }
+    }
+
+    return 0;
+}
+
+int
+sipcom_request_gps_pos(void)
+{
+    return do_request(REQ_GPS_POS, "sipcom_request_gps_pos");
+}
+
+int
+sipcom_request_gps_time(void)
+{
+    return do_request(REQ_GPS_TIME, "sipcom_request_gps_time");
+}
+
+int sipcom_request_mks_pressure_altitude(void)
+{
+    return do_request(REQ_MKS_ALT, "sipcom_request_mks_pressure_altitude");
+}
+
 int
 sipcom_slowrate_write(int comm, unsigned char *buf, unsigned char nbytes)
 {
 #define BUF_SIZE 255
     unsigned char xferbuf[BUF_SIZE];
     ssize_t ret;
-    static unsigned char bufseq = 0;
+    static unsigned char c1_bufseq = 0;
+    static unsigned char c2_bufseq = 0;
+    unsigned char bufseq = 0;
 
 #define OVERHEAD_BYTES 7
 #define DATA_OFFSET	(OVERHEAD_BYTES - 1)
@@ -476,15 +770,15 @@ sipcom_slowrate_write(int comm, unsigned char *buf, unsigned char nbytes)
 
     if (COMM1 == comm) {
 	xferbuf[3] = SLOW_ID_COMM1;
+	bufseq = c1_bufseq;
+	++c1_bufseq;
     } else {
 	xferbuf[3] = SLOW_ID_COMM2;
+	bufseq = c2_bufseq;
+	++c2_bufseq;
     }
     
     xferbuf[4] = bufseq;
-    ++bufseq;
-    if (bufseq > 255) {
-	bufseq = 0;
-    }
 
     xferbuf[5] = nbytes;
 
@@ -492,12 +786,28 @@ sipcom_slowrate_write(int comm, unsigned char *buf, unsigned char nbytes)
 
     xferbuf[DATA_OFFSET + nbytes] = ETX;
 
+    if (Sipmux_enable & (1 << comm)) {
+        ret = serial_sipmux_begin(Fd[comm], 500000L);
+        if (ret) {
+            // serial_sipmux_begin() should have set the error string.
+            return -5;
+        }
+    }
+
     //showbuf(xferbuf, nbytes + OVERHEAD_BYTES);
     ret = write(Fd[comm], xferbuf, OVERHEAD_BYTES + nbytes);
     if (ret != OVERHEAD_BYTES + nbytes) {
 	set_error_string("%s: write error (%s)\n",
 	    "sipcom_slowrate_write", strerror(errno));
 	return -4;
+    }
+
+    if (Sipmux_enable & (1 << comm)) {
+        ret = serial_sipmux_end(Fd[comm], 500000L);
+        if (ret) {
+            // serial_sipmux_end() should have set the error string.
+            return -5;
+        }
     }
 
 #ifdef USE_STOR
@@ -517,6 +827,7 @@ sipcom_slowrate_write(int comm, unsigned char *buf, unsigned char nbytes)
     return 0;
 }
 
+#ifdef NOTDEF
 static void
 showbuf(unsigned char *buf, int size)
 {
@@ -525,6 +836,7 @@ showbuf(unsigned char *buf, int size)
 	fprintf(stderr, "%02x ", buf[i]);
     }
 }
+#endif
 
 static void
 cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
@@ -542,10 +854,8 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
     unsigned char seq = buf[1];
     unsigned char cmdbyte = buf[2];
 
-//    printf("seq %d, cmdbyte %d\n",seq,cmdbyte);
     if (seq != *length_so_far) {
 	// Out of sequence packet. Reset everything.
-	syslog(LOG_ERR,"Bad Command Packet %d\n",cmdbyte);
 	*length_so_far = 0;
 	return;
     }
@@ -566,7 +876,6 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
 
     } else if (Cmdlen[id] == -1) {
 	// Unknown command. Reset everything. Let callback handle the cmd.
-	syslog(LOG_ERR,"Unknown Command Packet %d\n",cmdbyte);
 	if (Cmdf != NULL) {
 	    Cmdf(cmd_so_far);
 	}
@@ -575,103 +884,68 @@ cmd_accum(unsigned char *buf, unsigned char *cmd_so_far, int *length_so_far)
     }
 }
 
+unsigned short *
+sipcom_wrap_buffer(unsigned char *buf, unsigned short nbytes,
+                                                short *wrapbytes)
+{
+    static const int extra_bytes = 128;
+    static int nbytes_plus = 0;
+    static unsigned short *wrapbuf = NULL;
+
+    *wrapbytes = 0;
+
+    if (nbytes == 0) {
+	return NULL;
+    }
+
+    if (nbytes_plus < nbytes + extra_bytes) {
+	// (Re)allocate the wrap buffer if it is not big enough.
+	nbytes_plus = nbytes + extra_bytes;
+	wrapbuf = (unsigned short *)realloc(wrapbuf, nbytes_plus);
+	if (NULL == wrapbuf) {
+	    set_error_string("sipcom_wrap_buffer: bad realloc (%s).\n",
+	    	strerror(errno));
+            *wrapbytes = -1;
+	    return NULL;
+	}
+    }
+
+    *wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
+                                                    SIPCOM_LOS, TW_LOS);
+
+    return wrapbuf;
+}
+
 int
 sipcom_highrate_write(unsigned char *buf, unsigned short nbytes)
 {
-    // aligned_bufp - used for calculating the checksum.
-    static unsigned short *aligned_bufp = NULL;
-    static int aligned_nbytes = 0;
-
-    static unsigned long Bufcnt = 1L;
-    int odd_number_of_science_bytes = 0;
+    static const int extra_bytes = 128;
+    static int nbytes_plus = 0;
     int retval = 0;
-
-#define HBUFSIZE 6
-    unsigned short header_buf[HBUFSIZE];
-
-    /* Ender handling. Kludge. If the number of science data bytes is even,
-     * then the ender consists of the following 16-bit words: checksum,
-     * SW_END_HDR, END_HDR, AUX_HDR. However, if the number is odd, then we
-     * prepend a single byte of 0x00 to the above.
-     *
-     * We put the checksum, SW_END_HDR, END_HDR, and AUX_HDR into the
-     * ender_buf starting at offset 1 (NOT offset 0) and set enderp to
-     * point at that location. If the number of bytes is even, then, we
-     * simply write the ender_buf starting at enderp. However, if the
-     * number is odd, then we take uchar *cp = ((uchar *)ender_buf) - 1;
-     * and write the 0x00 to *cp. Then, we set enderp to cp, and write the
-     * ender_buf from that location. */
-    unsigned short ender_buf[HBUFSIZE];
-    unsigned char *enderp = (unsigned char *)(ender_buf + 1);
-    int endersize = 8;
+    static unsigned short *wrapbuf = NULL;
+    int wrapbytes = 0;
 
     if (nbytes == 0) {
 	return 0;
     }
 
-    if (nbytes % 2) {
-	odd_number_of_science_bytes = 1;
-    }
-
-    if (aligned_nbytes < nbytes) {
-	// (Re)allocate the aligned buffer if it is not big enough.
-	free(aligned_bufp);
-	aligned_nbytes = nbytes;
-	aligned_bufp = (unsigned short *)malloc(nbytes);
-	if (NULL == aligned_bufp) {
-	    set_error_string("sipcom_highrate_write: bad malloc (%s).\n",
+    if (nbytes_plus < nbytes + extra_bytes) {
+	// (Re)allocate the wrap buffer if it is not big enough.
+	nbytes_plus = nbytes + extra_bytes;
+	wrapbuf = (unsigned short *)realloc(wrapbuf, nbytes_plus);
+	if (NULL == wrapbuf) {
+	    set_error_string("sipcom_highrate_write: bad realloc (%s).\n",
 	    	strerror(errno));
 	    return -1;
 	}
     }
 
-    memcpy(aligned_bufp, buf, nbytes);
+    wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
+                                                    SIPCOM_OMNI, TW_SIP);
 
-    header_buf[0] = START_HDR;
-    header_buf[1] = AUX_HDR;
-    
-    header_buf[2] = ID_HDR;
-    header_buf[2] |= 0x0001;	// SIP data
-
-    if (odd_number_of_science_bytes) {
-	header_buf[2] |= 0x0002;
-	header_buf[5] = nbytes + 1;
-	enderp--;
-	*enderp = '\0';	// extra byte
-	endersize++;
-    } else {
-	header_buf[5] = nbytes;
-    }
-
-    {
-	unsigned short *sp;
-	sp = (unsigned short *)&Bufcnt;
-	header_buf[3] = *sp;
-	header_buf[4] = *(sp+1);
-    }
-
-    ender_buf[1] = crc_short(aligned_bufp, nbytes / sizeof(short));
-    ender_buf[2] = SW_END_HDR;
-    ender_buf[3] = END_HDR;
-    ender_buf[4] = AUX_HDR;
-
-    // Write header.
-    if ((retval = highrate_write_bytes(
-	    (unsigned char *)header_buf, HBUFSIZE * sizeof(short)))) {
+    if ((retval = highrate_write_bytes((unsigned char *)wrapbuf, wrapbytes))) {
 	return retval;
     }
-
-    // Write data.
-    if ((retval = highrate_write_bytes(buf, nbytes))) {
-	return retval;
-    }
-
-    // Write ender.
-    if ((retval = highrate_write_bytes(enderp, endersize))) {
-	return retval;
-    }
-
-    Bufcnt++;
 
     return 0;
 }
@@ -690,12 +964,18 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
     int retval = 0;
     int writeloc = 0;
 
+    if (Sipmux_enable & (1 << HIGHRATE)) {
+        if (serial_sipmux_begin(Fd[HIGHRATE], 500000)) {
+            // serial_sipmux_begin() should have set the error string.
+            return -5;
+        }
+    }
+
     while (1) {
 	bytes_avail = sipthrottle(bytes_to_write);
 
 	if (bytes_avail == 0) {
 	    // No room yet.
-	    usleep(1000);
 	    continue;
 
 	} else if (bytes_avail > 0) {
@@ -707,6 +987,7 @@ try_write:
 		}
 
 		// other write error
+		set_error_string("highrate_write_bytes: write error\n");
 		retval = -1;
 		break;
 	    }
@@ -739,8 +1020,93 @@ try_write:
 	} else {
 	    // bytes_avail < 0
 	    retval = -3;
+	    set_error_string("highrate_write_bytes: bytes_avail < 0\n");
 	    break;
 	}
+    }
+
+    if (Sipmux_enable & (1 << HIGHRATE)) {
+        if (serial_sipmux_end(Fd[HIGHRATE], 500000L)) {
+            // serial_sipmux_end() should have set the error string.
+            return -5;
+        }
+    }
+
+    //fprintf(stderr, "             sipcom: retval is %d\n", retval);
+    return retval;
+}
+
+int
+sipcom_very_highrate_write(unsigned char *buf, unsigned short nbytes)
+{
+    static const int extra_bytes = 128;
+    static int nbytes_plus = 0;
+    int retval = 0;
+    static unsigned short *wrapbuf = NULL;
+    int wrapbytes = 0;
+
+    if (nbytes == 0) {
+	return 0;
+    }
+
+    if (nbytes_plus < nbytes + extra_bytes) {
+	// (Re)allocate the wrap buffer if it is not big enough.
+	nbytes_plus = nbytes + extra_bytes;
+	wrapbuf = (unsigned short *)realloc(wrapbuf, nbytes_plus);
+	if (NULL == wrapbuf) {
+	    set_error_string("sipcom_very_highrate_write: bad realloc (%s).\n",
+	    	strerror(errno));
+	    return -1;
+	}
+    }
+
+    wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
+                                                        SIPCOM_HGA, TW_SIP);
+
+    if ((retval = very_highrate_write_bytes((unsigned char *)wrapbuf,
+								wrapbytes))) {
+	return retval;
+    }
+
+    return 0;
+}
+
+static int
+very_highrate_write_bytes(unsigned char *p, int bytes_to_write)
+{
+    if (Sipmux_enable & (1 << VERY_HIGHRATE)) {
+        if (serial_sipmux_begin(Fd[VERY_HIGHRATE], 500000L)) {
+            // serial_sipmux_begin() should have set the error string.
+            return -5;
+        }
+    }
+
+    if (write(Fd[VERY_HIGHRATE], p, bytes_to_write) == -1) {
+	set_error_string("very_highrate_write_bytes: write error\n");
+	return -1;
+    }
+
+#ifdef USE_STOR
+    {
+	FILE *pipe_ = Very_highrate_stor_pipe;
+	int ret;
+	int len;
+	if (pipe_ != NULL) {
+	    len = bytes_to_write;
+	    ret = fwrite(p, 1, len, pipe_);
+	    if (ret != len) {
+		fprintf(stderr, "bad write to Very_highrate_stor_pipe\n");
+	    }
+	    fflush(pipe_);
+	}
+    }
+#endif
+
+    if (Sipmux_enable & (1 << VERY_HIGHRATE)) {
+        if (serial_sipmux_end(Fd[VERY_HIGHRATE], 500000L)) {
+            // serial_sipmux_end() should have set the error string.
+            return -5;
+        }
     }
 
     return 0;

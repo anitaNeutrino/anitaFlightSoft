@@ -1,0 +1,54 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.7	//
+BSIZE	driver.c	108;"	d	file:
+BSIZE	rddir.c	157;"	d	file:
+BSIZE	rdstdin.c	143;"	d	file:
+CONFIG_DIR	driver.c	28;"	d	file:
+CONFIG_DIR	rddir.c	34;"	d	file:
+CONFIG_DIR	rdstdin.c	29;"	d	file:
+Directory_name	rddir.c	/^char *Directory_name = NULL;$/;"	v
+Hr_thread	driver.c	/^pthread_t Hr_thread;$/;"	v
+Hwriter	rddir.c	/^pid_t Hwriter;$/;"	v
+Hwriter	rdstdin.c	/^pid_t Hwriter;$/;"	v
+MAX_WRITE_RATE	driver.c	26;"	d	file:
+MAX_WRITE_RATE	rddir.c	32;"	d	file:
+MAX_WRITE_RATE	rdstdin.c	27;"	d	file:
+Progname	driver.c	/^char *Progname;$/;"	v
+Progname	rddir.c	/^char *Progname;$/;"	v
+Progname	rdstdin.c	/^char *Progname;$/;"	v
+SLBUF_SIZE	driver.c	23;"	d	file:
+SLBUF_SIZE	rddir.c	29;"	d	file:
+SLBUF_SIZE	rdstdin.c	24;"	d	file:
+Sleepsec	rddir.c	/^int Sleepsec = -1;$/;"	v
+Sleepsec	rdstdin.c	/^int Sleepsec = -1;$/;"	v
+Usage_msg	driver.c	/^char Usage_msg[] = "[-p port]";$/;"	v
+Usage_msg	rddir.c	/^char Usage_msg[] = "-d dirname [-p port]";$/;"	v
+Usage_msg	rdstdin.c	/^char Usage_msg[] = "[-p port]";$/;"	v
+_RAND_NO_H	rand_no.h	4;"	d
+handle_command	driver.c	/^handle_command(unsigned char *cmd)$/;"	f
+handle_command	rddir.c	/^handle_command(unsigned char *cmd)$/;"	f
+handle_command	rdstdin.c	/^handle_command(unsigned char *cmd)$/;"	f
+handle_slowrate_comm1	driver.c	/^handle_slowrate_comm1()$/;"	f
+handle_slowrate_comm1	rddir.c	/^handle_slowrate_comm1()$/;"	f
+handle_slowrate_comm1	rdstdin.c	/^handle_slowrate_comm1()$/;"	f
+handle_slowrate_comm2	driver.c	/^handle_slowrate_comm2()$/;"	f
+handle_slowrate_comm2	rddir.c	/^handle_slowrate_comm2()$/;"	f
+handle_slowrate_comm2	rdstdin.c	/^handle_slowrate_comm2()$/;"	f
+main	driver.c	/^main(int argc, char *argv[])$/;"	f
+main	rand_no.c	/^main(int argc, char *argv[])$/;"	f
+main	rddir.c	/^main(int argc, char *argv[])$/;"	f
+main	rdstdin.c	/^main(int argc, char *argv[])$/;"	f
+rand_no	rand_no.c	/^rand_no(int lim)$/;"	f
+rand_no_seed	rand_no.c	/^rand_no_seed(unsigned int seed)$/;"	f
+sleep_then_quit	rddir.c	/^sleep_then_quit(int sec)$/;"	f
+sleep_then_quit	rdstdin.c	/^sleep_then_quit(int sec)$/;"	f
+usage	driver.c	/^usage()$/;"	f
+usage	rddir.c	/^usage()$/;"	f
+usage	rdstdin.c	/^usage()$/;"	f
+write_highrate	driver.c	/^write_highrate(int *ignore)$/;"	f
+write_highrate	rddir.c	/^write_highrate()$/;"	f
+write_highrate	rdstdin.c	/^write_highrate()$/;"	f
