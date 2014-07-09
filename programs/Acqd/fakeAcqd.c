@@ -205,21 +205,21 @@ void fakeEvent(AnitaEventFull_t *theEventPtr)
 void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, AnitaEventFull_t *theEventPtr)
 {
     char theFilename[FILENAME_MAX];
-    int retVal;
+    //   int retVal;
     AnitaEventHeader_t *theHeader=&(theEventPtr->header);
     AnitaEventBody_t *theBody=&(theEventPtr->body);
 
 
     sprintf(theFilename,"%s/ev_%d.dat",theEventDir,
 	    theEventPtr->header.eventNumber);
-    retVal=writeStruct(theBody,theFilename,sizeof(AnitaEventBody_t));  
+    writeStruct(theBody,theFilename,sizeof(AnitaEventBody_t));  
       
     sprintf(theFilename,"%s/hd_%d.dat",theEventDir,
 	    theEventPtr->header.eventNumber);
-    retVal=writeStruct(theHeader,theFilename,sizeof(AnitaEventHeader_t));
+    writeStruct(theHeader,theFilename,sizeof(AnitaEventHeader_t));
 
     /* Make links, not sure what to do with return value here */
-    retVal=makeLink(theFilename,theLinkDir);
+    makeLink(theFilename,theLinkDir);
 }
 
 

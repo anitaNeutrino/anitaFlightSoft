@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
   kvpReset();
   status = configLoad(configFile, configBranch);
-  eString = configErrorString(status);
+
 
   if (status == CONFIG_E_OK)
     {
@@ -48,9 +48,11 @@ int main(int argc, char **argv)
     }
   else 
     {
-    fprintf(stderr,"Error setting %s %s %s to %d\n",configFile,configBranch,
-		configItem,value);
-  }
+      eString = configErrorString(status);
+      fprintf(stderr,"Error setting %s %s %s to %d -- %s\n",configFile,configBranch,
+	      configItem,value,eString);
+    }
+  
   return 0;
 }
 

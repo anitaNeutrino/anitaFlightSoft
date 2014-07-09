@@ -1169,7 +1169,9 @@ int saveConfig(int progMask, unsigned char configId)
 	      getProgName(prog),configId);
 
       retVal=copyFileToFile(configFile,configFileNew);
-
+      if(retVal!=0) {
+	syslog(LOG_ERR,"Error copying %s %s -- %s\n",configFile,configFileNew,strerror(errno));
+      }
     }
   }
   if(errorCount) return 0;
@@ -1372,6 +1374,9 @@ int respawnPrograms(int progMask)
 	fscanf(fpPid,"%d", &thePid) ;
 	fclose(fpPid) ;
 	retVal=kill(thePid,SIGUSR2);
+	if(retVal!=0) {
+	  syslog(LOG_ERR,"Error sending SIGUSR2 to %s (pid=%d) -- %s",getProgName(prog),thePid,strerror(errno));
+	}
       }
     } 
   }
@@ -1382,7 +1387,6 @@ int respawnPrograms(int progMask)
 
 int setEventDiskBitMask(int modOrSet, int bitMask)
 {
-  int retVal;
   time_t rawtime;
   readConfig(); //Get Latest bit mask
   if(modOrSet==0) {
@@ -1399,7 +1403,7 @@ int setEventDiskBitMask(int modOrSet, int bitMask)
   }
   else return 0;
   configModifyUnsignedInt("anitaSoft.config","global","eventDiskBitMask",eventDiskBitMask,&rawtime);
-  retVal=respawnPrograms(ARCHIVED_ID_MASK);
+  respawnPrograms(ARCHIVED_ID_MASK);
   return rawtime;
 }
 
@@ -2394,6 +2398,7 @@ int executeLosdControlCommand(int command, unsigned char args[2])
     if(ivalue>1 || ivalue<0) return -1;
     configModifyInt("LOSd.config","losd","sendData",ivalue,&rawtime);	
     retVal=sendSignal(ID_LOSD,SIGUSR1);    
+    if(retVal!=0) return 0;
     return rawtime;	
   default:
     syslog(LOG_ERR,"Unknown LOSd command -- %d\n",command);
@@ -2416,18 +2421,21 @@ int executeSipdControlCommand(int command, unsigned char args[3])
     ivalue=args[0];
     if(ivalue<0 || ivalue>1) return -1;
     configModifyInt("SIPd.config","sipd","sendWavePackets",ivalue,&rawtime);	
-    retVal=sendSignal(ID_SIPD,SIGUSR1);    
+    retVal=sendSignal(ID_SIPD,SIGUSR1);
+    if(retVal!=0) return 0;
     return rawtime;
   case SIPD_THROTTLE_RATE:
     ivalue=args[0]+(args[1]<<8); 
     if(ivalue>680) return -1;
     configModifyInt("SIPd.config","sipd","throttleRate",ivalue,&rawtime);	
     retVal=sendSignal(ID_SIPD,SIGUSR1);    
+    if(retVal!=0) return 0;
     return rawtime;
   case SIPD_HEADERS_PER_EVENT:
     ivalue=args[0]; 
     configModifyInt("SIPd.config","bandwidth","headersPerEvent",ivalue,&rawtime);	
     retVal=sendSignal(ID_SIPD,SIGUSR1);    
+    if(retVal!=0) return 0;
     return rawtime;
   case SIPD_PRIORITY_BANDWIDTH:
     ivalue=args[0];
@@ -2490,7 +2498,6 @@ int setPidGoalScaleFactor(int surf, int dac, float scaleFactor)
 
 
 int mountNextNtu(int whichDrive) {
-  int retVal;
   time_t rawtime;
   int currentNum=0;
   readConfig(); // Get latest names and status
@@ -2512,7 +2519,7 @@ int mountNextNtu(int whichDrive) {
   //Change to new drive
   sprintf(ntuName,"disk%d",currentNum);
   configModifyString("anitaSoft.config","global","ntuName",ntuName,&rawtime);
-  retVal=system("/home/anita/flightSoft/bin/mountCurrentNtu.sh");
+  system("/home/anita/flightSoft/bin/mountCurrentNtu.sh");
   sleep(2);
   makeNewRunDirs();
   sleep(2);
@@ -2524,7 +2531,6 @@ int mountNextNtu(int whichDrive) {
 
 
 int mountNextUsb(int whichUsb) {
-  int retVal;
   time_t rawtime;
   int currentNum[2]={0};
   readConfig(); // Get latest names and status
@@ -2568,7 +2574,7 @@ int mountNextUsb(int whichUsb) {
   //Change to new drive
   sprintf(usbName,"bigint%02d",currentNum[0]);
   configModifyString("anitaSoft.config","global","usbName",usbName,&rawtime);
-  retVal=system("/home/anita/flightSoft/bin/mountCurrentUsb.sh");
+  system("/home/anita/flightSoft/bin/mountCurrentUsb.sh");
 
   sleep(2);
   makeNewRunDirs();

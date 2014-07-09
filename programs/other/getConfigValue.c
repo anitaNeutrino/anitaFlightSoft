@@ -30,14 +30,18 @@ int main(int argc, char **argv)
 
   kvpReset();
   status = configLoad(configFile, configBranch);
-  eString = configErrorString(status);
+
 
   if (status == CONFIG_E_OK)
     {
       result = kvpGetInt(configItem,-1);
       printf("%d\n",result);
     }
-  else printf("-1\n");
+  else {
+    eString = configErrorString(status);
+    fprintf(stderr,"%s",eString);
+    printf("-1\n");
+  }
   return 0;
 }
 

@@ -416,6 +416,11 @@ void sendStartStruct(LogWatchdStart_t *startPtr)
 
   sprintf(fileName,"%s/lwstart_%u.dat",REQUEST_TELEM_DIR,startPtr->unixTime);
   retVal=writeStruct(startPtr,fileName,sizeof(LogWatchdStart_t));
-  retVal=makeLink(fileName,REQUEST_TELEM_LINK_DIR);
-  retVal=simpleMultiDiskWrite(startPtr,sizeof(LogWatchdStart_t),startPtr->unixTime,STARTUP_ARCHIVE_DIR,"logwatchd",hkDiskBitMask);
+  retVal|=makeLink(fileName,REQUEST_TELEM_LINK_DIR);
+  retVal|=simpleMultiDiskWrite(startPtr,sizeof(LogWatchdStart_t),startPtr->unixTime,STARTUP_ARCHIVE_DIR,"logwatchd",hkDiskBitMask);
+  
+  if(retVal) {
+    syslog(LOG_ERR,"Error writing LogWatchdStart_t");
+  }
+
 }

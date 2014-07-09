@@ -711,7 +711,7 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
     static unsigned int lastPPSNum=0;
     static unsigned int lastTrigTime=0;
     static int addedOneLastTime=0;
-    static int subtractedOneLastTime=0;
+    //    static int subtractedOneLastTime=0;
     double computerTime=(double)theHeaderPtr->unixTime;
     double fracTime=(double)theHeaderPtr->turfio.trigTime;
     fracTime/=DEFAULT_C3PO;
@@ -732,7 +732,7 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
     {
 	if(theHeaderPtr->turfio.ppsNum==lastPPSNum) {
 	    computerTime-=1;
-	    subtractedOneLastTime=1;
+	    //	    subtractedOneLastTime=1;
 	    addedOneLastTime=0;
 	}
     }
@@ -742,25 +742,25 @@ int compareTimes(AnitaEventHeader_t *theHeaderPtr, GpsSubTime_t *theGpsPtr, int 
 	if(theHeaderPtr->turfio.ppsNum==lastPPSNum+1) {	    
 	    computerTime+=1;
 	    addedOneLastTime=1;
-	    subtractedOneLastTime=0;
+	    //	    subtractedOneLastTime=0;
 	}
     }
     else if(addedOneLastTime && theHeaderPtr->unixTime==lastUnixTime
 	    && theHeaderPtr->turfio.ppsNum>=lastPPSNum) {
       computerTime+=1;
       addedOneLastTime=1;
-      subtractedOneLastTime=0;
+      //      subtractedOneLastTime=0;
     }
     else if(addedOneLastTime && (theHeaderPtr->unixTime==lastUnixTime+1)
 	    && (theHeaderPtr->turfio.ppsNum==lastPPSNum+1) &&
 	    (theHeaderPtr->turfio.trigTime<lastTrigTime)) {
 	computerTime+=1;
 	addedOneLastTime=1;
-	subtractedOneLastTime=0;
+	//	subtractedOneLastTime=0;
 
     }
     else {
-	subtractedOneLastTime=0;
+      //	subtractedOneLastTime=0;
 	addedOneLastTime=0;
     }
 	

@@ -245,7 +245,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     
     int numSeek=pReq->eventNumber-fileNum;
     numSeek--;
-    gzFile *indFile=gzopen(indexName,"rb");
+    gzFile indFile=gzopen(indexName,"rb");
     if(!indFile) {
 	fprintf(stderr,"Couldn't open: %s\n",indexName);
 	syslog(LOG_ERR,"Couldn't open: %s\n",indexName);
@@ -306,6 +306,9 @@ void sendEvent(PlaybackRequest_t *pReq)
       //a disk on /mnt/playback
       if(useDisk==2)  {
 	retVal=cleverMountPlaybackDisk(indEntry.usbLabel);
+	if(retVal!=0) {
+	  syslog(LOG_ERR,"Error calling cleverMountPlaybackDisk %d\n",retVal);
+	}
       	gotDisk=4;
       }
     }
@@ -525,7 +528,7 @@ int sortOutPidFile(char *progName)
 
 int cleverMountPlaybackDisk(char *diskLabel)
 {
-  char theCommand[180];
+    char theCommand[180];
   int retVal=0;
   if(playbackMounted) {
     if(strncmp(diskLabel,playbackName,12)==0) {
@@ -550,7 +553,7 @@ int cleverMountPlaybackDisk(char *diskLabel)
   //Should really check that it is mounted will probably open /proc/mounts and oparse it for /mnt/playback but I'll do this later
 
 
-  return 1;
+  return 0;
 
 
 }

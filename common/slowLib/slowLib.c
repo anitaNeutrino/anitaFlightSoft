@@ -171,67 +171,67 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 
 
 
-		if(slowCalc.scalerRatesSq[surf][ant]>(slowCalc.scalerRates[surf][ant]*slowCalc.scalerRates[surf][ant])) {
-		    float tempRms=sqrt(slowCalc.scalerRatesSq[surf][ant]-
-				       (slowCalc.scalerRates[surf][ant]*slowCalc.scalerRates[surf][ant]));
-		    tempRms/=((float)32);
-		    if(tempRms<0)
-			tempRms=0;
-		    if(tempRms>255)
-			tempRms=255;
-		    slowRf.rmsScalerRates[surf][ant]=(char)tempRms;
-		}
-		else {
-		    slowRf.rmsScalerRates[surf][ant]=0;
-		}		
+		/* if(slowCalc.scalerRatesSq[surf][ant]>(slowCalc.scalerRates[surf][ant]*slowCalc.scalerRates[surf][ant])) { */
+		/*     float tempRms=sqrt(slowCalc.scalerRatesSq[surf][ant]- */
+		/* 		       (slowCalc.scalerRates[surf][ant]*slowCalc.scalerRates[surf][ant])); */
+		/*     tempRms/=((float)32); */
+		/*     if(tempRms<0) */
+		/* 	tempRms=0; */
+		/*     if(tempRms>255) */
+		/* 	tempRms=255; */
+		/*     slowRf.rmsScalerRates[surf][ant]=(char)tempRms; */
+		/* } */
+		/* else { */
+		/*     slowRf.rmsScalerRates[surf][ant]=0; */
+		/* }	 */	
 
 	    }
 	}
     }
-    if(numTurfRates) {
-      for(i=0;i<numTurfRates;i++) {
-	for(phi=0;phi<PHI_SECTORS;phi++) {
-	  for(ring=0;ring<2;ring++) {	      
-	    slowCalc.avgL1Rates[phi/2]+=theTurfRates[i].l1Rates[phi][ring];
-	  }
-	}
+    /* if(numTurfRates) { */
+    /*   for(i=0;i<numTurfRates;i++) { */
+    /* 	for(phi=0;phi<PHI_SECTORS;phi++) { */
+    /* 	  for(ring=0;ring<2;ring++) {	       */
+    /* 	    slowCalc.avgL1Rates[phi/2]+=theTurfRates[i].l1Rates[phi][ring]; */
+    /* 	  } */
+    /* 	} */
 	
-	for(phi=0;phi<PHI_SECTORS;phi++) {
-	  slowCalc.avgL2Rates[phi]+=theTurfRates[i].upperL2Rates[phi];
-	  slowCalc.avgL2Rates[phi]+=theTurfRates[i].lowerL2Rates[phi];
-	  slowCalc.avgL3Rates[phi]+=theTurfRates[i].l3Rates[phi];
-	}
-      }
-      for(surf=0;surf<TRIGGER_SURFS;surf++) {
-	for(ant=0;ant<ANTS_PER_SURF;ant++) {
-	  slowCalc.avgL1Rates[surf]/=((float)4*numTurfRates);
-	  slowCalc.avgL1Rates[surf]/=((float)256);
-	  if(slowCalc.avgL1Rates[surf]<0)
-	    slowCalc.avgL1Rates[surf]=0;
-	  if(slowCalc.avgL1Rates[surf]>255)
-	    slowCalc.avgL1Rates[surf]=255;
-	  slowRf.avgL1Rates[surf]=slowCalc.avgL1Rates[surf];
+    /* 	for(phi=0;phi<PHI_SECTORS;phi++) { */
+    /* 	  slowCalc.avgL2Rates[phi]+=theTurfRates[i].upperL2Rates[phi]; */
+    /* 	  slowCalc.avgL2Rates[phi]+=theTurfRates[i].lowerL2Rates[phi]; */
+    /* 	  slowCalc.avgL3Rates[phi]+=theTurfRates[i].l3Rates[phi]; */
+    /* 	} */
+    /*   } */
+    /*   for(surf=0;surf<TRIGGER_SURFS;surf++) { */
+    /* 	for(ant=0;ant<ANTS_PER_SURF;ant++) { */
+    /* 	  slowCalc.avgL1Rates[surf]/=((float)4*numTurfRates); */
+    /* 	  slowCalc.avgL1Rates[surf]/=((float)256); */
+    /* 	  if(slowCalc.avgL1Rates[surf]<0) */
+    /* 	    slowCalc.avgL1Rates[surf]=0; */
+    /* 	  if(slowCalc.avgL1Rates[surf]>255) */
+    /* 	    slowCalc.avgL1Rates[surf]=255; */
+    /* 	  slowRf.avgL1Rates[surf]=slowCalc.avgL1Rates[surf]; */
 	  
-	}
-      }
+    /* 	} */
+    /*   } */
 	
-	for(phi=0;phi<PHI_SECTORS;phi++) {
-	    slowCalc.avgL2Rates[phi]/=((float)2*numTurfRates);
-	    if(slowCalc.avgL2Rates[phi]<0) 
-		slowCalc.avgL2Rates[phi]=0;
-	    if(slowCalc.avgL2Rates[phi]>255) 
-		slowCalc.avgL2Rates[phi]=255;
-	    slowRf.avgL2Rates[phi]=slowCalc.avgL2Rates[phi];
+    /* 	for(phi=0;phi<PHI_SECTORS;phi++) { */
+    /* 	    slowCalc.avgL2Rates[phi]/=((float)2*numTurfRates); */
+    /* 	    if(slowCalc.avgL2Rates[phi]<0)  */
+    /* 		slowCalc.avgL2Rates[phi]=0; */
+    /* 	    if(slowCalc.avgL2Rates[phi]>255)  */
+    /* 		slowCalc.avgL2Rates[phi]=255; */
+    /* 	    slowRf.avgL2Rates[phi]=slowCalc.avgL2Rates[phi]; */
 
-	    slowCalc.avgL3Rates[phi]/=((float)numTurfRates);
-	    slowCalc.avgL3Rates[phi]*=((float)32);
-	    if(slowCalc.avgL3Rates[phi]<0)
-		slowCalc.avgL3Rates[phi]=0;
-	    if(slowCalc.avgL3Rates[phi]>255)
-		slowCalc.avgL3Rates[phi]=255;
-	    slowRf.avgL3Rates[phi]=slowCalc.avgL3Rates[phi];
-	}
-    }
+    /* 	    slowCalc.avgL3Rates[phi]/=((float)numTurfRates); */
+    /* 	    slowCalc.avgL3Rates[phi]*=((float)32); */
+    /* 	    if(slowCalc.avgL3Rates[phi]<0) */
+    /* 		slowCalc.avgL3Rates[phi]=0; */
+    /* 	    if(slowCalc.avgL3Rates[phi]>255) */
+    /* 		slowCalc.avgL3Rates[phi]=255; */
+    /* 	    slowRf.avgL3Rates[phi]=slowCalc.avgL3Rates[phi]; */
+    /* 	} */
+    //}
 
     FILE *fp = fopen(SLOW_RF_FILE,"wb");
     if(!fp) {

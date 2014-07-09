@@ -35,7 +35,7 @@ int main (int argc, char *argv[])
     struct timeval timeStruct;
     GpsSubTime_t theTTT;
     theTTT.fromAdu5=0;
-    int retVal=0;
+    //        int retVal=0;
 
     makeDirectories(acqdDir);
     makeDirectories(acqdLinkDir);
@@ -51,7 +51,7 @@ int main (int argc, char *argv[])
 	  //	  printf("%u %u\n",theTTT.unixTime,theTTT.subTime);
 	  sprintf(filename,"%s/gps_%u_%u.dat",GPSD_SUBTIME_DIR,theTTT.unixTime,theTTT.subTime);
 	  writeStruct(&theTTT,filename,sizeof(GpsSubTime_t));
-	  retVal=makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
+	  makeLink(filename,GPSD_SUBTIME_LINK_DIR);  
 	  theTTT.fromAdu5++;
 	  if(theTTT.fromAdu5>2)
 	    theTTT.fromAdu5=0;

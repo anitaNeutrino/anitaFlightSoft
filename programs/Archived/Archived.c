@@ -136,7 +136,6 @@ int main (int argc, char *argv[])
     readConfigFile();
     kvpReset () ;
     status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
     if (status == CONFIG_E_OK) {
 	eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 	disableHelium1=kvpGetInt("disableHelium1",0);
@@ -172,6 +171,11 @@ int main (int argc, char *argv[])
 	}
 
 
+    }
+    else {
+
+      eString = configErrorString (status) ;
+      syslog(LOG_ERR,"Error reading %s -- %s",GLOBAL_CONF_FILE,eString);
     }
     
     //Fill event dir names
@@ -352,8 +356,8 @@ int readConfigFile()
 
     }
     else {
-	eString=configErrorString (status) ;
-	syslog(LOG_ERR,"Error reading Archived.config: %s\n",eString);
+	eString=configErrorString (status) ; 
+	syslog(LOG_ERR,"Error reading Archived.config: %s\n",eString); 
     }
     
     return status;
@@ -647,6 +651,10 @@ void writeOutputToDisk(int numBytes) {
     int retVal;
 
     retVal=cleverEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
+    if(retVal!=0) {
+      syslog(LOG_ERR,"Error writing event %s\n",strerror(errno));
+    }
+
     if(printToScreen && verbosity>1) {
 	printf("Event %u, (%d bytes)  %s \t%s\n",theHead.eventNumber,
 	       numBytes,eventWriter.currentEventFileName[0],
