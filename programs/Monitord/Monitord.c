@@ -117,7 +117,7 @@ int disableUsb=0;
 AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
-
+int diskScaleFactors[8]={1,1,1,1,128,128,4,16};
 char *diskLocations[7]={"/tmp","/var","/home","/",HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT};
 char *otherDirLoc[3]={ACQD_EVENT_DIR,EVENTD_EVENT_DIR,PRIORITIZERD_EVENT_DIR};
 char *otherLinkLoc[3]={ACQD_EVENT_LINK_DIR,EVENTD_EVENT_LINK_DIR,PRIORITIZERD_EVENT_LINK_DIR};
@@ -399,19 +399,18 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     float neoPress;
     for(diskNum=0;diskNum<7;diskNum++) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
-//	printf("%u\n",megaBytes);
+	printf("%s -- %u\n",diskLocations[diskNum],megaBytes);
 	if(megaBytes>0) {
-	    if(diskNum==4 || diskNum==5)
-		megaBytes/=2;
-	    if(megaBytes<65535) megaBytes_short=megaBytes;
-	    else megaBytes_short=65535;
+	  megaBytes/=diskScaleFactors[diskNum];
+	  if(megaBytes<65535) megaBytes_short=megaBytes;
+	  else megaBytes_short=65535;
 	}
 	else megaBytes_short=0;
 	dsPtr->diskSpace[diskNum]=megaBytes_short;
 	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes_short);
 	if(((short)megaBytes)==-1) errFlag--;
     }  
-    neoFile=fopen("/tmp/anita/neobrickSum.txt","r");
+    neoFile=fopen("/tmp/anita/ntuSum.txt","r");
     if(neoFile) {
 	fscanf(neoFile,"%u %llu %llu %llu %f %f",&neoTime,&neoSpaceUsed,&neoSpaceAvailable,&neoSpaceTotal,&neoTemp,&neoPress);
 	if(neoSpaceAvailable>0) {

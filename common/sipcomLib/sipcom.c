@@ -637,9 +637,11 @@ read_comm(int *comm)
 static int
 get_mesg(int comm, unsigned char *buf, int n, char *mesgtype)
 {
-    int nrd;
+  //RJN hack to lose warning
+  //    int nrd;
     //assert(COMM1 == comm || COMM2 == comm);
-    nrd = readn(Fd[comm], buf, n);
+    //    nrd = readn(Fd[comm], buf, n);
+    readn(Fd[comm], buf, n);
     if (buf[n-1] != ETX) {
 	//fprintf(stderr, "No ETX at end of %s\n", mesgtype);
 	return -1;

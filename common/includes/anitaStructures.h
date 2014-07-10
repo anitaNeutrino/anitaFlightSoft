@@ -580,7 +580,16 @@ typedef struct {
 
 //!  Disk Space
 /*!
-  Contains the disk spaces and labels of currently mounted disks.
+  Contains the disk spaces and labels of currently mounted disks. The 8 disks are:
+  [0] - /tmp      MB
+  [1] - /var      MB
+  [2] - /home     MB
+  [3] - /         MB
+  [4] - /mnt/helium1       128 MB
+  [5] - /mnt/helium2       128 MB
+  [6] - /mnt/usbint        4 MB
+  [7] - NTU disk           16 MB 
+  
 */
 typedef struct {
     unsigned short diskSpace[8]; ///<In units of 10 MegaBytes

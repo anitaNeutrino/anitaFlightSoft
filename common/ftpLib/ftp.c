@@ -724,7 +724,7 @@ recvrequest(const char *cmd, char *remote, int (*out_fct)(char*,unsigned),
 			bytes++;
 	contin2:	;
 		}
-break2:
+		//break2:
 		if (bare_lfs) {
 			printf("WARNING! %d bare linefeeds received in ASCII mode\n", bare_lfs);
 			printf("File may not have transferred correctly.\n");
