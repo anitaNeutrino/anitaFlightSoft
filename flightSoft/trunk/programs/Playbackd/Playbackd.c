@@ -539,6 +539,9 @@ int cleverMountPlaybackDisk(char *diskLabel)
     //unmount playback
     sprintf(theCommand,"sudo umount %s",PLAYBACK_MOUNT);
     retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process
+    if (WIFSIGNALED(retVal) &&
+        (WTERMSIG(retVal) == SIGINT || WTERMSIG(retVal) == SIGQUIT))
+      return -1;
     sleep(2); //For luck
     playbackMounted=0;
   }
@@ -546,6 +549,9 @@ int cleverMountPlaybackDisk(char *diskLabel)
   //Try to mount playback
   sprintf(theCommand,"sudo mount -L %s %s",diskLabel,PLAYBACK_MOUNT);
   retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process
+  if (WIFSIGNALED(retVal) &&
+      (WTERMSIG(retVal) == SIGINT || WTERMSIG(retVal) == SIGQUIT))
+    return -1;
   sleep(2); //For luck
   playbackMounted=1;
   strncpy(playbackName,diskLabel,11);

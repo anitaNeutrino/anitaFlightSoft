@@ -93,7 +93,7 @@ int numEventRates=0;
 
 void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEventNumber) //to be called once a minute
 {
-  int i,surf,chan,ant,phi,scl,ring;
+  int i,surf,chan,ant,scl;//,phi,ring;
     SlowRateRFCalcStruct_t slowCalc;
     SlowRateRFStruct_t slowRf;
 
