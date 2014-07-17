@@ -1,6 +1,7 @@
 [Unit]
 Description=Load SURF Driver
 After=turfiodriver.service
+After=losdriver.service
 
 [Service]
 Type=oneshot

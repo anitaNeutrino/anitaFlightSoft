@@ -1,0 +1,11 @@
+[Unit]
+Description=Load LOS Driver
+Before=surfdriver.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/anita/flightSoft/system/loadLosDriver
+
+[Install]
+WantedBy=multi-user.target
