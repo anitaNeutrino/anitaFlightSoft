@@ -1,4 +1,5 @@
 
+
 /*--------------------------------------------
   This is an ADU5 GPS readout code.
   [data bits=8, stop bits=1, parity=none]
@@ -19,7 +20,7 @@
 #define COMMAND "$PASHS,ELM,0\r\n"  /* set elevation mask angle to 0 degree */
 
 int main() { 
-    char devName[]="/dev/ttySTDRV002_4";
+    char devName[]="/dev/ttyUSB6";
     int fd, i; 
     struct termios options;
     char buff[COMMAND_SIZE] = COMMAND;

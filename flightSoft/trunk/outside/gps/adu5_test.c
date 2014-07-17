@@ -25,7 +25,7 @@ int breakdownTimeString(char *subString, int *hour, int *minute, int *second);
 
 
 int main() { 
-    char devName[]="/dev/ttySTDRV002_4";
+    char devName[]="/dev/ttyUSB6";
 
     int fd, i, retVal,currentIndex ; 
     struct termios options;

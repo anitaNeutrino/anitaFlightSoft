@@ -2928,7 +2928,7 @@ AcqdErrorCode_t readSurfEventData()
       
     //Next is surf event id word 
     dataInt=eventBuf[1];
-    if(printToScreen && verbosity>2) {
+    if((printToScreen && verbosity>2)) {
       printf("SURF %d (%d), CHIP %d, CHN %d, SURF Event Id: %x\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,dataInt);
     }
     bdPtr->surfEventId[surf]=dataInt;
@@ -2948,7 +2948,7 @@ AcqdErrorCode_t readSurfEventData()
 	i=2+ chan*(N_SAMP_EFF/2) + readCount;
 	dataInt=eventBuf[i];
 	  
-	if(printToScreen && verbosity>2) {
+	if((printToScreen && verbosity>2)) {
 	  printf("SURF %d (%d), CHIP %d, CHN %d, Read %d  (i==%d): %#x %#x  (s %d %d) (sp %d %d) (hb %d %d) (low %d %d)\n",surfIndex[surf],((headerWord&0xf0000)>>16),((headerWord&0x00c00000)>> 22),chan,readCount,i,
 		 GetUpper16(dataInt),
 		 GetLower16(dataInt),
