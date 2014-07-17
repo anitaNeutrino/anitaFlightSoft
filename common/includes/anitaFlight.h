@@ -83,11 +83,11 @@
 #define HILBERT_ORDER 5 /*order used for Hilbert transforms in Stokes S3 */
 
 //Whiteheat things
-#define G12A_DEV_NAME "/dev/ttySTDRV002_5"
-#define G12B_DEV_NAME "/dev/ttySTDRV002_6" //These are the two ports
-#define ADU5A_DEV_NAME "/dev/ttySTDRV002_4"
-#define ADU5B_DEV_NAME "/dev/ttySTDRV002_0"  //These are the two ADU5s
-#define MAGNETOMETER_DEV_NAME "/dev/ttySTDRV002_3"
+#define G12A_DEV_NAME "/dev/ttyUSB1"
+#define G12B_DEV_NAME "/dev/ttyUSB0" //These are the two ports
+#define ADU5A_DEV_NAME "/dev/ttyUSB7"
+#define ADU5B_DEV_NAME "/dev/ttyUSB5"  //These are the two ADU5s
+#define MAGNETOMETER_DEV_NAME "/dev/ttyUSB6"
 
 #define NUM_PRIORITIES 10
 #define NUM_USBS 31

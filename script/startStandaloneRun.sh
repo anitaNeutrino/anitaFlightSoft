@@ -58,7 +58,7 @@ echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
 daemon -r Archived -n Archived
 daemon -r Hkd -n Hkd
-#daemon -r GPSd -n GPSd
+daemon -r GPSd -n GPSd
 daemon -r Monitord -n Monitord
 daemon -r Calibd -n Calibd
 daemon -r LogWatchd -n LogWatchd
