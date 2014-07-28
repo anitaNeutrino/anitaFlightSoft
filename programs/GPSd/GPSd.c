@@ -333,7 +333,8 @@ int main (int argc, char *argv[])
 	    checkG12();
 	    checkAdu5A();
 	    checkAdu5B();
-	    if(!startedNtpd && g12StartNtp && loopCounter>60) startedNtpd=tryToStartNtpd();
+	    //RJN hack 27/07/14
+	    //	    if(!startedNtpd && g12StartNtp && loopCounter>60) startedNtpd=tryToStartNtpd();
 	    loopCounter++;
 	    usleep(1000);
 	    if(!sentStartFile) {
@@ -940,8 +941,10 @@ void processGpzdaString(char *gpsString, int gpsLength, int latestData, int from
     strncpy(unixString,ctime(&rawtime),179);
 //	printf("%s%s\n",unixString,otherString);
     if(abs(gpsRawTime-rawtime)>g12ClockSkew && g12UpdateClock &&latestData) {
-      if(!g12StartNtp || (g12StartNtp && !startedNtpd))
-	updateClockFromG12(gpsRawTime);
+      if(!g12StartNtp || (g12StartNtp && !startedNtpd)) {
+	//	updateClockFromG12(gpsRawTime);
+	//RJN hack 28/07/14
+      }
     }
 
     //Need to output data to file somehow

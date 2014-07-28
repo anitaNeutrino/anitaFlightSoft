@@ -27,7 +27,7 @@ int breakdownTimeString(char *subString, int *hour, int *minute, int *second);
 #define MYBAUDRATE B9600
 
 int main() { 
-    char devName[]="/dev/ttyUSB5";
+    char devName[]="/dev/ttyUSB1";
 
     int fd, i, retVal,currentIndex ; 
     struct termios options;

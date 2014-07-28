@@ -1,0 +1,25 @@
+#!/bin/sh -
+#-----------------------------------------------------------------------------
+#
+#      File         :  sortOutSerials
+#      Abstract     :  Makes some sensible symlinks based on FTDI serial number
+#      Last Revision:  28-07-14
+#-----------------------------------------------------------------------------
+
+
+if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if01-port0" ]
+then
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if01-port0` /dev/ttyADU5B
+fi
+
+if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if02-port0" ]
+then
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if02-port0` /dev/ttyADU5A
+fi
+
+
+if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if03-port0" ]
+then
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if03-port0` /dev/ttyMag
+fi
+

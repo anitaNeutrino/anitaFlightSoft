@@ -2076,6 +2076,7 @@ AcqdErrorCode_t doStartTest()
   AcqdStartStruct_t startStruct;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
+  int rawScalers[ACTIVE_SURFS][RAW_SCALERS_PER_SURF][10];
   char theFilename[FILENAME_MAX];
   int tempGlobalThreshold=setGlobalThreshold;
   int firstEvent=1,byteCount=0;
@@ -2269,6 +2270,9 @@ AcqdErrorCode_t doStartTest()
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	startStruct.scalerVals[surf][dac][tInd]=theSurfHk.scaler[surf][dac];
       }
+      for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
+	rawScalers[surf][dac][tInd]=theScalers.scaler[surf][dac];
+      }
     }
   }
   setGlobalThreshold=tempGlobalThreshold; 
@@ -2318,6 +2322,15 @@ AcqdErrorCode_t doStartTest()
       printf("Chan %02d_%02d: ",surfIndex[surf],dac+1);
       for(tInd=0;tInd<10;tInd++) {
 	printf("%5d ",startStruct.scalerVals[surf][dac][tInd]);
+      }
+      printf("\n");
+    }
+  }
+  for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
+      printf("Raw %02d_%02d: ",surfIndex[surf],dac+1);
+      for(tInd=0;tInd<10;tInd++) {
+	printf("%5d ",rawScalers[surf][dac][tInd]);
       }
       printf("\n");
     }
