@@ -61,8 +61,7 @@ typedef enum __TURF_register_control {
   TurfRegControlVersion=0x1,
   TurfRegControlZero1=0x2,
   TurfRegControlZero2=0x3,
-  TurfRegControlAntTrigMask=0x4,
-  TurfRegControlNadirAntTrigMask=0x5,
+  TurfRegControlL1TrigMask=0x4,
   TurfRegControlPhiMask=0x6,
   TurfRegControlEventId=0x7,
   TurfRegControlTrigger=0x8,
@@ -110,8 +109,10 @@ typedef enum __TURF_control_act {
     SendSoftTrg,
     TurfClearEvent,
     TurfClearAll,
+    TurfDisableTriggers,
+    TurfEnableTriggers,
     SetPhiTrigMask,
-    SetAntTrigMask,
+    SetL1TrigMask,
     SetEventEpoch
 } TurfControlAction_t ;
 
