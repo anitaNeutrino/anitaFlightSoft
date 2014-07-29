@@ -86,13 +86,13 @@ void printSlowRateStuff(SlowRateFull_t *slowPtr)
 	}
 	printf("\n");
     }
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	printf("RMS Scaler SURF %d: ",surf);    
-	for(ant=0;ant<ANTS_PER_SURF;ant++) {
-	    printf("%d ",slowPtr->rf.rmsScalerRates[surf][ant]);
-	}
-	printf("\n");
-    }
+    /* for(surf=0;surf<ACTIVE_SURFS;surf++) { */
+    /* 	printf("RMS Scaler SURF %d: ",surf);     */
+    /* 	for(ant=0;ant<ANTS_PER_SURF;ant++) { */
+    /* 	    printf("%d ",slowPtr->rf.rmsScalerRates[surf][ant]); */
+    /* 	} */
+    /* 	printf("\n"); */
+    /* } */
     
 
     printf("\n**************** Housekeeping ******************\n");

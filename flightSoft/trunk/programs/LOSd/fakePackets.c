@@ -506,14 +506,14 @@ void fakeTurfRate(struct timeval *currentTime) {
       ppsOffset=currentTime->tv_sec;
     theTurfRates.ppsNum=theTurfRates.unixTime-ppsOffset;
     for(i=0;i<TRIGGER_SURFS;i++) {
-	for(j=0;j<ANTS_PER_SURF;j++) {
-	    theTurfRates.l1Rates[i][j]=i*j;
-	}
+      //	for(j=0;j<ANTS_PER_SURF;j++) {
+      //	    theTurfRates.l1Rates[i][j]=i*j;
+      //	}
     }
     for(i=0;i<PHI_SECTORS;i++) {
-	theTurfRates.upperL2Rates[i]=255-i;
-	theTurfRates.lowerL2Rates[i]=i;
-	theTurfRates.l3Rates[i]=128+i;
+      //	theTurfRates.upperL2Rates[i]=255-i;
+      //	theTurfRates.lowerL2Rates[i]=i;
+	theTurfRates.l3Rates[i][0]=128+i;
     }
 
     fillGenericHeader(&theTurfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));

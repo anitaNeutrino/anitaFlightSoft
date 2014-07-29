@@ -62,7 +62,7 @@ void addEventToPedestals(AnitaEventBody_t *bdPtr)
 		    if(bdPtr->channel[chanIndex].data[samp+1] &0x1000)
 			continue;
 		}
-		pedWord=(word&SURF_BITMASK)>>1;
+		pedWord=(word&SURF_BITMASK)>>1;  ///Ignore least significant bit
 
 //		    if(surf==0 && chan==0 && samp==0) cout << labChip << endl;
 		
@@ -315,6 +315,7 @@ int doPedSubtraction(AnitaEventBody_t *rawBdPtr,
 		    pedSubBdPtr->channel[chanIndex].data[samp]=0;
 		}
 		else {
+		  //Ignore least significant bit
 		    dataVal=(rawBdPtr->channel[chanIndex].data[samp]&SURF_BITMASK)>>1;
 		    dataVal-=currentPeds.thePeds[surf][chip][chan][samp];
 		    
