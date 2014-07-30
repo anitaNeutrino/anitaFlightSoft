@@ -832,6 +832,7 @@ int main(int argc, char **argv) {
   closeHkFilesAndTidy(&turfHkWriter);
   unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating... reached end of main");
+  fprintf(stderr,"Acqd terminating... reached end of main");
   return 1 ;
 }
 
@@ -2104,7 +2105,8 @@ AcqdErrorCode_t doStartTest()
   int dacVal=0,chanId,chan,surf,dac,retVal;
   int tInd=0,tmo=0,eventReadyFlag=0;
   struct timeval timeStruct;
-  unsigned int value=0;
+  unsigned int boardVersion=0;
+  unsigned int boardName=0;
   unsigned int tempTrigMask=l1TrigMask;
   unsigned int tempTrigMaskH=l1TrigMaskH;
   unsigned short tempPhiTrigMaskV=phiTrigMask;
@@ -2131,54 +2133,43 @@ AcqdErrorCode_t doStartTest()
   //Readout versions
   setTurfioReg(TurfioRegTurfBank, TurfBankControl); // set TURF_BANK to Bank 3
 
-  readTurfioReg(TurfRegControlFrut,&value);
-  printf("TURF: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
-  startStruct.turfIdBytes[0]=(value&0xFF000000)>>24;
-  startStruct.turfIdBytes[1]=(value&0xFF0000)>>16;
-  startStruct.turfIdBytes[2]=(value&0xFF00)>>8;
-  startStruct.turfIdBytes[3]=(value&0xFF);
-  readTurfioReg(TurfRegControlVersion,&value);
-  startStruct.turfIdVersion=value;
-  printf("Version: %#x\n",value);
+  readTurfioReg(TurfRegControlFrut,&boardName);
+  startStruct.turfIdBytes[0]=(boardName&0xFF000000)>>24;
+  startStruct.turfIdBytes[1]=(boardName&0xFF0000)>>16;
+  startStruct.turfIdBytes[2]=(boardName&0xFF00)>>8;
+  startStruct.turfIdBytes[3]=(boardName&0xFF);
+  readTurfioReg(TurfRegControlVersion,&boardVersion);
+  startStruct.turfIdVersion=boardVersion;
+  printf("TURF: ");
+  printBoardAndVersion(boardName,boardVersion);
 
-  {
-    int boardRevision=value>>28;
-    int month=((value>>24)&0xf);
-    int day=((value)&0x00ff0000)>>16;
-    int majorRev=((value>>12)&0xf);
-    int minorRev=((value>>8)&0xf);
-    int rev=value&0xff;
-    
-    printf("TURF Version:\n Board Rev:\t%d\nCompiled:\t%d/%d\nVersion:\t%d.%d.%d\n",boardRevision,month,day,majorRev,minorRev,rev);
-  }
+ 
 
 
 
-  readTurfioReg(TurfioRegId,&value);
-  startStruct.turfioIdBytes[0]=(value&0xFF000000)>>24;
-  startStruct.turfioIdBytes[1]=(value&0xFF0000)>>16;
-  startStruct.turfioIdBytes[2]=(value&0xFF00)>>8;
-  startStruct.turfioIdBytes[3]=(value&0xFF);
-  printf("TURFIO: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
-  readTurfioReg(TurfioRegVersion,&value);
-  startStruct.turfioIdVersion=value;
-  printf("Version: %#x\n",value);
-  printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+  readTurfioReg(TurfioRegId,&boardName);
+  startStruct.turfioIdBytes[0]=(boardName&0xFF000000)>>24;
+  startStruct.turfioIdBytes[1]=(boardName&0xFF0000)>>16;
+  startStruct.turfioIdBytes[2]=(boardName&0xFF00)>>8;
+  startStruct.turfioIdBytes[3]=(boardName&0xFF);
+  readTurfioReg(TurfioRegVersion,&boardVersion);
+  startStruct.turfioIdVersion=boardVersion;
+  printf("TURFIO: ");
+  printBoardAndVersion(boardName,boardVersion);
 
 
   for(surf=0;surf<numSurfs;surf++) {
 
-    readSurfReg(surf,SurfRegId,&value);
-    startStruct.surfIdBytes[surf][0]=(value&0xFF000000)>>24;
-    startStruct.surfIdBytes[surf][1]=(value&0xFF0000)>>16;
-    startStruct.surfIdBytes[surf][2]=(value&0xFF00)>>8;
-    startStruct.surfIdBytes[surf][3]=(value&0xFF);
-    printf("SURF: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
-    readSurfReg(surf,SurfRegVersion,&value);
-    startStruct.surfIdVersion[surf]=value;
-    printf("Version: %#x\n",value);
-    printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+    readSurfReg(surf,SurfRegId,&boardName);
+    startStruct.surfIdBytes[surf][0]=(boardName&0xFF000000)>>24;
+    startStruct.surfIdBytes[surf][1]=(boardName&0xFF0000)>>16;
+    startStruct.surfIdBytes[surf][2]=(boardName&0xFF00)>>8;
+    startStruct.surfIdBytes[surf][3]=(boardName&0xFF);
 
+    readSurfReg(surf,SurfRegVersion,&boardVersion);
+    startStruct.surfIdVersion[surf]=boardVersion;
+    printf("SURF %d: ",surfIndex[surf]);
+    printBoardAndVersion(boardName,boardVersion);
   }
 
   doingEvent=0;
@@ -4536,4 +4527,17 @@ AcqdErrorCode_t setupTurfio()
     
   return status;
 
+}
+
+
+void printBoardAndVersion(unsigned int boardName,unsigned int boardVer)
+{
+  int boardRevision=boardVer>>28;
+  int month=((boardVer>>24)&0xf);
+  int day=((boardVer)&0x00ff0000)>>16;
+  int majorRev=((boardVer>>12)&0xf);
+  int minorRev=((boardVer>>8)&0xf);
+  int rev=boardVer&0xff;
+  
+  printf("%c%c%c%c Version:\n Board Rev:\t%d\nCompiled:\t%d/%d\nVersion:\t%d.%d.%d\n",(boardName&0xFF000000)>>24,(boardName&0xFF0000)>>16,(boardName&0xFF00)>>8,boardName&0xFF,boardRevision,month,day,majorRev,minorRev,rev);
 }

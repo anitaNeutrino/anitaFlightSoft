@@ -46,6 +46,7 @@ AcqdErrorCode_t setupTurfio();
 AcqdErrorCode_t doGlobalThresholdScan();
 AcqdErrorCode_t runPedestalMode();
 AcqdErrorCode_t doStartTest();
+void printBoardAndVersion(unsigned int boardName,unsigned int boardVer);
 
 //Configuration functions
 int readConfigFile();
