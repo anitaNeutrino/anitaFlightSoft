@@ -2146,8 +2146,20 @@ AcqdErrorCode_t doStartTest()
   startStruct.turfIdBytes[3]=(value&0xFF);
   readTurfioReg(TurfRegControlVersion,&value);
   startStruct.turfIdVersion=value;
-  printf("Version: %x\n",value);
-  printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+  printf("Version: %#x\n",value);
+
+  {
+    int boardRevision=value>>28;
+    int month=((value>>24)&0xf);
+    int day=((value)&0x00ff0000)>>16;
+    int majorRev=((value>>12)&0xf);
+    int minorRev=((value>>8)&0xf);
+    int rev=value&0xff;
+    
+    printf("TURF Version:\n Board Rev:\t%d\nCompiled:\t%d/%d\nVersion:\t%d.%d.%d\n",boardRevision,month,day,majorRev,minorRev,rev);
+  }
+
+
 
   readTurfioReg(TurfioRegId,&value);
   startStruct.turfioIdBytes[0]=(value&0xFF000000)>>24;
@@ -2157,7 +2169,7 @@ AcqdErrorCode_t doStartTest()
   printf("TURFIO: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
   readTurfioReg(TurfioRegVersion,&value);
   startStruct.turfioIdVersion=value;
-  printf("Version: %x\n",value);
+  printf("Version: %#x\n",value);
   printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
 
   doingEvent=0;
@@ -2358,7 +2370,7 @@ AcqdErrorCode_t doStartTest()
     printf("%5d ",startStruct.threshVals[tInd]);
   }
   printf("\n");
-  for(surf=0;surf<ACTIVE_SURFS;surf++) {
+  for(surf=0;surf<numSurfs;surf++) {
     for(dac=0;dac<SCALERS_PER_SURF;dac++) {
       printf("Chan %02d_%02d: ",surfIndex[surf],dac+1);
       for(tInd=0;tInd<10;tInd++) {
@@ -2367,15 +2379,15 @@ AcqdErrorCode_t doStartTest()
       printf("\n");
     }
   }
-  for(surf=0;surf<ACTIVE_SURFS;surf++) {
-    for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
-      printf("Raw %02d_%02d: ",surfIndex[surf],dac+1);
-      for(tInd=0;tInd<10;tInd++) {
-	printf("%5d ",rawScalers[surf][dac][tInd]);
-      }
-      printf("\n");
-    }
-  }
+  /* for(surf=0;surf<numSurfs;surf++) { */
+  /*   for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) { */
+  /*     printf("Raw %02d_%02d: ",surfIndex[surf],dac+1); */
+  /*     for(tInd=0;tInd<10;tInd++) { */
+  /* 	printf("%5d ",rawScalers[surf][dac][tInd]); */
+  /*     } */
+  /*     printf("\n"); */
+  /*   } */
+  /* } */
 
   
 
