@@ -115,7 +115,7 @@
 #define VER_SURF_PACKET 30
 #define VER_ENC_WAVE_PACKET 30
 #define VER_ENC_SURF_PACKET 30
-#define VER_SURF_HK 30
+#define VER_SURF_HK 31
 #define VER_GPS_GGA 30
 #define VER_ADU5_PAT 30
 #define VER_ADU5_SAT 30
@@ -138,10 +138,11 @@
 #define VER_OTHER_MON 30
 #define VER_GPSD_START 30
 #define VER_LOGWATCHD_START 30
-#define VER_AVG_SURF_HK 30
+#define VER_AVG_SURF_HK 31
 #define VER_SUM_TURF_RATE 33
-#define VER_ACQD_START 31
+#define VER_ACQD_START 32
 #define VER_TURF_REG 30
+#define VER_TURF_EVENT_DATA 30
 #endif
 
 
@@ -162,6 +163,7 @@ typedef enum {
     PACKET_AVG_SURF_HK = 0x112, ///<AveragedSurfHkStruct_t -- yes
     PACKET_SUM_TURF_RATE = 0x113, ///<SummedTurfRateStruct_t -- yes
     PACKET_TURF_REGISTER = 0x114, ///<TurfRegisterContents_t -- probably not
+    PACKET_TURF_EVENT_DATA = 0x115, ///<TurfRawEventData_t -- probably not
     PACKET_PEDSUB_WV = 0x120, ///<PedSubbedWaveformPacket_t -- Yes
     PACKET_ENC_SURF = 0x121, ///<EncodedSurfPacketHeader_t -- Yes
     PACKET_ENC_SURF_PEDSUB = 0x122, ///<EncodedPedSubbedSurfPacketHeader_t -- Yes
@@ -570,6 +572,21 @@ typedef struct {
   unsigned int whichBank;
   unsigned int values[TURF_BANK_SIZE];
 } TurfRegisterContents_t;
+
+
+
+//!  Debugging use only TURF raw event data
+/*!
+  Debugging use only TURF raw event data
+*/
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int unixTimeUs;
+  unsigned int eventNumber;
+  unsigned char rawBytes[TURF_EVENT_DATA_SIZE];
+} TurfRawEventData_t;
+
 
 
 //!  Disk Space
@@ -1029,6 +1046,8 @@ typedef struct {
   unsigned int turfIdVersion;
   unsigned char turfioIdBytes[4];
   unsigned int turfioIdVersion;
+  unsigned char surfIdBytes[ACTIVE_SURFS][4];
+  unsigned int surfIdVersion[ACTIVE_SURFS];
   unsigned char testBytes[8];
   unsigned int unixTime;
   unsigned int numEvents;
@@ -1068,19 +1087,20 @@ typedef struct {
   SURF Hk, contains thresholds, band rates (scalers) and rf power
 */
 typedef struct { 
-    GenericHeader_t gHdr;
-    unsigned int unixTime;
-    unsigned int unixTimeUs;
-    unsigned short globalThreshold; ///<set to zero if there isn't one
-    unsigned short errorFlag; ///<Will define at some point    
-    unsigned short scalerGoals[BANDS_PER_ANT]; ///<What are we aiming for with the scaler rate
-    unsigned short scalerGoalsNadir[BANDS_PER_ANT]; ///<What are we aiming for with the scaler rate
-    unsigned short upperWords[ACTIVE_SURFS];
-    unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
-    unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
-    unsigned short setThreshold[ACTIVE_SURFS][SCALERS_PER_SURF];
-    unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
-    unsigned short surfTrigBandMask[ACTIVE_SURFS];
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int unixTimeUs;
+  unsigned short globalThreshold; ///<set to zero if there isn't one
+  unsigned short errorFlag; ///<Will define at some point    
+  unsigned short scalerGoals[NUM_ANTENNA_RINGS]; ///<What are we aiming for with the scaler rate
+  unsigned short reserved;  
+  unsigned short upperWords[ACTIVE_SURFS];
+  unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short l1Scalers[ACTIVE_SURFS][L1S_PER_SURF];
+  unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short setThreshold[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
+  unsigned short surfTrigBandMask[ACTIVE_SURFS];
 } FullSurfHkStruct_t;
 
 //! Average Surf Hk -- Telemetered
@@ -1095,10 +1115,11 @@ typedef struct {
   unsigned int hadError; ///<Bit mask to be defined
   unsigned short globalThreshold;
   unsigned short reserved; 
-    unsigned short scalerGoals[BANDS_PER_ANT];
-    unsigned short scalerGoalsNadir[BANDS_PER_ANT]; ///<What are we aiming for with the scaler rate
+  unsigned short scalerGoals[NUM_ANTENNA_RINGS];
   unsigned short avgScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short rmsScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short avgL1[ACTIVE_SURFS][L1S_PER_SURF];
+  unsigned short rmsL1[ACTIVE_SURFS][L1S_PER_SURF];
   unsigned short avgThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short rmsThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
   unsigned short avgRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];

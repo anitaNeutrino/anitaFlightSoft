@@ -41,7 +41,9 @@
 #define LABRADORS_PER_SURF 4 /*jjb 2006-04-19 */
 #define BANDS_PER_ANT 4
 #define RAW_SCALERS_PER_SURF 32
-#define SCALERS_PER_SURF 16
+#define SCALERS_PER_SURF 12
+#define L1S_PER_SURF 4
+
 #define RFCHAN_PER_SURF 8
 #define NUM_DIGITZED_CHANNELS ACTIVE_SURFS*CHANNELS_PER_SURF
 #define MAX_NUMBER_SAMPLES 260
@@ -49,12 +51,14 @@
 #define ADC_MAX 4096
 #define TRIGGER_OFFSET 64 /* Made up number for where the trigger is */
 #define PED_DEFAULT_VALUE 650
+#define NUM_ANTENNA_RINGS 3
 
 
 #define BASE_PACKET_MASK 0xffff
 
 //Firmware Stuff
 #define TURF_BANK_SIZE 64
+#define TURF_EVENT_DATA_SIZE 256
 
 //Process Stuff
 #define NUM_PROCESSES 16 //Actually a couple more than we need
@@ -70,7 +74,7 @@
 
 //Trigger Stuff
 #define ANTS_PER_SURF 4
-#define TRIGGER_SURFS ACTIVE_SURFS
+#define TRIGGER_SURFS 8
 #define TRIGGERS_PER_SURF 8
 #define PHI_SECTORS 16
 #define NADIR_ANTS 8

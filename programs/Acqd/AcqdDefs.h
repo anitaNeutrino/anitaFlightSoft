@@ -33,7 +33,6 @@
 #define NUM_DYN_TURF_RATE 60
 
 #define SURF_EVENT_DATA_SIZE 1172
-#define TURF_EVENT_DATA_SIZE 256
 
 
 #define GetUpper16(A) (((A)&UPPER16)>>16)
@@ -82,6 +81,19 @@ typedef enum __TURFIO_register {
   TurfioRegClock = 0x107,
   TurfioRegDynPhase = 0x108
 } TurfioRegister_t;
+
+
+typedef enum __SURF_register {
+  SurfRegId = 0x0,
+  SurfRegVersion = 0x1,
+  SurfRegHkCounter = 0x2,
+  SurfRegLabCounter = 0x3,
+  SurfRegEventFifo = 0x4,
+  SurfRegEventId = 0x5,
+  SurfRegControl = 0x6,
+  SurfRegShortMask = 0x7
+} SurfRegister_t;
+
   
 #define TURFIO_DISABLE_PHOTO_SHUTTER 0x8
 #define TURFIO_RESET_PHOTO_SHUTTER 0x10
@@ -151,6 +163,7 @@ typedef enum {
     ACQD_E_TURFIO_IOCTL,
     ACQD_E_MASK,
     ACQD_E_TURF_EVENT_READY,
+    ACQD_E_SURF_IOCTL,
     ACQD_E_UNNAMED
 } AcqdErrorCode_t ;
 
@@ -167,9 +180,13 @@ typedef struct {
 typedef struct {
     unsigned char test[8];
 } TurfioTestPattern_t;
-      
-int logicalScalerToRawScaler[SCALERS_PER_SURF]={8,10,12,14,9,11,13,15,16,18,20,22,17,19,21,23}; //Note raw counts from 0
-int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={-1,-1,-1,-1,-1,-1,-1,-1,0,4,1,5,2,6,3,7,8,12,9,13,10,14,11,15,-1,-1,-1,-1,-1,-1,-1,-1};
+  
+
+int logicalScalerToRawScaler[SCALERS_PER_SURF]={0,1,2,3,4,5,6,7,8,9,10,11};
+int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={0,1,2,3,4,5,6,7,8,9,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+    
+//int logicalScalerToRawScaler[SCALERS_PER_SURF]={8,10,12,14,9,11,13,15,16,18,20,22,17,19,21,23}; //Note raw counts from 0
+//int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={-1,-1,-1,-1,-1,-1,-1,-1,0,4,1,5,2,6,3,7,8,12,9,13,10,14,11,15,-1,-1,-1,-1,-1,-1,-1,-1};
 
 int isNadirTrig[ACTIVE_SURFS]={0,0,0,0,0,0,0,0,1,1};
 

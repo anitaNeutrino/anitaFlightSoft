@@ -35,6 +35,8 @@ AcqdErrorCode_t sendClearEvent();
 AcqdErrorCode_t readTurfHkData();
 AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr);
 AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value);
+AcqdErrorCode_t readSurfReg(int surfId,unsigned int address, unsigned int *valPtr);
+AcqdErrorCode_t setSurfReg(int surfId,unsigned int address,unsigned int value);
 AcqdErrorCode_t setTriggerMasks();
 AcqdErrorCode_t checkTurfEventReady(int *turfEventReady);
 AcqdErrorCode_t setTurfEventCounter();
