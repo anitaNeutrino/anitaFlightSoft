@@ -91,6 +91,7 @@ AnitaEventBody_t *bdPtr;//=&(theEvent.body)
 PedSubbedEventBody_t pedSubBody;
 TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
 TurfRateStruct_t turfRates;
+TurfRawEventData_t turfRawEvent;
 AveragedSurfHkStruct_t avgSurfHk;
 TurfioTestPattern_t startPat;
 TurfioTestPattern_t endPat;
@@ -179,8 +180,7 @@ float dacDGain[4];  // derivative gain
 int dacIMax[4];  // maximum intergrator state
 int dacIMin[4]; // minimum integrator state
 int enableChanServo = FALSE; //Turn on the individual chanel servo
-int pidGoals[BANDS_PER_ANT];
-int nadirPidGoals[BANDS_PER_ANT];
+int pidGoals[3];
 int pidPanicVal;
 int pidAverage;
 int numEvents=0;
@@ -237,6 +237,7 @@ AnitaHkWriterStruct_t avgSurfHkWriter;
 AnitaHkWriterStruct_t sumTurfRateWriter;
 AnitaHkWriterStruct_t rawScalerWriter;
 AnitaHkWriterStruct_t rawTurfRegWriter;
+AnitaHkWriterStruct_t rawTurfEventWriter;
 AnitaEventWriterStruct_t eventWriter;
 
 //Deadtime monitoring
@@ -486,9 +487,9 @@ int main(int argc, char **argv) {
       l1TrigMask=0xffff;
       l1TrigMaskH=0xffff;
 
-      //Also disable surfTrigBandMasks
+      //      Also disable surfTrigBandMasks
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
-	surfTrigBandMasks[surf]=0;
+      	surfTrigBandMasks[surf]=0;
       }
       
     }
@@ -837,10 +838,10 @@ int main(int argc, char **argv) {
 //Reading and Writing GPIO Values
 AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
 {
-  int surfFd=surfFds[surfId];
+  *value=0;
   unsigned short svalue;
   int retVal=0;
-  *value=0;
+  int surfFd=surfFds[surfId];
   if(surfFd<=0) {
     fprintf(stderr,"SURF FD %d is not a valid file descriptor\n",surfFd);
     syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
@@ -1446,21 +1447,13 @@ int readConfigFile()
       fprintf(stderr,"kvpGetIntArray(pidGoals): %s\n",
 	      kvpErrorString(kvpStatus));
     }      
-    tempNum=BANDS_PER_ANT;
-    kvpStatus=kvpGetIntArray("nadirPidGoals",&nadirPidGoals[0],&tempNum);
-    if(kvpStatus!=KVP_E_OK) {
-      syslog(LOG_WARNING,"kvpGetIntArray(nadirPidGoals): %s",
-	     kvpErrorString(kvpStatus));
-      fprintf(stderr,"kvpGetIntArray(nadirPidGoals): %s\n",
-	      kvpErrorString(kvpStatus));
-    }      
     tempNum=ACTIVE_SURFS;
     kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(surfTrigBandMasks): %s",
-	     kvpErrorString(kvpStatus));
+    	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
-		kvpErrorString(kvpStatus));
+	      kvpErrorString(kvpStatus));
     }
 
 
@@ -1847,7 +1840,7 @@ void fillDacValBufferGlobal(unsigned int obuffer[MAX_SURFS][34], unsigned short 
 	else {
 	  if(surfTrigBandMasks[surfIndex[surf]-1]&(1<<index))
 	    mask[1] |= (1<<(dac-16));
-	}		      
+	}
       }
       else {
 	obuffer[surf][dac] = (dac<<16) + 0; //Not an actual channel	
@@ -2172,6 +2165,22 @@ AcqdErrorCode_t doStartTest()
   printf("Version: %#x\n",value);
   printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
 
+
+  for(surf=0;surf<numSurfs;surf++) {
+
+    readSurfReg(surf,SurfRegId,&value);
+    startStruct.surfIdBytes[surf][0]=(value&0xFF000000)>>24;
+    startStruct.surfIdBytes[surf][1]=(value&0xFF0000)>>16;
+    startStruct.surfIdBytes[surf][2]=(value&0xFF00)>>8;
+    startStruct.surfIdBytes[surf][3]=(value&0xFF);
+    printf("SURF: %c %c %c %c\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+    readSurfReg(surf,SurfRegVersion,&value);
+    startStruct.surfIdVersion[surf]=value;
+    printf("Version: %#x\n",value);
+    printf("Version: %d %x %d/%d\n",value&0xFF,(value&0xFF00)>>8,(value&0xFF0000)>>16,(value&0xFF000000)>>24);
+
+  }
+
   doingEvent=0;
   //Now have an event loop
   currentState=PROG_STATE_RUN;
@@ -2379,15 +2388,18 @@ AcqdErrorCode_t doStartTest()
       printf("\n");
     }
   }
-  /* for(surf=0;surf<numSurfs;surf++) { */
-  /*   for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) { */
-  /*     printf("Raw %02d_%02d: ",surfIndex[surf],dac+1); */
-  /*     for(tInd=0;tInd<10;tInd++) { */
-  /* 	printf("%5d ",rawScalers[surf][dac][tInd]); */
-  /*     } */
-  /*     printf("\n"); */
-  /*   } */
-  /* } */
+
+  if(verbosity>0) {
+    for(surf=0;surf<numSurfs;surf++) {
+      for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
+	printf("Raw %02d_%02d: ",surfIndex[surf],dac+1);
+	for(tInd=0;tInd<10;tInd++) {
+	  printf("%5d ",rawScalers[surf][dac][tInd]);
+	}
+	printf("\n");
+      }
+    }
+  }
 
   
 
@@ -2602,8 +2614,7 @@ void doSurfHkAverage(int flushData)
       //Set up initial values
       avgSurfHk.unixTime=theSurfHk.unixTime;
       avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
-      memcpy(avgSurfHk.scalerGoals,theSurfHk.scalerGoals,sizeof(short)*BANDS_PER_ANT);
-      memcpy(avgSurfHk.scalerGoalsNadir,theSurfHk.scalerGoalsNadir,sizeof(short)*BANDS_PER_ANT);
+      memcpy(avgSurfHk.scalerGoals,theSurfHk.scalerGoals,sizeof(short)*NUM_ANTENNA_RINGS);
       memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS);
     }
     //Now add stuff to the average
@@ -2721,7 +2732,7 @@ void doTurfRateSum(int flushData) {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
-  int retVal=0,phi,ring,nadirAnt;
+  int retVal=0,phi;
   if(!flushData) {
     if(numRates==0) {
       //Need to initialize sumTurf
@@ -3169,7 +3180,7 @@ AcqdErrorCode_t readSurfHkData()
 {
 //    printf("readSurfHkData\n");
   AcqdErrorCode_t status=ACQD_E_OK;
-  int surf,rfChan,index,band;
+  int surf,rfChan,index,ring;
   unsigned int buffer[128];
   unsigned int count=0;
   unsigned int dataInt;
@@ -3179,15 +3190,13 @@ AcqdErrorCode_t readSurfHkData()
     printf("Reading Surf HK %d.\n",hkNumber);
   
   if(enableChanServo) {
-      for(band=0;band<ANTS_PER_SURF;band++) {
-	  theSurfHk.scalerGoals[band]=pidGoals[band];
-	  theSurfHk.scalerGoalsNadir[band]=nadirPidGoals[band];
+      for(ring=0;ring<NUM_ANTENNA_RINGS;ring++) {
+	  theSurfHk.scalerGoals[ring]=pidGoals[ring];
       }      
   }
   else {
-      for(band=0;band<ANTS_PER_SURF;band++) {
-	  theSurfHk.scalerGoals[band]=0;
-	  theSurfHk.scalerGoalsNadir[band]=0;
+      for(ring=0;ring<NUM_ANTENNA_RINGS;ring++) {
+	  theSurfHk.scalerGoals[ring]=0;
       }
   }
   for(surf=0;surf<numSurfs;surf++){  
@@ -3320,7 +3329,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
   unsigned short dataShort;
   unsigned int dataInt;
 
-  int wordNum,phi,ring,errCount=0,count=0,nadirAnt;
+  int wordNum,phi,errCount=0,count=0;
   unsigned char turfBuf[TURF_EVENT_DATA_SIZE];
     
   //Read out 256 words and shorts not ints
@@ -3332,13 +3341,19 @@ AcqdErrorCode_t readTurfEventDataVer6()
     syslog(LOG_ERR,"Error reading TURF data from TURFIO (%s)",strerror(errno));
     fprintf(stderr,"Error reading TURF data from TURFIO (%s)",strerror(errno));
   }
-    
+  
+  turfRawEvent.eventNumber=hdPtr->eventNumber;
+  turfRawEvent.unixTime=hdPtr->unixTime;
+  turfRawEvent.unixTimeUs=hdPtr->unixTimeUs;
+
+
   for(wordNum=0;wordNum<TURF_EVENT_DATA_SIZE;wordNum++) {
     dataWord=turfBuf[wordNum]&0xffff;
     dataChar=0;
     dataShort=0;
     dataInt=0;
     dataChar=dataWord&0xff;
+    turfRawEvent.rawBytes[wordNum]=dataChar;
     dataShort=dataWord&0xff;
     dataInt=dataWord&0xff;
     upperChar=(dataWord&0xff00)>>8;
@@ -3563,7 +3578,7 @@ AcqdErrorCode_t readTurfHkData()
     unsigned int uvalue;
     unsigned short usvalue,usvalue2;
     unsigned char ucvalue,ucvalue2,ucvalue3,ucvalue4;
-    int ring=0,phi=0;
+    int phi=0;
 
     int i=0;
     struct timeval timeStruct;
@@ -3586,7 +3601,7 @@ AcqdErrorCode_t readTurfHkData()
 	    //L1 rates
 	    usvalue=uvalue&0xffff;
 	    usvalue2=(uvalue&0xffff0000)>>16;
-	    ring=1-(i<8); //0 is upper, 1 is lower
+	    //	    ring=1-(i<8); //0 is upper, 1 is lower
 	    phi=i*2;
 	    if(phi>=16) phi-=16;
 	    //	    turfRates.l1Rates[phi][ring]=usvalue;
@@ -3766,18 +3781,15 @@ AcqdErrorCode_t setTriggerMasks()
 int updateThresholdsUsingPID() {
   static int avgCount=0;
   int wayOffCount=0;
-  int surf,dac,error,value,change,band;
+  int surf,dac,error,value,change,ring;
   float pTerm, dTerm, iTerm;
   int chanGoal;
   avgCount++;
   for(surf=0;surf<numSurfs;surf++) {
     if(dacSurfs[surf]==1) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
-	band=dac%4;
-	int tempGoal=pidGoals[band];
-	if(isNadirTrig[surf]) 
-	    tempGoal=nadirPidGoals[band];
-
+	ring=dac%3;
+	int tempGoal=pidGoals[ring];	
 	chanGoal=(int)(tempGoal*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
 	if(chanGoal>16000) chanGoal=16000;
@@ -3794,19 +3806,17 @@ int updateThresholdsUsingPID() {
   
   if(avgCount==pidAverage || wayOffCount>100) {
     if(printPidStuff) {
-      printf("PID Status:Band Goals:");
-      for(band=0;band<BANDS_PER_ANT;band++) 
-	printf(" %d",pidGoals[band]);
+      printf("PID Status:Ring Goals:");
+      for(ring=0;ring<NUM_ANTENNA_RINGS;ring++) 
+	printf(" %d",pidGoals[ring]);
       printf("\n");
     }
     for(surf=0;surf<numSurfs;surf++) {
       if(printPidStuff)
 	printf("SURF %2d: ",surfIndex[surf]);
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {		
-	band=dac%4;
-	int tempGoal=pidGoals[band];
-	if(isNadirTrig[surf]) 
-	    tempGoal=nadirPidGoals[band];
+	ring=dac%3;
+	int tempGoal=pidGoals[ring];
 	chanGoal=(int)(tempGoal*pidGoalScaleFactors[surf][dac]);
 	if(chanGoal<0) chanGoal=0;
 	if(chanGoal>16000) chanGoal=16000;
@@ -3821,19 +3831,19 @@ int updateThresholdsUsingPID() {
 	  //			   avgScalerData[surf][dac],value,error);
 	    
 	  // Proportional term
-	  pTerm = dacPGain[band] * error;
+	  pTerm = dacPGain[ring] * error;
 		    
 	  // Calculate integral with limiting factors
 	  thePids[surf][dac].iState+=error;
 	  //		printf("Here %d %d\n",thePids[surf][dac].iState,dacIMax);
-	  if (thePids[surf][dac].iState > dacIMax[band]) 
-	    thePids[surf][dac].iState = dacIMax[band];
-	  else if (thePids[surf][dac].iState < dacIMin[band]) 
-	    thePids[surf][dac].iState = dacIMin[band];
+	  if (thePids[surf][dac].iState > dacIMax[ring]) 
+	    thePids[surf][dac].iState = dacIMax[ring];
+	  else if (thePids[surf][dac].iState < dacIMin[ring]) 
+	    thePids[surf][dac].iState = dacIMin[ring];
 		    
 	  // Integral and Derivative Terms
-	  iTerm = dacIGain[band] * (float)(thePids[surf][dac].iState);  
-	  dTerm = dacDGain[band] * (float)(value -thePids[surf][dac].dState);
+	  iTerm = dacIGain[ring] * (float)(thePids[surf][dac].iState);  
+	  dTerm = dacDGain[ring] * (float)(value -thePids[surf][dac].dState);
 	  thePids[surf][dac].dState = value;
 		    
 	  //Put them together		   
@@ -3914,6 +3924,14 @@ void prepWriterStructs() {
   rawTurfRegWriter.writeBitMask=hkDiskBitMask;
 
 
+  //Raw Turf Event Writer
+  strncpy(rawTurfEventWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
+  sprintf(rawTurfEventWriter.filePrefix,"turfevent");
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
+    rawTurfEventWriter.currentFilePtr[diskInd]=0;
+  rawTurfEventWriter.writeBitMask=hkDiskBitMask;
+
+
   //Summed Turf Rate Writer
   strncpy(sumTurfRateWriter.relBaseName,TURFHK_ARCHIVE_DIR,FILENAME_MAX-1);
   sprintf(sumTurfRateWriter.filePrefix,"sumturfhk");
@@ -3958,13 +3976,13 @@ void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struc
     -1e-6*(float)(lastRateCalcTime->tv_usec);
   float rate=((float)(eventNumber-lastRateCalcEvent))/timespan;    
   float error;
-  int change,setting,band;
+  int change,setting,ring;
   float pTerm, dTerm, iTerm;
   
 
 
   if(!setGlobalThreshold) 
-    setting=(pidGoals[0]+pidGoals[1]+pidGoals[2]+pidGoals[3])/4; 
+    setting=(pidGoals[0]+pidGoals[1]+pidGoals[2])/4; 
   else
     setting=globalThreshold;
     
@@ -3993,16 +4011,16 @@ void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struc
     
   if(change!=0) {
     if(!setGlobalThreshold) {
-      for(band=0;band<BANDS_PER_ANT;band++) {
-	pidGoals[band]+=((int)((float)change*pidGoals[band])/((float)setting));
-	if(pidGoals[band]<1) pidGoals[band]=1;
-	if(pidGoals[band]>10000) pidGoals[band]=10000;
+      for(ring=0;ring<NUM_ANTENNA_RINGS;ring++) {
+	pidGoals[ring]+=((int)((float)change*pidGoals[ring])/((float)setting));
+	if(pidGoals[ring]<1) pidGoals[ring]=1;
+	if(pidGoals[ring]>10000) pidGoals[ring]=10000;
       }
-      syslog(LOG_INFO,"Changing pidGoals to %d %d %d %d\n",
-	     pidGoals[0],pidGoals[1],pidGoals[2],pidGoals[3]);
+      syslog(LOG_INFO,"Changing pidGoals to %d %d %d\n",
+	     pidGoals[0],pidGoals[1],pidGoals[2]);
       if(printToScreen)
-	fprintf(stdout,"Changing pidGoals to %d %d %d %d\n",
-		pidGoals[0],pidGoals[1],pidGoals[2],pidGoals[3]);
+	fprintf(stdout,"Changing pidGoals to %d %d %d\n",
+		pidGoals[0],pidGoals[1],pidGoals[2]);
     }
     else {
       globalThreshold=setting+change;
@@ -4268,6 +4286,49 @@ AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value)
   }
   return ACQD_E_OK;
 }
+
+
+
+AcqdErrorCode_t readSurfReg(int surfId,unsigned int address, unsigned int *valPtr)
+{
+
+  int surfFd=surfFds[surfId];
+  if(surfFd<=0) {
+    fprintf(stderr,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    return ACQD_E_BADFD;
+  }
+  struct surfDriverRead req;
+  req.address = address;
+  if (ioctl(surfFd, SURF_IOCREAD, &req)) {
+      syslog(LOG_ERR,"Error reading SURF register -- %s\n",strerror(errno));
+      fprintf(stderr,"Error reading SURF register -- %s\n",strerror(errno));
+      return ACQD_E_SURF_IOCTL;
+  }
+  *valPtr=req.value;
+  return ACQD_E_OK;
+}
+
+AcqdErrorCode_t setSurfReg(int surfId,unsigned int address,unsigned int value)
+{
+
+  int surfFd=surfFds[surfId];
+  if(surfFd<=0) {
+    fprintf(stderr,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    syslog(LOG_ERR,"SURF FD %d is not a valid file descriptor\n",surfFd);
+    return ACQD_E_BADFD;
+  }
+  struct surfDriverRead req;
+  req.address = address; 
+  req.value = value;
+  if (ioctl(surfFd, SURF_IOCWRITE, &req)) {
+      syslog(LOG_ERR,"Error writing SURF register -- %s\n",strerror(errno));
+      fprintf(stderr,"Error writing SURF register -- %s\n",strerror(errno));
+      return ACQD_E_SURF_IOCTL;
+  }
+  return ACQD_E_OK;
+}
+
 
 
 int checkTurfRates()
