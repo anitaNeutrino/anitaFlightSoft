@@ -832,7 +832,7 @@ int main(int argc, char **argv) {
   closeHkFilesAndTidy(&turfHkWriter);
   unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating... reached end of main");
-  fprintf(stderr,"Acqd terminating... reached end of main");
+  fprintf(stderr,"\nAcqd terminating... reached end of main\n");
   return 1 ;
 }
 
@@ -3250,6 +3250,16 @@ AcqdErrorCode_t readSurfHkData()
       }      
     }
     
+    //Then stuff the l1 scaler data
+    for(rfChan=0;rfChan<L1S_PER_SURF;rfChan++){
+      index=l1IndToRawScaler[rfChan];
+      dataInt=buffer[index];
+      theSurfHk.l1Scaler[surf][rfChan]=dataInt&0xffff;
+      if((printToScreen && verbosity>1) || HK_DEBUG) 
+	printf("SURF %d, L1 Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.l1Scaler[surf][rfChan]);
+    }
+
+
     //Next comes the threshold (DAC val) data
     for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
       index=logicalScalerToRawScaler[rfChan];
