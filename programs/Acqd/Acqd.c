@@ -1907,8 +1907,7 @@ AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
 
   //This is a dirty cheat
   gettimeofday(&lastSurfHkRead,NULL);
-
-//  usleep(SURFHK_PERIOD);
+  usleep(1);
 //  ioctl(surfFd, SURF_IOCCLEARHK);
   return ACQD_E_OK;
 }
@@ -2380,7 +2379,7 @@ AcqdErrorCode_t doStartTest()
     }
   }
 
-  if(verbosity>0 || 1 ) { //RJN hack
+  if(verbosity>0  ) { //RJN hack
     for(surf=0;surf<numSurfs;surf++) {
       for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
 	printf("Raw %02d_%02d: ",surfIndex[surf],dac+1);
@@ -2427,22 +2426,33 @@ AcqdErrorCode_t doGlobalThresholdScan()
       break;
     threshScanCounter++;
     //    theScalers.threshold=dacVal;
-
+    
+    
     if(dacVal!=lastDacVal) {
-      if(printToScreen) 
-	printf("Setting Threshold -- %d\r",dacVal);
-      setGlobalDACThreshold(dacVal);	
+      if(doSingleChannelScan) {
+	if(printToScreen) 
+	  printf("Setting Threshold -- %d\r",dacVal);
+	setGlobalDACThreshold(dacVal);	
+	theSurfHk.globalThreshold=dacVal;
+      
+      }
+      else {
+  //This is single dacVal stuff
+	memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*SCALERS_PER_SURF);
+	if(surfForSingle==100) {
+	  for(surf=0;surf<numSurfs;surf++)
+	    thresholdArray[surf][dacForSingle]=dacVal;
+	}
+	else  
+	  thresholdArray[surfForSingle][dacForSingle]=dacVal;
+	setDACThresholds();
+	theSurfHk.globalThreshold=dacVal;
+      }
+      lastDacVal=dacVal;
     }
-    theSurfHk.globalThreshold=dacVal;
-    lastDacVal=dacVal;
-//    if(firstLoop) {
-//      usleep(30000);
-//      firstLoop=0;
-//    }
     
     
     
-
 
     gettimeofday(&timeStruct,NULL); 
     timeDiff=timeStruct.tv_usec-lastSurfHkRead.tv_usec;
@@ -2482,16 +2492,6 @@ AcqdErrorCode_t doGlobalThresholdScan()
       continue;
     }
   } while(!done);
-  //This is single dacVal stuff
-  //
-  //    memset(&thresholdArray[0][0],0,sizeof(int)*ACTIVE_SURFS*SCALERS_PER_SURF);
-  //  if(surfForSingle==100) {
-  //    for(surf=0;surf<numSurfs;surf++)
-  //      thresholdArray[surf][dacForSingle]=doingDacVal;
-  //  }
-  //  else  
-  //    thresholdArray[surfForSingle][dacForSingle]=doingDacVal;
-  //  setDACThresholds();
     
 
   if(threshSwitchConfigAtEnd) {
@@ -3193,6 +3193,15 @@ AcqdErrorCode_t readSurfHkData()
 	  theSurfHk.scalerGoals[ring]=0;
       }
   }
+
+  for(surf=0;surf<numSurfs;++surf) {
+    if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
+      fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+      syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+    }	
+  }
+
+
   for(surf=0;surf<numSurfs;surf++){  
     count=0;
     //Set the SURF to Hk mode
