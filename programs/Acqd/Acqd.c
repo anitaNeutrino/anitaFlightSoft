@@ -2723,7 +2723,7 @@ void doTurfRateSum(int flushData) {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
-  int retVal=0,phi;
+  int retVal=0,phi,pol;
   if(!flushData) {
     if(numRates==0) {
       //Need to initialize sumTurf
@@ -2737,9 +2737,12 @@ void doTurfRateSum(int flushData) {
       sumTurf.phiTrigMaskH=turfRates.phiTrigMaskH;
     }
     numRates++;
+    sumTurf.deadTime+=turfRates.deadTime;
     sumTurf.errorFlag|=turfRates.errorFlag;
     for(phi=0;phi<PHI_SECTORS;phi++) {
-      sumTurf.l3Rates[phi]+=turfRates.l3Rates[phi][0];
+      for(pol=0;pol<2;pol++) {
+	sumTurf.l3Rates[phi][pol]+=turfRates.l3Rates[phi][pol];
+      }
     }
   }
   if((flushData && numRates>0) || numRates==turfRateAverage) {
