@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <memory.h>
@@ -709,10 +710,9 @@ int main(int argc, char **argv) {
 	syslog(LOG_ERR,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
 	reInitNeeded=1;
       }
-// PSA PSA PSA
-// Obviously this doesn't work well with only 1 SURF. So fixed.
-//      for(surf=0;surf<ACTIVE_SURFS;surf++) {
-            for(surf=0;surf<numSurfs;surf++) {
+
+     
+      for(surf=0;surf<numSurfs;surf++) {
 	  if((hdPtr->turfEventId) != bdPtr->surfEventId[surf]) {
 	      syslog(LOG_ERR,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
 		     hdPtr->turfEventId,
@@ -2380,7 +2380,7 @@ AcqdErrorCode_t doStartTest()
     }
   }
 
-  if(verbosity>0) {
+  if(verbosity>0 || 1 ) { //RJN hack
     for(surf=0;surf<numSurfs;surf++) {
       for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
 	printf("Raw %02d_%02d: ",surfIndex[surf],dac+1);
@@ -2922,14 +2922,14 @@ AcqdErrorCode_t readSurfEventData()
   */
 
   AcqdErrorCode_t status=ACQD_E_OK;
-  unsigned int  dataInt=0;
-  unsigned int eventBuf[SURF_EVENT_DATA_SIZE];
+  uint32_t  dataInt=0;
+  uint32_t eventBuf[SURF_EVENT_DATA_SIZE];
 
   unsigned char tempVal;
   int count=0,i=0;
   int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
   int rcoSamp;
-  unsigned int headerWord,samp=0;
+  uint32_t headerWord,samp=0;
   unsigned short upperWord=0;
   unsigned char rcoBit;
     
@@ -2958,7 +2958,7 @@ AcqdErrorCode_t readSurfEventData()
        1156:1171 -- Chans 1 through 8 2 reads per chan as above
     */
     //Read the Event data
-    count = read(surfFds[surf], eventBuf, SURF_EVENT_DATA_SIZE*sizeof(int));
+    count = read(surfFds[surf], eventBuf, SURF_EVENT_DATA_SIZE*sizeof(uint32_t));
     if (count < 0) {
       syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
@@ -3175,9 +3175,9 @@ AcqdErrorCode_t readSurfHkData()
 //    printf("readSurfHkData\n");
   AcqdErrorCode_t status=ACQD_E_OK;
   int surf,rfChan,index,ring;
-  unsigned int buffer[128];
-  unsigned int count=0;
-  unsigned int dataInt;
+  uint32_t buffer[96];
+  uint32_t count=0;
+  uint32_t dataInt;
 
   hkNumber++;
   if(verbosity && printToScreen) 
@@ -3200,12 +3200,24 @@ AcqdErrorCode_t readSurfHkData()
     if(status!=ACQD_E_OK) {
       //Persist anyhow
     }
+    
+    //   ioctl(sfd, SURF_IOCCLEARHK);
+
+    /* struct surfHousekeepingRequest req; */
+    /* req.length = sizeof(uint32_t)*96; */
+    /* req.address = buffer; */
+    /* if (ioctl(surfFds[surf], SURF_IOCHKREAD, &req))  */
+    /*   { */
+    /* 	perror("ioctl"); */
+    /*   } */
+    /* count=0; */
+    
     //Read the Hk data
     if(writeRawScalers) {
-	count = read(surfFds[surf], buffer, 128*sizeof(int));
+    	count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
     }
     else {
-	count = read(surfFds[surf], buffer, 72*sizeof(int));
+    	count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
     }
     if (count < 0) {
       syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
@@ -3222,8 +3234,8 @@ AcqdErrorCode_t readSurfHkData()
     theSurfHk.surfTrigBandMask[surf]=surfTrigBandMasks[surf];
     
 
-    if(printToScreen && verbosity>2) {
-      for(index=0;index<72;index++) {
+    if((printToScreen && verbosity>2) ) {
+      for(index=0;index<96;index++) {
 	printf("SURF %d, Word %d == %d  (%d)\n",surfIndex[surf],index,buffer[index],buffer[index]&0xffff);
       }
     }
