@@ -2298,7 +2298,7 @@ AcqdErrorCode_t doStartTest()
 
  //Now do out silly little threshold scan
   for(tInd=0;tInd<10;tInd++) {
-    dacVal=2000 + (200*tInd);
+    dacVal=1000 + (400*tInd);
     if(printToScreen) 
       printf("Setting Threshold -- %d\r",dacVal);
     setGlobalDACThreshold(dacVal);
@@ -2429,7 +2429,7 @@ AcqdErrorCode_t doGlobalThresholdScan()
     
     
     if(dacVal!=lastDacVal) {
-      if(doSingleChannelScan) {
+      if(!doSingleChannelScan) {
 	if(printToScreen) 
 	  printf("Setting Threshold -- %d\r",dacVal);
 	setGlobalDACThreshold(dacVal);	
@@ -4165,7 +4165,8 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 		  
     if(rateCalcPeriod) {
       if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
-	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
+	//RJN the 0.5 just accounts for the double buffer
+	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,0.5*((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 	//		    if(lastEventCounter<200)
 	//			printf("\n");
       }
