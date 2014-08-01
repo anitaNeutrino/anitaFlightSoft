@@ -1907,7 +1907,7 @@ AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
 
   //This is a dirty cheat
   gettimeofday(&lastSurfHkRead,NULL);
-  usleep(1);
+  //  usleep(1);
 //  ioctl(surfFd, SURF_IOCCLEARHK);
   return ACQD_E_OK;
 }
@@ -3354,7 +3354,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
   unsigned short dataShort;
   unsigned int dataInt;
 
-  int wordNum,phi,errCount=0,count=0;
+  int wordNum,errCount=0,count=0;
   unsigned char turfBuf[TURF_EVENT_DATA_SIZE];
     
   //Read out 256 words and shorts not ints
@@ -3377,7 +3377,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
     dataChar=0;
     dataShort=0;
     dataInt=0;
-    dataChar=dataWord&0xff;
+   dataChar=dataWord&0xff;
     turfRawEvent.rawBytes[wordNum]=dataChar;
     dataShort=dataWord&0xff;
     dataInt=dataWord&0xff;
@@ -3421,17 +3421,14 @@ AcqdErrorCode_t readTurfEventDataVer6()
 	turfioPtr->trigTime+=(dataInt<<24); break;
       case 16:
 	turfioPtr->ppsNum=dataShort; 
-	turfRates.ppsNum=dataShort;break;
+	//	turfRates.ppsNum=dataShort;break;
       case 17:
-	turfRates.ppsNum+=(dataShort<<8);
+	//	turfRates.ppsNum+=(dataShort<<8);
 	turfioPtr->ppsNum+=(dataShort<<8); break;
       case 18:
 	turfioPtr->deadTime=(dataShort); break;
-	turfRates.deadTime=(dataShort); break;
-	
       case 19:
 	turfioPtr->deadTime+=(dataShort<<8); break;
-	turfRates.deadTime+=(dataShort<<8); break;
       case 20:
 	turfioPtr->c3poNum=dataInt; break;
       case 21:
@@ -3450,13 +3447,13 @@ AcqdErrorCode_t readTurfEventDataVer6()
     }
     else if(wordNum<62) {
       //L3 V-Pol      
-      phi=wordNum-46;
-      turfRates.l3Rates[phi][0]=dataChar;      
+      //      phi=wordNum-46;
+      //      turfRates.l3Rates[phi][0]=dataChar;      
     }
     else if(wordNum<78) {
       //L3 H-Pol         
-      phi=wordNum-62;
-      turfRates.l3Rates[phi][0]=dataChar;    
+      //      phi=wordNum-62;
+      //      turfRates.l3Rates[phi][0]=dataChar;    
     }
     else if(wordNum<136) {
       //Unused
@@ -3639,10 +3636,13 @@ AcqdErrorCode_t readTurfHkData()
 	    ucvalue3=(uvalue&0xff0000)>>16;
 	    ucvalue4=(uvalue&0xff000000)>>24;
 	    phi=(i-16)*4;
-	    /* turfRates.upperL2Rates[phi]=ucvalue; */
-	    /* turfRates.upperL2Rates[phi+1]=ucvalue2; */
-	    /* turfRates.upperL2Rates[phi+2]=ucvalue3; */
-	    /* turfRates.upperL2Rates[phi+3]=ucvalue4; */
+	    turfRates.l3Rates[phi][0]=ucvalue;
+	    turfRates.l3Rates[phi+1][0]=ucvalue2;
+	    turfRates.l3Rates[phi+2][0]=ucvalue3;
+	    turfRates.l3Rates[phi+3][0]=ucvalue4;
+	    //	    if(phi==0) {
+	    //	      printf("L3 2V: %d\n",turfRates.l3Rates[2][0]);
+	    //	    }
 	}
 	else if(i<24) {
 	    ucvalue=uvalue&0xff;
@@ -3650,10 +3650,10 @@ AcqdErrorCode_t readTurfHkData()
 	    ucvalue3=(uvalue&0xff0000)>>16;
 	    ucvalue4=(uvalue&0xff000000)>>24;
 	    phi=(i-20)*4;
-	    /* turfRates.lowerL2Rates[phi]=ucvalue; */
-	    /* turfRates.lowerL2Rates[phi+1]=ucvalue2; */
-	    /* turfRates.lowerL2Rates[phi+2]=ucvalue3; */
-	    /* turfRates.lowerL2Rates[phi+3]=ucvalue4; */
+	    turfRates.l3Rates[phi][1]=ucvalue;
+	    turfRates.l3Rates[phi+1][1]=ucvalue2;
+	    turfRates.l3Rates[phi+2][1]=ucvalue3;
+	    turfRates.l3Rates[phi+3][1]=ucvalue4;
 	}
 	else if(i<28) {
 	    ucvalue=uvalue&0xff;
@@ -3661,10 +3661,10 @@ AcqdErrorCode_t readTurfHkData()
 	    ucvalue3=(uvalue&0xff0000)>>16;
 	    ucvalue4=(uvalue&0xff000000)>>24;
 	    phi=(i-24)*4;
-	    turfRates.l3Rates[phi][0]=ucvalue;
-	    turfRates.l3Rates[phi+1][0]=ucvalue2;
-	    turfRates.l3Rates[phi+2][0]=ucvalue3;
-	    turfRates.l3Rates[phi+3][0]=ucvalue4;
+	    /* turfRates.l3Rates[phi][0]=ucvalue; */
+	    /* turfRates.l3Rates[phi+1][0]=ucvalue2; */
+	    /* turfRates.l3Rates[phi+2][0]=ucvalue3; */
+	    /* turfRates.l3Rates[phi+3][0]=ucvalue4; */
 	}
 	else if(i<32) {
 	    //Nadir L1 rates
@@ -3694,6 +3694,7 @@ AcqdErrorCode_t readTurfHkData()
 	}
 	else if(i==39) {
 	    //C3ponum 250
+	  turfRates.c3poNum=uvalue;
 	}
 	else if(i==40) {
 	    //C3ponum 33
@@ -3703,6 +3704,8 @@ AcqdErrorCode_t readTurfHkData()
 	    usvalue2=(uvalue&0xffff0000)>>16;
 	    turfRates.ppsNum=usvalue2;	    
 	    turfRates.deadTime=usvalue;
+	    //	    printf("RJN: ppsNum=%u deadTime=%u\n",turfRates.ppsNum,turfRates.deadTime);
+
 	}
 	else if(i==42) {
 	    ucvalue=uvalue&0xff;
