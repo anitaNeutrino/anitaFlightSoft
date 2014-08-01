@@ -1,0 +1,10 @@
+[Unit]
+Description=Sort Out ANITA Serial Ports
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/anita/flightSoft/system/sortOutSerials
+
+[Install]
+WantedBy=multi-user.target
