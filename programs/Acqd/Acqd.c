@@ -3382,7 +3382,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
     dataShort=dataWord&0xff;
     dataInt=dataWord&0xff;
     upperChar=(dataWord&0xff00)>>8;
-    if(printToScreen && verbosity>1) {
+    if((printToScreen && verbosity>1) ) {
       printf("TURFIO -- Word %d  -- %x -- %x + %x\n",wordNum,dataWord,
 	     dataShort,upperChar);
     }
@@ -3466,6 +3466,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
       else if(wordNum%2==1) {
 	//Second word
 	turfioPtr->l3TrigPattern+=(dataShort<<8);
+	//	printf("l3TrigPattern: %#x\n",turfioPtr->l3TrigPatternH);
       }
     }
     else if(wordNum<140) {
@@ -3476,6 +3477,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
       else if(wordNum%2==1) {
 	//Second word
 	turfioPtr->l3TrigPatternH+=(dataShort<<8);
+	//	printf("l3TrigPatternH: %#x\n",turfioPtr->l3TrigPatternH);
       }
     }      	    	
     else if(wordNum<154) {
@@ -3553,17 +3555,17 @@ AcqdErrorCode_t readTurfEventDataVer6()
     hdPtr->errorFlag |= (tempVal<<6);
   }
 
-  if(turfioPtr->deadTime>0 && lastPPSNum!=turfioPtr->ppsNum) {
-    intervalDeadtime+=((float)turfioPtr->deadTime)/64400.;
+  if(turfRates.deadTime>0 && lastPPSNum!=turfRates.ppsNum) {
+    intervalDeadtime+=((float)turfRates.deadTime)/64400.;
     if(printToScreen && verbosity>1)
-      printf("Deadtime %d counts %f fraction\n",turfioPtr->deadTime,
-	     ((float)turfioPtr->deadTime)/64400.);
+      printf("Deadtime %d counts %f fraction\n",turfRates.deadTime,
+	     ((float)turfRates.deadTime)/64400.);
   }
 
     
   if(verbosity>0 && printToScreen) {
     printf("TURF Data\n\tEvent (software):\t%u\n\tEvent Id (TURF):\t%u\n\tupperWord:\t0x%x\n\ttrigNum:\t%u\n\ttrigType:\t0x%x\n\ttrigTime:\t%u\n\tppsNum:\t\t%u\n\tc3p0Num:\t%u\n\tl3Type1#:\t%u\n\tdeadTime:\t\t%u\nbufferDepth\t\t%#x  %#x\n",
-	   doingEvent,hdPtr->turfEventId,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType&0xf,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfioPtr->deadTime,
+	   doingEvent,hdPtr->turfEventId,hdPtr->turfUpperWord,turfioPtr->trigNum,turfioPtr->trigType&0xf,turfioPtr->trigTime,turfioPtr->ppsNum,turfioPtr->c3poNum,turfioPtr->l3Type1Count,turfRates.deadTime,
 	   turfioPtr->bufferDepth&0x3,(turfioPtr->bufferDepth&0xc)>>2);
     /* printf("Trig Patterns:\nUpperL1:\t%x\nLowerL1:\t%x\nUpperL2:\t%x\nLowerL2:\t%x\nL31:\t%x\n", */
     /* 	   turfioPtr->upperL1TrigPattern, */
@@ -3587,7 +3589,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
   turfRates.l1TrigMaskH=hdPtr->l1TrigMaskH;
   turfRates.phiTrigMask=hdPtr->phiTrigMask;
   turfRates.phiTrigMaskH=hdPtr->phiTrigMaskH;
-//  lastPPSNum=turfRates.ppsNum;
+  lastPPSNum=turfRates.ppsNum;
   return status;	
 }
 
@@ -3601,6 +3603,7 @@ AcqdErrorCode_t readTurfHkData()
     unsigned short usvalue,usvalue2;
     unsigned char ucvalue,ucvalue2,ucvalue3,ucvalue4;
     int phi=0;
+    int pol=0;
 
     int i=0;
     struct timeval timeStruct;
@@ -3625,10 +3628,14 @@ AcqdErrorCode_t readTurfHkData()
 	    usvalue2=(uvalue&0xffff0000)>>16;
 	    //	    ring=1-(i<8); //0 is upper, 1 is lower
 	    phi=i*2;
-	    if(phi>=16) phi-=16;
-	    //	    turfRates.l1Rates[phi][ring]=usvalue;
-	    //	    turfRates.l1Rates[phi+1][ring]=usvalue2;
-//	    printf("readTurfHk\t%d %d %d %d %d\n",i,phi,ring,usvalue,usvalue2);
+	    pol=0;
+	    if(phi>=16) {
+	      phi-=16;
+	      pol=1;
+	    }
+	    turfRates.l1Rates[phi][pol]=usvalue;
+	    turfRates.l1Rates[phi+1][pol]=usvalue2;
+	    //	    if(i==1)	    printf("readTurfHk\t%d %d %d %d %d\n",i,phi,pol,usvalue,usvalue2);
 	}
 	else if(i<20) {
 	    ucvalue=uvalue&0xff;
@@ -3745,7 +3752,7 @@ AcqdErrorCode_t readTurfHkData()
     turfRates.phiTrigMask=uvalue&0xffff;    
     turfRates.phiTrigMaskH=(uvalue&0xffff0000)>>16;
 
-    lastPPSNum=turfRates.ppsNum;
+    //    lastPPSNum=turfRates.ppsNum;
     return status;
 }
 
