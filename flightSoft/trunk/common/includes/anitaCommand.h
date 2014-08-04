@@ -82,7 +82,9 @@ typedef enum {
     TELEM_PRI_ENC_TYPE = 147,
     ARCHIVE_PPS_PRIORITIES = 148,
     ARCHIVE_PPS_DECIMATE = 149,
- 
+
+    /* Modified by BenS on 04/07/2014 to reflect anita-3 calibd.config contents */
+    /* These are the old things no longer in calibd.config...
     CMD_TURN_GPS_ON = 150,
     CMD_TURN_GPS_OFF = 151,
     CMD_TURN_RFCM_ON = 152,
@@ -93,6 +95,24 @@ typedef enum {
     CMD_TURN_VETO_OFF = 157,
     CMD_TURN_ALL_ON = 158,
     CMD_TURN_ALL_OFF = 159,
+    */
+    /* ...and here are the new options, reusing
+       the same Cmd array entries as far as possible
+    */
+    CMD_TURN_AMPLITES_ON = 150,
+    CMD_TURN_AMPLITES_OFF = 151,
+    CMD_TURN_BZ_AMPAS_ON = 152,
+    CMD_TURN_BZ_AMPAS_OFF = 153,
+    CMD_TURN_NTU_AMPAS_ON = 154,
+    CMD_TURN_NTU_AMPAS_OFF = 155,
+    CMD_TURN_SHORT_BOARDS_ON = 156,
+    CMD_TURN_SHORT_BOARDS_OFF = 157,
+    CMD_TURN_NTU_SSD_5V_ON = 158,
+    CMD_TURN_NTU_SSD_5V_OFF = 159,
+    CMD_TURN_NTU_SSD_12V_ON = 160,
+    CMD_TURN_NTU_SSD_12V_OFF = 161,
+    CMD_TURN_ALL_ON = 162,
+    CMD_TURN_ALL_OFF = 163,    
  
     SET_CALPULSER_SWITCH = 171,
     SET_CALPULSER_ATTEN = 172,
