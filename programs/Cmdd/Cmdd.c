@@ -582,105 +582,125 @@ int executeCommand(CommandStruct_t *theCmd)
     }
     retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
     return rawtime;
-	    
-  case CMD_TURN_GPS_ON:
-    //turnGPSOn
-    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
-    retVal=sendSignal(ID_CALIBD,SIGUSR1);
-    sleep(5);
-    respawnPrograms(GPSD_ID_MASK);
-    if(retVal) return 0;
-    return rawtime;
-  case CMD_TURN_GPS_OFF:
-    //turnGPSOff
-    configModifyInt("Calibd.config","relays","stateGPS",0,&rawtime);
+
+    
+    /*Modification for anita3 calibd - BenS 04/07/2014*/  
+  case CMD_TURN_AMPLITES_ON:
+    /* Warning! Currently the mapping of on to off is reversed for amplites
+       Currently AMPLITE_ON sets state flag to 0, which is actually on
+       This is reflected in the action taken here. BenS - 04/07/2014 */
+    // modify both state flags, since relays lines are merged before reaching iRFCMS
+    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_RFCM_ON:
-    ivalue=theCmd->cmd[1];
-    //turnRFCMOn
-    if(ivalue&0x1)
-      configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
-    if(ivalue&0x2)
-      configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
-    if(ivalue&0x4)
-      configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
-    if(ivalue&0x8)
-      configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
+  case CMD_TURN_AMPLITES_OFF:
+    /* Warning! Currently the mapping of on to off is reversed for amplites
+       Currently AMPLITE_OFF sets state flag to 1, which is actually off
+       This is reflected in the action taken here. BenS - 04/07/2014 */
+    // modify both state flags, since relays lines are merged before reaching iRFCMS
+    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_RFCM_OFF:
-    ivalue=theCmd->cmd[1];
-    //turnRFCMOff
-    if(ivalue&0x1)
-      configModifyInt("Calibd.config","relays","stateRFCM1",0,&rawtime);
-	    
-    if(ivalue&0x2)
-      configModifyInt("Calibd.config","relays","stateRFCM2",0,&rawtime);
-	    
-    if(ivalue&0x4)
-      configModifyInt("Calibd.config","relays","stateRFCM3",0,&rawtime);
-	    
-    if(ivalue&0x8)
-      configModifyInt("Calibd.config","relays","stateRFCM4",0,&rawtime);
+  case CMD_TURN_BZ_AMPAS_ON:
+    // May as well modify both state flags, since relays lines are merged before reaching iRFCMS
+    configModifyInt("Calibd.config","relays","stateBZAmpa1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateBZAmpa2",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-	    
-  case CMD_TURN_CALPULSER_ON:
-    //turnCalPulserOn
-    configModifyInt("Calibd.config","relays","stateCalPulser",1,&rawtime);
+  case CMD_TURN_BZ_AMPAS_OFF:
+    // May as well modify both state flags, since relays lines are merged before reaching iRFCMS
+    configModifyInt("Calibd.config","relays","stateBZAmpa1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateBZAmpa2",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-	    
-  case CMD_TURN_CALPULSER_OFF:
-    //turnCalPulserOff
-    configModifyInt("Calibd.config","relays","stateCalPulser",0,&rawtime);
+  case CMD_TURN_NTU_AMPAS_ON:
+    configModifyInt("Calibd.config","relays","stateNTUAmpa",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_VETO_ON:
-    //turnNDOn
-    configModifyInt("Calibd.config","relays","stateVeto",1,&rawtime);
+  case CMD_TURN_NTU_AMPAS_OFF:
+    configModifyInt("Calibd.config","relays","stateNTUAmpa",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_VETO_OFF:
-    //turnNDOff
-    configModifyInt("Calibd.config","relays","stateVeto",0,&rawtime);
+  case CMD_TURN_SHORT_BOARDS_ON:
+    configModifyInt("Calibd.config","relays","stateSB",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-    return retVal;
+  case CMD_TURN_SHORT_BOARDS_OFF:
+    configModifyInt("Calibd.config","relays","stateSB",0,&rawtime);
+    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case CMD_TURN_NTU_SSD_5V_ON:
+    configModifyInt("Calibd.config","relays","stateNTUSSD5V",1,&rawtime);
+    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case CMD_TURN_NTU_SSD_5V_OFF:
+    configModifyInt("Calibd.config","relays","stateNTUSSD5V",0,&rawtime);
+    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case CMD_TURN_NTU_SSD_12V_ON:
+    configModifyInt("Calibd.config","relays","stateNTUSSD12V",1,&rawtime);
+    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case CMD_TURN_NTU_SSD_12V_OFF:
+    configModifyInt("Calibd.config","relays","stateNTUSSD12V",0,&rawtime);
+    retVal=sendSignal(ID_CALIBD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+
+    
   case CMD_TURN_ALL_ON:
     //turnAllOn
-    configModifyInt("Calibd.config","relays","stateRFCM1",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateRFCM2",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateRFCM3",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateRFCM4",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateCalPulser",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateVeto",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateGPS",1,&rawtime);
+    /* Warning! Currently the mapping of on to off is reversed for amplites
+       Currently AMPLITE_ON sets state flag to 0, which is actually on
+       This is reflected in the action taken here. BenS - 04/07/2014 */
+    // modify both state flags, since relays lines are merged before reaching iRFCMS
+    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateBZAmpa1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateBZAmpa2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUAmpa",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateSB",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUSSD5V",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUSSD12V",1,&rawtime);
+
+
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
 
   case CMD_TURN_ALL_OFF:
     //turnAllOff
-    configModifyInt("Calibd.config","relays","stateRFCM1",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateRFCM2",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateRFCM3",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateRFCM4",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateCalPulser",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateVeto",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateGPS",0,&rawtime);
+    /* Warning! Currently the mapping of on to off is reversed for amplites
+       Currently AMPLITE_OFF sets state flag to 1, which is actually off
+       This is reflected in the action taken here. BenS - 04/07/2014 */
+    // modify both state flags, since relays lines are merged before reaching iRFCMS
+    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateBZAmpa1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateBZAmpa2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUAmpa",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateSB",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUSSD5V",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUSSD12V",0,&rawtime);
+
+
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-	    
+
   case SET_CALPULSER_SWITCH:
     //setCalPulserSwitch
     if(theCmd->cmd[1]>0 && theCmd->cmd[1]<5)
