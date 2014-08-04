@@ -720,7 +720,7 @@ int outputData(AnalogueCode_t code)
 	//Write file and make link for SIPd
       if(printToScreen) printf("%s\n",theFilename);
 	sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);
-	retVal=writeStruct(&theHkData,fullFilename,sizeof(HkDataStruct_t));     
+	retVal=writeStruct(&theHkData,fullFilename,sizeof(SSHkDataStruct_t));     
 	retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
 	
 	telemCount=0;
