@@ -712,7 +712,7 @@ int outputData(AnalogueCode_t code)
 	    
 
 
-    fillGenericHeader(&theHkData,PACKET_HKD,sizeof(SSHkDataStruct_t));
+    fillGenericHeader(&theHkData,PACKET_HKD_SS,sizeof(SSHkDataStruct_t));
 
 
     telemCount++;
