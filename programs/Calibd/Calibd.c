@@ -212,7 +212,7 @@ int main (int argc, char *argv[])
 	  if(firstTime) firstTime=0;
 	  
 	  
-	  
+
 	  
 	  if((millisecs % readoutPeriod)==0) {
 	    
@@ -233,8 +233,9 @@ int main (int argc, char *argv[])
 	    //Just for safety we'll reset the sleep time
 	  milliWait.tv_nsec=1000000;
 	  nanosleep(&milliWait,NULL);
-	  millisecs++;	   
-	}
+	  millisecs++;	   	 
+
+	} //End of run loop
     } while(currentState==PROG_STATE_INIT);
     closeHkFilesAndTidy(&hkRawWriter);
     closeHkFilesAndTidy(&hkCalWriter);
