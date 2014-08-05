@@ -586,22 +586,16 @@ int executeCommand(CommandStruct_t *theCmd)
     
     /*Modification for anita3 calibd - BenS 04/07/2014*/  
   case CMD_TURN_AMPLITES_ON:
-    /* Warning! Currently the mapping of on to off is reversed for amplites
-       Currently AMPLITE_ON sets state flag to 0, which is actually on
-       This is reflected in the action taken here. BenS - 04/07/2014 */
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
   case CMD_TURN_AMPLITES_OFF:
-    /* Warning! Currently the mapping of on to off is reversed for amplites
-       Currently AMPLITE_OFF sets state flag to 1, which is actually off
-       This is reflected in the action taken here. BenS - 04/07/2014 */
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
