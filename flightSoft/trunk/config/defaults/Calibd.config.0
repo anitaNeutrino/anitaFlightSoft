@@ -1,35 +1,45 @@
 <relays>
-stateRFCM1#I1=1;
-stateRFCM2#I1=1;
-stateRFCM3#I1=1;
-stateRFCM4#I1=1;
-stateVeto#I1=1;
-stateGPS#I1=1;
-stateCalPulser#I1=0;
+stateAmplite1#I1=1;  //Currently 0 means on, and 1 means off
+stateAmplite2#I1=1; //Currently 0 means on, and 1 means off
+stateBZAmpa1#I1=0;
+stateBZAmpa2#I1=0;
+stateNTUAmpa#I1=0;
+stateSB#I1=0;
+stateNTUSSD5V#I1=0;
+stateNTUSSD12V#I1=0;
 </relays>
 
 
-<attenuator>
-attenLoop#I1=0;
-attenStartState#I1=0;
-attenPeriod#I1=10;
-attenLoopMap#I8=1,1,1,1,1,1,1,1;
-</attenuator>
-
-
-<rfSwitch>
-steadyState#I1=4;
-switchPeriod#I1=60;
-offPeriod#I1=0;
-</rfSwitch>
-
 
 <output>
-printToScreen#I1=1;
+printToScreen#I1=0;
 </output>
 
 
 <calibd>
 digitalCarrierNum#I1=0;
-writePeriod#I1=60;
+relayWritePeriod#I1=60;
+readoutPeriod#I1=200;
+telemEvery#I1=10;
+telemAverage#I1=1;
+adcAverage#I1=4;
+calibrationPeriod#I1=600;
 </calibd>
+
+
+<relaycontrol>
+ip470BoardLocation#I1=0;
+turnAmplite1OnLogic#I1=21;
+turnAmplite1OffLogic#I1=22;
+turnAmplite2OnLogic#I1=10;
+turnAmplite3OffLogic#I1=20;
+turnBZAmpa1OnLogic#I1=18;
+turnBZAmpa1OffLogic#I1=17;
+turnBZAmpa2OnLogic#I1=7;
+turnBZAmpa2OffLogic#I1=6;
+turnNtuAmpaOnLogic#I1=5;
+turnNtuAmpaOffLogic#I1=4;
+turnSBLogic#I1=12;
+turnNtu12VLogic#I1=10;
+turnNtu5VLogic#I1=11;
+</relaycontrol>
