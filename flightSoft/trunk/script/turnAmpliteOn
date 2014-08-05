@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ -f /tmp/anita/pid/calibd.pid ]; then
+    CmdTest 150
+else
+    logic=`getConfigValue Calibd.config relaycontrol turnAmplite1OnLogic`
+    port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
+    channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
+    
+    RelayControlPSA $port $channel 0
+    RelayControlPSA $port $channel 1
+    RelayControlPSA $port $channel 0
+
+
+    logic=`getConfigValue Calibd.config relaycontrol turnAmplite2OnLogic`
+    port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
+    channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
+    
+    RelayControlPSA $port $channel 0
+    RelayControlPSA $port $channel 1
+    RelayControlPSA $port $channel 0
+fi
