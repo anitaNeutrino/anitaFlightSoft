@@ -16,7 +16,7 @@ from datetime import datetime
 
 def main():
 
-    ntuIPaddress = '192.168.20.211' # The IP address to ping
+    ntuIPaddress = '192.168.1.5' # The IP address to ping
     logFileName = 'checkNtu.log' # Timestamp of when restart was done
 
     # Values copied from flightSoft/common/include/anitaCommand.h
@@ -32,6 +32,9 @@ def main():
 
         # Ping should return 0 if the package was successful
         if response is not 0:
+
+            print 'Unable to raise response from ntu at ' + ntuIPaddress
+            print 'Will toggle ntu lines to enable a restart'
         
             # Turn computer power off, it's probably already off
             print 'Turning off NTU SSD 12V'
