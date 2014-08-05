@@ -24,7 +24,6 @@ while [ 1 ]; do
  fi
 done;
 
-daemon --stop -n Neobrickd
 
 sleep 2
 
@@ -68,7 +67,6 @@ daemon -r Prioritizerd -n Prioritizerd
 daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
-daemon -r Neobrickd -n Neobrickd
 daemon -r Playbackd -n Playbackd
 
 
