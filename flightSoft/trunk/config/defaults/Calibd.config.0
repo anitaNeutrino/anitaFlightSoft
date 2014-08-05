@@ -1,6 +1,6 @@
 <relays>
-stateAmplite1#I1=1;  //Currently 0 means on, and 1 means off
-stateAmplite2#I1=1; //Currently 0 means on, and 1 means off
+stateAmplite1#I1=0;  // Fixed!! 1 means on and 0 means off
+stateAmplite2#I1=0; // Fixed!! 1 means on, and 0 means off
 stateBZAmpa1#I1=0;
 stateBZAmpa2#I1=0;
 stateNTUAmpa#I1=0;
