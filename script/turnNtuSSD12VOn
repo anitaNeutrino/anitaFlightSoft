@@ -2,13 +2,11 @@
 
 
 if [ -f /tmp/anita/pid/calibd.pid ]; then
-    CmdTest 152 2
+    CmdTest 160
 else
-    logic=`getConfigValue Hkd.config relaycontrol turnRFCM2OnLogic`
+    logic=`getConfigValue Calibd.config relaycontrol turnNtu12VLogic`
     port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
     channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
     
-    RelayControlPSA $port $channel 0
     RelayControlPSA $port $channel 1
-    RelayControlPSA $port $channel 0
 fi

@@ -30,15 +30,14 @@ daemon -u anita -r Cmdd -n Cmdd
 #Will have to change this to move 
 sleep 10
 
-nice -n 15 daemon -u anita -A 20 -L 30 -r Archived -n Archived
-nice -n 20 daemon -u anita -A 20 -L 30 -r Eventd -n Eventd
-nice -n 20 daemon -u anita -r GPSd -n GPSd
-nice -n 20 daemon -u anita -r Hkd -n Hkd
-nice -n 20 daemon -u anita -r LOSd -n LOSd
-nice -n 15 daemon -u anita -r Prioritizerd -n Prioritizerd
-nice -n 20 daemon -u anita -r Monitord -n Monitord
-nice -n 20 daemon -u anita -r Calibd -n Calibd
-nice -n 20 daemon -u anita -r Playbackd -n Playbackd
-nice -n 20 daemon -u anita -r Neobrickd -n Neobrickd
+daemon -u anita -A 20 -L 30 -r Archived -n Archived
+daemon -u anita -A 20 -L 30 -r Eventd -n Eventd
+daemon -u anita -r GPSd -n GPSd
+daemon -u anita -r Hkd -n Hkd
+daemon -u anita -r LOSd -n LOSd
+daemon -u anita -r Prioritizerd -n Prioritizerd
+daemon -u anita -r Monitord -n Monitord
+daemon -u anita -r Calibd -n Calibd
+daemon -u anita -r Playbackd -n Playbackd
 sleep 5
 nice -n 10 daemon -u anita -r Acqd -n Acqd

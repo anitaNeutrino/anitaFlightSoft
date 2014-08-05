@@ -1,14 +1,15 @@
 #!/bin/bash
 
-
 if [ -f /tmp/anita/pid/calibd.pid ]; then
-    CmdTest 153 8
+    CmdTest 154
 else
-    logic=`getConfigValue Hkd.config relaycontrol turnRFCM4OffLogic`
+    logic=`getConfigValue Calibd.config relaycontrol turnNtuAmpaOnLogic`
     port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
     channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
     
     RelayControlPSA $port $channel 0
     RelayControlPSA $port $channel 1
     RelayControlPSA $port $channel 0
+
+
 fi
