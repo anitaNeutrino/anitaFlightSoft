@@ -28,9 +28,9 @@
 #include <wait.h>
 
 // Default port values
-#define COMM1_PORT	"/dev/ttyS0"
-#define COMM2_PORT	"/dev/ttyS1"
-#define HIGHRATE_PORT	"/dev/ttyS2"
+#define COMM1_PORT	"/dev/ttyLow1"
+#define COMM2_PORT	"/dev/ttyLow2"
+#define HIGHRATE_PORT	"/dev/ttyHigh1"
 #define VERY_HIGHRATE_PORT	"/dev/ttyS3"
 
 /* Sipmux_enable - a bitmask of which lines to enable.
