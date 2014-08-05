@@ -154,6 +154,7 @@ int thresholdScanStepSize =1;
 int thresholdScanPointsPerStep =1;
 int threshSwitchConfigAtEnd=1;
 
+unsigned int runNumber;
 
 int dontWaitForEvtF = FALSE;
 int dontWaitForLabF = FALSE;
@@ -2298,7 +2299,7 @@ AcqdErrorCode_t doStartTest()
 
  //Now do out silly little threshold scan
   for(tInd=0;tInd<10;tInd++) {
-    dacVal=1000 + (400*tInd);
+    dacVal=1000 + (300*tInd);
     if(printToScreen) 
       printf("Setting Threshold -- %d\r",dacVal);
     setGlobalDACThreshold(dacVal);
@@ -3420,10 +3421,8 @@ AcqdErrorCode_t readTurfEventDataVer6()
       case 15:
 	turfioPtr->trigTime+=(dataInt<<24); break;
       case 16:
-	turfioPtr->ppsNum=dataShort; 
-	//	turfRates.ppsNum=dataShort;break;
+	turfioPtr->ppsNum=dataShort; break;
       case 17:
-	//	turfRates.ppsNum+=(dataShort<<8);
 	turfioPtr->ppsNum+=(dataShort<<8); break;
       case 18:
 	turfioPtr->deadTime=(dataShort); break;
@@ -3455,10 +3454,10 @@ AcqdErrorCode_t readTurfEventDataVer6()
       //      phi=wordNum-62;
       //      turfRates.l3Rates[phi][0]=dataChar;    
     }
-    else if(wordNum<136) {
+    else if(wordNum<144) {
       //Unused
     }
-    else if(wordNum<138) {
+    else if(wordNum<146) {
       if(wordNum%2==0) {
 	//First word
 	turfioPtr->l3TrigPattern=dataShort;
@@ -3469,7 +3468,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
 	//	printf("l3TrigPattern: %#x\n",turfioPtr->l3TrigPatternH);
       }
     }
-    else if(wordNum<140) {
+    else if(wordNum<148) {
       if(wordNum%2==0) {
 	//First word
 	turfioPtr->l3TrigPatternH=dataShort;
@@ -4176,7 +4175,7 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
     if(rateCalcPeriod) {
       if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
 	//RJN the 0.5 just accounts for the double buffer
-	printf("Event %d -- Current Rate %3.2f Hz\n",lastEvNum,0.5*((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
+	printf("Run %d -- Event %d -- Current Rate %3.2f Hz\n",runNumber,lastEvNum,0.5*((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 	//		    if(lastEventCounter<200)
 	//			printf("\n");
       }
@@ -4483,7 +4482,7 @@ AcqdErrorCode_t checkTurfEventReady(int *turfEventReady)
 
 AcqdErrorCode_t setTurfEventCounter()
 {
-  unsigned int runNumber=getRunNumber();
+  runNumber=getRunNumber();
   unsigned int miniRun=runNumber&0xfff;
   unsigned int eventNumToWrite=miniRun;
 //  eventNumToWrite=(miniRun<<20);
