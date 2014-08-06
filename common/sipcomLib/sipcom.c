@@ -988,7 +988,7 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
 	} else if (bytes_avail > 0) {
 try_write:
 	    // write bytes_avail bytes
-	  printf("about to write %d of %d\n",bytes_avail,bytes_to_write);
+	  printf("about to write %d of %d -- writeloc %d\n",bytes_avail,bytes_to_write,writeloc);
 	    if (write(Fd[HIGHRATE], p + writeloc, bytes_avail) == -1) {
 		if (errno == EAGAIN) {
 		    goto try_write;
