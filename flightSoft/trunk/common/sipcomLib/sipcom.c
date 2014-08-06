@@ -977,8 +977,8 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
     }
 
     while (1) {
-	bytes_avail = sipthrottle(bytes_to_write);
-
+      bytes_avail = sipthrottle(bytes_to_write);
+      fprintf("bytes_avail %d -- bytes_to_write %d\n",bytes_avail,bytes_to_write);
 	if (bytes_avail == 0) {
 	    // No room yet.
 	    continue;
