@@ -461,6 +461,8 @@ void highrateHandler(int *ignore)
 
     int hkCount=0;
    
+    printf("Before while loop\n");
+
     while(1) {
 	if(!sendData) {
 	    sleep(1);
