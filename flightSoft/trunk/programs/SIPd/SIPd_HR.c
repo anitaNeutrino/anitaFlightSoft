@@ -331,7 +331,7 @@ int main(int argc, char *argv[])
 
     fdHigh=serial_init("/dev/ttyHigh1",19200);
     sipthrottle_init(MAX_WRITE_RATE,1.0);
-    highratehandler(&status);
+    highrateHandler(&status);
 
     fprintf(stderr, "Bye bye\n");
     retVal=unlink(SIPD_PID_FILE);
@@ -1773,6 +1773,9 @@ int sortOutPidFile(char *progName)
 
 int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
 {
+  static unsigned char realBuf[MAX_EVENT_SIZE+5];
+  static int realCount=0;
+
   static unsigned int dataCounter=0;
   static unsigned int hkCounter=0;
   static unsigned int eventCounter=0;
@@ -1790,9 +1793,18 @@ int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   //Now send the data
 #ifndef COMPLETELY_FAKE
   //Actually send some data
-  retVal=sipcom_highrate_write(buf,nbytes);
-  if(retVal<0) {
-    syslog(LOG_ERR,"Error sending high rate data %d (%s)",retVal,sipcom_strerror());
+  if(nbytes+realCount<MAX_EVENT_SIZE/2) {
+    memcpy(&realBuf[realCount],buf,nbytes);
+    realCount+=nbytes;
+  }
+  else {
+    retVal=sipcom_highrate_write_RJN(realBuf,realCount);
+    if(retVal<0) {
+      syslog(LOG_ERR,"Error sending high rate data %d (%s)",retVal,sipcom_strerror());
+    }
+    realCount=0;
+    memcpy(&realBuf[realCount],buf,nbytes);
+    realCount+=nbytes;
   }
 #else
   //Just dump it into a tmp file
