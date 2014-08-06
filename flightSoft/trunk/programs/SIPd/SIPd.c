@@ -1535,7 +1535,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	}
 	
 
-//	printf("Read %d bytes from file\n",numBytes);
+	printf("Read %d bytes from file\n",numBytes);
 //	Maybe I'll add a packet check here
 	gHdr = (GenericHeader_t*)theBuffer;
 //	checkVal=checkPacket(gHdr);
@@ -1543,7 +1543,9 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 //	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
 //	}
 	gHdr->packetNumber=getTdrssNumber();
+	printf("Tdrss number %d\n",gHdr->packetNumber);
 	retVal = highRateWrite(theBuffer, numBytes,1);
+	printf("Highrate write %d\n",retVal);
 	if(retVal<0) {
 	    //Problem sending data
 	    syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
