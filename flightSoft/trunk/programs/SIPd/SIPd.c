@@ -1716,7 +1716,9 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       //	    printf("Bad packet %s == %d\n",currentFilename,checkVal);
       //	}
       gHdr->packetNumber=getTdrssNumber();
+      printf("Tdrss number %d\n",gHdr->packetNumber);
       retVal = highRateWrite(theBuffer, numBytes,1);
+	printf("Highrate write %d\n",retVal);
       if(retVal<0) {
 	//Problem sending data
 	syslog(LOG_ERR,"Problem sending Wake up Packet over TDRSS high rate -- %s\n",sipcom_strerror());
