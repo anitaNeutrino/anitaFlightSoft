@@ -949,8 +949,10 @@ sipcom_highrate_write(unsigned char *buf, unsigned short nbytes)
     printf("Inside sipcom_highrate_write: %d wrapbytes\n",wrapbytes);
 
     if ((retval = highrate_write_bytes((unsigned char *)wrapbuf, wrapbytes))) {
+      printf("After highrate_write_bytes: %d \n",retval);
 	return retval;
     }
+    printf("After highrate_write_bytes: %d \n",retval);
 
     return 0;
 }
@@ -978,7 +980,7 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
 
     while (1) {
       bytes_avail = sipthrottle(bytes_to_write);
-      fprintf("bytes_avail %d -- bytes_to_write %d\n",bytes_avail,bytes_to_write);
+      printf("bytes_avail %d -- bytes_to_write %d\n",bytes_avail,bytes_to_write);
 	if (bytes_avail == 0) {
 	    // No room yet.
 	    continue;
@@ -1037,7 +1039,7 @@ try_write:
         }
     }
 
-    //fprintf(stderr, "             sipcom: retval is %d\n", retval);
+    fprintf(stderr, "             sipcom: retval is %d\n", retval);
     return retval;
 }
 
