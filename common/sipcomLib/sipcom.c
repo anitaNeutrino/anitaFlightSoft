@@ -15,7 +15,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <stdlib.h>	// malloc
+#include <stdlib.h>	// malloC
+#include <stdint.h>	// malloC
+#include <string.h>
 
 #include <pthread.h>
 #include <unistd.h>
@@ -684,7 +686,7 @@ do_request(int req, char *caller_name)
         }
     }
 
-    //showbuf(xferbuf, nbytes + OVERHEAD_BYTES);
+    showbuf(xferbuf, nbytes + OVERHEAD_BYTES);
     ret = write(Fd[comm], xferbuf, 3);
     if (ret != 3) {
 	set_error_string("%s: write error (%s)\n",
@@ -969,7 +971,7 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
 {
     int bytes_avail = 0;
     int retval = 0;
-    int writeloc = 0;
+    uint32_t writeloc = 0;
 
     if (Sipmux_enable & (1 << HIGHRATE)) {
         if (serial_sipmux_begin(Fd[HIGHRATE], 500000)) {
@@ -980,7 +982,7 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
 
     while (1) {
       bytes_avail = sipthrottle(bytes_to_write);
-      printf("bytes_avail %d -- bytes_to_write %d\n",bytes_avail,bytes_to_write);
+      //      printf("bytes_avail %d -- bytes_to_write %d\n",bytes_avail,bytes_to_write);
 	if (bytes_avail == 0) {
 	    // No room yet.
 	    continue;
@@ -988,7 +990,7 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
 	} else if (bytes_avail > 0) {
 try_write:
 	    // write bytes_avail bytes
-	  printf("about to write %d of %d -- writeloc %d\n",bytes_avail,bytes_to_write,writeloc);
+	  //	  printf("about to write %d of %d -- writeloc %d\n",bytes_avail,bytes_to_write,writeloc);
 	    if (write(Fd[HIGHRATE], p + writeloc, bytes_avail) == -1) {
 		if (errno == EAGAIN) {
 		    goto try_write;
@@ -1000,7 +1002,7 @@ try_write:
 		retval = -1;
 		break;
 	    }
-	  printf("Wrote %d of %d\n",bytes_avail,bytes_to_write);
+	    //	  printf("Wrote %d of %d\n",bytes_avail,bytes_to_write);
 
 #ifdef USE_STOR
 	    {
@@ -1043,7 +1045,7 @@ try_write:
         }
     }
 
-    fprintf(stderr, "             sipcom: retval is %d\n", retval);
+    //    fprintf(stderr, "             sipcom: retval is %d\n", retval);
     return retval;
 }
 

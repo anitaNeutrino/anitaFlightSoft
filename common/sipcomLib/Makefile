@@ -7,7 +7,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 USE_STOR =
 #USE_STOR = -DUSE_STOR
 
-CFLAGS = -g $(USE_STOR) -I/usr/inclyde/sys
+CFLAGS = -g $(USE_STOR) -I/usr/inclyde/sys 
 #ND = /usr/local/src/new/naturaldocs-1.35/NaturalDocs
 
 OBJS =  conf_simple.o crc_simple.o serial.o sipcom.o sipthrottle.o telemwrap.o
