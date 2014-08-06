@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -20,6 +19,11 @@
 
 /* Flight soft includes */
 #include "sipcomLib/sipcom.h"
+#include "sipcomLib/sipthrottle.h"
+#include "sipcomLib/sipcom_impl.h"
+#include "sipcomLib/serial.h"
+#include "sipcomLib/highrate.h"
+#include "sipcomLib/crc_simple.h"
 #include "includes/anitaFlight.h"
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -28,6 +32,8 @@
 #include "includes/anitaStructures.h"
 #include "includes/anitaCommand.h"
   
+
+
 
 #ifndef SIGRTMIN
 #define SIGRTMIN 32
@@ -70,7 +76,9 @@ typedef enum {
   TDRSS_TELEM_NOT_A_TELEM
 } TDRSSTelemType_t;
 
-
+int sipcom_highrate_write_RJN(unsigned char *buf, unsigned short nbytes);
+void sipcom_highrate_set_throttle_RJN(unsigned long rate);
+static int highrate_write_bytes_RJN(unsigned char *p, int bytes_to_write);
 
 int getTdrssNumber();
 void commandHandler(unsigned char *cmd);
@@ -137,8 +145,9 @@ unsigned char theBuffer[MAX_EVENT_SIZE*5];
 unsigned char chanBuffer[MAX_EVENT_SIZE*5];
 
 
+int fdHigh=0;
+
 //High rate thread
-pthread_t Hr_thread;
 int throttleRate=MAX_WRITE_RATE;
 int sendWavePackets=0;
 
@@ -316,63 +325,14 @@ int main(int argc, char *argv[])
 
 
     retVal=readConfig();
-#ifndef COMPLETELY_FAKE
-    retVal = sipcom_set_slowrate_callback(COMM1, comm1Handler);
-    if (retVal) {
-	char *s = sipcom_strerror();
-	syslog(LOG_ERR,"Couldn't set COMM1 Handler -- %s\n",s);
-	fprintf(stderr,"Couldn't set COMM1 Handler -- %s\n",s);
-    }
 
-    retVal = sipcom_set_slowrate_callback(COMM2, comm2Handler);
-    if (retVal) {
-	char *s = sipcom_strerror();
-	syslog(LOG_ERR,"Couldn't set COMM2 Handler -- %s\n",s);
-	fprintf(stderr,"Couldn't set COMM2 Handler -- %s\n",s);
-    }
 
-    sipcom_set_cmd_callback(commandHandler);
-    for(count=0;count<numCmds;count++) {
-	if(cmdLengths[count]) {
-	    printf("%d\t%d\n",count,cmdLengths[count]);
-	    sipcom_set_cmd_length(count,cmdLengths[count]);
-	}
-    }
-
-    unsigned char enable = 0;
-
-    syslog(LOG_INFO,"SIPd setting sipcom enable mask to %#x",enable);
     printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
-    retVal = sipcom_init(MAX_WRITE_RATE);//,".",enable);
-    if (retVal) {
-	char *s = sipcom_strerror();
-	fprintf(stderr, "%s\n", s);
-	syslog(LOG_ERR, "%s\n", s);
-	handleBadSigs(1);
-    }
-     // Start the high rate writer process. 
-    retVal = pthread_create(&Hr_thread, NULL, (void *)highrateHandler, NULL);
-    if(retVal) {
-      //No idea what we'd do here
-      syslog(LOG_ERR,"Can't create the high rate handler thread -- We're all going to die -- %s",strerror(errno));
-      fprintf(stderr,"Can't create the high rate handler thread -- We're all going to die -- %s",strerror(errno));
-    }
-    retVal=pthread_detach(Hr_thread);
-    if(retVal) {
-      //No idea what we'd do here
-      syslog(LOG_ERR,"Error detaching high rate handler -- %s",strerror(errno));
-      fprintf(stderr,"Error detaching high rate handler -- %s",strerror(errno));
-    }
-      
 
+    fdHigh=serial_init("/dev/ttyHigh1",19200);
+    sipthrottle_init(MAX_WRITE_RATE,1.0);
+    highratehandler(&status);
 
-    sipcom_wait();
-    retVal=pthread_cancel(Hr_thread);
-    if(retVal) {
-      //Who knows just log it
-      syslog(LOG_ERR,"Error canceling the high rate thread, should probably do soemthing clever -- %s",strerror(errno));
-      fprintf(stderr,"Error canceling the high rate thread, should probably do soemthing clever -- %s",strerror(errno));
-    }
     fprintf(stderr, "Bye bye\n");
     retVal=unlink(SIPD_PID_FILE);
     if(retVal) {
@@ -383,9 +343,6 @@ int main(int argc, char *argv[])
     }
     
     syslog(LOG_INFO,"SIPd terminating");
-#else
-    highrateHandler(&retVal);
-#endif
 
     return 0;
 }
@@ -408,22 +365,6 @@ void highrateHandler(int *ignore)
     int numSent=0;
 
 
-    {
-        // We make this thread cancellable by any thread, at any time. This
-        // should be okay since we don't have any state to undo or locks to
-        // release.
-        int oldtype;
-        int oldstate;
-        retVal=pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
-	if(retVal) {
-	  syslog(LOG_ERR,"Error setting thread cancel type -- %s",strerror(errno));
-	}
-        retVal=pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
-	if(retVal) {
-	  syslog(LOG_ERR,"Error setting thread cancel type -- %s",strerror(errno));
-	}
-	  
-    }
     
     //First let the world know we're alive
     sendWakeUpBuffer();
@@ -1889,4 +1830,174 @@ void refreshLinksHandler(int sig)
 {
   syslog(LOG_INFO,"Got signal %d, so will refresh links",sig);
   needToRefreshLinks=1;
+}
+
+
+
+int sipcom_highrate_write_RJN(unsigned char *buf, unsigned short nbytes)
+{
+    // aligned_bufp - used for calculating the checksum.
+    static unsigned short *aligned_bufp = NULL;
+    static int aligned_nbytes = 0;
+
+    static unsigned long Bufcnt = 1L;
+    int odd_number_of_science_bytes = 0;
+    int retval = 0;
+
+#define HBUFSIZE 6
+    unsigned short header_buf[HBUFSIZE];
+
+    /* Ender handling. Kludge. If the number of science data bytes is even,
+     * then the ender consists of the following 16-bit words: checksum,
+     * SW_END_HDR, END_HDR, AUX_HDR. However, if the number is odd, then we
+     * prepend a single byte of 0x00 to the above.
+     *
+     * We put the checksum, SW_END_HDR, END_HDR, and AUX_HDR into the
+     * ender_buf starting at offset 1 (NOT offset 0) and set enderp to
+     * point at that location. If the number of bytes is even, then, we
+     * simply write the ender_buf starting at enderp. However, if the
+     * number is odd, then we take uchar *cp = ((uchar *)ender_buf) - 1;
+     * and write the 0x00 to *cp. Then, we set enderp to cp, and write the
+     * ender_buf from that location. */
+    unsigned short ender_buf[HBUFSIZE];
+    unsigned char *enderp = (unsigned char *)(ender_buf + 1);
+    int endersize = 8;
+
+    if (nbytes == 0) {
+	return 0;
+    }
+
+    if (nbytes % 2) {
+	odd_number_of_science_bytes = 1;
+    }
+
+    if (aligned_nbytes < nbytes) {
+	// (Re)allocate the aligned buffer if it is not big enough.
+	free(aligned_bufp);
+	aligned_nbytes = nbytes;
+	aligned_bufp = (unsigned short *)malloc(nbytes);
+	if (NULL == aligned_bufp) {
+	    set_error_string("sipcom_highrate_write: bad malloc (%s).\n",
+	    	strerror(errno));
+	    return -1;
+	}
+    }
+
+    memcpy(aligned_bufp, buf, nbytes);
+
+    header_buf[0] = START_HDR;
+    header_buf[1] = AUX_HDR;
+    
+    header_buf[2] = ID_HDR;
+    header_buf[2] |= 0x0001;	// SIP data
+
+    if (odd_number_of_science_bytes) {
+	header_buf[2] |= 0x0002;
+	header_buf[5] = nbytes + 1;
+	enderp--;
+	*enderp = '\0';	// extra byte
+	endersize++;
+    } else {
+	header_buf[5] = nbytes;
+    }
+
+    {
+	unsigned short *sp;
+	sp = (unsigned short *)&Bufcnt;
+	header_buf[3] = *sp;
+	header_buf[4] = *(sp+1);
+    }
+
+    ender_buf[1] = crc_short(aligned_bufp, nbytes / sizeof(short));
+    ender_buf[2] = SW_END_HDR;
+    ender_buf[3] = END_HDR;
+    ender_buf[4] = AUX_HDR;
+
+    // Write header.
+    if ((retval = highrate_write_bytes_RJN(
+	    (unsigned char *)header_buf, HBUFSIZE * sizeof(short)))) {
+	return retval;
+    }
+
+    // Write data.
+    if ((retval = highrate_write_bytes_RJN(buf, nbytes))) {
+	return retval;
+    }
+
+    // Write ender.
+    if ((retval = highrate_write_bytes_RJN(enderp, endersize))) {
+	return retval;
+    }
+
+    Bufcnt++;
+
+    return 0;
+}
+
+void sipcom_highrate_set_throttle_RJN(unsigned long rate)
+{
+    sipthrottle_set_bytes_per_sec_limit(rate);
+    sipthrottle_set_frac_sec(1.0);
+}
+
+static int highrate_write_bytes_RJN(unsigned char *p, int bytes_to_write)
+{
+    int bytes_avail = 0;
+    int retval = 0;
+    int writeloc = 0;
+
+    while (1) {
+	bytes_avail = sipthrottle(bytes_to_write);
+
+	if (bytes_avail == 0) {
+	    // No room yet.
+	    usleep(1000);
+	    continue;
+
+	} else if (bytes_avail > 0) {
+try_write:
+	    // write bytes_avail bytes
+	    if (write(fdHigh, p + writeloc, bytes_avail) == -1) {
+		if (errno == EAGAIN) {
+		    goto try_write;
+		}
+
+		// other write error
+		retval = -1;
+		break;
+	    }
+
+#ifdef USE_STOR
+	    {
+		FILE *pipe_ = Highrate_stor_pipe;
+		int ret;
+		int len;
+		if (pipe_ != NULL) {
+		    len = bytes_avail;
+		    ret = fwrite(p + writeloc, 1, len, pipe_);
+		    if (ret != len) {
+			fprintf(stderr, "bad write to Highrate_stor_pipe\n");
+		    }
+		    fflush(pipe_);
+		}
+	    }
+#endif
+
+	    bytes_to_write -= bytes_avail;
+	    writeloc += bytes_avail;
+
+	    if (bytes_to_write == 0) {
+		// wrote all bytes
+		retval = 0;
+		break;
+	    }
+
+	} else {
+	    // bytes_avail < 0
+	    retval = -3;
+	    break;
+	}
+    }
+
+    return 0;
 }
