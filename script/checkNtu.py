@@ -13,21 +13,35 @@ The flight computer should push to the ntu with rsync.
 from sys import argv
 from os import system
 from time import sleep
+from time import time
 from datetime import datetime
 
 def main(args):
 
     # You can now call this with a force option, which will issue restart commands to calibd
     forceFlag = False
+    testMode = False
     for arg in args:
         if arg == '-f' or arg == '--force':
             forceFlag = True
+        if arg == '-t' or arg == '--test':
+            testMode = True
 
     ntuIPaddress = '192.168.1.5' # The IP address to ping
-    logFileName = 'checkNtu.log' # Timestamp of when restart was done
+    logFileName = '/home/anita/ntuCheckLog/checkNtu.log' # Timestamp of when restart was done
+    #logFileName = 'checkNtu.log' # Timestamp of when restart was done
 
     # How long we should give the ntu to boot before toggling relays again
-    maxSleepTimeMinutes = 15
+    maxWaitTimeMinutes = 15
+    maxWaitTimeSeconds = maxWaitTimeMinutes*60
+    lastRebootTime = time()
+    if testMode:
+        lastRebootTime = 0
+    notHeardBackSinceReboot = True
+
+    appendLogFile(logFileName, 'Check NTU script started! Will wait at least '
+                  + str(maxWaitTimeMinutes) 
+                  + ' minutes before togging relays if NTU is unresponsive.' )
 
     # Values copied from flightSoft/common/include/anitaCommand.h
     CMD_TURN_NTU_SSD_5V_ON = 158
@@ -39,59 +53,80 @@ def main(args):
 
         # Ping ntu and get return value, this will happen a lot so keep the command line clear 
         # Options mean we wait 5 seconds between pings
-        response = system('ping -i 6 -c 1 -w 5' + ntuIPaddress + ' > /dev/null')
+        
+        response = None
+        if testMode == False:
+            response = system('ping -i 6 -c 1 ' + ntuIPaddress + ' > /dev/null')
+        else:
+            response = system('ping -i 6 -c 1 ' + ntuIPaddress)
 
         # Ping should return 0 if the package was successful
-        if response is not 0:
-
-            ntuDown = True
+        if response is not 0 and time() - lastRebootTime > maxWaitTimeSeconds:
 
             print 'Unable to raise response from ntu at ' + ntuIPaddress
             print 'Will toggle ntu lines to enable a restart'
         
             # Turn computer power off, it's probably already off
             print 'Turning off NTU SSD 12V'
-            system('CmdTest ' + str(CMD_TURN_NTU_SSD_12V_OFF))
+            if testMode == False:
+                system('CmdTest ' + str(CMD_TURN_NTU_SSD_12V_OFF))
             sleep(2)
             if forceFlag:
                 restartCalibd()
 
             # Turn disk off
             print 'Turning off NTU SSD 5V'
-            system('CmdTest ' + str(CMD_TURN_NTU_SSD_5V_OFF))
+            if testMode == False:
+                system('CmdTest ' + str(CMD_TURN_NTU_SSD_5V_OFF))
             sleep(2)
             if forceFlag:
                 restartCalibd()
 
             # Turn disk on
             print 'Turning on NTU SSD 5V'
-            system('CmdTest ' + str(CMD_TURN_NTU_SSD_5V_ON))
+            if testMode == False:
+                system('CmdTest ' + str(CMD_TURN_NTU_SSD_5V_ON))
             sleep(2)
             if forceFlag:
                 restartCalibd()
 
             #Turn computer back on
             print 'Turning on NTU SSD 12V'
-            system('CmdTest ' + str(CMD_TURN_NTU_SSD_12V_ON))
+            if testMode == False:
+                system('CmdTest ' + str(CMD_TURN_NTU_SSD_12V_ON))
             sleep(2)
             if forceFlag:
                 restartCalibd()
 
             # Reboot is now effectively issued, log it
-            message = 'Toggled relays to issue reboot'
+            message = 'No response from NTU to ping. Issuing reboot command. '
+            message += 'Will wait until NTU responds or ' + str(maxWaitTimeMinutes) + ' minutes.'
+
             if forceFlag:
-                message += ' with force!'
+                message += ' Warning! Manually restarting Calibd!'
+
+            if testMode == True:
+                message = 'TEST! ' + message
+            print message
+
             appendLogFile(logFileName, message)
 
-            # Then wait a long time for the computer to load
-            # Is this long enough, too long?
-            sleep(maxSleepTimeMinutes*60)
+            lastRebootTime = time()
+            notHeardBackSinceReboot = True
 
-        else: # Got response
-
-            # Wait 5 seconds
-            sleep(5)
-
+        elif notHeardBackSinceReboot == True and response == 0:
+            # We got a response, log it!
+            message = ''
+            if firstTime == True:
+                message = 'NTU responded to ping for the first time since checkNtu.py script started'
+                firstTime = False
+            else:
+                message = 'NTU responded to ping for the first time since reboot command issued'
+            appendLogFile(logFileName, message)
+            notHeardBackSinceReboot = False
+        else:
+            pass
+        sleep(5)
 
 def restartCalibd():
     """
