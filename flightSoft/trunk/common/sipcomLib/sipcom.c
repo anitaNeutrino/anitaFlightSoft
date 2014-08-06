@@ -995,10 +995,12 @@ try_write:
 		}
 
 		// other write error
+		printf("highrate_write_bytes: write error\n");
 		set_error_string("highrate_write_bytes: write error\n");
 		retval = -1;
 		break;
 	    }
+	  printf("Wrote %d of %d\n",bytes_avail,bytes_to_write);
 
 #ifdef USE_STOR
 	    {
@@ -1021,6 +1023,7 @@ try_write:
 
 	    if (bytes_to_write == 0) {
 		// wrote all bytes
+	      printf("Finished writing\n");
 		retval = 0;
 		break;
 	    }
