@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <signal.h>
+#include <stdint.h>
+
 #include <fcntl.h>
 #include <zlib.h>
 #include <libgen.h> //For Mac OS X
@@ -141,8 +143,8 @@ unsigned int eventDataSent=0;
 unsigned int hkDataSent=0;
 
 //Data buffer
-unsigned char theBuffer[MAX_EVENT_SIZE*5];
-unsigned char chanBuffer[MAX_EVENT_SIZE*5];
+unsigned char *theBuffer;//[MAX_EVENT_SIZE*5];
+unsigned char *chanBuffer;//
 
 
 int fdHigh=0;
@@ -239,7 +241,11 @@ int main(int argc, char *argv[])
     KvpErrorCode kvpStatus=0;
     char* eString ;
     
+    theBuffer=malloc(MAX_EVENT_SIZE+5);
+    chanBuffer=malloc(MAX_EVENT_SIZE+5);
    
+    printf("MAX_EVENT_SIZE=%d\n",MAX_EVENT_SIZE);
+
     char *progName=basename(argv[0]);
 
     //
@@ -331,7 +337,24 @@ int main(int argc, char *argv[])
 
     fdHigh=serial_init("/dev/ttyHigh1",19200);
     sipthrottle_init(MAX_WRITE_RATE,1.0);
-    highrateHandler(&status);
+    //    highrateHandler(&status);
+    unsigned char testBuffer[256];
+    int ind=0;
+    for(ind=0;ind<256;ind++) {
+      testBuffer[ind]=ind;
+    }
+    int loopCounter=0;
+    while(1) {
+      //      sleep(1);
+      highrate_write_bytes_RJN(testBuffer,128);
+      tcdrain(fdHigh);
+      //      write(fdHigh,testBuffer,128);
+      loopCounter++;
+      fprintf(stderr,"Loop Counter %d %d-bytes\n",loopCounter,128*loopCounter);
+    }
+
+
+
 
     fprintf(stderr, "Bye bye\n");
     retVal=unlink(SIPD_PID_FILE);
@@ -1793,7 +1816,7 @@ int highRateWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   //Now send the data
 #ifndef COMPLETELY_FAKE
   //Actually send some data
-  if(nbytes+realCount<MAX_EVENT_SIZE/2) {
+  if(nbytes+realCount<1024) {
     memcpy(&realBuf[realCount],buf,nbytes);
     realCount+=nbytes;
   }
@@ -1954,9 +1977,9 @@ void sipcom_highrate_set_throttle_RJN(unsigned long rate)
 
 static int highrate_write_bytes_RJN(unsigned char *p, int bytes_to_write)
 {
-    int bytes_avail = 0;
+    uint32_t bytes_avail = 0;
     int retval = 0;
-    int writeloc = 0;
+    uint32_t writeloc = 0;
 
     while (1) {
 	bytes_avail = sipthrottle(bytes_to_write);
@@ -1969,16 +1992,19 @@ static int highrate_write_bytes_RJN(unsigned char *p, int bytes_to_write)
 	} else if (bytes_avail > 0) {
 try_write:
 	    // write bytes_avail bytes
-	    if (write(fdHigh, p + writeloc, bytes_avail) == -1) {
-		if (errno == EAGAIN) {
-		    goto try_write;
-		}
-
-		// other write error
-		retval = -1;
-		break;
+	  fprintf(stderr,"write %d %d %d\n",p,writeloc,bytes_avail);
+	  //fprintf(stderr,p+writeloc,bytes_avail);
+	  if (write(fdHigh, p + writeloc, bytes_avail) == -1) {
+	    
+	    if (errno == EAGAIN) {
+	      goto try_write;
 	    }
-
+	    
+	    // other write error
+	    retval = -1;
+	    break;
+	  }
+	  
 #ifdef USE_STOR
 	    {
 		FILE *pipe_ = Highrate_stor_pipe;

@@ -339,11 +339,10 @@ int main(int argc, char *argv[])
 	}
     }
 
-    unsigned char enable = 0;
-
-    syslog(LOG_INFO,"SIPd setting sipcom enable mask to %#x",enable);
+    char enable=0;
+    //    syslog(LOG_INFO,"SIPd setting sipcom enable mask to %#x",enable);
     printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
-    retVal = sipcom_init(MAX_WRITE_RATE);//,".",enable);
+    retVal = sipcom_init(MAX_WRITE_RATE,".",enable);
     if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
@@ -365,8 +364,8 @@ int main(int argc, char *argv[])
     }
       
 
-
     sipcom_wait();
+    
     retVal=pthread_cancel(Hr_thread);
     if(retVal) {
       //Who knows just log it

@@ -3316,9 +3316,9 @@ AcqdErrorCode_t readSurfHkData()
     for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
       index=rfChan;
       dataInt=buffer[(2*RAW_SCALERS_PER_SURF)+index];
-      theSurfHk.rfPower[surf][rfChan]=dataInt&0xfff;
+      theSurfHk.rfPower[surf][rfChan]=dataInt&0xffff;
       if((printToScreen && verbosity>1) || HK_DEBUG)
-	printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]&0xfff);
+	printf("Surf %d, RF Power %d == %d\n",surfIndex[surf],rfChan,theSurfHk.rfPower[surf][rfChan]&0xffff);
       //Should check if it is the same or not
       if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
 	theSurfHk.errorFlag|=(1>>surf);
