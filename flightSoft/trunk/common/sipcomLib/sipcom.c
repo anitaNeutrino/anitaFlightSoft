@@ -50,7 +50,7 @@ static unsigned char Sipmux_enable = 0;
 
 // HIGHRATE_BAUD - line speed for the high rate OMNI antenna port.
 // Goes via TDRSS.
-#define HIGHRATE_BAUD 19200
+#define HIGHRATE_BAUD 115200
 
 // VERY_HIGHRATE_BAUD - line speed for the high rate HGA antenna port.
 // Goes via TDRSS.
@@ -686,7 +686,7 @@ do_request(int req, char *caller_name)
         }
     }
 
-    showbuf(xferbuf, nbytes + OVERHEAD_BYTES);
+    //    showbuf(xferbuf, nbytes + OVERHEAD_BYTES);
     ret = write(Fd[comm], xferbuf, 3);
     if (ret != 3) {
 	set_error_string("%s: write error (%s)\n",
@@ -923,7 +923,7 @@ sipcom_wrap_buffer(unsigned char *buf, unsigned short nbytes,
 int
 sipcom_highrate_write(unsigned char *buf, unsigned short nbytes)
 {
-  printf("Inside sipcom_highrate_write: %d bytes\n",bytes);
+  //  printf("Inside sipcom_highrate_write: %d bytes\n",bytes);
     static const int extra_bytes = 128;
     static int nbytes_plus = 0;
     int retval = 0;

@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <termios.h>
 
 #include <sys/types.h>
 
@@ -36,7 +36,8 @@ int main (void)
 
 //    TurfioStruct_t turfio;
 //    AnitaEventHeader_t header;
-
+  printf("Size of speed_t %ld\n",sizeof(speed_t));
+  printf("Size of char* %ld  (int * %ld)\n",sizeof(char *),sizeof(int *)); 
     printf("Size of int %ld  (long %ld)\n",sizeof(int),sizeof(long)); 
     printf("Size of GenericHeader_t: %ld\n",sizeof(GenericHeader_t));
     printf("Size of SlowRateHkStruct_t: %ld\n",sizeof(SlowRateHkStruct_t)); 

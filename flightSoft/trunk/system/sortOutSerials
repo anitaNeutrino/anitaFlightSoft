@@ -37,13 +37,13 @@ fi
 
 if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if02-port0" ]
 then
-    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if02-port0` /dev/ttyLow2
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if02-port0` /dev/ttyHigh2
 fi
 
 
 if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if03-port0" ]
 then
-    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if03-port0` /dev/ttyHigh2
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if03-port0` /dev/ttyLow2
 fi
 
 ln -sf /dev/ttyS0 /dev/ttyLow1

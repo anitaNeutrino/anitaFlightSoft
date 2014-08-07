@@ -77,6 +77,7 @@ fprintf(stderr,"SERIAL_INIT a: port %s: _sipmux_enable is %x\n",
     newopts.c_cflag &= ~PARENB;
     newopts.c_cflag &= ~CSTOPB;
     newopts.c_cflag &= ~CSIZE;
+    newopts.c_cflag &= ~CRTSCTS;        /* clear the flow control bits  */
     newopts.c_cflag |= CS8;
 
     newopts.c_iflag &= ~(INLCR | ICRNL);

@@ -51,7 +51,8 @@ int readSBSTemperature(SbsTempIndex_t index)
   case SBS_TEMP_4:
     return readSBSTemperatureFile("/sys/devices/virtual/hwmon/hwmon0/temp2_input");
   case SBS_TEMP_5:
-    return readSBSTemperatureFile("/sys/devices/pci0000:00/0000:00:1c.0/0000:06:00.0/hwmon/hwmon1/temp1_input");
+    //    return readSBSTemperatureFile("/sys/devices/pci0000:00/0000:00:1c.0/0000:06:00.0/hwmon/hwmon1/temp1_input");
+    return -1;
   default :
     return -1;
   }

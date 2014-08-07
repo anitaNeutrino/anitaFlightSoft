@@ -65,8 +65,8 @@ daemon -r LogWatchd -n LogWatchd
 
 daemon -r Prioritizerd -n Prioritizerd 
 daemon -r Eventd -n Eventd
-daemon -r LOSd -n LOSd
-daemon -r SIPd -n SIPd
+#daemon -r LOSd -n LOSd
+#daemon -r SIPd -n SIPd
 daemon -r Playbackd -n Playbackd
 
 

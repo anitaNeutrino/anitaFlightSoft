@@ -3,6 +3,9 @@
 ####  This script should not be called directly from the command line it is a
 ####  worker script that is called by startStandaloneRun.sh
 ################################################################################
+source /home/anita/.bash_profile
+
+
 run=`cat /mnt/data/numbers/lastRunNumber`
 echo $run
 let "run += 1"
