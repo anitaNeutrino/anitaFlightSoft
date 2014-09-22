@@ -54,20 +54,20 @@ cp /home/anita/flightSoft/config/*.config /mnt/data/current/config
 sleep 2
 
 echo "Starting Programs"
-daemon -r Cmdd -n Cmdd
-daemon -r Archived -n Archived
-daemon -r Hkd -n Hkd
-daemon -r GPSd -n GPSd
-daemon -r Monitord -n Monitord
-daemon -r Calibd -n Calibd
-daemon -r LogWatchd -n LogWatchd
+nice daemon -r Cmdd -n Cmdd
+nice daemon -r Archived -n Archived
+nice daemon -r Hkd -n Hkd
+nice daemon -r GPSd -n GPSd
+nice daemon -r Monitord -n Monitord
+nice daemon -r Calibd -n Calibd
+nice daemon -r LogWatchd -n LogWatchd
 
 
-daemon -r Prioritizerd -n Prioritizerd 
-daemon -r Eventd -n Eventd
-#daemon -r LOSd -n LOSd
-#daemon -r SIPd -n SIPd
-daemon -r Playbackd -n Playbackd
+nice daemon -r Prioritizerd -n Prioritizerd 
+nice daemon -r Eventd -n Eventd
+nice daemon -r LOSd -n LOSd
+nice daemon -r SIPd -n SIPd
+nice daemon -r Playbackd -n Playbackd
 
-
-Acqd 
+#Acqd
+taskset -c 3 Acqd 
