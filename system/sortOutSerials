@@ -26,6 +26,7 @@ fi
 if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if00-port0" ]
 then
     ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if00-port0` /dev/ttyG12B
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if00-port0` /dev/gps1
 fi
 
 

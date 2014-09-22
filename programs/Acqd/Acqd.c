@@ -590,9 +590,9 @@ int main(int argc, char **argv) {
 		if(eventReadyFlag) {
 		    int surfFlag=0;
 		    int surfCounter=0;
-		    while(!surfFlag && surfCounter<1000) {
+		    while(!surfFlag && surfCounter<1000000) {
 			status=getSurfStatusFlag(0,SurfEventReady,&surfFlag);
-			usleep(1000);
+			//	usleep(1000);
 			surfCounter++;
 		    }
 		    if(printToScreen && verbosity>1)
@@ -613,8 +613,8 @@ int main(int argc, char **argv) {
 		
 	  //
 	  //Have to change this at some point
-	  if(tmo) //Might change tmo%2
-	    myUsleep(1); 
+	  //	  if(tmo) //Might change tmo%2
+	  //	    myUsleep(1); 
 
 	  tmo++;
 		       		
@@ -639,16 +639,20 @@ int main(int argc, char **argv) {
 	      }
 	  }
 
+	  //Calculates rate and servos on it if we wish
+	  rateCalcAndServo(&timeStruct,lastEvNum); 
+
+	  //Gives us a chance to read hk and servo thresholds
+	  newPhiMask=intersperseTurfRate(&timeStruct);
 
 	  //Now we have a couple of functions that work out rates and such
 	  //Writes slow rate if approrpriate
 	  handleSlowRate(&timeStruct,lastEvNum); 
-	  //Calculates rate and servos on it if we wish
-	  rateCalcAndServo(&timeStruct,lastEvNum); 
+
 	  //Gives us a chance to read hk and servo thresholds
 	  intersperseSurfHk(&timeStruct);
-	  //Gives us a chance to read hk and servo thresholds
-	  newPhiMask=intersperseTurfRate(&timeStruct);
+
+	  
 	  //Also gives a chance to send software tiggers
 	  if(sendSoftTrigger)
 	    intersperseSoftTrig(&timeStruct);
@@ -734,14 +738,14 @@ int main(int argc, char **argv) {
 	hdPtr->errorFlag=0x1;
       }
 
+      if(verbosity && printToScreen) printf("Done reading\n");
+	    
 
             
       //Switched for timing test
       gettimeofday(&timeStruct,NULL);
       intersperseSurfHk(&timeStruct);
 
-	    
-      if(verbosity && printToScreen) printf("Done reading\n");
 	    
       //Add TURF Rate Info to slow file
       if(newTurfRateData) {
@@ -756,8 +760,15 @@ int main(int argc, char **argv) {
 	fprintf(stderr,"Error detected %d, during event %d\n",status,doingEvent);
 	syslog(LOG_ERR,"Error detected %d, during event %d\n",status,doingEvent);	      
 	status=ACQD_E_OK;
+	// Clear boards
+	sendClearEvent();     
+	
       }
       else if(doingEvent>=0) { //RJN changed 24/11/06 for test
+	//RJN, Moving clear event before output event data, don't expect any change
+	// Clear boards
+	sendClearEvent();     
+
 	hdPtr->eventNumber=getEventNumber();
 	bdPtr->eventNumber=hdPtr->eventNumber;
 	lastEvNum=hdPtr->eventNumber;
@@ -776,11 +787,8 @@ int main(int argc, char **argv) {
 	// Save data if we want to
 	outputEventData();
 	if(newTurfRateData) outputTurfRateData();		    	
-
       }
 	    
-      // Clear boards
-      sendClearEvent();     
 
 
       if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
@@ -2964,10 +2972,10 @@ AcqdErrorCode_t readSurfEventData()
       syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
     }
-     if(printToScreen && verbosity>2) {	
-      for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {
-	printf("SURF %d, %d == 0x%x\n",surfIndex[surf],i,eventBuf[i]);
-      }
+    if(printToScreen && verbosity>2) {	
+	for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {
+		printf("SURF %d, %d == 0x%x\n",surfIndex[surf],i,eventBuf[i]);
+	}
     }
             
     //First is the header word
@@ -3554,9 +3562,11 @@ AcqdErrorCode_t readTurfEventDataVer6()
     hdPtr->errorFlag |= (tempVal<<6);
   }
 
+//    printf("LastPPS: %d - CurrentPPS: %d - Deadtime : %d\n", lastPPSNum, turfRates.ppsNum, turfRates.deadTime); //LM added
+
   if(turfRates.deadTime>0 && lastPPSNum!=turfRates.ppsNum) {
     intervalDeadtime+=((float)turfRates.deadTime)/64400.;
-    if(printToScreen && verbosity>1)
+      if(printToScreen && verbosity>1)
       printf("Deadtime %d counts %f fraction\n",turfRates.deadTime,
 	     ((float)turfRates.deadTime)/64400.);
   }
@@ -3581,14 +3591,14 @@ AcqdErrorCode_t readTurfEventDataVer6()
   }
 
   if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
-//    newTurfRateData=1;
+//    newTurfRateData=1; 
   }
   //Make sure to copy relevant mask data to turfRate struct
   turfRates.l1TrigMask=hdPtr->l1TrigMask;
   turfRates.l1TrigMaskH=hdPtr->l1TrigMaskH;
   turfRates.phiTrigMask=hdPtr->phiTrigMask;
   turfRates.phiTrigMaskH=hdPtr->phiTrigMaskH;
-  lastPPSNum=turfRates.ppsNum;
+  //  lastPPSNum=turfRates.ppsNum;
   return status;	
 }
 
@@ -3710,7 +3720,7 @@ AcqdErrorCode_t readTurfHkData()
 	    usvalue2=(uvalue&0xffff0000)>>16;
 	    turfRates.ppsNum=usvalue2;	    
 	    turfRates.deadTime=usvalue;
-	    //	    printf("RJN: ppsNum=%u deadTime=%u\n",turfRates.ppsNum,turfRates.deadTime);
+//	    	    printf("RJN: ppsNum=%u deadTime=%u\n",turfRates.ppsNum,turfRates.deadTime);
 
 	}
 	else if(i==42) {
@@ -3721,9 +3731,11 @@ AcqdErrorCode_t readTurfHkData()
     }
     
 
+
     if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
 	newTurfRateData=1;
-	
+//		printf("ppsNum %d -- last %d\n",turfRates.ppsNum,lastPPSNum);
+    intervalDeadtime+=((float)turfRates.deadTime)/64400.; //LM: try to see if it gets executed here
 	if(writeRawScalers) {
 	    fillGenericHeader(&theTurfReg,PACKET_TURF_REGISTER,sizeof(TurfRegisterContents_t));
 	    retVal=cleverHkWrite((unsigned char*)&theTurfReg,sizeof(TurfRegisterContents_t),theTurfReg.unixTime,&rawTurfRegWriter);
@@ -3751,7 +3763,7 @@ AcqdErrorCode_t readTurfHkData()
     turfRates.phiTrigMask=uvalue&0xffff;    
     turfRates.phiTrigMaskH=(uvalue&0xffff0000)>>16;
 
-    //    lastPPSNum=turfRates.ppsNum;
+    lastPPSNum=turfRates.ppsNum;
     return status;
 }
 
