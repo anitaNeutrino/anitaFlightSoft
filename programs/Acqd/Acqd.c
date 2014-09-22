@@ -434,7 +434,7 @@ int main(int argc, char **argv) {
 
   firstTimeThrough=1;
   
-
+  void *pthreadStatus;
   pthread_attr_t attr;
   /* Initialize and set thread detached attribute */
   pthread_attr_init(&attr);
@@ -643,7 +643,7 @@ int main(int argc, char **argv) {
       //Now we check and see if there is any event data to handle
       while(handleBufferIndex<NUM_BUFFER_EVTS) {
 	if(gotEventBuffer[handleBufferIndex]) {
-	  reInitNeeded+=processEventData();
+	  reInitNeeded+=processEventData(&lastEvNum);
 	  gotEventBuffer[handleBufferIndex]=0;
 	  handleBufferIndex++;
 	}
@@ -687,7 +687,7 @@ int main(int argc, char **argv) {
   
   /* Free attribute and wait for the other threads */
   pthread_attr_destroy(&attr);
-  retVal = pthread_join(fDataReadThread,&status);
+  retVal = pthread_join(fDataReadThread,&pthreadStatus);
   if(retVal) {
     syslog(LOG_ERR,"ERROR; return code from pthread_join() is %d\n", retVal);
   }
@@ -4335,7 +4335,6 @@ void intersperseSurfHk(struct timeval *tvPtr)
   AcqdErrorCode_t status;
   int timeDiff=0;  
   int surf;
-  static unsigned int lastSlowSurfHk=0;  
 
 
   //Check if the buffer is full
@@ -4375,13 +4374,13 @@ AcqdErrorCode_t readSurfHkData() {
   return status;
 }
 
-int processEventData() {
+int processEventData(int *lastEvNumPtr) {
   //Everything below requires an event to have been read out
-  int reInitNeeded=0;
+  int reInitNeeded=0,surf=0;
   handleSurfEventData();
   handleTurfEventData();
 
-  struct timeval timestruct=fReadoutTimeStruct[handleBufferIndex];  t
+  struct timeval timeStruct=fReadoutTimeStruct[handleBufferIndex];  
 
   
   hdPtr->unixTime=timeStruct.tv_sec;
@@ -4420,7 +4419,7 @@ int processEventData() {
 
     hdPtr->eventNumber=getEventNumber();
     bdPtr->eventNumber=hdPtr->eventNumber;
-    lastEvNum=hdPtr->eventNumber;
+    *lastEvNumPtr=hdPtr->eventNumber;
     //	hdPtr->surfMask=surfMask;
     hdPtr->phiTrigMask=phiTrigMask;
     hdPtr->phiTrigMaskH=phiTrigMaskH;
@@ -4442,6 +4441,7 @@ int processEventData() {
 void processSurfHk() {
   //First up fill the surf hk structures
 
+  static unsigned int lastSlowSurfHk=0;  
   handleSurfHkData();
   struct timeval *tvPtr=&(fSurfHkTimeStruct[handleSurfHkIndex]);
   

@@ -56,7 +56,7 @@ AcqdErrorCode_t setupTurfio();
 
 //Main data reading loop
 int mainDataReadingLoop(); ///< Just read out data and stuffs it in to memory
-int processEventData(); ///< This one actually massages the raw reads into something meaningful
+int processEventData(int *lastEvNumPtr); ///< This one actually massages the raw reads into something meaningful
 
 //Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
