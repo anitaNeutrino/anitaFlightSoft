@@ -4374,7 +4374,7 @@ AcqdErrorCode_t readSurfHkData() {
   return status;
 }
 
-int processEventData(int *lastEvNumPtr) {
+int processEventData(unsigned int *lastEvNumPtr) {
   //Everything below requires an event to have been read out
   int reInitNeeded=0,surf=0;
   handleSurfEventData();
