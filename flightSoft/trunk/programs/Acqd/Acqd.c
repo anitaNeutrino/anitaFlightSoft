@@ -70,7 +70,7 @@ int gotEventBuffer[NUM_BUFFER_EVTS]={0};
 int gotSurfHkBuffer[NUM_BUFFER_SURFHK]={0};
 uint32_t fSurfEventBuffer[NUM_BUFFER_EVTS][ACTIVE_SURFS][SURF_EVENT_DATA_SIZE];
 uint32_t fSurfHkBuffer[NUM_BUFFER_SURFHK][ACTIVE_SURFS][SURF_HK_DATA_SIZE];
-unsigned char fTurfEventBuffer[TURF_EVENT_DATA_SIZE];
+unsigned char fTurfEventBuffer[NUM_BUFFER_EVTS][TURF_EVENT_DATA_SIZE];
 struct timeval fReadoutTimeStruct[NUM_BUFFER_EVTS];
 struct timeval fSurfHkTimeStruct[NUM_BUFFER_EVTS];
 AcqdErrorCode_t fEventStatus[NUM_BUFFER_EVTS];
@@ -297,18 +297,19 @@ int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
 int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
 
 
+struct timeval startTimeStruct;
+
+
 int main(int argc, char **argv) {
   AcqdErrorCode_t status=ACQD_E_OK;
   int retVal=0;
-  int i=0,tmo=0,surf; 
+  int i=0,surf; 
   int doneStartTest=0;
   int numDevices; 
-  int eventReadyFlag=0;
   unsigned short dacVal=2200;
   unsigned int lastEvNum=0;
-  time_t lastNewPhiMask=0;
   struct timeval timeStruct;
-  struct timeval startTimeStruct;
+
 
  
   int reInitNeeded=0;
@@ -468,7 +469,7 @@ int main(int argc, char **argv) {
 	setTriggerMasks();
     }
 
-    if(!reInitNeeded && !newPhiMask) {
+    if(!reInitNeeded && ! changeToNewPhiMask) {
       retVal=readConfigFile();
       if(retVal!=CONFIG_E_OK) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
@@ -486,7 +487,7 @@ int main(int argc, char **argv) {
 	pauseMasksSet=1;
 	gettimeofday(&startTimeStruct,NULL);
     }
-    newPhiMask=0;
+    changeToNewPhiMask=0;
     reInitNeeded=0;
     slipCounter=0;
 
@@ -683,6 +684,14 @@ int main(int argc, char **argv) {
   closeHkFilesAndTidy(&sumTurfRateWriter);
   closeHkFilesAndTidy(&surfHkWriter);
   closeHkFilesAndTidy(&turfHkWriter);
+  
+  /* Free attribute and wait for the other threads */
+  pthread_attr_destroy(&attr);
+  retVal = pthread_join(fDataReadThread,&status);
+  if(retVal) {
+    syslog(LOG_ERR,"ERROR; return code from pthread_join() is %d\n", retVal);
+  }
+
   unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating... reached end of main");
   fprintf(stderr,"\nAcqd terminating... reached end of main\n");
@@ -694,6 +703,9 @@ int mainDataReadingLoop()
 {
   struct timeval timeStruct;
   int tmo=0,status=0;
+  int eventReadyFlag=0;
+  time_t lastNewPhiMask=0;
+
 
   do {
     //Any pre-loop initialisation
@@ -706,7 +718,6 @@ int mainDataReadingLoop()
 	break;
 	//This is one way out of the main event loop
       }
-
 
 
       if(pauseMasksSet && firstTimeThrough) {	     
@@ -3315,7 +3326,7 @@ AcqdErrorCode_t handleSurfHkData()
 
   for(surf=0;surf<numSurfs;surf++){  
     //Point buffer to current surf data
-    buffer=fSurfHkBuffer[handleSurfHkIndex][surf]
+    buffer=fSurfHkBuffer[handleSurfHkIndex][surf];
     
 
     //First just fill in antMask in SURF
