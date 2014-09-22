@@ -4334,7 +4334,6 @@ void intersperseSurfHk(struct timeval *tvPtr)
 {
   AcqdErrorCode_t status;
   int timeDiff=0;  
-  int surf;
 
 
   //Check if the buffer is full
@@ -4471,8 +4470,8 @@ void processSurfHk() {
     theSurfHk.unixTimeUs=tvPtr->tv_usec;
     outputSurfHkData();
 
-  }		    
-}
+}		    
+
 
 void intersperseSoftTrig(struct timeval *tvPtr)
 {          
