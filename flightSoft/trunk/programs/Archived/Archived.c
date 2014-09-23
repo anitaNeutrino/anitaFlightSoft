@@ -433,7 +433,7 @@ void checkEvents()
 
 
 void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
-
+  printf("handleListOfEvents: %d\n",linkStructPtr->numLinks);
   AnitaEventWriterStruct_t eventWriter;
   int count=0,retVal=0;
   char *tempString;
