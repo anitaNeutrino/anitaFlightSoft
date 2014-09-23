@@ -297,8 +297,9 @@ int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
 int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
 
 
+//Some handy timing structs
 struct timeval startTimeStruct;
-
+struct timeval lastDACUpdate;
 
 int main(int argc, char **argv) {
   AcqdErrorCode_t status=ACQD_E_OK;
@@ -1961,8 +1962,7 @@ AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
     fprintf(stderr,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
   }
 
-  //This is a dirty cheat
-  gettimeofday(&lastSurfHkRead,NULL);
+
   //  usleep(1);
 //  ioctl(surfFd, SURF_IOCCLEARHK);
   return ACQD_E_OK;
@@ -1978,6 +1978,7 @@ AcqdErrorCode_t setGlobalDACThreshold(unsigned short threshold) {
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
+  gettimeofday(&lastDACUpdate,NULL);
   return ACQD_E_OK;
 }
 
@@ -1992,6 +1993,7 @@ AcqdErrorCode_t setDACThresholds() {
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
+  gettimeofday(&lastDACUpdate,NULL);
   return ACQD_E_OK;
 }
 
@@ -4337,16 +4339,20 @@ void intersperseTurfRate(struct timeval *tvPtr)
 void intersperseSurfHk(struct timeval *tvPtr)
 {
   AcqdErrorCode_t status;
-  int timeDiff=0;  
+  int timeDiff=0,timeDiffDac=0;  
 
 
   //Check if the buffer is full
   if(gotSurfHkBuffer[writeSurfHkIndex]) return;
 
+  timeDiffDac=tvPtr->tv_usec-lastDACUpdate.tv_usec;
+  timeDiffDac+=100000*(tvPtr->tv_sec-lastDACUpdate.tv_sec);
 
   timeDiff=tvPtr->tv_usec-lastSurfHkRead.tv_usec;  
   timeDiff+=1000000*(tvPtr->tv_sec-lastSurfHkRead.tv_sec);
 		    		
+  if(timeDiffDac<timeDiff) timeDiff=timeDiffDac;
+
   //Only read the housekeeping every 50ms, will change this to be configurable.
   //Maybe.
 

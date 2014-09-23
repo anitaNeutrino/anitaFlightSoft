@@ -183,6 +183,13 @@ int main (int argc, char *argv[])
     acromagSetup();
     ip470Setup();
 
+    //Set code values
+    autoZeroStruct.code=IP320_AVZ;
+    rawDataStruct.code=IP320_RAW;
+    calDataStruct.code=IP320_CAL;
+
+
+
     do {
 	if(printToScreen) printf("Initializing Calibd\n");
 	retVal=readConfigFile();
