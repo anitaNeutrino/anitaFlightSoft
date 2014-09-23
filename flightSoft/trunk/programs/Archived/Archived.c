@@ -107,7 +107,7 @@ pthread_mutex_t mutexindex;
 pthread_attr_t attr; 
 
 
-#define NUMTHRDS 1
+#define NUMTHRDS 4
 pthread_t callThd[NUMTHRDS];
 
 
@@ -428,7 +428,7 @@ void checkEvents()
     for(count=0;count<numLinks;count++) {
       //Need to add a check for when the event number is %MAX_EVENT_LINKS==0
       tempString=getFirstLink(wd);
-      printf("%d %d %s\n",count,linkStruct[uptoThread].numLinks,tempString);
+      printf("%d -- %d %d %s\n",uptoThread,count,linkStruct[uptoThread].numLinks,tempString);
       sscanf(tempString,"hd_%u.dat",&eventNumber);
       if(linkStruct[uptoThread].numLinks<MAX_EVENT_LINKS) {
 	strncpy(linkStruct[uptoThread].linkPath[linkStruct[uptoThread].numLinks],tempString,FILENAME_MAX);
@@ -436,7 +436,7 @@ void checkEvents()
 	if(linkStruct[uptoThread].numLinks==MAX_EVENT_LINKS || ((eventNumber%EVENTS_PER_FILE)==99)) {
 
 	  //	  handleListOfEvents(&linkStruct);
-	  pthread_create(&callThd[uptoThread], &attr, handleWrapper, (void *)&linkStruct);
+	  pthread_create(&callThd[uptoThread], &attr, handleWrapper, (void *)&(linkStruct[uptoThread]));
 	  uptoThread++;
 	  if(uptoThread>=NUMTHRDS) uptoThread=0;
 
