@@ -656,7 +656,7 @@ void writeOutputToDisk(int numBytes, unsigned char *outputBuffer, AnitaEventHead
 		       AnitaEventWriterStruct_t *eventWriterPtr) {
    
     int retVal;
-
+    
     retVal=cleverEventWrite(outputBuffer,numBytes,hdPtr,eventWriterPtr);
     if(retVal!=0) {
       syslog(LOG_ERR,"Error writing event %s\n",strerror(errno));
@@ -711,7 +711,7 @@ void writeOutputForTelem(int numBytes,unsigned char *outputBuffer, AnitaEventHea
 
 void prepEventWriterStruct(AnitaEventWriterStruct_t *eventWriterPtr) {
     int diskInd;
-    closeEventFilesAndTidy(eventWriterPtr); //Just to be safe
+    //    closeEventFilesAndTidy(eventWriterPtr); //Just to be safe
 
     //Event Writer
     strncpy(eventWriterPtr->relBaseName,EVENT_ARCHIVE_DIR,FILENAME_MAX-1);
