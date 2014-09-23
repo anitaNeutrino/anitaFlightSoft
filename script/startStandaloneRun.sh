@@ -69,5 +69,5 @@ nice daemon -r LOSd -n LOSd
 nice daemon -r SIPd -n SIPd
 nice daemon -r Playbackd -n Playbackd
 
-#Acqd
-taskset -c 3 Acqd 
+Acqd
+#taskset -c 3 Acqd 

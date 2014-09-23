@@ -3281,7 +3281,9 @@ AcqdErrorCode_t justReadSurfHkData()
       syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
     }
-    
+  }
+
+  for(surf=0;surf<numSurfs;surf++){  
     //Set it back to data mode -- maybe
     status=setSurfControl(surf,SurfDataMode);
     if(status!=ACQD_E_OK) {
