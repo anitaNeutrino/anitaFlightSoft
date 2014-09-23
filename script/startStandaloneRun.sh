@@ -55,7 +55,7 @@ sleep 2
 
 echo "Starting Programs"
 nice daemon -r Cmdd -n Cmdd
-nice daemon -r Archived -n Archived
+daemon -r Archived -n Archived
 nice daemon -r Hkd -n Hkd
 nice daemon -r GPSd -n GPSd
 nice daemon -r Monitord -n Monitord
