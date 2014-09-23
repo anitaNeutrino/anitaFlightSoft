@@ -473,18 +473,18 @@ void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
 	retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
 	fprintf(stderr,"fillpedsubbedbody %d\n",retVal);
 	if(retVal==0) {
-	  processEvent(&theHead,&pedSubBody,indEnt[count],&eventWriter);
+	  processEvent(&theHead,&pedSubBody,&indEnt[count],&eventWriter);
 	}
 	else {
 	  syslog(LOG_ERR,"Error getting event from %s\n",currentBodyname);
 	  fprintf(stderr,"Error getting event from %s\n",currentBodyname);
 	  eventWriter.justHeader=1;
-	  processEvent(&theHead,&pedSubBody,indEnt[count],&eventWriter);
+	  processEvent(&theHead,&pedSubBody,&indEnt[count],&eventWriter);
 	}	
       }
       else {
 	eventWriter.justHeader=1;
-	processEvent(&theHead,&pedSubBody,indEnt[count],&eventWriter);	
+	processEvent(&theHead,&pedSubBody,&indEnt[count],&eventWriter);	
       }
       unlink(currentBodyname);
       
