@@ -107,7 +107,7 @@ pthread_mutex_t mutexindex;
 pthread_attr_t attr; 
 
 
-#define NUMTHRDS 4
+#define NUMTHRDS 1
 pthread_t callThd[NUMTHRDS];
 
 
