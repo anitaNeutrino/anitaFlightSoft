@@ -92,7 +92,7 @@ int telemEvent(int trigType);
 
 int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NTU_DISK_MASK};
 
-#define MAX_EVENT_LINKS 100
+#define MAX_EVENT_LINKS EVENTS_PER_FILE
 
 typedef struct {
   int numLinks;
@@ -384,7 +384,8 @@ int readConfigFile()
 void checkEvents() 
 {
 
-    int count,retVal;
+  unsigned int eventNumber=0;
+  int count,retVal;
     static int wd=0;
     /* Directory reading things */
     int numLinks=0;
@@ -415,10 +416,11 @@ void checkEvents()
       //Need to add a check for when the event number is %MAX_EVENT_LINKS==0
       tempString=getFirstLink(wd);
       printf("%d %d %s\n",count,linkStruct.numLinks,tempString);
+      sscanf(tempString,"hd_%u.dat",&eventNumber);
       if(linkStruct.numLinks<MAX_EVENT_LINKS) {
 	strncpy(linkStruct.linkPath[linkStruct.numLinks],tempString,FILENAME_MAX);
 	linkStruct.numLinks++;
-	if(linkStruct.numLinks==MAX_EVENT_LINKS) {
+	if(linkStruct.numLinks==MAX_EVENT_LINKS || ((eventNumber%EVENTS_PER_FILE)==99)) {
 	  handleListOfEvents(&linkStruct);
 	  memset(&linkStruct,0,sizeof(EventLinkStruct_t));
 	}
@@ -453,7 +455,6 @@ void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
   for(count=0;count<linkStructPtr->numLinks;count++) {
     eventWriter.justHeader=0;
     tempString=linkStructPtr->linkPath[count];
-      
     sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,tempString);
     sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,tempString);
     retVal=fillHeader(&theHead,currentHeadname);
