@@ -100,10 +100,15 @@ typedef struct {
 } EventLinkStruct_t;
 
 void handleListOfEvents(EventLinkStruct_t *linkStructPtr) ;
+void *handleWrapper(void *ptr) ;
 
 //thread stuff
-//pthread_mutex_t mutexindex
+pthread_mutex_t mutexindex;
+pthread_attr_t attr; 
 
+
+#define NUMTHRDS 4
+pthread_t callThd[NUMTHRDS];
 
 
 
@@ -202,10 +207,9 @@ int main (int argc, char *argv[])
     retVal=0;
 
     // pthread initialisation
-    //   pthread_attr_t attr;
-    //    pthread_mutex_init(&mutexindex, NULL);            
-    //    pthread_attr_init(&attr);
-    //    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    pthread_mutex_init(&mutexindex, NULL);            
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 
 
@@ -227,12 +231,18 @@ int main (int argc, char *argv[])
 	}
     } while(currentState==PROG_STATE_INIT);    
 
+    pthread_attr_destroy(&attr);
 
+ 
     closeHkFilesAndTidy(&indexWriter);
     if(fpHead) fclose(fpHead);
     if(fpEvent) fclose(fpEvent);
     unlink(ARCHIVED_PID_FILE);
     syslog(LOG_INFO,"Archived terminating");
+
+    pthread_mutex_destroy(&mutexindex);
+    pthread_exit(NULL);
+
     return 0;
 }
 
@@ -383,17 +393,20 @@ int readConfigFile()
  
 void checkEvents() 
 {
-
+  void *status;
   unsigned int eventNumber=0;
   int count,retVal;
     static int wd=0;
     /* Directory reading things */
     int numLinks=0;
+    int threadCount=0;
     char *tempString;
-
-    static EventLinkStruct_t linkStruct;   
+    static int uptoThread=0;
+    static EventLinkStruct_t linkStruct[NUMTHRDS];   
     if(wd==0) {
-      linkStruct.numLinks=0;    
+      for(threadCount=0;threadCount<NUMTHRDS;threadCount++) {
+	linkStruct[threadCount].numLinks=0;    
+      }
       //First time need to prep the watcher directory
       wd=setupLinkWatchDir(PRIORITIZERD_EVENT_LINK_DIR);
       if(wd<=0) {
@@ -415,14 +428,23 @@ void checkEvents()
     for(count=0;count<numLinks;count++) {
       //Need to add a check for when the event number is %MAX_EVENT_LINKS==0
       tempString=getFirstLink(wd);
-      printf("%d %d %s\n",count,linkStruct.numLinks,tempString);
+      printf("%d %d %s\n",count,linkStruct[uptoThread].numLinks,tempString);
       sscanf(tempString,"hd_%u.dat",&eventNumber);
-      if(linkStruct.numLinks<MAX_EVENT_LINKS) {
-	strncpy(linkStruct.linkPath[linkStruct.numLinks],tempString,FILENAME_MAX);
-	linkStruct.numLinks++;
-	if(linkStruct.numLinks==MAX_EVENT_LINKS || ((eventNumber%EVENTS_PER_FILE)==99)) {
-	  handleListOfEvents(&linkStruct);
-	  memset(&linkStruct,0,sizeof(EventLinkStruct_t));
+      if(linkStruct[uptoThread].numLinks<MAX_EVENT_LINKS) {
+	strncpy(linkStruct[uptoThread].linkPath[linkStruct[uptoThread].numLinks],tempString,FILENAME_MAX);
+	linkStruct[uptoThread].numLinks++;
+	if(linkStruct[uptoThread].numLinks==MAX_EVENT_LINKS || ((eventNumber%EVENTS_PER_FILE)==99)) {
+
+	  //	  handleListOfEvents(&linkStruct);
+	  pthread_create(&callThd[uptoThread], &attr, handleWrapper, (void *)&linkStruct);
+	  uptoThread++;
+	  if(uptoThread>=NUMTHRDS) uptoThread=0;
+
+	  if(callThd[uptoThread]>0) {
+	    pthread_join(callThd[uptoThread], &status);
+	    callThd[uptoThread]=0;
+	    memset(&linkStruct[uptoThread],0,sizeof(EventLinkStruct_t));
+	  }
 	}
       }
       else {
@@ -431,6 +453,11 @@ void checkEvents()
 	       
  
     }
+}
+
+void *handleWrapper(void *ptr) {
+  handleListOfEvents((EventLinkStruct_t*)ptr);
+  return 0;
 }
 
 
@@ -499,13 +526,13 @@ void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
 
   closeEventFilesAndTidy(&eventWriter);
 
-  //  pthread_mutex_lock (&mutexindex);
+  pthread_mutex_lock (&mutexindex);
   for(count=0;count<linkStructPtr->numLinks;count++) {
     //RJN need to add ntu Label
     cleverIndexWriter(&indEnt[count],&indexWriter);
   }
-  //  pthread_mutex_unlock (&mutexindex);
-    
+  pthread_mutex_unlock (&mutexindex);
+  pthread_exit((void*) 0);
 }
 
 
