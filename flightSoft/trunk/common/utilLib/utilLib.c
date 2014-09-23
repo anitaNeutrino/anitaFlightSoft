@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <zlib.h>
 #include <fcntl.h>
-#define NO_ZLIB
+//#define NO_ZLIB
 
 ProgramStateCode currentState;
 
