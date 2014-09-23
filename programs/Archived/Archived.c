@@ -390,7 +390,9 @@ void checkEvents()
     int numLinks=0;
     char *tempString;
 
+    static EventLinkStruct_t linkStruct;   
     if(wd==0) {
+      linkStruct.numLinks=0;    
       //First time need to prep the watcher directory
       wd=setupLinkWatchDir(PRIORITIZERD_EVENT_LINK_DIR);
       if(wd<=0) {
@@ -407,8 +409,6 @@ void checkEvents()
     if((printToScreen && verbosity) || 1) printf("Found %d links\n",numLinks);
 
 
-    EventLinkStruct_t linkStruct;   
-    linkStruct.numLinks=0;
 
 
     for(count=0;count<numLinks;count++) {
@@ -513,7 +513,7 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
     unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
     CompressErrorCode_t retVal=0;
-    EncodeControlStruct_t diskEncCntl;
+    //    EncodeControlStruct_t diskEncCntl;
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
 
