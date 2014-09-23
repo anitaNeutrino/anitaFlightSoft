@@ -461,7 +461,7 @@ void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
     unlink(currentHeadname);
     unlink(currentLinkname);
     
-    
+    fprintf(stderr,"fillHeader %d\n",retVal);
     if(retVal==0) {
       //Switch to
       sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
@@ -471,7 +471,7 @@ void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
       
       if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
 	retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
-	
+	fprintf(stderr,"fillpedsubbedbody %d\n",retVal);
 	if(retVal==0) {
 	  processEvent(&theHead,&pedSubBody,indEnt[count],&eventWriter);
 	}
@@ -654,7 +654,7 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
 
 void writeOutputToDisk(int numBytes, unsigned char *outputBuffer, AnitaEventHeader_t *hdPtr, 
 		       AnitaEventWriterStruct_t *eventWriterPtr) {
-   
+  fprintf(stderr,"Trying to write %d bytes\n");
     int retVal;
     
     retVal=cleverEventWrite(outputBuffer,numBytes,hdPtr,eventWriterPtr);
