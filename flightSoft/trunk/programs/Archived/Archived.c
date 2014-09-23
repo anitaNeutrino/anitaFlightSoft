@@ -418,11 +418,15 @@ void checkEvents()
       if(linkStruct.numLinks<MAX_EVENT_LINKS) {
 	strncpy(linkStruct.linkPath[linkStruct.numLinks],tempString,FILENAME_MAX);
 	linkStruct.numLinks++;
+	if(linkStruct.numLinks==MAX_EVENT_LINKS) {
+	  handleListOfEvents(&linkStruct);
+	  memset(&linkStruct,0,sizeof(EventLinkStruct_t));
+	}
       }
       else {
-	handleListOfEvents(&linkStruct);
-	memset(&linkStruct,0,sizeof(EventLinkStruct_t));
+	fprintf(stderr,"Oooops shouldn't be here\n");
       }
+	       
  
     }
 }
