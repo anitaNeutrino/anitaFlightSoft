@@ -608,11 +608,8 @@ int main(int argc, char **argv) {
       //The actual event reading is done in a different loop
 
 
-      //Fill theEvent with zeros 
-      memset(&theEvent,0, sizeof(theEvent)) ;
-      memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
-      if(setGlobalThreshold) 
-	theSurfHk.globalThreshold=globalThreshold;         
+
+
 
       
       gettimeofday(&timeStruct,NULL);
@@ -630,6 +627,9 @@ int main(int argc, char **argv) {
       //First check if there is hk data to handle
       while(handleSurfHkIndex<NUM_BUFFER_SURFHK) {
 	if(gotSurfHkBuffer[handleSurfHkIndex]) {
+	  memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
+	  if(setGlobalThreshold) 
+	    theSurfHk.globalThreshold=globalThreshold;         
 	  processSurfHk();
 	  gotSurfHkBuffer[handleSurfHkIndex]=0;
 	  handleSurfHkIndex++;
@@ -643,6 +643,8 @@ int main(int argc, char **argv) {
       //Now we check and see if there is any event data to handle
       while(handleBufferIndex<NUM_BUFFER_EVTS) {
 	if(gotEventBuffer[handleBufferIndex]) {
+	  //Fill theEvent with zeros 
+	  memset(&theEvent,0, sizeof(theEvent)) ;
 	  reInitNeeded+=processEventData(&lastEvNum);
 	  gotEventBuffer[handleBufferIndex]=0;
 	  handleBufferIndex++;
@@ -670,6 +672,13 @@ int main(int argc, char **argv) {
 	
 
   } while(currentState==PROG_STATE_INIT);
+  
+  /* Free attribute and wait for the other threads */
+  pthread_attr_destroy(&attr);
+  retVal = pthread_join(fDataReadThread,&pthreadStatus);
+  if(retVal) {
+    syslog(LOG_ERR,"ERROR; return code from pthread_join() is %d\n", retVal);
+  }
 
   // Clean up
   status=closeDevices();
@@ -684,13 +693,6 @@ int main(int argc, char **argv) {
   closeHkFilesAndTidy(&sumTurfRateWriter);
   closeHkFilesAndTidy(&surfHkWriter);
   closeHkFilesAndTidy(&turfHkWriter);
-  
-  /* Free attribute and wait for the other threads */
-  pthread_attr_destroy(&attr);
-  retVal = pthread_join(fDataReadThread,&pthreadStatus);
-  if(retVal) {
-    syslog(LOG_ERR,"ERROR; return code from pthread_join() is %d\n", retVal);
-  }
 
   unlink(ACQD_PID_FILE);
   syslog(LOG_INFO,"Acqd terminating... reached end of main");
