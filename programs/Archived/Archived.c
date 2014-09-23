@@ -513,7 +513,7 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
     unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
     CompressErrorCode_t retVal=0;
-    //    EncodeControlStruct_t diskEncCntl;
+    EncodeControlStruct_t diskEncCntl;
     EncodeControlStruct_t telemEncCntl;
     int surf,chan,numBytes;
 
