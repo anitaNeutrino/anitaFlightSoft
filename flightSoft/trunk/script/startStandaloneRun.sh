@@ -63,11 +63,11 @@ nice daemon -r Calibd -n Calibd
 nice daemon -r LogWatchd -n LogWatchd
 
 
-nice daemon -r Prioritizerd -n Prioritizerd 
-nice daemon -r Eventd -n Eventd
-nice daemon -r LOSd -n LOSd
-nice daemon -r SIPd -n SIPd
-nice daemon -r Playbackd -n Playbackd
+daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
+daemon -r Eventd -n Eventd
+#daemon -r LOSd -n LOSd
+#daemon -r SIPd -n SIPd
+daemon -r Playbackd -n Playbackd
 
 Acqd
 #taskset -c 3 Acqd 

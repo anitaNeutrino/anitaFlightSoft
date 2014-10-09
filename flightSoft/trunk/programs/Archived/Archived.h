@@ -8,7 +8,6 @@
 
 #include "includes/anitaFlight.h"
 #include "includes/anitaStructures.h"
-#include "utilLib/utilLib.h"
 
 
 typedef enum {
@@ -19,15 +18,12 @@ typedef enum {
 } ArchivedDataType_t;
 
 
-void writeOutputToDisk(int numBytes, unsigned char *outputBuffer, AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *eventWriterPtr) ;
-
-
-void writeOutputForTelem(int numBytes,unsigned char *outputBuffer, AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *eventWriterPtr);
+void writeOutputToDisk(int numBytes);
+void writeOutputForTelem(int numBytes);
 void processEvent();
 void checkEvents();
 int readConfigFile();
-void prepIndexWriter();
-void prepEventWriterStruct(AnitaEventWriterStruct_t *eventWriterPtr);
+void prepWriterStructs();
 char *getFilePrefix(ArchivedDataType_t dataType);
 int shouldWeThrowAway(int pri);
 
