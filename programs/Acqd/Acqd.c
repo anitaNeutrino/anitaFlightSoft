@@ -13,7 +13,6 @@
 #include "Acqd.h"
 #include "surfDriver_ioctl.h"
 #include "turfioDriver_ioctl.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,7 +20,6 @@
 #include <fcntl.h>
 #include <memory.h>
 #include <math.h>
-#include <pthread.h>
 #include <errno.h>
 #include <signal.h>
 #include <libgen.h> //For Mac OS X
@@ -53,63 +51,6 @@ inline unsigned short byteSwapUnsignedShort(unsigned short a){
 }
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
-
-
-// Thread stuff
-pthread_t fDataReadThread;
-
-#define NUM_BUFFER_EVTS 4
-#define NUM_BUFFER_SURFHK 10
-
-//Temporary data storage
-int writeSurfHkIndex=0;
-int writeBufferIndex=0;
-int handleBufferIndex=0;
-int handleSurfHkIndex=0;
-int gotEventBuffer[NUM_BUFFER_EVTS]={0};
-int gotSurfHkBuffer[NUM_BUFFER_SURFHK]={0};
-uint32_t fSurfEventBuffer[NUM_BUFFER_EVTS][ACTIVE_SURFS][SURF_EVENT_DATA_SIZE];
-uint32_t fSurfHkBuffer[NUM_BUFFER_SURFHK][ACTIVE_SURFS][SURF_HK_DATA_SIZE];
-unsigned char fTurfEventBuffer[NUM_BUFFER_EVTS][TURF_EVENT_DATA_SIZE];
-struct timeval fReadoutTimeStruct[NUM_BUFFER_EVTS];
-struct timeval fSurfHkTimeStruct[NUM_BUFFER_EVTS];
-AcqdErrorCode_t fEventStatus[NUM_BUFFER_EVTS];
-
-
-int needToUpdateDACThresholds=0;
-unsigned int changeToNewPhiMask=0;
-
-AnitaEventFull_t theEvent;
-AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
-AnitaEventBody_t *bdPtr;//=&(theEvent.body)
-PedSubbedEventBody_t pedSubBody;
-TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
-TurfRateStruct_t turfRates;
-TurfRawEventData_t turfRawEvent;
-AveragedSurfHkStruct_t avgSurfHk;
-TurfRegisterContents_t theTurfReg;
-SimpleScalerStruct_t theScalers;
-FullSurfHkStruct_t theSurfHk;
-
-//Start disable masks fun
-
-
-unsigned int pausePhiMaskV;//=phiTrigMask;
-unsigned int pausePhiMaskH;//=phiTrigMaskH;
-unsigned short pauseL1TrigMask;//=l1TrigMask;
-unsigned short pauseL1TrigMaskH;//=l1TrigMaskH;
-int pauseMasksSet=0;
-int firstTimeThrough=1;
-
-
-
-//Temporary Global Variables
-unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
-unsigned int avgScalerData[MAX_SURFS][SCALERS_PER_SURF];
-//unsigned short threshData[MAX_SURFS][SCALERS_PER_SURF];
-//unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
-
-
 
 //The SURF and TURFIO File Descriptors
 int surfFds[MAX_SURFS]; 
@@ -143,12 +84,26 @@ int niceValue=-20;
 int disableUsb=0;
 int disableHelium2=0;
 int disableHelium1=0;
+unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
+AnitaEventFull_t theEvent;
+AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
+AnitaEventBody_t *bdPtr;//=&(theEvent.body)
+PedSubbedEventBody_t pedSubBody;
+TurfioStruct_t *turfioPtr;//=&(hdPtr->turfio);
+TurfRateStruct_t turfRates;
+TurfRawEventData_t turfRawEvent;
+AveragedSurfHkStruct_t avgSurfHk;
 TurfioTestPattern_t startPat;
 TurfioTestPattern_t endPat;
 int newTurfRateData=0;
 
 
+TurfRegisterContents_t theTurfReg;
+SimpleScalerStruct_t theScalers;
+FullSurfHkStruct_t theSurfHk;
+
 int eventsBeforeClear=1000;
+
 
 //Pedestal stuff
 int pedestalMode=0;
@@ -163,6 +118,13 @@ int pedSwitchConfigAtEnd=1; //Need to work out exactly what this does
 int enableStartTest=1;
 int startSoftTrigs=10;
 
+
+
+//Temporary Global Variables
+unsigned int labData[MAX_SURFS][N_CHAN][N_SAMP];
+unsigned int avgScalerData[MAX_SURFS][SCALERS_PER_SURF];
+//unsigned short threshData[MAX_SURFS][SCALERS_PER_SURF];
+//unsigned short rfpwData[MAX_SURFS][N_RFCHAN];
 
 //Configurable watchamacallits
 /* Ports and directories */
@@ -297,23 +259,22 @@ int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
 int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
 
 
-//Some handy timing structs
-struct timeval startTimeStruct;
-struct timeval lastDACUpdate;
-
 int main(int argc, char **argv) {
   AcqdErrorCode_t status=ACQD_E_OK;
   int retVal=0;
-  int i=0,surf; 
+  int i=0,tmo=0,surf; 
   int doneStartTest=0;
   int numDevices; 
+  int eventReadyFlag=0;
   unsigned short dacVal=2200;
   unsigned int lastEvNum=0;
+  time_t lastNewPhiMask=0;
   struct timeval timeStruct;
-
+  struct timeval startTimeStruct;
 
  
   int reInitNeeded=0;
+  int newPhiMask=0;
 
   //Initialize some of the timing variables
   lastSurfHkRead.tv_sec=0;
@@ -327,13 +288,10 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-
-
   //Initialize handy pointers
   hdPtr=&(theEvent.header);
   bdPtr=&(theEvent.body);
   turfioPtr=&(hdPtr->turfio);
-
 
   //Initialize dacPid stuff
   memset(&thePids,0,sizeof(DacPidStruct_t)*ACTIVE_SURFS*SCALERS_PER_SURF);    
@@ -386,11 +344,11 @@ int main(int argc, char **argv) {
   }
 
 
-  pausePhiMaskV=phiTrigMask;
-  pausePhiMaskH=phiTrigMaskH;
-  pauseL1TrigMask=l1TrigMask;
-  pauseL1TrigMaskH=l1TrigMaskH;
-  pauseMasksSet=0;
+  unsigned int pausePhiMaskV=phiTrigMask;
+  unsigned int pausePhiMaskH=phiTrigMaskH;
+  unsigned short pauseL1TrigMask=l1TrigMask;
+  unsigned short pauseL1TrigMaskH=l1TrigMaskH;
+  int pauseMasksSet=0;
 
   if(standAloneMode) {
     //Read the command line variables
@@ -433,19 +391,8 @@ int main(int argc, char **argv) {
     doneStartTest=1;    
   }
 
-  firstTimeThrough=1;
+  int firstTimeThrough=1;
   
-  void *pthreadStatus;
-  pthread_attr_t attr;
-  /* Initialize and set thread detached attribute */
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-
-
-
-
-
   //Main program loop
   do { //while( currentState==PROG_STATE_INIT
     lastSurfHkRead.tv_sec=0;
@@ -470,7 +417,7 @@ int main(int argc, char **argv) {
 	setTriggerMasks();
     }
 
-    if(!reInitNeeded && ! changeToNewPhiMask) {
+    if(!reInitNeeded && !newPhiMask) {
       retVal=readConfigFile();
       if(retVal!=CONFIG_E_OK) {
 	syslog(LOG_ERR,"Error reading config file Acqd.config: bailing");
@@ -488,7 +435,7 @@ int main(int argc, char **argv) {
 	pauseMasksSet=1;
 	gettimeofday(&startTimeStruct,NULL);
     }
-    changeToNewPhiMask=0;
+    newPhiMask=0;
     reInitNeeded=0;
     slipCounter=0;
 
@@ -497,6 +444,10 @@ int main(int argc, char **argv) {
     //    setTurfControl(SendSoftTrg);
     
    
+
+
+
+      
     // Set trigger modes
     //RF and Software Triggers enabled by default
     trigMode=TrigNone;
@@ -593,128 +544,9 @@ int main(int argc, char **argv) {
       currentState=PROG_STATE_TERMINATE;
     }
 	
-    if(currentState==PROG_STATE_RUN) {
-      //Now we create the data reading thread
-      retVal=pthread_create(&fDataReadThread,&attr,(void*)mainDataReadingLoop,NULL);
-      if(retVal) {
-	syslog(LOG_ERR,"Can't make data read thread");
-	fprintf(stderr,"Can't make data read thread");
-      }
-    }
-
-
 
     while (currentState==PROG_STATE_RUN) {
       //This is the start of the main event loop
-      //The actual event reading is done in a different loop
-
-
-
-
-
-      
-      gettimeofday(&timeStruct,NULL);
-     
-      changeToNewPhiMask=checkForNewTurfRate();
-
-      //Calculates rate and servos on it if we wish
-      rateCalcAndServo(&timeStruct,lastEvNum); 
-      
-      //Now we have a couple of functions that work out rates and such
-      //Writes slow rate if approrpriate
-      handleSlowRate(&timeStruct,lastEvNum); 
-
-      //Now we need to check some things 
-      //First check if there is hk data to handle
-      while(handleSurfHkIndex<NUM_BUFFER_SURFHK) {
-	if(gotSurfHkBuffer[handleSurfHkIndex]) {
-	  memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
-	  if(setGlobalThreshold) 
-	    theSurfHk.globalThreshold=globalThreshold;         
-	  processSurfHk();
-	  gotSurfHkBuffer[handleSurfHkIndex]=0;
-	  handleSurfHkIndex++;
-	}
-	else {
-	  break;
-	}
-      }     
-      if(handleSurfHkIndex>=NUM_BUFFER_SURFHK) handleSurfHkIndex=0;
-
-      //Now we check and see if there is any event data to handle
-      while(handleBufferIndex<NUM_BUFFER_EVTS) {
-	if(gotEventBuffer[handleBufferIndex]) {
-	  //Fill theEvent with zeros 
-	  memset(&theEvent,0, sizeof(theEvent)) ;
-	  reInitNeeded+=processEventData(&lastEvNum);
-	  gotEventBuffer[handleBufferIndex]=0;
-	  handleBufferIndex++;
-	}
-	else {
-	  break;
-	}
-      }
-      if(handleBufferIndex>=NUM_BUFFER_EVTS) handleBufferIndex=0;
-
-
-      if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
-	  fprintf(stderr,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
-	  syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
-
-	  // Clear devices 
-	  currentState=PROG_STATE_INIT;
-      }
-	 
-	  
-
-   
-    }  //while(currentState==PROG_STATE_RUN)
-
-	
-
-  } while(currentState==PROG_STATE_INIT);
-  
-  /* Free attribute and wait for the other threads */
-  pthread_attr_destroy(&attr);
-  retVal = pthread_join(fDataReadThread,&pthreadStatus);
-  if(retVal) {
-    syslog(LOG_ERR,"ERROR; return code from pthread_join() is %d\n", retVal);
-  }
-
-  // Clean up
-  status=closeDevices();
-  if(status!=ACQD_E_OK) {
-    fprintf(stderr,"Error closing devices\n");
-    syslog(LOG_ERR,"Error closing devices\n");
-  }
-
-  closeHkFilesAndTidy(&rawTurfRegWriter);
-  closeHkFilesAndTidy(&rawScalerWriter);
-  closeHkFilesAndTidy(&avgSurfHkWriter);
-  closeHkFilesAndTidy(&sumTurfRateWriter);
-  closeHkFilesAndTidy(&surfHkWriter);
-  closeHkFilesAndTidy(&turfHkWriter);
-
-  unlink(ACQD_PID_FILE);
-  syslog(LOG_INFO,"Acqd terminating... reached end of main");
-  fprintf(stderr,"\nAcqd terminating... reached end of main\n");
-  return 1 ;
-}
-
-
-int mainDataReadingLoop() 
-{
-  struct timeval timeStruct;
-  int tmo=0,status=0;
-  int eventReadyFlag=0;
-  time_t lastNewPhiMask=0;
-
-
-  do {
-    //Any pre-loop initialisation
-   
-    while (currentState==PROG_STATE_RUN) {
-      //Main data read loop
       if(numEvents && numEvents<doingEvent) {
 	syslog(LOG_INFO,"Switching to PROG_STATE_TERMINATE after taking %d of %d events",doingEvent,numEvents);
 	currentState=PROG_STATE_TERMINATE;
@@ -722,85 +554,100 @@ int mainDataReadingLoop()
 	//This is one way out of the main event loop
       }
 
-
-      if(pauseMasksSet && firstTimeThrough) {	     
-	if(pauseBeforeEvents>0 && timeStruct.tv_sec>startTimeStruct.tv_sec+pauseBeforeEvents) {
-	  firstTimeThrough=0; 
-	  phiTrigMask=pausePhiMaskV;
-	  phiTrigMaskH=pausePhiMaskH;
-	  l1TrigMask=pauseL1TrigMask;
-	  l1TrigMaskH=pauseL1TrigMaskH;
-	  printf("Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
-		 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l1TrigMask);
-	  syslog(LOG_INFO,
-		 "Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
-		 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l1TrigMask);
-	  
-	  setTriggerMasks();
-	  pauseMasksSet=0;
-	}
-      }
-
-
+      //Fill theEvent with zeros 
+      memset(&theEvent,0, sizeof(theEvent)) ;
+      memset(&theSurfHk,0,sizeof(FullSurfHkStruct_t));
+      if(setGlobalThreshold) 
+	theSurfHk.globalThreshold=globalThreshold;
 
       gettimeofday(&timeStruct,NULL);
-      //Send software trigger if we want to
+     //Send software trigger if we want to
     
-      if(needToUpdateDACThresholds) {
-	setDACThresholds();
-	needToUpdateDACThresholds=0;
-      }
-
-  
-      //Need to decide if this should move to the read thread  
+      
       if(sendSoftTrigger)
 	intersperseSoftTrig(&timeStruct);
 
 
-      // This condition is only true if all the buffers are filled so we need to wait
-      if(gotEventBuffer[writeBufferIndex]) continue;  //Consider adding a sleep here
-
-
-      //Now we actually try and read some data
       // Wait for ready to read (EVT_RDY) 
       tmo=0;	    
       if(!dontWaitForEvtF) {
 	if(verbosity && printToScreen) 
-	  printf("Wait for EVT_RDY on TURFIO\n");
-	do {	  
-	  eventReadyFlag=0;
-	  status=checkTurfEventReady(&eventReadyFlag);
+	  printf("Wait for EVT_RDY on SURF %d\n",surfIndex[0]);
+	do {
+	  //Need to make the SURF that we read the GPIO value from
+	  //somehow changeable
+	
+	    eventReadyFlag=0;
+
+
+	    
+	    if(turfFirmwareVersion==3) {
+		status=getSurfStatusFlag(0,SurfEventReady,&eventReadyFlag);
+	    }
+	    else {
+		status=checkTurfEventReady(&eventReadyFlag);
+		if(eventReadyFlag) {
+		    int surfFlag=0;
+		    int surfCounter=0;
+		    while(!surfFlag && surfCounter<1000) {
+			status=getSurfStatusFlag(0,SurfEventReady,&surfFlag);
+			usleep(1000);
+			surfCounter++;
+		    }
+		    if(printToScreen && verbosity>1)
+			printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
+		}
+	    }
+
+//	  
+	  //	  printf("eventReadyFlag %d -- %d\n",eventReadyFlag,checkSurfFdsForData());
 	  if(status!=ACQD_E_OK) {
 	    fprintf(stderr,"Error reading event ready flag\n");
 	    syslog(LOG_ERR,"Error reading event ready flag\n");
 	    //Do what??
-	  }	
-
-	  if(eventReadyFlag) {
-	    int surfFlag=0;
-	    int surfCounter=0;
-	    while(!surfFlag && surfCounter<1000000) {
-	      status=getSurfStatusFlag(0,SurfEventReady,&surfFlag);
-	      //	usleep(1000);
-	      surfCounter++;
-	    }
-	    if(printToScreen && verbosity>1)
-	      printf("surfFlag %d -- surfCounter %d\n",surfFlag,surfCounter);
-	  }
-
+	  }		
+	  if(verbosity>3 && printToScreen) 
+	    printf("SURF %d Event Ready Flag %d\n",
+		   surfIndex[0],eventReadyFlag);
+		
+	  //
+	  //Have to change this at some point
+	  if(tmo) //Might change tmo%2
+	    myUsleep(1); 
 
 	  tmo++;
 		       		
 	  //This time getting is quite important as the two bits below rely on having a recent time.
 	  gettimeofday(&timeStruct,NULL);
-	  		  
-	  //Gives us a chance to read hk and servo thresholds
-	  intersperseTurfRate(&timeStruct);
 
+	  if(pauseMasksSet && firstTimeThrough) {	     
+	      if(pauseBeforeEvents>0 && timeStruct.tv_sec>startTimeStruct.tv_sec+pauseBeforeEvents) {
+	 	  firstTimeThrough=0; 
+		  phiTrigMask=pausePhiMaskV;
+		  phiTrigMaskH=pausePhiMaskH;
+		  l1TrigMask=pauseL1TrigMask;
+		  l1TrigMaskH=pauseL1TrigMaskH;
+		  printf("Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
+			 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l1TrigMask);
+		  syslog(LOG_INFO,
+			 "Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
+			 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l1TrigMask);
+		  
+		  setTriggerMasks();
+		  pauseMasksSet=0;
+	      }
+	  }
+
+
+	  //Now we have a couple of functions that work out rates and such
+	  //Writes slow rate if approrpriate
+	  handleSlowRate(&timeStruct,lastEvNum); 
+	  //Calculates rate and servos on it if we wish
+	  rateCalcAndServo(&timeStruct,lastEvNum); 
 	  //Gives us a chance to read hk and servo thresholds
 	  intersperseSurfHk(&timeStruct);
-
-	  
+	  //Gives us a chance to read hk and servo thresholds
+	  newPhiMask=intersperseTurfRate(&timeStruct);
 	  //Also gives a chance to send software tiggers
 	  if(sendSoftTrigger)
 	    intersperseSoftTrig(&timeStruct);
@@ -812,12 +659,11 @@ int mainDataReadingLoop()
 	    break;
 	
 	} while(!(eventReadyFlag));
-
-	
+	      
 	//Check if we are trying to leave the event loop
 	if(currentState!=PROG_STATE_RUN) 
 	  continue;
-	
+	      
 	if (tmo==EVTF_TIMEOUT){
 	  syslog(LOG_WARNING,"Timed out waiting for EVT_RDY flag");
 	  if(printToScreen)
@@ -829,40 +675,123 @@ int mainDataReadingLoop()
 	printf("Didn't wait for EVT_RDY\n");
 	sleep(1);
       }
-      
+	    
+      //Now load event into ram
+//      if (setTurfControl(TurfLoadRam) != ACQD_E_OK) {
+//	fprintf(stderr,"Failed to send load TURF event to TURFIO.\n") ;
+//	syslog(LOG_ERR,"Failed to send load TURF event to TURFIO.\n") ;
+//      }
+
 
       //Either have a trigger or are going ahead regardless
       // so we should work out when now is
-      gettimeofday(&fReadoutTimeStruct[writeBufferIndex],NULL);
+      gettimeofday(&timeStruct,NULL);
 	    
       //Now actually read the event data
-      status+=justReadSurfEventData();
+      status+=readSurfEventData();
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Error reading SURF event data %d.\n",doingEvent);
 	syslog(LOG_ERR,"Error reading SURF event data %d.\n",doingEvent);
       }
+	      
+      hdPtr->unixTime=timeStruct.tv_sec;
+      hdPtr->unixTimeUs=timeStruct.tv_usec;
+      if(verbosity && printToScreen) printf("Read SURF Labrador Data\n");
+      
+      status=readTurfEventData();
 
-      status+=justReadTurfEventData();
+      turfRates.unixTime=timeStruct.tv_sec;
       if(status!=ACQD_E_OK) {
-	fprintf(stderr,"Error reading TURF event data %d.\n",doingEvent);
-	syslog(LOG_ERR,"Error reading TURF event data %d.\n",doingEvent);
+	fprintf(stderr,"Problem reading TURF event data\n");
+	syslog(LOG_ERR,"Problem reading TURF event data\n");
+      }
+      if((slipCounter%65536)!=hdPtr->turfio.trigNum ) {
+	printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
+	syslog(LOG_ERR,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
+	reInitNeeded=1;
       }
 
-      fEventStatus[writeBufferIndex]=status;	
-	
-      status=ACQD_E_OK;       
      
+      for(surf=0;surf<numSurfs;surf++) {
+	  if((hdPtr->turfEventId) != bdPtr->surfEventId[surf]) {
+	      syslog(LOG_ERR,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
+		     hdPtr->turfEventId,
+		     surfIndex[surf],
+		     bdPtr->surfEventId[surf]);
+	      fprintf(stderr,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
+		      hdPtr->turfEventId,
+		      surfIndex[surf],
+		      bdPtr->surfEventId[surf]);
+	      reInitNeeded=1;	      
+	  }
+      }
 
+
+
+      hdPtr->errorFlag=0;
+      if(reInitNeeded) {
+	hdPtr->errorFlag=0x1;
+      }
+
+
+            
+      //Switched for timing test
+      gettimeofday(&timeStruct,NULL);
+      intersperseSurfHk(&timeStruct);
+
+	    
+      if(verbosity && printToScreen) printf("Done reading\n");
+	    
+      //Add TURF Rate Info to slow file
+      if(newTurfRateData) {
+	addTurfRateToAverage(&turfRates);
+	newPhiMask=checkTurfRates();	
+      }
+
+  
+      //Error checking
+      if(status!=ACQD_E_OK) {
+	//We have an error
+	fprintf(stderr,"Error detected %d, during event %d\n",status,doingEvent);
+	syslog(LOG_ERR,"Error detected %d, during event %d\n",status,doingEvent);	      
+	status=ACQD_E_OK;
+      }
+      else if(doingEvent>=0) { //RJN changed 24/11/06 for test
+	hdPtr->eventNumber=getEventNumber();
+	bdPtr->eventNumber=hdPtr->eventNumber;
+	lastEvNum=hdPtr->eventNumber;
+	//	hdPtr->surfMask=surfMask;
+	hdPtr->phiTrigMask=phiTrigMask;
+	hdPtr->phiTrigMaskH=phiTrigMaskH;
+	hdPtr->l1TrigMask=(unsigned int)l1TrigMask;	       
+		
+	//Filled by Eventd
+	//hdPtr->gpsSubTime;
+	//hdPtr->calibStatus;
+
+	if(printToScreen && verbosity) 
+	  printf("Event:\t%u\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
+
+	// Save data if we want to
+	outputEventData();
+	if(newTurfRateData) outputTurfRateData();		    	
+
+      }
+	    
       // Clear boards
       sendClearEvent();     
 
-      //Increment the writeBufferIndex
-      gotEventBuffer[writeBufferIndex]=1;
-      writeBufferIndex++;
-      if(writeBufferIndex>=NUM_BUFFER_EVTS) writeBufferIndex=0;
 
-      //Lastly check if we need to update the phiMask
-      if(changeToNewPhiMask) {
+      if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
+	  fprintf(stderr,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
+	  syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
+
+	  // Clear devices 
+	  currentState=PROG_STATE_INIT;
+      }
+	 
+	  
+      if(newPhiMask) {
 	unsigned short tempL1TrigMask=l1TrigMask;
 	l1TrigMask=0xffff;
 	unsigned short tempL1TrigMaskH=l1TrigMaskH;
@@ -878,20 +807,34 @@ int mainDataReadingLoop()
 	l1TrigMaskH=tempL1TrigMaskH;
 	setTriggerMasks();
 
+//	  memset(lastTurfRates,0,NUM_DYN_TURF_RATE*sizeof(TurfRateStruct_t));
+//	  countLastTurfRates=0;
       }
+   
+    }  //while(currentState==PROG_STATE_RUN)
 
-
-
-    } //while(currentState==PROG_STATE_RUN)
+	
 
   } while(currentState==PROG_STATE_INIT);
 
-  
-  pthread_exit(NULL);
+  // Clean up
+  status=closeDevices();
+  if(status!=ACQD_E_OK) {
+    fprintf(stderr,"Error closing devices\n");
+    syslog(LOG_ERR,"Error closing devices\n");
+  }
+
+  closeHkFilesAndTidy(&rawTurfRegWriter);
+  closeHkFilesAndTidy(&rawScalerWriter);
+  closeHkFilesAndTidy(&avgSurfHkWriter);
+  closeHkFilesAndTidy(&sumTurfRateWriter);
+  closeHkFilesAndTidy(&surfHkWriter);
+  closeHkFilesAndTidy(&turfHkWriter);
+  unlink(ACQD_PID_FILE);
+  syslog(LOG_INFO,"Acqd terminating... reached end of main");
+  fprintf(stderr,"\nAcqd terminating... reached end of main\n");
+  return 1 ;
 }
-
-
-
 
 //Reading and Writing GPIO Values
 AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value)
@@ -1962,7 +1905,8 @@ AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) {
     fprintf(stderr,"Error writing thresholds -- SURF %d  (%s)\n",surfId,strerror(errno));
   }
 
-
+  //This is a dirty cheat
+  gettimeofday(&lastSurfHkRead,NULL);
   //  usleep(1);
 //  ioctl(surfFd, SURF_IOCCLEARHK);
   return ACQD_E_OK;
@@ -1978,7 +1922,6 @@ AcqdErrorCode_t setGlobalDACThreshold(unsigned short threshold) {
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
-  gettimeofday(&lastDACUpdate,NULL);
   return ACQD_E_OK;
 }
 
@@ -1993,7 +1936,6 @@ AcqdErrorCode_t setDACThresholds() {
   for(surf=0;surf<numSurfs;surf++) {
     writeDacValBuffer(surf,outBuffer[surf]);
   }
-  gettimeofday(&lastDACUpdate,NULL);
   return ACQD_E_OK;
 }
 
@@ -2963,42 +2905,7 @@ void writeEventAndMakeLink(const char *theEventDir, const char *theLinkDir, Anit
 }
 
 
-AcqdErrorCode_t justReadSurfEventData()
-/*! This code just reads the raw data from the SURFs and does nothing else */
-{
-  
-  AcqdErrorCode_t status=ACQD_E_OK;
-  int surf=0,count=0;
-
-  //Loop over SURFs and read out data
-  for(surf=0;surf<numSurfs;surf++){
-    //Set to Data mode
-    status=setSurfControl(surf,SurfDataMode);
-    if(status!=ACQD_E_OK) {
-      //Persist anyhow
-    }
-
-
-    //Read the Event data
-    count = read(surfFds[surf], fSurfEventBuffer[writeBufferIndex][surf], SURF_EVENT_DATA_SIZE*sizeof(uint32_t));
-    if (count < 0) {
-      syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
-    }
-  }
-  return status;
-
-}
-
-
-AcqdErrorCode_t readSurfEventData()  {
-  AcqdErrorCode_t status=justReadSurfEventData();
-  status+=handleSurfEventData();
-  return status;
-}
-
-
-AcqdErrorCode_t handleSurfEventData()
+AcqdErrorCode_t readSurfEventData() 
 /*! This is the code that is executed after we read the EVT_RDY flag */
 /* It is the equivalent of read_LABdata in Shige's crate_test program */
 {
@@ -3015,11 +2922,11 @@ AcqdErrorCode_t handleSurfEventData()
   */
 
   AcqdErrorCode_t status=ACQD_E_OK;
-  uint32_t *eventBuf;
   uint32_t  dataInt=0;
+  uint32_t eventBuf[SURF_EVENT_DATA_SIZE];
 
   unsigned char tempVal;
-  int i=0;
+  int count=0,i=0;
   int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
   int rcoSamp;
   uint32_t headerWord,samp=0;
@@ -3035,9 +2942,13 @@ AcqdErrorCode_t handleSurfEventData()
   	
   //Loop over SURFs and read out data
   for(surf=0;surf<numSurfs;surf++){
-
-    //Point event buf to the current surf data
-    eventBuf=fSurfEventBuffer[handleBufferIndex][surf];
+    count=0;
+    //Set to Data mode
+    status=setSurfControl(surf,SurfDataMode);
+    if(status!=ACQD_E_OK) {
+      //Persist anyhow
+    }
+      
     //In version X data is read as 32 bit words:
     /* 0 -- Header Word
        1 -- Event Id???
@@ -3046,9 +2957,13 @@ AcqdErrorCode_t handleSurfEventData()
        1154:1155 -- Chan 0 Samps 256-259 (2 x 16 bit words per 32 bit read)
        1156:1171 -- Chans 1 through 8 2 reads per chan as above
     */
-
     //Read the Event data
-    if(printToScreen && verbosity>2) {	
+    count = read(surfFds[surf], eventBuf, SURF_EVENT_DATA_SIZE*sizeof(uint32_t));
+    if (count < 0) {
+      syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
+      fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
+    }
+     if(printToScreen && verbosity>2) {	
       for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {
 	printf("SURF %d, %d == 0x%x\n",surfIndex[surf],i,eventBuf[i]);
       }
@@ -3252,65 +3167,16 @@ AcqdErrorCode_t handleSurfEventData()
    return status; 
 } 
 
-AcqdErrorCode_t justReadSurfHkData()
-// Reads the scaler and RF power data from the SURF board
-{
-
-  AcqdErrorCode_t status=ACQD_E_OK;
-  int surf=0;
-  int count=0;
-
-  for(surf=0;surf<numSurfs;++surf) {
-    if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
-      fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
-      syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
-    }	
-  }
 
 
-
-  for(surf=0;surf<numSurfs;surf++){  
-    count=0;
-    //Set the SURF to Hk mode
-    status=setSurfControl(surf,SurfHkMode);
-    if(status!=ACQD_E_OK) {
-      //Persist anyhow
-    }
-
-    count = read(surfFds[surf], fSurfHkBuffer[writeSurfHkIndex][surf], SURF_HK_DATA_SIZE*sizeof(uint32_t));
-
-    if (count < 0) {
-      syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
-    }
-  }
-
-  for(surf=0;surf<numSurfs;surf++){  
-    //Set it back to data mode -- maybe
-    status=setSurfControl(surf,SurfDataMode);
-    if(status!=ACQD_E_OK) {
-      //Persist anyhow
-    }
-  }
-
-  for(surf=0;surf<numSurfs;++surf) {
-    if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
-      fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
-      syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
-    }	
-  }
-
-  return status;  
-}
-
-
-AcqdErrorCode_t handleSurfHkData() 
+AcqdErrorCode_t readSurfHkData() 
 // Reads the scaler and RF power data from the SURF board
 {
 //    printf("readSurfHkData\n");
   AcqdErrorCode_t status=ACQD_E_OK;
   int surf,rfChan,index,ring;
-  uint32_t *buffer;
+  uint32_t buffer[96];
+  uint32_t count=0;
   uint32_t dataInt;
 
   hkNumber++;
@@ -3328,12 +3194,50 @@ AcqdErrorCode_t handleSurfHkData()
       }
   }
 
+  for(surf=0;surf<numSurfs;++surf) {
+    if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
+      fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+      syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+    }	
+  }
 
 
   for(surf=0;surf<numSurfs;surf++){  
-    //Point buffer to current surf data
-    buffer=fSurfHkBuffer[handleSurfHkIndex][surf];
+    count=0;
+    //Set the SURF to Hk mode
+    status=setSurfControl(surf,SurfHkMode);
+    if(status!=ACQD_E_OK) {
+      //Persist anyhow
+    }
     
+    //   ioctl(sfd, SURF_IOCCLEARHK);
+
+    /* struct surfHousekeepingRequest req; */
+    /* req.length = sizeof(uint32_t)*96; */
+    /* req.address = buffer; */
+    /* if (ioctl(surfFds[surf], SURF_IOCHKREAD, &req))  */
+    /*   { */
+    /* 	perror("ioctl"); */
+    /*   } */
+    /* count=0; */
+    
+    //Read the Hk data
+    if(writeRawScalers) {
+    	count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
+    }
+    else {
+    	count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
+    }
+    if (count < 0) {
+      syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
+      fprintf(stderr,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
+    }
+    
+    //Set it back to data mode -- maybe
+    status=setSurfControl(surf,SurfDataMode);
+    if(status!=ACQD_E_OK) {
+      //Persist anyhow
+    }
 
     //First just fill in antMask in SURF
     theSurfHk.surfTrigBandMask[surf]=surfTrigBandMasks[surf];
@@ -3409,7 +3313,7 @@ AcqdErrorCode_t handleSurfHkData()
     
     //Lastly read the RF Power Data
     for(rfChan=0;rfChan<N_RFCHAN;rfChan++){
-      index=rfChan;
+      index=rfChan+8;
       dataInt=buffer[(2*RAW_SCALERS_PER_SURF)+index];
       theSurfHk.rfPower[surf][rfChan]=dataInt&0xffff;
       if((printToScreen && verbosity>1) || HK_DEBUG)
@@ -3433,33 +3337,14 @@ AcqdErrorCode_t handleSurfHkData()
   return status;
 }
 
-AcqdErrorCode_t justReadTurfEventData()
-{
 
-  AcqdErrorCode_t status=ACQD_E_OK;
-  int count=0;
-
-  count = read(turfioFd, fTurfEventBuffer[writeBufferIndex], TURF_EVENT_DATA_SIZE*sizeof(char));
-  if (count < 0) {
-    syslog(LOG_ERR,"Error reading TURF data from TURFIO (%s)",strerror(errno));
-    fprintf(stderr,"Error reading TURF data from TURFIO (%s)",strerror(errno));
-  }
-  return status;
+AcqdErrorCode_t readTurfEventData() {
+    return readTurfEventDataVer6();
 }
 
 
-
-AcqdErrorCode_t readTurfEventData() 
+AcqdErrorCode_t readTurfEventDataVer6()
 {
-  AcqdErrorCode_t status=ACQD_E_OK;
-  status+=justReadTurfEventData();
-  status+=handleTurfEventData();
-
-  return status;
-
-}
-
-AcqdErrorCode_t handleTurfEventData() {
   //Based on TURF Format Ver 6.0 in ELog 573
   newTurfRateData=0;
   AcqdErrorCode_t status=ACQD_E_OK;
@@ -3469,16 +3354,18 @@ AcqdErrorCode_t handleTurfEventData() {
   unsigned short dataShort;
   unsigned int dataInt;
 
-
-  int wordNum,errCount=0;
+  int wordNum,errCount=0,count=0;
+  unsigned char turfBuf[TURF_EVENT_DATA_SIZE];
     
   //Read out 256 words and shorts not ints
 
   //They'll be some read statement here    
   //Read the TURF data
-  unsigned char *turfBuf=fTurfEventBuffer[handleBufferIndex];
-
-
+  count = read(turfioFd, turfBuf, TURF_EVENT_DATA_SIZE*sizeof(char));
+  if (count < 0) {
+    syslog(LOG_ERR,"Error reading TURF data from TURFIO (%s)",strerror(errno));
+    fprintf(stderr,"Error reading TURF data from TURFIO (%s)",strerror(errno));
+  }
   
   turfRawEvent.eventNumber=hdPtr->eventNumber;
   turfRawEvent.unixTime=hdPtr->unixTime;
@@ -3666,11 +3553,9 @@ AcqdErrorCode_t handleTurfEventData() {
     hdPtr->errorFlag |= (tempVal<<6);
   }
 
-//    printf("LastPPS: %d - CurrentPPS: %d - Deadtime : %d\n", lastPPSNum, turfRates.ppsNum, turfRates.deadTime); //LM added
-
   if(turfRates.deadTime>0 && lastPPSNum!=turfRates.ppsNum) {
     intervalDeadtime+=((float)turfRates.deadTime)/64400.;
-      if(printToScreen && verbosity>1)
+    if(printToScreen && verbosity>1)
       printf("Deadtime %d counts %f fraction\n",turfRates.deadTime,
 	     ((float)turfRates.deadTime)/64400.);
   }
@@ -3695,18 +3580,20 @@ AcqdErrorCode_t handleTurfEventData() {
   }
 
   if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
-//    newTurfRateData=1; 
+//    newTurfRateData=1;
   }
   //Make sure to copy relevant mask data to turfRate struct
   turfRates.l1TrigMask=hdPtr->l1TrigMask;
   turfRates.l1TrigMaskH=hdPtr->l1TrigMaskH;
   turfRates.phiTrigMask=hdPtr->phiTrigMask;
   turfRates.phiTrigMaskH=hdPtr->phiTrigMaskH;
-  //  lastPPSNum=turfRates.ppsNum;
+  lastPPSNum=turfRates.ppsNum;
   return status;	
 }
 
-AcqdErrorCode_t readTurfHkData()
+
+
+AcqdErrorCode_t readTurfHkData()   
 {
     //This fills a TurfRate structure
     int retVal=0;
@@ -3822,7 +3709,7 @@ AcqdErrorCode_t readTurfHkData()
 	    usvalue2=(uvalue&0xffff0000)>>16;
 	    turfRates.ppsNum=usvalue2;	    
 	    turfRates.deadTime=usvalue;
-//	    	    printf("RJN: ppsNum=%u deadTime=%u\n",turfRates.ppsNum,turfRates.deadTime);
+	    //	    printf("RJN: ppsNum=%u deadTime=%u\n",turfRates.ppsNum,turfRates.deadTime);
 
 	}
 	else if(i==42) {
@@ -3833,11 +3720,9 @@ AcqdErrorCode_t readTurfHkData()
     }
     
 
-
     if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
 	newTurfRateData=1;
-//		printf("ppsNum %d -- last %d\n",turfRates.ppsNum,lastPPSNum);
-    intervalDeadtime+=((float)turfRates.deadTime)/64400.; //LM: try to see if it gets executed here
+	
 	if(writeRawScalers) {
 	    fillGenericHeader(&theTurfReg,PACKET_TURF_REGISTER,sizeof(TurfRegisterContents_t));
 	    retVal=cleverHkWrite((unsigned char*)&theTurfReg,sizeof(TurfRegisterContents_t),theTurfReg.unixTime,&rawTurfRegWriter);
@@ -3865,7 +3750,7 @@ AcqdErrorCode_t readTurfHkData()
     turfRates.phiTrigMask=uvalue&0xffff;    
     turfRates.phiTrigMaskH=(uvalue&0xffff0000)>>16;
 
-    lastPPSNum=turfRates.ppsNum;
+    //    lastPPSNum=turfRates.ppsNum;
     return status;
 }
 
@@ -4308,155 +4193,63 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 }
 
 
-int checkForNewTurfRate() 
-{
-   
-  int newPhiMask=0;
-  if(newTurfRateData) {
-    addTurfRateToAverage(&turfRates);
-    newPhiMask=checkTurfRates();	
-    outputTurfRateData();		
-  }
-  newTurfRateData=0;
-  return newPhiMask;
-}    	
-
-void intersperseTurfRate(struct timeval *tvPtr)
+int intersperseTurfRate(struct timeval *tvPtr)
 {
     int timeDiff=0;
     timeDiff=tvPtr->tv_usec-lastTurfRateRead.tv_usec;  
     timeDiff+=1000000*(tvPtr->tv_sec-lastTurfRateRead.tv_sec);
+    int newPhiMask=0;
     if(turfFirmwareVersion>=5) {
 	if(timeDiff>100000 || lastTurfRateRead.tv_sec==0) {
 	    readTurfHkData();
 	    lastTurfRateRead.tv_sec=tvPtr->tv_sec;
 	    lastTurfRateRead.tv_usec=tvPtr->tv_usec;
 	    turfRates.unixTime=tvPtr->tv_sec;
+	    if(newTurfRateData) {
+	      addTurfRateToAverage(&turfRates);
+	      newPhiMask=checkTurfRates();	
+	      outputTurfRateData();		
+	    }    	
 	}
     }
+    return newPhiMask;
 }
 
 void intersperseSurfHk(struct timeval *tvPtr)
 {
   AcqdErrorCode_t status;
-  int timeDiff=0,timeDiffDac=0;  
-
-
-  //Check if the buffer is full
-  if(gotSurfHkBuffer[writeSurfHkIndex]) return;
-
-  timeDiffDac=tvPtr->tv_usec-lastDACUpdate.tv_usec;
-  timeDiffDac+=100000*(tvPtr->tv_sec-lastDACUpdate.tv_sec);
-
+  int timeDiff=0;  
+  int surf;
+  static unsigned int lastSlowSurfHk=0;  
   timeDiff=tvPtr->tv_usec-lastSurfHkRead.tv_usec;  
   timeDiff+=1000000*(tvPtr->tv_sec-lastSurfHkRead.tv_sec);
 		    		
-  if(timeDiffDac<timeDiff) timeDiff=timeDiffDac;
-
   //Only read the housekeeping every 50ms, will change this to be configurable.
   //Maybe.
-
   if(timeDiff>SURFHK_PERIOD || lastSurfHkRead.tv_sec==0) {
     //printf("Time Diff %d, %d.%d and %d.%d\n",
     //       timeDiff,tvPtr->tv_sec,tvPtr->tv_usec,lastSurfHkRead.tv_sec,lastSurfHkRead.tv_usec);
     lastSurfHkRead.tv_sec=tvPtr->tv_sec;
     lastSurfHkRead.tv_usec=tvPtr->tv_usec;
-    
-    status=justReadSurfHkData();
+    status=readSurfHkData();
     //Should check status
     if(status!=ACQD_E_OK) {
       syslog(LOG_ERR,"readSurfHkData returned %d",status);
     }
-    fSurfHkTimeStruct[writeSurfHkIndex].tv_sec=tvPtr->tv_sec;
-    fSurfHkTimeStruct[writeSurfHkIndex].tv_usec=tvPtr->tv_usec;
-    gotSurfHkBuffer[writeSurfHkIndex]=1;
-    writeSurfHkIndex++;
-    if(writeSurfHkIndex>=NUM_BUFFER_SURFHK) writeSurfHkIndex=0;
-  }
-}
 
 
-AcqdErrorCode_t readSurfHkData() {
-  AcqdErrorCode_t status=ACQD_E_OK;
-  status+=justReadSurfHkData();
-  status+=handleSurfHkData();
-  return status;
-}
 
-int processEventData(unsigned int *lastEvNumPtr) {
-  //Everything below requires an event to have been read out
-  int reInitNeeded=0,surf=0;
-  handleSurfEventData();
-  handleTurfEventData();
-
-  struct timeval timeStruct=fReadoutTimeStruct[handleBufferIndex];  
-
-  
-  hdPtr->unixTime=timeStruct.tv_sec;
-  hdPtr->unixTimeUs=timeStruct.tv_usec;
-  
-  turfRates.unixTime=timeStruct.tv_sec;
-  if((slipCounter%65536)!=hdPtr->turfio.trigNum ) {
-    printf("Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
-    syslog(LOG_ERR,"Read TURF data -- doingEvent %d -- slipCounter %d -- trigNum %d\n", doingEvent,slipCounter,hdPtr->turfio.trigNum); 
-    reInitNeeded=1;
-  }
-
-  
-  for(surf=0;surf<numSurfs;surf++) {
-    if((hdPtr->turfEventId) != bdPtr->surfEventId[surf]) {
-      syslog(LOG_ERR,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
-	     hdPtr->turfEventId,
-	     surfIndex[surf],
-	     bdPtr->surfEventId[surf]);
-      fprintf(stderr,"Turf Event Id %u -- Surf (%d) Event Id %u\n",
-	      hdPtr->turfEventId,
-	      surfIndex[surf],
-	      bdPtr->surfEventId[surf]);
-      reInitNeeded=1;	      
+    for(surf=0;surf<numSurfs;++surf) {
+      if (setSurfControl(surf,SurfClearHk) != ACQD_E_OK) {
+	fprintf(stderr,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+	syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
+	//Do something??
+      }
     }
-  }
-  
-  
-  
-  hdPtr->errorFlag=0;
-  if(reInitNeeded) {
-    hdPtr->errorFlag=0x1;
-  }
-  
-  if(doingEvent>=0) { //RJN changed 24/11/06 for test
-
-    hdPtr->eventNumber=getEventNumber();
-    bdPtr->eventNumber=hdPtr->eventNumber;
-    *lastEvNumPtr=hdPtr->eventNumber;
-    //	hdPtr->surfMask=surfMask;
-    hdPtr->phiTrigMask=phiTrigMask;
-    hdPtr->phiTrigMaskH=phiTrigMaskH;
-    hdPtr->l1TrigMask=(unsigned int)l1TrigMask;	       
     
+    if(verbosity && printToScreen) 
+      printf("Read SURF Housekeeping\n");
     
-    if(printToScreen && verbosity) 
-      printf("Event:\t%u\nSec:\t%d\nMicrosec:\t%d\nTrigTime:\t%u\n",hdPtr->eventNumber,hdPtr->unixTime,hdPtr->unixTimeUs,turfioPtr->trigTime);
-    
-    // Save data if we want to
-    outputEventData();		    	
-  }
-  return reInitNeeded;
-}
-
-
-
-
-void processSurfHk() {
-  //First up fill the surf hk structures
-
-  static unsigned int lastSlowSurfHk=0;  
-  handleSurfHkData();
-  struct timeval *tvPtr=&(fSurfHkTimeStruct[handleSurfHkIndex]);
-  
-  if(verbosity && printToScreen) 
-    printf("Read SURF Housekeeping\n");
-  
     if(tvPtr->tv_sec>lastSlowSurfHk) {
       addSurfHkToAverage(&theSurfHk);
       lastSlowSurfHk=tvPtr->tv_sec;
@@ -4467,9 +4260,8 @@ void processSurfHk() {
 
     //Here is the channel servo
     if(enableChanServo) {
-      if(updateThresholdsUsingPID()) {
-	needToUpdateDACThresholds=1;
-      }
+      if(updateThresholdsUsingPID())
+	setDACThresholds();
     }
 				
 		      
@@ -4480,8 +4272,8 @@ void processSurfHk() {
     theSurfHk.unixTimeUs=tvPtr->tv_usec;
     outputSurfHkData();
 
-}		    
-
+  }		    
+}
 
 void intersperseSoftTrig(struct timeval *tvPtr)
 {          

@@ -21,9 +21,6 @@
 #define FALSE 0
 #endif
 
-
-
-
 #define EVT_RDY  0004
 #define LAB_F 0x4000
 #define START_B 0x4000
@@ -36,7 +33,7 @@
 #define NUM_DYN_TURF_RATE 60
 
 #define SURF_EVENT_DATA_SIZE 1172
-#define SURF_HK_DATA_SIZE 96
+
 
 #define GetUpper16(A) (((A)&UPPER16)>>16)
 #define GetLower16(A) ((A)&LOWER16)

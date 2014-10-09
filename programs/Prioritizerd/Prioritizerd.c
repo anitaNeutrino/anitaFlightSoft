@@ -10,12 +10,17 @@
 
 //Flightsoft Includes
 #include "Prioritizerd.h"
-#include "AnitaInstrument.h"
-#include "GenerateScore.h"
-#include "Filters.h"
+//#include "AnitaInstrument.h"
+//#include "GenerateScore.h"
+//#include "Filters.h"
 #include "pedestalLib/pedestalLib.h"
 #include "linkWatchLib/linkWatchLib.h"
 #include "utilLib/utilLib.h"
+
+/* Ben's GPU things */
+#include "openCLwrapper.h"
+#include "anitaGpu.h"
+#include "tstamp.h"
 
 //#define TIME_DEBUG 1
 //#define WRITE_DEBUG_FILE
@@ -72,45 +77,46 @@ int priorityPPS2=3;
 
 // global event thingees
 /*Event object*/
-AnitaEventHeader_t theHeader;
-AnitaEventBody_t theBody;
-PedSubbedEventBody_t pedSubBody;
-AnitaTransientBodyF_t unwrappedBody;
-AnitaInstrumentF_t theInstrument;
-AnitaInstrumentF_t theXcorr;
-//original analysis
-AnitaChannelDiscriminator_t theDiscriminator;
-AnitaSectorLogic_t theMajority;
-AnitaSectorAnalysis_t sectorAna;
-//nonupdating discriminator method
-AnitaChannelDiscriminator_t theNonupdating;
-AnitaSectorLogic_t theMajorityNoUp;
-AnitaSectorLogic_t theHorizontal;
-AnitaSectorLogic_t theVertical;
-AnitaCoincidenceLogic_t theCoincidenceAll;
-AnitaCoincidenceLogic_t theCoincidenceH;
-AnitaCoincidenceLogic_t theCoincidenceV;
-int MaxAll, MaxH, MaxV;
-//xcorr peak boxcar method
-AnitaChannelDiscriminator_t theBoxcar;
-AnitaChannelDiscriminator_t theBoxcarNoGuard;
-//     AnitaSectorLogic_t theMajorityBoxcar;
-AnitaSectorLogic_t theMajorityBoxcarH;
-AnitaSectorLogic_t theMajorityBoxcarV;
-//     AnitaCoincidenceLogic_t theCoincidenceBoxcarAll;
-AnitaCoincidenceLogic_t theCoincidenceBoxcarH;
-AnitaCoincidenceLogic_t theCoincidenceBoxcarV;
-//    AnitaSectorLogic_t theMajorityBoxcar2;
-AnitaSectorLogic_t theMajorityBoxcarH2;
-AnitaSectorLogic_t theMajorityBoxcarV2;
-//    AnitaCoincidenceLogic_t theCoincidenceBoxcarAll2;
-AnitaCoincidenceLogic_t theCoincidenceBoxcarH2;
-AnitaCoincidenceLogic_t theCoincidenceBoxcarV2;
-int /*MaxBoxAll,*/MaxBoxH,MaxBoxV;
-int /*MaxBoxAll2,*/MaxBoxH2,MaxBoxV2;
-LogicChannel_t HornCounter,ConeCounter;
-int HornMax;
-int RMSnum;
+/* NUM_EVENTS is defined in the imaginatively named myInterferometryConstants.h */
+AnitaEventHeader_t theHeader[NUM_EVENTS];
+//AnitaEventBody_t theBody;
+PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
+/* AnitaTransientBodyF_t unwrappedBody;  */
+/* AnitaInstrumentF_t theInstrument; */
+/* AnitaInstrumentF_t theXcorr; */
+/* //original analysis */
+/* AnitaChannelDiscriminator_t theDiscriminator; */
+/* AnitaSectorLogic_t theMajority; */
+/* AnitaSectorAnalysis_t sectorAna; */
+/* //nonupdating discriminator method */
+/* AnitaChannelDiscriminator_t theNonupdating; */
+/* AnitaSectorLogic_t theMajorityNoUp; */
+/* AnitaSectorLogic_t theHorizontal; */
+/* AnitaSectorLogic_t theVertical; */
+/* AnitaCoincidenceLogic_t theCoincidenceAll; */
+/* AnitaCoincidenceLogic_t theCoincidenceH; */
+/* AnitaCoincidenceLogic_t theCoincidenceV; */
+/* int MaxAll, MaxH, MaxV; */
+/* //xcorr peak boxcar method */
+/* AnitaChannelDiscriminator_t theBoxcar; */
+/* AnitaChannelDiscriminator_t theBoxcarNoGuard; */
+/* //     AnitaSectorLogic_t theMajorityBoxcar; */
+/* AnitaSectorLogic_t theMajorityBoxcarH; */
+/* AnitaSectorLogic_t theMajorityBoxcarV; */
+/* //     AnitaCoincidenceLogic_t theCoincidenceBoxcarAll; */
+/* AnitaCoincidenceLogic_t theCoincidenceBoxcarH; */
+/* AnitaCoincidenceLogic_t theCoincidenceBoxcarV; */
+/* //    AnitaSectorLogic_t theMajorityBoxcar2; */
+/* AnitaSectorLogic_t theMajorityBoxcarH2; */
+/* AnitaSectorLogic_t theMajorityBoxcarV2; */
+/* //    AnitaCoincidenceLogic_t theCoincidenceBoxcarAll2; */
+/* AnitaCoincidenceLogic_t theCoincidenceBoxcarH2; */
+/* AnitaCoincidenceLogic_t theCoincidenceBoxcarV2; */
+/* int /\*MaxBoxAll,*\/MaxBoxH,MaxBoxV; */
+/* int /\*MaxBoxAll2,*\/MaxBoxH2,MaxBoxV2; */
+/* LogicChannel_t HornCounter,ConeCounter; */
+/* int HornMax; */
+/* int RMSnum; */
 
 
 int main (int argc, char *argv[])
@@ -119,7 +125,7 @@ int main (int argc, char *argv[])
   int lastEventNumber=0;
   char linkFilename[FILENAME_MAX];
   char hdFilename[FILENAME_MAX];
-  char bodyFilename[FILENAME_MAX];
+  char bodyFilename[NUM_EVENTS][FILENAME_MAX];
   char telemHdFilename[FILENAME_MAX];
   char archiveHdFilename[FILENAME_MAX];
   char archiveBodyFilename[FILENAME_MAX];
@@ -189,6 +195,14 @@ int main (int argc, char *argv[])
   }
 
 
+  /* 
+     This function  mallocs at some global pointers
+     so needs to be outside any kind of loop.
+  */
+  prepareGpuThings();
+
+
+
   do {
     if(printToScreen) printf("Initalizing Prioritizerd\n");
     retVal=readConfig();
@@ -208,17 +222,24 @@ int main (int argc, char *argv[])
       if(numEventLinks>=panicQueueLength) {
 	  syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
       }
+
+
+      printf("Prioritzerd is running and sees %d event links\n", numEventLinks);
     
-      if(!numEventLinks) {
+      //      if(!numEventLinks) {
+      if(numEventLinks < NUM_EVENTS) {
 	usleep(1000);
 	continue;
       }
-	    
+
       //	printf("Got %d events\n",numEventLinks);
       /* What to do with our events? */	
-      for(count=0;count<numEventLinks;count++) {
+      //      for(count=0;count<numEventLinks;count++) {
+
+      for(count=0;count<NUM_EVENTS;count++) {
 	tempString=getFirstLink(wd);
-	// 	    printf("%s\n",eventLinkList[count]->d_name); 
+	printf("tempString = %s\n", tempString);
+	//	printf("%s\n",eventLinkList[count]->d_name); 
 	sscanf(tempString,"hd_%d.dat",&doingEvent);
 	if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
 	    syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
@@ -233,60 +254,59 @@ int main (int argc, char *argv[])
 
 	//RJN 4th June 2008
 	//Switch to Acqd writing psev files
-	sprintf(bodyFilename,"%s/psev_%d.dat",ACQD_EVENT_DIR,
+	sprintf(bodyFilename[count],"%s/psev_%d.dat",ACQD_EVENT_DIR,
 		doingEvent);
 		 
-	retVal=fillPedSubbedBody(&pedSubBody,bodyFilename);
-	retVal=fillHeader(&theHeader,hdFilename);
-		 
-	//Subtract Pedestals
-	//	subtractCurrentPeds(&theBody,&pedSubBody);
-		
-		
-	//	    printf("Event %u, Body %u, PS Body %u\n",theHeader.eventNumber,
-	//	       theBody.eventNumber,pedSubBody.eventNumber);
-		
+	retVal=fillPedSubbedBody(&pedSubBody[count],bodyFilename[count]);
+	retVal=fillHeader(&theHeader[count],hdFilename);
+      }
 
-		
-	// all priority determination is now in AnitaInstrument.c
-	// communication is via global variables
-	if(numEventLinks<panicQueueLength)
-	    theHeader.priority=determinePriority();
-	else 
-	    theHeader.priority=7;
+
+      /* Now use GPU to determine priority, send in arrays of length NUM_EVENTS... */
+      mainGpuLoop(pedSubBody, theHeader);
+
+      for(count=0;count<NUM_EVENTS;count++) {
+	/* if(numEventLinks<panicQueueLength){ */
+	/*   //	  theHeader.priority=determinePriority(); */
+	/*   //	  theHeader[count].priority=determinePriority(); */
+	/*   theHeader[count].priority=count; */
+	/* } */
+	/* else  */
+	/*     theHeader[count].priority=7; */
+
 	// handle queue forcing of PPS here
-	int pri=theHeader.priority&0xf;
-	if((theHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
+	int pri=theHeader[count].priority&0xf;
+	if((theHeader[count].turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
 	  pri=priorityPPS1;
-	if((theHeader.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
+	if((theHeader[count].turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
 	  pri=priorityPPS2;
 	if(pri<0 || pri>9) pri=9;
-	theHeader.priority=(16*theHeader.priority)+pri;
+	theHeader[count].priority=(16*theHeader[count].priority)+pri;
 
 	
 	//Now Fill Generic Header and calculate checksum
-	fillGenericHeader(&theHeader,theHeader.gHdr.code,sizeof(AnitaEventHeader_t));
+	fillGenericHeader(&theHeader[count],theHeader[count].gHdr.code,sizeof(AnitaEventHeader_t));
   
 	     
 	//Rename body and write header for Archived
 	sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
-		theHeader.eventNumber);
-	if(rename(bodyFilename,archiveBodyFilename)==-1)
-	{
+		theHeader[count].eventNumber);
+	if(rename(bodyFilename[count],archiveBodyFilename)==-1)
+	  {
 	    syslog(LOG_ERR,"Error moving file %s -- %s",archiveBodyFilename,
 		   strerror(errno));
-	}
+	  }
 
 	sprintf(archiveHdFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
-		theHeader.eventNumber);
-	writeStruct(&theHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
+		theHeader[count].eventNumber);
+	writeStruct(&theHeader[count],archiveHdFilename,sizeof(AnitaEventHeader_t));
 
 	makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
     
 	//Write Header and make Link for telemetry 	    
 	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
 		doingEvent);
-	retVal=writeStruct(&theHeader,telemHdFilename,sizeof(AnitaEventHeader_t));
+	retVal=writeStruct(&theHeader[count],telemHdFilename,sizeof(AnitaEventHeader_t));
 	makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 	    
 	/* Delete input */
@@ -295,10 +315,21 @@ int main (int argc, char *argv[])
 
 
       }
+      
 	
     }
   } while(currentState==PROG_STATE_INIT); 
-  unlink(PRIORITIZERD_PID_FILE);    
+  unlink(PRIORITIZERD_PID_FILE);
+
+
+
+ /*
+   I believe this gets done anyway as the program terminates...
+   But we want to be good programming citizens.
+   So let's free all CPU and GPU mallocs, close output files etc, etc...
+ */
+  tidyUpGpuThings();
+
   return 0;
 }
 

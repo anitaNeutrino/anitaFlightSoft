@@ -20,24 +20,11 @@ AcqdErrorCode_t closeDevices();
 AcqdErrorCode_t setSurfControl(int surfId, SurfControlAction_t action);
 AcqdErrorCode_t setTurfControl(TurfControlAction_t action);
 AcqdErrorCode_t readSurfEventData();
-AcqdErrorCode_t justReadSurfEventData();
-AcqdErrorCode_t handleSurfEventData();
-
-AcqdErrorCode_t justReadSurfHkData();
 AcqdErrorCode_t readSurfHkData();
-AcqdErrorCode_t handleSurfHkData();
-void processSurfHk();
-
-
-
 AcqdErrorCode_t readTurfEventData();
-AcqdErrorCode_t justReadTurfEventData();
-AcqdErrorCode_t handleTurfEventData();
-
-
-AcqdErrorCode_t readTurfHkData();
-
-
+AcqdErrorCode_t readTurfEventDataVer3();
+AcqdErrorCode_t readTurfEventDataVer5();
+AcqdErrorCode_t readTurfEventDataVer6();
 AcqdErrorCode_t setDACThresholds();
 AcqdErrorCode_t setGlobalDACThreshold(unsigned short threshold);
 AcqdErrorCode_t getSurfStatusFlag(int surfId, SurfStatusFlag_t flag, int *value) ;
@@ -45,6 +32,7 @@ AcqdErrorCode_t readTurfGPIOValue(unsigned int *gpioVal);
 AcqdErrorCode_t setTurfGPIOValue(unsigned int gpioVal);
 AcqdErrorCode_t writeDacValBuffer(int surfId, unsigned int *obuffer) ;
 AcqdErrorCode_t sendClearEvent();
+AcqdErrorCode_t readTurfHkData();
 AcqdErrorCode_t readTurfioReg(unsigned int address, unsigned int *valPtr);
 AcqdErrorCode_t setTurfioReg(unsigned int address,unsigned int value);
 AcqdErrorCode_t readSurfReg(int surfId,unsigned int address, unsigned int *valPtr);
@@ -53,10 +41,6 @@ AcqdErrorCode_t setTriggerMasks();
 AcqdErrorCode_t checkTurfEventReady(int *turfEventReady);
 AcqdErrorCode_t setTurfEventCounter();
 AcqdErrorCode_t setupTurfio();
-
-//Main data reading loop
-int mainDataReadingLoop(); ///< Just read out data and stuffs it in to memory
-int processEventData(unsigned int *lastEvNumPtr); ///< This one actually massages the raw reads into something meaningful
 
 //Special config modes
 AcqdErrorCode_t doGlobalThresholdScan();
@@ -82,8 +66,7 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34]);
 void handleSlowRate(struct timeval *tvPtr, unsigned int lastEvNum);
 void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum);
 void intersperseSurfHk(struct timeval *tvPtr);
-void intersperseTurfRate(struct timeval *tvPtr);
-int checkForNewTurfRate();
+int intersperseTurfRate(struct timeval *tvPtr);
 void intersperseSoftTrig(struct timeval *tvPtr);
 int checkTurfRates(); //Checks the previous N TURF rates to see if we want to implement dynamic masking
 

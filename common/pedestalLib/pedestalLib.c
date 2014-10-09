@@ -555,15 +555,23 @@ int unwrapAndBaselinePedSubbedEvent(PedSubbedEventBody_t *pedSubBdPtr,
 	lastHitbus=pedSubBdPtr->channel[chan].header.lastHitbus;
 	wrappedHitbus=
 	    (pedSubBdPtr->channel[chan].header.chipIdFlag&0x8)>>3;
-    
-	
+	/* 
+	   BAFS bug fix here:
+	   The lhb should always be larger than the fhb, if it's not then...
+	   the lhb > 256, which means we shouldn't really be using an unsigned char...
+	*/
+	/* printf("%d %d\n", firstHitbus, lastHitbus); */
+	if(lastHitbus < firstHitbus){
+	  lastHitbus += 256; 
+	}
+	/* printf("%d %d\n", firstHitbus, lastHitbus);	*/
 	
 	if(!wrappedHitbus) {
 	    numHitBus=1+lastHitbus-firstHitbus;
 	    uwTransPtr->ch[chan].valid_samples=(EFFECTIVE_SAMPLES-2)-numHitBus;
 	}
 	else {
-	    uwTransPtr->ch[chan].valid_samples=(lastHitbus-2)-(firstHitbus+1);
+	  uwTransPtr->ch[chan].valid_samples=(lastHitbus-2)-(firstHitbus+1);
 	}
 
 	if(!wrappedHitbus) {

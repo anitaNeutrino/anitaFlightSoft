@@ -12,7 +12,6 @@
 #include <time.h>
 #include <signal.h>
 #include <zlib.h>
-#include <pthread.h>
 #include <libgen.h> //For Mac OS X
 
 #include "Archived.h"
@@ -48,6 +47,13 @@ char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
 char eventTelemLinkDirs[NUM_PRIORITIES][FILENAME_MAX];
 
 
+//Event Structures
+AnitaEventHeader_t theHead;
+AnitaEventBody_t theBody;
+PedSubbedEventBody_t pedSubBody;
+
+//Encoding Buffer
+unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
 int printToScreen=0;
 int verbosity=0;
@@ -71,6 +77,7 @@ float softFractionDelete=0;
 float pps1FractionTelem=0;
 float pps2FractionTelem=0;
 float softFractionTelem=0;
+AnitaEventWriterStruct_t eventWriter;
 AnitaHkWriterStruct_t indexWriter;
 
 
@@ -91,27 +98,6 @@ int telemEvent(int trigType);
 
 
 int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NTU_DISK_MASK};
-
-#define MAX_EVENT_LINKS EVENTS_PER_FILE
-
-typedef struct {
-  int numLinks;
-  char linkPath[MAX_EVENT_LINKS][FILENAME_MAX];
-} EventLinkStruct_t;
-
-void handleListOfEvents(EventLinkStruct_t *linkStructPtr) ;
-void *handleWrapper(void *ptr) ;
-
-//thread stuff
-pthread_mutex_t mutexindex;
-pthread_attr_t attr; 
-
-
-#define NUMTHRDS 4
-pthread_t callThd[NUMTHRDS];
-
-
-
 
 int main (int argc, char *argv[])
 {
@@ -205,19 +191,11 @@ int main (int argc, char *argv[])
     makeDirectories(ANITA_INDEX_DIR);
     makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
     retVal=0;
-
-    // pthread initialisation
-    pthread_mutex_init(&mutexindex, NULL);            
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-
-
     /* Main event getting loop. */
     do {
 	if(printToScreen) printf("Initalizing Archived\n");
 	retVal=readConfigFile();
-	prepIndexWriter();
+	prepWriterStructs();
 
 
 	if(retVal<0) {
@@ -227,22 +205,16 @@ int main (int argc, char *argv[])
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
 	    checkEvents();
-	   // usleep(1000);
+	    usleep(1000);
 	}
     } while(currentState==PROG_STATE_INIT);    
 
-    pthread_attr_destroy(&attr);
-
- 
+    closeEventFilesAndTidy(&eventWriter);
     closeHkFilesAndTidy(&indexWriter);
     if(fpHead) fclose(fpHead);
     if(fpEvent) fclose(fpEvent);
     unlink(ARCHIVED_PID_FILE);
     syslog(LOG_INFO,"Archived terminating");
-
-    pthread_mutex_destroy(&mutexindex);
-    pthread_exit(NULL);
-
     return 0;
 }
 
@@ -393,20 +365,18 @@ int readConfigFile()
  
 void checkEvents() 
 {
-  void *status;
-  unsigned int eventNumber=0;
-  int count,retVal;
+    static int lastEventNumber=0;
+    int count,retVal;
     static int wd=0;
     /* Directory reading things */
     int numLinks=0;
-    int threadCount=0;
     char *tempString;
-    static int uptoThread=0;
-    static EventLinkStruct_t linkStruct[NUMTHRDS];   
+    char currentHeadname[FILENAME_MAX];
+    char currentLinkname[FILENAME_MAX];
+    char currentBodyname[FILENAME_MAX];
+//    char currentPSBodyname[FILENAME_MAX];
+
     if(wd==0) {
-      for(threadCount=0;threadCount<NUMTHRDS;threadCount++) {
-	linkStruct[threadCount].numLinks=0;    
-      }
       //First time need to prep the watcher directory
       wd=setupLinkWatchDir(PRIORITIZERD_EVENT_LINK_DIR);
       if(wd<=0) {
@@ -420,129 +390,73 @@ void checkEvents()
     retVal=checkLinkDirs(1,0); //Should probably check
     if(retVal || numLinks)
       numLinks=getNumLinks(wd); //Current events waiting
-    if((printToScreen && verbosity) || 1) printf("Found %d links\n",numLinks);
-
-
-
-
-    for(count=0;count<numLinks;count++) {
-      //Need to add a check for when the event number is %MAX_EVENT_LINKS==0
-      tempString=getFirstLink(wd);
-      printf("%d -- %d %d %s\n",uptoThread,count,linkStruct[uptoThread].numLinks,tempString);
-      sscanf(tempString,"hd_%u.dat",&eventNumber);
-      if(linkStruct[uptoThread].numLinks<MAX_EVENT_LINKS) {
-	strncpy(linkStruct[uptoThread].linkPath[linkStruct[uptoThread].numLinks],tempString,FILENAME_MAX);
-	linkStruct[uptoThread].numLinks++;
-	if(linkStruct[uptoThread].numLinks==MAX_EVENT_LINKS || ((eventNumber%EVENTS_PER_FILE)==99)) {
-
-	  //	  handleListOfEvents(&linkStruct);
-	  pthread_create(&callThd[uptoThread], &attr, handleWrapper, (void *)&(linkStruct[uptoThread]));
-	  uptoThread++;
-	  if(uptoThread>=NUMTHRDS) uptoThread=0;
-
-	  if(callThd[uptoThread]>0) {
-	    pthread_join(callThd[uptoThread], &status);
-	    callThd[uptoThread]=0;
-	    memset(&linkStruct[uptoThread],0,sizeof(EventLinkStruct_t));
-	  }
-	}
-      }
-      else {
-	fprintf(stderr,"Oooops shouldn't be here\n");
-      }
-	       
- 
-    }
-}
-
-void *handleWrapper(void *ptr) {
-  handleListOfEvents((EventLinkStruct_t*)ptr);
-  return 0;
-}
-
-
-void handleListOfEvents(EventLinkStruct_t *linkStructPtr) {
-  //  printf("handleListOfEvents: %d\n",linkStructPtr->numLinks);
-  AnitaEventWriterStruct_t eventWriter;
-  int count=0,retVal=0;
-  char *tempString;
-  char currentHeadname[FILENAME_MAX];
-  char currentLinkname[FILENAME_MAX];
-  char currentBodyname[FILENAME_MAX];
-//    char currentPSBodyname[FILENAME_MAX];
-  
-  //Event Structures
-  AnitaEventHeader_t theHead;
-  //    AnitaEventBody_t theBody; //no longer used
-  PedSubbedEventBody_t pedSubBody;
-  IndexEntry_t indEnt[MAX_EVENT_LINKS];
- 
-  prepEventWriterStruct(&eventWriter);
-
-  for(count=0;count<linkStructPtr->numLinks;count++) {
+    if(printToScreen && verbosity) printf("Found %d links\n",numLinks);
     eventWriter.justHeader=0;
-    tempString=linkStructPtr->linkPath[count];
-    sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,tempString);
-    sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,tempString);
-    retVal=fillHeader(&theHead,currentHeadname);
-    
-    unlink(currentHeadname);
-    unlink(currentLinkname);
-    
-    //    fprintf(stderr,"fillHeader %d\n",retVal);
-    if(retVal==0) {
-      //Switch to
-      sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
-	      theHead.eventNumber);
+    for(count=0;count<numLinks;count++) {
+      tempString=getFirstLink(wd);
       
       
-      
-      if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
-	retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
-	//	fprintf(stderr,"fillpedsubbedbody %d\n",retVal);
-	if(retVal==0) {
-	  processEvent(&theHead,&pedSubBody,&indEnt[count],&eventWriter);
-	}
-	else {
-	  syslog(LOG_ERR,"Error getting event from %s\n",currentBodyname);
-	  fprintf(stderr,"Error getting event from %s\n",currentBodyname);
-	  eventWriter.justHeader=1;
-	  processEvent(&theHead,&pedSubBody,&indEnt[count],&eventWriter);
-	}	
-      }
+      sprintf(currentHeadname,"%s/%s",PRIORITIZERD_EVENT_DIR,tempString);
+      sprintf(currentLinkname,"%s/%s",PRIORITIZERD_EVENT_LINK_DIR,tempString);
+      retVal=fillHeader(&theHead,currentHeadname);
+
+      unlink(currentHeadname);
+      unlink(currentLinkname);
+
+
+      if(retVal==0) {
+	  //Switch to
+	  sprintf(currentBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
+		  theHead.eventNumber);
+	  
+	  if(lastEventNumber>0 && theHead.eventNumber!=lastEventNumber+1) {
+	      syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
+		     lastEventNumber,theHead.eventNumber);
+	  }
+	  
+	  if(!shouldWeThrowAway(theHead.priority&0xf) ) {	    	
+	      retVal=fillPedSubbedBody(&pedSubBody,currentBodyname);
+	      //	sprintf(currentPSBodyname,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
+	      //		theHead.eventNumber);
+	      //	retVal=fillPedSubbedBody(&pedSubBody,currentPSBodyname);
+	      //	printf("Event %u, Body %u, PS Body %u\n",theHead.eventNumber,
+	      //	       theBody.eventNumber,pedSubBody.eventNumber);
+	      
+	      //Subtract Pedestals
+	      //	subtractCurrentPeds(&theBody,&pedSubBody);
+	      
+	      if(retVal==0) {
+		  processEvent();
+	      }
+	      else {
+		  syslog(LOG_ERR,"Error getting event from %s\n",currentBodyname);
+		  fprintf(stderr,"Error getting event from %s\n",currentBodyname);
+		  eventWriter.justHeader=1;
+		  processEvent();
+	      }
+
+	  }
+	  else {
+	      eventWriter.justHeader=1;
+	      processEvent();	
+	  }
+	  unlink(currentBodyname);
+
+      }	
       else {
-	eventWriter.justHeader=1;
-	processEvent(&theHead,&pedSubBody,&indEnt[count],&eventWriter);	
+	  syslog(LOG_ERR,"Error getting header from %s\n",currentHeadname);
+	  fprintf(stderr,"Error getting header from %s\n",currentHeadname);
       }
-      unlink(currentBodyname);
       
+
+      //	removeFile(currentPSBodyname);
+
     }
-    else {
-      syslog(LOG_ERR,"Error getting header from %s\n",currentHeadname);
-      fprintf(stderr,"Error getting header from %s\n",currentHeadname);
-    }
-  }
-
-
-  closeEventFilesAndTidy(&eventWriter);
-
-  pthread_mutex_lock (&mutexindex);
-  for(count=0;count<linkStructPtr->numLinks;count++) {
-    //RJN need to add ntu Label
-    cleverIndexWriter(&indEnt[count],&indexWriter);
-  }
-  pthread_mutex_unlock (&mutexindex);
-  pthread_exit((void*) 0);
 }
 
-
-
-
-void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  IndexEntry_t *indEntPtr, AnitaEventWriterStruct_t *eventWriterPtr) 
+void processEvent() 
 // This just fills the buffer with 10 (well ACTIVE_SURFS) EncodedSurfPacketHeader_t and their associated waveforms.
 {
-    //Encoding Buffer
-    unsigned char outputBuffer[MAX_WAVE_BUFFER];
 
     CompressErrorCode_t retVal=0;
     EncodeControlStruct_t diskEncCntl;
@@ -560,7 +474,7 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
     //    static char helium2EventFileName[FILENAME_MAX];
     
 
-    int priority=(hdPtr->priority&0xf);
+    int priority=(theHead.priority&0xf);
     if(priority<0 || priority>9) priority=9;
     int thisBitMask=eventDiskBitMask&priDiskEventMask[priority];
     if((eventDiskBitMask&0x10) && (priDiskEventMask[priority]&0x10))
@@ -570,10 +484,10 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
 //    printf("%#x %#x %#x -- %d \n",thisBitMask,priDiskEventMask[priority],eventDiskBitMask,priority);
     thisBitMask=getDecimatedDiskMask(priority,thisBitMask);
 
-    eventWriterPtr->writeBitMask=thisBitMask;
-    if(printToScreen && verbosity>1) {
-      printf("\nEvent %u, priority %d\n",hdPtr->eventNumber,
-	     hdPtr->priority);
+    eventWriter.writeBitMask=thisBitMask;
+    if(printToScreen) {
+      printf("\nEvent %u, priority %d\n",theHead.eventNumber,
+	     theHead.priority);
       printf("Priority %d, thisBitMask %#x\n",priority,thisBitMask);
 
     }
@@ -594,59 +508,111 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
 
     //2) Pack Event For On Board Storage
     //Now depending on which option is selected we may either write out pedSubbed or not pedSubbed events to the hard disk (or just AnitaEventBody_t structs)
-    if(!eventWriterPtr->justHeader) {
-	/* memset(outputBuffer,0,MAX_WAVE_BUFFER); */
-	/* switch(onboardStorageType) { */
-	/* case ARCHIVE_RAW: */
-	/*       //No longer an option */
-	/*       //		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t)); */
-	/*       //		numBytes=sizeof(AnitaEventBody_t); */
-	/*       //		retVal=COMPRESS_E_OK; */
-	/*       //		break; */
-	/* case ARCHIVE_PEDSUBBED: */
-	/*   memcpy(outputBuffer,psPtr,sizeof(PedSubbedEventBody_t)); */
-	/*   numBytes=sizeof(PedSubbedEventBody_t); */
-	/*   retVal=COMPRESS_E_OK; */
-	/*   break; */
-	/* case ARCHIVE_ENCODED:	     */
-	/*   //Again no longer an option */
-	/*   //		retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes); */
-	/*   //		break; */
-	/* case ARCHIVE_PEDSUBBED_ENCODED:	     */
-	/*   retVal=packPedSubbedEvent(psPtr,&diskEncCntl,outputBuffer,&numBytes); */
-	/*   break; */
-	/* default: */
-	/*   memcpy(outputBuffer,psPtr,sizeof(PedSubbedEventBody_t)); */
-	/*   numBytes=sizeof(PedSubbedEventBody_t); */
-	/*   retVal=COMPRESS_E_OK; */
-	/*   //memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t)); */
-	/*   //numBytes=sizeof(AnitaEventBody_t); */
-	/*   //retVal=COMPRESS_E_OK; */
-	/*   break;	     */
-	/* } */
-      numBytes=sizeof(PedSubbedEventBody_t);
+    if(!eventWriter.justHeader) {
+	memset(outputBuffer,0,MAX_WAVE_BUFFER);
+	switch(onboardStorageType) {
+	case ARCHIVE_RAW:
+	      //No longer an option
+	      //		memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	      //		numBytes=sizeof(AnitaEventBody_t);
+	      //		retVal=COMPRESS_E_OK;
+	      //		break;
+	case ARCHIVE_PEDSUBBED:
+	  memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+	  numBytes=sizeof(PedSubbedEventBody_t);
+	  retVal=COMPRESS_E_OK;
+	  break;
+	case ARCHIVE_ENCODED:	    
+	  //Again no longer an option
+	  //		retVal=packEvent(&theBody,&diskEncCntl,outputBuffer,&numBytes);
+	  //		break;
+	case ARCHIVE_PEDSUBBED_ENCODED:	    
+	  retVal=packPedSubbedEvent(&pedSubBody,&diskEncCntl,outputBuffer,&numBytes);
+	  break;
+	default:
+	  memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
+	  numBytes=sizeof(PedSubbedEventBody_t);
+	  retVal=COMPRESS_E_OK;
+	  //memcpy(outputBuffer,&theBody,sizeof(AnitaEventBody_t));
+	  //numBytes=sizeof(AnitaEventBody_t);
+	  //retVal=COMPRESS_E_OK;
+	  break;	    
+	}
     }
     else numBytes=0;
 
-    if(retVal==COMPRESS_E_OK || eventWriterPtr->justHeader) {
-      writeOutputToDisk(numBytes,(unsigned char*)psPtr,hdPtr,eventWriterPtr);
-      //Now write the index
-      indEntPtr->runNumber=currentRun;
-      indEntPtr->eventNumber=hdPtr->eventNumber;
-      indEntPtr->eventDiskBitMask=eventWriterPtr->writeBitMask;
-      strncpy(indEntPtr->usbLabel,usbName,11);
+    if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
+/* 	if(eventWriter.writeBitMask & HELIUM2_DISK_MASK) { */
+/* 	    //Now write to helium2 */
+/* 	    if(pedSubBody.eventNumber>fileEpoch) { */
+/* 		if(fileEpoch) { */
+/* 		    //Close file and zip */
+/* 		    if(fpHead) { */
+/* 			fclose(fpHead); */
+/* 			zipFileInPlace(helium2HeaderFileName); */
+/* 			fpHead=NULL; */
+/* 		    } */
+/* 		    if(fpEvent) { */
+/* 			fclose(fpEvent); */
+/* 			zipFileInPlace(helium2EventFileName); */
+/* 			fpEvent=NULL; */
+/* 		    }			 */
+/* 		} */
+/* 		//Need to make files */
+/* 		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)); */
+/* 		//Make sub dir */
+/* 		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)); */
+/* 		sprintf(helium2DirName,"%s/current/event/ev%d/ev%d",HELIUM2_DATA_MOUNT,dirNum,otherDirNum); */
+/* 		makeDirectories(helium2DirName); */
+		
+/* 		//Make files */
+/* 		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE); */
+/* 		sprintf(helium2EventFileName,"%s/psev_%d.dat",helium2DirName,fileNum); */
+/* 		sprintf(helium2HeaderFileName,"%s/hd_%d.dat",helium2DirName,fileNum); */
+/* 		fileEpoch=fileNum+EVENTS_PER_FILE; */
+/* 		fpHead=fopen(helium2HeaderFileName,"ab"); */
+/* 		fpEvent=fopen(helium2EventFileName,"ab"); */
+/* 	    } */
+	    
+/* 	    if(fpHead) { */
+/* 		retVal=fwrite(&theHead,sizeof(AnitaEventHeader_t),1,fpHead); */
+/* 		if(retVal<0) { */
+/* 		    errorCounter++; */
+/* 		    printf("Error (%d of 100) writing to file -- %s (%d)\n", */
+/* 			   errorCounter, */
+/* 			   strerror(errno),retVal); */
+/* 		} */
+/* 		else  */
+/* 		    fflush(fpHead); */
+/* 	    }  */
+/* 	    if(fpEvent) { */
+/* 		retVal=fwrite(&pedSubBody,sizeof(PedSubbedEventBody_t),1,fpEvent); */
+/* 		if(retVal<0) { */
+/* 		    errorCounter++; */
+/* 		    printf("Error (%d of 100) writing to file -- %s (%d)\n", */
+/* 			   errorCounter, */
+/* 			   strerror(errno),retVal); */
+/* 		} */
+/* 		else  */
+/* 		    fflush(fpEvent); */
+/* 	    }      */
+	    
+
+/* 	} */
+/* 	eventWriter.writeBitMask &= ~HELIUM2_DISK_MASK; */
+	writeOutputToDisk(numBytes);
     }
     else {
-	syslog(LOG_ERR,"Error compressing event %u\n",psPtr->eventNumber);
-	fprintf(stderr,"Error compressing event %u\n",psPtr->eventNumber);
+	syslog(LOG_ERR,"Error compressing event %u\n",pedSubBody.eventNumber);
+	fprintf(stderr,"Error compressing event %u\n",pedSubBody.eventNumber);
     }
 
     //3) Pack Event For Telemetry
     //Again we have a range of options for event telemetry
 
-    if(printToScreen && verbosity>1) printf("Event %d, telemType %d\n",hdPtr->eventNumber,telemType);
+    if(printToScreen && verbosity>1) printf("Event %d, telemType %d\n",theHead.eventNumber,telemType);
 
-    if(!eventWriterPtr->justHeader) {
+    if(!eventWriter.justHeader) {
 	memset(outputBuffer,0,MAX_WAVE_BUFFER);
 	switch(telemType) {
 	    case ARCHIVE_RAW:
@@ -657,7 +623,7 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
 	      //		break;
 	    case ARCHIVE_PEDSUBBED:
 		//Need to add routine
-		memcpy(outputBuffer,psPtr,sizeof(PedSubbedEventBody_t));
+		memcpy(outputBuffer,&pedSubBody,sizeof(PedSubbedEventBody_t));
 		numBytes=sizeof(PedSubbedEventBody_t);
 		retVal=COMPRESS_E_OK;
 		break;
@@ -665,71 +631,77 @@ void processEvent(AnitaEventHeader_t *hdPtr, PedSubbedEventBody_t *psPtr,  Index
 		//		retVal=packEvent(&theBody,&telemEncCntl,outputBuffer,&numBytes);
 		//		break;
 	    case ARCHIVE_PEDSUBBED_ENCODED:	    
-		retVal=packPedSubbedEvent(psPtr,&telemEncCntl,outputBuffer,&numBytes);
+		retVal=packPedSubbedEvent(&pedSubBody,&telemEncCntl,outputBuffer,&numBytes);
 		break;
 	}
     }
     if(writeTelem) {
 	if(retVal==COMPRESS_E_OK)
-	  writeOutputForTelem(numBytes,outputBuffer,hdPtr,eventWriterPtr);
+	    writeOutputForTelem(numBytes);
 	else {
-	    syslog(LOG_ERR,"Error compressing event %u for telemetry\n",psPtr->eventNumber);
-	    fprintf(stderr,"Error compressing event %u for telemetry\n",psPtr->eventNumber);
+	    syslog(LOG_ERR,"Error compressing event %u for telemetry\n",pedSubBody.eventNumber);
+	    fprintf(stderr,"Error compressing event %u for telemetry\n",pedSubBody.eventNumber);
 	}
     }
 }
 
 
-void writeOutputToDisk(int numBytes, unsigned char *outputBuffer, AnitaEventHeader_t *hdPtr, 
-		       AnitaEventWriterStruct_t *eventWriterPtr) {
-  //  fprintf(stderr,"Trying to write %d bytes\n",numBytes);
+void writeOutputToDisk(int numBytes) {
+    IndexEntry_t indEnt;
     int retVal;
-    
-    retVal=cleverEventWrite(outputBuffer,numBytes,hdPtr,eventWriterPtr);
+
+    retVal=cleverEventWrite((unsigned char*)outputBuffer,numBytes,&theHead,&eventWriter);
     if(retVal!=0) {
       syslog(LOG_ERR,"Error writing event %s\n",strerror(errno));
     }
 
     if(printToScreen && verbosity>1) {
-	printf("Event %u, (%d bytes)  %s \t%s\n",hdPtr->eventNumber,
-	       numBytes,eventWriterPtr->currentEventFileName[0],
-	       eventWriterPtr->currentHeaderFileName[0]);
+	printf("Event %u, (%d bytes)  %s \t%s\n",theHead.eventNumber,
+	       numBytes,eventWriter.currentEventFileName[0],
+	       eventWriter.currentHeaderFileName[0]);
     }
 
+    //Now write the index
+    indEnt.runNumber=currentRun;
+    indEnt.eventNumber=theHead.eventNumber;
+    indEnt.eventDiskBitMask=eventWriter.writeBitMask;
+    strncpy(indEnt.usbLabel,usbName,11);
+    //RJN need to add ntu Label
+    cleverIndexWriter(&indEnt,&indexWriter);
 
  
 }
 
-void writeOutputForTelem(int numBytes,unsigned char *outputBuffer, AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *eventWriterPtr) {
+void writeOutputForTelem(int numBytes) {
     int retVal;
     char headName[FILENAME_MAX];
     char bodyName[FILENAME_MAX];
-    int pri=hdPtr->priority&0xf;
-    if((hdPtr->turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
+    int pri=theHead.priority&0xf;
+    if((theHead.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
 	pri=priorityPPS1;
-    if((hdPtr->turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
+    if((theHead.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
 	pri=priorityPPS2;
-    if((hdPtr->turfio.trigType&0x8) && (prioritySoft>=0 && prioritySoft<=9))
+    if((theHead.turfio.trigType&0x8) && (prioritySoft>=0 && prioritySoft<=9))
 	pri=prioritySoft;
     if(pri<0 || pri>9) pri=9;
     //this step is now done in Prioritizerd
-//    hdPtr->priority=(16*hdPtr->priority)+pri;
+//    theHead.priority=(16*theHead.priority)+pri;
     if(printToScreen && verbosity>1) {
-	printf("Event %u, (%d bytes) \n",hdPtr->eventNumber,numBytes);
+	printf("Event %u, (%d bytes) \n",theHead.eventNumber,numBytes);
     }
 
-    if(telemEvent(hdPtr->turfio.trigType)) {
+    if(telemEvent(theHead.turfio.trigType)) {
       
-      if(!eventWriterPtr->justHeader) {
-	sprintf(bodyName,"%s/ev_%u.dat",eventTelemDirs[pri],hdPtr->eventNumber);
-	sprintf(headName,"%s/hd_%u.dat",eventTelemDirs[pri],hdPtr->eventNumber);
+      if(!eventWriter.justHeader) {
+	sprintf(bodyName,"%s/ev_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
+	sprintf(headName,"%s/hd_%u.dat",eventTelemDirs[pri],theHead.eventNumber);
 	retVal=normalSingleWrite((unsigned char*)outputBuffer,bodyName,numBytes);
 	if(retVal<0) {
 	  printf("Something wrong while writing %s\n",bodyName);
 	}
 	else {
-	  writeStruct(hdPtr,headName,sizeof(AnitaEventHeader_t));
-	  makeLink(headName,eventTelemLinkDirs[pri]);
+	  writeStruct(&theHead,headName,sizeof(AnitaEventHeader_t));
+	    makeLink(headName,eventTelemLinkDirs[pri]);
 	} 
       }
     }
@@ -737,27 +709,25 @@ void writeOutputForTelem(int numBytes,unsigned char *outputBuffer, AnitaEventHea
 
 
 
-void prepEventWriterStruct(AnitaEventWriterStruct_t *eventWriterPtr) {
+void prepWriterStructs() {
     int diskInd;
-    //    closeEventFilesAndTidy(eventWriterPtr); //Just to be safe
-
+    if(printToScreen) 
+	printf("Preparing Writer Structs\n");
+    closeEventFilesAndTidy(&eventWriter); //Just to be safe
     //Event Writer
-    strncpy(eventWriterPtr->relBaseName,EVENT_ARCHIVE_DIR,FILENAME_MAX-1);
-    strncpy(eventWriterPtr->filePrefix,getFilePrefix(onboardStorageType),FILENAME_MAX-1);
+    strncpy(eventWriter.relBaseName,EVENT_ARCHIVE_DIR,FILENAME_MAX-1);
+    strncpy(eventWriter.filePrefix,getFilePrefix(onboardStorageType),FILENAME_MAX-1);
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
-	eventWriterPtr->currentHeaderFilePtr[diskInd]=0;
-	eventWriterPtr->currentEventFilePtr[diskInd]=0;
+	eventWriter.currentHeaderFilePtr[diskInd]=0;
+	eventWriter.currentEventFilePtr[diskInd]=0;
     }
-    eventWriterPtr->helium1CloneMask=helium1CloneMask;
-    eventWriterPtr->helium2CloneMask=helium2CloneMask;
-    eventWriterPtr->usbCloneMask=usbCloneMask;   
-    eventWriterPtr->gotData=0;
-    eventWriterPtr->writeBitMask=eventDiskBitMask;
-}
+    eventWriter.helium1CloneMask=helium1CloneMask;
+    eventWriter.helium2CloneMask=helium2CloneMask;
+    eventWriter.usbCloneMask=usbCloneMask;   
+    eventWriter.gotData=0;
+    eventWriter.writeBitMask=eventDiskBitMask;
 
-void prepIndexWriter() {
     //Index Writer
-    int diskInd;
     strncpy(indexWriter.relBaseName,ANITA_INDEX_DIR,FILENAME_MAX-1);
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
 	indexWriter.currentFilePtr[diskInd]=0;
@@ -877,7 +847,7 @@ void handleBadSigs(int sig)
 {
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
-    //    closeEventFilesAndTidy(&eventWriter);
+    closeEventFilesAndTidy(&eventWriter);
     closeHkFilesAndTidy(&indexWriter);
     unlink(ARCHIVED_PID_FILE);
     syslog(LOG_INFO,"Archived terminating");
