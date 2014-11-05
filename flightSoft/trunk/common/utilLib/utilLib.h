@@ -47,7 +47,7 @@ extern "C" {
 	char filePrefix[FILENAME_MAX];
 	char currentDirName[DISK_TYPES][FILENAME_MAX];
 	char currentSubDirName[DISK_TYPES][FILENAME_MAX];
-	char currentFileName[DISK_TYPES][FILENAME_MAX];
+	char currentFileName[DISK_TYPES][FILENAME_MAX];      
     } AnitaHkWriterStruct_t;
 
     typedef struct {
@@ -57,6 +57,9 @@ extern "C" {
 #else
 	FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
 	FILE* currentHeaderFilePtr[DISK_TYPES];
+        FILE *currentBufferEventFilePtr;
+        FILE *currentBufferHeaderFilePtr;
+
 #endif
 	unsigned int writeBitMask; //1-helium1, 2-helium2,3-usb,4-ntu,5-pmc
 	unsigned int helium1CloneMask;
@@ -71,6 +74,10 @@ extern "C" {
 	char currentHeaderFileName[DISK_TYPES][FILENAME_MAX];
 	char currentDirName[DISK_TYPES][FILENAME_MAX];
 	char currentSubDirName[DISK_TYPES][FILENAME_MAX];
+	char bufferEventFileName[FILENAME_MAX];
+	char bufferHeaderFileName[FILENAME_MAX];
+	char bufferDirName[FILENAME_MAX];
+	char bufferSubDirName[FILENAME_MAX];
     } AnitaEventWriterStruct_t;
 
     void makeDirectories(char *theTmpDir);
@@ -143,6 +150,8 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
     int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask,int baseInd);
     int zipBufferedFileAndMove(char *nonBufFilename);
     int zipBufferedFileAndCloneAndMove(char *nonBufFilename,unsigned int cloneMask,int baseInd);
+    int zipBufferedHeaderFileAndCopy( unsigned int eventBufferDiskMask, AnitaEventWriterStruct_t *awsPtr);
+    int zipBufferedEventFileAndCopy( unsigned int eventBufferDiskMask, AnitaEventWriterStruct_t *awsPtr);
   int cloneAndMoveBufferedFile(char *nonBufFilename,unsigned int cloneMask, int baseInd);
   int cloneFile(char *filename,unsigned int cloneMask, int baseInd);
   int moveBufferedFile(char *nonBufFilename);
