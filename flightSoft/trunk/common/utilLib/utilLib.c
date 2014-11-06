@@ -223,6 +223,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, An
     awsPtr->writeCount[diskInd]++;
     if(awsPtr->currentFilePtr[diskInd]>0) {
       retVal=fwrite(buffer,numBytes,1,awsPtr->currentFilePtr[diskInd]);
+      //      printf("fwrite %d %d\n",numBytes,awsPtr->currentFilePtr[diskInd]);
       if(retVal<0 ) {
 	errorCounter++;
 	if(errorCounter<100  || errorCounter%1000==0) {
@@ -250,44 +251,9 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, An
 
 }
 
-#ifdef USE_ZLIB_EVENTS
-int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) 
-{
-  //    sync();
-  int diskInd;    
-  int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
-			      awsPtr->helium2CloneMask,
-			      awsPtr->usbCloneMask,0,0};
-  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
-    if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
-    if(awsPtr->currentHeaderFilePtr[diskInd]) {
-      gzflush(awsPtr->currentHeaderFilePtr[diskInd],Z_SYNC_FLUSH);
-      gzclose(awsPtr->currentHeaderFilePtr[diskInd]);
-      awsPtr->currentHeaderFilePtr[diskInd]=0;
-      if(bufferDisk[diskInd]) {
-	//Copy file to buffered location
-	cloneAndMoveBufferedFile(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
-	//	zipBufferedFileAndCloneAndMove(awsPtr->currentHeaderFileName[diskInd],cloneMasks[diskInd],diskInd);
-      }	    
-	      
-	    
-      if(awsPtr->currentEventFilePtr[diskInd]) {
-	gzflush(awsPtr->currentEventFilePtr[diskInd],Z_SYNC_FLUSH);
-	gzclose(awsPtr->currentEventFilePtr[diskInd]);
-	awsPtr->currentEventFilePtr[diskInd]=0;
-	if(bufferDisk[diskInd]) {
-	  //Copy file to buffered location
-	  cloneFile(awsPtr->currentEventFileName[diskInd],cloneMasks[diskInd],diskInd);
-	}
-      }      
-    }
-  }
-    
-  return 0;
-}
-#else
 int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
   //    sync();
+    printf("closeEventFilesAndTidy: %s %d\n",awsPtr->bufferEventFileName,awsPtr->fileEpoch);
   int diskInd;
   pid_t childPid;    
   int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
@@ -299,11 +265,28 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
     if(eventBufferDisk[diskInd])
       eventBufferDiskMask|=diskBitMasks[diskInd];
   }
+  eventBufferDiskMask&=awsPtr->writeBitMask;
 
   //Deal with the buffered file first
   if(awsPtr->bufferHeaderFilePtr) {
     fclose(awsPtr->bufferHeaderFilePtr);
-    awsPtr->bufferHeaderFilePtr=0;
+    
+    if(awsPtr->bufferEventFilePtr) {
+      fclose(awsPtr->bufferEventFilePtr);
+      childPid=fork();
+      if(childPid==0) {
+      //Child
+	zipBufferedEventFileAndCopy(eventBufferDiskMask,awsPtr);
+	exit(0);
+      }
+      else if(childPid<0) {
+      //Something wrong
+      	syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->bufferHeaderFileName);
+      	fprintf(stderr,"Couldn't zip file %s\n",awsPtr->bufferHeaderFileName);
+      }    
+      
+    }
+    
     childPid=fork();
     if(childPid==0) {
       //Child
@@ -311,37 +294,27 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
       exit(0);
     }
     else if(childPid<0) {
-      //Something wrong
+    //Something wrong
       syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->bufferHeaderFileName);
       fprintf(stderr,"Couldn't zip file %s\n",awsPtr->bufferHeaderFileName);
     }
-
-    if(awsPtr->bufferEventFilePtr) {
-      fclose(awsPtr->bufferEventFilePtr);
-      awsPtr->bufferEventFilePtr=0;
-      childPid=fork();
-      if(childPid==0) {
-	//Child
-	zipBufferedEventFileAndCopy(eventBufferDiskMask,awsPtr);
-	exit(0);
-      }
-      else if(childPid<0) {
-	//Something wrong
-	syslog(LOG_ERR,"Couldn't zip file %s\n",awsPtr->bufferHeaderFileName);
-	fprintf(stderr,"Couldn't zip file %s\n",awsPtr->bufferHeaderFileName);
-      }
-
   }
-
+  awsPtr->bufferEventFilePtr=0;
+  awsPtr->bufferHeaderFilePtr=0;
    
 
+  //  printf("Finished buffer thingy\n");
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(eventBufferDisk[diskInd]) {
       awsPtr->currentHeaderFilePtr[diskInd]=0;
       awsPtr->currentEventFilePtr[diskInd]=0;
       continue;
     }
-    if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
+  }
+  return 0;
+
+  {
+    //    if(!(awsPtr->currentHeaderFilePtr[diskInd])) continue;
     if(awsPtr->currentHeaderFilePtr[diskInd]) {
       fclose(awsPtr->currentHeaderFilePtr[diskInd]);
       awsPtr->currentHeaderFilePtr[diskInd]=0;
@@ -387,13 +360,14 @@ int closeEventFilesAndTidy(AnitaEventWriterStruct_t *awsPtr) {
     }
 	
   }
-  return 0;
+  
+    return 0;
 }
-#endif
 
-#ifdef USE_ZLIB_EVENTS
+
 int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
 {
+  //  printf("cleverEventWrite %u -- %#x %d %u\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
   int diskInd,cloneInd;
   int retVal=0;
   static int errorCounter=0;
@@ -402,7 +376,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 
   char tempDir[FILENAME_MAX];
   char fullBasename[FILENAME_MAX];
-  char bufferName[FILENAME_MAX];
+
 
   int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
 			      awsPtr->helium2CloneMask,
@@ -412,160 +386,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
     closeEventFilesAndTidy(awsPtr);
     awsPtr->gotData=0;
   }
-  printf("cleverEventWrite %u -- %#x %d %u\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
-  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
-    if(!(diskBitMasks[diskInd]&awsPtr->writeBitMask)) continue;
-    if(!awsPtr->currentHeaderFilePtr[diskInd]) {
-      //Maybe First time
-      sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);	    	    	    
 
-      //Make base dir
-      dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
-      sprintf(awsPtr->currentDirName[diskInd],"%s/ev%d",fullBasename,dirNum);
-      makeDirectories(awsPtr->currentDirName[diskInd]);
-
-      if(bufferDisk[diskInd]) {
-	sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentDirName[diskInd]);
-	makeDirectories(bufferName);
-
-      }
-
-      //Make sub dir
-      dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
-      sprintf(awsPtr->currentSubDirName[diskInd],"%s/ev%d",awsPtr->currentDirName[diskInd],dirNum);
-      makeDirectories(awsPtr->currentSubDirName[diskInd]);	    
-
-      if(bufferDisk[diskInd]) {
-	sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentSubDirName[diskInd]);
-	makeDirectories(bufferName);
-      }
-
-      //Make files
-      dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
-
-      sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat.gz",
-	      awsPtr->currentSubDirName[diskInd],dirNum);
-      if(!bufferDisk[diskInd]) {
-	awsPtr->currentHeaderFilePtr[diskInd]=gzopen(awsPtr->currentHeaderFileName[diskInd],"ab");
-      }
-      else {
-	sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentHeaderFileName[diskInd]);
-	awsPtr->currentHeaderFilePtr[diskInd]=gzopen(bufferName,"ab");
-      }
-		    
-      if(awsPtr->currentHeaderFilePtr[diskInd]<0) {	    
-	if(errorCounter<100) {
-	  errorCounter++;
-	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
-		 errorCounter,awsPtr->currentHeaderFileName[diskInd]);
-	}
-      }
-
-	    
-      awsPtr->fileEpoch=dirNum+EVENTS_PER_FILE;
-      //	    printf("%s %s %d\n",awsPtr->currentHeaderFileName[diskInd],
-      //		   awsPtr->currentEventFileName[diskInd],awsPtr->fileEpoch);
-	    
-	    
-      if(cloneMasks[diskInd]>0) {
-	for(cloneInd=0;cloneInd<DISK_TYPES;cloneInd++) {
-	  //Need to make dirs for clones
-	  sprintf(fullBasename,"%s/%s",diskNames[cloneInd],awsPtr->relBaseName);	    	    	    
-		
-	  //Make base dir
-	  dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
-	  sprintf(tempDir,"%s/ev%d",fullBasename,dirNum);
-	  makeDirectories(tempDir);
-		
-	  dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
-	  sprintf(tempDir,"%s/ev%d",tempDir,dirNum);
-	  makeDirectories(tempDir);	    
-	}
-      }
-	    
-    }
-    if(!awsPtr->justHeader && !awsPtr->currentEventFilePtr[diskInd]) {
-      dirNum=(EVENTS_PER_FILE)*(hdPtr->eventNumber/EVENTS_PER_FILE);
-	  
-      sprintf(awsPtr->currentEventFileName[diskInd],"%s/%s_%d.dat.gz",
-	      awsPtr->currentSubDirName[diskInd],awsPtr->filePrefix,
-	      dirNum);
-      if(!bufferDisk[diskInd]) {
-	awsPtr->currentEventFilePtr[diskInd]=
-	  gzopen(awsPtr->currentEventFileName[diskInd],"ab");
-      }
-      else {
-	sprintf(bufferName,"%s/%s",DISK_BUFFER_DIR,awsPtr->currentEventFileName[diskInd]);
-	awsPtr->currentEventFilePtr[diskInd]=gzopen(bufferName,"ab");
-      }
-	    
-      if(awsPtr->currentEventFilePtr[diskInd]<0) {	    
-	if(errorCounter<100) {
-	  errorCounter++;
-	  syslog(LOG_ERR,"Error (%d of 100) trying to open file %s\n",
-		 errorCounter,awsPtr->currentEventFileName[diskInd]);
-	}
-	      
-      }	    
-    }
-	
-	
-    if(errorCounter<100  && awsPtr->currentHeaderFilePtr[diskInd]) {
-      //	  retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
-
-      retVal=gzwrite(awsPtr->currentHeaderFilePtr[diskInd],hdPtr,sizeof(AnitaEventHeader_t));
-	  
-      if(retVal<0) {
-	errorCounter++;
-	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
-	       errorCounter,
-	       strerror(errno),retVal);
-      }
-      //	  else 
-      //	    fflush(awsPtr->currentHeaderFilePtr[diskInd]);    
-		
-      awsPtr->gotData=1;
-    }
-    if(errorCounter<100 && !awsPtr->justHeader && awsPtr->currentEventFilePtr[diskInd]) {
-      retVal=gzwrite(awsPtr->currentEventFilePtr[diskInd],outputBuffer,numBytes);
-      if(retVal<0) {
-	errorCounter++;
-	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
-	       errorCounter,
-	       strerror(errno),retVal);
-      }
-      //	  else 
-      //	    fflush(awsPtr->currentEventFilePtr[diskInd]);
-    }
-    else continue;       	
-	
-  }
-  return 0;
-}
-#else
-int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_t *hdPtr, AnitaEventWriterStruct_t *awsPtr)
-{
-  int diskInd,cloneInd;
-  int retVal=0;
-  static int errorCounter=0;
-  int dirNum;
-  //    pid_t childPid;
-
-  char tempDir[FILENAME_MAX];
-  char fullBasename[FILENAME_MAX];
-  char bufferDirName[FILENAME_MAX];
-  char bufferSubDirName[FILENAME_MAX];
-  char bufferName[FILENAME_MAX];
-
-  int cloneMasks[DISK_TYPES]={awsPtr->helium1CloneMask,
-			      awsPtr->helium2CloneMask,
-			      awsPtr->usbCloneMask,0,0};
-    
-  if(awsPtr->gotData && (hdPtr->eventNumber>=awsPtr->fileEpoch)) {
-    closeEventFilesAndTidy(awsPtr);
-    awsPtr->gotData=0;
-  }
-  printf("cleverEventWrite %u -- %#x %d %u\n",hdPtr->eventNumber,awsPtr->writeBitMask,awsPtr->gotData,awsPtr->fileEpoch);
 
 
   int eventBufferDiskMask=0;
@@ -573,6 +394,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
     if(eventBufferDisk[diskInd])
       eventBufferDiskMask|=diskBitMasks[diskInd];
   }
+  eventBufferDiskMask&=awsPtr->writeBitMask;
 
   //RJN need to revamp this, the new model will be:
   //Write file to /tmp/buffer/something/file
@@ -581,11 +403,12 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
   {
     //So now we write the buffered copy
     //Now need to think about this
-    if(!awsPtr->currentBufferHeaderFilePtr) {
+    if(!awsPtr->bufferHeaderFilePtr) {
       //Maybe First time
       sprintf(fullBasename,"%s",awsPtr->relBaseName);	    	    	    
       
       //Make base dir
+      dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(hdPtr->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
       sprintf(awsPtr->bufferDirName,"%s/%s/ev%d",DISK_BUFFER_DIR,fullBasename,dirNum);
       makeDirectories(awsPtr->bufferDirName);
       
@@ -635,6 +458,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
   	    
     if(errorCounter<100  && awsPtr->bufferHeaderFilePtr) {
       retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->bufferHeaderFilePtr);
+      //      printf("Writing event %d (%d bytes) to %s %d\n",hdPtr->eventNumber,sizeof(AnitaEventHeader_t),awsPtr->bufferHeaderFileName,awsPtr->bufferHeaderFilePtr);
       if(retVal<0) {
 	errorCounter++;
 	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
@@ -644,8 +468,9 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       awsPtr->gotData=1;
     }
     
-    if(errorCounter<100 && !awsPtr->justHeader && awsPtr->bufferEventFilePtr[diskInd]) {
-      retVal=fwrite(outputBuffer,numBytes,1,awsPtr->bufferEventFilePtr[diskInd]);
+    if(errorCounter<100 && !awsPtr->justHeader && awsPtr->bufferEventFilePtr) {
+      retVal=fwrite(outputBuffer,numBytes,1,awsPtr->bufferEventFilePtr);
+      //      printf("Writing %d bytes to %s %d\n",numBytes,awsPtr->bufferEventFileName,awsPtr->bufferEventFilePtr);
       if(retVal<0) {
 	errorCounter++;
 	syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
@@ -681,7 +506,7 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
 
       sprintf(awsPtr->currentHeaderFileName[diskInd],"%s/hd_%d.dat",
 	      awsPtr->currentSubDirName[diskInd],dirNum);
-      if(!eventBufferDiskMask[diskInd]) {
+      if(!eventBufferDisk[diskInd]) {
 	awsPtr->currentHeaderFilePtr[diskInd]=fopen(awsPtr->currentHeaderFileName[diskInd],"ab");
       }
       else {
@@ -727,37 +552,41 @@ int cleverEventWrite(unsigned char *outputBuffer, int numBytes,AnitaEventHeader_
       }	    
     }
 
-    if(!eventBufferDisk[diskInd]) { 
-      //Actually write something
-      if(errorCounter<100  && awsPtr->currentHeaderFilePtr[diskInd]) {
-	retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
-	if(retVal<0) {
-	  errorCounter++;
-	  syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
-		 errorCounter,
-		 strerror(errno),retVal);
-	}
-	else 
-	  fflush(awsPtr->currentHeaderFilePtr[diskInd]);    	
-	awsPtr->gotData=1;
-      }
-      if(errorCounter<100 && !awsPtr->justHeader && awsPtr->currentEventFilePtr[diskInd]) {
-	retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr[diskInd]);
-	if(retVal<0) {
-	  errorCounter++;
-	  syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
-		 errorCounter,
-		 strerror(errno),retVal);
-	}
-	else 
-	  fflush(awsPtr->currentEventFilePtr[diskInd]);
-      }
-      else continue;       	      
-    }
+    //    if(!eventBufferDisk[diskInd]) { 
+    //      //Actually write something
+    //      if(errorCounter<100  && awsPtr->currentHeaderFilePtr[diskInd]) {
+    //	retVal=fwrite(hdPtr,sizeof(AnitaEventHeader_t),1,awsPtr->currentHeaderFilePtr[diskInd]);
+    //	printf("Writing %d bytes to %s\n",sizeof(AnitaEventHeader_t),awsPtr->currentHeaderFileName[diskInd]);
+    //	
+    //	if(retVal<0) {
+    //	  errorCounter++;
+    //	  syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
+    //		 errorCounter,
+    //		 strerror(errno),retVal);
+    //	}
+	//	else 
+	//	  fflush(awsPtr->currentHeaderFilePtr[diskInd]);    	
+    //	awsPtr->gotData=1;
+    //      }
+    //      if(errorCounter<100 && !awsPtr->justHeader && awsPtr->currentEventFilePtr[diskInd]) {
+    //	retVal=fwrite(outputBuffer,numBytes,1,awsPtr->currentEventFilePtr[diskInd]);
+    //	printf("Writing %d bytes to %s\n",numBytes,awsPtr->currentEventFileName[diskInd]);
+    //	if(retVal<0) {
+    //	  errorCounter++;
+    //	  syslog(LOG_ERR,"Error (%d of 100) writing to file -- %s (%d)\n",
+    //		 errorCounter,
+    //		 strerror(errno),retVal);
+    //	}
+	//	else 
+	//	  fflush(awsPtr->currentEventFilePtr[diskInd]);
+    //  }
+    //      else continue;       	      
+    //}
   }
+
   return 0;
 }
-#endif
+
 
 
 int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
@@ -863,14 +692,15 @@ int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr)
       awsPtr->writeCount[diskInd]++;
       if(errorCounter<100 && awsPtr->currentFilePtr[diskInd]) {
 	retVal=fwrite(indPtr,sizeof(IndexEntry_t),1,awsPtr->currentFilePtr[diskInd]);
+	printf("Writing index %d -- %s %d",sizeof(IndexEntry_t),awsPtr->currentFileName[diskInd],awsPtr->currentFilePtr[diskInd]);
 	if(retVal<0) {
 	  errorCounter++;
 	  syslog(LOG_ERR,"Error (%d of 100) writing to file (write %d) -- %s (%d)\n",
 		 errorCounter,awsPtr->writeCount[diskInd],
 		 strerror(errno),retVal);
 	}
-	else 
-	  fflush(awsPtr->currentFilePtr[diskInd]);  
+	//	else 
+	// fflush(awsPtr->currentFilePtr[diskInd]);  
 
       }
       else continue;       	
@@ -928,6 +758,7 @@ int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
     return -1;
   }   
   numObjs=fwrite(buffer,numBytes,1,outfile);
+  //  printf("normalSingleWrite: %d bytes to %s\n",numBytes,filename);
   if(numObjs!=1) {
     if(errorCounter<100) {
       syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),filename);
@@ -955,6 +786,7 @@ int zippedSingleWrite(unsigned char *buffer, char *filename, int numBytes)
     return -1;
   } 
   numWritten=gzwrite(outfile,buffer,numBytes);
+  //  printf("zippedSingleWrite: %d bytes to %s\n",numBytes,filename);
   if(numWritten!=numBytes) {
     if(errorCounter<100) {
       syslog (LOG_ERR,"gzwrite: wrote %d of %d ---  %s\n",numWritten,numBytes,filename);
@@ -1076,6 +908,7 @@ int copyFile(const char *theFile, const char *theDir)
     return -1;
   }
   fwrite(buffer,1,numBytes,fout);
+  //  printf("copyFile %s %s\n",theFile,theDir);
   fclose(fout);
   free(buffer);
   return 0;
@@ -1141,6 +974,7 @@ int copyFileToFile(const char *theFile, const char *newFile)
     return -1; 
   } 
   fwrite(buffer,1,numBytes,fout); 
+  //  printf("copyFile %s %s\n",theFile,newFile);
   fclose(fout); 
   free(buffer); 
   return 0; 
@@ -2105,6 +1939,7 @@ int zipBufferedFileAndMove(char *filename) {
 
 
 int zipBufferedHeaderFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWriterStruct_t *awsPtr) {
+  //  printf("zipBufferedHeaderFileAndCopy %s\n",awsPtr->bufferHeaderFileName);
   //    printf("zipBufferedFileAndMove %s\n",filename);
   int retVal;
   int diskInd=0;
@@ -2134,7 +1969,7 @@ int zipBufferedHeaderFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWri
 
 
 int zipBufferedEventFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWriterStruct_t *awsPtr) {
-  //    printf("zipBufferedFileAndMove %s\n",filename);
+  //  printf("zipBufferedEventFileAndCopy %s\n",awsPtr->bufferEventFileName);
   int retVal;
   int diskInd=0;
   char bufferZippedFilename[FILENAME_MAX];
@@ -2204,9 +2039,9 @@ int cloneAndMoveBufferedFile(char *filename,unsigned int cloneMask, int baseInd)
     if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
     sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
     normalSingleWrite((unsigned char*)buffer,cloneFilename,numBytesIn);	
-    printf("copy %s %s\n",bufferFilename,cloneFilename);
+    //    printf("copy %s %s\n",bufferFilename,cloneFilename);
   }
-  printf("move2 %s %s\n",bufferFilename,filename);
+  //  printf("move2 %s %s\n",bufferFilename,filename);
   //    rename(bufferZippedFilename,outputFilename);
   normalSingleWrite((unsigned char*)buffer,filename,numBytesIn);
   free(buffer);
@@ -2243,9 +2078,9 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
     if(diskInd==baseInd || !(diskBitMasks[diskInd]&cloneMask)) continue;
     sprintf(cloneFilename,"%s/%s",diskNames[diskInd],relPath);
     copyFileToFile(bufferZippedFilename,cloneFilename);	
-    printf("copy %s %s\n",bufferZippedFilename,cloneFilename);
+    //    printf("copy %s %s\n",bufferZippedFilename,cloneFilename);
   }
-  printf("move2 %s %s\n",bufferZippedFilename,outputFilename);
+  //  printf("move2 %s %s\n",bufferZippedFilename,outputFilename);
   //    rename(bufferZippedFilename,outputFilename);
   copyFileToFile(bufferZippedFilename,outputFilename);
   free(buffer);

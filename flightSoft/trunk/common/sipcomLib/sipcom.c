@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <wait.h>
+#include <time.h>
 
 // Default port values
 #define COMM1_PORT	"/dev/ttyLow1"
@@ -980,11 +981,16 @@ highrate_write_bytes(unsigned char *p, int bytes_to_write)
         }
     }
 
+
+    struct timespec sleepTime;
+    sleepTime.tv_sec=0;
+    sleepTime.tv_nsec=10000000;
     while (1) {
       bytes_avail = sipthrottle(bytes_to_write);
       //      printf("bytes_avail %d -- bytes_to_write %d\n",bytes_avail,bytes_to_write);
 	if (bytes_avail == 0) {
 	    // No room yet.
+	  nanosleep(&sleepTime,NULL);
 	    continue;
 
 	} else if (bytes_avail > 0) {

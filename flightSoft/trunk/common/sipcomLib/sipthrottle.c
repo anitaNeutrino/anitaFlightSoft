@@ -81,6 +81,7 @@ sipthrottle(unsigned long amountb)
 
     bytes_available = Bytes_per_unit_limit - Curcount;
 
+
     if (bytes_available < amountb) {
 	// Not enough room left in this time unit.
 	Curcount += bytes_available;

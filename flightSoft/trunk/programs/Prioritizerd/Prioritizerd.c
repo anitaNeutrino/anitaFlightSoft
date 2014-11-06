@@ -310,6 +310,10 @@ int main (int argc, char *argv[])
 	makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
 	    
 	/* Delete input */
+	sprintf(linkFilename,"%s/hd_%d.dat",EVENTD_EVENT_LINK_DIR,
+		theHeader[count].eventNumber);		 
+	sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
+		theHeader[count].eventNumber);
 	removeFile(linkFilename);
 	removeFile(hdFilename);
 

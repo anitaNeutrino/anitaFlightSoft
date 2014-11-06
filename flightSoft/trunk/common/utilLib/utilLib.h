@@ -57,8 +57,8 @@ extern "C" {
 #else
 	FILE* currentEventFilePtr[DISK_TYPES]; //For the 5 disk types
 	FILE* currentHeaderFilePtr[DISK_TYPES];
-        FILE *currentBufferEventFilePtr;
-        FILE *currentBufferHeaderFilePtr;
+        FILE *bufferEventFilePtr;
+        FILE *bufferHeaderFilePtr;
 
 #endif
 	unsigned int writeBitMask; //1-helium1, 2-helium2,3-usb,4-ntu,5-pmc

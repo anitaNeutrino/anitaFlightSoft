@@ -65,9 +65,10 @@ nice daemon -r LogWatchd -n LogWatchd
 
 daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
 daemon -r Eventd -n Eventd
-#daemon -r LOSd -n LOSd
-#daemon -r SIPd -n SIPd
+daemon -r LOSd -n LOSd
+daemon -r SIPd -n SIPd
 daemon -r Playbackd -n Playbackd
 
-Acqd
+#LD_PRELOAD=/usr/lib64/libprofiler.so CPUPROFILE=/tmp/acqd.prof /home/anita/flightSoft/bin/Acqd
 #taskset -c 3 Acqd 
+Acqd
