@@ -542,65 +542,7 @@ void processEvent()
     else numBytes=0;
 
     if(retVal==COMPRESS_E_OK || eventWriter.justHeader) {
-/* 	if(eventWriter.writeBitMask & HELIUM2_DISK_MASK) { */
-/* 	    //Now write to helium2 */
-/* 	    if(pedSubBody.eventNumber>fileEpoch) { */
-/* 		if(fileEpoch) { */
-/* 		    //Close file and zip */
-/* 		    if(fpHead) { */
-/* 			fclose(fpHead); */
-/* 			zipFileInPlace(helium2HeaderFileName); */
-/* 			fpHead=NULL; */
-/* 		    } */
-/* 		    if(fpEvent) { */
-/* 			fclose(fpEvent); */
-/* 			zipFileInPlace(helium2EventFileName); */
-/* 			fpEvent=NULL; */
-/* 		    }			 */
-/* 		} */
-/* 		//Need to make files */
-/* 		dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)); */
-/* 		//Make sub dir */
-/* 		otherDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pedSubBody.eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)); */
-/* 		sprintf(helium2DirName,"%s/current/event/ev%d/ev%d",HELIUM2_DATA_MOUNT,dirNum,otherDirNum); */
-/* 		makeDirectories(helium2DirName); */
-		
-/* 		//Make files */
-/* 		fileNum=(EVENTS_PER_FILE)*(pedSubBody.eventNumber/EVENTS_PER_FILE); */
-/* 		sprintf(helium2EventFileName,"%s/psev_%d.dat",helium2DirName,fileNum); */
-/* 		sprintf(helium2HeaderFileName,"%s/hd_%d.dat",helium2DirName,fileNum); */
-/* 		fileEpoch=fileNum+EVENTS_PER_FILE; */
-/* 		fpHead=fopen(helium2HeaderFileName,"ab"); */
-/* 		fpEvent=fopen(helium2EventFileName,"ab"); */
-/* 	    } */
-	    
-/* 	    if(fpHead) { */
-/* 		retVal=fwrite(&theHead,sizeof(AnitaEventHeader_t),1,fpHead); */
-/* 		if(retVal<0) { */
-/* 		    errorCounter++; */
-/* 		    printf("Error (%d of 100) writing to file -- %s (%d)\n", */
-/* 			   errorCounter, */
-/* 			   strerror(errno),retVal); */
-/* 		} */
-/* 		else  */
-/* 		    fflush(fpHead); */
-/* 	    }  */
-/* 	    if(fpEvent) { */
-/* 		retVal=fwrite(&pedSubBody,sizeof(PedSubbedEventBody_t),1,fpEvent); */
-/* 		if(retVal<0) { */
-/* 		    errorCounter++; */
-/* 		    printf("Error (%d of 100) writing to file -- %s (%d)\n", */
-/* 			   errorCounter, */
-/* 			   strerror(errno),retVal); */
-/* 		} */
-/* 		else  */
-/* 		    fflush(fpEvent); */
-/* 	    }      */
-	    
-
-/* 	} */
-/* 	eventWriter.writeBitMask &= ~HELIUM2_DISK_MASK; */
-	writeOutputToDisk(numBytes);
+ 	writeOutputToDisk(numBytes);
     }
     else {
 	syslog(LOG_ERR,"Error compressing event %u\n",pedSubBody.eventNumber);
@@ -655,7 +597,7 @@ void writeOutputToDisk(int numBytes) {
       syslog(LOG_ERR,"Error writing event %s\n",strerror(errno));
     }
 
-    if(printToScreen && verbosity>1) {
+    if(printToScreen && verbosity>1 || 1) {
 	printf("Event %u, (%d bytes)  %s \t%s\n",theHead.eventNumber,
 	       numBytes,eventWriter.currentEventFileName[0],
 	       eventWriter.currentHeaderFileName[0]);
@@ -667,7 +609,8 @@ void writeOutputToDisk(int numBytes) {
     indEnt.eventDiskBitMask=eventWriter.writeBitMask;
     strncpy(indEnt.usbLabel,usbName,11);
     //RJN need to add ntu Label
-    cleverIndexWriter(&indEnt,&indexWriter);
+    //Why does this do something stupid?
+    //    cleverIndexWriter(&indEnt,&indexWriter);
 
  
 }

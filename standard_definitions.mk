@@ -11,7 +11,7 @@ LD            = gcc
 ObjSuf	      = o
 SrcSuf        = c
 ExeSuf        =
-OPT           =  -Wall --debug -DUSE_ZLIB_EVENTS # --debug --pedantic-errors
+OPT           =  -Wall --debug #-DUSE_ZLIB_EVENTS # --debug --pedantic-errors
 SOFLAGS       = -shared
 DllSuf        = so
 

@@ -4173,8 +4173,8 @@ void rateCalcAndServo(struct timeval *tvPtr, unsigned int lastEvNum)
 		  
     if(rateCalcPeriod) {
       if((doingEvent-lastEventCounter)>0 && rateCalcPeriod) {
-	//RJN the 0.5 just accounts for the double buffer
-	printf("Run %d -- Event %d -- Current Rate %3.2f Hz\n",runNumber,lastEvNum,0.5*((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
+	//RJN the 0.5 just accounts for the double buffer, which we are no longer using
+	printf("Run %d -- Event %d -- Current Rate %3.2f Hz\n",runNumber,lastEvNum,((float)(doingEvent-lastEventCounter))/rateCalcPeriod);
 	//		    if(lastEventCounter<200)
 	//			printf("\n");
       }

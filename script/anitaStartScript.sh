@@ -7,6 +7,10 @@ export ANITA_CONFIG_DIR=${ANITA_FLIGHT_SOFT_DIR}/config
 export PATH=${ANITA_FLIGHT_SOFT_DIR}/bin:${PATH}
 export LD_LIBRARY_PATH=${ANITA_FLIGHT_SOFT_DIR}/lib:${LD_LIBRARY_PATH}
 
+X  2>&1 > /dev/null &
+DISPLAY=:0 xhost +
+
+
 exit -1
 
 daemon -u anita -r SIPd -n SIPd
