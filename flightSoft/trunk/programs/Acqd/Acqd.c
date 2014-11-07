@@ -690,8 +690,9 @@ int main(int argc, char **argv) {
       //Now actually read the event data
       status+=readSurfEventData();
       if(status!=ACQD_E_OK) {
-	fprintf(stderr,"Error reading SURF event data %d.\n",doingEvent);
+	fprintf(stderr,"Error reading SURF event data %d, will try reInit\n",doingEvent);
 	syslog(LOG_ERR,"Error reading SURF event data %d.\n",doingEvent);
+	reInitNeeded=1;
       }
 	      
       hdPtr->unixTime=timeStruct.tv_sec;
@@ -2962,6 +2963,7 @@ AcqdErrorCode_t readSurfEventData()
     if (count < 0) {
       syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
+      status=ACQD_E_SURFREAD;
     }
      if(printToScreen && verbosity>2) {	
       for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {
