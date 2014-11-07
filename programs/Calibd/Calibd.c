@@ -76,7 +76,7 @@ int stateNTUAmpa=0;
 int stateSB=0;
 int stateNTUSSD5V=0;
 int stateNTUSSD12V=0;
-int stateNTUSSDShutdown=0;
+int stateNTUSSDShutdown=1;
 
 
 //Debug
@@ -334,7 +334,7 @@ int readConfigFile()
 
 	stateNTUSSD5V=kvpGetInt("stateNTUSSD5V",0);
 	stateNTUSSD12V=kvpGetInt("stateNTUSSD12V",0);
-	stateNTUSSDShutdown=kvpGetInt("stateNTUSSDShutdown",0);
+	//	stateNTUSSDShutdown=kvpGetInt("stateNTUSSDShutdown",0);
 
     }
     else {
@@ -465,9 +465,9 @@ int setRelays()
     int retVal=0;
 
     //These ones operate on levels, so will do them first
-    retVal=setLevel(SB_LOGIC/8,SB_LOGIC%8,stateSB);    
     retVal=setLevel(NTU_SSD_5V_LOGIC/8,NTU_SSD_5V_LOGIC%8,stateNTUSSD5V);
     retVal=setLevel(NTU_SSD_12V_LOGIC/8,NTU_SSD_12V_LOGIC%8,stateNTUSSD12V);
+    retVal=setLevel(SB_LOGIC/8,SB_LOGIC%8,stateSB);    
     retVal=setLevel(NTU_SSD_SHUTDOWN_LOGIC/8,NTU_SSD_SHUTDOWN_LOGIC%8,stateNTUSSDShutdown);
 
 
