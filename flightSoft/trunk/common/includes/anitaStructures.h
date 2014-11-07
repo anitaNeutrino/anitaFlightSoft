@@ -818,14 +818,14 @@ typedef struct {
   */
   unsigned char errorFlag; 
   unsigned char surfSlipFlag; ///< Sync Slip between SURF 2-9 and SURF 1
-  unsigned char blank; ///< 8-bit nadir phi mask (from TURF)
+  unsigned char peakThetaBin; ///< 8-bit peak theta bin from Prioritizer
   unsigned short l1TrigMask; ///< 16-bit phi ant mask (from TURF)
   unsigned short l1TrigMaskH; ///< 16-bit phi ant mask (from TURF)
   unsigned short phiTrigMask; ///< 16-bit phi mask (from TURF)
   unsigned short phiTrigMaskH; ///< 16-bit phi mask (from TURF)
-  unsigned short otherPhiTrigMask; ///< 16-bit phi mask (from TURF)
-  unsigned short otherPhiTrigMaskH; ///< 16-bit phi mask (from TURF)
-  unsigned char reserved[2]; ///< reserved[0] is 
+  unsigned short imagePeak; ///< 16-bit image peak from Prioritizer
+  unsigned short coherentSumPeak; ///< 16-bit coherent sum peak from Prioritizer
+  unsigned short prioritizerStuff; ///< TBD
   TurfioStruct_t turfio; ///<The X byte TURFIO data
 } AnitaEventHeader_t;
 
