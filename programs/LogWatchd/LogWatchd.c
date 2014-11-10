@@ -165,8 +165,8 @@ int main (int argc, char *argv[])
 	      else if(theRequest.logReq==LOG_REQUEST_JOURNALCTL) {
 		//Need to do something here
 		switch(theRequest.jclOpt) {
-		case JOURNALCTL_OPT_CMDLINE:
-		  sprintf(journalCtlArgument,"_CMDLINE=%s",getProgName(theRequest.optArg));
+		case JOURNALCTL_OPT_COMM:
+		  sprintf(journalCtlArgument,"_COMM=%s",getProgName(theRequest.optArg));
 		  tailJournal(journalCtlArgument,theRequest.numLines);
 		default:
 		  tailJournal("",theRequest.numLines);

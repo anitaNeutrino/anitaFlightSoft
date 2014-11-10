@@ -80,6 +80,7 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets);
 int killDataPrograms();
 int startDataPrograms();
 int tryAndMountSatadrives();
+void actuallyWriteCommandEcho(CommandEcho_t *echo, const char *mainDir, const char *linkDir);
 
 int makeNewRunDirs();
 int getNewRunNumber();
@@ -185,6 +186,7 @@ int main (int argc, char *argv[])
 
   makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
   makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
+  makeDirectories(OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
   makeDirectories(CMDD_COMMAND_LINK_DIR);
   makeDirectories(REQUEST_TELEM_LINK_DIR);
   makeDirectories(PLAYBACK_LINK_DIR);
@@ -2638,6 +2640,26 @@ int requestFile(char *filename, int numLines) {
 }
 
 
+void actuallyWriteCommandEcho(CommandEcho_t *echoPtr, const char *mainDir, const char *linkDir) {
+  char filename[FILENAME_MAX];
+  //Write cmd echo for losd
+  sprintf(filename,"%s/cmd_%d.dat",mainDir,echoPtr->unixTime);
+  {
+    FILE *pFile;
+    int fileTag=1;
+    pFile = fopen(filename,"rb");
+    while(pFile!=NULL) {
+      fclose(pFile);
+      sprintf(filename,"%s/cmd_%d_%d.dat",mainDir,echoPtr->unixTime,fileTag);
+      pFile=fopen(filename,"rb");
+      fileTag++;
+    }
+  }
+  printf("Writing to file %s\n",filename);
+  fillGenericHeader(echoPtr,echoPtr->gHdr.code,sizeof(CommandEcho_t));
+  writeStruct(echoPtr,filename,sizeof(CommandEcho_t));
+  makeLink(filename,linkDir);
+}
 
 
 int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) 
@@ -2646,7 +2668,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
   //	printf("writeCommandEcho\n");
   CommandEcho_t theEcho;
   int count,retVal=0;
-  char filename[FILENAME_MAX];
+
   char cmdString[100];
   theEcho.gHdr.code=PACKET_CMD_ECHO;
   if(theCmd->fromSipd==0)
@@ -2679,44 +2701,11 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
     fprintf(stderr,"Error executing cmd: %s\n",cmdString);
   }
 
-
-  //Write cmd echo for losd
-  sprintf(filename,"%s/cmd_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
-  {
-    FILE *pFile;
-    int fileTag=1;
-    pFile = fopen(filename,"rb");
-    while(pFile!=NULL) {
-      fclose(pFile);
-      sprintf(filename,"%s/cmd_%d_%d.dat",LOSD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
-      pFile=fopen(filename,"rb");
-      fileTag++;
-    }
-  }
-  printf("Writing to file %s\n",filename);
-  fillGenericHeader(&theEcho,theEcho.gHdr.code,sizeof(CommandEcho_t));
-  writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
-  makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
-
-
-  //Write cmd echo for sipd
-  sprintf(filename,"%s/cmd_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime);
-  {
-    FILE *pFile;
-    int fileTag=1;
-    pFile = fopen(filename,"rb");
-    while(pFile!=NULL) {
-      fclose(pFile);
-      sprintf(filename,"%s/cmd_%d_%d.dat",SIPD_CMD_ECHO_TELEM_DIR,theEcho.unixTime,fileTag);
-      pFile=fopen(filename,"rb");
-      fileTag++;
-    }
-  }
-  printf("Writing to file %s\n",filename);
-  fillGenericHeader(&theEcho,theEcho.gHdr.code,sizeof(CommandEcho_t));
-  writeStruct(&theEcho,filename,sizeof(CommandEcho_t));
-  makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
-    
+  //Write cmd echo for losd,sipd,openportd
+  actuallyWriteCommandEcho(&theEcho,LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR);
+  actuallyWriteCommandEcho(&theEcho,SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR);
+  actuallyWriteCommandEcho(&theEcho,OPENPORTD_CMD_ECHO_TELEM_DIR,OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
+  
 
   //Write Archive
   cleverHkWrite((unsigned char*)&theEcho,sizeof(CommandEcho_t),

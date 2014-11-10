@@ -175,7 +175,11 @@
 #define LAST_LOS_NUMBER_FILE "/mnt/data/numbers/lastLosNumber"
 #define LAST_TDRSS_NUMBER_FILE "/mnt/data/numbers/lastTdrssNumber"
 #define LAST_RUN_NUMBER_FILE "/mnt/data/numbers/lastRunNumber"
+#define LAST_OPENPORT_NUMBER_FILE "/mnt/data/numbers/lastOpenportNumber"
+#define LAST_OPENPORT_FILE_NUMBER_FILE "/mnt/data/numbers/lastOpenportFileNumber"
 #endif
+
+#define OPENPORT_OUTPUT_DIR "/tmp/openport"
 
 #define NTU_DATA_MOUNT "/tmp/ntu"
 #define NTU_WATCH_DIR "/tmp/ntu/current"
@@ -194,6 +198,8 @@
 //Housekeeping Telem Dirs
 #define LOSD_CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmdlosd"
 #define SIPD_CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmdsipd"
+#define OPENPORTD_CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmdopenportd"
+
 #define HK_TELEM_DIR "/tmp/anita/telem/house/hk"
 #define SURFHK_TELEM_DIR "/tmp/anita/telem/house/surfhk"
 #define PEDESTAL_TELEM_DIR "/tmp/anita/telem/house/pedestal"
@@ -216,6 +222,7 @@
 
 #define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
+#define OPENPORTD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdopenportd/link"
 #define HK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
 #define SURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/surfhk/link"
 #define PEDESTAL_TELEM_LINK_DIR "/tmp/anita/telem/house/pedestal/link"
@@ -277,6 +284,7 @@
 #define PLAYBACKD_PID_FILE "/tmp/anita/pid/playbackd.pid"
 #define LOGWATCHD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
 #define NEOBRICKD_PID_FILE "/tmp/anita/pid/neobrickd.pid"
+#define OPENPORTD_PID_FILE "/tmp/anita/pid/openportd.pid"
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 
