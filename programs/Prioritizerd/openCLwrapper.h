@@ -30,7 +30,7 @@ typedef struct
 
 void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType);
 
-cl_program compileKernelsFromSource(const char* fileName, cl_context context, cl_device_id* deviceList, 
+cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_context context, cl_device_id* deviceList, 
 				    cl_uint numDevicesToUse, uint showCompileLog);
 
 cl_kernel createKernel(cl_program prog, const char* kernelName);
@@ -41,6 +41,7 @@ buffer* createBuffer(cl_context context, cl_mem_flags memFlags, size_t size, con
 
 void destroyBuffer(buffer* theBuffer);
 
+cl_event readBuffer(cl_command_queue cq, buffer* theBuffer, void* array, cl_uint wlSize, const cl_event* wl);
 
 cl_event writeBuffer(cl_command_queue cq, buffer* theBuffer, void* array, cl_uint wlSize, const cl_event* wl);
 
@@ -51,6 +52,7 @@ void copyArrayFromGPU(cl_command_queue cq, buffer* theBuffer, void* array);
 void moveDataBetweenCPUandGPU(cl_command_queue cq, buffer* theBuffer, void* array, uint directionFlag);
 
 void printBufferToTextFile(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents);
+void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents, const int numEventsToPrint);
 
 void setKernelArgs(cl_kernel kernel, int numArgs, buffer** buffers, const char* kernelName);
 void setKernelArg(cl_kernel kernel, uint arg, buffer* theBuffer, const char* kernelName);

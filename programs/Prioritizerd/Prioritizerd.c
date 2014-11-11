@@ -19,12 +19,12 @@
 
 /* Ben's GPU things */
 #include "openCLwrapper.h"
+#include "anitaTimingCalib.h"
 #include "anitaGpu.h"
 #include "tstamp.h"
 
 //#define TIME_DEBUG 1
 //#define WRITE_DEBUG_FILE
-
 
 void wasteTime(AnitaEventBody_t *bdPtr);
 int readConfig();
@@ -71,53 +71,9 @@ int CutRMS=130;
 int priorityPPS1=2;
 int priorityPPS2=3;
 
-//ugly hack to count number of channels with fft peaks
-//moved to AnitaInstrument.c
-//int FFTNumChannels;
-
-// global event thingees
-/*Event object*/
 /* NUM_EVENTS is defined in the imaginatively named myInterferometryConstants.h */
 AnitaEventHeader_t theHeader[NUM_EVENTS];
-//AnitaEventBody_t theBody;
 PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
-/* AnitaTransientBodyF_t unwrappedBody;  */
-/* AnitaInstrumentF_t theInstrument; */
-/* AnitaInstrumentF_t theXcorr; */
-/* //original analysis */
-/* AnitaChannelDiscriminator_t theDiscriminator; */
-/* AnitaSectorLogic_t theMajority; */
-/* AnitaSectorAnalysis_t sectorAna; */
-/* //nonupdating discriminator method */
-/* AnitaChannelDiscriminator_t theNonupdating; */
-/* AnitaSectorLogic_t theMajorityNoUp; */
-/* AnitaSectorLogic_t theHorizontal; */
-/* AnitaSectorLogic_t theVertical; */
-/* AnitaCoincidenceLogic_t theCoincidenceAll; */
-/* AnitaCoincidenceLogic_t theCoincidenceH; */
-/* AnitaCoincidenceLogic_t theCoincidenceV; */
-/* int MaxAll, MaxH, MaxV; */
-/* //xcorr peak boxcar method */
-/* AnitaChannelDiscriminator_t theBoxcar; */
-/* AnitaChannelDiscriminator_t theBoxcarNoGuard; */
-/* //     AnitaSectorLogic_t theMajorityBoxcar; */
-/* AnitaSectorLogic_t theMajorityBoxcarH; */
-/* AnitaSectorLogic_t theMajorityBoxcarV; */
-/* //     AnitaCoincidenceLogic_t theCoincidenceBoxcarAll; */
-/* AnitaCoincidenceLogic_t theCoincidenceBoxcarH; */
-/* AnitaCoincidenceLogic_t theCoincidenceBoxcarV; */
-/* //    AnitaSectorLogic_t theMajorityBoxcar2; */
-/* AnitaSectorLogic_t theMajorityBoxcarH2; */
-/* AnitaSectorLogic_t theMajorityBoxcarV2; */
-/* //    AnitaCoincidenceLogic_t theCoincidenceBoxcarAll2; */
-/* AnitaCoincidenceLogic_t theCoincidenceBoxcarH2; */
-/* AnitaCoincidenceLogic_t theCoincidenceBoxcarV2; */
-/* int /\*MaxBoxAll,*\/MaxBoxH,MaxBoxV; */
-/* int /\*MaxBoxAll2,*\/MaxBoxH2,MaxBoxV2; */
-/* LogicChannel_t HornCounter,ConeCounter; */
-/* int HornMax; */
-/* int RMSnum; */
-
 
 int main (int argc, char *argv[])
 {
@@ -130,12 +86,8 @@ int main (int argc, char *argv[])
   char archiveHdFilename[FILENAME_MAX];
   char archiveBodyFilename[FILENAME_MAX];
 
-  //     int priority,score,score3,score4;
-  //    float probWriteOut9=0.03; /* Will become a config file thingy */
-
   /* Config file thingies */
   int doingEvent=0;
-  //    char* eString ;
 
   /* Directory reading things */
   int wd=0;
@@ -149,8 +101,6 @@ int main (int argc, char *argv[])
   if(retVal<0)
     return retVal;
 
-  //event thingees were formerly here; now are globals
-
 #ifdef WRITE_DEBUG_FILE
   FILE *debugFile = fopen("/tmp/priDebugFile.txt","w");
   if(!debugFile) {
@@ -158,8 +108,7 @@ int main (int argc, char *argv[])
     exit(0);
   }
 #endif
-    	
-
+       
 
   /* Set signal handlers */
   signal(SIGUSR1, sigUsr1Handler);
@@ -200,6 +149,7 @@ int main (int argc, char *argv[])
      so needs to be outside any kind of loop.
   */
   prepareGpuThings();
+  prepareTimingCalibThings();
 
 
 
@@ -227,16 +177,18 @@ int main (int argc, char *argv[])
       printf("Prioritzerd is running and sees %d event links\n", numEventLinks);
     
       //      if(!numEventLinks) {
-      if(numEventLinks < NUM_EVENTS) {
+      /* if(numEventLinks < NUM_EVENTS) { */
+      /* 	usleep(1000); */
+      /* 	continue; */
+      /* } */
+
+      if(!numEventLinks){
 	usleep(1000);
 	continue;
       }
 
-      //	printf("Got %d events\n",numEventLinks);
-      /* What to do with our events? */	
-      //      for(count=0;count<numEventLinks;count++) {
-
-      for(count=0;count<NUM_EVENTS;count++) {
+      /* Now read events in whenever I get them */
+      while(count<NUM_EVENTS && currentState==PROG_STATE_RUN){
 	tempString=getFirstLink(wd);
 	printf("tempString = %s\n", tempString);
 	//	printf("%s\n",eventLinkList[count]->d_name); 
@@ -248,7 +200,7 @@ int main (int argc, char *argv[])
 	lastEventNumber=doingEvent;
 
 	sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
-		tempString);		 
+		tempString);
 	sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 		doingEvent);
 
@@ -256,23 +208,32 @@ int main (int argc, char *argv[])
 	//Switch to Acqd writing psev files
 	sprintf(bodyFilename[count],"%s/psev_%d.dat",ACQD_EVENT_DIR,
 		doingEvent);
-		 
+
 	retVal=fillPedSubbedBody(&pedSubBody[count],bodyFilename[count]);
-	retVal=fillHeader(&theHeader[count],hdFilename);
+	retVal=fillHeader(&theHeader[count],hdFilename);	
+
+	if(numEventLinks<panicQueueLength){
+	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
+	  doTimingCalibration(count, theHeader[count], pedSubBody[count], finalVolts);
+	  addEventToGpuQueue(count, finalVolts, theHeader[count]);
+	  int chanInd=0;
+	  for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
+	    free(finalVolts[chanInd]);
+	  }
+	  count++;
+	}
+	else{
+	  theHeader[count].priority=7;
+	}
       }
 
+      printf("count = %d, should be %d if program in normal state", count, NUM_EVENTS);
 
-      /* Now use GPU to determine priority, send in arrays of length NUM_EVENTS... */
-      mainGpuLoop(pedSubBody, theHeader);
+      /* Now use GPU to determine priority, send in arrays of length count... */
+      mainGpuLoop(count, theHeader);      
+      /* mainGpuLoop(count, pedSubBody, theHeader); */
 
       for(count=0;count<NUM_EVENTS;count++) {
-	/* if(numEventLinks<panicQueueLength){ */
-	/*   //	  theHeader.priority=determinePriority(); */
-	/*   //	  theHeader[count].priority=determinePriority(); */
-	/*   theHeader[count].priority=count; */
-	/* } */
-	/* else  */
-	/*     theHeader[count].priority=7; */
 
 	// handle queue forcing of PPS here
 	int pri=theHeader[count].priority&0xf;
@@ -333,6 +294,7 @@ int main (int argc, char *argv[])
    So let's free all CPU and GPU mallocs, close output files etc, etc...
  */
   tidyUpGpuThings();
+  tidyUpTimingCalibThings();
 
   return 0;
 }

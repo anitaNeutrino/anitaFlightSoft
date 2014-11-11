@@ -73,7 +73,7 @@ void sendWakeUpBuffer();
  int doWrite();
  int readConfig();
  int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize);
- int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int fileSize);
+int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int fileSize, int numToLeave);
  void fillBufferWithHk();
  void readAndSendEvent(char *headerFilename, unsigned int eventNumber);
  void readAndSendEventRamdisk(char *headerFilename);
@@ -554,7 +554,7 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
 
 
 
-int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int fileSize)
+int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int fileSize,int numToLeave)
 /* Uses the inotify watch specified by wd to look */
 /* in the specified directroy and fill buffer upto maxCopy. */
 /* fileSize is the maximum size of a packet in the directory */
@@ -566,15 +566,16 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
   int retVal,numLinks,count,numBytes,totalBytes=0;//,checkVal=0;
   GenericHeader_t *gHdr;
   char *tempString;
+  //  printf("%s %s == %d %d %d\n",telemDir,linkDir,fileSize,numBytesInBuffer,LOS_MAX_BYTES);
 
   //Both of these two checks should be uneccesary
   if((numBytesInBuffer+fileSize)>LOS_MAX_BYTES) return 0;
   numLinks=getNumLinks(wd);
-  if(numLinks<=1) {
+  if(numLinks<=numToLeave) {
     return 0;
   }
   
-  for(count=numLinks-1;count>=1;count--) {
+  for(count=numLinks-1;count>=numToLeave;count--) {
     tempString=getLastLink(wd);
     sprintf(currentFilename,"%s/%s",telemDir,tempString);
     sprintf(currentTouchname,"%s.sipd",currentFilename);
@@ -652,6 +653,7 @@ void sendWakeUpBuffer()
 
 void fillBufferWithHk() 
 {
+  //  printf("fillBufferWithHk\n");
   //Setup inotify watches
   //Get the various number of links
   //Send some data down
@@ -744,19 +746,23 @@ void fillBufferWithHk()
   //Update the link lists -- well don't for now
   //  checkLinkDirs(0,1);
 
+
   //Now try and send some hk data
   for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
+    int numToLeave=1;
+    if(hkInd==0) numToLeave=0;
     //Make sure we clear the buffer to leave room for requests
     if(hkInd==LOS_TELEM_REQUEST && numBytesInBuffer>1000)
       doWrite();
     
     numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+    //    printf("numHkLinks[%d] %d\n",hkInd,numHkLinks[hkInd]);
     if(numHkLinks[hkInd]>0) {
       //Have stuff to send
       if((LOS_MAX_BYTES-numBytesInBuffer)>maxPacketSize[hkInd]) {
 	addToTelemetryBuffer(LOS_MAX_BYTES-numBytesInBuffer,wdHks[hkInd],
 			     telemDirs[hkInd],telemLinkDirs[hkInd],
-			     maxPacketSize[hkInd]);
+			     maxPacketSize[hkInd],numToLeave);
       }      
     }
   }

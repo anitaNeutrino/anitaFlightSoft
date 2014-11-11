@@ -1,0 +1,16 @@
+[Unit]
+Description=Start ANITA Data Daemons
+After=turfiodriver.service
+After=losdriver.service
+After=surfdriver.service
+After=anitaserial.service
+After=anitadisk.service
+After=acromagdriver.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/anita/flightSoft/system/startAnitaSoftware
+
+[Install]
+WantedBy=multi-user.target

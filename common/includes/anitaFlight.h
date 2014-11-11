@@ -113,7 +113,7 @@
 #define EVENTS_PER_FILE 100
 #define EVENT_FILES_PER_DIR 100
 #define EVENTS_PER_INDEX 10000
-#define DISK_TYPES 5 //neobrick included in this list
+#define DISK_TYPES 5 //ntu included in this list
 
 
 
@@ -266,8 +266,8 @@
 #define PLAYBACK_LINK_DIR "/tmp/anita/playbackd/link"
 #define LOGWATCH_DIR "/tmp/anita/logwatchd"
 #define LOGWATCH_LINK_DIR "/tmp/anita/logwatchd/link"
-#define NEOBRICKD_DIR "/tmp/anita/neobrickd"
-#define NEOBRICKD_LINK_DIR "/tmp/anita/neobrickd/link"
+#define NTUD_DIR "/tmp/anita/ntud"
+#define NTUD_LINK_DIR "/tmp/anita/ntud/link"
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
@@ -283,7 +283,7 @@
 #define SIPD_PID_FILE "/tmp/anita/pid/sipd.pid"
 #define PLAYBACKD_PID_FILE "/tmp/anita/pid/playbackd.pid"
 #define LOGWATCHD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
-#define NEOBRICKD_PID_FILE "/tmp/anita/pid/neobrickd.pid"
+#define NTUD_PID_FILE "/tmp/anita/pid/ntud.pid"
 #define OPENPORTD_PID_FILE "/tmp/anita/pid/openportd.pid"
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"

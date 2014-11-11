@@ -107,7 +107,7 @@ int verbosity=1;
 int disableHelium1;
 int disableUsb;
 int disableHelium2;
-//int disableNeobrick;
+int disableNtu;
 char usbName[FILENAME_MAX];
 char ntuName[FILENAME_MAX];
 
@@ -121,7 +121,7 @@ float priorityFractionGlobalDecimate[NUM_PRIORITIES];
 float priorityFractionDeleteHelium1[NUM_PRIORITIES];
 float priorityFractionDeleteHelium2[NUM_PRIORITIES];
 float priorityFractionDeleteUsb[NUM_PRIORITIES];
-float priorityFractionDeleteNeobrick[NUM_PRIORITIES];
+float priorityFractionDeleteNtu[NUM_PRIORITIES];
 float priorityFractionDeletePmc[NUM_PRIORITIES];
 int priDiskEventMask[NUM_PRIORITIES];
 int alternateUsbs[NUM_PRIORITIES];
@@ -359,11 +359,11 @@ int readConfig() {
       hkDiskBitMask&=(~USB_DISK_MASK);
       eventDiskBitMask&=(~USB_DISK_MASK);
     }
-    //    disableNeobrick=kvpGetInt("disableNeobrick",0);
-    //    if(disableNeobrick) {
-    //      hkDiskBitMask&=(~NEOBRICK_DISK_MASK);
-    //      eventDiskBitMask&=(~NEOBRICK_DISK_MASK);
-    //    }
+    disableNtu=kvpGetInt("disableNtu",0);
+    if(disableNtu) {
+      hkDiskBitMask&=(~NTU_DISK_MASK);
+      eventDiskBitMask&=(~NTU_DISK_MASK);
+    }
 	  
 	
 
@@ -1454,8 +1454,8 @@ int disableDisk(int diskMask, int disFlag)
 	configModifyInt("anitaSoft.config","global","disableUsb",disFlag,&rawtime);
 	break;
       case 4:
-	//Disable Neobrick
-	configModifyInt("anitaSoft.config","global","disableNeobrick",disFlag,&rawtime);
+	//Disable Ntu
+	configModifyInt("anitaSoft.config","global","disableNtu",disFlag,&rawtime);
 	break;
       default:
 	break;
@@ -1563,8 +1563,8 @@ int setArchiveDecimatePri(int diskMask, int pri, float frac)
 	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteUsb",priorityFractionDeleteUsb,NUM_PRIORITIES,&rawtime);
 	break;
       case 3:
-	priorityFractionDeleteNeobrick[pri]=frac;
-	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteNeobrick",priorityFractionDeleteNeobrick,NUM_PRIORITIES,&rawtime);
+	priorityFractionDeleteNtu[pri]=frac;
+	configModifyFloatArray("Archived.config","archived","priorityFractionDeleteNtu",priorityFractionDeleteNtu,NUM_PRIORITIES,&rawtime);
 	break;
       case 4:
 	priorityFractionDeletePmc[pri]=frac;
@@ -3072,12 +3072,12 @@ int readArchivedConfig()
     }
 
     tempNum=NUM_PRIORITIES;
-    kvpStatus = kvpGetFloatArray("priorityFractionDeleteNeobrick",
-				 priorityFractionDeleteNeobrick,&tempNum);	
+    kvpStatus = kvpGetFloatArray("priorityFractionDeleteNtu",
+				 priorityFractionDeleteNtu,&tempNum);	
     if(kvpStatus!=KVP_E_OK) {
-      syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteNeobrick): %s",
+      syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteNtu): %s",
 	     kvpErrorString(kvpStatus));
-      fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteNeobrick): %s\n",
+      fprintf(stderr,"kvpGetFloatArray(priorityFractionDeleteNtu): %s\n",
 	      kvpErrorString(kvpStatus));
     }
 
@@ -3323,7 +3323,7 @@ int makeNewRunDirs() {
 
   //Now delete dirs
   //For now with system command
-  system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd /tmp/neobrick/* /tmp/buffer/*");
+  system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd /tmp/ntu/* /tmp/buffer/*");
     
   system("/home/anita/flightSoft/bin/createConfigAndLog.sh");
 
@@ -3382,7 +3382,7 @@ int clearRamdisk()
   killDataPrograms();
   killPrograms(progMask);
   sleep(2);
-  int retVal=system("rm -rf /tmp/anita /tmp/buffer /tmp/neobrick");
+  int retVal=system("rm -rf /tmp/anita /tmp/buffer /tmp/ntu");
   makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
   makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
   makeDirectories(CMDD_COMMAND_LINK_DIR);
@@ -3436,8 +3436,8 @@ int logRequestCommand(int logNum, int numLines)
     return requestFile("/var/log/anita.log",numLines);
   case LOG_REQUEST_SECURITY:
     return requestFile("/var/log/security",numLines);
-  case LOG_REQUEST_NEOBRICK:
-    return requestFile("/var/log/neobrick",numLines);
+  case LOG_REQUEST_NTU:
+    return requestFile("/var/log/ntu",numLines);
   case LOG_REQUEST_BOOT:
     return requestFile("/var/log/boot",numLines);
   case LOG_REQUEST_PROC_CPUINFO:
@@ -3509,7 +3509,7 @@ int killDataPrograms()
 		     ID_ACQD,
 		     ID_PLAYBACKD,
 		     ID_LOGWATCHD,
-		     ID_NEOBRICKD};
+		     ID_NTUD};
   
   int index=0,sleepCount=0;
   
@@ -3544,11 +3544,11 @@ int killDataPrograms()
     while(fileExists && sleepCount<30);
   }
   
-  killPrograms(NEOBRICKD_ID_MASK);
+  killPrograms(NTUD_ID_MASK);
   int fileExists=0;
   sleepCount=0;
   do {
-    FILE *test =fopen(NEOBRICKD_PID_FILE,"r");
+    FILE *test =fopen(NTUD_PID_FILE,"r");
     if(test==NULL) fileExists=0;
     else {
       fclose(test);
@@ -3556,10 +3556,10 @@ int killDataPrograms()
       sleepCount++;
       sleep(1);	
       if(sleepCount>20) {
-	syslog(LOG_INFO,"Neobrickd not dead after %d seconds\n",sleepCount);
-	reallyKillPrograms(NEOBRICKD_ID_MASK);
+	syslog(LOG_INFO,"Ntud not dead after %d seconds\n",sleepCount);
+	reallyKillPrograms(NTUD_ID_MASK);
 	sleep(1);
-	unlink(NEOBRICKD_PID_FILE);
+	unlink(NTUD_PID_FILE);
       }
     }
   } while(fileExists && sleepCount<30);
@@ -3579,7 +3579,7 @@ int startDataPrograms() {
 		     ID_EVENTD,
 		     ID_PLAYBACKD,
 		     ID_LOGWATCHD,
-		     ID_NEOBRICKD,
+		     ID_NTUD,
 		     ID_ACQD};
 
   int index=0;

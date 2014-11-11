@@ -1,5 +1,5 @@
 /*!
- @file openCLwrapper.cpp
+ @file openCLwrapper.c
  @date 26 Feb 2014
  @author Ben Strutt
 
@@ -43,7 +43,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   /* Give up if we can't find any devices on chosen platform */
   if (numDevices==0) {
     fprintf(stderr, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
-    fprintf(stderr, "Hint: Is the X server active?\n");
+    fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
     exit(1);
   }
@@ -94,8 +94,8 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     printf("\t\tMax Work Items for each dimension: ");
     uint dim=0; for(dim = 0; dim < maxWorkItemDimension; dim++){ printf("%ld ", maxWorkItemSizes[dim]);}
     printf("\n\t\tMax Work Group size: %ld\n", maxWorkGroupSize);
-    printf("\t\tGlobal memory size (bytes): %lld\n", maxMemAllocSize);
-    printf("\t\tLocal memory size (bytes): %lld\n", deviceLocalMemSize);
+    printf("\t\tGlobal memory size (bytes): %ld\n", maxMemAllocSize);
+    printf("\t\tLocal memory size (bytes): %ld\n", deviceLocalMemSize);
   }
 }
 
@@ -111,7 +111,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   Returns a cl_program which is used to enqueue all the opencl kernels.
 
  */
-cl_program compileKernelsFromSource(const char* fileName, cl_context context, cl_device_id* deviceList, cl_uint numDevicesToUse, uint showCompileLog){
+cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_context context, cl_device_id* deviceList, cl_uint numDevicesToUse, uint showCompileLog){
   
   cl_int status;            /*For error checking*/
   FILE *fp;                 /*File containing kernel source code*/
@@ -142,7 +142,7 @@ cl_program compileKernelsFromSource(const char* fileName, cl_context context, cl
 
   /* ... with build options to include files in the same directory */
   /*  sprintf(buildOptions,"-I../include -cl-denorms-are-zero -cl-finite-math-only"); */
-  sprintf(buildOptions,"-I../include");
+  sprintf(buildOptions,"-I../include %s", opt);
 
   status = clBuildProgram(prog, numDevicesToUse, deviceList, buildOptions, NULL, NULL);
 
@@ -394,6 +394,13 @@ void moveDataBetweenCPUandGPU(cl_command_queue cq, buffer* theBuffer, void* arra
 
 void printBufferToTextFile(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents){
 
+  /* If numEventsToPrint not specified, then print them all... */
+  printBufferToTextFile2(cq, fileName, polInd, theBuffer, numEvents, numEvents);
+
+}
+
+void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents, const int numEventsToPrint){
+
   size_t dataSize = 0;
   int typeInd = -1;
   char fileNameWithFolder[1024];
@@ -433,7 +440,7 @@ void printBufferToTextFile(cl_command_queue cq, const char* fileName, int polInd
 
   unsigned int element = 0;
   uint event = 0;
-  uint nb = 0;
+  /* uint nb = 0; */
   uint numElements = theBuffer->size/dataSize;
   uint elementsPerLine = numElements/numEvents;
   
@@ -444,7 +451,14 @@ void printBufferToTextFile(cl_command_queue cq, const char* fileName, int polInd
   for(element=0; element<numElements; element++){
     if(element > 0 && element%elementsPerLine == 0){
       fprintf(outputFile, "\n");
+      event++;
     }
+
+    /* Stop when we've done the desired number... */
+    if(event >= numEventsToPrint ){
+      break;
+    }
+    
     if(typeInd == 0){
       fprintf(outputFile, "%f ", *(((float*)array)+element));
     }
