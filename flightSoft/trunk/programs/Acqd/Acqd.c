@@ -273,6 +273,7 @@ int main(int argc, char **argv) {
   struct timeval startTimeStruct;
 
  
+  int surfResourceReInit=0;
   int reInitNeeded=0;
   int newPhiMask=0;
 
@@ -424,6 +425,8 @@ int main(int argc, char **argv) {
 	handleBadSigs(1002);
 	//		return -1;
       }
+
+      updateToLastThresholds();
     }
     if(pauseBeforeEvents && firstTimeThrough) {
 	printf("Masking off triggers at start\n");
@@ -437,6 +440,7 @@ int main(int argc, char **argv) {
     }
     newPhiMask=0;
     reInitNeeded=0;
+    surfResourceReInit=0;
     slipCounter=0;
 
     //Send software trigger
@@ -692,7 +696,7 @@ int main(int argc, char **argv) {
       if(status!=ACQD_E_OK) {
 	fprintf(stderr,"Error reading SURF event data %d, will try reInit\n",doingEvent);
 	syslog(LOG_ERR,"Error reading SURF event data %d.\n",doingEvent);
-	reInitNeeded=1;
+        surfResourceReInit=1;
       }
 	      
       hdPtr->unixTime=timeStruct.tv_sec;
@@ -783,7 +787,7 @@ int main(int argc, char **argv) {
       sendClearEvent();     
 
 
-      if(reInitNeeded && (slipCounter>eventsBeforeClear)) {
+      if(surfResourceReInit || (reInitNeeded && (slipCounter>eventsBeforeClear))) {
 	  fprintf(stderr,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
 	  syslog(LOG_INFO,"Acqd reinit required -- slipCounter %d -- trigNum %d\n",slipCounter,hdPtr->turfio.trigNum);
 
@@ -4262,8 +4266,10 @@ void intersperseSurfHk(struct timeval *tvPtr)
 
     //Here is the channel servo
     if(enableChanServo) {
-      if(updateThresholdsUsingPID())
+      if(updateThresholdsUsingPID()) {
 	setDACThresholds();
+	writeThresholdsToLastFile();
+      }
     }
 				
 		      
@@ -4585,4 +4591,28 @@ void printBoardAndVersion(unsigned int boardName,unsigned int boardVer)
   int rev=boardVer&0xff;
   
   printf("%c%c%c%c Version:\n Board Rev:\t%d\nCompiled:\t%d/%d\nVersion:\t%d.%d.%d\n",(boardName&0xFF000000)>>24,(boardName&0xFF0000)>>16,(boardName&0xFF00)>>8,boardName&0xFF,boardRevision,month,day,majorRev,minorRev,rev);
+}
+
+
+void updateToLastThresholds()
+{
+  FILE *fp = fopen("/tmp/anita/lastThresholds.dat","rb");
+  if(fp!=NULL) {
+    //    int thresholdArray[ACTIVE_SURFS][SCALERS_PER_SURF];
+    fread(thresholdArray,sizeof(int),ACTIVE_SURFS*SCALERS_PER_SURF,fp);
+    fclose(fp);
+  }
+
+  
+}
+
+void writeThresholdsToLastFile()
+{
+  FILE *fp = fopen("/tmp/anita/lastThresholds.dat","wb");
+  if(fp!=NULL) {
+    //    int thresholdArray[ACTIVE_SURFS][SCALERS_PER_SURF];
+    fwrite(thresholdArray,sizeof(int),ACTIVE_SURFS*SCALERS_PER_SURF,fp);
+    fclose(fp);
+  }
+ 
 }

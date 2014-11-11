@@ -5,11 +5,27 @@
 ################################################################################
 source /home/anita/.bash_profile
 
+echo "startNewRun.sh" >> /tmp/startNewRun
 
 run=`cat /mnt/data/numbers/lastRunNumber`
 echo $run
 let "run += 1"
 echo $run
+echo $run >> /tmp/startNewRun
+
+disabledNtu=`getConfigValue anitaSoft.config global disableNtu`
+if [ $disabledNtu -eq 1 ] ; then
+    echo "NTU disk disabled"
+else 
+    mkdir -p /tmp/ntu/run${run}
+    rm -f /tmp/ntu/current
+    if [ -d /tmp/ntu/current ] ; then
+	echo "Moving /tmp/ntu/current"
+	mv /tmp/ntu/current /tmp/ntu/current.run${run}
+	
+    fi
+    ln -sf /tmp/ntu/run${run} /tmp/ntu/current
+fi
 
 
 mkdir /mnt/data/run${run}
@@ -19,6 +35,8 @@ if [ -d /mnt/data/current ] ; then
     mv /mnt/data/current/ /mnt/data/current.run${run}
 fi
 ln -sf /mnt/data/run${run} /mnt/data/current
+
+
 
 
 disabledHelium2=`getConfigValue anitaSoft.config global disableHelium2`
@@ -47,6 +65,7 @@ else
     fi
     ln -sf /mnt/helium1/run${run} /mnt/helium1/current
 fi
+
 
 
 disabledUsb=`getConfigValue anitaSoft.config global disableUsb`

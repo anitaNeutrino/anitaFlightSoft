@@ -26,7 +26,12 @@
 
 /* Anita flight types */
 #include "includes/anitaStructures.h"
-#include "pedestalLib/pedestalLib.h"
+#include "kvpLib/keyValuePair.h"
+
+/* Stolen from pedestalLib.c */
+#define MAX_VAL 600
+
+
 
 /* 
    If you want to take a look at how long things are taking,
@@ -52,10 +57,16 @@ void timeStamp(int stampNo, int numEvents, cl_event* waitList);
 /* Simple named functions which handle initialization, calculation and destruction of GPU objects */ 
 void prepareGpuThings();
 void tidyUpGpuThings();
-void mainGpuLoop(PedSubbedEventBody_t *pedSubBody, AnitaEventHeader_t* theHeader);
+//void addEventToGpuQueue(int eventInd, PedSubbedEventBody_t pedSubBody, AnitaEventHeader_t theHeader, const int alreadyUnwrappedAndCalibrated);
 
-void assignPriorities(AnitaEventHeader_t* theHeader, float* imagePeakVal);
+void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t theHeader);
+void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader);
+
+void assignPriorities(int nEvents, AnitaEventHeader_t* theHeader, float* imagePeakVal);
 float compareForSort(const void* a, const void* b);
+
+
+int unwrapAndBaselinePedSubbedEventBen(PedSubbedEventBody_t *pedSubBdPtr, AnitaTransientBodyF_t *uwTransPtr, const int alreadyUnwrappedAndCalibrated);
 
 /***********************/
 /*       Structs       */
@@ -200,28 +211,28 @@ struct rusage resourcesStart;
 
 
 cl_event normalEvent;
-static const size_t gNormWorkSize[3] = {256, NUM_ANTENNAS, NUM_EVENTS};
-static const size_t lNormWorkSize[3] = {256, 1, 1};
+static const size_t gNormWorkSize[3] = {NUM_SAMPLES/4, NUM_ANTENNAS, NUM_EVENTS};
+static const size_t lNormWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
 
 cl_event fourierEvent;
-static const size_t gFourierWorkSize[3] = {256, NUM_ANTENNAS, NUM_EVENTS};
-static const size_t lFourierWorkSize[3] = {256, 1, 1};
+static const size_t gFourierWorkSize[3] = {NUM_SAMPLES/4, NUM_ANTENNAS, NUM_EVENTS};
+static const size_t lFourierWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
    
 cl_event powSpecEvent;
-static const size_t gPowSpecWorkSize[2] = {256, NUM_ANTENNAS};
-static const size_t lPowSpecWorkSize[2] = {256, 1};
+static const size_t gPowSpecWorkSize[2] = {NUM_SAMPLES/4, NUM_ANTENNAS};
+static const size_t lPowSpecWorkSize[2] = {NUM_SAMPLES/4, 1};
 
 cl_event filterEvent;
-static const size_t gFilterWorkSize[3] = {256, NUM_ANTENNAS, NUM_EVENTS};
-static const size_t lFilterWorkSize[3] = {256, 1, 1};
+static const size_t gFilterWorkSize[3] = {NUM_SAMPLES/4, NUM_ANTENNAS, NUM_EVENTS};
+static const size_t lFilterWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
 
 cl_event circCorrelationEvent;
-static const size_t gCircCorrWorkSize[3] = {256, NUM_PHI_SECTORS*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR, NUM_EVENTS};
-static const size_t lCircCorrWorkSize[3] = {256, 1, 1};
+static const size_t gCircCorrWorkSize[3] = {NUM_SAMPLES/4, NUM_PHI_SECTORS*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR, NUM_EVENTS};
+static const size_t lCircCorrWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
   
 cl_event peakCorrEvent;
-static const size_t gPeakCorrWorkSize[3] = {256, NUM_PHI_SECTORS*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR, NUM_EVENTS};
-static const size_t lPeakCorrWorkSize[3] = {256, 1, 1};
+static const size_t gPeakCorrWorkSize[3] = {NUM_SAMPLES/4, NUM_PHI_SECTORS*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR, NUM_EVENTS};
+static const size_t lPeakCorrWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
 
 cl_event imageEvent;
 static const size_t gImageWorkSize[3] = {NUM_BINS_THETA/4, NUM_BINS_PHI, NUM_EVENTS};
@@ -240,20 +251,20 @@ static const size_t gFindImagePeakWorkSize2[2] = {NUM_PHI_SECTORS, NUM_EVENTS};
 static const size_t lFindImagePeakWorkSize2[2] = {NUM_PHI_SECTORS, 1};
 
 cl_event invFFTWaveformsEvent;
-static const size_t gInvFFTSize[3] = {256, NUM_ANTENNAS, NUM_EVENTS};
-static const size_t lInvFFTSize[3] = {256, 1, 1};
+static const size_t gInvFFTSize[3] = {NUM_SAMPLES/4, NUM_ANTENNAS, NUM_EVENTS};
+static const size_t lInvFFTSize[3] = {NUM_SAMPLES/4, 1, 1};
 
 cl_event coherentSumEvent;
-static const size_t gCoherentSumKernelWorkSize[2] = {256, NUM_EVENTS};
-static const size_t lCoherentSumKernelWorkSize[2] = {256, 1};
+static const size_t gCoherentSumKernelWorkSize[2] = {NUM_SAMPLES/4, NUM_EVENTS};
+static const size_t lCoherentSumKernelWorkSize[2] = {NUM_SAMPLES/4, 1};
 
 cl_event hilbertEvent;
-static const size_t gHilbertWorkSize[2] = {256, NUM_EVENTS};
-static const size_t lHilbertWorkSize[2] = {256, 1};
+static const size_t gHilbertWorkSize[2] = {NUM_SAMPLES/4, NUM_EVENTS};
+static const size_t lHilbertWorkSize[2] = {NUM_SAMPLES/4, 1};
 
 cl_event hilbertPeakEvent;
-static const size_t gHilbertPeakWorkSize[2] = {256, NUM_EVENTS}; 
-static const size_t lHilbertPeakWorkSize[2] = {256, 1};
+static const size_t gHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, NUM_EVENTS}; 
+static const size_t lHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, 1};
 
 
 /* Input */

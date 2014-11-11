@@ -1,7 +1,10 @@
+#ifdef DEVELOPMENT
+#include "../include/myInterferometryConstants.h"
+#else
 #include "/home/anita/flightSoft/programs/Prioritizerd/myInterferometryConstants.h"
+#endif
 
 inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* complexScratch, int dir){
-
 
   //  short debug= dir > 1 ? 1 : 0;
   dir = dir >= 0 ? 1 : -1;
@@ -23,7 +26,11 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
 
   // Now do bit reversal, there are 10 bits for 1024 samples, pow(2, 10) = 1024.
 #pragma unroll
-  for(short bit=9; bit>=0; bit--){
+
+
+  for(short bit=RADIX_BIT_SWITCH; bit>=0; bit--){
+    //    for(short bit=9; bit>=0; bit--){ /* NUM_SAMPLES = 1024 */
+    //  for(short bit=7; bit>=0; bit--){ /* NUM_SAMPLES = 256 */
 
     // Put bit in reverse position (0->9, 1->8, etc...)
     outInd0 += (inInd0 & 1)*pown(2.f,bit);
@@ -132,7 +139,7 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
   int eventInd = get_global_id(2);
 
   int localInd = get_local_id(0);
-  int dataInd = eventInd*NUM_ANTENNAS*get_local_size(0) + antInd*get_local_size(0) + localInd;
+  int dataInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/4 + antInd*NUM_SAMPLES/4 + localInd;
 
   
   // look up how many raw samples in the waveform
@@ -790,7 +797,8 @@ __kernel void findHilbertEnvelopePeak(__global float4* coherentWave,
   scratch[localInd] = largerCoherent;
   barrier(CLK_LOCAL_MEM_FENCE);
   
-  int numSamples = get_global_size(0);
+  //  int numSamples = get_global_size(0);
+  int numSamples = NUM_SAMPLES/4;
   largerCoherent = -1; // this will be smaller than the smallest since we have taken abs of each value
   float coherent1 = 0;
   float coherent2 = 0;

@@ -31,7 +31,7 @@ ProgramStateCode currentState;
 
 int diskBitMasks[DISK_TYPES]={HELIUM1_DISK_MASK,HELIUM2_DISK_MASK,USB_DISK_MASK,PMC_DISK_MASK,NTU_DISK_MASK};
 char *diskNames[DISK_TYPES]={HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT,SAFE_DATA_MOUNT,NTU_DATA_MOUNT};
-int bufferDisk[DISK_TYPES]={0,0,0,0,1};
+int bufferDisk[DISK_TYPES]={0,0,0,0,0};
 int eventBufferDisk[DISK_TYPES]={1,1,1,0,1};
 
 int closeHkFilesAndTidy(AnitaHkWriterStruct_t *awsPtr) {
@@ -1842,6 +1842,7 @@ int unzipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int
 int zipFileInPlace(char *filename) {
   int retVal;
   char outputFilename[FILENAME_MAX];
+  char tempFilename[FILENAME_MAX];
   unsigned int numBytesIn=0;
   char *buffer=readFile(filename,&numBytesIn);
   if(!buffer || !numBytesIn) {
@@ -1849,9 +1850,12 @@ int zipFileInPlace(char *filename) {
     return -1;
   }    
   sprintf(outputFilename,"%s.gz",filename);
-  retVal=zippedSingleWrite((unsigned char*)buffer,outputFilename,numBytesIn);
+  sprintf(tempFilename,"%s.gz.temp",filename);
+  retVal=zippedSingleWrite((unsigned char*)buffer,tempFilename,numBytesIn);
   free(buffer);
   unlink(filename);
+  link(tempFilename,outputFilename);
+  unlink(tempFilename);
   return retVal;
 }
 
@@ -1945,6 +1949,7 @@ int zipBufferedHeaderFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWri
   int diskInd=0;
   char bufferZippedFilename[FILENAME_MAX];
   char outputFilename[FILENAME_MAX];
+  char tempFilename[FILENAME_MAX];
   unsigned int numBytesIn=0;
   char *buffer=readFile(awsPtr->bufferHeaderFileName,&numBytesIn);
   if(!buffer || !numBytesIn) {
@@ -1958,7 +1963,10 @@ int zipBufferedHeaderFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWri
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(eventBufferDiskMask&diskBitMasks[diskInd]) {
       sprintf(outputFilename,"%s.gz",awsPtr->currentHeaderFileName[diskInd]);
-      copyFileToFile(bufferZippedFilename,outputFilename);
+      sprintf(tempFilename,"%s.gz.new",awsPtr->currentHeaderFileName[diskInd]);
+      copyFileToFile(bufferZippedFilename,tempFilename);
+      link(tempFilename,outputFilename);
+      unlink(tempFilename);
     }
   }
   free(buffer);
@@ -1974,6 +1982,7 @@ int zipBufferedEventFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWrit
   int diskInd=0;
   char bufferZippedFilename[FILENAME_MAX];
   char outputFilename[FILENAME_MAX];
+  char tempFilename[FILENAME_MAX];
   unsigned int numBytesIn=0;
   char *buffer=readFile(awsPtr->bufferEventFileName,&numBytesIn);
   if(!buffer || !numBytesIn) {
@@ -1987,7 +1996,10 @@ int zipBufferedEventFileAndCopy(unsigned int eventBufferDiskMask, AnitaEventWrit
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(eventBufferDiskMask&diskBitMasks[diskInd]) {
       sprintf(outputFilename,"%s.gz",awsPtr->currentEventFileName[diskInd]);
-      copyFileToFile(bufferZippedFilename,outputFilename);
+      sprintf(tempFilename,"%s.gz.new",awsPtr->currentEventFileName[diskInd]);
+      copyFileToFile(bufferZippedFilename,tempFilename);
+      link(tempFilename,outputFilename);
+      unlink(tempFilename);
     }
   }
   free(buffer);
@@ -2149,7 +2161,7 @@ int getIdMask(ProgramId_t prog) {
   case ID_MONITORD: return MONITORD_ID_MASK;
   case ID_PLAYBACKD: return PLAYBACKD_ID_MASK;
   case ID_LOGWATCHD: return LOGWATCHD_ID_MASK;
-  case ID_NEOBRICKD: return NEOBRICKD_ID_MASK;
+  case ID_NTUD: return NTUD_ID_MASK;
   case ID_OPENPORTD: return OPENPORTD_ID_MASK;
   default: break;
   }
@@ -2173,7 +2185,7 @@ char *getProgName(ProgramId_t prog) {
   case ID_MONITORD: string="Monitord"; break;
   case ID_PLAYBACKD: string="Playbackd"; break;
   case ID_LOGWATCHD: string="LogWatchd"; break;
-  case ID_NEOBRICKD: string="Neobrickd"; break;
+  case ID_NTUD: string="NTUd"; break;
   case ID_OPENPORTD: string="Openportd"; break;
   default: string=NULL; break;
   }
@@ -2195,7 +2207,7 @@ char *getPidFile(ProgramId_t prog) {
   case ID_MONITORD: return MONITORD_PID_FILE;
   case ID_PLAYBACKD: return PLAYBACKD_PID_FILE;
   case ID_LOGWATCHD: return LOGWATCHD_PID_FILE;
-  case ID_NEOBRICKD: return NEOBRICKD_PID_FILE;
+  case ID_NTUD: return NTUD_PID_FILE;
   case ID_OPENPORTD: return OPENPORTD_PID_FILE;
   default: break;
   }
@@ -2255,8 +2267,8 @@ int sendSignal(ProgramId_t progId, int theSignal)
   case ID_SIPD:
     sprintf(fileName,"%s",SIPD_PID_FILE);
     break;    
-  case ID_NEOBRICKD:
-    sprintf(fileName,"%s",NEOBRICKD_PID_FILE);
+  case ID_NTUD:
+    sprintf(fileName,"%s",NTUD_PID_FILE);
     break;    
   case ID_OPENPORTD:
     sprintf(fileName,"%s",OPENPORTD_PID_FILE);

@@ -10,14 +10,14 @@ CL=/opt/AMDAPP
 CL_INCDIR = $(CL)/include
 CL_LIBDIR = $(CL)/lib
 
-LDFLAGS += -lOpenCL
+LDFLAGS += -lOpenCL -lgsl
 
 CFLAGS= -g -I ../../common/
 
 #Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
 Targets = Prioritizerd 
 #Objs= Filters.o AnitaInstrument.o fftwxcor.o GenerateScore.o
-Objs= openCLwrapper.o anitaGpu.o 
+Objs= openCLwrapper.o anitaGpu.o anitaTimingCalib.c
 
 #Objs += rcc_time_stamp.o
 #CFLAGS= += -DTSTAMP

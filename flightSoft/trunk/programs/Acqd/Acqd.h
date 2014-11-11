@@ -51,6 +51,9 @@ void printBoardAndVersion(unsigned int boardName,unsigned int boardVer);
 //Configuration functions
 int readConfigFile();
 int init_param(int argn, char **argv,  int *n, unsigned short *dacVal);
+void updateToLastThresholds();
+void writeThresholdsToLastFile();
+
 
 //Misclaneous Functions
 char *surfStatusFlagAsString(SurfStatusFlag_t flag);
