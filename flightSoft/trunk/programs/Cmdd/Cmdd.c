@@ -432,7 +432,7 @@ int executeCommand(CommandStruct_t *theCmd)
     //Halt
     time(&rawtime);
     killDataPrograms();
-    sprintf(theCommand,"/usr/bin/sudo /sbin/halt");
+    sprintf(theCommand,"/sbin/halt");
     retVal=system(theCommand);
     syslog(LOG_ERR,"Sending /sbin/halt -- retVal == %d -- %s\n",retVal,
 	   strerror(errno));
@@ -442,7 +442,7 @@ int executeCommand(CommandStruct_t *theCmd)
   case CMD_REBOOT:
     //Reboot
     killDataPrograms();
-    sprintf(theCommand,"/usr/bin/sudo /sbin/reboot");
+    sprintf(theCommand,"/sbin/reboot");
     retVal=system(theCommand);
     syslog(LOG_ERR,"Sending /sbin/reboot -- retVal == %d -- %s\n",retVal,
 	   strerror(errno));

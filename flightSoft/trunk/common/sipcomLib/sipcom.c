@@ -916,7 +916,39 @@ sipcom_wrap_buffer(unsigned char *buf, unsigned short nbytes,
     }
 
     *wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
-                                                    SIPCOM_LOS, TW_LOS);
+			   SIPCOM_LOS, TW_LOS);
+
+    return wrapbuf;
+}
+
+unsigned short *
+openport_wrap_buffer(unsigned char *buf, unsigned short nbytes,
+		     short *wrapbytes)
+{
+    static const int extra_bytes = 128;
+    static int nbytes_plus = 0;
+    static unsigned short *wrapbuf = NULL;
+
+    *wrapbytes = 0;
+
+    if (nbytes == 0) {
+	return NULL;
+    }
+
+    if (nbytes_plus < nbytes + extra_bytes) {
+	// (Re)allocate the wrap buffer if it is not big enough.
+	nbytes_plus = nbytes + extra_bytes;
+	wrapbuf = (unsigned short *)realloc(wrapbuf, nbytes_plus);
+	if (NULL == wrapbuf) {
+	    set_error_string("sipcom_wrap_buffer: bad realloc (%s).\n",
+	    	strerror(errno));
+            *wrapbytes = -1;
+	    return NULL;
+	}
+    }
+
+    *wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
+			   SIPCOM_OPENPORT, TW_OPENPORT);
 
     return wrapbuf;
 }
@@ -947,7 +979,7 @@ sipcom_highrate_write(unsigned char *buf, unsigned short nbytes)
     }
 
     wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
-                                                    SIPCOM_OMNI, TW_SIP);
+			  SIPCOM_OMNI, TW_SIP);
 
     printf("Inside sipcom_highrate_write: %d wrapbytes\n",wrapbytes);
 
