@@ -221,6 +221,9 @@ int sipcom_very_highrate_write(unsigned char *buf, unsigned short nbytes);
 
 unsigned short * sipcom_wrap_buffer(
         unsigned char *buf, unsigned short nbytes, short *wrapbytes);
+
+unsigned short * openport_wrap_buffer(
+        unsigned char *buf, unsigned short nbytes, short *wrapbytes);
 /*
  * Function: sipcom_highrate_set_throttle
  * 	Change the maximum rate at which we write high rate data to SIP

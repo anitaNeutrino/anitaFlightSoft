@@ -27,7 +27,7 @@ static unsigned short Endbuf[] = {
 static int Endbuf_sizeb =
     sizeof(short) * (sizeof(Endbuf)/sizeof(Endbuf[0]));
 
-static unsigned long Buffer_count[3] = { 1L, 1L, 1L};
+static unsigned long Buffer_count[4] = { 1L, 1L, 1L,1L};
 
 int
 telemwrap_init(int datasource)

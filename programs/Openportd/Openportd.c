@@ -22,6 +22,7 @@
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
+#include "sipcomLib/sipcom.h"
 #include "linkWatchLib/linkWatchLib.h"
 #include "includes/anitaStructures.h"
 #include "includes/anitaCommand.h"
@@ -118,6 +119,8 @@ unsigned int hkDataSent=0;
 //Data buffer
 unsigned char theBuffer[MAX_EVENT_SIZE*5];
 unsigned char chanBuffer[MAX_EVENT_SIZE*5];
+//unsigned short openportBuffer[MAX_EVENT_SIZE*5];
+
 
 static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
   {OPENPORTD_CMD_ECHO_TELEM_LINK_DIR,
@@ -1390,12 +1393,16 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   static FILE *fp=NULL;
   static int bytesToFile=0;
   static char fileName[FILENAME_MAX];
+  short numWrapBytes=0;
   float timeDiff;
   int retVal=0;
   if(first) {
     gettimeofday(&lastTime,0);
     first=0;
   }
+
+  
+  unsigned short *openportBuffer=openport_wrap_buffer(buf,nbytes,&numWrapBytes);
 
   const int maxBytesToFile=1000000;
   
@@ -1405,9 +1412,9 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   }
 
   if(fp) {
-    fwrite(buf,nbytes,1,fp);
-    bytesToFile+=nbytes;
-    if(nbytes>maxBytesToFile) {
+    fwrite(openportBuffer,numWrapBytes,1,fp);
+    bytesToFile+=numWrapBytes;
+    if(bytesToFile>maxBytesToFile) {
       fclose(fp);
       zipFileInPlace(fileName);
       fp=NULL;

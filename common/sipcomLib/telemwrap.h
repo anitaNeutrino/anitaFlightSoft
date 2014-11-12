@@ -19,6 +19,12 @@
 #define TW_SIP 1
 
 /*
+ * Macro: TW_OPENPORT
+ * 	Indicates using high-rate TDRSS data via the SIP.
+ */
+#define TW_OPENPORT 2
+
+/*
  * Macro: TW_PAD_BYTE
  *	Byte to pad the science data to be an even number of bytes.
  *	See the Data Format section of the telemwrap README file.
@@ -73,6 +79,7 @@ int telemwrap_init(int datasource);
 #define SIPCOM_OMNI 0
 #define SIPCOM_HGA  1
 #define SIPCOM_LOS  2
+#define SIPCOM_OPENPORT  3
 
 int telemwrap(unsigned short *databuf, unsigned short *wrapbuf,
     unsigned short nbytes, int xtype, int datasource);
