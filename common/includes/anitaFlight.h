@@ -176,10 +176,11 @@
 #define LAST_TDRSS_NUMBER_FILE "/mnt/data/numbers/lastTdrssNumber"
 #define LAST_RUN_NUMBER_FILE "/mnt/data/numbers/lastRunNumber"
 #define LAST_OPENPORT_NUMBER_FILE "/mnt/data/numbers/lastOpenportNumber"
-#define LAST_OPENPORT_FILE_NUMBER_FILE "/mnt/data/numbers/lastOpenportFileNumber"
+#define LAST_OPENPORT_RUN_NUMBER_FILE "/mnt/data/numbers/lastOpenportRunNumber"
 #endif
 
 #define OPENPORT_OUTPUT_DIR "/tmp/openport"
+#define OPENPORT_STAGE_DIR "/tmp/openportStage"
 
 #define NTU_DATA_MOUNT "/tmp/ntu"
 #define NTU_WATCH_DIR "/tmp/ntu/current"

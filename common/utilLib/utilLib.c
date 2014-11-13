@@ -1805,7 +1805,7 @@ int checkFileExists(char *filename)
   return 0;
 }
 
-int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
+int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes)
 {
   static int errorCounter=0;
   int retVal=compress((unsigned char*)output,(unsigned long*)outputBytes,(unsigned char*)input,(unsigned long)inputBytes);
@@ -1822,7 +1822,7 @@ int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *
 }
 
 
-int unzipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes)
+int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes)
 {
   static int errorCounter=0;
   int retVal=uncompress((unsigned char*)output,(unsigned long*)outputBytes,(unsigned char*)input,(unsigned long)inputBytes);
@@ -2103,7 +2103,9 @@ int zipBufferedFileAndCloneAndMove(char *filename,unsigned int cloneMask,int bas
 int makeZippedPacket(char *input, unsigned int numBytes, char *output, unsigned int numBytesOut) {
   ZippedPacket_t *zipPacket = (ZippedPacket_t*)output;
   zipPacket->numUncompressedBytes=numBytes;
-  int retVal=zipBuffer(input,&output[sizeof(ZippedPacket_t)],numBytes,&numBytesOut);
+  unsigned long realBytesOut=numBytesOut;
+  int retVal=zipBuffer(input,&output[sizeof(ZippedPacket_t)],numBytes,&realBytesOut);
+  numBytesOut=realBytesOut;
   if(retVal!=0) 
     return retVal;
   fillGenericHeader(output,PACKET_ZIPPED_PACKET,sizeof(ZippedPacket_t)+numBytesOut);
@@ -2112,7 +2114,7 @@ int makeZippedPacket(char *input, unsigned int numBytes, char *output, unsigned 
 
 int unzipZippedPacket(ZippedPacket_t *zipPacket, char *output, unsigned int numBytesOut) {
   char *input = (char*) zipPacket;
-  unsigned int returnBytes=numBytesOut;
+  unsigned long returnBytes=numBytesOut;
   int retVal=unzipBuffer(&input[sizeof(ZippedPacket_t)],output,zipPacket->gHdr.numBytes-sizeof(ZippedPacket_t),&returnBytes);
   if(retVal!=0) 
     return retVal;

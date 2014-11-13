@@ -144,8 +144,8 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
     int cleverIndexWriter(IndexEntry_t *indPtr, AnitaHkWriterStruct_t *awsPtr);
 
 //Zipping packets and files
-    int zipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes);
-    int unzipBuffer(char *input, char *output, unsigned int inputBytes, unsigned int *outputBytes);
+    int zipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
+    int unzipBuffer(char *input, char *output, unsigned long inputBytes, unsigned long *outputBytes);
     int zipFileInPlace(char *filename);
     int zipFileInPlaceAndClone(char *filename, unsigned int cloneMask,int baseInd);
     int zipBufferedFileAndMove(char *nonBufFilename);

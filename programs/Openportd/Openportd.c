@@ -64,6 +64,7 @@ typedef enum {
 
 int getOpenportNumber();
 int getOpenportFileNumber();
+int getOpenportRunNumber();
 int readConfig();
 int readAndSendEventRamdisk(char *headerLinkFilename);
 int checkLinkDirAndOpenport(int maxCopy, char *telemDir, char *linkDir, int fileSize);
@@ -81,6 +82,8 @@ int sortOutPidFile(char *progName);
 int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk);
 float getTimeDiff(struct timeval oldTime, struct timeval currentTime);
 void refreshLinksHandler(int sig);
+void startCopyScript();
+
 
 
 //Packet Dirs
@@ -116,11 +119,14 @@ int currentPri=0;
 unsigned int eventDataSent=0;
 unsigned int hkDataSent=0;
 
+//Copy stuff
+pid_t copyScriptPid=-1;
+
+
 //Data buffer
 unsigned char theBuffer[MAX_EVENT_SIZE*5];
 unsigned char chanBuffer[MAX_EVENT_SIZE*5];
 //unsigned short openportBuffer[MAX_EVENT_SIZE*5];
-
 
 static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
   {OPENPORTD_CMD_ECHO_TELEM_LINK_DIR,
@@ -317,6 +323,8 @@ int main(int argc, char *argv[])
     int hkCount=0;
    
     printf("Before while loop\n");
+    startCopyScript();
+
 
     while(1) {
       printf("Inside while loop\n");
@@ -1358,6 +1366,7 @@ void handleBadSigs(int sig)
   int retVal=0;
   fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
   syslog(LOG_CRIT,"Received sig %d -- will exit immediately\n",sig); 
+  kill(copyScriptPid,SIGTERM);
   retVal=unlink(OPENPORTD_PID_FILE);
   if(retVal<0) {
     syslog(LOG_ERR,"Error deleting %s -- %s",OPENPORTD_PID_FILE,strerror(errno));
@@ -1393,6 +1402,8 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   static FILE *fp=NULL;
   static int bytesToFile=0;
   static char fileName[FILENAME_MAX];
+  static int openportRun=-1;
+  if(openportRun<0) openportRun=getOpenportRunNumber();
   short numWrapBytes=0;
   float timeDiff;
   int retVal=0;
@@ -1407,43 +1418,42 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   const int maxBytesToFile=1000000;
   
   if(!fp) {
-    sprintf(fileName,"%s/openport_%d.dat",OPENPORT_OUTPUT_DIR,getOpenportFileNumber());
+    sprintf(fileName,"%s/%05d/%06d",OPENPORT_STAGE_DIR,openportRun,getOpenportFileNumber());
     fp=fopen(fileName,"wb");
   }
 
   if(fp) {
+
     fwrite(openportBuffer,numWrapBytes,1,fp);
     bytesToFile+=numWrapBytes;
+
+
+    //Now some accounting
+    dataCounter+=nbytes;
+    if(isHk) hkCounter+=nbytes;
+    else eventCounter+=nbytes;
+    printf("openportWrite %d bytes, file %d, hk %d, event %d\n",nbytes,bytesToFile,hkCounter,eventCounter);
+
     if(bytesToFile>maxBytesToFile) {
+      printf("Finished file %s -- with %d bytes\n",fileName,bytesToFile);
       fclose(fp);
-      zipFileInPlace(fileName);
+      //      zipFileInPlace(fileName);
+      moveFile(fileName,OPENPORT_OUTPUT_DIR);
       fp=NULL;
+      bytesToFile=0;
+
+   
+      gettimeofday(&newTime,0);
+      timeDiff=getTimeDiff(lastTime,newTime);
+      printf("Transferred %u bytes (%u hk, %u event) in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,hkCounter,eventCounter,timeDiff,((float)dataCounter)/timeDiff);
+      dataCounter=0;
+      hkCounter=0;
+      eventCounter=0;
+      lastTime=newTime;
+    
     }
   }
-
-
-  //RJN change this line to actually do something
-  //  retVal=openport_write(buf,nbytes);
-  //  if(retVal<0) {
-  //    syslog(LOG_ERR,"Error sending high rate data %d",retVal);
-  //  }
-
-
-  //Now some accounting
-  dataCounter+=nbytes;
-  if(isHk) hkCounter+=nbytes;
-  else eventCounter+=nbytes;
-  if(dataCounter>10000) {
-    
-    gettimeofday(&newTime,0);
-    timeDiff=getTimeDiff(lastTime,newTime);
-    printf("Transferred %u bytes (%u hk, %u event) in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,hkCounter,eventCounter,timeDiff,((float)dataCounter)/timeDiff);
-    dataCounter=0;
-    hkCounter=0;
-    eventCounter=0;
-    lastTime=newTime;
-  }
-
+  
   return retVal;
 }
 
@@ -1461,53 +1471,70 @@ void refreshLinksHandler(int sig)
 }
 
 int getOpenportFileNumber() {
+  static int openportNumber=-1;
+  openportNumber++;
+  return openportNumber;
+}
+
+int getOpenportRunNumber() {
   int retVal=0;
   static int firstTime=1;
   static int openportNumber=0;
   /* This is just to get the lastOpenportNumber in case of program restart. */
   FILE *pFile;
   if(firstTime && !standAloneMode) {
-    pFile = fopen (LAST_OPENPORT_FILE_NUMBER_FILE, "r");
+    pFile = fopen (LAST_OPENPORT_RUN_NUMBER_FILE, "r");
     if(pFile == NULL) {
       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-	      LAST_OPENPORT_FILE_NUMBER_FILE);
+	      LAST_OPENPORT_RUN_NUMBER_FILE);
     }
     else {	    	    
       retVal=fscanf(pFile,"%d",&openportNumber);
       if(retVal<0) {
 	syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
-		LAST_OPENPORT_FILE_NUMBER_FILE);
+		LAST_OPENPORT_RUN_NUMBER_FILE);
 	fprintf(stderr,"fscanff: %s ---  %s\n",strerror(errno),
-		LAST_OPENPORT_FILE_NUMBER_FILE);
+		LAST_OPENPORT_RUN_NUMBER_FILE);
       }
       fclose (pFile);
     }
-    //Only write out every 100th number, so always start from a 100
-    openportNumber/=100;
     openportNumber++;
-    openportNumber*=100;
-    if(printToScreen) printf("The last openport number is %d\n",openportNumber);
+    if(printToScreen) printf("The last openport run number is %d\n",openportNumber);
     firstTime=0;
   }
   openportNumber++;
-  if(!standAloneMode && openportNumber%100==0) {
-    pFile = fopen (LAST_OPENPORT_FILE_NUMBER_FILE, "w");
+  if(openportNumber>0) {
+    pFile = fopen (LAST_OPENPORT_RUN_NUMBER_FILE, "w");
     if(pFile == NULL) {
       syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
-	      LAST_OPENPORT_FILE_NUMBER_FILE);
+	      LAST_OPENPORT_RUN_NUMBER_FILE);
       fprintf(stderr,"fopen: %s ---  %s\n",strerror(errno),
-	      LAST_OPENPORT_FILE_NUMBER_FILE);
+	      LAST_OPENPORT_RUN_NUMBER_FILE);
     }
     else {
       retVal=fprintf(pFile,"%d\n",openportNumber);
       if(retVal<0) {
 	syslog (LOG_ERR,"fprintf: %s ---  %s\n",strerror(errno),
-		LAST_OPENPORT_FILE_NUMBER_FILE);
+		LAST_OPENPORT_RUN_NUMBER_FILE);
 	fprintf(stderr,"fprintf: %s ---  %s\n",strerror(errno),
-		LAST_OPENPORT_FILE_NUMBER_FILE);
+		LAST_OPENPORT_RUN_NUMBER_FILE);
       }
       fclose (pFile);
     }
   }
   return openportNumber;
+}
+
+void startCopyScript() {
+
+  copyScriptPid = fork();
+  if (copyScriptPid > 0) {
+    
+  }
+  else if (copyScriptPid == 0){
+    system("/home/anita/flightSoft/bin/openportCopyScript.sh");
+    printf("Finished copy script\n");
+    exit(0);
+  }
+
 }

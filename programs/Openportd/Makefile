@@ -1,6 +1,6 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
-LIBS = -L.. $(ANITA_LIBS)
+LIBS = -L.. $(ANITA_LIBS)  $(ANITA_SIP_LIBS) -lpthread
 
 Targets =  Openportd 
 

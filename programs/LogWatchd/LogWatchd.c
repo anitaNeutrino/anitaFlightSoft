@@ -13,6 +13,7 @@
 #include <time.h>
 #include <signal.h>
 #include <math.h>
+#include <zlib.h>
 #include <libgen.h> //For Mac OS X
 
 //Flightsoft Includes
@@ -115,13 +116,8 @@ int main (int argc, char *argv[])
 	if(startProcPartitions) catFile("/proc/partitions");
 	if(startProcMounts) catFile("/proc/mounts");
 	if(startProcInterrupts) catFile("/proc/interrupts");
-	if(startMessageTailLines)
-	  tailFile("/var/log/messages",startMessageTailLines);
-	if(startAnitaTailLines)
-	  tailFile("/var/log/anita.log",startAnitaTailLines);
-	if(startBootTailLines)
-	  tailFile("/var/log/boot.log",startBootTailLines);
-	
+	tailJournal("",startMessageTailLines);	
+
 	catFile("/home/anita/flightSoft/config/anitaSoft.config");
 	catFile("/home/anita/flightSoft/config/Acqd.config");
 	catFile("/home/anita/flightSoft/config/Archived.config");
@@ -169,6 +165,7 @@ int main (int argc, char *argv[])
 		  sprintf(journalCtlArgument,"_COMM=%s",getProgName(theRequest.optArg));
 		  tailJournal(journalCtlArgument,theRequest.numLines);
 		default:
+		  tailJournal("",theRequest.numLines);
 		  tailJournal("",theRequest.numLines);
 		}
 		
@@ -281,9 +278,10 @@ int tailFile(char *filename, int numLines) {
 int tailJournal(char *journalctlOption, int numLines) {
     static int counter=0;
     char tailFilename[FILENAME_MAX];
-    sprintf(tailFilename,"/tmp/tail_%s",journalctlOption);
+    sprintf(tailFilename,"/tmp/tail_journal_%s",journalctlOption);
     char theCommand[FILENAME_MAX];
-    sprintf(theCommand,"journalctl %s %d > %s",journalctlOption,numLines,tailFilename);
+    sprintf(theCommand,"journalctl %s -n %d > %s",journalctlOption,numLines,tailFilename);
+    printf(theCommand);
     system(theCommand);
     makeZippedFilePackets(tailFilename,counter);
     counter++;    
@@ -326,20 +324,24 @@ int makeZippedFilePackets(char *filename,int fileTag)
     char *tempBuffer=0;
     char bufferToSend[100+MAX_RAW_BUFFER];
     char zippedBuffer[1000+MAX_RAW_BUFFER];
-    
-    unsigned int numBytesIn=0,numBytesOut=0,bytesThisSegment=0;
-    int bytesRemaining=0;
+    unsigned int numBytesIn=0;
+    unsigned long numBytesOut=0,bytesThisSegment=0;
+    unsigned long bytesRemaining=0;
     int count=0;
     int segmentNum=0;
+    static int extraTag=0;
     
+
+
     inputBuffer=readFile(filename,&numBytesIn);
-    //    fprintf(stderr,"%s\n",inputBuffer);
+    printf("try to send %s -- %u bytes\n",filename,numBytesIn);
+    //    fprintf(stderr,"%s -- bytes %d\n",inputBuffer,numBytesIn);
     //    for(count=0;count<numBytesIn;count++) {
     //      if(inputBuffer[count]=='\n')
     //	printf("Line ends at %d\n",count);
     //    }
     if(!inputBuffer || !numBytesIn) {
-	syslog(LOG_ERR,"Couldn't send %s, numBytesIn %d\n",filename,
+	syslog(LOG_ERR,"Couldn't send %s, numBytesIn %u\n",filename,
 	       numBytesIn);	
 	return 0;
     }
@@ -349,7 +351,7 @@ int makeZippedFilePackets(char *filename,int fileTag)
     bytesRemaining=numBytesIn;
     
     while(bytesRemaining>0) {
-      //      fprintf(stderr,"bytesRemaining %d, tempBuffer %d\n",bytesRemaining,(int)tempBuffer);
+      //      fprintf(stderr,"bytesRemaining %lu, tempBuffer %d\n",bytesRemaining,(int)tempBuffer);
       if(bytesRemaining>MAX_RAW_BUFFER) {
 	for(count=MAX_RAW_BUFFER;count>=0;count--) 
 	  if(tempBuffer[count]=='\n')
@@ -370,6 +372,9 @@ int makeZippedFilePackets(char *filename,int fileTag)
       }
       //      fprintf(stderr,"%s\n",bufferToSend);
       numBytesOut=1000+MAX_RAW_BUFFER;
+      int numBytesNeeded=compressBound(bytesThisSegment);
+      printf("numBytesNeeded %d -- bytesThisSegment %lu\n",numBytesNeeded,bytesThisSegment);
+
 
       zipFilePtr = (ZippedFile_t*) zippedBuffer;
       zipFilePtr->unixTime=rawtime;
@@ -377,10 +382,11 @@ int makeZippedFilePackets(char *filename,int fileTag)
       zipFilePtr->segmentNumber=segmentNum;
       strncpy(zipFilePtr->filename,basename(filename),60);
       retVal=zipBuffer(bufferToSend,&zippedBuffer[sizeof(ZippedFile_t)],bytesThisSegment,&numBytesOut);
+      
       if(retVal==0) {		
 	fillGenericHeader(zipFilePtr,PACKET_ZIPPED_FILE,numBytesOut+sizeof(ZippedFile_t));
-	sprintf(outputName,"%s/zipFile_%d_%d_%u.dat",REQUEST_TELEM_DIR,
-		fileTag,segmentNum,zipFilePtr->unixTime);
+	sprintf(outputName,"%s/zipFile_%d_%d_%u_%d.dat",REQUEST_TELEM_DIR,
+		fileTag,segmentNum,zipFilePtr->unixTime,extraTag++);
 	normalSingleWrite((unsigned char*)zippedBuffer,
 			  outputName,numBytesOut+sizeof(ZippedFile_t));
 	makeLink(outputName,REQUEST_TELEM_LINK_DIR);		
