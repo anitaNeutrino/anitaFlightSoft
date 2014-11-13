@@ -75,7 +75,7 @@ typedef struct {
     float scalerRates[TRIGGER_SURFS][ANTS_PER_SURF]; 
     float scalerRatesSq[TRIGGER_SURFS][ANTS_PER_SURF];
     float avgL1Rates[TRIGGER_SURFS]; // 3 of 8 counters
-    float avgL2Rates[PHI_SECTORS];
+    float avgL2Rates[PHI_SECTORS]; //Will repurpose this to be avgL3RatesH
     float avgL3Rates[PHI_SECTORS]; 
 } SlowRateRFCalcStruct_t;
 

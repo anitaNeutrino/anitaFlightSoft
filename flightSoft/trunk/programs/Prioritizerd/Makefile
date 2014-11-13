@@ -10,7 +10,9 @@ CL=/opt/AMDAPP
 CL_INCDIR = $(CL)/include
 CL_LIBDIR = $(CL)/lib
 
-LDFLAGS += -lOpenCL -lgsl
+
+LDFLAGS += -lOpenCL -lgsl -ltcmalloc -lprofiler
+
 
 CFLAGS= -g -I ../../common/
 

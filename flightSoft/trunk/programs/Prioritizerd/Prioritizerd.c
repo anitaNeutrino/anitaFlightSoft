@@ -36,44 +36,45 @@ int panicQueueLength=5000;
 //Global Control Variables
 int printToScreen=0;
 int verbosity=0;
-float hornThresh=0;
-int hornDiscWidth=0;
-int hornSectorWidth=0;
-float coneThresh=0;
-int coneDiscWidth=0;
-int holdoff=0;
-int delay=0;
-int hornGuardOffset=30;
-int hornGuardWidth=20;
-int hornGuardThresh=50;
-int coneGuardOffset=30;
-int coneGuardWidth=20;
-int coneGuardThresh=50;
-int FFTPeakMaxA=0;
-int FFTPeakMaxB=0;
-int FFTPeakWindowL=0;
-int FFTPeakWindowR=0;
-int FFTMaxChannels=0;
-int RMSMax=0;
-int RMSevents=0;
-int WindowCut=400;
-int BeginWindow=0;
-int EndWindow=0;
-int MethodMask=0;
-int NuCut=0;
+/* float hornThresh=0; */
+/* int hornDiscWidth=0; */
+/* int hornSectorWidth=0; */
+/* float coneThresh=0; */
+/* int coneDiscWidth=0; */
+/* int holdoff=0; */
+/* int delay=0; */
+/* int hornGuardOffset=30; */
+/* int hornGuardWidth=20; */
+/* int hornGuardThresh=50; */
+/* int coneGuardOffset=30; */
+/* int coneGuardWidth=20; */
+/* int coneGuardThresh=50; */
+/* int FFTPeakMaxA=0; */
+/* int FFTPeakMaxB=0; */
+/* int FFTPeakWindowL=0; */
+/* int FFTPeakWindowR=0; */
+/* int FFTMaxChannels=0; */
+/* int RMSMax=0; */
+/* int RMSevents=0; */
+/* int WindowCut=400; */
+/* int BeginWindow=0; */
+/* int EndWindow=0; */
+/* int MethodMask=0; */
+/* int NuCut=0; */
 
 //parameters for the quick cut on mid/early RMS for priority 7
-int LowRMSChan=5;
-int MidRMSChan=50;
-int HighRMSChan=165;
-int CutRMS=130;
+/* int LowRMSChan=5; */
+/* int MidRMSChan=50; */
+/* int HighRMSChan=165; */
+/* int CutRMS=130; */
 
 int priorityPPS1=2;
 int priorityPPS2=3;
 
 /* NUM_EVENTS is defined in the imaginatively named myInterferometryConstants.h */
 AnitaEventHeader_t theHeader[NUM_EVENTS];
-PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
+//PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
+PedSubbedEventBody_t pedSubBody;
 
 int main (int argc, char *argv[])
 {
@@ -162,12 +163,15 @@ int main (int argc, char *argv[])
       exit(1);
     }
     currentState=PROG_STATE_RUN;
+
+    /* This is the program while loop main loop */
     while(currentState==PROG_STATE_RUN) {
 
       //	usleep(1);
       retVal=checkLinkDirs(1,0);
       if(retVal || numEventLinks)
 	numEventLinks=getNumLinks(wd);
+      
 	   
       if(numEventLinks>=panicQueueLength) {
 	  syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
@@ -188,10 +192,17 @@ int main (int argc, char *argv[])
       }
 
       /* Now read events in whenever I get them */
-      while(count<NUM_EVENTS && currentState==PROG_STATE_RUN){
+      int eventsReadIn = 0;
+
+      /* Read links into program memory */
+      while(eventsReadIn<NUM_EVENTS && currentState==PROG_STATE_RUN){
 	tempString=getFirstLink(wd);
-	printf("tempString = %s\n", tempString);
-	//	printf("%s\n",eventLinkList[count]->d_name); 
+	if(tempString==NULL){
+	  /* Then no more links, may as well carry on...*/
+	  break;
+	}
+	//	printf("tempString = %s\n", tempString);
+	//	printf("%s\n",eventLinkList[eventsReadIn]->d_name); 
 	sscanf(tempString,"hd_%d.dat",&doingEvent);
 	if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
 	    syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
@@ -206,34 +217,34 @@ int main (int argc, char *argv[])
 
 	//RJN 4th June 2008
 	//Switch to Acqd writing psev files
-	sprintf(bodyFilename[count],"%s/psev_%d.dat",ACQD_EVENT_DIR,
+	sprintf(bodyFilename[eventsReadIn],"%s/psev_%d.dat",ACQD_EVENT_DIR,
 		doingEvent);
 
-	retVal=fillPedSubbedBody(&pedSubBody[count],bodyFilename[count]);
-	retVal=fillHeader(&theHeader[count],hdFilename);	
+	retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);	
 
 	if(numEventLinks<panicQueueLength){
+	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
 	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
-	  doTimingCalibration(count, theHeader[count], pedSubBody[count], finalVolts);
-	  addEventToGpuQueue(count, finalVolts, theHeader[count]);
+	  doTimingCalibration(eventsReadIn, theHeader[eventsReadIn], pedSubBody, finalVolts);
+	  addEventToGpuQueue(eventsReadIn, finalVolts, theHeader[eventsReadIn]);
 	  int chanInd=0;
 	  for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
 	    free(finalVolts[chanInd]);
 	  }
-	  count++;
+	  eventsReadIn++;
 	}
 	else{
-	  theHeader[count].priority=7;
-	}
+	  theHeader[eventsReadIn].priority=7;
       }
 
-      printf("count = %d, should be %d if program in normal state", count, NUM_EVENTS);
+      printf("eventsReadIn = %d, should be %d if program in normal state", eventsReadIn, NUM_EVENTS);
 
-      /* Now use GPU to determine priority, send in arrays of length count... */
-      mainGpuLoop(count, theHeader);      
-      /* mainGpuLoop(count, pedSubBody, theHeader); */
-
-      for(count=0;count<NUM_EVENTS;count++) {
+      /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
+      if(eventsReadIn>0){
+	mainGpuLoop(eventsReadIn, theHeader);      
+      }
+      /* mainGpuLoop(eventsReadIn, pedSubBody, theHeader); */      int count = 0;
+      for(count=0;count<eventsReadIn;count++) {
 
 	// handle queue forcing of PPS here
 	int pri=theHeader[count].priority&0xf;
@@ -264,7 +275,7 @@ int main (int argc, char *argv[])
 
 	makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
     
-	//Write Header and make Link for telemetry 	    
+	//Write Header and make Link for telemetry
 	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
 		doingEvent);
 	retVal=writeStruct(&theHeader[count],telemHdFilename,sizeof(AnitaEventHeader_t));
@@ -335,44 +346,44 @@ int readConfig()
     fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
   }
   kvpReset();
-  status = configLoad ("Prioritizerd.config","prioritizerd");
-  if(status == CONFIG_E_OK) {
-      panicQueueLength=kvpGetInt("panicQueueLength",5000);
-    hornThresh=kvpGetFloat("hornThresh",250);
-    coneThresh=kvpGetFloat("coneThresh",250);
-    hornDiscWidth=kvpGetInt("hornDiscWidth",16);
-    coneDiscWidth=kvpGetInt("coneDiscWidth",16);
-    hornSectorWidth=kvpGetInt("hornSectorWidth",3);
-    holdoff=kvpGetInt("holdoff",39);
-    delay=kvpGetInt("delay",8);
-    hornGuardOffset=kvpGetInt("hornGuardOffset",30);
-    hornGuardWidth=kvpGetInt("hornGuardWidth",20);
-    hornGuardThresh=kvpGetInt("hornGuardThresh",50);
-    coneGuardOffset=kvpGetInt("coneGuardOffset",30);
-    coneGuardWidth=kvpGetInt("coneGuardWidth",20);
-    coneGuardThresh=kvpGetInt("coneGuardThresh",50);
-    FFTPeakMaxA=kvpGetInt("FFTPeakMaxA",2500);
-    FFTPeakMaxB=kvpGetInt("FFTPeakMaxB",2500);
-    FFTPeakWindowL=kvpGetInt("FFTPeakWindowL",0);
-    FFTPeakWindowR=kvpGetInt("FFTPeakWindowR",0);
-    FFTMaxChannels=kvpGetInt("FFTMaxChannels",0);
-    RMSMax=kvpGetInt("RMSMax",200);
-    RMSevents=kvpGetInt("RMSevents",1000);
-    WindowCut=kvpGetInt("WindowCut",400);
-    BeginWindow=kvpGetInt("BeginWindow",100);
-    EndWindow=kvpGetInt("EndWindow",100);
-    MethodMask=kvpGetInt("MethodMask",0x0867);
-    NuCut=kvpGetInt("NuCut",100);
-    LowRMSChan=kvpGetInt("LowRMSChan",5);
-    MidRMSChan=kvpGetInt("MidRMSChan",50);
-    HighRMSChan=kvpGetInt("HighRMSChan",165);
-    CutRMS=kvpGetInt("CutRMS",130);
-  }
-  else {
-    eString=configErrorString (status) ;
-    syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
-    fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString);
-  }
+  /* status = configLoad ("Prioritizerd.config","prioritizerd"); */
+  /* if(status == CONFIG_E_OK) { */
+  /*     panicQueueLength=kvpGetInt("panicQueueLength",5000); */
+  /*   hornThresh=kvpGetFloat("hornThresh",250); */
+  /*   coneThresh=kvpGetFloat("coneThresh",250); */
+  /*   hornDiscWidth=kvpGetInt("hornDiscWidth",16); */
+  /*   coneDiscWidth=kvpGetInt("coneDiscWidth",16); */
+  /*   hornSectorWidth=kvpGetInt("hornSectorWidth",3); */
+  /*   holdoff=kvpGetInt("holdoff",39); */
+  /*   delay=kvpGetInt("delay",8); */
+  /*   hornGuardOffset=kvpGetInt("hornGuardOffset",30); */
+  /*   hornGuardWidth=kvpGetInt("hornGuardWidth",20); */
+  /*   hornGuardThresh=kvpGetInt("hornGuardThresh",50); */
+  /*   coneGuardOffset=kvpGetInt("coneGuardOffset",30); */
+  /*   coneGuardWidth=kvpGetInt("coneGuardWidth",20); */
+  /*   coneGuardThresh=kvpGetInt("coneGuardThresh",50); */
+  /*   FFTPeakMaxA=kvpGetInt("FFTPeakMaxA",2500); */
+  /*   FFTPeakMaxB=kvpGetInt("FFTPeakMaxB",2500); */
+  /*   FFTPeakWindowL=kvpGetInt("FFTPeakWindowL",0); */
+  /*   FFTPeakWindowR=kvpGetInt("FFTPeakWindowR",0); */
+  /*   FFTMaxChannels=kvpGetInt("FFTMaxChannels",0); */
+  /*   RMSMax=kvpGetInt("RMSMax",200); */
+  /*   RMSevents=kvpGetInt("RMSevents",1000); */
+  /*   WindowCut=kvpGetInt("WindowCut",400); */
+  /*   BeginWindow=kvpGetInt("BeginWindow",100); */
+  /*   EndWindow=kvpGetInt("EndWindow",100); */
+  /*   MethodMask=kvpGetInt("MethodMask",0x0867); */
+  /*   NuCut=kvpGetInt("NuCut",100); */
+  /*   LowRMSChan=kvpGetInt("LowRMSChan",5); */
+  /*   MidRMSChan=kvpGetInt("MidRMSChan",50); */
+  /*   HighRMSChan=kvpGetInt("HighRMSChan",165); */
+  /*   CutRMS=kvpGetInt("CutRMS",130); */
+  /* } */
+  /* else { */
+  /*   eString=configErrorString (status) ; */
+  /*   syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString); */
+  /*   fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString); */
+  /* } */
   kvpReset();
   status = configLoad ("Archived.config","archived");
   if(status == CONFIG_E_OK) {

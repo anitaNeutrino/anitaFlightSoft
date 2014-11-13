@@ -1,4 +1,3 @@
-
 /*  \file Acqd.c
     \brief The Acqd program 
     The first version of Acqd that will work (hopefully) with Patrick's new 
@@ -41,7 +40,7 @@
 
 //Definitions
 #define HK_DEBUG 0
-#define SURFHK_PERIOD 100000
+#define SURFHK_PERIOD 89500
 
 
 void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
@@ -2630,8 +2629,9 @@ void doSurfHkAverage(int flushData)
 	}
       }
       for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-	rfPowerMean[surf][chan]+=theSurfHk.rfPower[surf][chan];
-	rfPowerMeanSq[surf][chan]+=(theSurfHk.rfPower[surf][chan]*theSurfHk.rfPower[surf][chan]);
+	//RJN added mask to exlclude top bit from average
+	rfPowerMean[surf][chan]+=theSurfHk.rfPower[surf][chan]&0x7fff;
+	rfPowerMeanSq[surf][chan]+=((theSurfHk.rfPower[surf][chan]&0x7fff)*(theSurfHk.rfPower[surf][chan]&0x7fff));
       }      
     }
     //    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
