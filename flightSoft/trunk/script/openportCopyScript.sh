@@ -9,7 +9,7 @@ while [ 1 ]; do
     if test `ls /tmp/openport/* | wc -l` -gt 0 ; then
 	
 	for file in /tmp/openport/*; do
-	    rsync -avP --remove-source-files  $file  ${OPENPORT_USER}@${OPENPORT_DEST_IP}:${OPENPORT_DEST_DIR}/ > /tmp/openportCopy.log  
+	    rsync -avP --remove-source-files --bwlimit=100  $file  ${OPENPORT_USER}@${OPENPORT_DEST_IP}:${OPENPORT_DEST_DIR}/ > /tmp/openportCopy.log  
 	done
     else 
 	sleep 10;
