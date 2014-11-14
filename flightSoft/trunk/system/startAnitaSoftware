@@ -1,0 +1,9 @@
+#!/bin/sh -
+#-----------------------------------------------------------------------------
+#
+#      File         :  startAnitaSoftware
+#      Abstract     :  Actually start the ANITA data takin daemons
+#      Last Revision:  28-08-06
+#-----------------------------------------------------------------------------
+source /home/anita/flightSoft/bin/anitaFlightSoftSetup.sh
+/home/anita/flightSoft/bin/anitaStartScript.sh 
