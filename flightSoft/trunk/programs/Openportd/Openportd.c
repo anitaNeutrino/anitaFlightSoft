@@ -128,6 +128,9 @@ unsigned char theBuffer[MAX_EVENT_SIZE*5];
 unsigned char chanBuffer[MAX_EVENT_SIZE*5];
 //unsigned short openportBuffer[MAX_EVENT_SIZE*5];
 
+
+
+
 static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
   {OPENPORTD_CMD_ECHO_TELEM_LINK_DIR,
    MONITOR_TELEM_LINK_DIR,
@@ -255,6 +258,7 @@ int main(int argc, char *argv[])
       makeDirectories(eventTelemLinkDirs[pri]);
     }
     makeDirectories(OPENPORT_OUTPUT_DIR);
+    makeDirectories(OPENPORT_STAGE_DIR);
     makeDirectories(OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
     makeDirectories(HEADER_TELEM_LINK_DIR);
     makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
@@ -1400,8 +1404,10 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   static struct timeval lastTime;
   struct timeval newTime;
   static FILE *fp=NULL;
+  static int openedFile=0;
   static int bytesToFile=0;
   static char fileName[FILENAME_MAX];
+  static char dirName[FILENAME_MAX];
   static int openportRun=-1;
   if(openportRun<0) openportRun=getOpenportRunNumber();
   short numWrapBytes=0;
@@ -1417,13 +1423,18 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
 
   const int maxBytesToFile=1000000;
   
-  if(!fp) {
+  if(!openedFile) {
+    sprintf(fileName,"%s/%05d",OPENPORT_STAGE_DIR,openportRun);
+    makeDirectories(fileName);
+    sprintf(dirName,"%s/%05d",OPENPORT_OUTPUT_DIR,openportRun);
+    makeDirectories(dirName);
     sprintf(fileName,"%s/%05d/%06d",OPENPORT_STAGE_DIR,openportRun,getOpenportFileNumber());
+    printf("Openport file: %s\n",fileName);
     fp=fopen(fileName,"wb");
+    openedFile=1;
   }
 
   if(fp) {
-
     fwrite(openportBuffer,numWrapBytes,1,fp);
     bytesToFile+=numWrapBytes;
 
@@ -1438,8 +1449,9 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
       printf("Finished file %s -- with %d bytes\n",fileName,bytesToFile);
       fclose(fp);
       //      zipFileInPlace(fileName);
-      moveFile(fileName,OPENPORT_OUTPUT_DIR);
+      moveFile(fileName,dirName);
       fp=NULL;
+      openedFile=0;
       bytesToFile=0;
 
    
