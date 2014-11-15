@@ -178,7 +178,7 @@ int main (int argc, char *argv[])
       }
 
 
-      printf("Prioritzerd is running and sees %d event links\n", numEventLinks);
+      /* printf("Prioritzerd is running and sees %d event links\n", numEventLinks); */
     
       //      if(!numEventLinks) {
       /* if(numEventLinks < NUM_EVENTS) { */
@@ -199,6 +199,8 @@ int main (int argc, char *argv[])
 	tempString=getFirstLink(wd);
 	if(tempString==NULL){
 	  /* Then no more links, may as well carry on...*/
+	  //	  continue;
+	  printf("tempString = %s\n", tempString);
 	  break;
 	}
 	//	printf("tempString = %s\n", tempString);
@@ -235,15 +237,18 @@ int main (int argc, char *argv[])
 	}
 	else{
 	  theHeader[eventsReadIn].priority=7;
+	}
       }
 
-      printf("eventsReadIn = %d, should be %d if program in normal state", eventsReadIn, NUM_EVENTS);
+      printf("eventsReadIn = %d, should be %d if program in normal state\n", eventsReadIn, NUM_EVENTS);
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
       if(eventsReadIn>0){
 	mainGpuLoop(eventsReadIn, theHeader);      
       }
-      /* mainGpuLoop(eventsReadIn, pedSubBody, theHeader); */      int count = 0;
+      /* mainGpuLoop(eventsReadIn, pedSubBody, theHeader); */
+
+      int count = 0;
       for(count=0;count<eventsReadIn;count++) {
 
 	// handle queue forcing of PPS here

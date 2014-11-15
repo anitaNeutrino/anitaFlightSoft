@@ -13,6 +13,7 @@ CL_LIBDIR = $(CL)/lib
 
 LDFLAGS += -lOpenCL -lgsl -ltcmalloc -lprofiler
 
+#OPT += -O2
 
 CFLAGS= -g -I ../../common/
 
