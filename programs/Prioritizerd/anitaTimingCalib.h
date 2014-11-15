@@ -42,7 +42,9 @@ int findIndexOfMaximumWithinLimits(double* array, int startInd, int stopInd);
 
 FILE* fopenNicely(const char* fileName, const char* opt);
 
-
+void justUnwrapVolts(PedSubbedEventBody_t pedSubBody);
+void preCalculateTimeArrays();//(PedSubbedEventBody_t pedSubBody);
+//void preCalculateTimeArrays(PedSubbedEventBody_t pedSubBody);
 
 
 
@@ -51,7 +53,8 @@ FILE* fopenNicely(const char* fileName, const char* opt);
    then edited to compile in C.
 */
 // void processEventAG(AnitaEventHeader_t theHeader, PedSubbedEventBody_t pedSubBody);
-void processEventAG(int entry, AnitaEventHeader_t theHeader, PedSubbedEventBody_t pedSubBody);
+//void processEventAG(int entry, AnitaEventHeader_t theHeader, PedSubbedEventBody_t pedSubBody);
+void processEventAG(int entry, PedSubbedEventBody_t pedSubBody);
 int getLabChip(PedSubbedEventBody_t pedSubBody, int chanInd);
 int getRco(PedSubbedEventBody_t pedSubBody, int chanInd);
 
