@@ -2275,6 +2275,12 @@ int sendSignal(ProgramId_t progId, int theSignal)
   case ID_OPENPORTD:
     sprintf(fileName,"%s",OPENPORTD_PID_FILE);
     break;    
+  case ID_PLAYBACKD:
+    sprintf(fileName,"%s",PLAYBACKD_PID_FILE);
+    break;    
+  case ID_LOGWATCHD:
+    sprintf(fileName,"%s",LOGWATCHD_PID_FILE);
+    break;    
   default:
     fprintf(stderr,"Unknown program id: %d\n",progId);
     syslog(LOG_ERR,"Unknown program id: %d\n",progId);
