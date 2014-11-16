@@ -47,9 +47,9 @@ double clockCrossCorr[numSurfs][LABRADORS_PER_SURF] = {{-9999}};
 double volts2[numSurfs][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 int nSamps[numSurfs][CHANNELS_PER_SURF];
 
-double times2[numSurfs][CHANNELS_PER_SURF][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES][MAX_NUMBER_SAMPLES];
-int nSamps2[numSurfs][CHANNELS_PER_SURF][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES];
-int numExtras[numSurfs][CHANNELS_PER_SURF][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES] = {{{{{{0}}}}}};
+double times2[numSurfs][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES][MAX_NUMBER_SAMPLES];
+//int nSamps2[numSurfs][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES];
+int numExtras[numSurfs][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES] = {{{{{0}}}}};
 
 double clockJitters[numSurfs];
 
@@ -92,31 +92,26 @@ void prepareTimingCalibThings(){
   /* getClockPhiNums(); */
 
   preCalculateTimeArrays();
-  int surf=0;
-  for(surf=0; surf<12; surf++){
-  int lab=0;
-    for(lab=0; lab<4; lab++){
-      int rco=0;
-      for(rco=0; rco<2; rco++){
-  	int w=0;
-  	for(w=0; w<2; w++){
-  	  int e=0;
-  	  for(e=0; e<260; e++){
-  	    int i=0;
-  	    for(i=0; i<260; i++){
-  	      int chan=0;
-  	      for(chan=0; chan<8; chan++){
-		if( times2[surf][chan+1][lab][rco][w][e][i] - times2[surf][chan][lab][rco][w][e][i] != 0){
-		  printf("t=[%d][%d][%d][%d][%d][%d][%d] = %lf\n", surf, chan, lab, rco, w, e, i,
-			 times2[surf][chan][lab][rco][w][e][i]);		  
-		}
-  	      }
-  	    }
-  	  }
-  	}
-      }
-    }
-  }
+  /* int surf=0; */
+  /* for(surf=0; surf<12; surf++){ */
+  /*   int lab=0; */
+  /*   for(lab=0; lab<4; lab++){ */
+  /*     int rco=0; */
+  /*     for(rco=0; rco<2; rco++){ */
+  /* 	int w=0; */
+  /* 	for(w=0; w<2; w++){ */
+  /* 	  int e=0; */
+  /* 	  for(e=0; e<260; e++){ */
+  /* 	    int i=0; */
+  /* 	    for(i=0; i<260; i++){ */
+  /* 	      printf("t=[%d][%d][%d][%d][%d][%d][%d] = %lf\n", surf, lab, rco, w, e, i, */
+  /* 		     times2[surf][lab][rco][whb][earliestSample][samp]); */
+  /* 	    } */
+  /* 	  } */
+  /* 	} */
+  /*     } */
+  /*   } */
+  /* } */
 
 
 }
@@ -681,7 +676,7 @@ void justUnwrapVolts(PedSubbedEventBody_t pedSubBody){
 	if(latestSample>=1) {
 	  /* We are going to ignore sample zero for now */
 	  int nextExtra = 256;
-	  int extraCount = numExtras[surf][chan][lab][rco][whb][earliestSampleInd];
+	  int extraCount = numExtras[surf][lab][rco][whb][earliestSampleInd];
 
 	  for(samp=1;samp<=latestSample;samp++) {
 	    if(extraCount>0 && samp==1){
@@ -886,11 +881,9 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
   double* interpClocks[numSurfs];
 
   for(surf=0; surf<numSurfs; surf++){
-    int chanIndex = CHANNELS_PER_SURF*surf + 8;
     int lab = labChips[surf];
     int rco = rcos[surf];
     int earliestSample = earliestSampleInds[surf];
-    int latestSample = latestSampleInds[surf];
     int whb = whbs[surf];//latestSample < earliestSample ? 0 : 1;
 
 
@@ -910,9 +903,9 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
 					     /* times[surf2][chan2], /\* times,  *\/ */
 					     //nSamps2[surf][8][lab][rco][whb][earliestSample],
 					     volts2[surf][8],
-					     times2[surf][8][lab][rco][whb][earliestSample],
+					     times2[surf][lab][rco][whb][earliestSample],
 					     256*upsampleFactor, 
-					     times2[surf][8][lab][rco][whb][earliestSample][0], 
+					     times2[surf][lab][rco][whb][earliestSample][0], 
 					     /*times[surf2][chan2][0], /* times[0],  */
 					     deltaT/upsampleFactor);
     normalize(256*upsampleFactor, interpClocks[surf]);
@@ -952,7 +945,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
     int whb = whbs[surf];//latestSample < earliestSample ? 0 : 1;
 
     for(chan=0; chan<CHANNELS_PER_SURF; chan++){
-      int startInd = (int) nearbyint((times2[surf][chan][lab][rco][whb][earliestSample][0] - clockJitters[surf])/deltaT);
+      int startInd = (int) nearbyint((times2[surf][lab][rco][whb][earliestSample][0] - clockJitters[surf])/deltaT);
       double t0new = startInd*deltaT;
       if(t0new < earliestStartTime){
 	earliestStartTime = t0new;
@@ -960,26 +953,16 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
     }
   }
   for(surf=0; surf<numSurfs; surf++){
-    int chan=0;
     int lab = labChips[surf];
     int rco = rcos[surf];
     int earliestSample = earliestSampleInds[surf];
-    int latestSample = latestSampleInds[surf];
     int whb = whbs[surf];//latestSample < earliestSample ? 0 : 1;
 
+    int chan=0;
     for(chan=0; chan<CHANNELS_PER_SURF; chan++){
-      int chanIndex = CHANNELS_PER_SURF*surf + 8;
-      /* int chanIndex = CHANNELS_PER_SURF*surf + 8; */
-      /* int rco = getRco(pedSubBody, chanIndex); */
-      /* int lab = getLabChip(pedSubBody, chanIndex); */
-      /* int latestSample = getLatestSample(pedSubBody, chanIndex); */
-      /* int earliestSample = getEarliestSample(pedSubBody, chanIndex); */
-      /* int whb = latestSample < earliestSample ? 0 : 1; */
-
-      /* printf("%d %d, %d %d, %d\n", surf, chan, surf2, chan2, chan3ToChan2_[surf*9 + chan]); */
       finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
 								      volts2[surf][chan],
-								      times2[surf][chan][lab][rco][whb][earliestSample],
+								      times2[surf][lab][rco][whb][earliestSample],
 								      /* Need to check this early start time..*/
 								      256, earliestStartTime+clockJitters[surf],
 								      deltaT);
@@ -1052,19 +1035,8 @@ void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){
 	for(lab=0; lab<LABRADORS_PER_SURF; lab++){
 	  int surf=0;
 	  for(surf=0;surf<numSurfs;surf++) {
-	    int chan=0;
+	    int chan=8; /* Same times across surf. Let's do clock channel only */
 	    for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
-
-	      /* int chanIndex=surf*CHANNELS_PER_SURF + chan; */
-	      /* int lab = getLabChip(pedSubBody, chanIndex); */
-	      /* int rco = getRco(pedSubBody, chanIndex); */
-	      /* int earliestSample = getEarliestSample(pedSubBody, chanIndex); */
-	      /* int latestSample = getLatestSample(pedSubBody, chanIndex); */
-	      /* int whb = getWrappedHitBus(pedSubBody, chanIndex); */
-	      //	      printf("1st pass: surf = %d, chan = %d, lab = %d, rco = %d, whb = %d, earliestSample = %d, latestSample = %d\n", surf, chan, lab, rco, whb, earliestSample, latestSample);
-
-
-	      //	  earliestSampleInd = earliestSample;
 
 	      if(earliestSample==0)
 		earliestSample++;
@@ -1073,7 +1045,7 @@ void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){
 		latestSample=259;
 
 	      /* Need to remember how many extra samples for volts unwrapping without looking at times */
-	      numExtras[surf][chan][lab][rco][whb][earliestSampleInd] = 0;
+	      numExtras[surf][lab][rco][whb][earliestSampleInd] = 0;
 
 	      int samp=0;
 	      /* for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) { */
@@ -1092,7 +1064,7 @@ void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){
 		  //Lets do the first segment up	
 		  for(samp=earliestSample;samp<256;samp++) {
 		    int binRco=1-rco;
-		    times2[surf][chan][lab][rco][whb][earliestSampleInd][index]=time;
+		    times2[surf][lab][rco][whb][earliestSampleInd][index]=time;
 		    if(samp==255) {
 		      extraTime=time+(justBinByBin[surf][lab][binRco][samp])*tempFactor;
 		    }
@@ -1119,18 +1091,18 @@ void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){
 		    if(nextExtra<260 && samp==1) {
 		      if(extraTime<time-0.22) {
 			binRco=1-rco;
-			times2[surf][chan][lab][rco][whb][earliestSampleInd][index]=extraTime;
+			times2[surf][lab][rco][whb][earliestSampleInd][index]=extraTime;
 			if(nextExtra<259) {
 			  extraTime+=(justBinByBin[surf][lab][binRco][nextExtra])*tempFactor;
 			}
 			nextExtra++;
-			numExtras[surf][chan][lab][rco][whb][earliestSampleInd]++;
+			numExtras[surf][lab][rco][whb][earliestSampleInd]++;
 			index++;	 
 			samp--;
 			continue;
 		      }
 		    }
-		    times2[surf][chan][lab][rco][whb][earliestSampleInd][index]=time;
+		    times2[surf][lab][rco][whb][earliestSampleInd][index]=time;
 		    if(samp<259) {
 		      time+=(justBinByBin[surf][lab][binRco][samp])*tempFactor;
 		    }
@@ -1145,14 +1117,14 @@ void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){
 		for(samp=earliestSample;samp<=latestSample;samp++) {
 		  int binRco=rco;
 		  //		  if( latestSample == 259 ) binRco=1-rco; // will this work???
-		  times2[surf][chan][lab][rco][whb][earliestSampleInd][index]=time;
+		  times2[surf][lab][rco][whb][earliestSampleInd][index]=time;
 		  if(samp<259) {
 		    time+=(justBinByBin[surf][lab][binRco][samp])*tempFactor;
 		  }
 		  index++;
 		}
 	      }
-	      nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]=index;
+	      //	      nSamps2[surf][lab][rco][whb][earliestSampleInd]=index;
 	    }
 
 	    /* { */
@@ -1170,27 +1142,27 @@ void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){
 
 	    /* Okay now add Stephen's check to make sure that all */
 	    /*    the channels on the SURF have the same number of points. */
-	    for(chan=0;chan<8;chan++) {
-	      /* int chanIndex=surf*CHANNELS_PER_SURF + chan; */
-	      //      int chanIndex = 9*surf + chan;
-	      //	    int lab = getLabChip(pedSubBody, chanIndex);
-	      //	  printf("2nd pass: surf = %d, chan = %d, lab = %d\n", surf, chan, lab);
-	      if(nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]<nSamps2[surf][8][lab][rco][whb][earliestSampleInd]) {
-		nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]=nSamps2[surf][8][lab][rco][whb][earliestSampleInd];
-		int samp=0;
-		for(samp=0;samp<nSamps2[surf][8][lab][rco][whb][earliestSampleInd];samp++) {
-		  times2[surf][chan][lab][rco][whb][earliestSampleInd][samp]=times2[surf][8][lab][rco][whb][earliestSampleInd][samp];
-		}
-	      }
+	    /* for(chan=0;chan<8;chan++) { *\/ */
+	    /*   /\* int chanIndex=surf*CHANNELS_PER_SURF + chan; *\/ */
+	    /*   //      int chanIndex = 9*surf + chan; */
+	    /*   //	    int lab = getLabChip(pedSubBody, chanIndex); */
+	    /*   //	  printf("2nd pass: surf = %d, chan = %d, lab = %d\n", surf, chan, lab); */
+	    /*   if(nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]<nSamps2[surf][8][lab][rco][whb][earliestSampleInd]) { */
+	    /* 	nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]=nSamps2[surf][8][lab][rco][whb][earliestSampleInd]; */
+	    /* 	int samp=0; */
+	    /* 	for(samp=0;samp<nSamps2[surf][8][lab][rco][whb][earliestSampleInd];samp++) { */
+	    /* 	  times2[surf][chan][lab][rco][whb][earliestSampleInd][samp]=times2[surf][8][lab][rco][whb][earliestSampleInd][samp]; */
+	    /* 	} */
+	    /*   } */
 
-	      if(nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]>nSamps2[surf][8][lab][rco][whb][earliestSampleInd]) {
-		nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]=nSamps2[surf][8][lab][rco][whb][earliestSampleInd];
-		int samp=0;
-		for(samp=0;samp<nSamps2[surf][8][lab][rco][whb][earliestSampleInd];samp++) {
-		  times2[surf][chan][lab][rco][whb][earliestSampleInd][samp]=times2[surf][8][lab][rco][whb][earliestSampleInd][samp];
-		}
-	      }
-	    }
+	    /*   if(nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]>nSamps2[surf][8][lab][rco][whb][earliestSampleInd]) { */
+	    /* 	nSamps2[surf][chan][lab][rco][whb][earliestSampleInd]=nSamps2[surf][8][lab][rco][whb][earliestSampleInd]; */
+	    /* 	int samp=0; */
+	    /* 	for(samp=0;samp<nSamps2[surf][8][lab][rco][whb][earliestSampleInd];samp++) { */
+	    /* 	  times2[surf][chan][lab][rco][whb][earliestSampleInd][samp]=times2[surf][8][lab][rco][whb][earliestSampleInd][samp]; */
+	    /* 	} */
+	    /*   } */
+	    /* } */
 	  }
 	}
       }

@@ -40,7 +40,7 @@
 
 //Definitions
 #define HK_DEBUG 0
-#define SURFHK_PERIOD 50000
+#define SURFHK_PERIOD 49500
 
 
 void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);
@@ -2944,7 +2944,9 @@ AcqdErrorCode_t readSurfEventData()
   if(verbosity && printToScreen) 
     printf("Triggered, event %d (by software counter).\n",doingEvent);
 
-  	
+  AcqdErrorCode_t badStatus=ACQD_E_OK;
+
+
   //Loop over SURFs and read out data
   for(surf=0;surf<numSurfs;surf++){
     count=0;
@@ -2968,6 +2970,7 @@ AcqdErrorCode_t readSurfEventData()
       syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       status=ACQD_E_SURFREAD;
+      badStatus=ACQD_E_SURFREAD;
     }
      if(printToScreen && verbosity>2) {	
       for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {
@@ -3170,6 +3173,7 @@ AcqdErrorCode_t readSurfEventData()
       }
     }
   }
+  if(badStatus==ACQD_E_SURFREAD) return badStatus;
    return status; 
 } 
 
