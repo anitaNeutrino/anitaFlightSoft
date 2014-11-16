@@ -10,7 +10,8 @@ daemon --stop -n Acqd
 daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 daemon --stop -n LogWatchd
-
+daemon --stop -n NTUd
+daemon --stop -n Openportd
 
 
 echo "Sleeping while files are written and zipped"
@@ -61,12 +62,13 @@ nice daemon -r GPSd -n GPSd
 nice daemon -r Monitord -n Monitord
 nice daemon -r Calibd -n Calibd
 nice daemon -r LogWatchd -n LogWatchd
-
-#daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
+daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
 daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
 daemon -r Playbackd -n Playbackd
+daemon -r NTUd -n NTUd
+daemon -r Openportd -n Openportd
 
 #LD_PRELOAD=/usr/lib64/libprofiler.so CPUPROFILE=/tmp/acqd.prof /home/anita/flightSoft/bin/Acqd
 #taskset -c 3 Acqd 

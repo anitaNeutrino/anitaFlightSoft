@@ -21,6 +21,7 @@ def main(args):
     # You can now call this with a force option, which will issue restart commands to calibd
     forceFlag = False
     testMode = False
+
     for arg in args:
         if arg == '-f' or arg == '--force':
             forceFlag = True
@@ -119,7 +120,7 @@ def main(args):
             message = ''
             if firstTime == True:
                 message = 'NTU responded to ping for the first time since checkNtu.py script started'
-                firstTime = False
+                firstTime == False
             else:
                 message = 'NTU responded to ping for the first time since reboot command issued'
             appendLogFile(logFileName, message)
