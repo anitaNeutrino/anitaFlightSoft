@@ -28,6 +28,7 @@ daemon -u anita  -r Eventd -n Eventd
 daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
 daemon -u anita -r LOSd -n LOSd
+daemon -u anita -r Openportd -n Openportd
 daemon -u anita -r Prioritizerd -n Prioritizerd
 daemon -u anita -r Monitord -n Monitord
 daemon -u anita -r Calibd -n Calibd
