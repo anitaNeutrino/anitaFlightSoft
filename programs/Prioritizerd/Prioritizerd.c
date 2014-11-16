@@ -31,6 +31,8 @@ int readConfig();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 
+void panicWriteAllLinks(const char *wd, int panicPri);
+
 int panicQueueLength=5000;
 
 //Global Control Variables
@@ -73,12 +75,11 @@ int priorityPPS2=3;
 
 /* NUM_EVENTS is defined in the imaginatively named myInterferometryConstants.h */
 AnitaEventHeader_t theHeader[NUM_EVENTS];
-//PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
 PedSubbedEventBody_t pedSubBody;
 
 int main (int argc, char *argv[])
 {
-  int retVal,count;
+  int retVal; //,count;
   int lastEventNumber=0;
   char linkFilename[FILENAME_MAX];
   char hdFilename[FILENAME_MAX];
@@ -164,67 +165,49 @@ int main (int argc, char *argv[])
     }
     currentState=PROG_STATE_RUN;
 
-    /* This is the program while loop main loop */
+    /* This one is the main while loop */
     while(currentState==PROG_STATE_RUN) {
 
       //	usleep(1);
       retVal=checkLinkDirs(1,0);
-      if(retVal || numEventLinks)
-	numEventLinks=getNumLinks(wd);
-      
+      if(retVal || numEventLinks) numEventLinks=getNumLinks(wd);
 	   
       if(numEventLinks>=panicQueueLength) {
-	  syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
+	syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
       }
-
-
-      /* printf("Prioritzerd is running and sees %d event links\n", numEventLinks); */
-    
-      //      if(!numEventLinks) {
-      /* if(numEventLinks < NUM_EVENTS) { */
-      /* 	usleep(1000); */
-      /* 	continue; */
-      /* } */
 
       if(!numEventLinks){
 	usleep(1000);
 	continue;
       }
 
-      /* Now read events in whenever I get them */
-      int eventsReadIn = 0;
 
-      /* Read links into program memory */
+      /* Read data into program memory */
+      int eventsReadIn = 0;
       while(eventsReadIn<NUM_EVENTS && currentState==PROG_STATE_RUN){
+	numEventLinks=getNumLinks(wd);
 	tempString=getFirstLink(wd);
-	if(tempString==NULL){
-	  /* Then no more links, may as well carry on...*/
-	  //	  continue;
-	  printf("tempString = %s\n", tempString);
-	  break;
-	}
+	if(numEventLinks==0) break;
+	if(tempString==NULL) continue;
 	//	printf("tempString = %s\n", tempString);
 	//	printf("%s\n",eventLinkList[eventsReadIn]->d_name); 
 	sscanf(tempString,"hd_%d.dat",&doingEvent);
 	if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
-	    syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
-		   lastEventNumber,doingEvent);
+	  syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent);
 	}
-	lastEventNumber=doingEvent;
-
-	sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
-		tempString);
-	sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
-		doingEvent);
+	lastEventNumber  =doingEvent;
+	
+	sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString);
+	sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent);
 
 	//RJN 4th June 2008
 	//Switch to Acqd writing psev files
-	sprintf(bodyFilename[eventsReadIn],"%s/psev_%d.dat",ACQD_EVENT_DIR,
-		doingEvent);
+	sprintf(bodyFilename[eventsReadIn],"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
 
 	retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);	
 
-	if(numEventLinks<panicQueueLength){
+	if(numEventLinks < panicQueueLength){
+	  /* Then we add to GPU queue... */
 	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
 	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
 	  doTimingCalibration(eventsReadIn, theHeader[eventsReadIn], pedSubBody, finalVolts);
@@ -235,18 +218,17 @@ int main (int argc, char *argv[])
 	  }
 	  eventsReadIn++;
 	}
-	else{
-	  theHeader[eventsReadIn].priority=7;
+	else{/* Panic! Write all header files to archived directory with priority 7! */
+	  panicWriteAllLinks(wd, 7);
 	}
       }
 
-      printf("eventsReadIn = %d, should be %d if program in normal state\n", eventsReadIn, NUM_EVENTS);
+      printf("eventsReadIn = %d, max is %d.\n", eventsReadIn, NUM_EVENTS);
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
       if(eventsReadIn>0){
-	mainGpuLoop(eventsReadIn, theHeader);      
+	mainGpuLoop(eventsReadIn, theHeader);
       }
-      /* mainGpuLoop(eventsReadIn, pedSubBody, theHeader); */
 
       int count = 0;
       for(count=0;count<eventsReadIn;count++) {
@@ -264,7 +246,6 @@ int main (int argc, char *argv[])
 	//Now Fill Generic Header and calculate checksum
 	fillGenericHeader(&theHeader[count],theHeader[count].gHdr.code,sizeof(AnitaEventHeader_t));
   
-	     
 	//Rename body and write header for Archived
 	sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader[count].eventNumber);
@@ -282,19 +263,17 @@ int main (int argc, char *argv[])
     
 	//Write Header and make Link for telemetry
 	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
-		doingEvent);
+		theHeader[count].eventNumber);
 	retVal=writeStruct(&theHeader[count],telemHdFilename,sizeof(AnitaEventHeader_t));
 	makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
-	    
+
 	/* Delete input */
 	sprintf(linkFilename,"%s/hd_%d.dat",EVENTD_EVENT_LINK_DIR,
-		theHeader[count].eventNumber);		 
+		theHeader[count].eventNumber);
 	sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 		theHeader[count].eventNumber);
 	removeFile(linkFilename);
 	removeFile(hdFilename);
-
-
       }
       
 	
@@ -303,12 +282,6 @@ int main (int argc, char *argv[])
   unlink(PRIORITIZERD_PID_FILE);
 
 
-
- /*
-   I believe this gets done anyway as the program terminates...
-   But we want to be good programming citizens.
-   So let's free all CPU and GPU mallocs, close output files etc, etc...
- */
   tidyUpGpuThings();
   tidyUpTimingCalibThings();
 
@@ -351,9 +324,10 @@ int readConfig()
     fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
   }
   kvpReset();
-  /* status = configLoad ("Prioritizerd.config","prioritizerd"); */
-  /* if(status == CONFIG_E_OK) { */
-  /*     panicQueueLength=kvpGetInt("panicQueueLength",5000); */
+  status = configLoad ("Prioritizerd.config","prioritizerd");
+  if(status == CONFIG_E_OK) {
+      panicQueueLength=kvpGetInt("panicQueueLength",5000);
+  }
   /*   hornThresh=kvpGetFloat("hornThresh",250); */
   /*   coneThresh=kvpGetFloat("coneThresh",250); */
   /*   hornDiscWidth=kvpGetInt("hornDiscWidth",16); */
@@ -384,11 +358,12 @@ int readConfig()
   /*   HighRMSChan=kvpGetInt("HighRMSChan",165); */
   /*   CutRMS=kvpGetInt("CutRMS",130); */
   /* } */
-  /* else { */
-  /*   eString=configErrorString (status) ; */
-  /*   syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString); */
-  /*   fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString); */
-  /* } */
+  else {
+    eString=configErrorString (status) ;
+    syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
+    fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString);
+  }
+
   kvpReset();
   status = configLoad ("Archived.config","archived");
   if(status == CONFIG_E_OK) {
@@ -423,4 +398,86 @@ int sortOutPidFile(char *progName)
   }
   writePidFile(PRIORITIZERD_PID_FILE);
   return 0;
+}
+
+void panicWriteAllLinks(const char *wd, int panicPri){
+
+  char linkFilename[FILENAME_MAX];
+  char hdFilename[FILENAME_MAX];
+  char bodyFilename[FILENAME_MAX];
+  char telemHdFilename[FILENAME_MAX];
+  char archiveHdFilename[FILENAME_MAX];
+  char archiveBodyFilename[FILENAME_MAX]; 
+  int numEventLinksAtPanic = getNumLinks(wd);
+  syslog(LOG_WARNING,"Prioritizerd queue has reached panicQueueLength=%d!\n", panicQueueLength);
+  syslog(LOG_WARNING, "Trying to recover by writing %d priority 7 events!\n", numEventLinksAtPanic);
+  int doingEvent=0;
+  int count=0;
+  int retVal=0;
+  char* tempString;
+  int lastEventNumber=0;
+
+  for(count=0; count<numEventLinksAtPanic; count++){
+    int numEventLinks=getNumLinks(wd);
+    tempString=getFirstLink(wd);
+    if(numEventLinks==0) break;
+    if(tempString==NULL) continue; /* Just to be safe */
+    sscanf(tempString,"hd_%d.dat",&doingEvent);
+    if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
+      syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n",
+	     lastEventNumber,doingEvent);
+    }
+    lastEventNumber=doingEvent;
+
+    sprintf(linkFilename,"%s/%s",EVENTD_EVENT_LINK_DIR,
+	    tempString);
+    sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
+	    doingEvent);
+
+    sprintf(bodyFilename,"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
+
+    AnitaEventHeader_t panicHeader;
+    retVal=fillHeader(&panicHeader,hdFilename);
+    panicHeader.priority = panicPri;
+
+    int pri=panicHeader.priority&0xf;
+    if((panicHeader.turfio.trigType&0x2) && (priorityPPS1>=0 && priorityPPS1<=9))
+      pri=priorityPPS1;
+    if((panicHeader.turfio.trigType&0x4) && (priorityPPS2>=0 && priorityPPS2<=9))
+      pri=priorityPPS2;
+    if(pri<0 || pri>9) pri=9;
+    panicHeader.priority=(16*panicHeader.priority)+pri;
+
+    //Now Fill Generic Header and calculate checksum
+    fillGenericHeader(&panicHeader,panicHeader.gHdr.code,sizeof(AnitaEventHeader_t));
+  
+    //Rename body and write header for Archived
+    sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
+	    panicHeader.eventNumber);
+    if(rename(bodyFilename,archiveBodyFilename)==-1)
+      {
+	syslog(LOG_ERR,"Error moving file %s -- %s",archiveBodyFilename,
+	       strerror(errno));
+      }
+
+    sprintf(archiveHdFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
+	    panicHeader.eventNumber);
+    writeStruct(&panicHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
+
+    makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
+    
+    //Write Header and make Link for telemetry
+    sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
+	    panicHeader.eventNumber);
+    retVal=writeStruct(&panicHeader,telemHdFilename,sizeof(AnitaEventHeader_t));
+    makeLink(telemHdFilename,HEADER_TELEM_LINK_DIR);
+
+    /* Delete input */
+    sprintf(linkFilename,"%s/hd_%d.dat",EVENTD_EVENT_LINK_DIR,
+	    panicHeader.eventNumber);
+    sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
+	    panicHeader.eventNumber);
+    removeFile(linkFilename);
+    removeFile(hdFilename);    
+  }
 }

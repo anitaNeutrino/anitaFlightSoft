@@ -3301,7 +3301,7 @@ int makeNewRunDirs() {
   runStart.eventNumber*=100; //Roughly
 
   //First make dirs
-  for(diskInd=0;diskInd<DISK_TYPES-1;diskInd++) {
+  for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(!(hkDiskBitMask&diskBitMasks[diskInd]) &&
        !(eventDiskBitMask&diskBitMasks[diskInd]))
       continue; // Disk not enabled
@@ -3323,7 +3323,7 @@ int makeNewRunDirs() {
 
   //Now delete dirs
   //For now with system command
-  system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd /tmp/ntu/* /tmp/buffer/*");
+  system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd /tmp/buffer/*");
     
   system("/home/anita/flightSoft/bin/createConfigAndLog.sh");
 

@@ -206,15 +206,18 @@ int wdHks[NUM_HK_TELEM_DIRS]={0};
 int numEventsSent[NUM_PRIORITIES]={0};
 int numHksSent[NUM_HK_TELEM_DIRS]={0};
 
+char currentOpenportDir[FILENAME_MAX];
+
+
 int main(int argc, char *argv[])
 {
     //Temporary variables
   int retVal=0,pri=0;
   
   /* Config file thingies */
-  int status=0;
-  char* eString ;
-    
+  //  int status=0;
+  //  char* eString ;
+  sprintf(currentOpenportDir,"%s",OPENPORT_OUTPUT_DIR);
    
     char *progName=basename(argv[0]);
 
@@ -242,8 +245,8 @@ int main(int argc, char *argv[])
 
    /* Load Config */
     kvpReset () ;
-    status = configLoad (GLOBAL_CONF_FILE,"global") ;
-    eString = configErrorString (status) ;
+    //    status = configLoad (GLOBAL_CONF_FILE,"global") ;
+    //    eString = configErrorString (status) ;
 
     //Fill event dir names
     for(pri=0;pri<NUM_PRIORITIES;pri++) {
@@ -325,7 +328,7 @@ int main(int argc, char *argv[])
     time(&lastRefresh);
 
     int hkCount=0;
-   
+    
     printf("Before while loop\n");
     startCopyScript();
 
@@ -338,7 +341,10 @@ int main(int argc, char *argv[])
 	}
 	
 	//The idea is that we only write an output file if there is space for it
-	if(countFilesInDir(OPENPORT_OUTPUT_DIR)>20) {
+	int numWaitingToTransfer=countFilesInDir(currentOpenportDir);
+	if(numWaitingToTransfer>20) {
+	  fprintf(stderr,"There are %d files waiting to transer, will sleep now\n",numWaitingToTransfer);
+	  
 	  sleep(60);
 	  continue;
 	}
@@ -1121,10 +1127,10 @@ void sendSomeHk(int maxBytes)
     hkInd=hkTelemOrder[i];
     //      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
     numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
-    retVal=fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
-    if(retVal<0) {
-      syslog(LOG_ERR,"Error using fprintf -- %s",strerror(errno));
-    }
+    // retVal=fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
+    //    if(retVal<0) {
+    //      syslog(LOG_ERR,"Error using fprintf -- %s",strerror(errno));
+    //    }
     if(numHkLinks[hkInd]>0 && (maxBytes-hkCount)>maxPacketSize[hkInd]) {
       //Can try and send it
       numSent=0;
@@ -1252,7 +1258,7 @@ int readHkAndOpenport(int wd,int maxCopy, char *telemDir, char *linkDir, int fil
 /* Looks in the specified directroy and OPENPORT's up to maxCopy bytes of data */
 /* fileSize is the maximum size of a packet in the directory */
 {
-  fprintf(stderr,"readHkAndOpenport %s -- %d\n",linkDir,maxCopy);
+  //  fprintf(stderr,"readHkAndOpenport %s -- %d\n",linkDir,maxCopy);
   char currentFilename[FILENAME_MAX];
   char currentTouchname[FILENAME_MAX];
   char currentLOSTouchname[FILENAME_MAX];
@@ -1360,7 +1366,7 @@ int readHkAndOpenport(int wd,int maxCopy, char *telemDir, char *linkDir, int fil
       if(counter>=maxCopy) break;
       //	break;
     }
-    fprintf(stderr,"readHkAndOpenport %s -- %d\n",linkDir,*numSent);
+    //    fprintf(stderr,"readHkAndOpenport %s -- %d\n",linkDir,*numSent);
     return totalBytes;
 }
 
@@ -1407,7 +1413,7 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   static int openedFile=0;
   static int bytesToFile=0;
   static char fileName[FILENAME_MAX];
-  static char dirName[FILENAME_MAX];
+
   static int openportRun=-1;
   if(openportRun<0) openportRun=getOpenportRunNumber();
   short numWrapBytes=0;
@@ -1426,8 +1432,8 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   if(!openedFile) {
     sprintf(fileName,"%s/%05d",OPENPORT_STAGE_DIR,openportRun);
     makeDirectories(fileName);
-    sprintf(dirName,"%s/%05d",OPENPORT_OUTPUT_DIR,openportRun);
-    makeDirectories(dirName);
+    sprintf(currentOpenportDir,"%s/%05d",OPENPORT_OUTPUT_DIR,openportRun);
+    makeDirectories(currentOpenportDir);
     sprintf(fileName,"%s/%05d/%06d",OPENPORT_STAGE_DIR,openportRun,getOpenportFileNumber());
     printf("Openport file: %s\n",fileName);
     fp=fopen(fileName,"wb");
@@ -1449,7 +1455,7 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
       printf("Finished file %s -- with %d bytes\n",fileName,bytesToFile);
       fclose(fp);
       //      zipFileInPlace(fileName);
-      moveFile(fileName,dirName);
+      moveFile(fileName,currentOpenportDir);
       fp=NULL;
       openedFile=0;
       bytesToFile=0;
@@ -1510,7 +1516,7 @@ int getOpenportRunNumber() {
       }
       fclose (pFile);
     }
-    openportNumber++;
+    //    openportNumber++;
     if(printToScreen) printf("The last openport run number is %d\n",openportNumber);
     firstTime=0;
   }
