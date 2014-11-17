@@ -61,7 +61,7 @@ typedef enum {
 } OPENPORTTelemType_t;
 
 
-
+void stopCopyScript();
 int getOpenportNumber();
 int getOpenportFileNumber();
 int getOpenportRunNumber();
@@ -1371,12 +1371,26 @@ int readHkAndOpenport(int wd,int maxCopy, char *telemDir, char *linkDir, int fil
 }
 
 
+void stopCopyScript() {
+  //  fprintf(stderr,"stopCopyScript:\t");
+   FILE *fp = fopen("/tmp/ntuCopyPid","r");
+  if(fp) {
+    fscanf(fp,"%d",&copyScriptPid);
+    fprintf(stderr,"Got copy script pid: %d\n",copyScriptPid);
+    kill(copyScriptPid,SIGTERM);
+  }
+}
+
+
 void handleBadSigs(int sig)
 {
   int retVal=0;
   fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
   syslog(LOG_CRIT,"Received sig %d -- will exit immediately\n",sig); 
-  kill(copyScriptPid,SIGTERM);
+
+
+  if(copyScriptPid>0) stopCopyScript();
+
   retVal=unlink(OPENPORTD_PID_FILE);
   if(retVal<0) {
     syslog(LOG_ERR,"Error deleting %s -- %s",OPENPORTD_PID_FILE,strerror(errno));

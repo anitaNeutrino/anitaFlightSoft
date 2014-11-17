@@ -23,7 +23,8 @@ ntuName=`getConfigString anitaSoft.config global ntuName`
 ntuCopyDir=/tmp/ntu
 echo "ntuName: $ntuName"
 echo "ntuCopyDir: $ntuCopyDir:"
-
+echo "ntuCopyPid: $$"
+echo $$ > /tmp/ntuCopyPid
 
 while :
 do

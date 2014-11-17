@@ -4,6 +4,8 @@ OPENPORT_USER=radio
 OPENPORT_DEST_IP=192.168.1.2
 OPENPORT_DEST_DIR=/anitaStorage/antarctica14/telem/openport/
 
+echo "openportCopyPid: $$"
+echo $$ > /tmp/openportCopyPid
 
 while [ 1 ]; do
     if test `ls /tmp/openport/* | wc -l` -gt 0 ; then

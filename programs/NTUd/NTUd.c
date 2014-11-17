@@ -32,11 +32,14 @@ void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 void startCopyScript();
 void stopCopyScript();
+void startMonitorScript();
+void stopMonitorScript();
 
 // Global Variables
 int printToScreen=0;
 int disableNtu=0;
 pid_t copyScriptPid=-1;
+pid_t monitorScriptPid=-1;
 
 int main (int argc, char *argv[])
 {
@@ -76,12 +79,18 @@ int main (int argc, char *argv[])
 	    exit(1);
 	}
 	currentState=PROG_STATE_RUN;
-	if(!disableNtu) startCopyScript();
+	if(!disableNtu) {
+	  startCopyScript();
+	  printf("Copyscriptpid: %d\n",copyScriptPid);
+	  startMonitorScript();
+	}
 	while(currentState==PROG_STATE_RUN) {
 	  sleep(1);
 	}	 
 	if(copyScriptPid>0) stopCopyScript();
 	copyScriptPid=-1;
+	if(monitorScriptPid>0) stopMonitorScript();
+	monitorScriptPid=-1;
 	sleep(1);
     } while(currentState==PROG_STATE_INIT);   
     unlink(NTUD_PID_FILE);
@@ -115,7 +124,9 @@ void handleBadSigs(int sig)
 {   
     fprintf(stderr,"Received sig %d -- will exit immeadiately\n",sig); 
     syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);  
-    stopCopyScript();
+
+    if(copyScriptPid>0) stopCopyScript();
+    if(monitorScriptPid>0) stopMonitorScript();
     unlink(NTUD_PID_FILE);
     syslog(LOG_INFO,"NTUd terminating");    
     exit(0);
@@ -151,6 +162,36 @@ void startCopyScript() {
 }
 
 void stopCopyScript() {
-  kill(copyScriptPid,SIGTERM);
+  //  fprintf(stderr,"stopCopyScript:\t");
+   FILE *fp = fopen("/tmp/ntuCopyPid","r");
+  if(fp) {
+    fscanf(fp,"%d",&copyScriptPid);
+    fprintf(stderr,"Got copy script pid: %d\n",copyScriptPid);
+    kill(copyScriptPid,SIGTERM);
+  }
+}
+
+void startMonitorScript() {
+
+  monitorScriptPid = fork();
+  if (monitorScriptPid > 0) {
+    
+  }
+  else if (monitorScriptPid == 0){
+    system("/home/anita/flightSoft/bin/ntuMonitoringScript.sh");
+    printf("Finished monitor script\n");
+    exit(0);
+  }
+
+}
+
+void stopMonitorScript() {
+  FILE *fp = fopen("/tmp/ntuMonitorPid","r");
+  if(fp) {
+    fscanf(fp,"%d",&monitorScriptPid);
+    fprintf(stderr,"Got monitor script pid: %d\n",monitorScriptPid);
+    kill(monitorScriptPid,SIGTERM);
+  }
+
 }
 

@@ -801,7 +801,7 @@ int main(int argc, char **argv) {
 	unsigned short tempL1TrigMaskH=l1TrigMaskH;
 	l1TrigMaskH=0xffff;
 	time(&lastNewPhiMask);
-	printf("Dynamically setting phi mask to %#x at %u\n",phiTrigMask,
+	printf("Dynamically setting phi mask to %#x--%#x at %u\n",phiTrigMask,phiTrigMaskH,
 	       (unsigned int)lastNewPhiMask);
 	setTriggerMasks();
 	doSurfHkAverage(1); //Flush the surf hk average
@@ -1118,8 +1118,8 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	    break;
 	case SetPhiTrigMask:
 	  uvalue=phiTrigMask | (phiTrigMaskH<<16);
-	    status+=setTurfioReg(TurfRegControlPhiMask,uvalue);
-	    break;
+	  status+=setTurfioReg(TurfRegControlPhiMask,uvalue);
+	  break;
 	case SetL1TrigMask:
 	  uvalue=l1TrigMask | (l1TrigMaskH<<16);
 	  status+=setTurfioReg(TurfRegControlL1TrigMask,uvalue);
@@ -4383,20 +4383,21 @@ int checkTurfRates()
   //then check if we need to mask out a phi sector  
   int numLastTurfs=0;
   static int funcCounter=0;
-  int phi=0,tInd=0,ring=0;
+  int phi=0,tInd=0,pol=0;
   int l1HitCount[PHI_SECTORS][2];
   int l1MissCount[PHI_SECTORS][2];  
-  int l3HitCount[PHI_SECTORS]={0};
-  int l3MissCount[PHI_SECTORS]={0};
+  int l3HitCount[PHI_SECTORS][2];
+  int l3MissCount[PHI_SECTORS][2];
   int turfRateIndex=(countLastTurfRates%NUM_DYN_TURF_RATE);
   unsigned int newPhiMask=0;
+  unsigned int newPhiMaskH=0;
   unsigned int newL1TrigMask=0;
   int changedSomething=0;
   
   memset(l1HitCount,0,sizeof(int)*PHI_SECTORS*2);
   memset(l1MissCount,0,sizeof(int)*PHI_SECTORS*2);
-  memset(l3HitCount,0,sizeof(int)*PHI_SECTORS);
-  memset(l3MissCount,0,sizeof(int)*PHI_SECTORS);
+  memset(l3HitCount,0,sizeof(int)*PHI_SECTORS*2);
+  memset(l3MissCount,0,sizeof(int)*PHI_SECTORS*2);
 
   funcCounter++;
   //Number between 0 and NUM_DYN_TURF_RATE-1
@@ -4410,11 +4411,12 @@ int checkTurfRates()
     
     for(tInd=0;tInd<numLastTurfs;tInd++) {
       for(phi=0;phi<PHI_SECTORS;phi++) {
-	if(lastTurfRates[tInd].l3Rates[phi][0]>dynamicPhiThresholdOverRate) 
-	  l3HitCount[phi]++;
-	if(lastTurfRates[tInd].l3Rates[phi][0]<dynamicPhiThresholdUnderRate)
-	  l3MissCount[phi]++;
-	for(ring=0;ring<2;ring++) {
+	for(pol=0;pol<2;pol++) {
+	  if(lastTurfRates[tInd].l3Rates[phi][pol]>dynamicPhiThresholdOverRate) 
+	    l3HitCount[phi][pol]++;
+	  if(lastTurfRates[tInd].l3Rates[phi][pol]<dynamicPhiThresholdUnderRate)
+	    l3MissCount[phi][pol]++;
+	  //	  for(ring=0;ring<2;ring++) {
 	  //	  if(lastTurfRates[tInd].l1Rates[phi][ring]>dynamicAntThresholdOverRate) 
 	  //	    l1HitCount[phi][ring]++;
 	  //	  if(lastTurfRates[tInd].l1Rates[phi][ring]<dynamicAntThresholdUnderRate)
@@ -4424,29 +4426,47 @@ int checkTurfRates()
     }
     
     newPhiMask=phiTrigMask;
-    newL1TrigMask=l1TrigMask;
+    newPhiMaskH=phiTrigMaskH;
+    newL1TrigMask=l1TrigMask;    
     for(phi=0;phi<PHI_SECTORS;phi++) {
-      if(l3HitCount[phi]>dynamicPhiThresholdOverWindow) {
+      if(l3HitCount[phi][0]>dynamicPhiThresholdOverWindow) {
 	//Got a hot channel
 //	  printf("hot channel %d -- %d\n",phi,l3HitCount[phi]);
 	  newPhiMask |= (1<<phi);
       }
-      if(l3MissCount[phi]>dynamicPhiThresholdUnderWindow) {
+      if(l3MissCount[phi][0]>dynamicPhiThresholdUnderWindow) {
 	//Got a quiet channel
 //	  printf("cold channel %d -- %d\n",phi,l3MissCount[phi]);
 	newPhiMask &= ~(1<<phi);
       }
-      //RJN need to add L1 something here
-
-      
+      if(l3HitCount[phi][1]>dynamicPhiThresholdOverWindow) {
+	//Got a hot channel
+//	  printf("hot channel %d -- %d\n",phi,l3HitCount[phi]);
+	  newPhiMaskH |= (1<<phi);
+      }
+      if(l3MissCount[phi][1]>dynamicPhiThresholdUnderWindow) {
+	//Got a quiet channel
+//	  printf("cold channel %d -- %d\n",phi,l3MissCount[phi]);
+	newPhiMaskH &= ~(1<<phi);
+      }
+      //RJN need to add L1 something here      
     }
   
     if(phiTrigMask!=newPhiMask) {
 	if(enableDynamicPhiMasking) {
 	    if(printToScreen) {
-		printf("Changing phi mask from %#x to %#x (%d -- %d)\n",phiTrigMask,newPhiMask,funcCounter,countLastTurfRates);
+		printf("Changing VPol phi mask from %#x to %#x (%d -- %d)\n",phiTrigMask,newPhiMask,funcCounter,countLastTurfRates);
 	    }
 	    phiTrigMask=newPhiMask | gpsPhiTrigMask;
+	    changedSomething=1;
+	}
+    }
+    if(phiTrigMaskH!=newPhiMaskH) {
+	if(enableDynamicPhiMasking) {
+	    if(printToScreen) {
+		printf("Changing HPol phi mask from %#x to %#x (%d -- %d)\n",phiTrigMaskH,newPhiMaskH,funcCounter,countLastTurfRates);
+	    }
+	    phiTrigMaskH=newPhiMaskH | gpsPhiTrigMask;
 	    changedSomething=1;
 	}
     }

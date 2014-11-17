@@ -4,6 +4,15 @@ RUN_START_TIME=`stat -c %Y /mnt/data/numbers/lastRunNumber`
 NOW_TIME=`date +%s`
 MAX_RUN_LENGTH=`getConfigValue anitaSoft.config global maxRunLength`
 
+if [ -f "/tmp/anita/pid/cmdd.pid" ]; then
+    if grep Cmdd /proc/`cat /tmp/anita/pid/cmdd.pid`/comm; then 
+	echo "Cmdd running";
+    else
+	echo "Cmdd not running";
+	daemon -r Cmdd -n Cmdd
+    fi
+fi
+
 
 let COMP_TIME=RUN_START_TIME+MAX_RUN_LENGTH
 let DIFF_TIME=COMP_TIME-NOW_TIME

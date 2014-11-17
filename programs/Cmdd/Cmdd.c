@@ -3498,8 +3498,8 @@ int logRequestCommand(int logNum, int numLines)
 
 int killDataPrograms()
 {
-  int numDataProgs=11;
-  int dataProgs[11]={ID_MONITORD,
+  int numDataProgs=10;
+  int dataProgs[10]={ID_MONITORD,
 		     ID_HKD,
 		     ID_GPSD,
 		     ID_ARCHIVED,
@@ -3508,8 +3508,7 @@ int killDataPrograms()
 		     ID_EVENTD,
 		     ID_ACQD,
 		     ID_PLAYBACKD,
-		     ID_LOGWATCHD,
-		     ID_NTUD};
+		     ID_LOGWATCHD};  
   
   int index=0,sleepCount=0;
   
