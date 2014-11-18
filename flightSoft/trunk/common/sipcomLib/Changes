@@ -1,5 +1,10 @@
 Don't forget to update the VERSION file!
 
+1.30   19 Nov 14        Ryan Nichol
+       sipcom.c
+       telemwraph.h
+		Added new function to wrap openport data
+
 1.29	06 Jul 11	Marty Olevitch
 	demo/driver.c
 	    Commandline options to not do HGA or OMNI,

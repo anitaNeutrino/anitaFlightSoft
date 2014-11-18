@@ -17,13 +17,7 @@
  * 	Indicates using high-rate TDRSS data via the SIP.
  */
 #define TW_SIP 1
-
-/*
- * Macro: TW_OPENPORT
- * 	Indicates using high-rate TDRSS data via the SIP.
- */
-#define TW_OPENPORT 2
-
+ 
 /*
  * Macro: TW_PAD_BYTE
  *	Byte to pad the science data to be an even number of bytes.
