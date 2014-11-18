@@ -940,7 +940,7 @@ openport_wrap_buffer(unsigned char *buf, unsigned short nbytes,
 	nbytes_plus = nbytes + extra_bytes;
 	wrapbuf = (unsigned short *)realloc(wrapbuf, nbytes_plus);
 	if (NULL == wrapbuf) {
-	    set_error_string("sipcom_wrap_buffer: bad realloc (%s).\n",
+	    set_error_string("openport_wrap_buffer: bad realloc (%s).\n",
 	    	strerror(errno));
             *wrapbytes = -1;
 	    return NULL;
@@ -948,7 +948,7 @@ openport_wrap_buffer(unsigned char *buf, unsigned short nbytes,
     }
 
     *wrapbytes = telemwrap((unsigned short *)buf, wrapbuf, nbytes,
-			   SIPCOM_OPENPORT, TW_OPENPORT);
+			   SIPCOM_OPENPORT, TW_SIP);
 
     return wrapbuf;
 }
