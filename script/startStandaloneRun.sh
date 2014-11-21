@@ -11,7 +11,7 @@ daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 daemon --stop -n LogWatchd
 daemon --stop -n NTUd
-daemon --stop -n Openportd
+#daemon --stop -n Openportd
 
 
 echo "Sleeping while files are written and zipped"
@@ -68,7 +68,7 @@ daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
 daemon -r Playbackd -n Playbackd
 daemon -r NTUd -n NTUd
-daemon -r Openportd -n Openportd
+#daemon -r Openportd -n Openportd
 
 #LD_PRELOAD=/usr/lib64/libprofiler.so CPUPROFILE=/tmp/acqd.prof /home/anita/flightSoft/bin/Acqd
 #taskset -c 3 Acqd 
