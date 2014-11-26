@@ -272,6 +272,7 @@ int main(int argc, char **argv) {
   struct timeval startTimeStruct;
 
  
+  int surfResourceReInitCount=0;
   int surfResourceReInit=0;
   int reInitNeeded=0;
   int newPhiMask=0;
@@ -693,9 +694,13 @@ int main(int argc, char **argv) {
       //Now actually read the event data
       status+=readSurfEventData();
       if(status!=ACQD_E_OK) {
-	fprintf(stderr,"Error reading SURF event data %d, will try reInit\n",doingEvent);
-	syslog(LOG_ERR,"Error reading SURF event data %d.\n",doingEvent);
-        surfResourceReInit=1;
+	  surfResourceReInit=1;
+	  surfResourceReInitCount++;
+	if(surfResourceReInitCount<100 || surfResourceReInitCount%1000==0) {
+	  fprintf(stderr,"Error reading SURF event data %d, will try reInit %d\n",doingEvent,surfResourceReInitCount);
+	  syslog(LOG_ERR,"Error reading SURF event data %d.\n",doingEvent);
+	}
+
       }
 	      
       hdPtr->unixTime=timeStruct.tv_sec;
@@ -2930,6 +2935,8 @@ AcqdErrorCode_t readSurfEventData()
   uint32_t  dataInt=0;
   uint32_t eventBuf[SURF_EVENT_DATA_SIZE];
 
+  static int numBadReads[ACTIVE_SURFS]={0};
+
   unsigned char tempVal;
   int count=0,i=0;
   int chanId=0,surf,chan=0,readCount,firstHitbus,lastHitbus,wrappedHitbus;
@@ -2967,10 +2974,15 @@ AcqdErrorCode_t readSurfEventData()
     //Read the Event data
     count = read(surfFds[surf], eventBuf, SURF_EVENT_DATA_SIZE*sizeof(uint32_t));
     if (count < 0) {
-      syslog(LOG_ERR,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
-      fprintf(stderr,"Error reading event data from SURF %d (%s)\n",surfIndex[surf],strerror(errno));
       status=ACQD_E_SURFREAD;
       badStatus=ACQD_E_SURFREAD;
+      numBadReads[surf]++;
+      if(numBadReads[surf]<100 || numBadReads[surf]%1000==0) {
+	syslog(LOG_ERR,"Error reading event data from SURF %d (%s) -- %d\n",surfIndex[surf],strerror(errno),numBadReads[surf]);
+	fprintf(stderr,"Error reading event data from SURF %d (%s) -- %d\n",surfIndex[surf],strerror(errno),numBadReads[surf]);
+
+      }
+
     }
      if(printToScreen && verbosity>2) {	
       for(i=0;i<SURF_EVENT_DATA_SIZE;i++) {

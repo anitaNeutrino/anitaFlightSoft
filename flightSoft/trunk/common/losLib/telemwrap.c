@@ -18,7 +18,7 @@ static int Startbuf_sizeb =
 static unsigned short Endbuf[] = {
       0xAEFF
     , 0xC0FE
-    , 0xD0CC
+    , 0xF1EA
 };
 static int Endbuf_sizeb =
     sizeof(short) * (sizeof(Endbuf)/sizeof(Endbuf[0]));

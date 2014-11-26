@@ -34,7 +34,8 @@ daemon -u anita -r Monitord -n Monitord
 daemon -u anita -r Calibd -n Calibd
 daemon -u anita -r Playbackd -n Playbackd
 daemon -u anita -r LogWatchd -n LogWatchd
-sleep 5
+daemon -u anita -r checkNtu.py -n checkNtu.py
+sleep 2
 /usr/sbin/runuser -u anita CmdTest 133 0 32
 daemon -u anita -r Acqd -n Acqd
 

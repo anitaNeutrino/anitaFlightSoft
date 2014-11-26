@@ -376,6 +376,11 @@ int readConfigFile()
 	       MONITOR_TELEM_LINK_DIR,
 	       MONITOR_ARCHIVE_DIR
 	       );
+
+	printf("Dirs:\n\t%s\n\t%s\n\n",
+	       OTHER_MONITOR_TELEM_DIR,
+	       OTHER_MONITOR_TELEM_LINK_DIR
+	       );
 	       
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
@@ -390,13 +395,13 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
     unsigned int megaBytes=0;
     unsigned short megaBytes_short=0;
     FILE *neoFile=0;
-    unsigned int neoTime;
+    //    unsigned int neoTime;
     unsigned long long neoSpaceUsed;
     unsigned long long neoSpaceAvailable;
     static unsigned long long lastNeoSpaceAvailable=0;
-    long long neoSpaceTotal;
-    float neoTemp;
-    float neoPress;
+    //    long long neoSpaceTotal;
+    //    float neoTemp;
+    //    float neoPress;
     for(diskNum=0;diskNum<7;diskNum++) {
 	megaBytes=getDiskSpace(diskLocations[diskNum]);
 	printf("%s -- %u\n",diskLocations[diskNum],megaBytes);
@@ -410,15 +415,18 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	if(printToScreen) printf("%s\t%u\n",diskLocations[diskNum],megaBytes_short);
 	if(((short)megaBytes)==-1) errFlag--;
     }  
-    neoFile=fopen("/tmp/anita/ntuSum.txt","r");
+
+    neoFile=fopen("/tmp/lastNtuDiskSpace","r");
     if(neoFile) {
-	fscanf(neoFile,"%u %llu %llu %llu %f %f",&neoTime,&neoSpaceUsed,&neoSpaceAvailable,&neoSpaceTotal,&neoTemp,&neoPress);
+	fscanf(neoFile,"%s %llu %llu",ntuName,&neoSpaceUsed,&neoSpaceAvailable);
+	printf("%s %llu %llu\n",ntuName,neoSpaceUsed,neoSpaceAvailable);
+
 	if(neoSpaceAvailable>0) {
-	    megaBytes=neoSpaceAvailable/(1024*1024);
+	    megaBytes=neoSpaceAvailable/(1024);  
 	    lastNeoSpaceAvailable=neoSpaceAvailable;
 	}
 	else {
-	    megaBytes=lastNeoSpaceAvailable/(1024*1024);
+	    megaBytes=lastNeoSpaceAvailable/(1024);
 	}
 	megaBytes/=16;
 	if(megaBytes<65535) megaBytes_short=megaBytes;
