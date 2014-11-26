@@ -28,6 +28,7 @@ echo $$ > /tmp/ntuCopyPid
 
 while :
 do
+    shouldBreak=0
     rsync -av $NTU_IP:~/lastCopiedRun /tmp/lastCopiedRun > /dev/null
 
     #This first part just makes sure that any straggler files are copied correctly   
@@ -37,16 +38,31 @@ do
     for run in `seq $START_RUN $PENULTIMATE_RUN`; do
 	if [ -d "${ntuCopyDir}/run$run" ]; then
 	    rsync -av --remove-source-files ${ntuCopyDir}/run$run anita@${NTU_IP}:${ntuName}/  > /tmp/getRawData.log
+	    if test $? -gt 128; then
+		shouldBreak=1;
+		break;
+	    fi
+
 	    if  test `cat /tmp/getRawData.log  | wc -l` -gt 04 ; then
 		echo "Copied Run $run"
 		echo  $run > /tmp/lastCopiedRun
 		rsync -av /tmp/lastCopiedRun  $NTU_IP:~/lastCopiedRun
+		if test $? -gt 128; then
+		    shouldBreak=1;
+		    break;
+		fi
 	    fi
 	    rm -rf ${ntuCopyDir}/run$run
 	fi
     done
 
+
+    if [ "$shouldBreak" -eq 1 ]; then
+	break;
+    fi
     #Now try and copy only .gz files for current run
     rsync -avP --remove-source-files --exclude '*.dat' --exclude '*.new' --exclude '*.temp' ${ntuCopyDir}/run${LAST_RUN} anita@${NTU_IP}:${ntuName}/ > /tmp/copyCurrentRun.log  
+    test $? -gt 128 && break;
     #sleep 5
+
 done

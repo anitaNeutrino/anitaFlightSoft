@@ -82,7 +82,7 @@ int stateNTUSSDShutdown=1;
 //Debug
 int printToScreen=1;
 
-int ip320Range=RANGE_5TO5;  //RJN Guess
+int ip320Range=RANGE_10TO10;  //RJN Guess
 
 int adcAverage=1;
 int readoutPeriod; //in ms
@@ -721,6 +721,15 @@ int outputData(AnalogueCode_t code)
 
 
     fillGenericHeader(&theHkData,PACKET_HKD_SS,sizeof(SSHkDataStruct_t));
+
+    if(code==IP320_RAW) {
+      int chan=0;
+      printf("Raw data: ");
+      for(chan=0;chan<40;chan++) {
+	printf("%d ",rawDataStruct.board.data[chan]);
+      }
+      printf("\n");
+    }
 
 
     telemCount++;

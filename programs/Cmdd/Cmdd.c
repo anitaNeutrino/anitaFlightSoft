@@ -1247,6 +1247,17 @@ int killPrograms(int progMask)
   int testMask;	
   syslog(LOG_INFO,"killPrograms %#x\n",progMask);
   //    printf("Kill programs %d\n",progMask);
+
+  if(progMask&getIdMask(ID_OPENPORTD)) {
+    pid_t thePid=0;
+    FILE *fpPid=fopen("/tmp/openportCopyPid","r");
+    if(fpPid) {
+      fscanf(fpPid,"%d", &thePid) ;
+      fclose(fpPid) ;
+      kill(thePid,9);
+    }
+  }
+
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
     testMask=getIdMask(prog);
     //	printf("%d %d\n",progMask,testMask);
@@ -3498,8 +3509,8 @@ int logRequestCommand(int logNum, int numLines)
 
 int killDataPrograms()
 {
-  int numDataProgs=10;
-  int dataProgs[10]={ID_MONITORD,
+  int numDataProgs=12;
+  int dataProgs[12]={ID_MONITORD,
 		     ID_HKD,
 		     ID_GPSD,
 		     ID_ARCHIVED,
@@ -3508,7 +3519,9 @@ int killDataPrograms()
 		     ID_EVENTD,
 		     ID_ACQD,
 		     ID_PLAYBACKD,
-		     ID_LOGWATCHD};  
+		     ID_LOGWATCHD,
+		     ID_OPENPORTD,
+		     ID_NTUD};  
   
   int index=0,sleepCount=0;
   
@@ -3542,34 +3555,17 @@ int killDataPrograms()
     }
     while(fileExists && sleepCount<30);
   }
-  
-  killPrograms(NTUD_ID_MASK);
-  int fileExists=0;
-  sleepCount=0;
-  do {
-    FILE *test =fopen(NTUD_PID_FILE,"r");
-    if(test==NULL) fileExists=0;
-    else {
-      fclose(test);
-      fileExists=1;
-      sleepCount++;
-      sleep(1);	
-      if(sleepCount>20) {
-	syslog(LOG_INFO,"Ntud not dead after %d seconds\n",sleepCount);
-	reallyKillPrograms(NTUD_ID_MASK);
-	sleep(1);
-	unlink(NTUD_PID_FILE);
-      }
-    }
-  } while(fileExists && sleepCount<30);
+  system("killall -9 rsync");
+  system("killall sleep");
+  sleep(2);
   return 0;
 }
 
 int startDataPrograms() {
 
 
-  int numDataProgs=11;
-  int dataProgs[11]={ID_HKD,
+  int numDataProgs=12;
+  int dataProgs[12]={ID_HKD,
 		     ID_GPSD,
 		     ID_ARCHIVED,
 		     ID_CALIBD,
@@ -3579,7 +3575,8 @@ int startDataPrograms() {
 		     ID_PLAYBACKD,
 		     ID_LOGWATCHD,
 		     ID_NTUD,
-		     ID_ACQD};
+		     ID_ACQD,
+		     ID_OPENPORTD};
 
   int index=0;
   for(index=0;index<numDataProgs;index++) {

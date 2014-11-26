@@ -21,6 +21,7 @@ def main(args):
     # You can now call this with a force option, which will issue restart commands to calibd
     forceFlag = False
     testMode = False
+    firstTime = True
 
     for arg in args:
         if arg == '-f' or arg == '--force':
@@ -28,7 +29,8 @@ def main(args):
         if arg == '-t' or arg == '--test':
             testMode = True
 
-    ntuIPaddress = '192.168.1.5' # The IP address to ping
+    ntuIPaddress="fe80::2e0:4bff:fe40:8074%p4p1"
+    #ntuIPaddress = '192.168.1.5' # The IP address to ping
     logFileName = '/home/anita/ntuCheckLog/checkNtu.log' # Timestamp of when restart was done
     #logFileName = 'checkNtu.log' # Timestamp of when restart was done
 
@@ -57,9 +59,9 @@ def main(args):
         
         response = None
         if testMode == False:
-            response = system('ping -i 6 -c 1 ' + ntuIPaddress + ' > /dev/null')
+            response = system('ping6 -i 6 -c 1 ' + ntuIPaddress + ' > /dev/null')
         else:
-            response = system('ping -i 6 -c 1 ' + ntuIPaddress)
+            response = system('ping6 -i 6 -c 1 ' + ntuIPaddress)
 
         # Ping should return 0 if the package was successful
         if response is not 0 and time() - lastRebootTime > maxWaitTimeSeconds:

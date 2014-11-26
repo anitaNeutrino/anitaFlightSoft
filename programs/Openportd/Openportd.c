@@ -99,6 +99,8 @@ int printToScreen;
 int sendData;
 int sendWavePackets;
 int standAloneMode=0;
+int maxFileSize;
+
 
 // Bandwidth variables
 int headersPerEvent=30;
@@ -526,6 +528,7 @@ int readConfig()
     if(status == CONFIG_E_OK) {
 	sendData=kvpGetInt("sendData",0);
 	sendWavePackets=kvpGetInt("sendWavePackets",0);
+	maxFileSize=kvpGetInt("maxFileSize",50000);
 	syslog(LOG_INFO,"sendWavePackets %d\n",sendWavePackets);
     }
     else {
@@ -1441,7 +1444,7 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
   
   unsigned short *openportBuffer=openport_wrap_buffer(buf,nbytes,&numWrapBytes);
 
-  const int maxBytesToFile=1000000;
+  //  const int maxBytesToFile=1000000;
   
   if(!openedFile) {
     sprintf(fileName,"%s/%05d",OPENPORT_STAGE_DIR,openportRun);
@@ -1465,7 +1468,7 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
     else eventCounter+=nbytes;
     printf("openportWrite %d bytes, file %d, hk %d, event %d\n",nbytes,bytesToFile,hkCounter,eventCounter);
 
-    if(bytesToFile>maxBytesToFile) {
+    if(bytesToFile>maxFileSize) {
       printf("Finished file %s -- with %d bytes\n",fileName,bytesToFile);
       fclose(fp);
       //      zipFileInPlace(fileName);
