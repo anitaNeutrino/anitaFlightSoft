@@ -1,9 +1,56 @@
 #include "anitaGpu.h"
 
+/* Globals, to be overwritten by values from Prioritizerd.config */
+/* Used to assign priority, should never assign priority 0!*/
+float circleRadiusSquaredLowBinEdge[NUM_PRIORITIES] = {100, 0.04, 0.05, 0.03, 0.02, 0.01, 0.00, 0, 0, 0};
+float circleRadiusSquaredHighBinEdge[NUM_PRIORITIES] = {99, 0.05, 1.00, 0.04 ,0.03 ,0.02 ,0.01, 1, 1, 1};
+
+/* Used to map imagePeak and hilbertPeak to a single figure of merit */
+float slopeOfImagePeakVsHilbertPeak;
+float interpectOfImagePeakVsHilbertPeak;
+
+/* Used for filtering in the GPU */
+float powSpec2ndDerivFilterThreshold;
+
+FILE* gpuOutput;
 void prepareGpuThings(){
 
+  #ifdef CALIBRATION
+  gpuOutput = NULL;
+  gpuOutput = fopen("/tmp/gpuOutput.dat", "w");
+  printf("Compiled with calibration flags! This will remove antenna orientation effects as I am expecting pulses through the cables...\n");
+  #endif
+  
+  /* Read in GPU output to priority mappings */
+  kvpReset();
+  KvpErrorCode err = KVP_E_OK;
+  int numPriorities = NUM_PRIORITIES;
+  err = configLoad ("Prioritizerd.config","prioritizerd") ;
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+  err = kvpGetFloatArray ("circleRadiusSquaredLowBinEdge", circleRadiusSquaredLowBinEdge, &numPriorities);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load circleRadiusSquaredLowBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+  err = kvpGetFloatArray ("circleRadiusSquaredHighBinEdge", circleRadiusSquaredHighBinEdge, &numPriorities);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load circleRadiusSquaredHighBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+  powSpec2ndDerivFilterThreshold=kvpGetFloat("powSpec2ndDerivFilterThreshold",-100);
+  interpectOfImagePeakVsHilbertPeak = kvpGetFloat ("interpectOfImagePeakVsHilbertPeak", 1715.23327523);
+  slopeOfImagePeakVsHilbertPeak = kvpGetFloat ("slopeOfImagePeakVsHilbertPeak", 49.10747809);
+
+
+
+
+  /* Large buffers, which will be mapped to GPU memory */
   numEventSamples = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*sizeof(float));
   eventData = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES*sizeof(float));
+  powSpec = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(float));
+  passFilter = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(short));
 
   /* Use opencl functions to find out what platforms and devices we can use for this program. */
   myPlatform = 0; /* Here we choose platform 0 in advance of querying to see what's there. */
@@ -27,20 +74,6 @@ void prepareGpuThings(){
      At this point the connection to the GPU via the X-server should have been made
      or printed something to screen if not so lets' open the output file.
   */
-
- /*  gpuOutput = NULL; */
- /*  char fileName[1024]; */
- /*  sprintf(fileName, "/home/anita/flightSoft/programs/Prioritizerd/gpuOutput.txt"); */
- /*  gpuOutput=fopen(fileName, "a"); /\* "a" is append mode... *\/ */
- /* /\* Some header info, perhaps unnecessary *\/ */
- /*  fprintf(gpuOutput, "Event Number\tVPOL: image peak\thilbert peak\tphi-bin\ttheta-bin\tHPOL: image peak\thilbert peak\tphi-bin\ttheta-bin\n"); */
-
-  /* if(gpuOutput == NULL){ */
-  /*   fprintf(stderr, "Error! Failed to open gpu log file %s!\n", fileName); */
-  /*   fprintf(stderr, "Exiting program.\n"); */
-  /*   exit (1); */
-  /* } */
-
   //#define DEBUG_MODE
 
 #ifdef DEBUG_MODE
@@ -94,22 +127,19 @@ void prepareGpuThings(){
   setKernelArgs(fourierKernel, numFourierArgs, fourierArgs, "fourierKernel");
 
 
-  /* float derivativeCut = 0; */
-  /* kvpReset(); */
-  /* KvpErrorCode err = KVP_E_OK; */
-  /* err = configLoad ("Prioritizerd.config","antennalocations") ;   */
-  /* if(err!=KVP_E_OK){ */
-  /*   fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err)); */
-  /* }   */
-  /* err = kvpGetFloat("powSpecDerivativeThreshold",  */
+  /* Send the read in value of the 2nd derivative threshold filter to the GPU */
+  powSpec2ndDerivFilterThresholdBuffer = createBuffer(context, memFlags, sizeof(float), "f", "powSpec2ndDerivFilterThresholdBuffer");
+  copyArrayToGPU(commandQueue, powSpec2ndDerivFilterThresholdBuffer, &powSpec2ndDerivFilterThreshold);  
 
-  /* Simple kernel which multiplies re and im of fourier kernel together. */
+  numEventsInQueueBuffer = createBuffer(context, memFlags, sizeof(int), "i", "numEventsInQueueBuffer");
+
+  /* Makes power spectrum from fourier transform and figures out filtering logic... */
   eventPowSpecKernel = createKernel(prog, "makeAveragePowerSpectrumForEvents");
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
-#define numPowSpecArgs 5
-  buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, rmsBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer};
+#define numPowSpecArgs 7
+  buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, rmsBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, powSpec2ndDerivFilterThresholdBuffer, numEventsInQueueBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
 
@@ -234,14 +264,15 @@ void prepareGpuThings(){
 }
 
 
+
 void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t theHeader){
 
   int antInd=0;
   /* For each channel, copy the data into the places where the GPU expects it. */
-  for(antInd=0; antInd<NUM_ANTENNAS; antInd++){
-      
-    int vPolChanInd = anita3ChanInd[antInd%16][antInd/16][0];
-    int hPolChanInd = anita3ChanInd[antInd%16][antInd/16][1];
+
+  for(antInd=0; antInd<NUM_ANTENNAS; antInd++){    
+    int vPolChanInd = antToSurfMap[antInd]*9 + vAntToChan[antInd];
+    int hPolChanInd = antToSurfMap[antInd]*9 + hAntToChan[antInd];
 
     /* Lay out the vpol data in the 1st half of the arrays and hpol data in the second half...*/
     int samp=0;
@@ -263,60 +294,30 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t t
     phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (theHeader.turfio.l3TrigPattern >> phiInd);
     /* HPOL, goes in back half of array */
     phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (theHeader.turfio.l3TrigPatternH>>phiInd);
+
+    /* /\* VPOL *\/ */
+    /* phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1; */
+    /* /\* HPOL, goes in back half of array *\/ */
+    /* phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1; */
   }
 
 }
 
-/* void addEventToGpuQueue(int eventInd, PedSubbedEventBody_t pedSubBody, AnitaEventHeader_t theHeader, const int alreadyUnwrappedAndCalibrated){ */
-
-/*   AnitaTransientBodyF_t unwrappedBody; */
-/*   unwrapAndBaselinePedSubbedEventBen(&pedSubBody,&unwrappedBody, alreadyUnwrappedAndCalibrated); */
-
-/*   int antInd=0; */
-/*   /\* For each channel, copy the data into the places where the GPU expects it. *\/ */
-/*   for(antInd=0; antInd<NUM_ANTENNAS; antInd++){ */
-      
-/*     int vPolChanInd = anita3ChanInd[antInd%16][antInd/16][0]; */
-/*     int hPolChanInd = anita3ChanInd[antInd%16][antInd/16][1]; */
-
-/*     /\* Lay out the vpol data in the 1st half of the arrays and hpol data in the second half...*\/ */
-/*     memcpy(&eventData[eventInd*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES], */
-/* 	   &unwrappedBody.ch[vPolChanInd].data[0], */
-/* 	   sizeof(float)*unwrappedBody.ch[vPolChanInd].valid_samples); */
-/*     numEventSamples[eventInd*NUM_ANTENNAS + antInd] = unwrappedBody.ch[vPolChanInd].valid_samples; */
-    
-/*     memcpy(&eventData[(NUM_EVENTS+eventInd)*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES], */
-/* 	   &unwrappedBody.ch[hPolChanInd].data[0], */
-/* 	   sizeof(float)*unwrappedBody.ch[hPolChanInd].valid_samples); */
-/*     numEventSamples[(NUM_EVENTS+eventInd)*NUM_ANTENNAS + antInd] = unwrappedBody.ch[hPolChanInd].valid_samples; */
-/*   } */
-
-/*   /\* Unpack the "L3" trigger, actually the 2/3 coincidence trigger in the phi-sector. *\/ */
-/*   int phiInd=0; */
-/*   for(phiInd=0; phiInd<NUM_PHI_SECTORS; phiInd++){ */
-/*     /\* VPOL *\/ */
-/*     phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (theHeader.turfio.l3TrigPattern >> phiInd); */
-/*     /\* HPOL, goes in back half of array *\/ */
-/*     phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (theHeader.turfio.l3TrigPatternH>>phiInd); */
-/*   } */
-/* } */
-
-
 void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
+
 
   /* Start time stamping. */
   uint stamp;
   stamp = 1;
   timeStamp(stamp++, 0, NULL);
 
+  cl_event writeNumEventsToGPU = writeBuffer(commandQueue, numEventsInQueueBuffer, 
+					     &nEvents, 0, NULL);
+  timeStamp(stamp++, 0, NULL);
 
   /* 
      In order to minimize time, maximize asynchronization of data transfer by sending both
      polarizations off to the GPU before starting calculations with them.
-     If this can be done earlier than this loop then that's a good idea...
-     But for now let's leave things inside this function for simplicity.
-     (In an ideal world any 'clWait...' events will return instantly because the CPU has done
-     other stuff while the GPU and whatever bus it sits on has been busy.)
   */
 
   cl_event dataToGpuEvents[NUM_POLARIZATIONS][3];
@@ -335,7 +336,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
   dataToGpuEvents[1][2] = writeBuffer(commandQueue, phiSectorTriggerBufferHPol,
 				     &phiTrig[NUM_EVENTS*NUM_PHI_SECTORS], 0, NULL);
 
-  cl_event dataFromGpuEvents[NUM_POLARIZATIONS][5];
+  cl_event dataFromGpuEvents[NUM_POLARIZATIONS][7];
 
   /* Loop over both polarizations */
   uint polInd=0;
@@ -367,14 +368,14 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
 #ifdef DEBUG_MODE
     clFinish(commandQueue);
     if( polInd == 0 ){
-      printBufferToTextFile(commandQueue, "rawBufferVPol.txt", polInd, rawBufferVPol, NUM_EVENTS);
-      printBufferToTextFile(commandQueue, "phiSectorTriggerBufferVPol.txt", polInd, phiSectorTriggerBufferVPol, NUM_EVENTS);
-      printBufferToTextFile(commandQueue, "numSampsBufferVPol.txt", polInd, numSampsBufferVPol, NUM_EVENTS);
+      printBufferToTextFile2(commandQueue, "rawBufferVPol.txt", polInd, rawBufferVPol, NUM_EVENTS, nEvents);
+      printBufferToTextFile2(commandQueue, "phiSectorTriggerBufferVPol.txt", polInd, phiSectorTriggerBufferVPol, NUM_EVENTS, 1);
+      printBufferToTextFile2(commandQueue, "numSampsBufferVPol.txt", polInd, numSampsBufferVPol, NUM_EVENTS, 1);
     }
     else{
-      printBufferToTextFile(commandQueue, "rawBufferHPol.txt", polInd, rawBufferHPol, NUM_EVENTS);
-      printBufferToTextFile(commandQueue, "phiSectorTriggerBufferHPol.txt", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS);
-      printBufferToTextFile(commandQueue, "numSampsBufferHPol.txt", polInd, numSampsBufferHPol, NUM_EVENTS);
+      printBufferToTextFile2(commandQueue, "rawBufferHPol.txt", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
+      printBufferToTextFile2(commandQueue, "phiSectorTriggerBufferHPol.txt", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
+      printBufferToTextFile2(commandQueue, "numSampsBufferHPol.txt", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
     }
 #endif
 
@@ -391,16 +392,30 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
     statusCheck(status, "clEnqueueNDRangeKernel fourierKernel");
     timeStamp(stamp++, 1, &fourierEvent);
 
+
+    cl_event* powSpecDependencies[2] = {&writeNumEventsToGPU, &fourierEvent};
     /* Generates power spectra from the fourier transformed data. */
     status = clEnqueueNDRangeKernel(commandQueue, eventPowSpecKernel, 2, NULL, gPowSpecWorkSize, lPowSpecWorkSize, 1, &fourierEvent, &powSpecEvent);
     statusCheck(status, "clEnqueueNDRangeKernel eventPowSpecKernel");
     timeStamp(stamp++, 1, &powSpecEvent);
 
+    /* Copy the power spectrum back the CPU */
+    dataFromGpuEvents[polInd][5] = readBuffer(commandQueue, powSpecBuffer, 
+					      &powSpec[polInd*NUM_ANTENNAS*NUM_SAMPLES/2],
+					      1, &powSpecEvent);
+    timeStamp(stamp++, 1, &dataFromGpuEvents[polInd][5]);
+
     /* Filters frequency bins based on the steepness of the power spectra */
     status = clEnqueueNDRangeKernel(commandQueue, filterWaveformsKernel, 3, NULL, gFilterWorkSize, lFilterWorkSize, 1, &powSpecEvent, &filterEvent);
     statusCheck(status, "clEnqueueNDRangeKernel filterWaveformsKernel");
     timeStamp(stamp++, 1, &filterEvent);        
-    
+
+
+    /* Copies the filtering numbers back from the GPU */
+    dataFromGpuEvents[polInd][6] = readBuffer(commandQueue, passFilterBuffer, 
+					      &passFilter[polInd*NUM_ANTENNAS*NUM_SAMPLES/2],
+					      1, &filterEvent);
+    timeStamp(stamp++, 1, &dataFromGpuEvents[polInd][6]);
 
     /* Does the cross-correlation in the fourier domain with the normalized fourier transformed data. */
     status = clEnqueueNDRangeKernel(commandQueue, circularCorrelationKernel, 3, NULL, gCircCorrWorkSize, lCircCorrWorkSize, 1, &filterEvent, &circCorrelationEvent);
@@ -473,29 +488,18 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
       This is insanely slow so will exit the program after the main gpu function is called once.
     */
 #ifdef DEBUG_MODE
-    /* clFinish(commandQueue); */
-    /* if( polInd == 0 ){ */
-    /*   printBufferToTextFile2(commandQueue, "rawBufferVPol.txt", polInd, rawBufferVPol, NUM_EVENTS, 1); */
-    /*   printBufferToTextFile2(commandQueue, "phiSectorTriggerBufferVPol.txt", polInd, phiSectorTriggerBufferVPol, NUM_EVENTS, 1); */
-    /*   printBufferToTextFile2(commandQueue, "numSampsBufferVPol.txt", polInd, numSampsBufferVPol, NUM_EVENTS, 1); */
-    /* } */
-    /* else{ */
-    /*   printBufferToTextFile2(commandQueue, "rawBufferHPol.txt", polInd, rawBufferHPol, NUM_EVENTS, 1); */
-    /*   printBufferToTextFile2(commandQueue, "phiSectorTriggerBufferHPol.txt", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1); */
-    /*   printBufferToTextFile2(commandQueue, "numSampsBufferHPol.txt", polInd, numSampsBufferHPol, NUM_EVENTS, 1); */
-    /* } */
-
+    clFinish(commandQueue);
     printBufferToTextFile2(commandQueue, "normalBuffer.txt", polInd, normalBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "rmsBuffer.txt", polInd, rmsBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "fourierBuffer.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile(commandQueue, "powSpecBuffer.txt", polInd, powSpecBuffer, 1);
-    printBufferToTextFile(commandQueue, "passFilterBuffer.txt", polInd, passFilterBuffer, 1);
+    printBufferToTextFile2(commandQueue, "powSpecBuffer.txt", polInd, powSpecBuffer, 1, 1);
+    printBufferToTextFile2(commandQueue, "passFilterBuffer.txt", polInd, passFilterBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "fourierBuffer2.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "circularCorrelationBuffer.txt", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "image.txt", polInd, imageBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "image.txt", polInd, imageBuffer, NUM_EVENTS, 100);
     printBufferToTextFile2(commandQueue, "maxThetaInds.txt", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakValBuffer.txt", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakValBuffer2.txt", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakValBuffer.txt", polInd, imagePeakValBuffer, NUM_EVENTS, 100);
+    printBufferToTextFile2(commandQueue, "imagePeakValBuffer2.txt", polInd, imagePeakValBuffer2, NUM_EVENTS, 100);
     printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer.txt", polInd, imagePeakPhiBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer2.txt", polInd, imagePeakPhiBuffer2, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer.txt", polInd, imagePeakPhiSectorBuffer, NUM_EVENTS, 1);
@@ -516,13 +520,35 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
   }
 
   /* Since all copy GPU-to-CPU buffer reading commands are non-blocking we actually need to wait... */
-  clWaitForEvents(10, &dataFromGpuEvents[0][0]);
-  timeStamp(stamp++, 10, &dataFromGpuEvents[0][0]);
+  clWaitForEvents(14, &dataFromGpuEvents[0][0]);
+  timeStamp(stamp++, 14, &dataFromGpuEvents[0][0]);
 
-  /* Output the data to a text file */
+  /* Power spectrum output, replace with nice struct soon */
+  float powSpecAnitaBand[NUM_POLARIZATIONS*NUM_ANTENNAS*99];
+  unsigned long int filteringAnitaBand[NUM_POLARIZATIONS*NUM_ANTENNAS];
+  int freqIndOffset = 20;
+  int reducedSize = 99;
+  int antChan=0;
+  /* FILE* rpsb = fopen("/tmp/reducedPowSpecBuffer.txt_0", "w"); */
+  /* for(antChan=0; antChan<NUM_ANTENNAS*NUM_POLARIZATIONS; antChan++){ */
+  /*   memcpy(&powSpecAnitaBand[antChan*reducedSize], &powSpec[antChan*NUM_SAMPLES/2 + freqIndOffset], sizeof(float)*reducedSize); */
+  /*   int freqInd=0; */
+  /*   for(freqInd=freqIndOffset; freqInd<freqIndOffset+reducedSize; freqInd++){ */
+  /*     filteringAnitaBand[antChan] <<= 1; */
+  /*     filteringAnitaBand[antChan] |= (1 & passFilter[antChan*NUM_SAMPLES/2 + freqInd]); */
+  /*   } */
+  /*   int i=0; */
+  /*   for(i=0; i<reducedSize; i++){ */
+  /*     fprintf(rpsb, "%4.2f ", filteringAnitaBand[antChan*99+i]); */
+  /*   } */
+  /*   fprintf(rpsb, "\n"); */
+  /* } */
+  /* fclose(rpsb); */
+  
+
   int eventInd=0;
   for(eventInd=0; eventInd < nEvents; eventInd++){
-    /* Pick polarization */
+    /* Pick better polarization */
     float imagePeakV = imagePeakVal[eventInd];
     float imagePeakH = imagePeakVal[NUM_EVENTS + eventInd];
 
@@ -545,22 +571,48 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader){
 
     /* Only need 10 bits for this number. Can Left bit-shift by as much as 6. */
     theHeader[eventInd].prioritizerStuff = (unsigned short) imagePeakPhiSector[index2]*NUM_BINS_PHI + imagePeakPhi2[index2];
-    
+
     /* Left bit shift by 1, then set lowest bit as polarization bit */
     theHeader[eventInd].prioritizerStuff <<= 1; 
     theHeader[eventInd].prioritizerStuff |= polBit;
 
     /* Still have 5 bits remaining */
-  }
 
-  assignPriorities(nEvents, theHeader, imagePeakVal);
+
+    /* Now actually assign the priority in the header file*/
+    float higherImagePeak = imagePeakV > imagePeakH ? imagePeakV : imagePeakH;
+    float normalizedHilbertPeak = (hilbertPeak[index2] - interpectOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
+    float circRadiusSquared = normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak;
+
+    int priority = 0;
+    for(priority=1; priority<NUM_PRIORITIES; priority++){
+      if(circRadiusSquared >= circleRadiusSquaredLowBinEdge[priority] && circRadiusSquared<circleRadiusSquaredHighBinEdge[priority]){
+	break;
+      }
+    }
+
+    theHeader[eventInd].priority = priority;
+
+
+    #ifdef CALIBRATION
+    fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d\n", theHeader[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], theHeader[eventInd].turfio.trigTime, theHeader[eventInd].turfio.c3poNum, theHeader[eventInd].turfio.trigType, theHeader[eventInd].unixTime, circRadiusSquared, normalizedHilbertPeak, higherImagePeak, priority);
+    #endif
+
+
+
+
+  }
 
   timeStamp(stamp++, 0, NULL);
 
 #ifdef DEBUG_MODE
+#ifdef CALIBRATION
+  fclose(gpuOutput);
+#endif
+
   printf("Only allowing one loop through main GPU calculation function in debug mode.\n");
   printf("Exiting program.\n");
-  exit(0);
+  //  exit(0);
 #endif
 
 }
@@ -573,6 +625,10 @@ void tidyUpGpuThings(){
      Prints resource information.
      Needless to say, nothing will work after this function is called.
   */
+
+#ifdef CALIBRATION
+  fclose(gpuOutput);
+#endif
 
 #ifdef TSTAMP
   TS_SAVE(1,"../timingAnalysis/stompings.dat");
@@ -609,6 +665,8 @@ void tidyUpGpuThings(){
   destroyBuffer(fourierBuffer);
   destroyBuffer(circularCorrelationBuffer);
   destroyBuffer(imageBuffer);
+  destroyBuffer(passFilterBuffer);
+  destroyBuffer(powSpecBuffer);
   destroyBuffer(maxThetaIndsBuffer);
   destroyBuffer(imagePeakValBuffer);
   destroyBuffer(imagePeakThetaBuffer);
@@ -637,8 +695,6 @@ void tidyUpGpuThings(){
 
   clReleaseContext(context);
 
- /* Close the file which contains the high level output information */
-  /* fclose(gpuOutput); */
 
 }
 
@@ -673,34 +729,14 @@ short* fillDeltaTArrays(){
 
   const float THETA_RANGE = 150;
   const float PHI_RANGE = 22.5;
-  
-  float phiArray[NUM_ANTENNAS] = {0.454076, 0.848837, 1.21946, 1.5909, 1.99256, 2.34755, 
-				  2.70865, 3.069, 3.47166, 3.87134, 4.26593, 4.67822, 5.10608, 
-				  5.51456, 5.89388, 0.044416,
-				  0.387236, 0.778985, 1.17058, 1.56246, 1.965, 2.36015, 
-				  2.74449, 3.13392, 3.5209, 3.92214, 4.31697, 4.71495, 
-				  5.10387, 5.4971, 5.88069, 6.28301,
-				  0.341474, 0.785398, 1.15377, 1.5708, 1.95866, 2.3562, 
-				  2.75883, 3.14159, 3.52916, 3.92699, 4.34619, 4.71239, 
-				  5.1258, 5.49779, 5.87493, 2.30671e-06};
 
-  float rArray[NUM_ANTENNAS] = {0.964244, 1.26328, 1.07559, 1.22095, 1.08488, 1.36624, 1.1447, 
-				1.30432, 1.07103, 1.22092, 1.0354, 1.19435, 0.984089, 1.1749, 
-				1.01206, 1.15605,
-				2.34919, 2.37795, 2.32726, 2.29152, 2.35465, 2.40221, 2.42728, 
-				2.4088, 2.34487, 2.38694, 2.35025, 2.38258, 2.38096, 2.38386, 
-				2.39722, 2.32287,
-				1.94162, 1.95, 1.88232, 1.95, 1.92649, 1.95, 1.99418, 1.95, 
-				1.91999, 1.95, 1.88622, 1.95, 1.99996, 1.95, 2.00084, 1.95};
+  float rArray[NUM_ANTENNAS]={0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447};
 
-  float zArray[NUM_ANTENNAS] = {2.80072, 3.75559, 2.78617, 3.74412, 2.77466, 3.73133, 2.77802, 
-				3.74469, 2.79233, 3.76409, 2.81029, 3.78441, 2.82143, 3.78645,
-				2.81491, 3.77305,
-				0.0443497, 0.0191496, -0.00763382, -0.0172236, -0.0255111, -0.019316,
-				-0.0140433, 0.00922827, 0.0181269, 0.0375507, 0.0549908, 0.0787049, 
-				0.0919852, 0.104732, 0.0955942, 0.0802275,
-				-1.81525, -1.84, -1.86666, -1.84, -1.87331, -1.84, -1.86825, -1.84,
-				-1.84284, -1.84, -1.8074, -1.84, -1.77558, -1.84, -1.7791, -1.84};
+  float phiArrayDeg[NUM_ANTENNAS] = {0.0,22.5,45.0,67.5,90.0,112.5,135.0,157.5,180.0,202.5,225.0,247.5,270.0,292.5,315.0,337.5,0.0,22.5,45.0,67.5,90.0,112.5,135.0,157.5,180.0,202.5,225.0,247.5,270.0,292.5,315.0,337.5,0.0,22.5,45.0,67.5,90.0,112.5,135.0,157.5,180.0,202.5,225.0,247.5,270.0,292.5,315.0,337.5};
+
+  float zArray[NUM_ANTENNAS] = {-1.4407,-2.4135,-1.4407,-2.4135,-1.4407,-2.4135,-1.4407,-2.4135,-1.4407,-2.4135,-1.4407,-2.4135,-1.4407,-2.4135,-1.4407,-2.4135,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-5.1090,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951,-6.1951};
+
+  float phiArray[NUM_ANTENNAS] = {0};
 
   kvpReset();
   KvpErrorCode err = KVP_E_OK;
@@ -710,7 +746,7 @@ short* fillDeltaTArrays(){
   if(err!=KVP_E_OK){
     fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
-  err = kvpGetFloatArray ("phiArray", phiArray, &nAnts);
+  err = kvpGetFloatArray ("phiArrayDeg", phiArrayDeg, &nAnts);
   if(err!=KVP_E_OK){
     fprintf(stderr, "Warning! Trying to do load phiArray from Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
@@ -725,6 +761,15 @@ short* fillDeltaTArrays(){
 
   int m_ant1[NUM_PHI_SECTORS][NUM_LOCAL_COMBOS_PER_PHI_SECTOR];
   int m_ant2[NUM_PHI_SECTORS][NUM_LOCAL_COMBOS_PER_PHI_SECTOR];
+
+  int ant=0;
+  for(ant=0; ant<NUM_ANTENNAS; ant++){
+       phiArray[ant] = phiArrayDeg[ant]*PI/180;
+       /* phiArrayDeg[ant] = phiArray[ant]*180/PI; */
+       /* printf("ant %d, phiArray %lf, phiArrayDeg %lf, zArray %lf, rArray %lf\n", ant, */
+       /* 	      phiArray[ant], phiArrayDeg[ant], zArray[ant], rArray[ant]); */
+  }
+
 
   uint phiSectorInd = 0;
   uint localCombo = 0;
@@ -764,12 +809,17 @@ short* fillDeltaTArrays(){
       int ant1 = m_ant1[phiSector][combo];
       int ant2 = m_ant2[phiSector][combo];
       for(phiInd = 0; phiInd < NUM_BINS_PHI; phiInd++){
-	double phiDeg = phiArray[phiSector]*180./PI + PHI_RANGE*((double)phiInd/NUM_BINS_PHI - 0.5);
+	/* double phiDeg = phiArray[phiSector]*180./PI + PHI_RANGE*((double)phiInd/NUM_BINS_PHI - 0.5); */
+	double phiDeg = phiArrayDeg[phiSector] + PHI_RANGE*((double)phiInd/NUM_BINS_PHI - 0.5);
 	double phiWave = phiDeg*PI/180; //TMath::DegToRad();
 	for(thetaInd = 0; thetaInd < NUM_BINS_THETA; thetaInd++){
 	  double thetaDeg = THETA_RANGE*((double)thetaInd/NUM_BINS_THETA - 0.5);
 	  double thetaWave = thetaDeg*PI/180; //TMath::DegToRad();
 	  short offset = getDeltaTExpected(ant1, ant2, phiWave, thetaWave, phiArray, rArray, zArray);
+	  /* if(phiSector==15 && phiInd == 0 && thetaInd == NUM_BINS_THETA/2){ */
+	  /*   printf("%d %d %hd\n", ant1, ant2, offset); */
+	  /* } */
+
 	  if(offset < 0){
 	    offset += NUM_SAMPLES;
 	  }
@@ -785,131 +835,5 @@ short* fillDeltaTArrays(){
   }
 
   return offsetInd;
-
-}
-
-void assignPriorities(int nEvents, AnitaEventHeader_t* theHeader, float* imagePeakVal){
-  /* 
-     Whatever this ends up being, could probably do it on the GPU.
-     But it won't be very much calculating so for now...
-  */
-
-  /* 
-     Any kind of "ranking" will require sorting, this is a test case and will change for sure.
-  */
-  
-  PrioritySort_t sortArray[NUM_EVENTS] = {{0}};
-  unsigned short eventInd = 0;
-  for(eventInd=0; eventInd < nEvents; eventInd++){
-    float imagePeakV = imagePeakVal[eventInd];
-    float imagePeakH = imagePeakVal[NUM_EVENTS + eventInd];
-    sortArray[eventInd].betterImagePeakVal = imagePeakV > imagePeakH ? imagePeakV : imagePeakH; 
-    sortArray[eventInd].eventIndex = eventInd;
-  }
-
-  /* C library sorting function.
-     I've never seen a C function take another function as an arguemnt.
-     This is some real dark magic... */
-  qsort(sortArray, nEvents, sizeof(PrioritySort_t), compareForSort);
-  
-  /* Now it should be sorted, let's assign priority based on "rank" in the sorted array */
-  int sortInd=0;
-  for(sortInd=0; sortInd < nEvents; sortInd++){
-    int eventInd = sortArray[sortInd].eventIndex;
-    if(sortInd < nEvents/4){
-      theHeader[eventInd].priority = 1;
-    }
-    else if(sortInd < 2*nEvents/4){
-      theHeader[eventInd].priority = 2;
-    }
-    else if(sortInd < 3*nEvents/4){
-      theHeader[eventInd].priority = 3;
-    }
-    else{
-      theHeader[eventInd].priority = 4;
-    }
-  }
-}
-
-float compareForSort(const void* a, const void* b){
-
-  PrioritySort_t *p1 = (PrioritySort_t*) a;
-  PrioritySort_t *p2 = (PrioritySort_t*) b;
-
-  return p2->betterImagePeakVal - p1->betterImagePeakVal;
-
-}
-
-
-int unwrapAndBaselinePedSubbedEventBen(PedSubbedEventBody_t *pedSubBdPtr,
-				       AnitaTransientBodyF_t *uwTransPtr,
-				       const int alreadyUnwrappedAndCalibrated)
-{
-    int chan,samp,index;    
-    int firstHitbus,lastHitbus,wrappedHitbus;
-    int numHitBus,firstSamp,lastSamp;
-    float tempVal;
-    memset(uwTransPtr,0,sizeof(AnitaTransientBodyF_t));
-    
-    for(chan=0;chan<NUM_DIGITZED_CHANNELS;chan++) {
-	firstHitbus=pedSubBdPtr->channel[chan].header.firstHitbus;
-	lastHitbus=pedSubBdPtr->channel[chan].header.lastHitbus;
-	if(lastHitbus < firstHitbus){
-	  lastHitbus += 256;
-	}
-	//	printf("chan = %d, fhb = %d, lhb == %d\n", chan, firstHitbus, lastHitbus);
-	wrappedHitbus=
-	    (pedSubBdPtr->channel[chan].header.chipIdFlag&0x8)>>3;
-    
-	if(!wrappedHitbus) {
-	    numHitBus=1+lastHitbus-firstHitbus;
-	    uwTransPtr->ch[chan].valid_samples=(EFFECTIVE_SAMPLES-2)-numHitBus;
-	}
-	else {
-	    uwTransPtr->ch[chan].valid_samples=(lastHitbus-2)-(firstHitbus+1);
-	}
-
-	if(!wrappedHitbus) {
-	    firstSamp=lastHitbus+1;
-	    lastSamp=(MAX_NUMBER_SAMPLES-1)+firstHitbus;
-	}
-	else {
-	    firstSamp=firstHitbus+1;
-	    lastSamp=lastHitbus;
-	}
-	if(chan%9==0) {
-	    pedSubBdPtr->channel[chan].data[0]=pedSubBdPtr->channel[chan].data[259];
-	}
-	float mean=0;
-	int numSamps=0;
-	if( !alreadyUnwrappedAndCalibrated ){
-	  for(samp=firstSamp;samp<lastSamp;samp++) {
-	    index=samp;
-	    if(index>=(MAX_NUMBER_SAMPLES-2)) index-=(MAX_NUMBER_SAMPLES-2);
-	    tempVal=pedSubBdPtr->channel[chan].data[index];
-	    //	    tempVal-=pedSubBdPtr->channel[chan].mean;
-	    if(tempVal>MAX_VAL) tempVal=MAX_VAL;
-	    if(tempVal<-1*MAX_VAL) tempVal=-1*MAX_VAL;
-	    uwTransPtr->ch[chan].data[numSamps]=tempVal;
-	    mean+=tempVal;
-	    numSamps++;
-	  }
-	  if(numSamps) {
-	    mean/=((float)numSamps);
-	    for(samp=0;samp<numSamps;samp++) {
-	      uwTransPtr->ch[chan].data[samp]-=mean;
-	    }
-	  }
-	}
-	else{
-	  /* Silly test condition for now.. */
-	  uwTransPtr->ch[chan].valid_samples = 256;
-	  for(samp=0;samp<256;samp++) {
-	    uwTransPtr->ch[chan].data[samp] = pedSubBdPtr->channel[chan].data[samp];
-	  }
-	}
-	    
-    }
-    return 0;
 
 }

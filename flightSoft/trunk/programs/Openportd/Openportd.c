@@ -334,73 +334,75 @@ int main(int argc, char *argv[])
     printf("Before while loop\n");
     startCopyScript();
 
-
-    while(1) {
-      printf("Inside while loop\n");
-	if(!sendData) {
+    do {
+	if(printToScreen) printf("Initalizing Openportd\n");
+	currentState=PROG_STATE_RUN;
+	while(currentState==PROG_STATE_RUN) {
+	  printf("Inside while loop\n");
+	  if(!sendData) {
 	    sleep(1);
 	    continue;
-	}
-	
-	//The idea is that we only write an output file if there is space for it
-	int numWaitingToTransfer=countFilesInDir(currentOpenportDir);
-	if(numWaitingToTransfer>20) {
-	  fprintf(stderr,"There are %d files waiting to transer, will sleep now\n",numWaitingToTransfer);
+	  }
 	  
-	  sleep(60);
-	  continue;
-	}
-
-
-	if(totalEventsSent%10==0) {
-	  printf("Data sent\nEvents:\t");
-	  for(pri=0;pri<NUM_PRIORITIES;pri++)
-	    printf("%d ",numEventsSent[pri]);
-	  printf("\nHk:\t");
-	  for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) 
-	    printf("%d ",numHksSent[hkInd]);
-	  printf("\n");
-	}
-
-	//Check to see if we need to refresh the links
-	time(&currentTime);
-	if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || needToRefreshLinks) {
+	  //The idea is that we only write an output file if there is space for it
+	  int numWaitingToTransfer=countFilesInDir(currentOpenportDir);
+	  if(numWaitingToTransfer>2) {
+	    fprintf(stderr,"There are %d files waiting to transer, will sleep now\n",numWaitingToTransfer);
+	    
+	    sleep(1);
+	    continue;
+	  }
+	  
+	  
+	  if(totalEventsSent%10==0) {
+	    printf("Data sent\nEvents:\t");
+	    for(pri=0;pri<NUM_PRIORITIES;pri++)
+	      printf("%d ",numEventsSent[pri]);
+	    printf("\nHk:\t");
+	    for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) 
+	      printf("%d ",numHksSent[hkInd]);
+	    printf("\n");
+	  }
+	  
+	  //Check to see if we need to refresh the links
+	  time(&currentTime);
+	  if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || needToRefreshLinks) {
 	    refreshLinkDirs();
 	    lastRefresh=currentTime;
 	    needToRefreshLinks=0;
-	}
-
-	//Update the link lists
-	//or some time has passed
-	if(totalEventLinks==0)
-	  retVal=checkLinkDirs(1,0);
-	else
-	  retVal=checkLinkDirs(0,1);
+	  }
 	  
-	totalEventLinks=0;
-	for(pri=0;pri<NUM_PRIORITIES;pri++) {
-	  numLinks[pri]=getNumLinks(wdEvents[pri]);
-	  totalEventLinks+=numLinks[pri];
-	}
-       
-	totalHkLinks=0;
-	for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
-	  numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
-	  totalHkLinks+=numHkLinks[hkInd];
-	}
-	if(!retVal && totalHkLinks==0 && totalEventLinks==0) {
-	  //No data
-	  needToRefreshLinks=1;
-	  usleep(1000);
-	  continue;
-	}
-	printf("%d %d %d\n",totalEventLinks,totalHkLinks,retVal);
-	
-	if(totalEventLinks) {
-	  //Which priority are we sending
-	  currentPri=priorityOrder[orderIndex];	
-	  int doneEvent=0;
-	  while(!doneEvent && totalEventLinks>0) {
+	  //Update the link lists
+	  //or some time has passed
+	  if(totalEventLinks==0)
+	    retVal=checkLinkDirs(1,0);
+	  else
+	    retVal=checkLinkDirs(0,1);
+	  
+	  totalEventLinks=0;
+	  for(pri=0;pri<NUM_PRIORITIES;pri++) {
+	    numLinks[pri]=getNumLinks(wdEvents[pri]);
+	    totalEventLinks+=numLinks[pri];
+	  }
+	  
+	  totalHkLinks=0;
+	  for(hkInd=0;hkInd<NUM_HK_TELEM_DIRS;hkInd++) {
+	    numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
+	    totalHkLinks+=numHkLinks[hkInd];
+	  }
+	  if(!retVal && totalHkLinks==0 && totalEventLinks==0) {
+	    //No data
+	    needToRefreshLinks=1;
+	    usleep(1000);
+	    continue;
+	  }
+	  printf("%d %d %d\n",totalEventLinks,totalHkLinks,retVal);
+	  
+	  if(totalEventLinks) {
+	    //Which priority are we sending
+	    currentPri=priorityOrder[orderIndex];	
+	    int doneEvent=0;
+	    while(!doneEvent && totalEventLinks>0) {
 	    while(numLinks[currentPri]==0) {
 	      orderIndex++;
 	      if(orderIndex>=numOrders) orderIndex=0;
@@ -423,8 +425,8 @@ int main(int argc, char *argv[])
 	      numLinks[currentPri]--;
 	      totalEventLinks--;
 	    }
-	  }
-	  
+	    }
+	    
 	  if(currentTime>lastRefresh+REFRESH_LINKS_EVERY || 
 	     needToRefreshLinks) {
 	    refreshLinkDirs();
@@ -490,7 +492,11 @@ int main(int argc, char *argv[])
 	if(hkCount%eventBandwidth==0)
 	  sendSomeHk(10000);
 	hkCount++;
-    }       
+	}
+    } while (currentState == PROG_STATE_INIT);
+    stopCopyScript();
+    unlink(OPENPORTD_PID_FILE);
+    return 0;
 }
 
 
@@ -1376,7 +1382,7 @@ int readHkAndOpenport(int wd,int maxCopy, char *telemDir, char *linkDir, int fil
 
 void stopCopyScript() {
   //  fprintf(stderr,"stopCopyScript:\t");
-   FILE *fp = fopen("/tmp/ntuCopyPid","r");
+   FILE *fp = fopen("/tmp/openportCopyPid","r");
   if(fp) {
     fscanf(fp,"%d",&copyScriptPid);
     fprintf(stderr,"Got copy script pid: %d\n",copyScriptPid);
@@ -1481,6 +1487,7 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
       gettimeofday(&newTime,0);
       timeDiff=getTimeDiff(lastTime,newTime);
       printf("Transferred %u bytes (%u hk, %u event) in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,hkCounter,eventCounter,timeDiff,((float)dataCounter)/timeDiff);
+      sleep(5);
       dataCounter=0;
       hkCounter=0;
       eventCounter=0;

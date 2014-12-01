@@ -859,7 +859,9 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 						__global float* rmsBuffer,
 						__global float2* powSpecOut,
 						__local float2* powSpecScratch,
-						__global short2* passFilterBuffer){
+						__global short2* passFilterBuffer,
+						__global float* powSpec2ndDerivFilterThresholdBuffer,
+						__global int* numEventsBuffer){
 
   // New idea:
   // Sum Power spectra of each antenna when for each event in the batch sent to the GPU.
@@ -873,18 +875,21 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   int ant = get_global_id(1);
   float rms = rmsBuffer[ant];
   float var = rms*rms;
+  int numEvents = numEventsBuffer[0];
 
   float2 summedPowSpec = 0;
 
-  for(int event=0; event<NUM_EVENTS; event++){
+  float powSpec2ndDerivFilterThreshold = powSpec2ndDerivFilterThresholdBuffer[0];
+
+  for(int event=0; event<numEvents; event++){
     float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
     float2 samplesPow = (float2)(samples.x*samples.x + samples.y*samples.y,
-				 samples.z*samples.z + samples.w*samples.w);
+  				 samples.z*samples.z + samples.w*samples.w);
     summedPowSpec += samplesPow*var;
   }
   
   summedPowSpec *= 2; // for negative frequencies
-  summedPowSpec /= NUM_EVENTS; // average of all events
+  summedPowSpec /= numEvents; // average of all events
 
   // put in scratch so we can share with other WIs
   powSpecScratch[sampInd] = summedPowSpec;
@@ -900,31 +905,31 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // Now on to the filtering...
   float highPass = 200; //MHz
   float lowPass = 1200; // MHz
-  float der2Thresh = -10000; // mV^2 / (MHz)^2
 
   // NOMINAL_SAMPLING in ns, 1e3 takes us from GHz to MHz
-  float deltaF = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING); // MHz
+  float deltaF = 1e3/(NUM_SAMPLES*(float)NOMINAL_SAMPLING); // MHz
 
   // easy stuff first, implement bandpass frequencies
   short2 passFilter;
-  passFilter.x = 2*sampInd > highPass/deltaF && 2*sampInd < lowPass/deltaF ? 1 : 0;
-  passFilter.y = 2*sampInd+1 > highPass/deltaF && 2*sampInd+1 < lowPass/deltaF ? 1 : 0;
+  passFilter.x = 2*sampInd*deltaF > highPass && 2*sampInd*deltaF < lowPass ? 1 : 0;
+  passFilter.y = (2*sampInd+1)*deltaF > highPass && (2*sampInd+1)*deltaF < lowPass ? 1 : 0;
 
-  float2 der2; // second derivative
+  float2 der2; // second derivative of linear power spectrum
   der2.x = y0 + summedPowSpec.y - 2*summedPowSpec.x;
   der2.y = summedPowSpec.x + y3 - 2*summedPowSpec.y;
   der2 /= (deltaF*deltaF);
 
   // alter filter logic accordingly
-  passFilter.x = der2.x < der2Thresh ? 0 : passFilter.x;
-  passFilter.y = der2.y < der2Thresh ? 0 : passFilter.y;
+  passFilter.x = der2.x < powSpec2ndDerivFilterThreshold ? 0 : passFilter.x;
+  passFilter.y = der2.y < powSpec2ndDerivFilterThreshold ? 0 : passFilter.y;
 
   // push filtering logic to global buffer
   
-  //  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = passFilter;
+  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = passFilter;
+  //  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = 0;
   //  short2 output = sampInd > 16 ? 0 : 1;
-  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = 1; //output;
-
+  //  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = 1; //output;
+  
 }
 
 

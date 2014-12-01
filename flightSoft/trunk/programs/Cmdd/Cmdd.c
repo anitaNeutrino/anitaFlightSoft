@@ -2398,6 +2398,17 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
+  case ACQD_RATE_SET_PHI_MASK_HPOL: 	    
+    utemp=(args[0]);	    
+    uvalue[0]=utemp;
+    utemp=(args[1]);
+    uvalue[0]|=(utemp<<8);
+    syslog(LOG_INFO,"ACQD_RATE_SET_PHI_MASK_HPOL: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
+      
+    configModifyUnsignedInt("Acqd.config","thresholds","phiTrigMaskH",uvalue[0],&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
 	
   default:
     fprintf(stderr,"Unknown Acqd Rate Command -- %d\n",command);

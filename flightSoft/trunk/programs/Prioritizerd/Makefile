@@ -11,11 +11,11 @@ CL_INCDIR = $(CL)/include
 CL_LIBDIR = $(CL)/lib
 
 
-LDFLAGS += -lOpenCL -lgsl -ltcmalloc -lprofiler
+LDFLAGS += -lOpenCL -lgsl #-ltcmalloc -lprofiler
 
 #OPT += -O2
 
-CFLAGS= -g -I ../../common/
+CCFLAGS += -g -DCALIBRATION #-DDEBUG_MODE
 
 #Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
 Targets = Prioritizerd  fakePrioritizerd

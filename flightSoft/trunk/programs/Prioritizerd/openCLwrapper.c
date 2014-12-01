@@ -423,7 +423,8 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
     exit(-1);
   }
 
-  sprintf(fileNameWithFolder, "../debugOutput/%s_%d", fileName, polInd);
+  /* sprintf(fileNameWithFolder, "../debugOutput/%s_%d", fileName, polInd); */
+  sprintf(fileNameWithFolder, "/tmp/%s_%d", fileName, polInd);
 
   size_t numBytes = theBuffer->size; 
   void* array = malloc(numBytes);
