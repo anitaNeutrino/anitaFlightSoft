@@ -32,7 +32,6 @@
 #define MAX_VAL 600
 
 
-
 /* 
    If you want to take a look at how long things are taking,
    then keep "#define TSTAMP", although bear in mind that 
@@ -81,6 +80,7 @@ typedef struct {
 /*       Globals       */
 /***********************/
 
+/*
 static const int anita3ChanInd[16][3][2] = { { { 102, 106 }, { 82, 86 }, { 57, 61 } },
 					     { { 46, 50 }, { 30, 34 }, { 1, 5 } },
 					     { { 93, 97 }, { 73, 77 }, { 66, 70 } },
@@ -97,6 +97,22 @@ static const int anita3ChanInd[16][3][2] = { { { 102, 106 }, { 82, 86 }, { 57, 6
 					     { { 38, 42 }, { 27, 31 }, { 11, 15 } },
 					     { { 90, 94 }, { 83, 87 }, { 63, 67 } },
 					     { { 47, 51 }, { 18, 22 }, { 2, 6 } } };
+*/
+
+/* Copied from AnitaGeomTool 27/11/2014*/
+static const int antToSurfMap[NUM_ANTENNAS]={11,5,10,4,11,4,10,5,11,5,10,4,11,4,10,5,
+					     9,3,8,2,8,3,9,2,9,3,8,2,8,3,9,2,
+					     6,0,7,1,6,1,7,0,6,0,7,1,6,1,7,0};
+
+
+static const int hAntToChan[NUM_ANTENNAS]={7,5,7,1,5,7,5,7,6,4,6,4,4,6,4,6,
+					   5,7,5,7,7,5,7,5,4,6,4,6,6,4,6,4,
+					   7,5,7,5,5,7,5,7,6,4,6,4,4,6,4,6};
+
+  
+static const int vAntToChan[NUM_ANTENNAS]={3,1,3,5,1,3,1,3,2,0,2,0,0,2,0,2,
+					   1,3,1,3,3,1,3,1,0,2,0,2,2,0,2,0,
+					   3,1,3,1,1,3,1,3,2,0,2,0,0,2,0,2};
 
 
 #define maxPlatforms 2
@@ -112,8 +128,6 @@ size_t dlistSize;
 cl_device_id deviceList[2];
 
 cl_command_queue commandQueue;
-
-FILE* gpuOutput;
 
 uint showCompileLog;
 cl_uint numDevicesToUse;
@@ -131,6 +145,9 @@ buffer* phiSectorTriggerBufferVPol;
 buffer* rawBufferHPol;
 buffer* numSampsBufferHPol;
 buffer* phiSectorTriggerBufferHPol;
+
+buffer* numEventsInQueueBuffer;
+buffer* powSpec2ndDerivFilterThresholdBuffer;
 
 /* Internal buffers */
 buffer* rmsBuffer;
@@ -278,6 +295,8 @@ float hilbertPeak[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakTheta2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
+float* powSpec;
+short* passFilter;
 
 /* Variables from the opencl API to synchoronize output */
 cl_event readImagePeakVal;

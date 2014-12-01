@@ -10,9 +10,6 @@
 
 //Flightsoft Includes
 #include "Prioritizerd.h"
-//#include "AnitaInstrument.h"
-//#include "GenerateScore.h"
-//#include "Filters.h"
 #include "pedestalLib/pedestalLib.h"
 #include "linkWatchLib/linkWatchLib.h"
 #include "utilLib/utilLib.h"
@@ -38,37 +35,6 @@ int panicQueueLength=5000;
 //Global Control Variables
 int printToScreen=0;
 int verbosity=0;
-/* float hornThresh=0; */
-/* int hornDiscWidth=0; */
-/* int hornSectorWidth=0; */
-/* float coneThresh=0; */
-/* int coneDiscWidth=0; */
-/* int holdoff=0; */
-/* int delay=0; */
-/* int hornGuardOffset=30; */
-/* int hornGuardWidth=20; */
-/* int hornGuardThresh=50; */
-/* int coneGuardOffset=30; */
-/* int coneGuardWidth=20; */
-/* int coneGuardThresh=50; */
-/* int FFTPeakMaxA=0; */
-/* int FFTPeakMaxB=0; */
-/* int FFTPeakWindowL=0; */
-/* int FFTPeakWindowR=0; */
-/* int FFTMaxChannels=0; */
-/* int RMSMax=0; */
-/* int RMSevents=0; */
-/* int WindowCut=400; */
-/* int BeginWindow=0; */
-/* int EndWindow=0; */
-/* int MethodMask=0; */
-/* int NuCut=0; */
-
-//parameters for the quick cut on mid/early RMS for priority 7
-/* int LowRMSChan=5; */
-/* int MidRMSChan=50; */
-/* int HighRMSChan=165; */
-/* int CutRMS=130; */
 
 int priorityPPS1=2;
 int priorityPPS2=3;
@@ -129,10 +95,8 @@ int main (int argc, char *argv[])
   makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
   makeDirectories(ACQD_EVENT_LINK_DIR);
 
- 
   retVal=0;
   /* Main event getting loop. */
-
 
   if(wd==0) {
     //First time need to prep the watcher directory
@@ -145,15 +109,12 @@ int main (int argc, char *argv[])
     numEventLinks=getNumLinks(wd);
   }
 
-
   /* 
      This function  mallocs at some global pointers
      so needs to be outside any kind of loop.
   */
   prepareGpuThings();
   prepareTimingCalibThings();
-
-
 
   do {
     if(printToScreen) printf("Initalizing Prioritizerd\n");
@@ -181,7 +142,6 @@ int main (int argc, char *argv[])
 	continue;
       }
 
-
       /* Read data into program memory */
       int eventsReadIn = 0;
       while(eventsReadIn<NUM_EVENTS && currentState==PROG_STATE_RUN){
@@ -195,7 +155,7 @@ int main (int argc, char *argv[])
 	if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
 	  syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent);
 	}
-	lastEventNumber  =doingEvent;
+	lastEventNumber=doingEvent;
 	
 	sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString);
 	sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent);
@@ -242,7 +202,8 @@ int main (int argc, char *argv[])
 	if(pri<0 || pri>9) pri=9;
 	theHeader[count].priority=(16*theHeader[count].priority)+pri;
 
-	
+	printf("eventNumber = %u, priority = %d\n", theHeader[count].eventNumber, theHeader[count].priority&0xf);
+
 	//Now Fill Generic Header and calculate checksum
 	fillGenericHeader(&theHeader[count],theHeader[count].gHdr.code,sizeof(AnitaEventHeader_t));
   
