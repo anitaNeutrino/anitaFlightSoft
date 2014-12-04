@@ -64,6 +64,7 @@ typedef enum {
     CMD_REALLY_KILL_PROGS = 127,
     CMD_SIPD_REBOOT = 128,
     CMD_SHUTDOWN_HALT = 129,
+
     CMD_REBOOT = 130,
     CMD_KILL_PROGS = 131,
     CMD_RESPAWN_PROGS =132,
@@ -85,22 +86,6 @@ typedef enum {
     ARCHIVE_PPS_PRIORITIES = 148,
     ARCHIVE_PPS_DECIMATE = 149,
 
-    /* Modified by BenS on 04/07/2014 to reflect anita-3 calibd.config contents */
-    /* These are the old things no longer in calibd.config...
-    CMD_TURN_GPS_ON = 150,
-    CMD_TURN_GPS_OFF = 151,
-    CMD_TURN_RFCM_ON = 152,
-    CMD_TURN_RFCM_OFF = 153,
-    CMD_TURN_CALPULSER_ON = 154,
-    CMD_TURN_CALPULSER_OFF = 155,
-    CMD_TURN_VETO_ON = 156,
-    CMD_TURN_VETO_OFF = 157,
-    CMD_TURN_ALL_ON = 158,
-    CMD_TURN_ALL_OFF = 159,
-    */
-    /* ...and here are the new options, reusing
-       the same Cmd array entries as far as possible
-    */
     CMD_TURN_AMPLITES_ON = 150,
     CMD_TURN_AMPLITES_OFF = 151,
     CMD_TURN_BZ_AMPAS_ON = 152,
@@ -111,16 +96,12 @@ typedef enum {
     CMD_TURN_SHORT_BOARDS_OFF = 157,
     CMD_TURN_NTU_SSD_5V_ON = 158,
     CMD_TURN_NTU_SSD_5V_OFF = 159,
+
     CMD_TURN_NTU_SSD_12V_ON = 160,
     CMD_TURN_NTU_SSD_12V_OFF = 161,
     CMD_TURN_ALL_ON = 162,
     CMD_TURN_ALL_OFF = 163,    
  
-    SET_CALPULSER_SWITCH = 171,
-    SET_CALPULSER_ATTEN = 172,
-    SET_ATTEN_LOOP_PERIOD = 173,
-    SET_SWITCH_LOOP_PERIOD = 174,
-    SET_PULSER_OFF_PERIOD = 175,
     SET_CALIB_WRITE_PERIOD = 176,
   
     SET_ADU5_PAT_PERIOD = 180,
@@ -137,7 +118,6 @@ typedef enum {
     SET_HK_PERIOD = 190,
     SET_HK_CAL_PERIOD = 191,
     SET_HK_TELEM_EVERY = 192,
-
     SIPD_CONTROL_COMMAND = 195,
     LOSD_CONTROL_COMMAND =196,
 
@@ -173,9 +153,10 @@ typedef enum {
     //    ACQD_SET_ANT_TRIG_MASK = 238, //Was 5 bytes
     //    ACQD_SET_SURF_BAND_TRIG_MASK = 239, //Was 6 bytes
     //    ACQD_SET_GLOBAL_THRESHOLD = 240, //Was 3 bytes
+
+
     ACQD_EXTRA_COMMAND = 240, // 3 bytes
     ACQD_REPROGRAM_TURF = 241,
-    ACQD_SURFHK_PERIOD = 242,
     ACQD_SURFHK_TELEM_EVERY = 243,
     ACQD_TURFHK_TELEM_EVERY =244,
     ACQD_NUM_EVENTS_PEDESTAL = 245,
@@ -227,8 +208,7 @@ typedef enum {
   
   
   
-  
-
+ 
 typedef enum {
     PRI_HORN_THRESH=1,
     PRI_HORN_DESC_WIDTH=2,
