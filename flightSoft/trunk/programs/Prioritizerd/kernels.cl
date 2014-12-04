@@ -1,8 +1,4 @@
-#ifdef DEVELOPMENT
-#include "../include/myInterferometryConstants.h"
-#else
-#include "/home/anita/flightSoft/programs/Prioritizerd/myInterferometryConstants.h"
-#endif
+#include "myInterferometryConstants.h"
 
 inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* complexScratch, int dir){
 
@@ -106,13 +102,8 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
       // Write output
       complexScratch[evenInd] = complexOut1;
       complexScratch[oddInd] = complexOut2;
-      /* if(debug>0){ */
-      /* 	complexScratch[evenInd] = (float2)evenInd; */
-      /* 	complexScratch[oddInd] = (float2)oddInd; */
-      /* } */
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-    //    if(debug>0) break;
 
   }
 
@@ -860,15 +851,22 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 						__global float2* powSpecOut,
 						__local float2* powSpecScratch,
 						__global short2* passFilterBuffer,
-						__global float* powSpec2ndDerivFilterThresholdBuffer,
-						__global int* numEventsBuffer){
+						__global float* binToBinDifferenceThresh_dBBuffer,
+						__global int* numEventsBuffer,
+						__local short2* minimaBuffer,
+						__local short2* passFilterLocalBuffer,
+						__global float* absMagnitudeThresh_dBmBuffer,
+						__global short2* anyFailDifferenceBuffer,
+						__global short2* anyFailMagnitudeBuffer){
 
-  // New idea:
-  // Sum Power spectra of each antenna when for each event in the batch sent to the GPU.
-  // I'm going to use a slightly hacky power spectrum here.
-  // Since the Condor 3000x likes multiples of 256,
-  // I will drop the Nyquist frequency bin for simplicity.
-  // 1024 samples -> 513 freqs -> 512 freqs = (256*2)
+  /*
+    Sum Power spectra of each antenna when for each event in the batch sent to the GPU.
+    I'm going to use a slightly hacky power spectrum here.
+    Since the Condor 3000x likes multiples of pow(2,n),
+    I will drop the Nyquist frequency bin for simplicity.
+    Since everything outside the band is filtered, this doesn't actually matter...
+    so NUM_SAMPLES time samples -> NUM_SAMPLES/2+1 freqs -> drop last bin -> NUM_SAMPLES/2 freqs
+  */
 
   // WI itendifiers
   int sampInd = get_global_id(0);
@@ -877,9 +875,15 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   float var = rms*rms;
   int numEvents = numEventsBuffer[0];
 
+  if(sampInd==0){
+    anyFailDifferenceBuffer[ant] = 0;
+    anyFailMagnitudeBuffer[ant] = 0;
+  }
+
   float2 summedPowSpec = 0;
 
-  float powSpec2ndDerivFilterThreshold = powSpec2ndDerivFilterThresholdBuffer[0];
+  float binToBinDifferenceThresh_dB = binToBinDifferenceThresh_dBBuffer[0];
+  float absMagnitudeThresh_dBm = absMagnitudeThresh_dBmBuffer[0];
 
   for(int event=0; event<numEvents; event++){
     float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
@@ -887,49 +891,167 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   				 samples.z*samples.z + samples.w*samples.w);
     summedPowSpec += samplesPow*var;
   }
-  
-  summedPowSpec *= 2; // for negative frequencies
-  summedPowSpec /= numEvents; // average of all events
 
-  // put in scratch so we can share with other WIs
+  summedPowSpec *= 2; // For negative frequencies
+  summedPowSpec /= numEvents; // Average of all events
+
+  // Put in scratch so we can share with other WIs
   powSpecScratch[sampInd] = summedPowSpec;
-  
-  // grab neighbouring results for later
+
+  // Grab neighbouring results for maxima/minima determination
   barrier(CLK_LOCAL_MEM_FENCE);
   float y0 = sampInd > 0 ? powSpecScratch[sampInd - 1].y : 0;
   float y3 = sampInd < 255 ? powSpecScratch[sampInd + 1].x : 0;
 
-  // Move to dB spectrum and push to global buffer
-  powSpecOut[ant*NUM_SAMPLES/4 + sampInd] = 10*log10(summedPowSpec); // mV^2 -> dB
+  // If bin is a minimum in power spectrum, then put a 1 in the minima array, otherwise 0
+  short2 isMinima;
+  isMinima.x = y0 > summedPowSpec.x && summedPowSpec.x < summedPowSpec.y ? 1 : 0;
+  isMinima.y = summedPowSpec.x > summedPowSpec.y && summedPowSpec.y < y3 ? 1 : 0;
+  minimaBuffer[sampInd] = isMinima;
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  short2 isMaxima;
+  isMaxima.x = y0 < summedPowSpec.x && summedPowSpec.x > summedPowSpec.y ? 1 : 0;
+  isMaxima.y = summedPowSpec.x < summedPowSpec.y && summedPowSpec.y > y3 ? 1 : 0;
+
+  // Write unfiltered power spectrum to global buffer
+  powSpecOut[ant*NUM_SAMPLES/4 + sampInd] = summedPowSpec;
+
+  summedPowSpec.x = 10*log10(summedPowSpec.x/50);
+  summedPowSpec.y = 10*log10(summedPowSpec.y/50);
+  powSpecScratch[sampInd] = summedPowSpec;
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  // Grab neighbouring results for derivative
+  y0 = sampInd > 0 ? powSpecScratch[sampInd - 1].y : 0;
+  y3 = sampInd < 255 ? powSpecScratch[sampInd + 1].x : 0;
 
   // Now on to the filtering...
-  float highPass = 200; //MHz
+  float highPass = 200; // MHz
   float lowPass = 1200; // MHz
 
   // NOMINAL_SAMPLING in ns, 1e3 takes us from GHz to MHz
-  float deltaF = 1e3/(NUM_SAMPLES*(float)NOMINAL_SAMPLING); // MHz
+  float deltaF = 1000.0/(NUM_SAMPLES*NOMINAL_SAMPLING); // MHz
 
-  // easy stuff first, implement bandpass frequencies
+  // Factor of 2 since using float2s for data...
+  int highPassWI = highPass/(deltaF*2);
+  int lowPassWI = lowPass/(deltaF*2);
+
+  // Easy stuff first. Implement bandpass frequencies.
   short2 passFilter;
   passFilter.x = 2*sampInd*deltaF > highPass && 2*sampInd*deltaF < lowPass ? 1 : 0;
   passFilter.y = (2*sampInd+1)*deltaF > highPass && (2*sampInd+1)*deltaF < lowPass ? 1 : 0;
 
-  float2 der2; // second derivative of linear power spectrum
-  der2.x = y0 + summedPowSpec.y - 2*summedPowSpec.x;
-  der2.y = summedPowSpec.x + y3 - 2*summedPowSpec.y;
-  der2 /= (deltaF*deltaF);
+  float2 der;
+  der.x = summedPowSpec.y - summedPowSpec.x;
+  der.y = y3 - summedPowSpec.y;
 
-  // alter filter logic accordingly
-  passFilter.x = der2.x < powSpec2ndDerivFilterThreshold ? 0 : passFilter.x;
-  passFilter.y = der2.y < powSpec2ndDerivFilterThreshold ? 0 : passFilter.y;
-
-  // push filtering logic to global buffer
+  // Care about absolute value of 1st derivitive
+  der.x = fabs(der.x);
+  der.y = fabs(der.y);
   
+  // Update passFilter results after doing derivitive test.
+  // Note that you never set pass filter to 1 after the bandpass above,
+  // you only set it to zero, or the previous value.
+  passFilter.x = der.x > binToBinDifferenceThresh_dB ? 0 : passFilter.x;
+  passFilter.y = der.y > binToBinDifferenceThresh_dB ? 0 : passFilter.y;
+
+  // push band pass logic to local buffer
+  passFilterLocalBuffer[sampInd] = passFilter;
+  barrier(CLK_LOCAL_MEM_FENCE);
+ 
+  /*
+    We want to filter the whole spike not just the bins with a steep derivative.
+    So, we need to propogate the "failure to pass" condition along the whole spike.
+    Will start at maxima and work outwards in both directions.
+
+    So... if we have a maxima in these bins then this WI is the lucky winner
+    of the "do inefficient linear operations" competition!
+  */
+  short anyFailDifference = 0;
+  if(isMaxima.x > 0 || isMaxima.y > 0){
+
+
+    // Very first thing should be deal with the other bin for this WI...
+    float highBin = -1;
+    float lowBin = -1;
+    if(isMaxima.x>0){
+      anyFailDifference = passFilter.y==0 ? 1 : 0;
+      highBin = isMinima.y == 1 ? sampInd + 0.5 : highBin;
+    }
+    if(isMaxima.y>0){
+      anyFailDifference = passFilter.x==0 ? 1 : 0;
+      lowBin = isMinima.x == 1 ? sampInd : lowBin;
+    }
+
+
+    // Now that's done... start upwards first...
+    if(highBin<0){ // ignore if this WI neighbour bin is local minimum
+      int sampInd2 = sampInd+1;
+      for(sampInd2 = sampInd+1; sampInd < lowPassWI; sampInd2++){
+  	anyFailDifference = passFilterLocalBuffer[sampInd2].x==0 ? 1 : anyFailDifference;
+  	highBin = minimaBuffer[sampInd2].x == 1 ? sampInd2 : highBin;
+  	if(highBin>-1) break;
+
+  	anyFailDifference = passFilterLocalBuffer[sampInd2].y==0 ? 1 : 0;
+  	highBin = minimaBuffer[sampInd2].y == 1 ? sampInd2+0.5 : highBin;
+  	if(highBin>-1) break;
+      }
+    }
+    
+
+    // Then downwards
+    if(lowBin<0){ // ignore if this WI neighbour bin is local minimum
+      int sampInd2 = sampInd-1;
+      for(sampInd2 = sampInd-1; sampInd > highPassWI; sampInd2--){
+  	anyFailDifference = passFilterLocalBuffer[sampInd2].y==0 ? 1 : 0;
+  	lowBin = minimaBuffer[sampInd2].y == 1 ? sampInd2+0.5 : lowBin;
+  	if(lowBin>-1) break;
+
+  	anyFailDifference = passFilterLocalBuffer[sampInd2].x==0 ? 1 : anyFailDifference;
+  	lowBin = minimaBuffer[sampInd2].x == 1 ? sampInd2 : lowBin;
+  	if(lowBin>-1) break;
+
+      }
+    }
+
+
+    if(anyFailDifference > 0){
+      /* Then filter that CW shit... */
+      for(int sampInd2=(int)lowBin; sampInd2<=(int)highBin; sampInd2++){
+  	if(sampInd2==(int)lowBin && lowBin-sampInd2!=0){
+  	  passFilterLocalBuffer[sampInd2].y = 0;
+  	}
+  	else if(sampInd2==(int)highBin && highBin-sampInd2==0){
+  	  passFilterLocalBuffer[sampInd2].x = 0;
+  	}
+  	else{/* Zero everything */
+  	  passFilterLocalBuffer[sampInd2] = 0;
+  	}
+      }
+    }
+  }
+
+  // finally just a simple magnitude cut for every bin
+  passFilter = passFilterLocalBuffer[sampInd];
+  //  barrier(CLK_LOCAL_MEM_FENCE);
+
+  passFilter.x = summedPowSpec.x > absMagnitudeThresh_dBm ? 0 : passFilter.x;
+  passFilter.y = summedPowSpec.y > absMagnitudeThresh_dBm ? 0 : passFilter.y;
+
+  /* Pretty dumb as many WIs will be forced to write sequentially to global memory...*/
+  if(sampInd>highPassWI && sampInd<lowPassWI && anyFailDifference>0){
+    anyFailDifferenceBuffer[ant] = 1;
+  }
+  /* Pretty dumb as many WIs will be forced to write sequentially to global memory...*/
+  if(sampInd>highPassWI && sampInd<lowPassWI
+     && (summedPowSpec.x > absMagnitudeThresh_dBm 
+	 || summedPowSpec.y > absMagnitudeThresh_dBm)){
+    anyFailMagnitudeBuffer[ant] = 1;
+  }
+
+  /* Phew! Now write that to the global buffer... */
   passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = passFilter;
-  //  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = 0;
-  //  short2 output = sampInd > 16 ? 0 : 1;
-  //  passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = 1; //output;
-  
 }
 
 

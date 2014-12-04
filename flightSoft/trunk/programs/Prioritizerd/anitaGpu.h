@@ -26,6 +26,7 @@
 
 /* Anita flight types */
 #include "includes/anitaStructures.h"
+#include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
 
 /* Stolen from pedestalLib.c */
@@ -59,7 +60,7 @@ void tidyUpGpuThings();
 //void addEventToGpuQueue(int eventInd, PedSubbedEventBody_t pedSubBody, AnitaEventHeader_t theHeader, const int alreadyUnwrappedAndCalibrated);
 
 void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t theHeader);
-void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader);
+void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec);
 
 void assignPriorities(int nEvents, AnitaEventHeader_t* theHeader, float* imagePeakVal);
 float compareForSort(const void* a, const void* b);
@@ -147,7 +148,10 @@ buffer* numSampsBufferHPol;
 buffer* phiSectorTriggerBufferHPol;
 
 buffer* numEventsInQueueBuffer;
-buffer* powSpec2ndDerivFilterThresholdBuffer;
+buffer* binToBinDifferenceThresh_dBBuffer;
+buffer* absMagnitudeThresh_dBmBuffer;
+buffer* anyFailDifferenceBuffer;
+buffer* anyFailMagnitudeBuffer;
 
 /* Internal buffers */
 buffer* rmsBuffer;
@@ -169,6 +173,8 @@ cl_kernel eventPowSpecKernel;
 buffer* powSpecBuffer;
 buffer* passFilterBuffer;
 buffer* powSpecScratchBuffer;
+buffer* isMinimaBuffer;
+buffer* passFilterLocalBuffer;
 
 cl_kernel filterWaveformsKernel;
 
@@ -297,6 +303,8 @@ int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
 float* powSpec;
 short* passFilter;
+short* anyFailDifference;
+short* anyFailMagnitude;
 
 /* Variables from the opencl API to synchoronize output */
 cl_event readImagePeakVal;
