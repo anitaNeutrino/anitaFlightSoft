@@ -13,8 +13,6 @@
 
 #include "openCLwrapper.h"
 
-
-
 void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType){
 
   /* See how many platforms are available.*/
@@ -42,6 +40,9 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   
   /* Give up if we can't find any devices on chosen platform */
   if (numDevices==0) {
+    syslog(LOG_ERR, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
+    syslog(LOG_ERR, "This normally means I can't talk to the X server for some reason.\n");
+    syslog(LOG_ERR, "Exiting program.\n");
     fprintf(stderr, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
@@ -115,7 +116,7 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
   
   cl_int status;            /*For error checking*/
   FILE *fp;                 /*File containing kernel source code*/
-  size_t source_size;       /*Size*/
+  /* size_t source_size;       /\*Size*\/ */
   char *source_str;         /*c-style string containing source code*/
   cl_program prog;          /*The compiled kernel*/
   char buildOptions[200];   /*Contains options to OpenCL kernel compiler*/
@@ -129,11 +130,13 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
   /* Load kernel source code */
   fp = fopen(fileName, "rb");
   if (!fp) {
+    syslog(LOG_ERR, "There was an error opening %s, program will exit", fileName);
     fprintf(stderr, "There was an error opening %s, program will exit", fileName);
     exit(-1);
   }
   source_str = (char *)malloc(MAX_SOURCE_SIZE);
-  source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
+  /* source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp); */
+  fread(source_str, 1, MAX_SOURCE_SIZE, fp);
   fclose(fp);
 
   prog = clCreateProgramWithSource(context, 1, (const char**)&source_str, NULL, &status);
@@ -151,7 +154,14 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
     clGetProgramBuildInfo(prog, deviceList[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
     buffer = (char*)malloc(len);
     clGetProgramBuildInfo(prog, deviceList[0], CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
-    printf("%s\n", buffer);
+    if( status != CL_SUCCESS){
+      syslog(LOG_ERR, "%s\n", buffer);
+      fprintf(stderr, "%s\n", buffer);
+    }
+    else{
+      syslog(LOG_INFO, "%s\n", buffer);
+      printf("%s\n", buffer);
+    }
     free(buffer);
   }
   statusCheck(status, "clBuildProgram");
@@ -485,7 +495,8 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
 void statusCheck(cl_int status, const char* description){
   if (status != CL_SUCCESS){
     const char* errorName =  translateReturnValue(status);
-    printf("%s returned status %s. Exiting host program.\n", description, errorName);
+    syslog(LOG_ERR, "%s returned status %s. Exiting host program.\n", description, errorName);
+    fprintf(stderr, "%s returned status %s. Exiting host program.\n", description, errorName);
     exit(status);
   }
 }

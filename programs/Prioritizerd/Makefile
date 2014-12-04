@@ -10,23 +10,30 @@ CL=/opt/AMDAPP
 CL_INCDIR = $(CL)/include
 CL_LIBDIR = $(CL)/lib
 
+#DEBUG=1
+#CALIBRATION=1
+#TIME_STAMP=1
 
-LDFLAGS += -lOpenCL -lgsl #-ltcmalloc -lprofiler
+LDFLAGS +=-lOpenCL -lgsl #-ltcmalloc -lprofiler
+CCFLAGS +=-g
 
-#OPT += -O2
-
-CCFLAGS += -g -DCALIBRATION #-DDEBUG_MODE
-
-#Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
 Targets = Prioritizerd  fakePrioritizerd
-#Objs= Filters.o AnitaInstrument.o fftwxcor.o GenerateScore.o
-Objs= openCLwrapper.o anitaGpu.o anitaTimingCalib.c
+Objs= openCLwrapper.o anitaGpu.o anitaTimingCalib.c prioritizerdFunctions.o
 
-#Objs += rcc_time_stamp.o
-#CFLAGS= += -DTSTAMP
+ifdef TIME_STAMP
+Objs +=rcc_time_stamp.o
+CFLAGS= +=-DTSTAMP
+endif
 
+ifdef CALIBRATION
+CCFLAGS +=-DCALIBRATION
+endif
 
-INCLUDES += -I$(FFTW3_INCDIR) -I$(CL_INCDIR)
+ifdef DEBUG
+CCFLAGS +=-DDEBUG_MODE
+endif
+
+INCLUDES +=-I$(FFTW3_INCDIR) -I$(CL_INCDIR)
 
 all: $(Targets)
 
@@ -37,9 +44,6 @@ $(Targets): % : %.o ${Objs}
 	@$(LD) $@.o $(Objs) $(CCFLAGS) $(INCLUDES) $(LDFLAGS) $(ANITA_LIBS) $(FFTW3_LIBDIR) $(FFTW_LIB) $(CL_LIB) -o $@
 	@chmod 555 $@
 	ln -sf $(shell pwd)/$@ ${ANITA_FLIGHT_SOFT_DIR}/bin
-
-#xcorrtest: xcorrtest.o fftwxcor.o
-#	$(LD) xcorrtest.o fftwxcor.o  $(LDFLAGS) $(ANITA_LIBS)$(FFTW3_LIBDIR) $(FFTW_LIB)  -o xcorrtest
 
 clean: objclean
 	@-rm -f $(Targets) Pdebug

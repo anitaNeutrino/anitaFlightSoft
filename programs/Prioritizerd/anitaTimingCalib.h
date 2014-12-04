@@ -1,7 +1,7 @@
 #ifndef ANTIA_TIMING_CALIB_H
 #define ANTIA_TIMING_CALIB_H
 
-/* Generic */
+/* Standard shizniz */
 #include <math.h>
 #include <string.h>
 
@@ -17,18 +17,19 @@
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 
-/* Functions */
+/* Functions, if only C had constructors and destructors... */
 void prepareTimingCalibThings();
 void tidyUpTimingCalibThings();
 
-
-
+/* Boring read in calibration data functions... */
 void readInCalibratedDeltaTs(const char* fileName);
 void readInEpsilons(const char* fileName);
 void readInGainCalib(const char* fileName);
-void readInClockCrossCorr(const char* fileName);
+void readInVoltageCalib(const char* fileName);
 void readInRelativeCableDelay(const char* fileName);
 
+
+/* The meat */
 void doTimingCalibration(int entry, AnitaEventHeader_t theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[]);
 double* interpolateWaveform(int nRaw, double* rawWave, double* times, 
 			    int nInterp, double t0interp, double dtNsInterp, int clockNum);
@@ -44,8 +45,7 @@ int findIndexOfMaximumWithinLimits(double* array, int startInd, int stopInd);
 double findClockJitterCorrectionLikeRyan(int n1, double* clock1, int n2, double* clock2, double deltaT_ns, int surf, int lab);
 
 void justUnwrapVolts(PedSubbedEventBody_t pedSubBody);
-void preCalculateTimeArrays();//(PedSubbedEventBody_t pedSubBody);
-//void preCalculateTimeArrays(PedSubbedEventBody_t pedSubBody);
+void preCalculateTimeArrays();
 
 
 

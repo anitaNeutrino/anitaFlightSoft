@@ -11,9 +11,7 @@
   Two things need to be done, I'll try them on the CPU first:
 
   1.) Cross correlating the clocks to get the relative surf-to-surf clock jitter. I will use fftw3.
-  2.) Interpolating the waveforms to give evenly sampled time domains. 
-      I will use gsl interpolation for the highly upsamped clock.
-      I will use linear interpolation for the normal channels, where I am just evenly resampling.
+  2.) Interpolating the waveforms to give evenly sampled time domains. Uses gsl library.
 
   These functions should do it all, hiding the annoying APIs of the gsl and fftw libraries behind
   some friendly functions which handle ANITA structs. (It might be quick enough since it's the 
@@ -43,7 +41,7 @@ fftw_plan clockPlanReverse;
 #define numSurfs ACTIVE_SURFS
 double justBinByBin[numSurfs][LABRADORS_PER_SURF][2][MAX_NUMBER_SAMPLES];
 double epsilonFromBenS[numSurfs][LABRADORS_PER_SURF][2] = {{{1}}};
-double clockCrossCorr[numSurfs][LABRADORS_PER_SURF] = {{-9999}};
+double voltageCalibHarm[numSurfs][CHANNELS_PER_SURF][LABRADORS_PER_SURF] = {{{1}}};
 int rcoLatchStart[numSurfs][LABRADORS_PER_SURF];
 int rcoLatchEnd[numSurfs][LABRADORS_PER_SURF];
 
@@ -77,10 +75,10 @@ void prepareTimingCalibThings(){
   akimaSpline = gsl_interp_akima;
 
   readInCalibratedDeltaTs("justBinByBin.dat");
-  /* readInClockCrossCorr("crossCorrClocksPeakPhi.dat"); */
   readInEpsilons("epsilonFromBenS.dat");
   readInRcoLatchDelay("rcoLatchDelay.dat");
   readInRelativeCableDelay("relativeCableDelays.dat");
+  readInVoltageCalib("simpleVoltageCalibrationHarm.txt");
 
   clockTimeDomain = fftw_malloc(sizeof(double)*numUpsampledClockSamples);
   clockFreqDomain = fftw_malloc(sizeof(fftw_complex)*numUpsampledClockSamples);
@@ -278,70 +276,6 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
   int maxIndLe = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, numSamples-clockPeriod_samples/2, numSamples);
   int maxInd = crossCorrelatedClocks[maxIndGr] > crossCorrelatedClocks[maxIndLe] ? maxIndGr : maxIndLe;
   double clockCor = maxInd > numSamples/2 ? (maxInd-numSamples)*deltaT_ns : deltaT_ns*maxInd;
-
-  /* char cccname[1024]; */
-  /* sprintf(cccname, "/tmp/ccc%d.txt", surf); */
-  /* FILE* ccc = fopen(cccname, "w"); */
-  /* int cInd=0; */
-  /* fprintf(ccc, "%d %lf #", maxInd, clockCor); */
-  /* for(cInd=0; cInd<numSamples; cInd++){ */
-  /*   fprintf(ccc, "%lf %lf\n", cInd*deltaT_ns, crossCorrelatedClocks[cInd]); */
-  /* } */
-  /* fclose(ccc);   */
-
-
-  /* int maxInd = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, 0, numSamples); */
-  /* double clockCor = maxInd > numSamples/2 ? (maxInd-numSamples)*deltaT_ns : deltaT_ns*maxInd; */
-  /* int badGuessFlag=0; */
-
-  /* if(fabs(clockCor-clockCrossCorr[surf][lab])>clockPeriod_ns/2) { */
-  /*   /\* Failed: away from the mean by more than half a clock cycle... try again...*\/ */
-
-  /*   if(clockCor>clockCrossCorr[surf][lab]) { */
-  /*     /\* above mean value, restrict to searching "below" the maxInd for the clockCor... *\/ */
-
-  /*     badGuessFlag = 1; */
-  /*     if(clockCor>=0 && maxInd>2*upsampleFactor){ */
-  /* 	/\* Must search below clockCor value, but clockCor value is less than zero*\/ */
-
-  /* 	int i = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, numSamples/2, numSamples); */
-  /* 	int j = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, 0, maxInd-2*upsampleFactor); */
-	
-  /* 	double c1 = crossCorrelatedClocks[i]; */
-  /* 	double c2 = crossCorrelatedClocks[j]; */
-  /* 	if(c1 > c2){ */
-  /* 	  maxInd = i; */
-  /* 	} */
-  /* 	else{ */
-  /* 	  maxInd = j; */
-  /* 	} */
-  /*     } */
-  /*     else{/\* Must search below clockCor value and clockCor is greater than (or equal to) zero*\/ */
-  /* 	maxInd = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, numSamples/2+1, numSamples); */
-  /*     } */
-  /*   } */
-  /*   else{/\* below mean value, restrict to searching "above" this value... *\/ */
-  /*     badGuessFlag = -1; */
-  /*     if(clockCor<0 && numSamples-maxInd>2*upsampleFactor){ */
-  /* 	/\* Must search below clockCor and clockCor value is less than zero*\/ */
-  /* 	int i = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, maxInd+2*upsampleFactor, numSamples); */
-  /* 	int j = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, 0, numSamples/2); */
-
-  /* 	double c1 = crossCorrelatedClocks[i]; */
-  /* 	double c2 = crossCorrelatedClocks[j]; */
-  /* 	if(c1 > c2){ */
-  /* 	  maxInd = i; */
-  /* 	} */
-  /* 	else{ */
-  /* 	  maxInd = j; */
-  /* 	} */
-  /*     } */
-  /*     else{ */
-  /* 	maxInd = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, maxInd+2*upsampleFactor, numSamples/2); */
-  /*     } */
-  /*   } */
-  /*   clockCor = maxInd > numSamples/2 ? (maxInd-numSamples)*deltaT_ns : deltaT_ns*maxInd; */
-  /* } */
 
   free(crossCorrelatedClocks);
 
@@ -553,10 +487,10 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 
       int chanIndex=surf*CHANNELS_PER_SURF + chan;
       
-      int ant = abs(surfToAntMap[surf][chan]);
 #ifdef CALIBRATION
       int orientFactor = 1; /* Injecting directly, don't care that some antennas are flipped.*/
 #else
+      int ant = abs(surfToAntMap[surf][chan]);
       int orientFactor = ant < 16 && chan!=8 ? -1 : 1; /* Top row of antennas are flipped, but don't flip the clock! */
 #endif
       /* printf("ant %d, surf %d, chan %d, orientFactor %d\n", ant, surf, chan, orientFactor); */
@@ -583,7 +517,7 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 	  //Lets do the first segment up
 	  for(samp=earliestSample;samp<256;samp++) {
 	    int binRco=1-rco;
-	    volts[surf][chan][index]=(double)pedSubBody.channel[chanIndex].data[samp]*orientFactor;
+	    volts[surf][chan][index]=(double)pedSubBody.channel[chanIndex].data[samp]*voltageCalibHarm[surf][chan][labChip]*orientFactor;
 	    times[surf][chan][index]=time;
 	    if(samp==255) {
 	      extraTime=time+(justBinByBin[surf][labChip][binRco][samp])*tempFactor;
@@ -611,7 +545,7 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 	    if(nextExtra<260 && samp==1) {
 	      if(extraTime<time-0.22) {
 	      binRco=1-rco;
-	      volts[surf][chan][index]=(double)pedSubBody.channel[chanIndex].data[nextExtra]*orientFactor;
+	      volts[surf][chan][index]=(double)pedSubBody.channel[chanIndex].data[nextExtra]*voltageCalibHarm[surf][chan][labChip]*orientFactor;
 	      times[surf][chan][index]=extraTime;
 	      if(nextExtra<259) {
 		extraTime+=(justBinByBin[surf][labChip][binRco][nextExtra])*tempFactor;
@@ -636,7 +570,7 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 	time=0;
 	for(samp=earliestSample;samp<=latestSample;samp++) {
 	  int binRco=rco;
-	  volts[surf][chan][index]=(double)pedSubBody.channel[chanIndex].data[samp]*orientFactor;
+	  volts[surf][chan][index]=(double)pedSubBody.channel[chanIndex].data[samp]*voltageCalibHarm[surf][chan][labChip]*orientFactor;
 	  times[surf][chan][index]=time;
 	  if(samp<259) {
 	    time+=(justBinByBin[surf][labChip][binRco][samp])*tempFactor;
@@ -703,10 +637,10 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
 
 
   for(surf=0; surf<numSurfs; surf++){
-    int lab = labChips[surf];
-    int rco = rcos[surf];
-    int earliestSample = earliestSampleInds[surf];
-    int whb = whbs[surf];
+    /* int lab = labChips[surf]; */
+    /* int rco = rcos[surf]; */
+    /* int earliestSample = earliestSampleInds[surf]; */
+    /* int whb = whbs[surf]; */
 
     interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
 					     /* volts2[surf][8], */
@@ -1053,6 +987,48 @@ void readInRcoLatchDelay(const char* fileName){
 }
 
 
+void readInVoltageCalib(const char* fileName){
+  FILE* inFile = fopen(fileName, "r");
+  int defaultVal = 0;
+
+  if( inFile != NULL){
+    /* Skip human friendly header, after all I am a robot. */
+    int wordInd=0;
+    for(wordInd=0; wordInd<5; wordInd++){
+      char word[10];
+      fscanf(inFile, "%s ", word);
+    }
+  }
+  else{
+    fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
+  }
+  /* Got past header, now read in calibrated deltaTs */
+  int surfInd=0;
+  for(surfInd=0; surfInd<numSurfs; surfInd++){
+    int chanInd=0;
+    for(chanInd=0; chanInd<CHANNELS_PER_SURF-1; chanInd++){
+      int labInd=0;
+      for(labInd=0; labInd<LABRADORS_PER_SURF; labInd++){
+	if( inFile != NULL){
+	  int surfVal, chanVal, labVal;
+	  double tempVal;
+	  fscanf(inFile, "%d %d %d %lf", &surfVal, &chanVal, &labVal, &tempVal);
+	  voltageCalibHarm[surfVal][chanVal][labVal] = tempVal;
+	  /* printf("surf %d, chan %d, lab %d, voltageCalibHarm[surfVal][chanVal][labVal] = %lf\n", surfVal, chanVal, labVal, tempVal); */
+	}
+	else{
+	  voltageCalibHarm[surfInd][chanInd][labInd] = defaultVal;
+	}
+      }
+    }
+  }
+
+  if(inFile != NULL){
+    fclose(inFile);
+  }
+}
+
+
 
 
 void readInRelativeCableDelay(const char* fileName){
@@ -1132,40 +1108,4 @@ void readInEpsilons(const char* fileName){
   if(inFile!=NULL){
     fclose(inFile);
   }
-
 }
-
-void readInClockCrossCorr(const char* fileName){
-  FILE* inFile = fopen(fileName, "r");
-
-  double defaultVal = 0;
-  if(inFile!=NULL){
-
-    /* Skip human friendly header, after all I am a robot. */
-    int wordInd=0;
-    for(wordInd=0; wordInd<4; wordInd++){
-      //  for(wordInd=0; wordInd<3; wordInd++){
-      char word[10];
-      fscanf(inFile, "%s ", word);
-    }
-  }
-  else{
-    fprintf(stderr, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
-  }
-
-  int surfInd;
-  for(surfInd=0; surfInd<numSurfs; surfInd++){
-    int labInd=0;
-    for(labInd=0; labInd<LABRADORS_PER_SURF; labInd++){
-      if(inFile!=NULL){
-	int surfVal, labVal;
-	fscanf(inFile, "%d %d %lf", &surfVal, &labVal, &clockCrossCorr[surfInd][labInd]);
-	//      printf("%d %d %lf\n", surfVal, labVal, clockCrossCorr[surfInd][labInd]);
-      }
-      else{
-	clockCrossCorr[surfInd][labInd] = defaultVal;
-      }
-    }
-  }  
-}
-
