@@ -143,6 +143,7 @@
 #define VER_ACQD_START 32
 #define VER_TURF_REG 30
 #define VER_TURF_EVENT_DATA 30
+#define VER_GPU_POW_SPEC 30
 #endif
 
 
@@ -197,7 +198,9 @@ typedef enum {
     PACKET_OTHER_MONITOR = 0xb01, ///< OtherMonitorStruct_t -- Yes
     PACKET_GPSD_START = 0xc00, ///< GpsdStartStruct_t -- Yes
     PACKET_LOGWATCHD_START = 0xc01, ///< LogWatchdStart_t -- Yes
-    PACKET_ACQD_START = 0xc02 ///<AcqdStartStruct_t -- Yes
+    PACKET_ACQD_START = 0xc02, ///<AcqdStartStruct_t -- Yes
+    PACKET_GPU_AVE_POW_SPEC = 0xd ///<GpuPhiSectorPowerSpectrum_t -- Yes
+    
 } PacketCode_t;
 
 typedef enum {
@@ -1443,6 +1446,24 @@ typedef struct {
   unsigned short thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< mean pedestal 
     unsigned short pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< 10 x RMS of the samples (not of mean)
 } PedestalStruct_t;
+
+
+typedef struct {
+  float bins[99];
+} GpuAnitaBandPowerSpectrumStruct_t;
+
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTimeFirstEvent;
+  unsigned int unixTimeLastEvent;
+  unsigned int numEventsAveraged;
+  unsigned int firstEventInAverage;
+  unsigned char phiSector;
+  unsigned char nothing;
+  unsigned short moreNothing;
+  GpuAnitaBandPowerSpectrumStruct_t powSpectra[NUM_ANTENNA_RINGS][2];
+} GpuPhiSectorPowerSpectrumStruct_t;
+
 
 
 /////////////////////////////////////////////////////////////////////////////

@@ -220,6 +220,7 @@
 #define OTHER_MONITOR_TELEM_DIR "/tmp/anita/telem/house/other"
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 #define REQUEST_TELEM_DIR "/tmp/anita/telem/request"
+#define GPU_TELEM_DIR "/tmp/anita/telem/house/gpu"
 
 #define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
@@ -243,6 +244,7 @@
 #define HEADER_TELEM_LINK_DIR "/tmp/anita/telem/head/link"
 #define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
 #define OTHER_MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/other/link"
+#define GPU_TELEM_LINK_DIR "/tmp/anita/telem/house/gpu/link"
 
 
 
@@ -298,6 +300,7 @@
 #define SURFHK_ARCHIVE_DIR "/current/house/surfhk"
 #define TURFHK_ARCHIVE_DIR "/current/house/turfhk"
 #define MONITOR_ARCHIVE_DIR "/current/house/monitor"
+#define GPU_ARCHIVE_DIR "/current/house/gpu"
 #define EVENT_ARCHIVE_DIR "/current/event/"
 #define STARTUP_ARCHIVE_DIR "/current/start"
 
