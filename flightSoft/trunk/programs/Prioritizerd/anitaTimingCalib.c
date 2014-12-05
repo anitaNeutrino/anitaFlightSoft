@@ -1,4 +1,5 @@
 /*!
+
   @file anitaTimingCalib.c
   @date 30 Oct 2014
   @author Ben Strutt
@@ -74,11 +75,11 @@ void prepareTimingCalibThings(){
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
 
-  readInCalibratedDeltaTs("justBinByBin.dat");
-  readInEpsilons("epsilonFromBenS.dat");
-  readInRcoLatchDelay("rcoLatchDelay.dat");
-  readInRelativeCableDelay("relativeCableDelays.dat");
-  readInVoltageCalib("simpleVoltageCalibrationHarm.txt");
+  readInCalibratedDeltaTs("/home/anita/flightSoft/programs/Prioritizerd/justBinByBin.dat");
+  readInEpsilons("/home/anita/flightSoft/programs/Prioritizerd/epsilonFromBenS.dat");
+  readInRcoLatchDelay("/home/anita/flightSoft/programs/Prioritizerd/rcoLatchDelay.dat");
+  readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
+  readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
 
   clockTimeDomain = fftw_malloc(sizeof(double)*numUpsampledClockSamples);
   clockFreqDomain = fftw_malloc(sizeof(fftw_complex)*numUpsampledClockSamples);
