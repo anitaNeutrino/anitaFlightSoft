@@ -149,9 +149,7 @@ buffer* phiSectorTriggerBufferHPol;
 
 buffer* numEventsInQueueBuffer;
 buffer* binToBinDifferenceThresh_dBBuffer;
-buffer* absMagnitudeThresh_dBmBuffer;
-buffer* anyFailDifferenceBuffer;
-buffer* anyFailMagnitudeBuffer;
+// buffer* absMagnitudeThresh_dBmBuffer;
 
 /* Internal buffers */
 buffer* rmsBuffer;
@@ -303,8 +301,8 @@ int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
 float* powSpec;
 short* passFilter;
-short* anyFailDifference;
-short* anyFailMagnitude;
+// short* anyFailDifference;
+// short* anyFailMagnitude;
 
 /* Variables from the opencl API to synchoronize output */
 cl_event readImagePeakVal;

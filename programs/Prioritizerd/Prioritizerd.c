@@ -231,7 +231,7 @@ int main (int argc, char *argv[])
 	writeStruct(&theHeader[count],archiveHdFilename,sizeof(AnitaEventHeader_t));
 
 	makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
-    
+
 	//Write Header and make Link for telemetry
 	sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
 		theHeader[count].eventNumber);
@@ -246,10 +246,8 @@ int main (int argc, char *argv[])
 	removeFile(linkFilename);
 	removeFile(hdFilename);
       }
-      
-	
     }
-  } while(currentState==PROG_STATE_INIT); 
+  } while(currentState==PROG_STATE_INIT);
   unlink(PRIORITIZERD_PID_FILE);
 
   closeHkFilesAndTidy(&gpuWriter);
@@ -257,6 +255,7 @@ int main (int argc, char *argv[])
   tidyUpGpuThings();
   tidyUpTimingCalibThings();
 
+  printf("fakePrioritizerd exiting. Reached end of main\n.");
   return 0;
 }
 

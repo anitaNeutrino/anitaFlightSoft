@@ -852,13 +852,10 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 						__local float2* powSpecScratch,
 						__global short2* passFilterBuffer,
 						__global float* binToBinDifferenceThresh_dBBuffer,
-						__global int* numEventsBuffer,
-						__local short2* minimaBuffer,
-						__local short2* passFilterLocalBuffer,
-						__global float* absMagnitudeThresh_dBmBuffer,
-						__global short2* anyFailDifferenceBuffer,
-						__global short2* anyFailMagnitudeBuffer){
-
+						__global int* numEventsBuffer){
+						/* __local short2* minimaBuffer, */
+						/* __local short2* passFilterLocalBuffer, */
+						/* __global float* absMagnitudeThresh_dBmBuffer){ */
   /*
     Sum Power spectra of each antenna when for each event in the batch sent to the GPU.
     I'm going to use a slightly hacky power spectrum here.
@@ -875,15 +872,10 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   float var = rms*rms;
   int numEvents = numEventsBuffer[0];
 
-  if(sampInd==0){
-    anyFailDifferenceBuffer[ant] = 0;
-    anyFailMagnitudeBuffer[ant] = 0;
-  }
-
   float2 summedPowSpec = 0;
 
   float binToBinDifferenceThresh_dB = binToBinDifferenceThresh_dBBuffer[0];
-  float absMagnitudeThresh_dBm = absMagnitudeThresh_dBmBuffer[0];
+  /* float absMagnitudeThresh_dBm = absMagnitudeThresh_dBmBuffer[0]; */
 
   for(int event=0; event<numEvents; event++){
     float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
@@ -904,15 +896,15 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   float y3 = sampInd < 255 ? powSpecScratch[sampInd + 1].x : 0;
 
   // If bin is a minimum in power spectrum, then put a 1 in the minima array, otherwise 0
-  short2 isMinima;
-  isMinima.x = y0 > summedPowSpec.x && summedPowSpec.x < summedPowSpec.y ? 1 : 0;
-  isMinima.y = summedPowSpec.x > summedPowSpec.y && summedPowSpec.y < y3 ? 1 : 0;
-  minimaBuffer[sampInd] = isMinima;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  /* short2 isMinima; */
+  /* isMinima.x = y0 > summedPowSpec.x && summedPowSpec.x < summedPowSpec.y ? 1 : 0; */
+  /* isMinima.y = summedPowSpec.x > summedPowSpec.y && summedPowSpec.y < y3 ? 1 : 0; */
+  /* minimaBuffer[sampInd] = isMinima; */
+  /* barrier(CLK_LOCAL_MEM_FENCE); */
 
-  short2 isMaxima;
-  isMaxima.x = y0 < summedPowSpec.x && summedPowSpec.x > summedPowSpec.y ? 1 : 0;
-  isMaxima.y = summedPowSpec.x < summedPowSpec.y && summedPowSpec.y > y3 ? 1 : 0;
+  /* short2 isMaxima; */
+  /* isMaxima.x = y0 < summedPowSpec.x && summedPowSpec.x > summedPowSpec.y ? 1 : 0; */
+  /* isMaxima.y = summedPowSpec.x < summedPowSpec.y && summedPowSpec.y > y3 ? 1 : 0; */
 
   // Write unfiltered power spectrum to global buffer
   powSpecOut[ant*NUM_SAMPLES/4 + sampInd] = summedPowSpec;
@@ -942,113 +934,101 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   passFilter.x = 2*sampInd*deltaF > highPass && 2*sampInd*deltaF < lowPass ? 1 : 0;
   passFilter.y = (2*sampInd+1)*deltaF > highPass && (2*sampInd+1)*deltaF < lowPass ? 1 : 0;
 
-  float2 der;
-  der.x = summedPowSpec.y - summedPowSpec.x;
-  der.y = y3 - summedPowSpec.y;
+  /* float2 der; */
+  /* der.x = summedPowSpec.y - summedPowSpec.x; */
+  /* der.y = y3 - summedPowSpec.y; */
 
-  // Care about absolute value of 1st derivitive
-  der.x = fabs(der.x);
-  der.y = fabs(der.y);
+  /* // Care about absolute value of 1st derivitive */
+  /* der.x = fabs(der.x); */
+  /* der.y = fabs(der.y); */
   
-  // Update passFilter results after doing derivitive test.
-  // Note that you never set pass filter to 1 after the bandpass above,
-  // you only set it to zero, or the previous value.
-  passFilter.x = der.x > binToBinDifferenceThresh_dB ? 0 : passFilter.x;
-  passFilter.y = der.y > binToBinDifferenceThresh_dB ? 0 : passFilter.y;
+  /* // Update passFilter results after doing derivitive test. */
+  /* // Note that you never set pass filter to 1 after the bandpass above, */
+  /* // you only set it to zero, or the previous value. */
+  /* passFilter.x = der.x > binToBinDifferenceThresh_dB ? 0 : passFilter.x; */
+  /* passFilter.y = der.y > binToBinDifferenceThresh_dB ? 0 : passFilter.y; */
 
-  // push band pass logic to local buffer
-  passFilterLocalBuffer[sampInd] = passFilter;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  /* // push band pass logic to local buffer */
+  /* passFilterLocalBuffer[sampInd] = passFilter; */
+  /* barrier(CLK_LOCAL_MEM_FENCE); */
  
-  /*
-    We want to filter the whole spike not just the bins with a steep derivative.
-    So, we need to propogate the "failure to pass" condition along the whole spike.
-    Will start at maxima and work outwards in both directions.
+  /* /\* */
+  /*   We want to filter the whole spike not just the bins with a steep derivative. */
+  /*   So, we need to propogate the "failure to pass" condition along the whole spike. */
+  /*   Will start at maxima and work outwards in both directions. */
 
-    So... if we have a maxima in these bins then this WI is the lucky winner
-    of the "do inefficient linear operations" competition!
-  */
-  short anyFailDifference = 0;
-  if(isMaxima.x > 0 || isMaxima.y > 0){
-
-
-    // Very first thing should be deal with the other bin for this WI...
-    float highBin = -1;
-    float lowBin = -1;
-    if(isMaxima.x>0){
-      anyFailDifference = passFilter.y==0 ? 1 : 0;
-      highBin = isMinima.y == 1 ? sampInd + 0.5 : highBin;
-    }
-    if(isMaxima.y>0){
-      anyFailDifference = passFilter.x==0 ? 1 : 0;
-      lowBin = isMinima.x == 1 ? sampInd : lowBin;
-    }
+  /*   So... if we have a maxima in these bins then this WI is the lucky winner */
+  /*   of the "do inefficient linear operations" competition! */
+  /* *\/ */
+  /* short anyFailDifference = 0; */
+  /* if(isMaxima.x > 0 || isMaxima.y > 0){ */
 
 
-    // Now that's done... start upwards first...
-    if(highBin<0){ // ignore if this WI neighbour bin is local minimum
-      int sampInd2 = sampInd+1;
-      for(sampInd2 = sampInd+1; sampInd < lowPassWI; sampInd2++){
-  	anyFailDifference = passFilterLocalBuffer[sampInd2].x==0 ? 1 : anyFailDifference;
-  	highBin = minimaBuffer[sampInd2].x == 1 ? sampInd2 : highBin;
-  	if(highBin>-1) break;
+  /*   // Very first thing should be deal with the other bin for this WI... */
+  /*   float highBin = -1; */
+  /*   float lowBin = -1; */
+  /*   if(isMaxima.x>0){ */
+  /*     anyFailDifference = passFilter.y==0 ? 1 : 0; */
+  /*     highBin = isMinima.y == 1 ? sampInd + 0.5 : highBin; */
+  /*   } */
+  /*   if(isMaxima.y>0){ */
+  /*     anyFailDifference = passFilter.x==0 ? 1 : 0; */
+  /*     lowBin = isMinima.x == 1 ? sampInd : lowBin; */
+  /*   } */
 
-  	anyFailDifference = passFilterLocalBuffer[sampInd2].y==0 ? 1 : 0;
-  	highBin = minimaBuffer[sampInd2].y == 1 ? sampInd2+0.5 : highBin;
-  	if(highBin>-1) break;
-      }
-    }
+
+  /*   // Now that's done... start upwards first... */
+  /*   if(highBin<0){ // ignore if this WI neighbour bin is local minimum */
+  /*     int sampInd2 = sampInd+1; */
+  /*     for(sampInd2 = sampInd+1; sampInd < lowPassWI; sampInd2++){ */
+  /* 	anyFailDifference = passFilterLocalBuffer[sampInd2].x==0 ? 1 : anyFailDifference; */
+  /* 	highBin = minimaBuffer[sampInd2].x == 1 ? sampInd2 : highBin; */
+  /* 	if(highBin>-1) break; */
+
+  /* 	anyFailDifference = passFilterLocalBuffer[sampInd2].y==0 ? 1 : 0; */
+  /* 	highBin = minimaBuffer[sampInd2].y == 1 ? sampInd2+0.5 : highBin; */
+  /* 	if(highBin>-1) break; */
+  /*     } */
+  /*   } */
     
 
-    // Then downwards
-    if(lowBin<0){ // ignore if this WI neighbour bin is local minimum
-      int sampInd2 = sampInd-1;
-      for(sampInd2 = sampInd-1; sampInd > highPassWI; sampInd2--){
-  	anyFailDifference = passFilterLocalBuffer[sampInd2].y==0 ? 1 : 0;
-  	lowBin = minimaBuffer[sampInd2].y == 1 ? sampInd2+0.5 : lowBin;
-  	if(lowBin>-1) break;
+  /*   // Then downwards */
+  /*   if(lowBin<0){ // ignore if this WI neighbour bin is local minimum */
+  /*     int sampInd2 = sampInd-1; */
+  /*     for(sampInd2 = sampInd-1; sampInd > highPassWI; sampInd2--){ */
+  /* 	anyFailDifference = passFilterLocalBuffer[sampInd2].y==0 ? 1 : 0; */
+  /* 	lowBin = minimaBuffer[sampInd2].y == 1 ? sampInd2+0.5 : lowBin; */
+  /* 	if(lowBin>-1) break; */
 
-  	anyFailDifference = passFilterLocalBuffer[sampInd2].x==0 ? 1 : anyFailDifference;
-  	lowBin = minimaBuffer[sampInd2].x == 1 ? sampInd2 : lowBin;
-  	if(lowBin>-1) break;
+  /* 	anyFailDifference = passFilterLocalBuffer[sampInd2].x==0 ? 1 : anyFailDifference; */
+  /* 	lowBin = minimaBuffer[sampInd2].x == 1 ? sampInd2 : lowBin; */
+  /* 	if(lowBin>-1) break; */
 
-      }
-    }
+  /*     } */
+  /*   } */
 
 
-    if(anyFailDifference > 0){
-      /* Then filter that CW shit... */
-      for(int sampInd2=(int)lowBin; sampInd2<=(int)highBin; sampInd2++){
-  	if(sampInd2==(int)lowBin && lowBin-sampInd2!=0){
-  	  passFilterLocalBuffer[sampInd2].y = 0;
-  	}
-  	else if(sampInd2==(int)highBin && highBin-sampInd2==0){
-  	  passFilterLocalBuffer[sampInd2].x = 0;
-  	}
-  	else{/* Zero everything */
-  	  passFilterLocalBuffer[sampInd2] = 0;
-  	}
-      }
-    }
-  }
+  /*   if(anyFailDifference > 0){ */
+  /*     /\* Then filter that CW shit... *\/ */
+  /*     for(int sampInd2=(int)lowBin; sampInd2<=(int)highBin; sampInd2++){ */
+  /* 	if(sampInd2==(int)lowBin && lowBin-sampInd2!=0){ */
+  /* 	  passFilterLocalBuffer[sampInd2].y = 0; */
+  /* 	} */
+  /* 	else if(sampInd2==(int)highBin && highBin-sampInd2==0){ */
+  /* 	  passFilterLocalBuffer[sampInd2].x = 0; */
+  /* 	} */
+  /* 	else{/\* Zero everything *\/ */
+  /* 	  passFilterLocalBuffer[sampInd2] = 0; */
+  /* 	} */
+  /*     } */
+  /*   } */
+  /* } */
 
-  // finally just a simple magnitude cut for every bin
-  passFilter = passFilterLocalBuffer[sampInd];
-  //  barrier(CLK_LOCAL_MEM_FENCE);
+  /* // finally just a simple magnitude cut for every bin */
+  /* passFilter = passFilterLocalBuffer[sampInd]; */
 
-  passFilter.x = summedPowSpec.x > absMagnitudeThresh_dBm ? 0 : passFilter.x;
-  passFilter.y = summedPowSpec.y > absMagnitudeThresh_dBm ? 0 : passFilter.y;
-
-  /* Pretty dumb as many WIs will be forced to write sequentially to global memory...*/
-  if(sampInd>highPassWI && sampInd<lowPassWI && anyFailDifference>0){
-    anyFailDifferenceBuffer[ant] = 1;
-  }
-  /* Pretty dumb as many WIs will be forced to write sequentially to global memory...*/
-  if(sampInd>highPassWI && sampInd<lowPassWI
-     && (summedPowSpec.x > absMagnitudeThresh_dBm 
-	 || summedPowSpec.y > absMagnitudeThresh_dBm)){
-    anyFailMagnitudeBuffer[ant] = 1;
-  }
+  /* passFilter.x = summedPowSpec.x > absMagnitudeThresh_dBm ? 0 : passFilter.x; */
+  /* passFilter.y = summedPowSpec.y > absMagnitudeThresh_dBm ? 0 : passFilter.y; */
 
   /* Phew! Now write that to the global buffer... */
   passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = passFilter;
