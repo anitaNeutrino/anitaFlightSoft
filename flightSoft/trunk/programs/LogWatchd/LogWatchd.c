@@ -170,13 +170,23 @@ int main (int argc, char *argv[])
 	      }
 	      else if(theRequest.logReq==LOG_REQUEST_JOURNALCTL) {
 		//Need to do something here
+		printf("Got journalctl request: %d -- %d\n",theRequest.jclOpt,theRequest.optArg);
 		switch(theRequest.jclOpt) {
 		case JOURNALCTL_OPT_COMM:
 		  sprintf(journalCtlArgument,"_COMM=%s",getProgName(theRequest.optArg));
 		  tailJournal(journalCtlArgument,theRequest.numLines);
+		  break;
+                case JOURNALCTL_OPT_PRIORITY:
+                  sprintf(journalCtlArgument,"PRIORITY=%d",theRequest.optArg);
+                  tailJournal(journalCtlArgument,theRequest.numLines);
+                  break;
+                case JOURNALCTL_OPT_SYSLOG_FACILITY:
+                  sprintf(journalCtlArgument,"SYSLOG_FACILITY=%d",theRequest.optArg);
+                  tailJournal(journalCtlArgument,theRequest.numLines);
+                  break;
 		default:
 		  tailJournal("",theRequest.numLines);
-		  tailJournal("",theRequest.numLines);
+		  break;
 		}
 		
 		
@@ -291,7 +301,7 @@ int tailJournal(char *journalctlOption, int numLines) {
     sprintf(tailFilename,"/tmp/tail_journal_%s",journalctlOption);
     char theCommand[FILENAME_MAX];
     sprintf(theCommand,"journalctl %s -n %d > %s",journalctlOption,numLines,tailFilename);
-    printf(theCommand);
+    printf("%s\n",theCommand);
     system(theCommand);
     makeZippedFilePackets(tailFilename,counter);
     counter++;    

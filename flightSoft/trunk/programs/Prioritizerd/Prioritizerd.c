@@ -181,7 +181,7 @@ int main (int argc, char *argv[])
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
       if(eventsReadIn>0){
-	mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec);
+	mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec, writePowSpecPeriodSeconds);
       }
 
       if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds

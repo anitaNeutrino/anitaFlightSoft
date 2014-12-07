@@ -12,6 +12,7 @@ float absMagnitudeThresh_dBm;
 
 /* Used for filtering in the GPU */
 float binToBinDifferenceThresh_dB;
+#define floatToShortConversionForPacket 32767./64.15
 
 #ifdef CALIBRATION
 FILE* gpuOutput;
@@ -56,6 +57,9 @@ void prepareGpuThings(){
   eventData = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES*sizeof(float));
   powSpec = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(float));
   passFilter = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(short));
+
+  /* Keep floating point precision while accumulating average */
+  tempPowSpecHolder = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*99*sizeof(float));
 
   /* Use opencl functions to find out what platforms and devices we can use for this program. */
   myPlatform = 0; /* Here we choose platform 0 in advance of querying to see what's there. */
@@ -131,8 +135,8 @@ void prepareGpuThings(){
   /* Send the read in value of the derivative threshold filter to the GPU */
   binToBinDifferenceThresh_dBBuffer = createBuffer(context, memFlags, sizeof(float), "f", "binToBinDifferenceThresh_dBBuffer");
   copyArrayToGPU(commandQueue, binToBinDifferenceThresh_dBBuffer, &binToBinDifferenceThresh_dB);  
-  /* absMagnitudeThresh_dBmBuffer = createBuffer(context, memFlags, sizeof(float), "f", "absMagnitudeThresh_dBmBuffer"); */
-  /* copyArrayToGPU(commandQueue, absMagnitudeThresh_dBmBuffer, &absMagnitudeThresh_dBm); */
+  absMagnitudeThresh_dBmBuffer = createBuffer(context, memFlags, sizeof(float), "f", "absMagnitudeThresh_dBmBuffer");
+  copyArrayToGPU(commandQueue, absMagnitudeThresh_dBmBuffer, &absMagnitudeThresh_dBm);
 
   numEventsInQueueBuffer = createBuffer(context, memFlags, sizeof(int), "i", "numEventsInQueueBuffer");
 
@@ -141,11 +145,10 @@ void prepareGpuThings(){
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
-  /* isMinimaBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "isMinimaBuffer"); */
-  /* passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer"); */
+  passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
 
-#define numPowSpecArgs 7
-  buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, rmsBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer};//, isMinimaBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
+#define numPowSpecArgs 9
+  buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, rmsBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
   /* filters the waveforms */
@@ -298,16 +301,11 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
     phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern >> phiInd);
     /* HPOL, goes in back half of array */
     phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
-
-    /* /\* VPOL *\/ */
-    /* phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1; */
-    /* /\* HPOL, goes in back half of array *\/ */
-    /* phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1; */
   }
 
 }
 
-void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec){
+void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int writePowSpecPeriodSeconds){
 
   int phi=0;
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
@@ -316,7 +314,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       payloadPowSpec[phi].unixTimeFirstEvent = header[0].unixTime;
     }
   }
-
+  memset(tempPowSpecHolder, 0, sizeof(float)*2*NUM_ANTENNAS*99);
 
   /* Start time stamping. */
   uint stamp;
@@ -348,7 +346,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   dataToGpuEvents[1][2] = writeBuffer(commandQueue, phiSectorTriggerBufferHPol,
 				     &phiTrig[NUM_EVENTS*NUM_PHI_SECTORS], 0, NULL);
 
-  cl_event dataFromGpuEvents[NUM_POLARIZATIONS][9];
+  cl_event dataFromGpuEvents[NUM_POLARIZATIONS][7];
 
   /* Loop over both polarizations */
   uint polInd=0;
@@ -404,7 +402,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     statusCheck(status, "clEnqueueNDRangeKernel fourierKernel");
     timeStamp(stamp++, 1, &fourierEvent);
 
-
     cl_event powSpecDependencies[2] = {writeNumEventsToGPU, fourierEvent};
     status = clEnqueueNDRangeKernel(commandQueue, eventPowSpecKernel, 2, NULL, gPowSpecWorkSize, lPowSpecWorkSize, 2, powSpecDependencies, &powSpecEvent);
     statusCheck(status, "clEnqueueNDRangeKernel eventPowSpecKernel");
@@ -419,8 +416,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     /* Filters frequency bins based on the steepness of the power spectra */
     status = clEnqueueNDRangeKernel(commandQueue, filterWaveformsKernel, 3, NULL, gFilterWorkSize, lFilterWorkSize, 1, &powSpecEvent, &filterEvent);
     statusCheck(status, "clEnqueueNDRangeKernel filterWaveformsKernel");
-    timeStamp(stamp++, 1, &filterEvent);        
-
+    timeStamp(stamp++, 1, &filterEvent);
 
     /* Copies the filtering numbers back from the GPU */
     dataFromGpuEvents[polInd][6] = readBuffer(commandQueue, passFilterBuffer, 
@@ -505,9 +501,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     printBufferToTextFile2(commandQueue, "fourierBuffer.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "powSpecBuffer.txt", polInd, powSpecBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "passFilterBuffer.txt", polInd, passFilterBuffer, 1, 1);
-    /* printBufferToTextFile2(commandQueue, "anyFailDifferenceBuffer.txt", polInd, passFilterBuffer, 1, 1); */
-    /* printBufferToTextFile2(commandQueue, "anyFailMagnitudeBuffer.txt", polInd, passFilterBuffer, 1, 1); */
-    printBufferToTextFile2(commandQueue, "passFilterBuffer.txt", polInd, passFilterBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "fourierBuffer2.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "circularCorrelationBuffer.txt", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "image.txt", polInd, imageBuffer, NUM_EVENTS, 1);
@@ -536,6 +529,27 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   clWaitForEvents(14, &dataFromGpuEvents[0][0]);
   timeStamp(stamp++, 14, &dataFromGpuEvents[0][0]);
 
+  float diffPowSpec[2*NUM_ANTENNAS*NUM_SAMPLES/2];
+  for(polInd=0; polInd<2; polInd++){
+    int ant=0;
+    for(ant=0; ant<NUM_ANTENNAS; ant++){
+      int freqInd=0;
+      for(freqInd = 0; freqInd < NUM_SAMPLES/2 /* Hackity hack hack*/; freqInd++){
+	int freqInd2 = polInd*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
+	powSpec[freqInd2] = 10*log10(powSpec[freqInd2]/50);
+      }
+      for(freqInd = 0; freqInd < NUM_SAMPLES/2 /* Hackity hack hack*/; freqInd++){
+	int freqInd2 = polInd*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
+	if(freqInd==0 || freqInd == (NUM_SAMPLES/2) - 1){
+	  diffPowSpec[freqInd2] = 0;
+	}
+	else{
+	  diffPowSpec[freqInd2] = powSpec[freqInd2+1] - powSpec[freqInd2];
+	}
+      }
+    }
+  }
+
   int eventInd=0;
   for(eventInd=0; eventInd < nEvents; eventInd++){
     /* Pick better polarization */
@@ -554,19 +568,54 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       index2 = eventInd + NUM_EVENTS;
     }
 
+    float maxPhiSectPower[3] = {-1000000};
+    int maxPhiSectPowerBin[3];
+    float maxDiffPowSpec[3] = {-1000000};
+    int maxDiffPowSpecBin[3];
+    int ring=0;
+    int threshFlag = 0;
+    int diffFlag = 0;
+    for(ring=0; ring<3; ring++){
+      int ant = imagePeakPhiSector[index2] + ring*NUM_PHI_SECTORS;
+      int freqInd=0;
+      for(freqInd = 20; freqInd < 20+99 /* Hackity hack hack*/; freqInd++){
+	int freqInd2 = (1-polBit)*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
+	if(powSpec[freqInd2] > maxPhiSectPower[ring]){
+	  maxPhiSectPower[ring] = powSpec[freqInd2];
+	  maxPhiSectPowerBin[ring] = freqInd;
+	}
+	if(diffPowSpec[freqInd2] > maxDiffPowSpec[ring]){
+	  maxDiffPowSpec[ring] = diffPowSpec[freqInd2];
+	  maxDiffPowSpecBin[ring] = freqInd;
+	}
+	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x1){
+	  threshFlag = 1;
+	}
+	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x2){
+	  diffFlag = 1;
+	}
+      }
+    }
+
+    /* This one is a bit mask */
+    header[eventInd].prioritizerStuff = 0;
+    
     /* Value goes between 0->1, get 16 bit precision by multiplying by maximum value of unsigned short... */
     header[eventInd].imagePeak = (unsigned short)(imagePeakVal[index2]*65535);
     header[eventInd].coherentSumPeak = (unsigned short) hilbertPeak[index2];
     header[eventInd].peakThetaBin = (unsigned char) imagePeakTheta2[index2];
-
-    /* Only need 10 bits for this number. Can Left bit-shift by as much as 6. */
+    
+    /* Only need 10 bits for this number. */
     header[eventInd].prioritizerStuff += (0x3ff & ((unsigned short) imagePeakPhiSector[index2]*NUM_BINS_PHI + imagePeakPhi2[index2]));
 
     /* Left bit shift by 1, then set lowest bit as polarization bit */
+    /* Now at 0x7fff */
     header[eventInd].prioritizerStuff <<= 1;
     header[eventInd].prioritizerStuff |= polBit;
-
-    /* Still have 5 bits remaining */
+    /* Still have 5 bits remaining, going to use up two more... */
+    header[eventInd].prioritizerStuff += threshFlag*(0xfff);
+    header[eventInd].prioritizerStuff += diffFlag*(0x1fff);
+    /* Now 3 bits remaining...! */
 
     /* Now actually assign the priority in the header file*/
     float higherImagePeak = imagePeakV > imagePeakH ? imagePeakV : imagePeakH;
@@ -582,12 +631,12 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     header[eventInd].priority = priority;
 
     #ifdef CALIBRATION
-    fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d\n", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, circRadiusSquared, normalizedHilbertPeak, higherImagePeak, priority);
+    fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, circRadiusSquared, normalizedHilbertPeak, higherImagePeak, priority);
+    for(ring=0; ring<3; ring++){
+      fprintf(gpuOutput, "%f %d %f %d ", maxPhiSectPower[ring], maxPhiSectPowerBin[ring], maxDiffPowSpec[ring], maxDiffPowSpecBin[ring]);
+    }
+    fprintf(gpuOutput, "\n");
     #endif
-
-
-
-
   }
 
   /* Add information to gpuPowSpec packet */
@@ -600,7 +649,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	int antInd = phi + NUM_PHI_SECTORS*ring;
 	int bin=0;
 	for(bin=0; bin<99; bin++){
-	  payloadPowSpec[phi].powSpectra[ring][polInd].bins[bin] += nEvents*powSpec[(polInd*NUM_ANTENNAS + antInd)*NUM_SAMPLES/2 + offset + bin];
+	  tempPowSpecHolder[polInd*NUM_ANTENNAS*99 + antInd*99 + bin]+= (nEvents*powSpec[(polInd*NUM_ANTENNAS + antInd)*NUM_SAMPLES/2 + offset + bin]);
 	}
       }
     }
@@ -610,9 +659,24 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     payloadPowSpec[phi].numEventsAveraged += nEvents;
   }
 
-
-
   timeStamp(stamp++, 0, NULL);
+
+
+  if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds){
+    for(polInd=0; polInd<2; polInd++){
+      int phi=0;
+      for(phi=0; phi<NUM_PHI_SECTORS; phi++){
+	int ring=0;
+	for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+	  int antInd = phi + NUM_PHI_SECTORS*ring;
+	  int bin=0;
+	  for(bin=0; bin<99; bin++){
+	    payloadPowSpec[phi].powSpectra[ring][polInd].bins[bin] = (short) (floatToShortConversionForPacket*10*log10(tempPowSpecHolder[polInd*NUM_ANTENNAS*99 + antInd*99 + bin]/50));
+	  }
+	}
+      }
+    }
+  }
 
 #ifdef DEBUG_MODE
   printf("Only allowing one loop through main GPU calculation function in debug mode.\n");
@@ -622,7 +686,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 #endif
   exit(0);
 #endif
-
 }
 
 
@@ -662,6 +725,7 @@ void tidyUpGpuThings(){
   free(offsetInd);
   free(numEventSamples);
   free(passFilterBuffer);
+  free(tempPowSpecHolder);
 
   clFlush(commandQueue);
 

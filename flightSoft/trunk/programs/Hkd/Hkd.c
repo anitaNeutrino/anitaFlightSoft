@@ -254,8 +254,8 @@ int main (int argc, char *argv[])
 		
 /* 		//Send down calibration info */
 /* 	    } */
-	    if(fdMag) retVal=checkMagnetometer(); 
 	    if((millisecs % readoutPeriod)==0) {
+	      if(fdMag) retVal=checkMagnetometer(); 
 		
 		time(&rawTime);		
 //		if(fdMag && sendMagRequests) sendMagnetometerRequest();
@@ -339,6 +339,12 @@ int readConfigFile()
    
 }
 
+int getNTUDiskTemp(unsigned short packed, int index) {
+  if(index==0) return (packed&0x1f)*2;
+  if(index==1) return ((packed&0x3e0)>>5)*2;
+  if(index==2) return ((packed&0x7c00)>>10)*2;
+  return -1;
+}
 
 
 int readSBSTemps ()
@@ -348,7 +354,7 @@ int readSBSTemps ()
     sbsData.temp[tempIndex]=readSBSTemperature(tempIndex);
   }
   if(printToScreen) {
-    printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f %3.1f\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),convertAnitaToHuman(sbsData.temp[4]));
+    printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f \nNTU %d %d %d %d %d %d\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),getNTUDiskTemp(sbsData.temp[4],0),getNTUDiskTemp(sbsData.temp[4],1),getNTUDiskTemp(sbsData.temp[4],2),getNTUDiskTemp(sbsData.temp[5],0),getNTUDiskTemp(sbsData.temp[5],1),getNTUDiskTemp(sbsData.temp[5],2));
   }
   return 0;
 }
@@ -668,7 +674,7 @@ int setupMagnetometer()
 	    printf("Sent %d bytes to Magnetometer serial port:\t%s\n",retVal,MAGNETOMETER_DEV_NAME);
     }
 
-sprintf(setupCommand,"M?\n");
+    sprintf(setupCommand,"M?\n");
     retVal=write(fdMag, setupCommand, strlen(setupCommand));
     if(retVal<0) {
 	syslog(LOG_ERR,"Unable to write to Magnetometer Serial port\n, write: %s", strerror(errno));
@@ -867,13 +873,13 @@ int checkMagnetometer()
 //    magData.y=0;
 //    magData.z=0;
     retVal=isThereDataNow(fdMag);
-//    printf("We think there is %d in the way of data\n",retVal);
+    //    printf("We think there is %d in the way of data\n",retVal);
     if(retVal!=1) return 0;
-//    sleep(1);
+    usleep(1000);
     retVal=read(fdMag,tempData,256);
 
     if(retVal>10) {
-//	printf("Retval %d\n",retVal);
+      printf("Retval %d -- %s\n",retVal,tempData);
 //	strcpy(tempData,"0.23456 0.78900 0.23997 4C");
 	sscanf(tempData,"%f %f %f %x",&x,&y,&z,&checksum);
 //	printf("%s\n",tempData);

@@ -38,7 +38,7 @@
 #define LOS_DEVICE "/dev/los"
 #endif
 
-#define NUM_HK_TELEM_DIRS 20 
+#define NUM_HK_TELEM_DIRS 21 
 
 typedef enum {
   LOS_TELEM_FIRST=0,
@@ -52,6 +52,7 @@ typedef enum {
   LOS_TELEM_ADU5A_PAT,
   LOS_TELEM_ADU5B_PAT,
   LOS_TELEM_G12_POS,
+  LOS_TELEM_GPU,
   LOS_TELEM_ADU5A_VTG,
   LOS_TELEM_ADU5B_VTG,
   LOS_TELEM_G12_GGA,
@@ -200,6 +201,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
    makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
    makeDirectories(G12_SAT_TELEM_LINK_DIR);
    makeDirectories(G12_POS_TELEM_LINK_DIR);
+   makeDirectories(GPU_TELEM_LINK_DIR);
    makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
    makeDirectories(REQUEST_TELEM_LINK_DIR);
 
@@ -672,6 +674,7 @@ void fillBufferWithHk()
      ADU5A_PAT_TELEM_LINK_DIR,
      ADU5B_PAT_TELEM_LINK_DIR,
      G12_POS_TELEM_LINK_DIR,
+     GPU_TELEM_LINK_DIR,
      ADU5A_VTG_TELEM_LINK_DIR,
      ADU5B_VTG_TELEM_LINK_DIR,
      G12_GGA_TELEM_LINK_DIR,
@@ -693,6 +696,7 @@ void fillBufferWithHk()
      ADU5A_PAT_TELEM_DIR,
      ADU5B_PAT_TELEM_DIR,
      G12_POS_TELEM_DIR,
+     GPU_TELEM_DIR,
      ADU5A_VTG_TELEM_DIR,
      ADU5B_VTG_TELEM_DIR,
      G12_GGA_TELEM_DIR,
@@ -714,6 +718,7 @@ void fillBufferWithHk()
      sizeof(GpsAdu5PatStruct_t),
      sizeof(GpsAdu5PatStruct_t),
      sizeof(GpsG12PosStruct_t),
+     sizeof(GpuPhiSectorPowerSpectrumStruct_t),
      sizeof(GpsAdu5VtgStruct_t),
      sizeof(GpsAdu5VtgStruct_t),
      sizeof(GpsGgaStruct_t),
