@@ -420,14 +420,20 @@ int executeCommand(CommandStruct_t *theCmd)
     }
   case CMD_TAIL_VAR_LOG_MESSAGES:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    return requestFile("/var/log/messages",ivalue);
+    return requestJournalCtl(JOURNALCTL_NO_OPT,0,ivalue);
   case CMD_TAIL_VAR_LOG_ANITA:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    return requestFile("/var/log/anita.log",ivalue);
+    return requestJournalCtl(JOURNALCTL_OPT_COMM,ID_ACQD,ivalue);
+    //    return requestFile("/var/log/anita.log",ivalue);
   case LOG_REQUEST_COMMAND:
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
     return logRequestCommand(ivalue,ivalue2);
+  case JOURNALCTL_REQUEST_COMMAND:
+    ivalue=theCmd->cmd[1]; //< JournalctlOptionCommand_t;
+    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //< Num Lines
+    ivalue3=theCmd->cmd[4]+(theCmd->cmd[5]<<8); //Option
+    return requestJournalCtl(ivalue,ivalue3,ivalue2);
   case CMD_SHUTDOWN_HALT:
     //Halt
     time(&rawtime);
@@ -450,7 +456,7 @@ int executeCommand(CommandStruct_t *theCmd)
     time(&rawtime);
     return rawtime;
   case CMD_KILL_PROGS:
-    //Kill progs
+    //Kill prog
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     retVal=killPrograms(ivalue);
     return retVal;
@@ -697,45 +703,6 @@ int executeCommand(CommandStruct_t *theCmd)
     if(retVal) return 0;
     return rawtime;
 
-  case SET_CALPULSER_SWITCH:
-    //setCalPulserSwitch
-    if(theCmd->cmd[1]>0 && theCmd->cmd[1]<5)
-      configModifyInt("Calibd.config","rfSwitch","steadyState",theCmd->cmd[1],&rawtime);
-    else //Switch off steady state
-      configModifyInt("Calibd.config","rfSwitch","steadyState",0,&rawtime);
-    retVal=sendSignal(ID_CALIBD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime;
-	    
-  case SET_CALPULSER_ATTEN:
-    //setCalPulserAtten
-    if(theCmd->cmd[1]<8) {
-      configModifyInt("Calibd.config","attenuator","attenStartState",theCmd->cmd[1],&rawtime);
-      configModifyInt("Calibd.config","attenuator","attenLoop",0,&rawtime);
-    }
-    else //Switch on looping
-      configModifyInt("Calibd.config","attenuator","attenLoop",1,&rawtime);
-    retVal=sendSignal(ID_CALIBD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime;
-  case SET_ATTEN_LOOP_PERIOD:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Calibd.config","attenuator","attenPeriod",ivalue,&rawtime);
-    retVal=sendSignal(ID_CALIBD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime; 
-  case SET_SWITCH_LOOP_PERIOD:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Calibd.config","rfSwitch","switchPeriod",ivalue,&rawtime);
-    retVal=sendSignal(ID_CALIBD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime; 
-  case SET_PULSER_OFF_PERIOD:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Calibd.config","rfSwitch","offPeriod",ivalue,&rawtime);
-    retVal=sendSignal(ID_CALIBD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime; 
   case SET_CALIB_WRITE_PERIOD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     configModifyInt("Calibd.config","calibd","writePeriod",ivalue,&rawtime);
@@ -927,12 +894,6 @@ int executeCommand(CommandStruct_t *theCmd)
   case ACQD_REPROGRAM_TURF: 	    
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","acqd","reprogramTurf",ivalue,&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime;
-  case ACQD_SURFHK_PERIOD: 	    
-    ivalue=theCmd->cmd[1];
-    configModifyInt("Acqd.config","acqd","surfHkPeriod",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -1347,7 +1308,7 @@ int startPrograms(int progMask)
 		getProgName(prog),getProgName(prog));
       }
       else if(prog==ID_ACQD) {
-	sprintf(daemonCommand,"nice -n 10 daemon -r %s -n %s ",
+	sprintf(daemonCommand,"daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
       else if(prog==ID_ARCHIVED) {
@@ -2570,7 +2531,10 @@ int mountNextNtu(int whichDrive) {
 
 int mountNextUsb(int whichUsb) {
   time_t rawtime;
-  int currentNum[2]={0};
+  int currentPort=1;
+  int currentDrive=1;
+  //  int currentNum=0;
+  //  int currentNum[2]={0};
   readConfig(); // Get latest names and status
 
   //    if(hkDiskBitMask&USB_DISK_MASK) disableUsb=0;
@@ -2587,22 +2551,25 @@ int mountNextUsb(int whichUsb) {
   //    else if(intExtFlag==3 && disableUsb) intExtFlag=2;
   //    else if(intExtFlag==3 && disableUsbExt) intExtFlag=1;
 
-  sscanf(usbName,"bigint%02d",&currentNum[0]);
-  if(whichUsb==0)
-    currentNum[0]++;
-  else 
-    currentNum[0]=whichUsb;
-  if(currentNum[0]>NUM_USBS) {
-    return 0;	
+  sscanf(usbName,"rf_%d_%d",&currentPort,&currentDrive);
+  if(whichUsb==0) {
+    currentDrive++;
+    if(currentDrive>8) {
+      currentDrive=1;
+      currentPort++;
+      if(currentPort>3) {
+	return 0;
+      }
+    }
   }
-
-  //    sscanf(usbExtName,"usbext%02d",&currentNum[1]);
-  //    if(whichUsb==0)
-  //	currentNum[1]++;
-  //    else 
-  //	currentNum[1]=whichUsb;
-  //    if(currentNum[1]>NUM_USBEXTS && intExtFlag>1) return 0;
-
+  else  {
+    //    currentNum=whichUsb;
+    currentPort=(whichUsb/8)+1;
+    currentDrive=(whichUsb%8)+1;
+    if(currentPort>3) {
+      return 0;
+    } 
+  }
   //Kill all programs that write to disk
   killDataPrograms();
   closeHkFilesAndTidy(&cmdWriter);    
@@ -2610,7 +2577,8 @@ int mountNextUsb(int whichUsb) {
 
   //    exit(0);
   //Change to new drive
-  sprintf(usbName,"bigint%02d",currentNum[0]);
+  //  sprintf(usbName,"bigint%02d",currentNum[0]);
+  sprintf(usbName,"rf_%d_%d",currentPort,currentDrive);
   configModifyString("anitaSoft.config","global","usbName",usbName,&rawtime);
   system("/home/anita/flightSoft/bin/mountCurrentUsb.sh");
 
@@ -3308,13 +3276,14 @@ int readSipdConfig()
 
 int makeNewRunDirs() {
   char filename[FILENAME_MAX];
-  RunStart_t runStart;
+
   int diskInd=0;
   int retVal=0;
   int runNum=getNewRunNumber();
   char newRunDir[FILENAME_MAX];
   char currentDirLink[FILENAME_MAX];
   char mistakeDirName[FILENAME_MAX];
+  RunStart_t runStart;
   runStart.runNumber=runNum;
   runStart.unixTime=time(NULL);
   runStart.eventNumber=getLatestEventNumber();
@@ -3360,6 +3329,10 @@ int makeNewRunDirs() {
   sprintf(filename,"%s/run_%u.dat",SIPD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
   normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
   makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
+
+  sprintf(filename,"%s/run_%u.dat",OPENPORTD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
+  normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
+  makeLink(filename,OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
 
   return retVal;
 }
@@ -3453,9 +3426,11 @@ int logRequestCommand(int logNum, int numLines)
 {
   switch(logNum) {
   case LOG_REQUEST_JOURNALCTL:
-    return requestFile("/var/log/messages",numLines);
+    return requestJournalCtl(JOURNALCTL_NO_OPT,0,numLines);
+    //    return requestFile("/var/log/messages",numLines);
   case LOG_REQUEST_ANITA:
-    return requestFile("/var/log/anita.log",numLines);
+    return requestJournalCtl(JOURNALCTL_OPT_COMM,ID_ACQD,numLines);
+    //    return requestFile("/var/log/anita.log",numLines);
   case LOG_REQUEST_SECURITY:
     return requestFile("/var/log/security",numLines);
   case LOG_REQUEST_NTU:

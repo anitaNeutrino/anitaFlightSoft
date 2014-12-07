@@ -1448,23 +1448,6 @@ typedef struct {
 } PedestalStruct_t;
 
 
-typedef struct {
-  float bins[99];
-} GpuAnitaBandPowerSpectrumStruct_t;
-
-typedef struct {
-  GenericHeader_t gHdr;
-  unsigned int unixTimeFirstEvent;
-  unsigned int unixTimeLastEvent;
-  unsigned int numEventsAveraged;
-  unsigned int firstEventInAverage;
-  unsigned char phiSector;
-  unsigned char nothing;
-  unsigned short moreNothing;
-  GpuAnitaBandPowerSpectrumStruct_t powSpectra[NUM_ANTENNA_RINGS][2];
-} GpuPhiSectorPowerSpectrumStruct_t;
-
-
 
 /////////////////////////////////////////////////////////////////////////////
 ///// Slow Rate Stuff                                                   /////

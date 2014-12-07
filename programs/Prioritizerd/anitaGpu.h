@@ -60,7 +60,7 @@ void tidyUpGpuThings();
 //void addEventToGpuQueue(int eventInd, PedSubbedEventBody_t pedSubBody, AnitaEventHeader_t theHeader, const int alreadyUnwrappedAndCalibrated);
 
 void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t theHeader);
-void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec);
+void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int writePowSpecPeriodSeconds);
 
 void assignPriorities(int nEvents, AnitaEventHeader_t* theHeader, float* imagePeakVal);
 float compareForSort(const void* a, const void* b);
@@ -149,7 +149,7 @@ buffer* phiSectorTriggerBufferHPol;
 
 buffer* numEventsInQueueBuffer;
 buffer* binToBinDifferenceThresh_dBBuffer;
-// buffer* absMagnitudeThresh_dBmBuffer;
+buffer* absMagnitudeThresh_dBmBuffer;
 
 /* Internal buffers */
 buffer* rmsBuffer;
@@ -301,6 +301,7 @@ int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
 float* powSpec;
 short* passFilter;
+float* tempPowSpecHolder;
 // short* anyFailDifference;
 // short* anyFailMagnitude;
 

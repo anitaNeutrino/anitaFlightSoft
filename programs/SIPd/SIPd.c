@@ -42,7 +42,7 @@
 
 
 #define SEND_REAL_SLOW_DATA 1
-#define NUM_HK_TELEM_DIRS 20 
+#define NUM_HK_TELEM_DIRS 21
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -57,6 +57,7 @@ typedef enum {
   TDRSS_TELEM_ADU5A_PAT,
   TDRSS_TELEM_ADU5B_PAT,
   TDRSS_TELEM_G12_POS,
+  TDRSS_TELEM_GPU,
   TDRSS_TELEM_ADU5A_VTG,
   TDRSS_TELEM_ADU5B_VTG,
   TDRSS_TELEM_G12_GGA,
@@ -156,6 +157,7 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      ADU5A_PAT_TELEM_LINK_DIR,
      ADU5B_PAT_TELEM_LINK_DIR,
      G12_POS_TELEM_LINK_DIR,
+     GPU_TELEM_LINK_DIR,
      ADU5A_VTG_TELEM_LINK_DIR,
      ADU5B_VTG_TELEM_LINK_DIR,
      G12_GGA_TELEM_LINK_DIR,
@@ -177,6 +179,7 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      ADU5A_PAT_TELEM_DIR, //7 
      ADU5B_PAT_TELEM_DIR, //8
      G12_POS_TELEM_DIR, //9
+     GPU_TELEM_DIR, //9
      ADU5A_VTG_TELEM_DIR, //10
      ADU5B_VTG_TELEM_DIR, //11
      G12_GGA_TELEM_DIR, //12
@@ -198,6 +201,7 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(GpsAdu5PatStruct_t),
    sizeof(GpsAdu5PatStruct_t),
    sizeof(GpsG12PosStruct_t),
+   sizeof(GpuPhiSectorPowerSpectrumStruct_t),
    sizeof(GpsAdu5VtgStruct_t),
    sizeof(GpsAdu5VtgStruct_t),
    sizeof(GpsGgaStruct_t),
@@ -211,8 +215,8 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   };
 
 //Will make these configurable soon
-int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,19,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,2,2,2,1,1,1,5,5,3,1,3};
+int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,2,2,2,1,1,1,5,5,3,1,3};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -306,6 +310,7 @@ int main(int argc, char *argv[])
     makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
     makeDirectories(G12_SAT_TELEM_LINK_DIR);
     makeDirectories(G12_POS_TELEM_LINK_DIR);
+    makeDirectories(GPU_TELEM_LINK_DIR);
     makeDirectories(PEDESTAL_TELEM_LINK_DIR);
     makeDirectories(SURFHK_TELEM_LINK_DIR);
     makeDirectories(TURFHK_TELEM_LINK_DIR);

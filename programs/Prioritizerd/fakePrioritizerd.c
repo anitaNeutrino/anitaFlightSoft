@@ -30,12 +30,35 @@ PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
 GpuPhiSectorPowerSpectrumStruct_t payloadPowSpec[NUM_PHI_SECTORS];
 AnitaHkWriterStruct_t gpuWriter;
 
-#define NUM_RUNS 21
-int runs[NUM_RUNS] = {11150,11151,11152,11153,11154,11155,11156,11157,11158,11159,11160,11161,11162,11163,11164,11165,11166,11167,11168,11169,11170};
-int firstEvents[NUM_RUNS] = {48816101,48827301,48834201,48840101,48852501,48860201,48866501,48872701,48879301,48885501,48892101,48898101,48905301,48910701,48916801,48921601,48926801,48931401,48936401,48941701,48941701};
-int lastEvents[NUM_RUNS] = {48827133,48833893,48840076,48852498,48860143,48866401,48872457,48879114,48885253,48892088,48897996,48905232,48910653,48916709,48921523,48926570,48931221,48936323,48941615,48941701,48943571};
+/* #define NUM_RUNS 21 */
+/* int runs[NUM_RUNS] = {11150,11151,11152,11153,11154,11155,11156,11157,11158,11159,11160,11161,11162,11163,11164,11165,11166,11167,11168,11169,11170}; */
+/* int firstEvents[NUM_RUNS] = {48816101,48827301,48834201,48840101,48852501,48860201,48866501,48872701,48879301,48885501,48892101,48898101,48905301,48910701,48916801,48921601,48926801,48931401,48936401,48941701,48941701}; */
+/* int lastEvents[NUM_RUNS] = {48827133,48833893,48840076,48852498,48860143,48866401,48872457,48879114,48885253,48892088,48897996,48905232,48910653,48916709,48921523,48926570,48931221,48936323,48941615,48941701,48943571}; */
 
-int selectedRun = 11157;
+#define NUM_RUNS 15
+int runs[NUM_RUNS] = {11795, 11796, 11797, 11798, 11799, 11800, 11801, 11802, 11803, 11804, 11805, 11806, 11807, 11808, 11809};
+int firstEvents[NUM_RUNS] = {75504701, 75511101, 75525001, 75529501, 75534801, 75540601, 75545901, 75553201, 75561401, 75566701, 75571401, 75575401, 75580101, 75583901, 75587901};
+int lastEvents[NUM_RUNS] = {75511090, 75524914, 75529463, 75534737, 75540599, 75545825, 75553100, 75561342, 75566645, 75571342, 75575363, 75580000, 75583839, 75587821, 75653732};
+
+/* # Phi sectors: 15 + 16 + 1 */
+/* # Elevation -10 deg */
+/* # PID Goals (T, M, B) = (450, 450, 450) */
+/* # run index, attenuation */
+/* run_index_array = [[, 40.], */
+/*                    [, 39.], */
+/*                    [, 38.], */
+/*                    [, 37.], */
+/*                    [, 36.], */
+/*                    [, 35.], */
+/*                    [, 34.], */
+/*                    [, 33.], */
+/*                    [, 41.], */
+/*                    [, 42.], */
+/*                    [, 43.], */
+/*                    [, 44.], */
+/*                    [, 45.], */
+/*                    [, 46.], */
+/*                    [, 47.]] */
 
 int main(int argc, char *argv[]){
 
@@ -123,7 +146,7 @@ int main(int argc, char *argv[]){
     int runInd=0;
     for(runInd=0; runInd<NUM_RUNS; runInd++) {
       int run = runs[runInd];
-      if(run!=selectedRun) continue;
+      /* if(run!=selectedRun) continue; */
 
       const char* baseDir = "/home/anita/anitaStorage/antarctica14/raw";
       int eventFileNum=0;
@@ -211,7 +234,7 @@ int main(int argc, char *argv[]){
 
 	/* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
 	if(eventsReadIn>0){
-	  mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec);
+	  mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec, writePowSpecPeriodSeconds);
 	}
 
 	if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds
