@@ -75,7 +75,6 @@
 //Trigger Stuff
 #define ANTS_PER_SURF 4
 #define TRIGGER_SURFS 8
-#define TRIGGERS_PER_SURF 8
 #define PHI_SECTORS 16
 #define NADIR_ANTS 8
 

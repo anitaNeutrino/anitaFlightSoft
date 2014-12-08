@@ -47,17 +47,17 @@
 
 typedef enum {
   TDRSS_TELEM_FIRST=0,
-  TDRSS_TELEM_CMD_ECHO=0,
-  TDRSS_TELEM_MONITOR,
-  TDRSS_TELEM_HEADER,
-  TDRSS_TELEM_HK,
-  TDRSS_TELEM_ADU5A_SAT,
-  TDRSS_TELEM_ADU5B_SAT,
-  TDRSS_TELEM_G12_SAT,
-  TDRSS_TELEM_ADU5A_PAT,
-  TDRSS_TELEM_ADU5B_PAT,
-  TDRSS_TELEM_G12_POS,
-  TDRSS_TELEM_GPU,
+  TDRSS_TELEM_CMD_ECHO=0, //0
+  TDRSS_TELEM_MONITOR, //1
+  TDRSS_TELEM_HEADER, //2
+  TDRSS_TELEM_HK, //3
+  TDRSS_TELEM_ADU5A_SAT, //4
+  TDRSS_TELEM_ADU5B_SAT, //5
+  TDRSS_TELEM_G12_SAT, //6
+  TDRSS_TELEM_ADU5A_PAT, //7
+  TDRSS_TELEM_ADU5B_PAT,//8
+  TDRSS_TELEM_G12_POS, //9 
+  TDRSS_TELEM_GPU, //10
   TDRSS_TELEM_ADU5A_VTG,
   TDRSS_TELEM_ADU5B_VTG,
   TDRSS_TELEM_G12_GGA,
@@ -179,17 +179,17 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      ADU5A_PAT_TELEM_DIR, //7 
      ADU5B_PAT_TELEM_DIR, //8
      G12_POS_TELEM_DIR, //9
-     GPU_TELEM_DIR, //9
-     ADU5A_VTG_TELEM_DIR, //10
-     ADU5B_VTG_TELEM_DIR, //11
-     G12_GGA_TELEM_DIR, //12
-     ADU5A_GGA_TELEM_DIR, //13
-     ADU5B_GGA_TELEM_DIR, //14
-     SURFHK_TELEM_DIR, //15
-     TURFHK_TELEM_DIR,//16
-     OTHER_MONITOR_TELEM_DIR, //17
-     PEDESTAL_TELEM_DIR, //18
-     REQUEST_TELEM_DIR}; //19
+     GPU_TELEM_DIR, //10
+     ADU5A_VTG_TELEM_DIR, //11
+     ADU5B_VTG_TELEM_DIR, //12
+     G12_GGA_TELEM_DIR, //13
+     ADU5A_GGA_TELEM_DIR, //14
+     ADU5B_GGA_TELEM_DIR, //15
+     SURFHK_TELEM_DIR, //16
+     TURFHK_TELEM_DIR,//17
+     OTHER_MONITOR_TELEM_DIR, //18
+     PEDESTAL_TELEM_DIR, //19
+     REQUEST_TELEM_DIR}; //20
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   {sizeof(CommandEcho_t),
    sizeof(MonitorStruct_t),
@@ -216,7 +216,7 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
 
 //Will make these configurable soon
 int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,2,2,2,1,1,1,5,5,3,1,3};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -761,6 +761,13 @@ void comm1Handler()
     fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
     printf("SlowRateFull_t %u -- %f %f\n",slowRateData.unixTime,slowRateData.hk.latitude,slowRateData.hk.longitude);
     ret = sipcom_slowrate_write(COMM1, (unsigned char*)&slowRateData, sizeof(SlowRateFull_t));
+    
+    FILE *fpOut = fopen("/tmp/slowTdrss.dat","a");
+    if(fpOut) {
+      fwrite(&slowRateData,sizeof(SlowRateFull_t),1,fpOut);
+      fclose(fpOut);
+    }
+
 
     if (ret) {
 	fprintf(stderr, "comm1Handler: %s\n", sipcom_strerror());
@@ -795,6 +802,12 @@ void comm2Handler()
     fillGenericHeader(&slowRateData,PACKET_SLOW_FULL,sizeof(SlowRateFull_t));
     printf("SlowRateFull_t %u -- %f %f\n",slowRateData.unixTime,slowRateData.hk.latitude,slowRateData.hk.longitude);
     ret = sipcom_slowrate_write(COMM2,(unsigned char*) &slowRateData, sizeof(SlowRateFull_t));
+
+    FILE *fpOut = fopen("/tmp/slowIridium.dat","a");
+    if(fpOut) {
+      fwrite(&slowRateData,sizeof(SlowRateFull_t),1,fpOut);
+      fclose(fpOut);
+    }
 
     if (ret) {
 	fprintf(stderr, "comm2Handler: %s\n", sipcom_strerror());

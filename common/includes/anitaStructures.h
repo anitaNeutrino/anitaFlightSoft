@@ -694,7 +694,7 @@ typedef struct {
 typedef struct {
     unsigned int eventNumber;
     unsigned char rfPwrAvg[ACTIVE_SURFS][RFCHAN_PER_SURF];
-    unsigned char avgScalerRates[TRIGGER_SURFS][TRIGGERS_PER_SURF]; ///< * 2^7
+    unsigned char avgScalerRates[TRIGGER_SURFS][SCALERS_PER_SURF]; ///< * 2^7
   //unsigned char rmsScalerRates[TRIGGER_SURFS][TRIGGERS_PER_SURF];
   //    unsigned char avgL1Rates[TRIGGER_SURFS]; ///< 3 of 8 counters --fix later
   //    unsigned char avgL2Rates[PHI_SECTORS]; ///< average of upper and lower
@@ -1446,6 +1446,22 @@ typedef struct {
   unsigned short thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< mean pedestal 
     unsigned short pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< 10 x RMS of the samples (not of mean)
 } PedestalStruct_t;
+
+
+typedef struct {
+  short bins[99];
+} GpuAnitaBandPowerSpectrumStruct_t;
+
+typedef struct {
+  GenericHeader_t gHdr;
+  unsigned int unixTimeFirstEvent;
+  unsigned int unixTimeLastEvent;
+  unsigned int numEventsAveraged;
+  unsigned int firstEventInAverage;
+  unsigned char phiSector;
+  unsigned char nothing;
+  GpuAnitaBandPowerSpectrumStruct_t powSpectra[NUM_ANTENNA_RINGS][2];
+} GpuPhiSectorPowerSpectrumStruct_t;
 
 
 
