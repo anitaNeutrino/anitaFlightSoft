@@ -11,6 +11,8 @@ int readConfig();
 void prepWriterStructs();
 int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi);
 
+
+int hkDiskBitMask=0;
 int panicQueueLength=5000;
 
 //Global Control Variables
@@ -100,7 +102,6 @@ int main(int argc, char *argv[]){
   makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
   makeDirectories(ACQD_EVENT_LINK_DIR);
 
-  makeDirectories(GPU_ARCHIVE_DIR); /* ? */
   makeDirectories(GPU_TELEM_DIR);
   makeDirectories(GPU_TELEM_LINK_DIR);
 
@@ -322,11 +323,16 @@ int readConfig()
   //    KvpErrorCode kvpStatus=0;
   int status=0;
   char* eString ;
+
+
   kvpReset();
+  status = configLoad (GLOBAL_CONF_FILE,"global") ;
   status = configLoad ("Prioritizerd.config","output") ;
   if(status == CONFIG_E_OK) {
     printToScreen=kvpGetInt("printToScreen",-1);
     verbosity=kvpGetInt("verbosity",-1);
+    hkDiskBitMask=kvpGetInt("hkDiskBitMask",0);
+
     if(printToScreen<0) {
       syslog(LOG_WARNING,
 	     "Couldn't fetch printToScreen, defaulting to zero");
@@ -394,8 +400,8 @@ void prepWriterStructs() {
     //Hk Writer
 
     sprintf(gpuWriter.relBaseName,"%s/",GPU_ARCHIVE_DIR);
-    sprintf(gpuWriter.filePrefix,"mon");
+    sprintf(gpuWriter.filePrefix,"gpu");
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	gpuWriter.currentFilePtr[diskInd]=0;
-    gpuWriter.writeBitMask=0; //hkDiskBitMask;
+    gpuWriter.writeBitMask=hkDiskBitMask;
 }
