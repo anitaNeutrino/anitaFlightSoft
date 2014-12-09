@@ -24,7 +24,7 @@
 #define NUM_EVENTS 128
 #define NUM_PHI_SECTORS 16
 #define NUM_RINGS 3
-#define NOMINAL_SAMPLING 1./2.6 /*0.25f*/
+#define NOMINAL_SAMPLING (1./2.6) /*0.25f*/
 #define NUM_BINS_PHI 64 /* This is for a single phi-sector */
 #define NUM_BINS_THETA 256
 #define PI 3.141592653589f

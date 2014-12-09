@@ -23,7 +23,10 @@ void prepareGpuThings(){
   #ifdef CALIBRATION
   gpuOutput = NULL;
   gpuOutput = fopen("/tmp/gpuOutput.dat", "w");
-  printf("Compiled with calibration flags! This will remove antenna orientation effects as I am expecting pulses through the cables...\n");
+  printf("Compiled with CALIBRATION flag! Will generate a file /tmp/gpuOutput.dat with lovely things in it.\n");
+  #endif
+  #ifdef SEAVEY_ORIENTATION_OFF
+  printf("Compiled with SEAVEY_ORIENTATION_OFF flag! This will remove antenna orientation effects as I am expecting pulses through the cables...\n");
   #endif
   
   /* Read in GPU output to priority mappings */
@@ -310,6 +313,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   int phi=0;
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
     if(payloadPowSpec[phi].unixTimeFirstEvent==0){
+      payloadPowSpec[phi].phiSector=phi;
       payloadPowSpec[phi].firstEventInAverage = header[0].eventNumber;
       payloadPowSpec[phi].unixTimeFirstEvent = header[0].unixTime;
     }
@@ -503,7 +507,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     printBufferToTextFile2(commandQueue, "passFilterBuffer.txt", polInd, passFilterBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "fourierBuffer2.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "circularCorrelationBuffer.txt", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "image.txt", polInd, imageBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "image.txt", polInd, imageBuffer, NUM_EVENTS, 10);
     printBufferToTextFile2(commandQueue, "maxThetaInds.txt", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakValBuffer.txt", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakValBuffer2.txt", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
@@ -660,7 +664,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   }
 
   timeStamp(stamp++, 0, NULL);
-
 
   if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds){
     for(polInd=0; polInd<2; polInd++){
@@ -863,11 +866,13 @@ short* fillDeltaTArrays(){
       else{
 	int localInd = localCombo % NUM_GLOBAL_COMBOS_PER_PHI_SECTOR;
 	m_ant1[phiSectorInd][localCombo] = m_ant1[phiSectorInd][localInd] + localCombo/NUM_GLOBAL_COMBOS_PER_PHI_SECTOR;
-	if(m_ant1[phiSectorInd][localCombo] % 16 == 0){
+	if(m_ant1[phiSectorInd][localInd]/16 - m_ant1[phiSectorInd][localCombo]/16 != 0){
+	  //	if(m_ant1[phiSectorInd][localCombo] % 16 == 0){
 	  m_ant1[phiSectorInd][localCombo] -= 16;
 	}
 	m_ant2[phiSectorInd][localCombo] = m_ant2[phiSectorInd][localInd] + localCombo/NUM_GLOBAL_COMBOS_PER_PHI_SECTOR;
-	if(m_ant2[phiSectorInd][localCombo] % 16 == 0){
+	if(m_ant2[phiSectorInd][localInd]/16 - m_ant2[phiSectorInd][localCombo]/16 != 0){
+	  //	if(m_ant2[phiSectorInd][localCombo] % 16 == 0){
 	  m_ant2[phiSectorInd][localCombo] -= 16;
 	}
       }
