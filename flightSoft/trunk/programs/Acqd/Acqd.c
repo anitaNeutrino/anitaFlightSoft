@@ -40,7 +40,7 @@
 
 //Definitions
 #define HK_DEBUG 0
-#define SURFHK_PERIOD 50000
+#define SURFHK_PERIOD 52000
 
 
 void servoOnRate(unsigned int eventNumber, unsigned int lastRateCalcEvent, struct timeval *currentTime, struct timeval *lastRateCalcTime);

@@ -25,6 +25,11 @@
 #include "mapLib/mapLib.h"
 #include "includes/anitaStructures.h"
 
+//#define DEBUG_FILE 1
+#define ADU5A_DEBUG "/tmp/fullAdu5A"
+#define ADU5B_DEBUG "/tmp/fullAdu5A"
+
+
 // Forward declarations
 int readConfigFile();
 int openDevices();
@@ -269,6 +274,11 @@ int main (int argc, char *argv[])
     }
     retVal=openDevices();
     prepWriterStructs();
+
+#ifdef DEBUG_FILE
+    unlink(ADU5A_DEBUG);
+    unlink(ADU5A_DEBUG);
+#endif
 
     //Main event loop
     do {
@@ -760,17 +770,24 @@ int checkAdu5A()
     static int lastStar=-10;
     retVal=isThereDataNow(fdAdu5A);
     usleep(5);
+#ifdef DEBUG_FILE
+    FILE *fpTempOut=fopen(ADU5A_DEBUG,"a");
+#endif
 //    printf("Check ADU5A got retVal %d\n",retVal);
     if(retVal!=1) return 0;
-    retVal=read(fdAdu5A, tempData, ADU5_DATA_SIZE);
+    retVal=read(fdAdu5A, tempData, ADU5_DATA_SIZE);  
     if(retVal>0) {
+#ifdef DEBUG_FILE
+      if(fpTempOut) fprintf(fpTempOut,"%s",tempData);
+#endif      
 	for(i=0; i < retVal; i++) {
 	    if(tempData[i]=='*') {
 		lastStar=adu5OutputLength;
 	    }
 //	    printf("%c %d %d\n",tempData[i],adu5OutputLength,lastStar);
 	    adu5Output[adu5OutputLength++]=tempData[i];
-
+	    
+	    //	    printf("ADU5A: %s\n",adu5Output);
 	    if(adu5OutputLength==lastStar+3) {
 	      if(adu5OutputLength) {
 		  if((retVal-i)<50) {
@@ -792,6 +809,9 @@ int checkAdu5A()
     else if(retVal<0) {
 	syslog(LOG_ERR,"ADU5A read error: %s",strerror(errno));
     }
+#ifdef DEBUG_FILE
+    if(fpTempOut) fclose(fpTempOut);
+#endif
     return retVal;
 }
 
@@ -809,17 +829,31 @@ int checkAdu5B()
     static int lastStar=-10;
     retVal=isThereDataNow(fdAdu5B);
     usleep(5);
+#ifdef DEBUG_FILE
+    FILE *fpTempOut=fopen(ADU5B_DEBUG,"a");
+    if(!fpTempOut) {
+      fprintf(stderr,"Couldn't open %s\n",ADU5B_DEBUG);
+    }
+#endif
 //    printf("Check ADU5B got retVal %d\n",retVal);
-    if(retVal!=1) return 0;
+    if(retVal!=1) {
+#ifdef DEBUG_FILE
+      if(fpTempOut)fclose(fpTempOut);
+#endif
+      return 0;
+}
     retVal=read(fdAdu5B, tempData, ADU5_DATA_SIZE);
     if(retVal>0) {
+#ifdef DEBUG_FILE
+      if(fpTempOut) fprintf(fpTempOut,"%s",tempData);
+#endif      
 	for(i=0; i < retVal; i++) {
 	    if(tempData[i]=='*') {
 		lastStar=adu5OutputLength;
 	    }
 //	    printf("%c %d %d\n",tempData[i],adu5OutputLength,lastStar);
 	    adu5Output[adu5OutputLength++]=tempData[i];
-
+	    //	    printf("ADU5B: %s\n",adu5Output);
 	    if(adu5OutputLength==lastStar+3) {
 		if(adu5OutputLength) {
 		  if((retVal-i)<50) {
@@ -839,6 +873,9 @@ int checkAdu5B()
     else if(retVal<0) {
 	syslog(LOG_ERR,"ADU5B read error: %s",strerror(errno));
     }
+#ifdef DEBUG_FILE
+    if(fpTempOut) fclose(fpTempOut);
+#endif
     return retVal;
 }
 
@@ -876,6 +913,10 @@ void processG12Output(char *tempBuffer, int length,int latestData)
     if(!strcmp(subString,"$GPZDA")) {
 //	printf("Got $GPZDA\n");
       processGpzdaString(gpsString,gpsLength,latestData,0);
+    }
+    else if(!strcmp(subString,"$GPGGA")) {
+//	printf("Got $GPGGA\n");
+      processGpggaString(gpsString,gpsLength,0);
     }
     else if(!strcmp(subString,"$PASHR")) {
 	//Maybe have POS,TTT or SAT
@@ -1020,6 +1061,7 @@ void processGpvtgString(char *gpsString, int gpsLength, int fromAdu5) {
 
 
 void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
+  //  printf("processGpggaString\n");
   static int telemCount[3]={0};
   char gpsCopy[ADU5_DATA_SIZE];
   char *subString;   
@@ -1082,6 +1124,9 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
 /* 	   theGga.geoidSeparation); */
 /*     exit(0); */
   
+
+//  printf("GGA: %d -- %d (%d) %d (%d) %d (%d)\n",fromAdu5,telemCount[0],g12GgaTelemEvery,telemCount[1],adu5aGgaTelemEvery,telemCount[2],adu5bGgaTelemEvery);
+
   if(fromAdu5==0) {
       
   fillGenericHeader(&theGga,PACKET_GPS_GGA|PACKET_FROM_G12,sizeof(GpsGgaStruct_t));
@@ -1271,6 +1316,10 @@ void processAdu5Output(char *tempBuffer, int length, int latestData, int fromAdu
     else if(!strcmp(subString,"$GPVTG")) {
 //	printf("Got $GPZDA\n");
       processGpvtgString(gpsString,gpsLength,fromAdu5);
+    }
+    else if(!strcmp(subString,"$GPGGA")) {
+//	printf("Got $GPGGA\n");
+      processGpggaString(gpsString,gpsLength,fromAdu5);
     }
     else if(!strcmp(subString,"$PASHR")) {
 	//Maybe have TTT
@@ -2114,6 +2163,7 @@ int setupAdu5A()
     sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\r\n",adu5aVtgPeriod);
     strcat(adu5aCommand,tempCommand);
     strcat(adu5aCommand,"$PASHQ,PRT\r\n");
+    strcat(adu5aCommand,"$PASHQ,3DF\r\n");
     if(adu5aEnableTtt) strcat(adu5aCommand,"$PASHS,NME,TTT,A,ON\r\n");
 
     if(printToScreen) printf("ADU5A:\n%s\n%s\n",ADU5A_DEV_NAME,adu5aCommand);
@@ -2197,6 +2247,7 @@ int setupAdu5B()
     sprintf(tempCommand,"$PASHS,NME,VTG,A,ON,%2.2f\r\n",adu5bVtgPeriod);
     strcat(adu5bCommand,tempCommand);
     strcat(adu5bCommand,"$PASHQ,PRT\r\n");
+    strcat(adu5bCommand,"$PASHQ,3DF\r\n");
     if(adu5bEnableTtt) strcat(adu5bCommand,"$PASHS,NME,TTT,A,ON\r\n");
 
     if(printToScreen) printf("ADU5B:\n%s\n%s\n",ADU5B_DEV_NAME,adu5bCommand);
