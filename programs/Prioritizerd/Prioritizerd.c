@@ -111,9 +111,11 @@ int main (int argc, char *argv[])
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
     memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
   }
-  
+  retVal=readConfig();
   prepWriterStructs();
 
+
+  
   do {
     if(printToScreen) printf("Initalizing Prioritizerd\n");
     retVal=readConfig();
@@ -264,6 +266,7 @@ int main (int argc, char *argv[])
 int readConfig()
 // Load Prioritizerd config stuff
 {
+  printf("readConfigFile\n");
   // Config file thingies
   //    KvpErrorCode kvpStatus=0;
   int status=0;
@@ -336,12 +339,12 @@ int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi)
 
 void prepWriterStructs() {
     int diskInd;
-    if(printToScreen) 
-	printf("Preparing Writer Structs\n");
+    //    if(printToScreen) 
+      printf("Preparing Writer Structs -- hkDiskBitMask %d\n",hkDiskBitMask);
     //Hk Writer
 
     sprintf(gpuWriter.relBaseName,"%s/",GPU_ARCHIVE_DIR);
-    sprintf(gpuWriter.filePrefix,"mon");
+    sprintf(gpuWriter.filePrefix,"gpu");
     for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
 	gpuWriter.currentFilePtr[diskInd]=0;
     gpuWriter.writeBitMask=hkDiskBitMask;

@@ -17,6 +17,8 @@
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
 
+#include "myInterferometryConstants.h"
+
 /* Functions, if only C had constructors and destructors... */
 void prepareTimingCalibThings();
 void tidyUpTimingCalibThings();
@@ -32,7 +34,7 @@ void readInRelativeCableDelay(const char* fileName);
 /* The meat */
 void doTimingCalibration(int entry, AnitaEventHeader_t theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[]);
 double* interpolateWaveform(int nRaw, double* rawWave, double* times, 
-			    int nInterp, double t0interp, double dtNsInterp, int clockNum);
+			    int nInterp, double t0interp, double dtNsInterp);
 double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes, 
 				    int nInterp, double t0interp, double dtNsInterp);
 

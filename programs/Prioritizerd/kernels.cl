@@ -897,8 +897,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  // Grab neighbouring results for difference
-  float y0 = sampInd > 0 ? powSpecScratch[sampInd - 1].y : summedPowSpec.x;
+  // Grab neighbouring result for difference
   float y3 = sampInd < get_global_size(0) -1 ? powSpecScratch[sampInd + 1].x : summedPowSpec.y;
 
   float2 diff;
