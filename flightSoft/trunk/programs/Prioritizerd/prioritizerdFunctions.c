@@ -159,6 +159,7 @@ void readIn100Events(const char* psevFileName, PedSubbedEventBody_t *theBody, co
     /* processHeader(version); */
   }
   gzclose(infile);
+
 }
 
 

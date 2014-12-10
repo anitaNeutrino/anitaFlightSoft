@@ -2,17 +2,27 @@
 
 /* Globals, to be overwritten by values from Prioritizerd.config */
 /* Used to assign priority, should never assign priority 0!*/
-float circleRadiusSquaredLowBinEdge[NUM_PRIORITIES] = {100, 0.04, 0.05, 0.03, 0.02, 0.01, 0.00, 0, 0, 0};
-float circleRadiusSquaredHighBinEdge[NUM_PRIORITIES] = {99, 0.05, 1.00, 0.04 ,0.03 ,0.02 ,0.01, 1, 1, 1};
+float priorityParamsLowBinEdge[NUM_PRIORITIES] = {100, 0.04, 0.05, 0.03, 0.02, 0.01, 0.00, 0, 0, 0};
+float priorityParamsHighBinEdge[NUM_PRIORITIES] = {99, 0.05, 1.00, 0.04 ,0.03 ,0.02 ,0.01, 1, 1, 1};
 
 /* Used to map imagePeak and hilbertPeak to a single figure of merit */
 float slopeOfImagePeakVsHilbertPeak;
-float interpectOfImagePeakVsHilbertPeak;
+float interceptOfImagePeakVsHilbertPeak;
 float absMagnitudeThresh_dBm;
+
+
+/* Use reconstructed angle to tweak priorities */
+float thetaAngleLowForDemotion =-40;
+float thetaAngleHighForDemotion =10;
+int thetaAnglePriorityDemotion=-1;
+
 
 /* Used for filtering in the GPU */
 float binToBinDifferenceThresh_dB;
 #define floatToShortConversionForPacket 32767./64.15
+
+const float THETA_RANGE = 150;
+const float PHI_RANGE = 22.5;
 
 #ifdef CALIBRATION
 FILE* gpuOutput;
@@ -37,22 +47,24 @@ void prepareGpuThings(){
   if(err!=KVP_E_OK){
     fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
-  err = kvpGetFloatArray ("circleRadiusSquaredLowBinEdge", circleRadiusSquaredLowBinEdge, &numPriorities);
+  err = kvpGetFloatArray ("priorityParamsLowBinEdge", priorityParamsLowBinEdge, &numPriorities);
   if(err!=KVP_E_OK){
-    fprintf(stderr, "Warning! Trying to do load circleRadiusSquaredLowBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
+    fprintf(stderr, "Warning! Trying to do load priorityParamsLowBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
 
-  err = kvpGetFloatArray ("circleRadiusSquaredHighBinEdge", circleRadiusSquaredHighBinEdge, &numPriorities);
+  err = kvpGetFloatArray ("priorityParamsHighBinEdge", priorityParamsHighBinEdge, &numPriorities);
   if(err!=KVP_E_OK){
-    fprintf(stderr, "Warning! Trying to do load circleRadiusSquaredHighBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
+    fprintf(stderr, "Warning! Trying to do load priorityParamsHighBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
 
   binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",3);
   absMagnitudeThresh_dBm=kvpGetFloat("absMagnitudeThresh_dBm",50);
-  interpectOfImagePeakVsHilbertPeak = kvpGetFloat ("interpectOfImagePeakVsHilbertPeak", 1715.23327523);
+  interceptOfImagePeakVsHilbertPeak = kvpGetFloat ("interceptOfImagePeakVsHilbertPeak", 1715.23327523);
   slopeOfImagePeakVsHilbertPeak = kvpGetFloat ("slopeOfImagePeakVsHilbertPeak", 49.10747809);
-
-
+  
+  thetaAngleLowForDemotion = kvpGetFloat("thetaAngleLowForDemotion", -40);
+  thetaAngleHighForDemotion = kvpGetFloat("thetaAngleHighForDemotion", 10);
+  thetaAnglePriorityDemotion = kvpGetInt("thetaAnglePriorityDemotion", 1);
 
 
   /* Large buffers, which will be mapped to GPU memory */
@@ -581,7 +593,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     int diffFlag = 0;
     for(ring=0; ring<3; ring++){
       int ant = imagePeakPhiSector[index2] + ring*NUM_PHI_SECTORS;
-      int freqInd=0;
+      int freqInd=20;
       for(freqInd = 20; freqInd < 20+99 /* Hackity hack hack*/; freqInd++){
 	int freqInd2 = (1-polBit)*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
 	if(powSpec[freqInd2] > maxPhiSectPower[ring]){
@@ -601,13 +613,11 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       }
     }
 
-    /* This one is a bit mask */
-    header[eventInd].prioritizerStuff = 0;
-    
     /* Value goes between 0->1, get 16 bit precision by multiplying by maximum value of unsigned short... */
     header[eventInd].imagePeak = (unsigned short)(imagePeakVal[index2]*65535);
     header[eventInd].coherentSumPeak = (unsigned short) hilbertPeak[index2];
     header[eventInd].peakThetaBin = (unsigned char) imagePeakTheta2[index2];
+    float thetaDegPeak = -1*THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
     
     /* Only need 10 bits for this number. */
     header[eventInd].prioritizerStuff += (0x3ff & ((unsigned short) imagePeakPhiSector[index2]*NUM_BINS_PHI + imagePeakPhi2[index2]));
@@ -617,25 +627,47 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     header[eventInd].prioritizerStuff <<= 1;
     header[eventInd].prioritizerStuff |= polBit;
     /* Still have 5 bits remaining, going to use up two more... */
-    header[eventInd].prioritizerStuff += threshFlag*(0xfff);
-    header[eventInd].prioritizerStuff += diffFlag*(0x1fff);
+    header[eventInd].prioritizerStuff |= (threshFlag << 11);
+    header[eventInd].prioritizerStuff |= (diffFlag << 12);
     /* Now 3 bits remaining...! */
+    /* Just used another bit in anitaTimingCalib.c for saturation flag! at (1 << 13) */
+    /* Now 2 bits remaining */
+    
 
     /* Now actually assign the priority in the header file*/
     float higherImagePeak = imagePeakV > imagePeakH ? imagePeakV : imagePeakH;
-    float normalizedHilbertPeak = (hilbertPeak[index2] - interpectOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
-    float circRadiusSquared = normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak;
+    float normalizedHilbertPeak = (hilbertPeak[index2] - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
+    float priorityParam = sqrt(normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak);
 
     int priority = 0;
-    for(priority=1; priority<NUM_PRIORITIES; priority++){
-      if(circRadiusSquared >= circleRadiusSquaredLowBinEdge[priority] && circRadiusSquared<circleRadiusSquaredHighBinEdge[priority]){
-	break;
+    if((priority & (1<<13)) > 0){
+      /* Found saturation when unwrapping */
+      priority = 9;
+    }
+    else{
+      for(priority=1; priority<NUM_PRIORITIES; priority++){
+	if(priorityParam >= priorityParamsLowBinEdge[priority] && priorityParam<priorityParamsHighBinEdge[priority]){
+	  break;
+	}
       }
     }
+    if(priority<=0 || priority >= 10){ /* Check I didn't mess up... */
+      fprintf(stderr, "Something went wrong with priority assignment for event number %u. Will assign priority 9.\n", header[eventInd].eventNumber);
+      syslog(LOG_ERR, "Something went wrong with priority assignment for event number %u. Will assign priority 9.\n", header[eventInd].eventNumber);
+      priority = 9;
+    }
+
+
+
+    /* Finally tweak priority based on reconstructed angle .. */
+    if((thetaDegPeak > thetaAngleHighForDemotion || thetaDegPeak < thetaAngleLowForDemotion) && priority <6){
+      priority += thetaAnglePriorityDemotion;
+    }
+
     header[eventInd].priority = priority;
 
     #ifdef CALIBRATION
-    fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, circRadiusSquared, normalizedHilbertPeak, higherImagePeak, priority);
+    fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, priorityParam, normalizedHilbertPeak, higherImagePeak, priority);
     for(ring=0; ring<3; ring++){
       fprintf(gpuOutput, "%f %d %f %d ", maxPhiSectPower[ring], maxPhiSectPowerBin[ring], maxDiffPowSpec[ring], maxDiffPowSpecBin[ring]);
     }
@@ -805,9 +837,6 @@ int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
 // Various bits taken from AnitaGeometry.cxx on 29/11/2013 
 short* fillDeltaTArrays(){
   short* offsetInd = malloc(sizeof(short)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_PHI*NUM_BINS_THETA);
-
-  const float THETA_RANGE = 150;
-  const float PHI_RANGE = 22.5;
 
   float rArray[NUM_ANTENNAS]={0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447};
 

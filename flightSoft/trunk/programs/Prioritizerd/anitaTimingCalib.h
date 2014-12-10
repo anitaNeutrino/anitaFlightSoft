@@ -16,6 +16,8 @@
 /* Anita flight software thingymebobs */
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
+#include "configLib/configLib.h"
+#include "kvpLib/keyValuePair.h"
 
 #include "myInterferometryConstants.h"
 

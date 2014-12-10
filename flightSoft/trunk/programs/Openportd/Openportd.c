@@ -37,18 +37,18 @@
 
 typedef enum {
   OPENPORT_TELEM_FIRST=0,
-  OPENPORT_TELEM_CMD_ECHO=0,
-  OPENPORT_TELEM_MONITOR,
-  OPENPORT_TELEM_HEADER,
-  OPENPORT_TELEM_HK,
-  OPENPORT_TELEM_ADU5A_SAT,
-  OPENPORT_TELEM_ADU5B_SAT,
-  OPENPORT_TELEM_G12_SAT,
-  OPENPORT_TELEM_ADU5A_PAT,
-  OPENPORT_TELEM_ADU5B_PAT,
-  OPENPORT_TELEM_G12_POS,
-  OPENPORT_TELEM_GPU,
-  OPENPORT_TELEM_ADU5A_VTG,
+  OPENPORT_TELEM_CMD_ECHO=0,  //0
+  OPENPORT_TELEM_MONITOR, //1
+  OPENPORT_TELEM_HEADER, //2
+  OPENPORT_TELEM_HK,  //3
+  OPENPORT_TELEM_ADU5A_SAT, //4
+  OPENPORT_TELEM_ADU5B_SAT, //5 
+  OPENPORT_TELEM_G12_SAT, //6
+  OPENPORT_TELEM_ADU5A_PAT,  //7
+  OPENPORT_TELEM_ADU5B_PAT, //8
+  OPENPORT_TELEM_G12_POS, //9
+  OPENPORT_TELEM_GPU, //10
+  OPENPORT_TELEM_ADU5A_VTG, //1
   OPENPORT_TELEM_ADU5B_VTG,
   OPENPORT_TELEM_G12_GGA,
   OPENPORT_TELEM_ADU5A_GGA,
@@ -204,7 +204,7 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
 
 //Will make these configurable soon
 int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,2,2,2,1,1,1,5,5,3,1,3};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -1492,7 +1492,7 @@ int openportWrite(unsigned char *buf, unsigned short nbytes, int isHk)
       gettimeofday(&newTime,0);
       timeDiff=getTimeDiff(lastTime,newTime);
       printf("Transferred %u bytes (%u hk, %u event) in %2.2f seconds (%3.4f bytes/sec)\n",dataCounter,hkCounter,eventCounter,timeDiff,((float)dataCounter)/timeDiff);
-      sleep(5);
+      //      sleep(5);
       dataCounter=0;
       hkCounter=0;
       eventCounter=0;
