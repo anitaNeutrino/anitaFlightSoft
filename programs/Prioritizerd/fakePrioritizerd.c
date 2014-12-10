@@ -57,13 +57,43 @@ AnitaHkWriterStruct_t gpuWriter;
 /* int firstEvents[NUM_RUNS] = {71598501}; */
 /* int lastEvents[NUM_RUNS] = {71602714}; */
 
-#define NUM_RUNS 1
-int runs[NUM_RUNS] = {11377};
-int firstEvents[NUM_RUNS] = {58393701};
-int lastEvents[NUM_RUNS] = {58417574};
+/* #define NUM_RUNS 1 */
+/* int runs[NUM_RUNS] = {11377}; */
+/* int firstEvents[NUM_RUNS] = {58393701}; */
+/* int lastEvents[NUM_RUNS] = {58417574}; */
 
+/* #define NUM_RUNS 7 */
+/* int runs[NUM_RUNS] = {11818, 11817, 11816, 11815, 11814, 11813, 11812}; */
+/* int firstEvents[NUM_RUNS] = {75880701, 75855701, 75819201, 75798701, 75777201, 75756701, 75736601}; */
+/* int lastEvents[NUM_RUNS] = {75944796, 75880604, 75855688, 75819110, 75798679, 75777149, 75756521};	 */
+
+
+/* #define NUM_RUNS 1 */
+/* int runs[NUM_RUNS] = {11843}; */
+/* int firstEvents[NUM_RUNS] = {76425201}; */
+/* int lastEvents[NUM_RUNS] = {76581611}; */
+
+#define NUM_RUNS 1
+int runs[NUM_RUNS] = {11251};
+int firstEvents[NUM_RUNS] = {52357401};
+int lastEvents[NUM_RUNS] = {52362784};
 
 int main(int argc, char *argv[]){
+
+  /* { */
+  /*   int runInd=0; */
+  /*   for(runInd=0; runInd<NUM_RUNS; runInd++){ */
+  /*     lastEvents[runInd] = firstEvents[runInd]+5000; */
+  /*   } */
+  /* } */
+
+  {
+    int runInd=0;
+    for(runInd=0; runInd<NUM_RUNS; runInd++){
+      lastEvents[runInd] = firstEvents[runInd]+10000;
+    }
+  }
+
 
   int retVal; //,count;
   /* Directory reading things */

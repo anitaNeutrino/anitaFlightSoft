@@ -46,13 +46,10 @@ int rcoLatchStart[ACTIVE_SURFS][LABRADORS_PER_SURF];
 int rcoLatchEnd[ACTIVE_SURFS][LABRADORS_PER_SURF];
 double relativeCableDelays[ACTIVE_SURFS][CHANNELS_PER_SURF];
 
-/* double volts2[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; */
 double volts[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 int nSamps[ACTIVE_SURFS][CHANNELS_PER_SURF];
 
 double times[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-/* double times2[ACTIVE_SURFS][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES][MAX_NUMBER_SAMPLES]; */
-int numExtras[ACTIVE_SURFS][LABRADORS_PER_SURF][NUM_RCO][NUM_WRAP_POSSIBILITIES][MAX_NUMBER_SAMPLES] = {{{{{0}}}}};
 
 double clockJitters[ACTIVE_SURFS];
 //int nClockSamps[ACTIVE_SURFS];
@@ -67,6 +64,9 @@ int labChips[ACTIVE_SURFS];
 double* clockTimeDomain;
 fftw_complex* clockFreqDomain;
 fftw_complex* clockFreqHolder;
+
+int positiveSaturation = 1000;
+int negativeSaturation = -1000;
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
@@ -87,6 +87,17 @@ void prepareTimingCalibThings(){
 					  clockFreqDomain, FFTW_MEASURE);
   clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain, 
 					  clockTimeDomain, FFTW_MEASURE);
+
+  
+  kvpReset();
+  KvpErrorCode err = KVP_E_OK;
+  err = configLoad ("Prioritizerd.config","prioritizerd") ;
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+  positiveSaturation = kvpGetInt("positiveSaturation", 1000);
+  negativeSaturation = kvpGetInt("negativeSaturation", -1000);
+
 
   /* preCalculateTimeArrays(); */
 }
@@ -550,6 +561,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
 			 PedSubbedEventBody_t pedSubBody,
 			 double* finalVolts[]){
 
+  theHeader.prioritizerStuff = 0;
+
   const double deltaT = NOMINAL_SAMPLING;
 
   int surf=0;
@@ -563,11 +576,23 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
     int fhb = getFirstHitBus(pedSubBody, chanIndex);
     labChips[surf] = getLabChip(pedSubBody, chanIndex);
 
+
     /* Fix rco latch delay */
     if(fhb >= rcoLatchStart[surf][labChips[surf]] && fhb <= rcoLatchEnd[surf][labChips[surf]] && !(earliestSampleInds[surf]<latestSampleInds[surf])){
       rcos[surf] = 1 - rcos[surf];
     }
   }
+
+  for(surf=0; surf<ACTIVE_SURFS; surf++){
+    int chan=0;
+    for(chan=0; chan<8; chan++){
+      int chanIndex=surf*CHANNELS_PER_SURF + chan;
+      if((pedSubBody.channel[chanIndex].xMax > positiveSaturation || pedSubBody.channel[chanIndex].xMin < negativeSaturation) && theHeader.prioritizerStuff == 0){
+	theHeader.prioritizerStuff |= (1 << 13);
+      }
+    }
+  }
+
   /* printf("ABout to unwrap!\n"); */
   /* justUnwrapVolts(pedSubBody); */
   processEventAG(pedSubBody);
@@ -700,11 +725,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
   }
 
   for(surf=0; surf<ACTIVE_SURFS; surf++){
-    /* int lab = labChips[surf]; */
-    /* int rco = rcos[surf]; */
-    /* int earliestSample = earliestSampleInds[surf]; */
-    /* int whb = whbs[surf];//latestSample < earliestSample ? 0 : 1; */
-
     int chan=0;
     for(chan=0; chan<CHANNELS_PER_SURF-1; chan++){
 
@@ -747,148 +767,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t theHeader,
 
 
 
-
-
-
-
-
-
-
-
-/* void preCalculateTimeArrays(){//PedSubbedEventBody_t pedSubBody){ */
-/*   /\*  */
-/*      OK, since the number of samples can be obtained from the 2 hitbus locations. */
-/*      I have to add up the times 108 times per event!? */
-/*      There's only MAX_NUMBER_SAMPLES * NUM_RCO * LABRADORS_PER_SURF * ACTIVE_SURFS  */
-/*      possible ways to do it... */
-/*      So let's get the number of samples and look up time array from first sample.      */
-/*   *\/ */
-
-/*   double fEpsilonTempScale= 1; */
-
-/*   /\* if(fC3poNum) { *\/ */
-/*   /\*   clockPeriod=1e9/fC3poNum; *\/ */
-/*   /\* } *\/ */
-/*   //  double tempFactor=1; //eventPtr->getTempCorrectionFactor(); */
-/*   //  double tempFactor = fTempFactorGuess[entry]; */
-/*   double tempFactor = 1; //fTempFactorGuess[entry]; */
-
-/*   int earliestSampleInd=0; */
-/*   for(earliestSampleInd=0; earliestSampleInd<MAX_NUMBER_SAMPLES; earliestSampleInd++){ */
-/*     int earliestSample = earliestSampleInd; */
-/*     int whb=0; */
-/*     for(whb=0; whb<NUM_WRAP_POSSIBILITIES; whb++){ */
-/*       int latestSample = 0; */
-/*       if(whb==0){ // then we are not wrapped... */
-/* 	latestSample = (earliestSample + MAX_NUMBER_SAMPLES - 1)%MAX_NUMBER_SAMPLES; */
-/*       } */
-/*       else{ */
-/* 	latestSample = MAX_NUMBER_SAMPLES - 1; */
-/*       } */
-
-/*     int rco = 0; */
-/*       for(rco=0; rco<NUM_RCO; rco++){ */
-/* 	int lab=0; */
-/* 	for(lab=0; lab<LABRADORS_PER_SURF; lab++){ */
-/* 	  int surf=0; */
-/* 	  for(surf=0;surf<ACTIVE_SURFS;surf++) { */
-/* 	    int chan=8; /\* Same times across surf. Let's do clock channel only *\/ */
-/* 	    for(chan=0;chan<CHANNELS_PER_SURF;chan++) { */
-
-/* 	      if(earliestSample==0) */
-/* 		earliestSample++; */
-
-/* 	      if(latestSample==0) */
-/* 		latestSample=259; */
-
-/* 	      /\* Need to remember how many extra samples for volts unwrapping without looking at times *\/ */
-/* 	      numExtras[surf][lab][rco][whb][earliestSampleInd] = 0; */
-
-/* 	      int samp=0; */
-/* 	      /\* for(samp=0;samp<MAX_NUMBER_SAMPLES;samp++) { *\/ */
-/* 	      /\* 	pedSubBody.channel[chanIndex].data[samp]=pedSubBody.channel[chanIndex].data[samp]; *\/ */
-/* 	      /\* } *\/ */
-      
-/* 	      //Now do the unwrapping */
-/* 	      int index=0; */
-/* 	      //	      double time=0; */
-/* 	      double time=0; */
-/* 	      //printf("surf %d, chan %d, delay %lf\n", surf, chan, time); */
-/* 	      if(latestSample<earliestSample) { */
-/* 		//	      if(!whb) { */
-/* 		//We have two RCOs */
-/* 		int nextExtra=256; */
-/* 		double extraTime=0;	 */
-/* 		if(earliestSample<256) { */
-/* 		  //Lets do the first segment up	 */
-/* 		  for(samp=earliestSample;samp<256;samp++) { */
-/* 		    int binRco=1-rco; */
-/* 		    times2[surf][lab][rco][whb][earliestSampleInd][index]=time; */
-/* 		    if(samp==255) { */
-/* 		      extraTime=time+(justBinByBin[surf][lab][binRco][samp])*tempFactor; */
-/* 		    } */
-/* 		    else { */
-/* 		      time+=(justBinByBin[surf][lab][binRco][samp])*tempFactor; */
-/* 		    } */
-/* 		    index++; */
-/* 		  } */
-/* 		  //time+=epsilonFromBenS[surf][lab][rco]*tempFactor*fEpsilonTempScale; */
-/* 		  //time+=epsilonFromBenS[surf][lab][1-rco]*tempFactor*fEpsilonTempScale; */
-/* 		  time+=epsilonFromBenS[surf][lab][rco]*tempFactor*fEpsilonTempScale; */
-/* 		} */
-/* 		else { */
-/* 		  nextExtra=260; */
-/* 		  extraTime=0; */
-/* 		} */
-	
-	
-/* 		if(latestSample>=1) { */
-/* 		  /\* We are going to ignore sample zero for now *\/ */
-/* 		  time+=(justBinByBin[surf][lab][rco][0])*tempFactor; */
-/* 		  for(samp=1;samp<=latestSample;samp++) { */
-/* 		    int binRco=rco; */
-/* 		    if(nextExtra<260 && samp==1) { */
-/* 		      if(extraTime<time-0.22) { */
-/* 			binRco=1-rco; */
-/* 			times2[surf][lab][rco][whb][earliestSampleInd][index]=extraTime; */
-/* 			if(nextExtra<259) { */
-/* 			  extraTime+=(justBinByBin[surf][lab][binRco][nextExtra])*tempFactor; */
-/* 			} */
-/* 			nextExtra++; */
-/* 			numExtras[surf][lab][rco][whb][earliestSampleInd]++; */
-/* 			index++;	  */
-/* 			samp--; */
-/* 			continue; */
-/* 		      } */
-/* 		    } */
-/* 		    times2[surf][lab][rco][whb][earliestSampleInd][index]=time; */
-/* 		    if(samp<259) { */
-/* 		      time+=(justBinByBin[surf][lab][binRco][samp])*tempFactor; */
-/* 		    } */
-/* 		    index++; */
-/* 		  } */
-/* 		  /\* printf("TIME = %lf\n", time); *\/ */
-/* 		} */
-/* 	      } */
-/* 	      else { */
-/* 		/\* Only one rco *\/ */
-/* 		for(samp=earliestSample;samp<=latestSample;samp++) { */
-/* 		  int binRco=rco; */
-/* 		  //		  if( latestSample == 259 ) binRco=1-rco; // will this work??? */
-/* 		  times2[surf][lab][rco][whb][earliestSampleInd][index]=time; */
-/* 		  if(samp<259) { */
-/* 		    time+=(justBinByBin[surf][lab][binRco][samp])*tempFactor; */
-/* 		  } */
-/* 		  index++; */
-/* 		} */
-/* 	      } */
-/* 	    } */
-/* 	  } */
-/* 	} */
-/*       } */
-/*     } */
-/*   } */
-/* } */
 
 
 

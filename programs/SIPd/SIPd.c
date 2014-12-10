@@ -762,11 +762,11 @@ void comm1Handler()
     printf("SlowRateFull_t %u -- %f %f\n",slowRateData.unixTime,slowRateData.hk.latitude,slowRateData.hk.longitude);
     ret = sipcom_slowrate_write(COMM1, (unsigned char*)&slowRateData, sizeof(SlowRateFull_t));
     
-    FILE *fpOut = fopen("/tmp/slowTdrss.dat","a");
-    if(fpOut) {
-      fwrite(&slowRateData,sizeof(SlowRateFull_t),1,fpOut);
-      fclose(fpOut);
-    }
+    //    FILE *fpOut = fopen("/tmp/slowTdrss.dat","a");
+    //    if(fpOut) {
+    //      fwrite(&slowRateData,sizeof(SlowRateFull_t),1,fpOut);
+    //      fclose(fpOut);
+    //    }
 
 
     if (ret) {
@@ -803,11 +803,11 @@ void comm2Handler()
     printf("SlowRateFull_t %u -- %f %f\n",slowRateData.unixTime,slowRateData.hk.latitude,slowRateData.hk.longitude);
     ret = sipcom_slowrate_write(COMM2,(unsigned char*) &slowRateData, sizeof(SlowRateFull_t));
 
-    FILE *fpOut = fopen("/tmp/slowIridium.dat","a");
-    if(fpOut) {
-      fwrite(&slowRateData,sizeof(SlowRateFull_t),1,fpOut);
-      fclose(fpOut);
-    }
+    //    FILE *fpOut = fopen("/tmp/slowIridium.dat","a");
+    //    if(fpOut) {
+    //      fwrite(&slowRateData,sizeof(SlowRateFull_t),1,fpOut);
+    //      fclose(fpOut);
+    //    }
 
     if (ret) {
 	fprintf(stderr, "comm2Handler: %s\n", sipcom_strerror());
@@ -1581,7 +1581,7 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	}
 	int j;
 	int tempInds[3]={1,3,6};
-	int powerInds[4]={37,36,15,16};
+	int powerInds[4]={37,36,17,16};
 //	float powerCal[4]={18.252,10.1377,20,20};
 	int tempVal;
 	//Now fill low rate structs
@@ -1757,7 +1757,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       //This bit here is just for the slow rate data
       int j;
       int tempInds[3]={1,3,6};
-      int powerInds[4]={37,36,15,16};
+      int powerInds[4]={37,36,17,16};
 //      float powerCal[4]={18.252,10.1377,20,20};
       int tempVal;
       //Now fill low rate structs

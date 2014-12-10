@@ -31,7 +31,7 @@ void copyCommand(CommandStruct_t *theCmd, CommandStruct_t *cpCmd);
 int checkCommand(CommandStruct_t *theCmd);
 int checkForNewCommand();
 int executeCommand(CommandStruct_t *theCmd); //Returns unixTime or 0
-int executePrioritizerdCommand(int command, int value);
+int executePrioritizerdCommand(int command, int value, int value2);
 int executePlaybackCommand(int command, unsigned int value1, unsigned int value2);
 int executeAcqdRateCommand(int command, unsigned char args[8]);
 int executeAcqdExtraCommand(int command, unsigned char arg);
@@ -61,6 +61,7 @@ int requestFile(char *filename, int numLines);
 int requestJournalCtl(JournalctlOptionCommand_t jcOpt, int cmdArg, int numLines);
 int readAcqdConfig();
 int readArchivedConfig();
+int readPrioritizerdConfig();
 int readLosdConfig();
 int readSipdConfig();
 int readGpsdConfig();
@@ -112,7 +113,7 @@ char usbName[FILENAME_MAX];
 char ntuName[FILENAME_MAX];
 
 //Needed for commands
-int pidGoals[BANDS_PER_ANT];
+int pidGoals[3];
 int surfTrigBandMasks[ACTIVE_SURFS];
 int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
@@ -135,6 +136,15 @@ float dacPGain[4];  // proportional gain
 float dacDGain[4];  // derivative gain
 int dacIMax[4];  // maximum intergrator state
 int dacIMin[4]; // minimum integrator state
+
+//Prioritizerd
+float phiArrayDeg[48]={0};
+float rArray[48]={0};
+float zArray[48]={0};
+float priorityParamsLowBinEdge[10];
+float priorityParamsHighBinEdge[10];
+
+
 
 //For GPS phi masking
 int numSources=1;
@@ -997,7 +1007,8 @@ int executeCommand(CommandStruct_t *theCmd)
   case PRIORITIZERD_COMMAND:
     ivalue=theCmd->cmd[1]; //Command num
     ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8); //command value
-    return executePrioritizerdCommand(ivalue,ivalue2);
+    ivalue3=theCmd->cmd[4]+(theCmd->cmd[5]<<8); //command value
+    return executePrioritizerdCommand(ivalue,ivalue2,ivalue3);
   case PLAYBACKD_COMMAND:
     ivalue=theCmd->cmd[1]; //Command num	    
     utemp=(theCmd->cmd[2]);	    
@@ -1796,84 +1807,63 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
 }
 
 
-int executePrioritizerdCommand(int command, int value)
+int executePrioritizerdCommand(int command, int value, int value2)
 {
   time_t rawtime;
+  readPrioritizerdConfig();
   switch(command) {
-  case PRI_HORN_THRESH:
-    configModifyFloat("Prioritizerd.config","prioritizerd","hornThresh",(float)value,&rawtime);
+  case PRI_PANIC_QUEUE_LENGTH:
+    configModifyInt("Prioritizerd.config","prioritizerd","panicQueueLength",value,&rawtime);
     break;
-  case PRI_HORN_DESC_WIDTH:
-    configModifyInt("Prioritizerd.config","prioritizerd","hornDiscWidth",value,&rawtime);
+  case PRI_PARAMS_LOW_BIN_EDGE:
+    priorityParamsLowBinEdge[value]=value2/100.;
+    configModifyFloatArray("Prioritizerd.config","prioritizerd","priorityParamsLowBinEdge",priorityParamsLowBinEdge,10,&rawtime);
     break;
-  case PRI_HORN_SECTOR_WIDTH:
-    configModifyInt("Prioritizerd.config","prioritizerd","hornSectorWidth",value,&rawtime);
+  case PRI_PARAMS_HIGH_BIN_EDGE:
+    priorityParamsHighBinEdge[value]=value2/100.;
+    configModifyFloatArray("Prioritizerd.config","prioritizerd","priorityParamsHighBinEdge",priorityParamsHighBinEdge,10,&rawtime);
     break;
-  case PRI_CONE_THRESH:
-    configModifyFloat("Prioritizerd.config","prioritizerd","coneThresh",(float)value,&rawtime);
+  case PRI_SLOPE_IMAGE_HILBERT:
+    configModifyFloat("Prioritizerd.config","prioritizerd","slopeOfImagePeakVsHilbertPeak",(float)value2,&rawtime);
     break;	    
-  case PRI_CONE_DESC_WIDTH:
-    configModifyInt("Prioritizerd.config","prioritizerd","coneDiscWidth",value,&rawtime);
+  case PRI_INTERCEPT_IMAGE_HILBERT:
+    configModifyFloat("Prioritizerd.config","prioritizerd","interceptOfImagePeakVsHilbertPeak",(float)value2,&rawtime);
     break;
-  case PRI_HOLDOFF:
-    configModifyInt("Prioritizerd.config","prioritizerd","holdoff",value,&rawtime);
+  case PRI_BIN_TO_BIN_THRESH:
+    configModifyFloat("Prioritizerd.config","prioritizerd","binToBinDifferenceThresh_dB",value2/10.,&rawtime);
     break;	    
-  case PRI_DELAY:
-    configModifyInt("Prioritizerd.config","prioritizerd","delay",value,&rawtime);
+  case PRI_ABS_MAG_THRESH:
+    configModifyFloat("Prioritizerd.config","prioritizerd","absMagnitudeThresh_dBm",value2/10.,&rawtime);
     break;	    
-  case PRI_HORN_GUARD_OFFSET:
-    configModifyInt("Prioritizerd.config","prioritizerd","hornGuardOffset",value,&rawtime);
+  case PRI_THETA_ANGLE_DEMOTION_LOW:
+    configModifyFloat("Prioritizerd.config","prioritizerd","thetaAngleLowForDemotion",value2-90,&rawtime);
     break;	    
-  case PRI_HORN_GUARD_WIDTH:
-    configModifyInt("Prioritizerd.config","prioritizerd","hornGuardWidth",value,&rawtime);
+  case PRI_THETA_ANGLE_DEMOTION_HIGH:
+    configModifyFloat("Prioritizerd.config","prioritizerd","thetaAngleHighForDemotion",value2,&rawtime);
     break;	    	    
-  case PRI_HORN_GUARD_THRESH:
-    configModifyInt("Prioritizerd.config","prioritizerd","hornGuardThresh",value,&rawtime);
+  case PRI_THETA_ANGLE_DEMOTION_PRIORITY:
+    configModifyInt("Prioritizerd.config","prioritizerd","thetaAnglePriorityDemotion",value,&rawtime);
     break;	    
-  case PRI_CONE_GUARD_OFFSET:
-    configModifyInt("Prioritizerd.config","prioritizerd","coneGuardOffset",value,&rawtime);
+  case PRI_POWER_SPECTRUM_PERIOD:
+    configModifyInt("Prioritizerd.config","prioritizerd","writePowSpecPeriodSeconds",value2,&rawtime);
     break;	    
-  case PRI_CONE_GUARD_WIDTH:
-    configModifyInt("Prioritizerd.config","prioritizerd","coneGuardWidth",value,&rawtime);
+  case PRI_ANT_PHI_POS:
+    phiArrayDeg[value]=value2/100.;
+    configModifyFloatArray("Prioritizerd.config","antennalocations","phiArrayDeg",phiArrayDeg,48,&rawtime);
     break;	    
-  case PRI_CONE_GUARD_THRESH:
-    configModifyInt("Prioritizerd.config","prioritizerd","coneGuardThresh",value,&rawtime);
+  case PRI_ANT_R_POS:
+    rArray[value]=value2/1000.;
+    configModifyFloatArray("Prioritizerd.config","antennalocations","rArray",rArray,48,&rawtime);
     break;	    	    
-  case PRI_FFT_PEAK_MAX_A:
-    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakMaxA",value,&rawtime);
+  case PRI_ANT_Z_POS:
+    zArray[value]=-1*value2/10000;
+    configModifyFloatArray("Prioritizerd.config","antennalocations","zArray",zArray,48,&rawtime);
     break;	    	    	    	    
-  case PRI_FFT_PEAK_MAX_B:
-    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakMaxB",value,&rawtime);
+  case PRI_POS_SATUATION:
+    configModifyInt("Prioritizerd.config","prioritizerd","positiveSaturation",value2,&rawtime);
     break;	    	  	    
-  case PRI_RMS_MAX:
-    configModifyInt("Prioritizerd.config","prioritizerd","RMSMax",value,&rawtime);
-    break;	    	  	    
-  case PRI_RMS_EVENTS:
-    configModifyInt("Prioritizerd.config","prioritizerd","RMSevents",value,&rawtime);
-    break;	    	    
-  case PRI_WINDOW_CUT:
-    configModifyInt("Prioritizerd.config","prioritizerd","RMSevents",value,&rawtime);
-    break;	    	    
-  case PRI_BEGIN_WINDOW:
-    configModifyInt("Prioritizerd.config","prioritizerd","BeginWindow",value,&rawtime);
-    break;	    	    
-  case PRI_END_WINDOW:
-    configModifyInt("Prioritizerd.config","prioritizerd","EndWindow",value,&rawtime);
-    break;	    	    
-  case PRI_METHOD_MASK:
-    configModifyInt("Prioritizerd.config","prioritizerd","MethodMask",value,&rawtime);
-    break;	   	    
-  case PRI_FFT_MAX_CHANNELS:
-    configModifyInt("Prioritizerd.config","prioritizerd","FFTMaxChannels",value,&rawtime);
-    break;
-  case PRI_FFT_PEAK_WINDOW_L:
-    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakWindowL",value,&rawtime);
-    break;	    
-  case PRI_FFT_PEAK_WINDOW_R:
-    configModifyInt("Prioritizerd.config","prioritizerd","FFTPeakWindowR",value,&rawtime);
-    break;	    
-  case PRI_NU_CUT:
-    configModifyInt("Prioritizerd.config","prioritizerd","NuCut",value,&rawtime);
+  case PRI_NEG_SATUATION:
+    configModifyInt("Prioritizerd.config","prioritizerd","negativeSaturation",-1*value2,&rawtime);
     break;	    	   
   default:
     return -1;
@@ -2095,15 +2085,15 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     if(retVal) return 0;
     return rawtime;
   case ACQD_RATE_SET_PID_GOALS: 	    
-    uvalue[0]=args[0]+(args[1]<<8);
-    uvalue[1]=args[2]+(args[3]<<8);
-    uvalue[2]=args[4]+(args[5]<<8);
-    uvalue[3]=args[6]+(args[7]<<8);      
+    uvalue[0]=args[0]+(args[1]<<8); //top 
+    uvalue[1]=args[2]+(args[3]<<8); //middle 
+    uvalue[2]=args[4]+(args[5]<<8); //bottom
+    //    uvalue[3]=args[6]+(args[7]<<8);      
     pidGoals[0]=uvalue[0];
     pidGoals[1]=uvalue[1];
     pidGoals[2]=uvalue[2];
-    pidGoals[3]=uvalue[3];      
-    configModifyIntArray("Acqd.config","thresholds","pidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
+    //    pidGoals[3]=uvalue[3];      
+    configModifyIntArray("Acqd.config","thresholds","pidGoals",pidGoals,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2115,8 +2105,8 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     pidGoals[0]=uvalue[0];
     pidGoals[1]=uvalue[1];
     pidGoals[2]=uvalue[2];
-    pidGoals[3]=uvalue[3];      
-    configModifyIntArray("Acqd.config","thresholds","nadirPidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
+    //    pidGoals[3]=uvalue[3];      
+    //    configModifyIntArray("Acqd.config","thresholds","nadirPidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -3115,6 +3105,84 @@ int readArchivedConfig()
     
   return status;
 }
+
+
+
+int readPrioritizerdConfig() 
+/* Load Prioritizerd config stuff */
+{
+  /* Config file thingies */
+  int status=0,tempNum=0;
+  char* eString ;
+  KvpErrorCode kvpStatus;
+  kvpReset();
+  status = configLoad ("Prioritizerd.config","prioritizerd") ;
+  status = configLoad ("Prioritizerd.config","antennalocations") ;
+  if(status == CONFIG_E_OK) {
+    tempNum=48;
+    kvpStatus = kvpGetFloatArray("phiArrayDeg",
+			       phiArrayDeg,&tempNum);	
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(phiArrayDeg): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetFloatArray(phiArrayDeg): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
+    tempNum=48;
+    kvpStatus = kvpGetFloatArray("rArray",
+			       rArray,&tempNum);	
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(rArray): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetFloatArray(rArray): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
+    tempNum=48;
+    kvpStatus = kvpGetFloatArray("zArray",
+			       zArray,&tempNum);	
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(zArray): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetFloatArray(zArray): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
+
+    tempNum=10;
+    kvpStatus = kvpGetFloatArray("priorityParamsLowBinEdge",
+				 priorityParamsLowBinEdge,&tempNum);	
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(priorityParamsLowBinEdge): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetFloatArray(priorityParamsLowBinEdge): %s\n",
+	      kvpErrorString(kvpStatus));
+    }
+    tempNum=10;
+    kvpStatus = kvpGetFloatArray("priorityParamsHighBinEdge",
+				 priorityParamsHighBinEdge,&tempNum);	
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(priorityParamsHighBinEdge): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetFloatArray(priorityParamsHighBinEdge): %s\n",
+	      kvpErrorString(kvpStatus));
+    }
+
+
+
+  }
+  else {
+    eString=configErrorString (status) ;
+    syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
+  }
+    
+  return status;
+}
+
 
 
 int readLosdConfig() 

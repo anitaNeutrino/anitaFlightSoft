@@ -118,13 +118,10 @@ int main (int argc, char *argv[])
 	if(startProcInterrupts) catFile("/proc/interrupts");
 	tailJournal("",startMessageTailLines);	
 
-	system("sudo /home/anita/libatasmart/skdump /dev/sda > /tmp/smart_sda");
+	system("/home/anita/flightSoft/bin/smartDump.sh");
 	catFile("/tmp/smart_sda");
-	system("sudo /home/anita/libatasmart/skdump /dev/sdb > /tmp/smart_sdb");
 	catFile("/tmp/smart_sdb");
-	system("sudo /home/anita/libatasmart/skdump /dev/sdc > /tmp/smart_sdc");
 	catFile("/tmp/smart_sdc");
-	system("sudo /home/anita/libatasmart/skdump /dev/sdd > /tmp/smart_sdd");
 	catFile("/tmp/smart_sdd");
 
 

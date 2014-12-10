@@ -14,12 +14,18 @@ CL_LIBDIR = $(CL)/lib
 #CALIBRATION=1
 #SEAVEY_ORIENTATION_OFF=1
 #TIME_STAMP=1
+#PROFILER
 
 LDFLAGS +=-lOpenCL -lgsl -ltcmalloc -lprofiler
 CCFLAGS +=-g
 
 Targets = Prioritizerd fakePrioritizerd
 Objs= openCLwrapper.o anitaGpu.o anitaTimingCalib.c prioritizerdFunctions.o
+
+
+ifdef PROFILER
+LDFLAGS += -ltcmalloc -lprofiler
+endif
 
 ifdef TIME_STAMP
 Objs +=rcc_time_stamp.o
