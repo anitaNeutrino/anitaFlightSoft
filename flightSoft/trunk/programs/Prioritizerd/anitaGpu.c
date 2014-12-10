@@ -583,12 +583,12 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       index2 = eventInd + NUM_EVENTS;
     }
 
-    #ifdef CALIBRATION
+#ifdef CALIBRATION
     float maxPhiSectPower[3] = {-1000000};
     int maxPhiSectPowerBin[3];
     float maxDiffPowSpec[3] = {-1000000};
     int maxDiffPowSpecBin[3];
-    #endif
+#endif
     int ring=0;
     int threshFlag = 0;
     int diffFlag = 0;
@@ -602,11 +602,11 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  maxPhiSectPower[ring] = powSpec[freqInd2];
 	  maxPhiSectPowerBin[ring] = freqInd;
 	}
-	#endif
 	if(diffPowSpec[freqInd2] > maxDiffPowSpec[ring]){
 	  maxDiffPowSpec[ring] = diffPowSpec[freqInd2];
 	  maxDiffPowSpecBin[ring] = freqInd;
 	}
+	#endif
 	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x1){
 	  threshFlag = 1;
 	}
