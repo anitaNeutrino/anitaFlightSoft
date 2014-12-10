@@ -46,10 +46,10 @@ AnitaHkWriterStruct_t gpuWriter;
 
 
 // Three phi sector pulsing (-10 deg)
-/* #define NUM_RUNS 14 */
-/* int runs[NUM_RUNS] = {11685, 11684, 11683, 11682, 11681, 11680, 11679, 11678, 11677, 11676, 11675, 11674, 11673, 11672}; */
-/* int firstEvents[NUM_RUNS] = {71658301, 71653101, 71648601, 71644501, 71640501, 71636301, 71632301, 71627001, 71622701, 71618501, 71611901, 71607501, 71602801, 71598501}; */
-/* int lastEvents[NUM_RUNS] = {71661640, 71658292, 71653082, 71648541, 71644406, 71640434, 71636252, 71632298, 71626963, 71622602, 71618494, 71611800, 71607424, 71602714}; */
+#define NUM_RUNS 14
+int runs[NUM_RUNS] = {11685, 11684, 11683, 11682, 11681, 11680, 11679, 11678, 11677, 11676, 11675, 11674, 11673, 11672};
+int firstEvents[NUM_RUNS] = {71658301, 71653101, 71648601, 71644501, 71640501, 71636301, 71632301, 71627001, 71622701, 71618501, 71611901, 71607501, 71602801, 71598501};
+int lastEvents[NUM_RUNS] = {71661640, 71658292, 71653082, 71648541, 71644406, 71640434, 71636252, 71632298, 71626963, 71622602, 71618494, 71611800, 71607424, 71602714};
 
 
 /* #define NUM_RUNS 1 */
@@ -73,10 +73,20 @@ AnitaHkWriterStruct_t gpuWriter;
 /* int firstEvents[NUM_RUNS] = {76425201}; */
 /* int lastEvents[NUM_RUNS] = {76581611}; */
 
-#define NUM_RUNS 1
-int runs[NUM_RUNS] = {11251};
-int firstEvents[NUM_RUNS] = {52357401};
-int lastEvents[NUM_RUNS] = {52362784};
+/* #define NUM_RUNS 1 */
+/* int runs[NUM_RUNS] = {11251}; */
+/* int firstEvents[NUM_RUNS] = {52357401}; */
+/* int lastEvents[NUM_RUNS] = {52362784}; */
+
+/* #define NUM_RUNS 1 */
+/* int runs[NUM_RUNS] = {11255}; */
+/* int firstEvents[NUM_RUNS] = {52408001}; */
+/* int lastEvents[NUM_RUNS] = {52409331}; */
+
+/* #define NUM_RUNS 1 */
+/* int runs[NUM_RUNS] = {11845}; */
+/* int firstEvents[NUM_RUNS] = {76697001}; */
+/* int lastEvents[NUM_RUNS] = {76800500}; */
 
 int main(int argc, char *argv[]){
 
@@ -87,12 +97,12 @@ int main(int argc, char *argv[]){
   /*   } */
   /* } */
 
-  {
-    int runInd=0;
-    for(runInd=0; runInd<NUM_RUNS; runInd++){
-      lastEvents[runInd] = firstEvents[runInd]+10000;
-    }
-  }
+  /* { */
+  /*   int runInd=0; */
+  /*   for(runInd=0; runInd<NUM_RUNS; runInd++){ */
+  /*     lastEvents[runInd] = firstEvents[runInd]+10000; */
+  /*   } */
+  /* } */
 
 
   int retVal; //,count;

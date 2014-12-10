@@ -66,7 +66,6 @@ void prepareGpuThings(){
   thetaAngleHighForDemotion = kvpGetFloat("thetaAngleHighForDemotion", 10);
   thetaAnglePriorityDemotion = kvpGetInt("thetaAnglePriorityDemotion", 1);
 
-
   /* Large buffers, which will be mapped to GPU memory */
   numEventSamples = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*sizeof(float));
   eventData = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES*sizeof(float));
@@ -584,10 +583,12 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       index2 = eventInd + NUM_EVENTS;
     }
 
+    #ifdef CALIBRATION
     float maxPhiSectPower[3] = {-1000000};
     int maxPhiSectPowerBin[3];
     float maxDiffPowSpec[3] = {-1000000};
     int maxDiffPowSpecBin[3];
+    #endif
     int ring=0;
     int threshFlag = 0;
     int diffFlag = 0;
@@ -596,10 +597,12 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       int freqInd=20;
       for(freqInd = 20; freqInd < 20+99 /* Hackity hack hack*/; freqInd++){
 	int freqInd2 = (1-polBit)*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
+	#ifdef CALIBRATION
 	if(powSpec[freqInd2] > maxPhiSectPower[ring]){
 	  maxPhiSectPower[ring] = powSpec[freqInd2];
 	  maxPhiSectPowerBin[ring] = freqInd;
 	}
+	#endif
 	if(diffPowSpec[freqInd2] > maxDiffPowSpec[ring]){
 	  maxDiffPowSpec[ring] = diffPowSpec[freqInd2];
 	  maxDiffPowSpecBin[ring] = freqInd;
@@ -643,6 +646,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     if((priority & (1<<13)) > 0){
       /* Found saturation when unwrapping */
       priority = 9;
+    }
+    else if(diffFlag==1 || threshFlag==1){
+      /* There was CW in these events... not an optimal solution...*/
+      priority = 8;
     }
     else{
       for(priority=1; priority<NUM_PRIORITIES; priority++){
