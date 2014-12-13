@@ -51,6 +51,7 @@ int runs[NUM_RUNS] = {11685, 11684, 11683, 11682, 11681, 11680, 11679, 11678, 11
 int firstEvents[NUM_RUNS] = {71658301, 71653101, 71648601, 71644501, 71640501, 71636301, 71632301, 71627001, 71622701, 71618501, 71611901, 71607501, 71602801, 71598501};
 int lastEvents[NUM_RUNS] = {71661640, 71658292, 71653082, 71648541, 71644406, 71640434, 71636252, 71632298, 71626963, 71622602, 71618494, 71611800, 71607424, 71602714};
 
+const int selectedRun = 11672;
 
 /* #define NUM_RUNS 1 */
 /* int runs[NUM_RUNS] = {11672}; */
@@ -90,12 +91,12 @@ int lastEvents[NUM_RUNS] = {71661640, 71658292, 71653082, 71648541, 71644406, 71
 
 int main(int argc, char *argv[]){
 
-  /* { */
-  /*   int runInd=0; */
-  /*   for(runInd=0; runInd<NUM_RUNS; runInd++){ */
-  /*     lastEvents[runInd] = firstEvents[runInd]+5000; */
-  /*   } */
-  /* } */
+  {
+    int runInd=0;
+    for(runInd=0; runInd<NUM_RUNS; runInd++){
+      lastEvents[runInd] = firstEvents[runInd]+5000 < lastEvents[runInd] ? firstEvents[runInd]+5000 : lastEvents[runInd];
+    }
+  }
 
   /* { */
   /*   int runInd=0; */
@@ -132,6 +133,11 @@ int main(int argc, char *argv[]){
   signal(SIGTERM, handleBadSigs);
   signal(SIGINT, handleBadSigs);
   signal(SIGSEGV, handleBadSigs);
+
+  //Dont' wait for children
+  //RJN hack will have to fix this somehow
+  signal(SIGCLD, SIG_IGN); 
+
 
   /* Setup log */
   setlogmask(LOG_UPTO(LOG_INFO));
@@ -188,7 +194,7 @@ int main(int argc, char *argv[]){
     int runInd=0;
     for(runInd=0; runInd<NUM_RUNS; runInd++) {
       int run = runs[runInd];
-      /* if(run!=selectedRun) continue; */
+      if(run!=selectedRun) continue;
 
       const char* baseDir = "/home/anita/anitaStorage/antarctica14/raw";
       int eventFileNum=0;
@@ -258,7 +264,7 @@ int main(int argc, char *argv[]){
 	    /* retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]); */
 	    double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
 	    /* printf("fakePrioritizer reads event %d with priority %d\n",theHeader[eventsReadIn].eventNumber,  theHeader[eventsReadIn].priority&0xf); */
-	    doTimingCalibration(eventsReadIn, theHeader[eventsReadIn], pedSubBody[eventsReadIn], finalVolts);
+	    doTimingCalibration(eventsReadIn, &theHeader[eventsReadIn], pedSubBody[eventsReadIn], finalVolts);
 	    addEventToGpuQueue(eventsReadIn, finalVolts, theHeader[eventsReadIn]);
 	    int chanInd=0;
 	    for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
