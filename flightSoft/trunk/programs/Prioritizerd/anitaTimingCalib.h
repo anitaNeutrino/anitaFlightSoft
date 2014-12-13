@@ -33,12 +33,18 @@ void readInVoltageCalib(const char* fileName);
 void readInRelativeCableDelay(const char* fileName);
 
 
-/* The meat */
-void doTimingCalibration(int entry, AnitaEventHeader_t theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[]);
+#ifdef __APPLE__
+void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[], double* finalTimes);
+#else
+void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[]);
+#endif
 double* interpolateWaveform(int nRaw, double* rawWave, double* times, 
 			    int nInterp, double t0interp, double dtNsInterp);
 double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes, 
 				    int nInterp, double t0interp, double dtNsInterp);
+
+
+double* simpleBandPass(double* volts, int length, double dt, double highPassMHz, double lowPassMHz);
 
 double findClockJitterCorrection(int numSamples, double* clock1, double* clock, double deltaT_ns, int surf, int lab);
 

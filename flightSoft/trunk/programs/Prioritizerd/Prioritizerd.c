@@ -66,6 +66,10 @@ int main (int argc, char *argv[])
 #endif
        
 
+  //Dont' wait for children
+  //RJN hack will have to fix this somehow
+  signal(SIGCLD, SIG_IGN); 
+
   /* Set signal handlers */
   signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
@@ -113,8 +117,6 @@ int main (int argc, char *argv[])
   }
   retVal=readConfig();
   prepWriterStructs();
-
-
   
   do {
     if(printToScreen) printf("Initalizing Prioritizerd\n");
@@ -167,7 +169,7 @@ int main (int argc, char *argv[])
 	  /* Then we add to GPU queue... */
 	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
 	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
-	  doTimingCalibration(eventsReadIn, theHeader[eventsReadIn], pedSubBody, finalVolts);
+	  doTimingCalibration(eventsReadIn, &theHeader[eventsReadIn], pedSubBody, finalVolts);
 	  addEventToGpuQueue(eventsReadIn, finalVolts, theHeader[eventsReadIn]);
 	  int chanInd=0;
 	  for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
@@ -228,6 +230,9 @@ int main (int argc, char *argv[])
 	    syslog(LOG_ERR,"Error moving file %s -- %s",archiveBodyFilename,
 		   strerror(errno));
 	  }
+
+
+	printf("just before writing... (theHeader[count].prioritizerStuff & 0x4000)>>14 = %hu\n", (theHeader[count].prioritizerStuff & 0x4000)>>14);
 
 	sprintf(archiveHdFilename,"%s/hd_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader[count].eventNumber);

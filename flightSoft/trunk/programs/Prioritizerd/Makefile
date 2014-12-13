@@ -12,11 +12,10 @@ CL_LIBDIR = $(CL)/lib
 
 #DEBUG=1
 #CALIBRATION=1
-#SEAVEY_ORIENTATION_OFF=1
 #TIME_STAMP=1
 #PROFILER
 
-LDFLAGS +=-lOpenCL -lgsl -ltcmalloc -lprofiler
+LDFLAGS +=-lOpenCL -lgsl 
 CCFLAGS +=-g
 
 Targets = Prioritizerd fakePrioritizerd
@@ -35,11 +34,6 @@ endif
 ifdef CALIBRATION
 CCFLAGS +=-DCALIBRATION
 endif
-
-ifdef SEAVEY_ORIENTATION_OFF
-CCFLAG += -DSEAVEY_ORIENTATION_OFF
-endif
-
 
 ifdef DEBUG
 CCFLAGS +=-DDEBUG_MODE

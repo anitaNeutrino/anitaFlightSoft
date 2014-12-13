@@ -14,7 +14,7 @@ float absMagnitudeThresh_dBm;
 /* Use reconstructed angle to tweak priorities */
 float thetaAngleLowForDemotion =-40;
 float thetaAngleHighForDemotion =10;
-int thetaAnglePriorityDemotion=-1;
+int thetaAnglePriorityDemotion=1;
 
 
 /* Used for filtering in the GPU */
@@ -57,7 +57,7 @@ void prepareGpuThings(){
     fprintf(stderr, "Warning! Trying to do load priorityParamsHighBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
 
-  binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",3);
+  binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",5);
   absMagnitudeThresh_dBm=kvpGetFloat("absMagnitudeThresh_dBm",50);
   interceptOfImagePeakVsHilbertPeak = kvpGetFloat ("interceptOfImagePeakVsHilbertPeak", 1715.23327523);
   slopeOfImagePeakVsHilbertPeak = kvpGetFloat ("slopeOfImagePeakVsHilbertPeak", 49.10747809);
@@ -595,7 +595,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     for(ring=0; ring<3; ring++){
       int ant = imagePeakPhiSector[index2] + ring*NUM_PHI_SECTORS;
       int freqInd=20;
-      for(freqInd = 20; freqInd < 20+99 /* Hackity hack hack*/; freqInd++){
+      for(freqInd = 20; freqInd < 20+99; freqInd++){
 	int freqInd2 = (1-polBit)*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
 	#ifdef CALIBRATION
 	if(powSpec[freqInd2] > maxPhiSectPower[ring]){
@@ -607,33 +607,44 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  maxDiffPowSpecBin[ring] = freqInd;
 	}
 	#endif
-	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x1){
-	  threshFlag = 1;
-	}
-	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x2){
-	  diffFlag = 1;
+	
+	if(!(polBit==0 && imagePeakPhiSector[index2]==4 && ring==0)){ /* Skip alpha channel 5TH*/
+          if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x1){
+	    threshFlag = 1;
+          }
+	  if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x2){
+	    diffFlag = 1;
+          }
 	}
       }
     }
+
+    printf("anitaGpu start... header[eventInd].prioritizerStuff= %hu\n", header[eventInd].prioritizerStuff);
+
+    /* Read previously set lowest bit saturation flag */
+    unsigned short saturationFlag = (header[eventInd].prioritizerStuff);
+    header[eventInd].prioritizerStuff = 0;
 
     /* Value goes between 0->1, get 16 bit precision by multiplying by maximum value of unsigned short... */
     header[eventInd].imagePeak = (unsigned short)(imagePeakVal[index2]*65535);
     header[eventInd].coherentSumPeak = (unsigned short) hilbertPeak[index2];
     header[eventInd].peakThetaBin = (unsigned char) imagePeakTheta2[index2];
     float thetaDegPeak = -1*THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
+
     
     /* Only need 10 bits for this number. */
-    header[eventInd].prioritizerStuff += (0x3ff & ((unsigned short) imagePeakPhiSector[index2]*NUM_BINS_PHI + imagePeakPhi2[index2]));
+    header[eventInd].prioritizerStuff |= (0x3ff & ((unsigned short) imagePeakPhiSector[index2]*NUM_BINS_PHI + imagePeakPhi2[index2]));
 
     /* Left bit shift by 1, then set lowest bit as polarization bit */
     /* Now at 0x7fff */
     header[eventInd].prioritizerStuff <<= 1;
     header[eventInd].prioritizerStuff |= polBit;
     /* Still have 5 bits remaining, going to use up two more... */
-    header[eventInd].prioritizerStuff |= (threshFlag << 11);
-    header[eventInd].prioritizerStuff |= (diffFlag << 12);
+    header[eventInd].prioritizerStuff |= (threshFlag << 12);
+    header[eventInd].prioritizerStuff |= (diffFlag << 13);
+    header[eventInd].prioritizerStuff |= (saturationFlag << 14);
+    
     /* Now 3 bits remaining...! */
-    /* Just used another bit in anitaTimingCalib.c for saturation flag! at (1 << 13) */
     /* Now 2 bits remaining */
     
 
@@ -643,7 +654,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     float priorityParam = sqrt(normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak);
 
     int priority = 0;
-    if((priority & (1<<13)) > 0){
+    if(saturationFlag > 0){
       /* Found saturation when unwrapping */
       priority = 9;
     }
@@ -665,6 +676,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
 
 
+    printf("(header[eventInd].prioritizerStuff & 0x4000)>>14 = %hu\n", (header[eventInd].prioritizerStuff & 0x4000)>>14);
+    printf("saturationFlag = %hu\n", saturationFlag);
+    printf("priority = %d\n", priority);
 
     /* Finally tweak priority based on reconstructed angle .. */
     if((thetaDegPeak > thetaAngleHighForDemotion || thetaDegPeak < thetaAngleLowForDemotion) && priority <6){
@@ -672,6 +686,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
 
     header[eventInd].priority = priority;
+
+    printf("eventNumber %u, saturationFlag %hu, priority %d\n", header[eventInd].eventNumber, saturationFlag, priority);
 
     #ifdef CALIBRATION
     fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, priorityParam, normalizedHilbertPeak, higherImagePeak, priority);
