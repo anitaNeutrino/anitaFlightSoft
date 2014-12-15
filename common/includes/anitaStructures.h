@@ -199,7 +199,7 @@ typedef enum {
     PACKET_GPSD_START = 0xc00, ///< GpsdStartStruct_t -- Yes
     PACKET_LOGWATCHD_START = 0xc01, ///< LogWatchdStart_t -- Yes
     PACKET_ACQD_START = 0xc02, ///<AcqdStartStruct_t -- Yes
-    PACKET_GPU_AVE_POW_SPEC = 0xd ///<GpuPhiSectorPowerSpectrumStruct_t -- Yes
+    PACKET_GPU_AVE_POW_SPEC = 0xd ///<GpuPhiSectorPowerSpectrum_t -- Yes
     
 } PacketCode_t;
 
