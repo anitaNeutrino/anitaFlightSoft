@@ -1590,7 +1590,7 @@ int setSipdHkTelemOrder(int hk, int order)
   time_t rawtime;
   readSipdConfig();
   sipdHkTelemOrder[hk]=order;
-  configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,20,&rawtime);
+  configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,21,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
   return rawtime;    
 
@@ -1601,7 +1601,7 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
   time_t rawtime;
   readSipdConfig();
   sipdHkTelemMaxCopy[hk]=numPackets;
-  configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,20,&rawtime);
+  configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,21,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
   return rawtime;    
 
@@ -2110,7 +2110,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_ANT_TRIG_MASK: 	    
+  case ACQD_RATE_SET_L1_TRIG_MASK: 	    
     utemp=(args[0]);	    
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2119,10 +2119,26 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-    syslog(LOG_INFO,"ACQD_SET_ANT_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
+    syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
 	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
       
-    configModifyUnsignedInt("Acqd.config","thresholds","antTrigMask",uvalue[0],&rawtime);
+    configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMask",uvalue[0],&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case ACQD_RATE_SET_L1_TRIG_MASK_HPOL: 	    
+    utemp=(args[0]);	    
+    uvalue[0]=utemp;
+    utemp=(args[1]);
+    uvalue[0]|=(utemp<<8);
+    utemp=(args[2]);
+    uvalue[0]|=(utemp<<16);
+    utemp=(args[3]);
+    uvalue[0]|=(utemp<<24);
+    syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK_HPOL: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
+	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
+      
+    configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMaskH",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2149,9 +2165,9 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     if(retVal) return 0;
     return rawtime;
   case ACQD_RATE_SET_CHAN_PID_GOAL_SCALE:
-    ivalue[0]=args[0]; //surf 0:9
-    ivalue[1]=args[1]; //dac 0:15
-    if(ivalue[0]>8 || ivalue[1]>31) return 0;
+    ivalue[0]=args[0]; //surf 0:11
+    ivalue[1]=args[1]; //dac 0:11
+    if(ivalue[0]>11 || ivalue[1]>11) return 0;
     ivalue[2]=args[2]+(args[3]<<8);
     fvalue=((float)ivalue[2])/1000.;
     return setPidGoalScaleFactor(ivalue[0],ivalue[1],fvalue);
@@ -2838,7 +2854,7 @@ int readAcqdConfig()
 	pidGoalScaleFactors[surf][dac]=0;
       }
       sprintf(keyName,"pidGoalScaleSurf%d",surf+1);
-      tempNum=32;	       
+      tempNum=SCALERS_PER_SURF;	       
       kvpStatus = kvpGetFloatArray(keyName,&(pidGoalScaleFactors[surf][0]),&tempNum);
       if(kvpStatus!=KVP_E_OK) {
 	syslog(LOG_WARNING,"kvpGetFloatArray(%s): %s",keyName,
@@ -3313,7 +3329,7 @@ int readSipdConfig()
 		kvpErrorString(kvpStatus));
     }
 
-    tempNum=20;
+    tempNum=21;
     kvpStatus = kvpGetIntArray("hkTelemOrder",sipdHkTelemOrder,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(hkTelemOrder): %s",
@@ -3322,7 +3338,7 @@ int readSipdConfig()
 	fprintf(stderr,"kvpGetIntArray(hkTelemOrder): %s\n",
 		kvpErrorString(kvpStatus));
     }
-    tempNum=20;
+    tempNum=21;
     kvpStatus = kvpGetIntArray("hkTelemMaxCopy",sipdHkTelemMaxCopy,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxCopy): %s",
