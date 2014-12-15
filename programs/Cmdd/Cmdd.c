@@ -1856,7 +1856,7 @@ int executePrioritizerdCommand(int command, int value, int value2)
     configModifyFloatArray("Prioritizerd.config","antennalocations","rArray",rArray,48,&rawtime);
     break;	    	    
   case PRI_ANT_Z_POS:
-    zArray[value]=-1*value2/10000;
+    zArray[value]=-1.0*value2/10000.0;
     configModifyFloatArray("Prioritizerd.config","antennalocations","zArray",zArray,48,&rawtime);
     break;	    	    	    	    
   case PRI_POS_SATUATION:
