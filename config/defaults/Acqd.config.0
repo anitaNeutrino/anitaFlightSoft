@@ -15,16 +15,14 @@ turfioSlot#I1=10;
 turfioBus#I1=10;
 surfSlot#I12=11,13,14,15,8,9,11,13,14,15,8,9;
 surfBus#I12=4,4,4,4,4,3,3,3,3,3,3,2;
-//surfSlot#I12=11,13,14,8,9,11,14,15,8,9,-1,-1;
-//surfBus#I12=4,4,4,4,3,3,3,3,3,2,-1,-1;
 </locations>
 
 
 <trigger>
-enablePPS1Trigger#I1=0;
-enablePPS2Trigger#I1=0;
+enablePPS1Trigger#I1=1;
+enablePPS2Trigger#I1=1;
 disableExtTrigger#I1=0;
-sendSoftTrigger#I1=0;
+sendSoftTrigger#I1=1;
 softTrigPeriod#I1=1;
 </trigger>
 
@@ -38,8 +36,8 @@ writeRawScalers#I1=1;
 
 
 <thresholdScan>
-doThresholdScan#I1=0
-thresholdScanStepSize#I1=50;
+doThresholdScan#I1=0;
+thresholdScanStepSize#I1=10;
 thresholdScanPointsPerStep#I1=4;
 doSingleChannelScan#I1=0;
 surfForSingle#I1=100;
@@ -49,19 +47,19 @@ threshSwitchConfigAtEnd#I1=0;
 
 
 <rates>
-enableDynamicPhiMasking#I1=0;
+enableDynamicPhiMasking#I1=1;
 enableDynamicAntMasking#I1=0;
-dynamicPhiThresholdOverRate#I1=20;
+dynamicPhiThresholdOverRate#I1=40;
 dynamicPhiThresholdOverWindow#I1=20;
-dynamicPhiThresholdUnderRate#I1=10;
+dynamicPhiThresholdUnderRate#I1=20;
 dynamicPhiThresholdUnderWindow#I1=30;
 dynamicAntThresholdOverRate#I1=500000;
 dynamicAntThresholdOverWindow#I1=30;
 dynamicAntThresholdUnderRate#I1=100000;
 dynamicAntThresholdUnderWindow#I1=50;
 enableRateServo#I1=0;
-rateGoal#F1=5;
-servoRateCalcPeriod#I1=120;
+rateGoal#F1=50;
+servoRateCalcPeriod#I1=60;
 ratePGain#F1=0.5;
 rateIGain#F1=0.01;
 rateDGain#F1=0.00;
@@ -72,23 +70,24 @@ rateIMin#F1=-100;
 
 <thresholds>
 enableChanServo#I1=1;
-pidGoals#I3=500,500,500;
+pidGoals#I3=475,475,475;
 pidPanicVal#I1=200;
 pidAverage#I1=8;
 dacSurfs#I12=1,1,1,1,1,1,1,1,1,1,0,0;
+useLastRunThresholds#I1=1;
 setGlobalThreshold#I1=0;
-globalThreshold#I1=1100;
+globalThreshold#I1=100;
 dacPGain#F3=0.05,0.05,0.05;
 dacIGain#F3=0.0005,0.0005,0.0005;
 dacDGain#F3=0,0,0;
 dacIMax#I3=50000,50000,50000;
 dacIMin#I3=-50000,-50000,-50000;
 gpsPhiTrigMask#I1=0;
-phiTrigMaskH#I1=0xfff9;
-phiTrigMask#I1=0xfff9;
+phiTrigMaskH#I1=0;
+phiTrigMask#I1=0;
 l1TrigMask#I1=0;
 l1TrigMaskH#I1=0;
-surfTrigBandMask#I1=0;
+surfTrigBandMasks#I12=0,0,0,0,0,0,0,0,0,0,0,0;
 threshSurf1#I12=1300,1300,1300,1300,1300,1300,1300,1300,1300,1300,1300,1300;
 threshSurf2#I12=1300,1300,1300,1300,1300,1300,1300,1300,1300,1300,1300,1300;
 threshSurf3#I12=1300,1300,1300,1300,1300,1300,1300,1300,1300,1300,1300,1300;
@@ -122,10 +121,10 @@ pedestalMode#I1=0;
 useInterrupts#I1=0;
 surfFirmwareVersion#I1=4;
 turfFirmwareVersion#I1=6;
-reprogramTurf#I1=0;
+reprogramTurf#I1=1;
 surfHkPeriod#I1=0;
 surfHkAverage#I1=300;
-surfHkTelemEvery#I1=1000;
+surfHkTelemEvery#I1=100;
 turfRateTelemEvery#I1=10;
 turfRateTelemInterval#I1=10;
 turfRateAverage#I1=60;

@@ -48,16 +48,16 @@ typedef enum {
   OPENPORT_TELEM_ADU5B_PAT, //8
   OPENPORT_TELEM_G12_POS, //9
   OPENPORT_TELEM_GPU, //10
-  OPENPORT_TELEM_ADU5A_VTG, //1
-  OPENPORT_TELEM_ADU5B_VTG,
-  OPENPORT_TELEM_G12_GGA,
-  OPENPORT_TELEM_ADU5A_GGA,
-  OPENPORT_TELEM_ADU5B_GGA,
-  OPENPORT_TELEM_SURFHK,
-  OPENPORT_TELEM_TURFRATE,
-  OPENPORT_TELEM_OTHER,
-  OPENPORT_TELEM_PEDESTAL,
-  OPENPORT_TELEM_REQUEST,
+  OPENPORT_TELEM_ADU5A_VTG, //11
+  OPENPORT_TELEM_ADU5B_VTG,  //12
+  OPENPORT_TELEM_G12_GGA, //13
+  OPENPORT_TELEM_ADU5A_GGA, //14
+  OPENPORT_TELEM_ADU5B_GGA, //15
+  OPENPORT_TELEM_SURFHK, //16
+  OPENPORT_TELEM_TURFRATE, //17
+  OPENPORT_TELEM_OTHER, //18
+  OPENPORT_TELEM_PEDESTAL, //19
+  OPENPORT_TELEM_REQUEST, //20
   OPENPORT_TELEM_NOT_A_TELEM
 } OPENPORTTelemType_t;
 
@@ -204,7 +204,7 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
 
 //Will make these configurable soon
 int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,3,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -1139,9 +1139,9 @@ void sendSomeHk(int maxBytes)
 
   for(i=0;i<NUM_HK_TELEM_DIRS;i++) {
     hkInd=hkTelemOrder[i];
-    //      fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
+    //    fprintf(stderr,"hkInd is %d (%d)\n",hkInd,i);
     numHkLinks[hkInd]=getNumLinks(wdHks[hkInd]);
-    // retVal=fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
+    //    retVal=fprintf(stderr,"numLinks %d %d %d %d-- %s\n",maxBytes,hkCount,maxPacketSize[hkInd],numHkLinks[hkInd],telemLinkDirs[hkInd]);
     //    if(retVal<0) {
     //      syslog(LOG_ERR,"Error using fprintf -- %s",strerror(errno));
     //    }

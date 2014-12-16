@@ -862,7 +862,7 @@ int readConfig()
 //	maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
 	headersPerEvent=kvpGetInt("headersPerEvent",30);
 	eventBandwidth=kvpGetInt("eventBandwidth",5);
-	tempNum=20;
+	tempNum=NUM_HK_TELEM_DIRS;
 	kvpStatus = kvpGetIntArray("hkTelemOrder",hkTelemOrder,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
 	    syslog(LOG_WARNING,"kvpGetIntArray(hkTelemOrder): %s",
@@ -871,7 +871,7 @@ int readConfig()
 		fprintf(stderr,"kvpGetIntArray(hkTelemOrder): %s\n",
 			kvpErrorString(kvpStatus));
 	}
-	tempNum=20;
+	tempNum=NUM_HK_TELEM_DIRS;
 	kvpStatus = kvpGetIntArray("hkTelemMaxPackets",hkTelemMaxPackets,&tempNum);
 	if(kvpStatus!=KVP_E_OK) {
 	    syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxPackets): %s",
