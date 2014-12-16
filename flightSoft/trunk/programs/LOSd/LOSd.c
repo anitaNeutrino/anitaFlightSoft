@@ -1338,7 +1338,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
 
   //  printf("Sending buffer length %d\n",numBytesSci);
 
-  nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci);
+  nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci,0,TW_LOS);
   if (nbytes < 0) {
     syslog(LOG_ERR,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
     fprintf(stderr,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
