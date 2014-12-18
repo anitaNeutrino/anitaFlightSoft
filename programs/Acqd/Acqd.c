@@ -773,6 +773,7 @@ int main(int argc, char **argv) {
 	hdPtr->phiTrigMask=phiTrigMask;
 	hdPtr->phiTrigMaskH=phiTrigMaskH;
 	hdPtr->l1TrigMask=(unsigned int)l1TrigMask;	       
+	hdPtr->l1TrigMaskH=(unsigned int)l1TrigMaskH;	       
 		
 	//Filled by Eventd
 	//hdPtr->gpsSubTime;
@@ -809,12 +810,15 @@ int main(int argc, char **argv) {
 	printf("Dynamically setting phi mask to %#x--%#x at %u\n",phiTrigMask,phiTrigMaskH,
 	       (unsigned int)lastNewPhiMask);
 	setTriggerMasks();
-	doSurfHkAverage(1); //Flush the surf hk average
-	doTurfRateSum(1); //Flush the turf rate sum    
 
 	l1TrigMask=tempL1TrigMask;
 	l1TrigMaskH=tempL1TrigMaskH;
 	setTriggerMasks();
+
+	doSurfHkAverage(1); //Flush the surf hk average
+	doTurfRateSum(1); //Flush the turf rate sum    
+
+
 
 //	  memset(lastTurfRates,0,NUM_DYN_TURF_RATE*sizeof(TurfRateStruct_t));
 //	  countLastTurfRates=0;
@@ -1444,6 +1448,7 @@ int readConfigFile()
     phiTrigMask|=gpsPhiTrigMask;
     phiTrigMaskH|=gpsPhiTrigMask;
     l1TrigMask=kvpGetUnsignedInt("l1TrigMask",0);
+    l1TrigMaskH=kvpGetUnsignedInt("l1TrigMaskH",0);
 	
     if(printToScreen) printf("Print to screen flag is %d\n",printToScreen);
 
@@ -1700,6 +1705,7 @@ AcqdErrorCode_t clearDevices()
   phiTrigMask=0xffff;
   phiTrigMaskH=0xffff;
   l1TrigMask=0xffff;    
+  l1TrigMaskH=0xffff;    
   //Mask off all antennas
   if(verbosity && printToScreen)
     fprintf(stderr,"Masking off antennas\n");
@@ -1737,6 +1743,7 @@ AcqdErrorCode_t clearDevices()
   phiTrigMask=0xffff;
   phiTrigMaskH=0xffff;
   l1TrigMask=0xffff;    
+  l1TrigMaskH=0xffff;    
   status=setTriggerMasks();
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
@@ -4404,6 +4411,7 @@ int checkTurfRates()
   unsigned int newPhiMask=0;
   unsigned int newPhiMaskH=0;
   unsigned int newL1TrigMask=0;
+  unsigned int newL1TrigMaskH=0;
   int changedSomething=0;
   
   memset(l1HitCount,0,sizeof(int)*PHI_SECTORS*2);
@@ -4428,6 +4436,11 @@ int checkTurfRates()
 	    l3HitCount[phi][pol]++;
 	  if(lastTurfRates[tInd].l3Rates[phi][pol]<dynamicPhiThresholdUnderRate)
 	    l3MissCount[phi][pol]++;
+
+	  if(lastTurfRates[tInd].l1Rates[phi][pol]>dynamicAntThresholdOverRate) 
+	    l1HitCount[phi][pol]++;
+	  if(lastTurfRates[tInd].l1Rates[phi][pol]<dynamicAntThresholdUnderRate)
+	    l1MissCount[phi][pol]++;
 	  //	  for(ring=0;ring<2;ring++) {
 	  //	  if(lastTurfRates[tInd].l1Rates[phi][ring]>dynamicAntThresholdOverRate) 
 	  //	    l1HitCount[phi][ring]++;
@@ -4440,6 +4453,7 @@ int checkTurfRates()
     newPhiMask=phiTrigMask;
     newPhiMaskH=phiTrigMaskH;
     newL1TrigMask=l1TrigMask;    
+    newL1TrigMaskH=l1TrigMaskH;    
     for(phi=0;phi<PHI_SECTORS;phi++) {
       if(l3HitCount[phi][0]>dynamicPhiThresholdOverWindow) {
 	//Got a hot channel
@@ -4462,6 +4476,27 @@ int checkTurfRates()
 	newPhiMaskH &= ~(1<<phi);
       }
       //RJN need to add L1 something here      
+      if(l1HitCount[phi][0]>dynamicAntThresholdOverWindow) {
+	//Got a hot channel
+//	  printf("hot channel %d -- %d\n",phi,l1HitCount[phi]);
+	  newL1TrigMask |= (1<<phi);
+      }
+      if(l1MissCount[phi][0]>dynamicAntThresholdUnderWindow) {
+	//Got a quiet channel
+//	  printf("cold channel %d -- %d\n",phi,l1MissCount[phi]);
+	newL1TrigMask &= ~(1<<phi);
+      }
+      if(l1HitCount[phi][1]>dynamicAntThresholdOverWindow) {
+	//Got a hot channel
+//	  printf("hot channel %d -- %d\n",phi,l1HitCount[phi]);
+	  newL1TrigMaskH |= (1<<phi);
+      }
+      if(l1MissCount[phi][1]>dynamicAntThresholdUnderWindow) {
+	//Got a quiet channel
+//	  printf("cold channel %d -- %d\n",phi,l1MissCount[phi]);
+	newL1TrigMaskH &= ~(1<<phi);
+      }
+
     }
   
     if(phiTrigMask!=newPhiMask) {
@@ -4488,6 +4523,15 @@ int checkTurfRates()
 		printf("Changing antenna mask from %#x to %#x\n",l1TrigMask,newL1TrigMask);
 	    }
 	    l1TrigMask=newL1TrigMask;
+	    changedSomething=1;
+	}
+    }
+    if(newL1TrigMaskH!=l1TrigMaskH) {
+	if(enableDynamicAntMasking) {
+	    if(printToScreen) {
+		printf("Changing antenna mask from %#x to %#x\n",l1TrigMask,newL1TrigMask);
+	    }
+	    l1TrigMaskH=newL1TrigMaskH;
 	    changedSomething=1;
 	}
     }
