@@ -131,11 +131,11 @@ int losdBandwidths[NUM_PRIORITIES];
 int sipdBandwidths[NUM_PRIORITIES];
 int sipdHkTelemOrder[20];
 int sipdHkTelemMaxCopy[20];
-float dacIGain[4];  // integral gain
-float dacPGain[4];  // proportional gain
-float dacDGain[4];  // derivative gain
-int dacIMax[4];  // maximum intergrator state
-int dacIMin[4]; // minimum integrator state
+float dacIGain[3];  // integral gain
+float dacPGain[3];  // proportional gain
+float dacDGain[3];  // derivative gain
+int dacIMax[3];  // maximum intergrator state
+int dacIMin[3]; // minimum integrator state
 
 //Prioritizerd
 float phiArrayDeg[48]={0};
@@ -2285,7 +2285,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[1]|=(utemp<<24);
     fvalue=uvalue[1]/10000.;
     dacPGain[uvalue[0]]=fvalue;
-    configModifyFloatArray("Acqd.config","thresholds","dacPGain",dacPGain,BANDS_PER_ANT,&rawtime);
+    configModifyFloatArray("Acqd.config","thresholds","dacPGain",dacPGain,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2304,7 +2304,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[1]|=(utemp<<24);
     fvalue=uvalue[1]/10000.;
     dacIGain[uvalue[0]]=fvalue;
-    configModifyFloatArray("Acqd.config","thresholds","dacIGain",dacIGain,BANDS_PER_ANT,&rawtime);
+    configModifyFloatArray("Acqd.config","thresholds","dacIGain",dacIGain,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2323,7 +2323,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[1]|=(utemp<<24);
     fvalue=uvalue[1]/10000.;
     dacDGain[uvalue[0]]=fvalue;
-    configModifyFloatArray("Acqd.config","thresholds","dacDGain",dacDGain,BANDS_PER_ANT,&rawtime);
+    configModifyFloatArray("Acqd.config","thresholds","dacDGain",dacDGain,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2342,7 +2342,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[1]|=(utemp<<24);
     fvalue=uvalue[1];
     dacIMax[uvalue[0]]=uvalue[1];
-    configModifyIntArray("Acqd.config","thresholds","dacIMax",dacIMax,BANDS_PER_ANT,&rawtime);
+    configModifyIntArray("Acqd.config","thresholds","dacIMax",dacIMax,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2361,7 +2361,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[1]|=(utemp<<24);
     fvalue=uvalue[1];
     dacIMin[uvalue[0]]=fvalue*-1;
-    configModifyIntArray("Acqd.config","thresholds","dacIMin",dacIMin,BANDS_PER_ANT,&rawtime);
+    configModifyIntArray("Acqd.config","thresholds","dacIMin",dacIMin,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
