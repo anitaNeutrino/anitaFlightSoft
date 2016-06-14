@@ -17,13 +17,13 @@
  * 	Indicates using high-rate TDRSS data via the SIP.
  */
 #define TW_SIP 1
- 
+
 /*
  * Macro: TW_PAD_BYTE
  *	Byte to pad the science data to be an even number of bytes.
  *	See the Data Format section of the telemwrap README file.
  */
-#define TW_PAD_BYTE 0x00
+#define TW_PAD_BYTE 0xDA
 
 /*
  * Function: telemwrap_init
@@ -63,19 +63,11 @@ int telemwrap_init(int datasource);
  * 	databuf - (in) science data.
  * 	wrapbuf - (out) the wrapped data
  * 	nbytes -  (in) number of bytes of science data
- *	xtype -   (in) 0 if using omni antenna, 1 if hga (can use the
- *			SIPCOM_OMNI and SIPCOM_HGA macros for this)
  *
  * Returns:
  * 	Number of bytes in wrapped data buffer.
  */
-
-#define SIPCOM_OMNI 0
-#define SIPCOM_HGA  1
-#define SIPCOM_LOS  2
-#define SIPCOM_OPENPORT  3
-
 int telemwrap(unsigned short *databuf, unsigned short *wrapbuf,
-    unsigned short nbytes, int xtype, int datasource);
+    unsigned short nbytes);
 
 #endif // _TELEMWRAP_H
