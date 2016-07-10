@@ -1280,6 +1280,154 @@ typedef struct {
 } GpsSubTime_t;
 
 
+///////////////////////////////////////////////////////////////////////
+//Raw Gps Structs
+//////////////////////////////////////////////////////////////////////
+
+//! This is the MBEN struct described on page 121 of the ADU5 manual
+/*!
+  All of the comments come directly from the ADU5 manual
+*/
+typedef struct {
+  unsigned short sequence_tag;  ///< Sequence ID number in units of 50ms, modulo 30 minutes
+  unsigned char mben_eft; ///< Number of remaining MBEN structures to be sent for current epoch.
+  unsigned char svpm; ///< Satellite PRN number.
+  unsigned char el; ///< Satellite elevation angle (degrees).
+  unsigned char az; ///< Satellite azimuth angle (degrees).
+  unsigned char chnind; ///< Channel ID (1 to 12).
+  unsigned char warn; ///< Warning flag
+  unsigned char good_bad; ///< Indicates quality of the position measurement.
+  unsigned char polarity_know; ///< Indicates synchronization of receiver with NAV message
+  unsigned char ireg; ///< Signal-to-noise ratio of satellite observation
+  unsigned char qa_phase; ///< Phase quality indicator: 0 - 5 and 95 -100 are normal
+  double full_phase; ///< Full carrier phase measurements in cycles
+  double raw_range; ///< Raw range to SV (in seconds), that is, receive_time - raw_range = transmit time
+  long doppler; ///< Doppler (10-4 Hz)
+  long smoothing; ///< Doppler (10-4 Hz)  
+} RawAdu5MBNStruct_t;
+
+
+//! This is the SNAV struct described on page 131 of the ADU5 manual
+/*!
+  The SNAV epheremis raw data. All of the comments come directly from the ADU5 manual
+*/
+typedef struct {
+  short weekNumber; ///< GPS week number.
+  long secondsInWeek; ///< Seconds of GPS week.
+  float groupDelay; ///< Group delay (sec).
+  long aodc; ///< Clock data issue.
+  long toc; ///< (sec).
+  float af2; ///< Clock: (sec/sec2)
+  float af1; ///< Clock (sec/sec)
+  float af0; ///< Clock (sec)
+  long aode; ///< Orbit data issue.
+  float deltaN; ///< Mean anomaly correction (semi-circle/sec).
+  double m0; ///< Mean anomaly at reference time (semi-circle).
+  double eccentricity; ///< Eccentricity.
+  double roota; ///< Square root of semi-major axis (meters p)
+  long toe; ///< Reference time for orbit (sec).
+  float cic; ///< Harmonic correction term (radians).
+  float crc; ///< Harmonic correction term (meters).
+  float cis; ///< Harmonic correction term (radians).
+  float crs; ///< Harmonic correction term (meters).
+  float cuc; ///< Harmonic correction term (radians).
+  float cus; ///< Harmonic correction term (radians).
+  double omega0; ///< Lon of Asc. node (semi-circles).
+  double omega; ///< Arg. of Perigee (semi-circles).
+  double i0; ///< Inclination angle at reference time (semi-circles).
+  float omegadot; ///< Rate of right Asc. (semi-circles per sec).
+  float idot; ///< Rate of inclination (semi-circles per sec).
+  short accuracy; ///< (coded).
+  short health; ///< (coded).
+  short fit; ///< Curve fit interval (coded).
+  char prnnum; ///< (SV PRN number -1)
+  char res; ///< Reserved byte.
+} RawAdu5SNVStruct_t;
+
+//////////////////////////////////////////////////////////////////
+
+//! This is the PBEN struct described on page 128 of the ADU5 manual
+/*!
+  All of the comments come directly from the ADU5 manual
+*/
+typedef struct {
+  int pben_time;  ///< GPS time in 10-3 seconds of the week when data was received.
+  char sitename; ///< 4-character site name (operator entered)
+  double navx; ///< Station position: ECEF-X
+  double navy; ///< Station position: ECEF-Y
+  double navz; ///< Station position: ECEF-Z
+  float navt; ///< Clock offset (meters).
+  float navxdot; ///< Velocity in ECEF-X (m/sec)
+  float navydot; ///< Velocity in ECEF-Y (m/sec)
+  float navzdot; ///< Velocity in ECEF-Z (m/sec)
+  float navtdot; ///< Clock drift.
+  unsigned short pdop; ///< Position Dilution of Precision
+} RawAdu5PBNStruct_t;
+
+//! This is the ATT struct described on page 114 of the ADU5 manual
+/*!
+  All of the comments come directly from the ADU5 manual
+*/
+typedef struct {
+  double head; ///< Heading in degrees
+  double pitch; ///< Pitch in degrees 
+  double roll; ///< Roll in degrees
+  double brms; ///< BRMS in meters
+  double mrms; ///< MRMS in meters
+  int timeOfWeek; ///< Seconds-of-Week in milliseconds
+  char reset; ///< Attitude reset flag
+  char spare; ///< Spare byte which is not used
+} RawAdu5ATTStruct_t;
+
+
+struct __attribute__((__packed__)) RawAdu5BFileHeader {
+    char version[10];
+    unsigned char raw_version;
+    char rcvr_type[10];
+    char chan_ver[10];
+    char nav_ver[10];
+    short capability;
+    int wb_start;
+    char num_obs_type;
+    char spare[48];
+}  RawAdu5BFileHeader_t;
+
+struct __attribute__((__packed__)) RawAdu5BFileRawNav {
+    char sitename[4];
+    double rcv_time;
+    double navx;
+    double navy;
+    double navz;
+    float navxdot;
+    float navydot;
+    float navzdot;
+    double navt;
+    double navtdot;
+    unsigned short pdop;
+    char num_sats;     
+}  RawAdu5BFileRawNav_t;
+
+struct __attribute__((__packed__)) RawAdu5BFileChanObs {
+  double raw_range;
+  float smth_corr;
+  unsigned short smth_count;
+  char polarity_known;
+  unsigned char warning;
+  unsigned char goodbad;
+  unsigned char qa_phase;
+  int doppler;
+  doppler carphase;		    
+}  RawAdu5BFileChanObs_t;
+
+
+struct __attribute__((__packed__)) RawAdu5BFileRawDataHeader {
+  unsigned char svprn;
+  unsigned char elevation;
+  unsigned char azimuth;
+  unsigned char chnind;
+  unsigned char warning;
+}  RawAdu5BFileRawDataHeader_t;
+
 
 ///////////////////////////////////////////////////////////////////////
 //Utility Structures
