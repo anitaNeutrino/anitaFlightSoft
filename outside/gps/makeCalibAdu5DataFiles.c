@@ -8,11 +8,14 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
 #include <termios.h>
 
+#include "includes/anitaFlight.h"
+#include "includes/anitaStructures.h"
 #include "serialLib/serialLib.h"
 
 #define COMMAND_SIZE 1024
@@ -35,8 +38,7 @@ int main(int argc, char **argv) {
   
   retVal=openGpsDevice(whichAdu5Dev);	
   if(retVal<=0) {
-    syslog(LOG_ERR,"Couldn't open: %s\n",whichAdu5Dev);
-    if(printToScreen) printf("Couldn't open: %s\n",whichAdu5Dev);
+    printf("Couldn't open: %s\n",whichAdu5Dev);
     return -1;
   }
   else fdAdu5=retVal;
@@ -47,7 +49,8 @@ int main(int argc, char **argv) {
   char buff[COMMAND_SIZE];
   char data[DATA_SIZE]={' '};
   int bytesRead=0;
-
+  int i=0;
+  
   time_t startTime = time(NULL);
 
   sprintf(buff, "$PASHQ,PRT\r\n");
@@ -79,13 +82,20 @@ int main(int argc, char **argv) {
     usleep(500);
   }
 
+  // Steps for real
+  // Work out
+
+  
+
   
   sprintf(buff, "$PASHQ,PRT\r\n");
+  strcat(buff,"$PASHQ,RIO\r\n");
   strcat(buff,"$PASHS,NME,ALL,OFF\r\n"); //Turn off NMEA messages
   strcat(buff,"$PASHS,OUT,A\r\n"); //Turn off raw data messages to port A
   strcat(buff,"$PASHS,OUT,B\r\n"); //Turn off raw data messages to port B
   strcat(buff,"$PASHS,ELM,10\r\n"); //Set elevation mask to 10 degrees
-  strcat(buff,"$PASHS,PDS,ON\r\n"); // Special setting needed for calibration must be switched back on at end  
+  strcat(buff,"$PASHS,PDS,ON\r\n"); // Special setting needed for calibration must be switched back on at end
+  
   write(fdAdu5, buff, strlen(buff));
   sleep(5);
   {
