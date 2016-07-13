@@ -51,7 +51,6 @@ void processNakString(char *gpsString, int length, int fromAdu5);
 void processRioString(char *gpsString, int length, int fromAdu5);
 void processBitString(char *gpsString, int length, int fromAdu5);
 void processTstString(char *gpsString, int length, int fromAdu5);
-
 void processGppatString(char *gpsString, int length, int fromAdu5);
 void processTttString(char *gpsString, int gpsLength,int fromAdu5);
 void processGpggaString(char *gpsString, int gpsLength, int fromAdu5);

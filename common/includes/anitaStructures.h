@@ -1288,7 +1288,8 @@ typedef struct {
 /*!
   All of the comments come directly from the ADU5 manual
 */
-typedef struct {
+typedef struct __attribute__((packed)) RawAdu5MBNStruct {
+  char header[11]; ///< $PASHR,MCA,
   unsigned short sequence_tag;  ///< Sequence ID number in units of 50ms, modulo 30 minutes
   unsigned char mben_eft; ///< Number of remaining MBEN structures to be sent for current epoch.
   unsigned char svpm; ///< Satellite PRN number.
@@ -1296,14 +1297,17 @@ typedef struct {
   unsigned char az; ///< Satellite azimuth angle (degrees).
   unsigned char chnind; ///< Channel ID (1 to 12).
   unsigned char warn; ///< Warning flag
-  unsigned char good_bad; ///< Indicates quality of the position measurement.
+  unsigned char good_bad; ///< I3ndicates quality of the position measurement.
   unsigned char polarity_know; ///< Indicates synchronization of receiver with NAV message
   unsigned char ireg; ///< Signal-to-noise ratio of satellite observation
   unsigned char qa_phase; ///< Phase quality indicator: 0 - 5 and 95 -100 are normal
   double full_phase; ///< Full carrier phase measurements in cycles
   double raw_range; ///< Raw range to SV (in seconds), that is, receive_time - raw_range = transmit time
-  long doppler; ///< Doppler (10-4 Hz)
-  long smoothing; ///< Doppler (10-4 Hz)  
+  int doppler; ///< Doppler (10-4 Hz)
+  int smoothing; ///< Doppler (10-4 Hz)  
+  unsigned char checkSum; ///< Checksum, a bytewise exclusive OR (XOR) on all bytes from sequence_tag (just after header) to the byte before checksum. 
+  char carriageReturn;
+  char lineFeed;
 } RawAdu5MBNStruct_t;
 
 
@@ -1311,21 +1315,22 @@ typedef struct {
 /*!
   The SNAV epheremis raw data. All of the comments come directly from the ADU5 manual
 */
-typedef struct {
+typedef struct __attribute__((packed)) RawAdu5SNVStruct {
+  char snvHeader[11]; ///< $PASHR,SNV
   short weekNumber; ///< GPS week number.
-  long secondsInWeek; ///< Seconds of GPS week.
+  int secondsInWeek; ///< Seconds of GPS week.
   float groupDelay; ///< Group delay (sec).
-  long aodc; ///< Clock data issue.
-  long toc; ///< (sec).
+  int aodc; ///< Clock data issue.
+  int toc; ///< (sec).
   float af2; ///< Clock: (sec/sec2)
   float af1; ///< Clock (sec/sec)
   float af0; ///< Clock (sec)
-  long aode; ///< Orbit data issue.
+  int aode; ///< Orbit data issue.
   float deltaN; ///< Mean anomaly correction (semi-circle/sec).
   double m0; ///< Mean anomaly at reference time (semi-circle).
   double eccentricity; ///< Eccentricity.
   double roota; ///< Square root of semi-major axis (meters p)
-  long toe; ///< Reference time for orbit (sec).
+  int toe; ///< Reference time for orbit (sec).
   float cic; ///< Harmonic correction term (radians).
   float crc; ///< Harmonic correction term (meters).
   float cis; ///< Harmonic correction term (radians).
@@ -1342,6 +1347,9 @@ typedef struct {
   short fit; ///< Curve fit interval (coded).
   char prnnum; ///< (SV PRN number -1)
   char res; ///< Reserved byte.
+  unsigned short checkSum; ///< Checksum (sum of words from weekNumber to res)
+  char carriageReturn;
+  char lineFeed;
 } RawAdu5SNVStruct_t;
 
 //////////////////////////////////////////////////////////////////
@@ -1350,9 +1358,10 @@ typedef struct {
 /*!
   All of the comments come directly from the ADU5 manual
 */
-typedef struct {
+typedef struct __attribute__((packed)) RawAdu5PBNStruct {
+  char pbenHeader[11]; ///< $PASHR,PBN
   int pben_time;  ///< GPS time in 10-3 seconds of the week when data was received.
-  char sitename; ///< 4-character site name (operator entered)
+  char sitename[4]; ///< 4-character site name (operator entered)
   double navx; ///< Station position: ECEF-X
   double navy; ///< Station position: ECEF-Y
   double navz; ///< Station position: ECEF-Z
@@ -1362,13 +1371,17 @@ typedef struct {
   float navzdot; ///< Velocity in ECEF-Z (m/sec)
   float navtdot; ///< Clock drift.
   unsigned short pdop; ///< Position Dilution of Precision
+  unsigned short checkSum; ///< Checksum (sum of words from pben_time to pdop)
+  char carriageReturn;
+  char lineFeed;
 } RawAdu5PBNStruct_t;
 
 //! This is the ATT struct described on page 114 of the ADU5 manual
 /*!
   All of the comments come directly from the ADU5 manual
 */
-typedef struct {
+typedef struct __attribute__((packed)) RawAdu5ATTStruct {
+  char attHeader[11]; ///< $PASHR,ATT
   double head; ///< Heading in degrees
   double pitch; ///< Pitch in degrees 
   double roll; ///< Roll in degrees
@@ -1377,10 +1390,13 @@ typedef struct {
   int timeOfWeek; ///< Seconds-of-Week in milliseconds
   char reset; ///< Attitude reset flag
   char spare; ///< Spare byte which is not used
+  unsigned short checkSum; ///< Checksum (sum of words from head to spare)
+  char carriageReturn;
+  char lineFeed;
 } RawAdu5ATTStruct_t;
 
 
-struct __attribute__((__packed__)) RawAdu5BFileHeader {
+struct __attribute__((packed)) RawAdu5BFileHeader {
     char version[10];
     unsigned char raw_version;
     char rcvr_type[10];
@@ -1389,10 +1405,10 @@ struct __attribute__((__packed__)) RawAdu5BFileHeader {
     short capability;
     int wb_start;
     char num_obs_type;
-    char spare[48];
+    char spare[42];
 }  RawAdu5BFileHeader_t;
 
-struct __attribute__((__packed__)) RawAdu5BFileRawNav {
+struct __attribute__((packed)) RawAdu5BFileRawNav {
     char sitename[4];
     double rcv_time;
     double navx;
@@ -1405,28 +1421,28 @@ struct __attribute__((__packed__)) RawAdu5BFileRawNav {
     double navtdot;
     unsigned short pdop;
     char num_sats;     
-}  RawAdu5BFileRawNav_t;
+}  RawAdu5BFileRawNav_t; 
 
-struct __attribute__((__packed__)) RawAdu5BFileChanObs {
+struct __attribute__((packed)) RawAdu5BFileChanObs {
   double raw_range;
   float smth_corr;
   unsigned short smth_count;
   char polarity_known;
   unsigned char warning;
   unsigned char goodbad;
+  unsigned char ireg;
   unsigned char qa_phase;
   int doppler;
-  doppler carphase;		    
+  double carphase;		    
 }  RawAdu5BFileChanObs_t;
 
 
-struct __attribute__((__packed__)) RawAdu5BFileRawDataHeader {
+struct __attribute__((packed)) RawAdu5BFileSatelliteHeader {
   unsigned char svprn;
   unsigned char elevation;
   unsigned char azimuth;
   unsigned char chnind;
-  unsigned char warning;
-}  RawAdu5BFileRawDataHeader_t;
+}  RawAdu5BFileSatelliteHeader_t;
 
 
 ///////////////////////////////////////////////////////////////////////
