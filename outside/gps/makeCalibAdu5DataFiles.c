@@ -19,12 +19,12 @@
 #include "serialLib/serialLib.h"
 
 #define COMMAND_SIZE 1024
-#define DATA_SIZE 1024
+#define DATA_SIZE 10240
 #define COMMAND "$PASHS,ELM,0\r\n"  /* set elevation mask angle to 0 degree */
 
 int main(int argc, char **argv) {
   if(argc<3) {
-    printf("Usage:\n%s <A or B> <num seconds>",argv[0]);
+    printf("Usage:\n%s <A or B> <num seconds>\n",argv[0]);
     return -1;
   }
 
@@ -60,28 +60,94 @@ int main(int argc, char **argv) {
   strcat(buff,"$PASHS,ELM,10\r\n"); //Set elevation mask to 10 degrees
   strcat(buff,"$PASHS,RCI,001.0\r\n"); //Set raw data rate to 1 second
   strcat(buff,"$PASHS,PDS,OFF\r\n"); // Special setting needed for calibration must be switched back on at end
-  strcat(buff,"$PASHS,OUT,B,MBN,SNV,PBN,ATT,BIN\r\n"); //Request the output
+  strcat(buff,"$PASHS,OUT,A,MBN,SNV,PBN,ATT,BIN\r\n"); //Request the output
 
   /* send the commands to ADU5  */
   write(fdAdu5, buff, strlen(buff));
   
-  for(i=0; i < COMMAND_SIZE; i++) printf("%c", buff[i]);
+
+
+  for(i=0; i < strlen(buff); i++) printf("%c", buff[i]);
   
   printf("\n");
-  sleep(5);
+  sleep(1);
   
   /* read & print output */
+  char tempData[DATA_SIZE];
+  // Data stuff for ADU5                                                                                                         
   time_t nowTime = time(NULL);
   while(nowTime < startTime + numSeconds) {
-    bytesRead=read(fdAdu5, data, DATA_SIZE);
-    printf("read  returned: %d\n",bytesRead);
-    if(bytesRead>0) {
-      for(i=0; i <bytesRead; i++) printf("%c", data[i]);
-      //	    printf("\n");
+    static char adu5Output[DATA_SIZE]="";
+    static int adu5OutputLength=0;
+    static int lastStar=-10;
+    sleep(1);
+    retVal=isThereDataNow(fdAdu5);
+    usleep(5);
+    //    printf("Check ADU5A got retVal %d\n",retVal);                                                                            
+    if(retVal!=1) {
+      sleep(1);
+      nowTime=time(NULL);
+      continue;
     }
-    usleep(500);
+    retVal=read(fdAdu5, tempData, DATA_SIZE);
+    printf("Num bytes %d\n",retVal);
+    if(retVal>0) {
+      for(i=0; i < retVal; i++) {
+	printf("%c", tempData[i]);
+	if(adu5OutputLength==0 && tempData[i]!='$') continue;
+	adu5Output[adu5OutputLength++]=tempData[i];
+	//	bytesRead=read(fdAdu5, data, DATA_SIZE);
+	//	printf("read  returned: %d\n",bytesRead);
+	if(adu5OutputLength>1) {
+	  if(adu5Output[0]=='$' && adu5Output[adu5OutputLength-1]=='$') {
+	    printf("Got two dollars\t%d\n",adu5OutputLength);
+	    if(adu5Output[1]=='P' && adu5Output[2]=='A' && adu5Output[3]=='S' && 
+	       adu5Output[4]=='H' && adu5Output[5]=='R' && adu5Output[6]==',') {
+	      printf("Got $PASHR,\n");
+	      if(adu5Output[7]=='M' && adu5Output[8]=='C' && adu5Output[9]=='A') {
+		//Handle MCA
+		if(adu5OutputLength-1==50) {
+		  printf("Got MCA\n");		
+		  //Right length
+		  adu5OutputLength=1;
+		  continue;
+		}
+		else if(adu5OutputLength-1<50) continue;
+	      }
+	      else if(adu5Output[7]=='A' && adu5Output[8]=='T' && adu5Output[9]=='T') {
+		if(adu5OutputLength-1==61) {
+		  printf("Got ATT\n");		
+		  //Right length
+		  adu5OutputLength=1;
+		  continue;
+		}
+		else if(adu5OutputLength-1<61) continue;
+	      }	      
+	      else if(adu5Output[7]=='T' && adu5Output[8]=='T' && adu5Output[9]=='T') {
+		if(adu5OutputLength-1==34) {
+		  printf("Got TTT\n");		
+		  //Right length
+		  adu5OutputLength=1;
+		  continue;
+		}
+		else if(adu5OutputLength-1<34) continue;
+	      }	      
+	    }
+	    if(adu5OutputLength>30) { //RJN arbitrary number for now
+	      //Reset the counter for now
+	      printf("Resetting counter\n");
+	      adu5OutputLength=1;
+	      continue;
+	    }
+ 
+	  }
+	}
+      }
+    }
+    usleep(500);	
+    nowTime=time(NULL);
   }
-
+      
   // Steps for real
   // Work out
 

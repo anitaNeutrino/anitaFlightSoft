@@ -4,7 +4,7 @@
    
    July 2016 r.nichol@ucl.ac.uk
 */
-#ifndef GPSTOOLSLIB_H
+£ifndef GPSTOOLSLIB_H
 #define GPSTOOLSLIB_H
 
 
