@@ -186,6 +186,9 @@
 
 #define DISK_BUFFER_DIR "/tmp/buffer"
 
+#define COMM1_WATCHDOG "/tmp/comm1Handler"
+#define COMM2_WATCHDOG "/tmp/comm2Handler"
+
 //Index and pedestal dirs
 #define ANITA_INDEX_DIR "anita/index"
 #define ANITA_PRIORITY_CATCH_SUB_DIR "anita/trashed"

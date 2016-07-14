@@ -744,6 +744,13 @@ void comm1Handler()
     ++start;
     fprintf(stderr, "comm1Handler %02x %02x\n", count, start);
 
+    FILE *fpWatch = fopen(COMM1_WATCHDOG,"w");
+    if(fpWatch) {
+      fprintf(fpWatch, "comm1Handler %02x %02x\nTime: %lu\n", count, start,time(NULL));
+      fclose(fpWatch);
+    }
+
+
 
 //    fprintf(stderr,"Last Temp %d\n",slowRateData.sbsTemp[0]);
     FILE *fp =fopen(SLOW_RF_FILE,"rb");
@@ -786,7 +793,15 @@ void comm2Handler()
     //    }
     --start;
     fprintf(stderr, "comm2Handler %02x\n", start);
+
+    FILE *fpWatch = fopen(COMM2_WATCHDOG,"w");
+    if(fpWatch) {
+      fprintf(fpWatch, "comm2Handler %02x\nTime: %lu\n", start,time(NULL));
+      fclose(fpWatch);
+    }
    
+
+
     FILE *fp =fopen(SLOW_RF_FILE,"rb");
     if(fp) {
 	int numObjs=fread(&(slowRateData.rf),sizeof(SlowRateRFStruct_t),1,fp);

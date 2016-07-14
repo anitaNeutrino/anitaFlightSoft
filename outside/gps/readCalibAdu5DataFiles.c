@@ -79,8 +79,8 @@ int main(int argc, char **argv) {
     printf("bFileRawNav.pdop:\t%d\n",bFileRawNav.pdop);
     printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav.num_sats);
     
-    
-    for(int satNum=0;satNum<(int)bFileRawNav.num_sats;satNum++) {
+    int satNum=0;
+    for(satNum=0;satNum<(int)bFileRawNav.num_sats;satNum++) {
       fread(&bFileSatHeader[satNum],sizeof(RawAdu5BFileSatelliteHeader_t),1,bFilePtr);
       printf("bFileSatHeader[%d].svprn:\t%d\n",satNum,(int)bFileSatHeader[satNum].svprn);
       printf("bFileSatHeader[%d].elevation:\t%d\n",satNum,(int)bFileSatHeader[satNum].elevation);

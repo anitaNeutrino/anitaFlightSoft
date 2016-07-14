@@ -802,18 +802,18 @@ int main(int argc, char **argv) {
 	 
 	  
       if(newPhiMask) {
-	unsigned short tempL1TrigMask=l1TrigMask;
-	l1TrigMask=0xffff;
-	unsigned short tempL1TrigMaskH=l1TrigMaskH;
-	l1TrigMaskH=0xffff;
+	//	unsigned short tempL1TrigMask=l1TrigMask;
+	//	l1TrigMask=0xffff;
+	//	unsigned short tempL1TrigMaskH=l1TrigMaskH;
+	//	l1TrigMaskH=0xffff;
 	time(&lastNewPhiMask);
 	printf("Dynamically setting phi mask to %#x--%#x at %u\n",phiTrigMask,phiTrigMaskH,
 	       (unsigned int)lastNewPhiMask);
 	setTriggerMasks();
 
-	l1TrigMask=tempL1TrigMask;
-	l1TrigMaskH=tempL1TrigMaskH;
-	setTriggerMasks();
+	//	l1TrigMask=tempL1TrigMask;
+	//	l1TrigMaskH=tempL1TrigMaskH;
+	//	setTriggerMasks();
 
 	doSurfHkAverage(1); //Flush the surf hk average
 	doTurfRateSum(1); //Flush the turf rate sum    
