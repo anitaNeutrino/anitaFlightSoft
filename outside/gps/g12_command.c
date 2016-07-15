@@ -24,10 +24,32 @@ void processGPSCommand(char *tempBuffer, int length);
 int breakdownTimeString(char *subString, int *hour, int *minute, int *second); 
 
 
+//#define MYBAUDRATE B0
+//#define MYBAUDRATE B50
+//#define MYBAUDRATE B75
+//#define MYBAUDRATE B110
+//#define MYBAUDRATE B134
+//#define MYBAUDRATE B150
+//#define MYBAUDRATE B200
+//#define MYBAUDRATE B300
+//#define MYBAUDRATE B600
+//#define MYBAUDRATE B1200
+//#define MYBAUDRATE B1800
+//#define MYBAUDRATE B2400
+//#define MYBAUDRATE B4800
+//#define MYBAUDRATE B9600
+//#define MYBAUDRATE B19200
+//#define MYBAUDRATE B38400
+//#define MYBAUDRATE B57600
+//#define MYBAUDRATE B115200
+//#define MYBAUDRATE B230400
+
+
+//this was it originally
 #define MYBAUDRATE B9600
 
 int main() { 
-    char devName[]="/dev/ttyUSB1";
+    char devName[]="/dev/ttyADU5B";
 
     int fd, i, retVal,currentIndex ; 
     struct termios options;
@@ -90,7 +112,7 @@ strcat(buff, "$PASHS,INI\r\n");
 /* strcat(buff, "$PASHQ,STA\n"); */
 /* strcat(buff, "$PASHQ,POS\n"); */
 /* strcat(buff, "$PASHQ,PPS\n"); */
-// strcat(buff, "$PASHS,SPD,B,4\n");
+strcat(buff, "$PASHS,SPD,B,5\r\n");
 
 // strcat(buff, "$PASHS,NME,RMC,B,ON\n");
  //strcat(buff, "$PASHS,LTZ,0,0\n");

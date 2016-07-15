@@ -14,6 +14,7 @@ int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi)
 
 int hkDiskBitMask=0;
 int panicQueueLength=5000;
+int disableGpu=1;
 
 //Global Control Variables
 int printToScreen=0;
@@ -108,8 +109,10 @@ int main (int argc, char *argv[])
      This function  mallocs at some global pointers
      so needs to be outside any kind of loop.
   */
-  prepareGpuThings();
-  prepareTimingCalibThings();
+  if(!disableGpu) {
+    prepareGpuThings();
+    prepareTimingCalibThings();
+  }
   /* Reset average */
   int phi=0;
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
@@ -165,7 +168,7 @@ int main (int argc, char *argv[])
 
 	retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);	
 
-	if(numEventLinks < panicQueueLength){
+	if(numEventLinks < panicQueueLength && !disableGpu){
 	  /* Then we add to GPU queue... */
 	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
 	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
@@ -185,7 +188,7 @@ int main (int argc, char *argv[])
       printf("eventsReadIn = %d, max is %d.\n", eventsReadIn, NUM_EVENTS);
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
-      if(eventsReadIn>0){
+      if(eventsReadIn>0 && !disableGpu){
 	mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec, writePowSpecPeriodSeconds);
       }
 

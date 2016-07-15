@@ -108,7 +108,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 //	rateTimes[9]=unixTime;
 	numEventRates=10;
     }
-    float rate=(int)(8*globalTriggerRate);
+    float rate=(int)(2*globalTriggerRate);
     if(rate<0) rate=0;
     if(rate>255) rate=255;
     slowRf.eventNumber=lastEventNumber;
@@ -119,7 +119,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	rate+=eventRates[i];
     }
     rate/=((float)numEventRates);
-    rate*=8;
+    rate*=2;
     if(rate<0) rate=0;
     if(rate>255) rate=255;
     slowRf.eventRate10Min=(unsigned char)rate;
@@ -129,7 +129,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	for(i=0;i<numSurfHks;i++) {
 	    for(surf=0;surf<ACTIVE_SURFS;surf++) {
 		for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-		    slowCalc.rfPwr[surf][chan]+=theSurfHks[i].rfPower[surf][chan];
+		  slowCalc.rfPwr[surf][chan]+=(theSurfHks[i].rfPower[surf][chan]&0x7fff);
 		}
 	    }
 	    for(surf=0;surf<TRIGGER_SURFS;surf++) {
@@ -143,7 +143,7 @@ void writeCurrentRFSlowRateObject(float globalTriggerRate, unsigned long lastEve
 	for(surf=0;surf<ACTIVE_SURFS;surf++) {
 	    for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
 		slowCalc.rfPwr[surf][chan]/=((float)numSurfHks);
-		slowCalc.rfPwr[surf][chan]/=4.;
+		slowCalc.rfPwr[surf][chan]/=128.;  //New scale factor
 		if(slowCalc.rfPwr[surf][chan]<0)
 		    slowCalc.rfPwr[surf][chan]=0;
 		if(slowCalc.rfPwr[surf][chan]>255)

@@ -30,7 +30,7 @@
 //#define SEND_TEST_PACKET 1
 #define LOS_MAX_BYTES 8000
 #define TIMEOUT_IN_MILLISECONDS 1000
-#define REFRESH_LINKS_EVERY 600
+#define REFRESH_LINKS_EVERY 2000
 
 #ifdef FAKE_LOS
 #define LOS_DEVICE "/tmp/dev_los"
@@ -317,6 +317,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
    int retVal=0;
    if(fdLos==0) {
      //First time
+     fprintf(stderr,"opening %s\n",LOS_DEVICE);
      fdLos = open(LOS_DEVICE, O_WRONLY );
      if(fdLos<=0) {
        fprintf(stderr,"Error opening %s (%s):\n",LOS_DEVICE,strerror(errno));
@@ -341,7 +342,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
    }
    //    if(numBytesInBuffer%2==1) numBytesInBuffer++;
    if(numBytesInBuffer>6000)
-     printf("Trying to write %d bytes\n",numBytesInBuffer);
+     printf("Trying to write %d bytes\ -- %d\n",numBytesInBuffer,laptopDebug);
   if(!laptopDebug) {
     retVal=writeLosData(losBuffer,numBytesInBuffer);
     if(retVal!=0) {
@@ -1328,7 +1329,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
 {
 
   int nbytes, retVal;
-  
+  int retVal2=0;
 #ifdef SEND_TEST_PACKET
   int i=0;
   numBytesSci=1024;
@@ -1338,7 +1339,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
 
   //  printf("Sending buffer length %d\n",numBytesSci);
 
-  nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci,0,TW_LOS);
+  nbytes = telemwrap((unsigned short*)buffer,(unsigned short*)wrappedBuffer,numBytesSci);
   if (nbytes < 0) {
     syslog(LOG_ERR,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
     fprintf(stderr,"Error wrapping science buffer %d -- %d\n",numBytesSci,nbytes);
@@ -1348,13 +1349,22 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
     writepoll.fd = fdLos;
     writepoll.events = POLLOUT;
     retVal = poll(&writepoll, 1, TIMEOUT_IN_MILLISECONDS);
+   // fprintf(stderr,"retVal == %d\n",retVal);
     if (retVal > 0) {
       // write will now not block
-      write(fdLos, wrappedBuffer, nbytes);
+      retVal2=write(fdLos, wrappedBuffer, nbytes);
+    //  fprintf(stderr,"retVal2 == %d\n",retVal2);
+     // int i=0;
+    //  for(i=0;i<nbytes;i++) {
+//	fprintf(stderr,"%x",wrappedBuffer[i]);
+//	fprintf(stderr," ");
+  //    }
+    //  fprintf(stderr,"\n");
     } else if (retVal == 0) {
       // timeout, do something else, maybe check LOS status using
       // status = ioctl(fd, LOS_IOCSTATUS);
       //
+      fprintf(stderr,"Here doing nothing\n");
       // probably put this into a loop above to guarantee that this
       // packet is sent
     } else { // retVal < 0
@@ -1368,7 +1378,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
   //Need to sleep to mimic the actual writing speed
   int microseconds=nbytes*8;
   usleep(microseconds);
-  //  printf("Sleeping %d us",microseconds);
+   printf("Sleeping %d us",microseconds);
 #endif
 
   return 0;
