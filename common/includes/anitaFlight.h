@@ -270,6 +270,8 @@
 #define LOGWATCH_LINK_DIR "/tmp/anita/logwatchd/link"
 #define NTUD_DIR "/tmp/anita/ntud"
 #define NTUD_LINK_DIR "/tmp/anita/ntud/link"
+#define RTLD_DIR "/tmp/anita/rtld" 
+#define RTLD_LINK_DIR "/tmp/anita/rtld/link" 
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
@@ -287,6 +289,7 @@
 #define LOGWATCHD_PID_FILE "/tmp/anita/pid/logwatchd.pid"
 #define NTUD_PID_FILE "/tmp/anita/pid/ntud.pid"
 #define OPENPORTD_PID_FILE "/tmp/anita/pid/openportd.pid"
+#define RTLD_PID_FILE "/tmp/anita/pid/rtld.pid" 
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 
@@ -302,6 +305,7 @@
 #define GPU_ARCHIVE_DIR "/current/house/gpu"
 #define EVENT_ARCHIVE_DIR "/current/event/"
 #define STARTUP_ARCHIVE_DIR "/current/start"
+#define RTL_ARCHIVE_DIR "/current/house/rtl" 
 
 //Slow Rate Stuff
 #define SLOW_RF_FILE "/tmp/anita/latestSlowRf.dat"
@@ -310,6 +314,10 @@
 //Hk Power Lookup
 #define HK_POWER_LOOKUP "/tmp/anita/currentPower"
 #define HK_TEMP_LOOKUP "/tmp/anita/currentTemps"
+
+//RTLd stuff   
+#define NUM_RTLSDR 6  /// The number of devices 
+#define RTLSDR_MAX_SPECTRUM_BINS 4096  // The maximum number of bins we can save in a packet. 
 
 #endif /* ANITA_FLIGHT_H */
 

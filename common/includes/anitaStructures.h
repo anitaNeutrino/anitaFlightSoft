@@ -199,7 +199,8 @@ typedef enum {
     PACKET_GPSD_START = 0xc00, ///< GpsdStartStruct_t -- Yes
     PACKET_LOGWATCHD_START = 0xc01, ///< LogWatchdStart_t -- Yes
     PACKET_ACQD_START = 0xc02, ///<AcqdStartStruct_t -- Yes
-    PACKET_GPU_AVE_POW_SPEC = 0xd ///<GpuPhiSectorPowerSpectrum_t -- Yes
+    PACKET_GPU_AVE_POW_SPEC = 0xd, ///<GpuPhiSectorPowerSpectrum_t -- Yes
+    PACKET_RTLSDR_POW_SPEC = 0xe
     
 } PacketCode_t;
 
@@ -1626,6 +1627,28 @@ typedef struct {
   unsigned char nothing;
   GpuAnitaBandPowerSpectrumStruct_t powSpectra[NUM_ANTENNA_RINGS][2];
 } GpuPhiSectorPowerSpectrumStruct_t;
+
+
+
+
+/*! Struct to store RTL data 
+ *
+ *
+ *  Short is overkill for the dynamic range, but only using 8 bits makes it slightly harder to deal with and 
+ *  compression will reduce the file size anyway. Only first nFreq of a spectrum non-zero. 
+ *  The order is in terms of serial number (NOT device number) 
+ */ 
+typedef struct 
+{
+  GenericHeader_t gHdr; 
+  unsigned int nFreq;  //< number of frequency bins stored
+  unsigned int startFreq;  //< start frequency, in Hz
+  unsigned int freqStep;  //< frequency step, in Hz 
+  unsigned int unixTimeStart;  //< time when scan was started (unix time) 
+  unsigned short scanTime;  //<  time it took all scans were finished (in decisecs). 
+  unsigned short gain;  //< LNA gain, in cBm (i.e. 10 * dBm) 
+  short spectra [NUM_RTLSDR][RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra, in cBm
+} RtlSdrPowerSpectraStruct_t; 
 
 
 
