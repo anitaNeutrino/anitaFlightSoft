@@ -5,8 +5,11 @@
  *  
  *  What has changed: 
  *     - Force using 2.56 MS/s (take out most tuning-strategy logic) 
- *     - Disable some options we'll never want (e.g. AGC, Direct Sampling, offset) 
+ *     - Disable some options we'll never want (e.g. AGC, Direct Sampling, offset, always do oneshot no matter what, etc. ) 
  *     - Make into single-file source  (copypaste some stuff from convenience/convenience.c)
+ *     - Add spectrum into shared memory location
+ *     - Fix CSV output bug 
+ *     - Other stuff I probably forgot
  *   
  *
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
@@ -860,12 +863,15 @@ void csv_dbm(struct tuning_state *ts)
 			spectrum->spectra[spectrum_index][spectrum_bin_index++] = dbm * 10; 
 		}
 	}
-	dbm = (double)ts->avg[i2] / ((double)ts->rate * (double)ts->samples);
-	if (ts->bin_e == 0) {
-		dbm = ((double)ts->avg[0] / \
-		((double)ts->rate * (double)ts->samples));}
-	dbm  = 10 * log10(dbm);
-	fprintf(file, "%.2f\n", dbm);
+	// this outputsi t twice, probably it was supposed to be a < instead of <= above 
+//	dbm = (double)ts->avg[i2] / ((double)ts->rate * (double)ts->samples);
+//	if (ts->bin_e == 0) {
+//		dbm = ((double)ts->avg[0] /((double)ts->rate * (double)ts->samples));}
+//	dbm  = 10 * log10(dbm);
+//	fprintf(file, ".2f\n", dbm);
+
+
+	fprintf(file,"\n"); 
 	for (i=0; i<len; i++) {
 		ts->avg[i] = 0L;
 	}
