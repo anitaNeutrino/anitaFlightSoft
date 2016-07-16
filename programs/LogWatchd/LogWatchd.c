@@ -140,6 +140,7 @@ int main (int argc, char *argv[])
 	catFile("/home/anita/flightSoft/config/Playbackd.config");
 	catFile("/home/anita/flightSoft/config/Prioritizerd.config");
 	catFile("/home/anita/flightSoft/config/SIPd.config");
+	catFile("/home/anita/flightSoft/config/RTLd.config");
 	
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {

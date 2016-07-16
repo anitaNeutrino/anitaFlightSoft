@@ -42,7 +42,7 @@
 
 
 #define SEND_REAL_SLOW_DATA 1
-#define NUM_HK_TELEM_DIRS 21
+#define NUM_HK_TELEM_DIRS 22
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -68,6 +68,7 @@ typedef enum {
   TDRSS_TELEM_OTHER,
   TDRSS_TELEM_PEDESTAL,
   TDRSS_TELEM_REQUEST,
+  TDRSS_TELEM_RTL, 
   TDRSS_TELEM_NOT_A_TELEM
 } TDRSSTelemType_t;
 
@@ -167,7 +168,9 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      TURFHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
-     REQUEST_TELEM_LINK_DIR};
+     REQUEST_TELEM_LINK_DIR, 
+     RTL_TELEM_LINK_DIR
+  };
   static char *telemDirs[NUM_HK_TELEM_DIRS]=
     {SIPD_CMD_ECHO_TELEM_DIR,  //0
      MONITOR_TELEM_DIR, //1
@@ -189,7 +192,9 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      TURFHK_TELEM_DIR,//17
      OTHER_MONITOR_TELEM_DIR, //18
      PEDESTAL_TELEM_DIR, //19
-     REQUEST_TELEM_DIR}; //20
+     REQUEST_TELEM_DIR, //20
+     RTL_TELEM_DIR //21 
+    }; 
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   {sizeof(CommandEcho_t),
    sizeof(MonitorStruct_t),
@@ -211,12 +216,13 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(TurfRateStruct_t),
    sizeof(OtherMonitorStruct_t),
    sizeof(FullLabChipPedStruct_t),
-   2000 //Who knows why
+   2000, //Who knows why
+   sizeof(RtlSdrPowerSpectraStruct_t) 
   };
 
 //Will make these configurable soon
-int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3};
+int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,21};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,1,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3,1}; 
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -318,6 +324,7 @@ int main(int argc, char *argv[])
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
+    makeDirectories(RTL_TELEM_LINK_DIR);
 
 
     retVal=readConfig();

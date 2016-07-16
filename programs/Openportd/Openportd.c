@@ -32,7 +32,7 @@
 #define SIGRTMIN 32
 #endif
 
-#define NUM_HK_TELEM_DIRS 21 
+#define NUM_HK_TELEM_DIRS 22 
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -58,6 +58,7 @@ typedef enum {
   OPENPORT_TELEM_OTHER, //18
   OPENPORT_TELEM_PEDESTAL, //19
   OPENPORT_TELEM_REQUEST, //20
+  OPENPORT_TELEM_RTL, //21
   OPENPORT_TELEM_NOT_A_TELEM
 } OPENPORTTelemType_t;
 
@@ -155,7 +156,9 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
    TURFHK_TELEM_LINK_DIR,
    OTHER_MONITOR_TELEM_LINK_DIR,
    PEDESTAL_TELEM_LINK_DIR,
-   REQUEST_TELEM_LINK_DIR};
+   REQUEST_TELEM_LINK_DIR,
+   RTL_TELEM_LINK_DIR  
+  };
 static char *telemDirs[NUM_HK_TELEM_DIRS]=
   {OPENPORTD_CMD_ECHO_TELEM_DIR,  //0
    MONITOR_TELEM_DIR, //1
@@ -177,7 +180,10 @@ static char *telemDirs[NUM_HK_TELEM_DIRS]=
    TURFHK_TELEM_DIR,//17
    OTHER_MONITOR_TELEM_DIR, //18
    PEDESTAL_TELEM_DIR, //19
-   REQUEST_TELEM_DIR}; //20
+   REQUEST_TELEM_DIR, //20
+   RTL_TELEM_DIR //21
+  }; 
+
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   {sizeof(CommandEcho_t),
    sizeof(MonitorStruct_t),
@@ -199,7 +205,8 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(TurfRateStruct_t),
    sizeof(OtherMonitorStruct_t),
    sizeof(FullLabChipPedStruct_t),
-   2000 //Who knows why
+   2000, //Who knows why
+   sizeof(RtlSdrPowerSpectraStruct_t) 
   };
 
 //Will make these configurable soon
@@ -289,6 +296,7 @@ int main(int argc, char *argv[])
     makeDirectories(MONITOR_TELEM_LINK_DIR);
     makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
+    makeDirectories(RTL_TELEM_LINK_DIR);
 
 
     retVal=readConfig();

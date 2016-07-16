@@ -1642,12 +1642,13 @@ typedef struct
 {
   GenericHeader_t gHdr; 
   unsigned int nFreq;  //< number of frequency bins stored
-  unsigned int startFreq;  //< start frequency, in Hz
-  unsigned int freqStep;  //< frequency step, in Hz 
+  unsigned int startFreq;  //< start frequency of output, in Hz
+  unsigned int freqStep;  //< frequency step of output, in Hz 
   unsigned int unixTimeStart;  //< time when scan was started (unix time) 
   unsigned short scanTime;  //<  time it took all scans were finished (in decisecs). 
-  unsigned short gain;  //< LNA gain, in cBm (i.e. 10 * dBm) 
   short spectra [NUM_RTLSDR][RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra, in cBm
+  unsigned short gain[NUM_RTLSDR];  //< LNA gain, in cBm (i.e. 10 * dBm) 
+  unsigned char firFilter; //fir filter used
 } RtlSdrPowerSpectraStruct_t; 
 
 

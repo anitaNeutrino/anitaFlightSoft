@@ -38,7 +38,7 @@
 #define LOS_DEVICE "/dev/los"
 #endif
 
-#define NUM_HK_TELEM_DIRS 21 
+#define NUM_HK_TELEM_DIRS 22 
 
 typedef enum {
   LOS_TELEM_FIRST=0,
@@ -63,6 +63,7 @@ typedef enum {
   LOS_TELEM_OTHER,
   LOS_TELEM_PEDESTAL,
   LOS_TELEM_REQUEST,
+  LOS_TELEM_RTL, 
   LOS_TELEM_NOT_A_TELEM
 } LOSTelemType_t;
 
@@ -202,6 +203,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
    makeDirectories(G12_SAT_TELEM_LINK_DIR);
    makeDirectories(G12_POS_TELEM_LINK_DIR);
    makeDirectories(GPU_TELEM_LINK_DIR);
+   makeDirectories(RTL_TELEM_LINK_DIR);
    makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
    makeDirectories(REQUEST_TELEM_LINK_DIR);
 
@@ -685,7 +687,9 @@ void fillBufferWithHk()
      TURFHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
-     REQUEST_TELEM_LINK_DIR};
+     REQUEST_TELEM_LINK_DIR, 
+     RTL_TELEM_LINK_DIR
+    };
   static char *telemDirs[NUM_HK_TELEM_DIRS]=
     {LOSD_CMD_ECHO_TELEM_DIR,
      MONITOR_TELEM_DIR,
@@ -707,7 +711,9 @@ void fillBufferWithHk()
      TURFHK_TELEM_DIR,
      OTHER_MONITOR_TELEM_DIR,
      PEDESTAL_TELEM_DIR,
-     REQUEST_TELEM_DIR};
+     REQUEST_TELEM_DIR, 
+     RTL_TELEM_DIR
+    };
   static int maxPacketSize[NUM_HK_TELEM_DIRS]=
     {sizeof(CommandEcho_t),
      sizeof(MonitorStruct_t),
@@ -729,7 +735,8 @@ void fillBufferWithHk()
      sizeof(TurfRateStruct_t),
      sizeof(OtherMonitorStruct_t),
      sizeof(FullLabChipPedStruct_t),
-     4000 //Who knows why
+     4000, //Who knows why, 
+     sizeof(RtlSdrPowerSpectraStruct_t) 
     };
   int hkInd=0;
 

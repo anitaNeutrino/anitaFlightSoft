@@ -223,6 +223,7 @@
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 #define REQUEST_TELEM_DIR "/tmp/anita/telem/request"
 #define GPU_TELEM_DIR "/tmp/anita/telem/house/gpu"
+#define RTL_TELEM_DIR "/tmp/anita/telem/anita/rtld" 
 
 #define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
@@ -247,6 +248,7 @@
 #define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
 #define OTHER_MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/other/link"
 #define GPU_TELEM_LINK_DIR "/tmp/anita/telem/house/gpu/link"
+#define RTL_TELEM_LINK_DIR "/tmp/anita/telem/rtld/link" 
 
 
 
@@ -273,8 +275,6 @@
 #define LOGWATCH_LINK_DIR "/tmp/anita/logwatchd/link"
 #define NTUD_DIR "/tmp/anita/ntud"
 #define NTUD_LINK_DIR "/tmp/anita/ntud/link"
-#define RTLD_DIR "/tmp/anita/rtld" 
-#define RTLD_LINK_DIR "/tmp/anita/rtld/link" 
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
@@ -321,6 +321,7 @@
 //RTLd stuff   
 #define NUM_RTLSDR 6  /// The number of devices 
 #define RTLSDR_MAX_SPECTRUM_BINS 4096  // The maximum number of bins we can save in a packet. 
+#define RTLD_SHARED_SPECTRUM_NAME "/RTLd_shared_spectrum"  // The name of the shared memory lcoation for the RTL spectrum struct 
 
 #endif /* ANITA_FLIGHT_H */
 

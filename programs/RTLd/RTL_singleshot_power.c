@@ -53,6 +53,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h> 
+#include <sys/stat.h> 
+#include <fcntl.h> 
 #include <time.h>
 
 #ifndef _WIN32
@@ -71,16 +74,17 @@
 
 #include <math.h>
 //#include <pthread.h>
-#include <libusb.h>
+#include <libusb-1.0/libusb.h>
 
 #include "rtl-sdr.h"
+#include "includes/anitaStructures.h" 
+#include "includes/anitaFlight.h" 
 
 /** instead we'll copy and paste in - cozzyd*/ 
 //#include "convenience/convenience.h"
 
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
-
 #define DEFAULT_BUF_LENGTH		(1 * 16384)
 #define AUTO_GAIN			-100
 #define BUFFER_DUMP			(1<<12)
@@ -88,6 +92,9 @@
 /** cozzyd **/ 
 
 #define ANITA_RATE 2560000 
+static RtlSdrPowerSpectraStruct_t * spectrum = 0; 
+static int spectrum_index = -1; 
+static int spectrum_bin_index = 0; 
 
 //#define MAXIMUM_RATE			2800000
 //#define MINIMUM_RATE			1000000
@@ -150,8 +157,6 @@ void usage(void)
 		"\t  will be used.  valid range 1Hz - 2.8MHz)\n"
 		"\t[-i integration_interval (default: 10 seconds)]\n"
 		"\t (buggy if a full sweep takes longer than the interval)\n"
-		"\t[-1 enables single-shot mode (default: off)]\n"
-		"\t[-e exit_timer (default: off/0)]\n"
 		//"\t[-s avg/iir smoothing (default: avg)]\n"
 		//"\t[-t threads (default: 1)]\n"
 		"\t[-d device_index (default: 0)]\n"
@@ -192,6 +197,78 @@ void usage(void)
 	exit(1);
 }
 
+double atoft(char *s)
+/* time suffixes, returns seconds */
+{
+	char last;
+	int len;
+	double suff = 1.0;
+	len = strlen(s);
+	last = s[len-1];
+	s[len-1] = '\0';
+	switch (last) {
+		case 'h':
+		case 'H':
+			suff *= 60;
+		case 'm':
+		case 'M':
+			suff *= 60;
+		case 's':
+		case 'S':
+			suff *= atof(s);
+			s[len-1] = last;
+			return suff;
+	}
+	s[len-1] = last;
+	return atof(s);
+}
+
+double atofp(char *s)
+/* percent suffixes */
+{
+	char last;
+	int len;
+	double suff = 1.0;
+	len = strlen(s);
+	last = s[len-1];
+	s[len-1] = '\0';
+	switch (last) {
+		case '%':
+			suff *= 0.01;
+			suff *= atof(s);
+			s[len-1] = last;
+			return suff;
+	}
+	s[len-1] = last;
+	return atof(s);
+}
+
+int nearest_gain(rtlsdr_dev_t *dev, int target_gain)
+{
+	int i, r, err1, err2, count, nearest;
+	int* gains;
+	r = rtlsdr_set_tuner_gain_mode(dev, 1);
+	if (r < 0) {
+		fprintf(stderr, "WARNING: Failed to enable manual gain.\n");
+		return r;
+	}
+	count = rtlsdr_get_tuner_gains(dev, NULL);
+	if (count <= 0) {
+		return 0;
+	}
+	gains = malloc(sizeof(int) * count);
+	count = rtlsdr_get_tuner_gains(dev, gains);
+	nearest = gains[0];
+	for (i=0; i<count; i++) {
+		err1 = abs(target_gain - nearest);
+		err2 = abs(target_gain - gains[i]);
+		if (err2 < err1) {
+			nearest = gains[i];
+		}
+	}
+	free(gains);
+	return nearest;
+}
 void multi_bail(void)
 {
 	if (do_exit == 1)
@@ -256,6 +333,9 @@ double log2(double n)
    16 bit ints for everything
    -32768..+32768 maps to -1.0..+1.0
 */
+
+
+#pragma GCC optimize ("-O3") 
 
 void sine_table(int size)
 {
@@ -448,6 +528,35 @@ void rms_power(struct tuning_state *ts)
 	ts->samples += 1;
 }
 
+
+#pragma GCC reset_options
+
+double atofs(char *s)
+/* standard suffixes */
+{
+	char last;
+	int len;
+	double suff = 1.0;
+	len = strlen(s);
+	last = s[len-1];
+	s[len-1] = '\0';
+	switch (last) {
+		case 'g':
+		case 'G':
+			suff *= 1e3;
+		case 'm':
+		case 'M':
+			suff *= 1e3;
+		case 'k':
+		case 'K':
+			suff *= 1e3;
+			suff *= atof(s);
+			s[len-1] = last;
+			return suff;
+	}
+	s[len-1] = last;
+	return atof(s);
+}
 void frequency_range(char *arg, double crop)
 /* flesh out the tunes[] for scanning */
 // do we want the fewest ranges (easy) or the fewest bins (harder)?
@@ -714,6 +823,7 @@ void csv_dbm(struct tuning_state *ts)
 	int i, len, ds, i1, i2, bw2, bin_count;
 	long tmp;
 	double dbm;
+
 	len = 1 << ts->bin_e;
 	ds = ts->downsample;
 	/* fix FFT stuff quirks */
@@ -730,8 +840,11 @@ void csv_dbm(struct tuning_state *ts)
 	/* Hz low, Hz high, Hz step, samples, dbm, dbm, ... */
 	bin_count = (int)((double)len * (1.0 - ts->crop));
 	bw2 = (int)(((double)ts->rate * (double)bin_count) / (len * 2 * ds));
+
 	fprintf(file, "%i, %i, %.2f, %i, ", ts->freq - bw2, ts->freq + bw2,
 		(double)ts->rate / (double)(len*ds), ts->samples);
+
+
 	// something seems off with the dbm math
 	i1 = 0 + (int)((double)len * ts->crop * 0.5);
 	i2 = (len-1) - (int)((double)len * ts->crop * 0.5);
@@ -741,6 +854,11 @@ void csv_dbm(struct tuning_state *ts)
 		dbm /= (double)ts->samples;
 		dbm  = 10 * log10(dbm);
 		fprintf(file, "%.2f, ", dbm);
+
+		if(spectrum && spectrum_bin_index < RTLSDR_MAX_SPECTRUM_BINS)
+		{
+			spectrum->spectra[spectrum_index][spectrum_bin_index++] = dbm * 10; 
+		}
 	}
 	dbm = (double)ts->avg[i2] / ((double)ts->rate * (double)ts->samples);
 	if (ts->bin_e == 0) {
@@ -753,6 +871,8 @@ void csv_dbm(struct tuning_state *ts)
 	}
 	ts->samples = 0;
 }
+
+
 
 
 
@@ -864,18 +984,18 @@ int main(int argc, char **argv)
 	struct sigaction sigact;
 #endif
 	char *filename = NULL;
-	int i, length, r, opt, wb_mode = 0;
+	int i, length, r, opt; 
 	int f_set = 0;
 	int gain = 0; //AUTO_GAIN; // tenths of a dB
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;
 	int interval = 10;
-	int fft_threads = 1;
-	int smoothing = 0;
-	int single = 0;
-	int direct_sampling = 0;
-	int offset_tuning = 0;
+//	int fft_threads = 1;
+//	int smoothing = 0;
+//	int single = 1;
+//	int direct_sampling = 0;
+//	int offset_tuning = 0;
 	double crop = 0.0;
 	char *freq_optarg;
 	time_t next_tick;
@@ -886,7 +1006,7 @@ int main(int argc, char **argv)
 	double (*window_fn)(int, int) = rectangle;
 	freq_optarg = "";
 
-	while ((opt = getopt(argc, argv, "f:i:s:t:d:g:p:e:w:c:F:1PDOh")) != -1) {
+	while ((opt = getopt(argc, argv, "f:i:s:t:d:g:p:e:w:c:F:I:1PDOh")) != -1) {
 		switch (opt) {
 		case 'f': // lower:upper:bin_size
 			freq_optarg = strdup(optarg);
@@ -905,15 +1025,18 @@ int main(int argc, char **argv)
 		case 'i':
 			interval = (int)round(atoft(optarg));
 			break;
-		case 'e':
-			exit_time = (time_t)((int)round(atoft(optarg)));
-			break;
-		case 's':
-			if (strcmp("avg",  optarg) == 0) {
-				smoothing = 0;}
-			if (strcmp("iir",  optarg) == 0) {
-				smoothing = 1;}
-			break;
+		case 'I': 
+			spectrum_index = atoi(optarg); 
+			break; 
+//		case 'e':
+//			exit_time = (time_t)((int)round(atoft(optarg)));
+//			break;
+//		case 's':
+//			if (strcmp("avg",  optarg) == 0) {
+//				smoothing = 0;}
+//			if (strcmp("iir",  optarg) == 0) {
+//				smoothing = 1;}
+//			break;
 		case 'w':
 			if (strcmp("rectangle",  optarg) == 0) {
 				window_fn = rectangle;}
@@ -932,15 +1055,15 @@ int main(int argc, char **argv)
 			if (strcmp("bartlett",  optarg) == 0) {
 				window_fn = bartlett;}
 			break;
-		case 't':
-			fft_threads = atoi(optarg);
-			break;
+//		case 't':
+//			fft_threads = atoi(optarg);
+//			break;
 		case 'p':
 			ppm_error = atoi(optarg);
 			break;
-		case '1':
-			single = 1;
-			break;
+//		case '1':
+//			single = 1;
+//			break;
 		case 'P':
 			peak_hold = 1;
 			break;
@@ -999,6 +1122,22 @@ int main(int argc, char **argv)
 			                manufacturer_string, product_string,
 				       	serial_string) ; 
 
+
+        if (spectrum_index >= 0) 
+        {
+           int shared_fd = shm_open(RTLD_SHARED_SPECTRUM_NAME,O_RDWR,0); 
+           if (shared_fd < 0) 
+           {
+             syslog(LOG_ERR, "Could not open shared memory region\n"); 
+             return -1; 
+           }
+
+	   spectrum = mmap(NULL, sizeof(RtlSdrPowerSpectraStruct_t), 
+		           PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
+
+        }
+
+
 	r = rtlsdr_open(&dev, (uint32_t)dev_index);
 
 	if (r < 0) {
@@ -1032,6 +1171,13 @@ int main(int argc, char **argv)
 //		verbose_auto_gain(dev);  //no thank you  --cozzyd
 	} else {
 		gain = nearest_gain(dev, gain);
+
+		if (spectrum)
+		{
+
+			spectrum->gain[spectrum_index] =gain; 
+
+		}
 		verbose_gain_set(dev, gain);
 	}
 
@@ -1075,21 +1221,30 @@ int main(int argc, char **argv)
 		cal_time = localtime(&time_now);
 		strftime(t_str, 50, "%Y-%m-%d, %H:%M:%S", cal_time);
 
+                spectrum_bin_index = 0; 
 		for (i=0; i<tune_count; i++) {
 			fprintf(file, "%s, ", t_str);
 			csv_dbm(&tunes[i]);
 
 		}
 
+		if (spectrum && spectrum_index == 0)
+		{
+			spectrum->nFreq = spectrum_bin_index; 
+			spectrum->freqStep = tunes[0].rate / ( (1 << tunes[0].bin_e ) * tunes[0].downsample); 
+		}
 
-		/*** END MODIFICATION  **/ 
+
+
+
 		fflush(file);
-		while (time(NULL) >= next_tick) {
-			next_tick += interval;}
-		if (single) {
-			do_exit = 1;}
-		if (exit_time && time(NULL) >= exit_time) {
-			do_exit = 1;}
+		do_exit = 1; 
+//		while (time(NULL) >= next_tick) {
+//			next_tick += interval;}
+//		if (single) {
+//			do_exit = 1;}
+//		if (exit_time && time(NULL) >= exit_time) {
+//			do_exit = 1;}
 	}
 
 	/* clean up */
@@ -1101,6 +1256,8 @@ int main(int argc, char **argv)
 
 	if (file != stdout) {
 		fclose(file);}
+
+	munmap(spectrum, sizeof(RtlSdrPowerSpectraStruct_t)); 
 
 	rtlsdr_close(dev);
 	free(fft_buf);
