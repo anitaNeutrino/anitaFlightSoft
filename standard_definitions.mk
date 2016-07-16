@@ -71,6 +71,7 @@ LDFLAGS       = $(EXCEPTION) -L$(ANITA_LIB_DIR) $(SYS_LIBS)
 ANITA_LIBS    =  -lkvp -lConfig  -lPedestal -lUtil -lSlow -lm -lz -lLinkWatch $(PROFILER) #-lSocket
 ANITA_HKD_LIBS = -lAcromag -lAnitaSbsTemp #-lcr7
 ANITA_GPS_LIBS = -lSerial -lAnitaMap
+ANITA_TUFF_LIBS = -lTuff
 ANITA_SIP_LIBS = -lSipcom
 ANITA_LOS_LIBS = -lLos
 ANITA_COMP_LIBS = -lCompress
