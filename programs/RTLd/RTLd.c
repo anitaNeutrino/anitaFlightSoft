@@ -197,8 +197,8 @@ void setupDirs()
 {
 
  
-  makeDirectories(RTLD_TELEM_DIR); 
-  makeDirectories(RTLD_TELEM_LINK_DIR); 
+  makeDirectories(RTL_TELEM_DIR); 
+  makeDirectories(RTL_TELEM_LINK_DIR); 
 
 
 }
@@ -329,9 +329,9 @@ int main(int nargs, char ** args)
       if (telemCount >= telemEvery) 
       {
         char fileName[FILENAME_MAX]; 
-        sprintf(fileName,"%s/rtl_%d.dat",RTLD_TELEM_DIR,spectrum->unixTimeStart);
+        sprintf(fileName,"%s/rtl_%d.dat",RTL_TELEM_DIR,spectrum->unixTimeStart);
         retVal=writeStruct(&spectrum,fileName,sizeof(RtlSdrPowerSpectraStruct_t));  
-        retVal=makeLink(fileName,RTLD_TELEM_LINK_DIR);  
+        retVal=makeLink(fileName,RTL_TELEM_LINK_DIR);  
         telemCount = 0; 
       }
 
