@@ -15,13 +15,13 @@ struct tuff_dev
   struct termios oldtio; 
 }; 
 
-int libtuff_reset(tuff_dev_t * d,
+int tuff_reset(tuff_dev_t * d,
 		  unsigned int irfcm) {
   sprintf(buf, "{\"reset\":%d}\n\r", irfcm);
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_onCommand(tuff_dev_t * d,
+int tuff_onCommand(tuff_dev_t * d,
 		      unsigned int irfcm,
 		      unsigned int channel,
 		      unsigned int notchMask) {
@@ -29,7 +29,7 @@ int libtuff_onCommand(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_offCommand(tuff_dev_t * d,
+int tuff_offCommand(tuff_dev_t * d,
 		       unsigned int irfcm,
 		       unsigned int channel,
 		       unsigned int notchMask) {
@@ -37,7 +37,7 @@ int libtuff_offCommand(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_setChannelNotches(tuff_dev_t * d,
+int tuff_setChannelNotches(tuff_dev_t * d,
 			      unsigned int irfcm,
 			      unsigned int channel,
 			      unsigned int notchMask) {
@@ -50,7 +50,7 @@ int libtuff_setChannelNotches(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_updateCaps(tuff_dev_t * d,
+int tuff_updateCaps(tuff_dev_t * d,
 		       unsigned int irfcm,
 		       unsigned int channel) {
   unsigned int tuffStack;
@@ -76,7 +76,7 @@ int libtuff_updateCaps(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));  
 }
 
-int libtuff_setCap(tuff_dev_t * d,
+int tuff_setCap(tuff_dev_t * d,
 		   unsigned int irfcm,
 		   unsigned int channel,
 		   unsigned int notch,
@@ -111,13 +111,13 @@ int libtuff_setCap(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_setQuietMode(tuff_dev_t * d,
+int tuff_setQuietMode(tuff_dev_t * d,
 			  bool quiet) {
   sprintf(buf,"{\"quiet\":%d}\n\r", quiet);
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_pingiRFCM(tuff_dev_t * d,
+int tuff_pingiRFCM(tuff_dev_t * d,
 		      unsigned int timeout,
 		      unsigned int numPing,
 		      unsigned int *irfcmList) {
@@ -185,7 +185,7 @@ int libtuff_pingiRFCM(tuff_dev_t * d,
   return pingsSeen;
 }
 
-int libtuff_setNotchRange(tuff_dev_t * d,
+int tuff_setNotchRange(tuff_dev_t * d,
 			   unsigned int notch,
 			   unsigned int phiStart,
 			   unsigned int phiEnd) {
@@ -196,7 +196,7 @@ int libtuff_setNotchRange(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-int libtuff_setPhiSectors(tuff_dev_t * d,
+int tuff_setPhiSectors(tuff_dev_t * d,
 			  unsigned int irfcm,
 			  unsigned int *phiList,
 			  unsigned int nb) {
@@ -218,7 +218,7 @@ int libtuff_setPhiSectors(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-void libtuff_waitForAck(tuff_dev_t * d,
+void tuff_waitForAck(tuff_dev_t * d,
 			unsigned int irfcm) {
   unsigned char nb;
   unsigned char c;
@@ -248,7 +248,7 @@ void libtuff_waitForAck(tuff_dev_t * d,
 #define BAUDRATE B115200
 
 
-tuff_dev_t * libtuff_open(const char * dev) 
+tuff_dev_t * tuff_open(const char * dev) 
 {
   char sbuf[512]; 
   struct termios tio;; 
@@ -258,7 +258,7 @@ tuff_dev_t * libtuff_open(const char * dev)
 
   if (fd < 0) 
   {
-    snprintf(sbuf, sizeof(sbuf), "libtuff_open(%s)", dev); 
+    snprintf(sbuf, sizeof(sbuf), "tuff_open(%s)", dev); 
     perror(sbuf); 
     return NULL; 
   }
@@ -301,7 +301,7 @@ tuff_dev_t * libtuff_open(const char * dev)
 }
 
 
-int libtuff_close(tuff_dev_t * d) 
+int tuff_close(tuff_dev_t * d) 
 {
   if(!d) return 1; 
   tcsetattr(d->fd,TCSANOW,&d->oldtio);

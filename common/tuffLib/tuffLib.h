@@ -1,5 +1,5 @@
-#ifndef _LIBTUFF_H_
-#define _LIBTUFF_H_
+#ifndef _tuff_H_
+#define _tuff_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +8,7 @@
 /*
  * TUFF library.
  *
- * NOTES: tuff_dev_t is an opaque type, it should be created with libtuff_open and closed with libtuff_close. 
+ * NOTES: tuff_dev_t is an opaque type, it should be created with tuff_open and closed with tuff_close. 
  *
  */
 
@@ -23,7 +23,7 @@ typedef struct tuff_dev tuff_dev_t;
  * Note: resets don't actually affect the iRFCM (the TUFF master)
  * itself. They reset the microcontrollers on the TUFFs.
  */
-int libtuff_reset(tuff_dev_t * d,
+int tuff_reset(tuff_dev_t * d,
 		  unsigned int irfcm);
 
 /** \brief Turns on notches on a specific iRFCM channel. 
@@ -31,7 +31,7 @@ int libtuff_reset(tuff_dev_t * d,
  * This function turns on the notches listed in notchMask.
  * It does not turn off the other notches.
  */
-int libtuff_onCommand(tuff_dev_t * d,
+int tuff_onCommand(tuff_dev_t * d,
 		      unsigned int irfcm,
 		      unsigned int channel,
 		      unsigned int notchMask);
@@ -41,7 +41,7 @@ int libtuff_onCommand(tuff_dev_t * d,
  * This function turns off the notches listed in notchMask.
  * It does not turn on the other notches.
  */
-int libtuff_offCommand(tuff_dev_t * d,
+int tuff_offCommand(tuff_dev_t * d,
 		       unsigned int irfcm,
 		       unsigned int channel,
 		       unsigned int notchMask);
@@ -53,7 +53,7 @@ int libtuff_offCommand(tuff_dev_t * d,
  *
  * Bitmask is what notches you want on.
  */
-int libtuff_setChannelNotches(tuff_dev_t * d,
+int tuff_setChannelNotches(tuff_dev_t * d,
 			      unsigned int irfcm,
 			      unsigned int channel,
 			      unsigned int notchMask);
@@ -68,7 +68,7 @@ int libtuff_setChannelNotches(tuff_dev_t * d,
  * Anyway, the function works, so the readability isn't that
  * important.
  */
-int libtuff_setCap(tuff_dev_t * d,
+int tuff_setCap(tuff_dev_t * d,
 		   unsigned int irfcm,
 		   unsigned int channel,
 		   unsigned int notch,
@@ -80,12 +80,12 @@ int libtuff_setCap(tuff_dev_t * d,
  * received from all TUFFs, it probably makes sense to
  * go ahead and turn off the ACKs for each command.
  *
- * Quiet mode does this. So call libtuff_setQuietMode(serial_fd, 1);
+ * Quiet mode does this. So call tuff_setQuietMode(serial_fd, 1);
  *
  * From then on, TUFFs will not acknowledge any commands
  * other than a ping.
  */
-int libtuff_setQuietMode(tuff_dev_t * d,
+int tuff_setQuietMode(tuff_dev_t * d,
 			 bool quiet);
 
 /** \brief Looks for an acknolwedgement from a given iRFCM.
@@ -99,7 +99,7 @@ int libtuff_setQuietMode(tuff_dev_t * d,
  * This SHOULD NOT BE CALLED if the TUFFs are in quiet mode.
  * It'll hang forever.
  */
-void libtuff_waitForAck(tuff_dev_t * d,
+void tuff_waitForAck(tuff_dev_t * d,
 			unsigned int irfcm);
 
 /** \brief Saves the current capacitor values to default.
@@ -107,7 +107,7 @@ void libtuff_waitForAck(tuff_dev_t * d,
  * Saves all 3 tunable capacitor values into information flash
  * in the TUFF microcontrollers so they are now the new defaults.
  */
-int libtuff_updateCaps(tuff_dev_t * d,
+int tuff_updateCaps(tuff_dev_t * d,
 		       unsigned int irfcm,
 		       unsigned int channel);
 
@@ -118,7 +118,7 @@ int libtuff_updateCaps(tuff_dev_t * d,
  *
  * Timeout is in seconds.
  */
-int libtuff_pingiRFCM(tuff_dev_t * d,
+int tuff_pingiRFCM(tuff_dev_t * d,
 		      unsigned int timeout,
 		      unsigned int numPing,
 		      unsigned int *irfcmList);
@@ -131,7 +131,7 @@ int libtuff_pingiRFCM(tuff_dev_t * d,
  * The range works modulo 16, so (0,15) turns on all phi sectors, and
  * (15,0) turns on only phi sectors 15 and 0.
  */
-int libtuff_setNotchRange(tuff_dev_t * d,
+int tuff_setNotchRange(tuff_dev_t * d,
 			    unsigned int notch,
 			    unsigned int phiStart,
 			    unsigned int phiEnd);
@@ -146,7 +146,7 @@ int libtuff_setNotchRange(tuff_dev_t * d,
  * Note that phi sector assignments/notch range commands haven't
  * been extensively tested yet.
  */
-int libtuff_setPhiSectors(tuff_dev_t * d,
+int tuff_setPhiSectors(tuff_dev_t * d,
 			  unsigned int irfcm,
 			  unsigned int *phiList,
 			  unsigned int nb);
@@ -157,7 +157,7 @@ int libtuff_setPhiSectors(tuff_dev_t * d,
  *
  * Returns a tuff_dev_t * or NULL if could not open port 
  */
-tuff_dev_t * libtuff_open(const char * device) ; 
+tuff_dev_t * tuff_open(const char * device) ; 
 
 
 /** \brief Close a tuff_dev. 
@@ -165,7 +165,7 @@ tuff_dev_t * libtuff_open(const char * device) ;
  * This will free the memory and restore the serial port to its old settings
  *
  */
-int libtuff_close(tuff_dev_t * d); 
+int tuff_close(tuff_dev_t * d); 
 
 
 #endif
