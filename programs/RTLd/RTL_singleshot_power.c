@@ -56,10 +56,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h> 
-#include <sys/stat.h> 
-#include <fcntl.h> 
 #include <time.h>
+
+#include "RTL_common.h"
+
+#include <sys/mman.h> 
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -96,7 +97,6 @@
 
 #define ANITA_RATE 2560000 
 static RtlSdrPowerSpectraStruct_t * spectrum = 0; 
-static int spectrum_index = -1; 
 static int spectrum_bin_index = 0; 
 
 //#define MAXIMUM_RATE			2800000
@@ -119,6 +119,7 @@ int N_WAVE, LOG2_N_WAVE;
 int next_power;
 int16_t *fft_buf;
 int *window_coefs;
+static int startFreq; 
 
 struct tuning_state
 /* one per tuning range */
@@ -576,6 +577,7 @@ void frequency_range(char *arg, double crop)
 	step = strchr(stop, ':') + 1;
 	step[-1] = '\0';
 	lower = (int)atofs(start);
+	startFreq = lower; 
 	upper = (int)atofs(stop);
 	max_size = (int)atofs(step);
 	stop[-1] = ':';
@@ -860,7 +862,7 @@ void csv_dbm(struct tuning_state *ts)
 
 		if(spectrum && spectrum_bin_index < RTLSDR_MAX_SPECTRUM_BINS)
 		{
-			spectrum->spectra[spectrum_index][spectrum_bin_index++] = dbm * 10; 
+			spectrum->spectrum[spectrum_bin_index++] = dbm * 10; 
 		}
 	}
 	// this outputsi t twice, probably it was supposed to be a < instead of <= above 
@@ -1004,7 +1006,6 @@ int main(int argc, char **argv)
 //	int offset_tuning = 0;
 	double crop = 0.0;
 	char *freq_optarg;
-	time_t next_tick;
 	time_t time_now;
 	time_t exit_time = 0;
 	char t_str[50];
@@ -1031,9 +1032,6 @@ int main(int argc, char **argv)
 		case 'i':
 			interval = (int)round(atoft(optarg));
 			break;
-		case 'I': 
-			spectrum_index = atoi(optarg); 
-			break; 
 //		case 'e':
 //			exit_time = (time_t)((int)round(atoft(optarg)));
 //			break;
@@ -1129,20 +1127,14 @@ int main(int argc, char **argv)
 				       	serial_string) ; 
 
 
-        if (spectrum_index >= 0) 
+           
+	spectrum = open_shared_RTL_region(serial_string,0); 
+	if (spectrum) 
         {
-           int shared_fd = shm_open(RTLD_SHARED_SPECTRUM_NAME,O_RDWR,0); 
-           if (shared_fd < 0) 
-           {
-             syslog(LOG_ERR, "Could not open shared memory region\n"); 
-             return -1; 
-           }
-
-	   spectrum = mmap(NULL, sizeof(RtlSdrPowerSpectraStruct_t), 
-		           PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
-
-        }
-
+	   int which; 
+           sscanf(serial_string,"RTL%d", &which); 
+	   spectrum->rtlNum = which; 
+	}
 
 	r = rtlsdr_open(&dev, (uint32_t)dev_index);
 
@@ -1180,9 +1172,7 @@ int main(int argc, char **argv)
 
 		if (spectrum)
 		{
-
-			spectrum->gain[spectrum_index] =gain; 
-
+			spectrum->gain =gain; 
 		}
 		verbose_gain_set(dev, gain);
 	}
@@ -1209,7 +1199,6 @@ int main(int argc, char **argv)
 	/* actually do stuff */
 	rtlsdr_set_sample_rate(dev, (uint32_t)tunes[0].rate);
 	sine_table(tunes[0].bin_e);
-	next_tick = time(NULL) + interval;
 	if (exit_time) {
 		exit_time = time(NULL) + exit_time;}
 	fft_buf = malloc(tunes[0].buf_len * sizeof(int16_t));
@@ -1219,11 +1208,17 @@ int main(int argc, char **argv)
 		window_coefs[i] = (int)(256*window_fn(i, length));
 	}
 	while (!do_exit) {
-		scanner();
+                struct timespec ts0;  
+                struct timespec ts1;  
+
 		time_now = time(NULL);
-		if (time_now < next_tick) {
-			continue;}
-		// time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...
+		scanner();
+             
+//		if (time_now < next_tick) {
+//			continue;}
+
+
+	        // time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...
 		cal_time = localtime(&time_now);
 		strftime(t_str, 50, "%Y-%m-%d, %H:%M:%S", cal_time);
 
@@ -1234,10 +1229,14 @@ int main(int argc, char **argv)
 
 		}
 
-		if (spectrum && spectrum_index == 0)
+	        clock_gettime(CLOCK_MONOTONIC, &ts1); 
+		if (spectrum)
 		{
-			spectrum->nFreq = spectrum_bin_index; 
-			spectrum->freqStep = tunes[0].rate / ( (1 << tunes[0].bin_e ) * tunes[0].downsample); 
+	          spectrum->startFreq = startFreq; 
+		  spectrum->unixTimeStart = time_now; 
+		  spectrum->nFreq = spectrum_bin_index; 
+		  spectrum->freqStep = tunes[0].rate / ( (1 << tunes[0].bin_e ) * tunes[0].downsample); 
+		  spectrum->scanTime = 0.5 + 10  *  ( ts1.tv_sec - ts0.tv_sec + 1e-9 * ( ts1.tv_nsec - ts0.tv_nsec)); 
 		}
 
 
@@ -1263,6 +1262,7 @@ int main(int argc, char **argv)
 	if (file != stdout) {
 		fclose(file);}
 
+	msync(spectrum, sizeof(RtlSdrPowerSpectraStruct_t), MS_SYNC); 
 	munmap(spectrum, sizeof(RtlSdrPowerSpectraStruct_t)); 
 
 	rtlsdr_close(dev);

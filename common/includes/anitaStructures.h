@@ -1634,21 +1634,20 @@ typedef struct {
 /*! Struct to store RTL data 
  *
  *
- *  Short is overkill for the dynamic range, but only using 8 bits makes it slightly harder to deal with and 
- *  compression will reduce the file size anyway. Only first nFreq of a spectrum non-zero. 
- *  The order is in terms of serial number (NOT device number) 
+ *  Short is overkill for the dynamic range, and probably makes the packet too big... so maybe this will change to a char soon. 
+ *  Only first nFreq of a spectrum non-zero. 
  */ 
 typedef struct 
 {
   GenericHeader_t gHdr; 
-  unsigned int nFreq;  //< number of frequency bins stored
+  unsigned int nFreq;  //< number of frequency bins actually stored
   unsigned int startFreq;  //< start frequency of output, in Hz
   unsigned int freqStep;  //< frequency step of output, in Hz 
   unsigned int unixTimeStart;  //< time when scan was started (unix time) 
-  unsigned short scanTime;  //<  time it took all scans were finished (in decisecs). 
-  short spectra [NUM_RTLSDR][RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra, in cBm
-  unsigned short gain[NUM_RTLSDR];  //< LNA gain, in cBm (i.e. 10 * dBm) 
-  unsigned char firFilter; //fir filter used
+  unsigned short scanTime;  //<  approximate time it scan to finish finished (in decisecs). 
+  unsigned short gain;  //< LNA gain, in cBm (i.e. 10 * dBm) 
+  short spectrum [RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra, in cBm
+  unsigned char rtlNum ; //<which RTL is this? This is the SERIAL NUMBER (RTL%d), not the device enumeration order ( 4 bits is sufficient for < 15 devices) 
 } RtlSdrPowerSpectraStruct_t; 
 
 

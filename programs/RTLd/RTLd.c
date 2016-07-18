@@ -19,15 +19,17 @@
 #include "configLib/configLib.h"
 #include "utilLib/utilLib.h" 
 
+#include "RTL_common.h" 
+
 /// standard stuff
 
 #include <errno.h>
 #include <stdio.h> 
+#include <execinfo.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/stat.h> 
-#include <fcntl.h> 
+#include <sys/stat.h>
 
 
 const char *  tmpdir  ="/tmp/rtl/"; 
@@ -38,9 +40,8 @@ static FILE * oneshots[NUM_RTLSDR];
 static char cmd[1024]; 
 /** will be populated with RTL1 .. N.  The serial number should be set in eeprom */ 
 static char serials[NUM_RTLSDR][32]; 
-static int shared_fd; 
 static AnitaHkWriterStruct_t rtlWriter; 
-static RtlSdrPowerSpectraStruct_t * spectra; 
+static RtlSdrPowerSpectraStruct_t * spectra[NUM_RTLSDR]; 
 
 
 static unsigned startFrequency; 
@@ -52,14 +53,13 @@ static int printToScreen = 1;
 static int verbosity = 0; 
 static int bitmask; 
 static int telemEvery = 1; 
-static int firFilter = 0;  
 
 void cleanup(); 
 
 static int readConfig()
 {
   int status; 
-  int nread; 
+  int nread = NUM_RTLSDR; 
   int config_status = 0; 
   char * eString; 
   kvpReset(); 
@@ -68,6 +68,10 @@ static int readConfig()
   {
     printToScreen = kvpGetInt("printToScreen",1); 
     verbosity = kvpGetInt("verbosity",0); 
+    if (printToScreen) 
+    {
+      printf("printToScreen: %d; verbosity:%d\n", printToScreen, verbosity); 
+    }
   }
   else
   {
@@ -86,12 +90,29 @@ static int readConfig()
     endFrequency = kvpGetInt("endFrequency",  1250000000); 
     nFrequencies = kvpGetInt("nSteps", 4096); 
 
+    if (printToScreen)
+    {
+       printf("startFrequency: %d; endFrequency:%d; nFrequencies %d \n", startFrequency, endFrequency, nFrequencies); 
+    }
+
     //do some math here 
     stepFrequency = (endFrequency - startFrequency) / (nFrequencies); 
     
-    status = kvpGetFloatArray("gains", gain, &nread); 
-    firFilter = kvpGetInt("firFilter",0); 
-    if (status != KVP_E_OK || nread != NUM_RTLSDR)
+    status = kvpGetFloatArray("gain", gain, &nread); 
+    if (printToScreen)
+    {
+       printf("nread: %d\n", nread); 	
+    }
+
+    //set the rest to zero if not enough were set
+    if (nread < NUM_RTLSDR) 
+    {
+      memset(gain + nread, 0,  (NUM_RTLSDR - nread) * sizeof(*gain)); 
+    }
+     
+
+
+    if (status != KVP_E_OK || nread > NUM_RTLSDR)
     {
       syslog(LOG_ERR, "Error loading RTL SDR gains. Might have caused buffer overflow, so going to quit!"); 
       cleanup(); 
@@ -138,8 +159,14 @@ void setupBreakfast()
 
 void cleanup()
 {
-  munmap(spectra, sizeof(RtlSdrPowerSpectraStruct_t)) ; 
-  shm_unlink(RTLD_SHARED_SPECTRUM_NAME); 
+  int i; 
+
+  for (i = 0; i < NUM_RTLSDR; i++) 
+  {
+    munmap(spectra[i], sizeof(RtlSdrPowerSpectraStruct_t)) ; 
+    unlink_shared_RTL_region(serials[i]); 
+  }
+
   closeHkFilesAndTidy(&rtlWriter);
   unlink(RTLD_PID_FILE); 
   syslog(LOG_INFO,"RTLd terminating");    
@@ -196,17 +223,34 @@ void setupBitmask()
 void setupDirs() 
 {
 
- 
   makeDirectories(RTL_TELEM_DIR); 
   makeDirectories(RTL_TELEM_LINK_DIR); 
-
 
 }
 
 
+
+void setupShared()
+{
+  int i = 0; 
+  for (i = 0; i < NUM_RTLSDR; i++) 
+  {
+    spectra[i] = open_shared_RTL_region(serials[i], 1); 
+  }
+}
+
 void handleBadSigs(int sig) 
 {
-  syslog(LOG_WARNING,"RTLd received sig %d -- will exit immeadiately\n",sig); 
+  syslog(LOG_WARNING,"RTLd received sig %d -- will exit immediately\n",sig); 
+
+  if (sig == SIGSEGV) 
+  {
+    size_t size; 
+    void * traceback[20]; 
+    size = backtrace(traceback, 20); 
+    backtrace_symbols_fd(traceback,size, STDERR_FILENO); 
+  }
+
   cleanup(); 
   exit(0); 
 }
@@ -229,7 +273,10 @@ int main(int nargs, char ** args)
   int read_config_ok; 
   int retVal; 
 
-  if(!(retVal = sortOutPidFile(args[0])))return retVal; 
+
+  retVal = sortOutPidFile(args[0]); 
+
+  if (retVal) return retVal; 
 
 
   /* Setup log */
@@ -245,28 +292,12 @@ int main(int nargs, char ** args)
   setupWriter(); 
   setupBitmask(); 
   setupDirs(); 
+  setupShared(); 
 
 
-  //open a shared file for sharing spectra with children
 
-  shared_fd = shm_open(RTLD_SHARED_SPECTRUM_NAME,O_CREAT | O_RDWR, O_CREAT); 
-  if (shared_fd < 0) 
-  {
-    syslog(LOG_ERR, "Could not open shared memory region\n"); 
-    return -1; 
-  }
-
-  retVal = ftruncate(shared_fd, sizeof(RtlSdrPowerSpectraStruct_t)); 
-
-  if (retVal) 
-  {
-    syslog(LOG_ERR, "Could not resize shared memory region\n"); 
-    return -1; 
-  }
  
-  
-  RtlSdrPowerSpectraStruct_t * spectrum = mmap(NULL, sizeof(RtlSdrPowerSpectraStruct_t), 
-                                               PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
+  mkdir(tmpdir, 0755); 
 
   //unnecessary since ftruncate already does this 
   //memset(spectrum,0, sizeof(RtlSdrPowerSpectraStruct_t)); 
@@ -275,7 +306,6 @@ int main(int nargs, char ** args)
   {
     int i; 
     int telemCount; 
-    struct timespec ts0,ts1; 
     read_config_ok = readConfig(); 
 
     if (read_config_ok)
@@ -288,23 +318,20 @@ int main(int nargs, char ** args)
     }
 
 
-    spectrum->startFreq= startFrequency; 
-    spectrum->firFilter = firFilter; 
+
+    currentState = PROG_STATE_RUN; 
 
     while (currentState == PROG_STATE_RUN) 
     {
 
-      spectrum->unixTimeStart = time(NULL); 
-
-      clock_gettime(CLOCK_MONOTONIC, &ts0); 
 
       // Spawn the processes 
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
 
         char * serial = serials[i]; 
-        sprintf(cmd, "RTL_singleshot_power -d %s  -f %d:%d:%d -g %f -F %d -I %d %s/%s.out", 
-                      serial, startFrequency, endFrequency, stepFrequency, gain[i], firFilter,i,tmpdir, serial); 
+        sprintf(cmd, "RTL_singleshot_power -d %s  -f %d:%d:%d -g %f %s/%s.out", 
+                      serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
         oneshots[i] = popen (cmd, "r"); 
         if (!oneshots[i])
         {
@@ -316,29 +343,54 @@ int main(int nargs, char ** args)
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
         pclose(oneshots[i]); 
+
+        if (verbosity > 0) 
+        {
+          dumpSpectrum(spectra[i]); 
+        }
+
+
+        //fill header
+        fillGenericHeader(spectra[i], PACKET_RTLSDR_POW_SPEC, sizeof(RtlSdrPowerSpectraStruct_t)); 
+
+
+        
+
       }
 
-      clock_gettime(CLOCK_MONOTONIC, &ts1); 
-      spectrum->scanTime = 0.5 + 10  *  ( ts1.tv_sec - ts0.tv_sec + 1e-9 * ( ts1.tv_nsec - ts0.tv_nsec)); 
 
-      //write the data 
-      fillGenericHeader(spectrum, PACKET_RTLSDR_POW_SPEC, sizeof(RtlSdrPowerSpectraStruct_t)); 
       telemCount++; 
 
       //telemeter , if necessary 
       if (telemCount >= telemEvery) 
       {
-        char fileName[FILENAME_MAX]; 
-        sprintf(fileName,"%s/rtl_%d.dat",RTL_TELEM_DIR,spectrum->unixTimeStart);
-        retVal=writeStruct(&spectrum,fileName,sizeof(RtlSdrPowerSpectraStruct_t));  
-        retVal=makeLink(fileName,RTL_TELEM_LINK_DIR);  
-        telemCount = 0; 
+        if (printToScreen)
+        {
+          printf("Writing telemetry files!\n"); 
+        }
+
+        for (i = 0; i < NUM_RTLSDR; i++)
+        {
+          char fileName[FILENAME_MAX]; 
+          sprintf(fileName,"%s/rtl_%s_%d.dat",RTL_TELEM_DIR,serials[i], spectra[i]->unixTimeStart);
+          retVal=writeStruct(spectra[i],fileName,sizeof(RtlSdrPowerSpectraStruct_t));  
+          retVal=makeLink(fileName,RTL_TELEM_LINK_DIR);  
+          telemCount = 0; 
+        }
       }
 
+      if (printToScreen)
+      {
+          printf("Writing telemetry diskfiles: \n"); 
+      }
       //write to disk
-      retVal  = cleverHkWrite((unsigned char*) spectrum, sizeof(RtlSdrPowerSpectraStruct_t), spectrum->unixTimeStart, &rtlWriter); 
-
+      for (i = 0; i < NUM_RTLSDR; i++) 
+      {
+        if (printToScreen) printf(" ..%d..",i); 
+        retVal  = cleverHkWrite((unsigned char*) spectra[i], sizeof(RtlSdrPowerSpectraStruct_t), spectra[i]->unixTimeStart, &rtlWriter); 
+      }
       
+        if (printToScreen) printf(" ..done\n"); 
     }
  
   } while (currentState == PROG_STATE_INIT) ; 
