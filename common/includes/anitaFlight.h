@@ -224,7 +224,7 @@
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 #define REQUEST_TELEM_DIR "/tmp/anita/telem/request"
 #define GPU_TELEM_DIR "/tmp/anita/telem/house/gpu"
-#define RTL_TELEM_DIR "/tmp/anita/telem/anita/rtld" 
+#define RTL_TELEM_DIR "/tmp/anita/telem/house/rtld" 
 
 #define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
@@ -249,7 +249,7 @@
 #define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
 #define OTHER_MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/other/link"
 #define GPU_TELEM_LINK_DIR "/tmp/anita/telem/house/gpu/link"
-#define RTL_TELEM_LINK_DIR "/tmp/anita/telem/rtld/link" 
+#define RTL_TELEM_LINK_DIR "/tmp/anita/telem/house/rtld/link" 
 
 
 
@@ -322,7 +322,7 @@
 //RTLd stuff   
 #define NUM_RTLSDR 6  /// The number of devices 
 #define RTLSDR_MAX_SPECTRUM_BINS 4096  // The maximum number of bins we can save in a packet. 
-#define RTLD_SHARED_SPECTRUM_NAME "/RTLd_shared_spectrum"  // The name of the shared memory lcoation for the RTL spectrum struct 
+#define RTLD_SHARED_SPECTRUM_NAME "/RTLd_shared_spectrum_%s"  // The name of the shared memory location for the RTL spectrum struct (with the %s being the serial of the shared region's RTL) 
 
 
 // TUFF stuff

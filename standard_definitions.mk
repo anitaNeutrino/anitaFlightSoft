@@ -72,6 +72,7 @@ ANITA_LIBS    =  -lkvp -lConfig  -lPedestal -lUtil -lSlow -lm -lz -lLinkWatch $(
 ANITA_HKD_LIBS = -lAcromag -lAnitaSbsTemp #-lcr7
 ANITA_GPS_LIBS = -lSerial -lAnitaMap
 ANITA_TUFF_LIBS = -lTuff
+ANITA_RTL_LIBS = -lrt -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0 
 ANITA_SIP_LIBS = -lSipcom
 ANITA_LOS_LIBS = -lLos
 ANITA_COMP_LIBS = -lCompress
