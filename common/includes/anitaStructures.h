@@ -200,7 +200,8 @@ typedef enum {
     PACKET_LOGWATCHD_START = 0xc01, ///< LogWatchdStart_t -- Yes
     PACKET_ACQD_START = 0xc02, ///<AcqdStartStruct_t -- Yes
     PACKET_GPU_AVE_POW_SPEC = 0xd, ///<GpuPhiSectorPowerSpectrum_t -- Yes
-    PACKET_RTLSDR_POW_SPEC = 0xe
+    PACKET_RTLSDR_POW_SPEC = 0xe , 
+    PACKET_TUFF_STATUS =0xf 
     
 } PacketCode_t;
 
@@ -1650,6 +1651,21 @@ typedef struct
   unsigned short gain[NUM_RTLSDR];  //< LNA gain, in cBm (i.e. 10 * dBm) 
   unsigned char firFilter; //fir filter used
 } RtlSdrPowerSpectraStruct_t; 
+
+
+/*! 
+ * Struct to store TUFF start and end phi sectors 
+ *
+ **/ 
+typedef struct
+{
+  GenericHeader_t gHdr; 
+  unsigned int unixTime; 
+  unsigned char startSectors[NUM_TUFF_NOTCHES]; 
+  unsigned char endSectors[NUM_TUFF_NOTCHES]; 
+} TuffNotchStatus_t; 
+
+
 
 
 

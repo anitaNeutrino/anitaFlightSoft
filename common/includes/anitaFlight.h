@@ -103,6 +103,7 @@
 #define NUM_USBS 31
 #define NUM_NTU_SSD 6
 
+
 #define GLOBAL_CONF_FILE "anitaSoft.config"
 
 
@@ -322,6 +323,10 @@
 #define NUM_RTLSDR 6  /// The number of devices 
 #define RTLSDR_MAX_SPECTRUM_BINS 4096  // The maximum number of bins we can save in a packet. 
 #define RTLD_SHARED_SPECTRUM_NAME "/RTLd_shared_spectrum"  // The name of the shared memory lcoation for the RTL spectrum struct 
+
+
+// TUFF stuff
+#define NUM_TUFF_NOTCHES 3
 
 #endif /* ANITA_FLIGHT_H */
 
