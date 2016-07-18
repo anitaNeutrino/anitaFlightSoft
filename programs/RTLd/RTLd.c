@@ -86,8 +86,9 @@ static int readConfig()
     endFrequency = kvpGetInt("endFrequency",  1250000000); 
     nFrequencies = kvpGetInt("nSteps", 4096); 
 
-    //do some math here 
+    //TODO do somes smarter  math here to use approximately the number of steps specified... now there might be way more! 
     stepFrequency = (endFrequency - startFrequency) / (nFrequencies); 
+
     
     status = kvpGetFloatArray("gains", gain, &nread); 
     firFilter = kvpGetInt("firFilter",0); 

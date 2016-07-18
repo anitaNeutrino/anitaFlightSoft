@@ -183,20 +183,21 @@ void usage(void)
 //		"\t[-D enable direct sampling (default: off)]\n"
 //		"\t[-O enable offset tuning (default: off)]\n"
 		"\n"
-		"CSV FFT output columns:\n"
-		"\tdate, time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...\n\n"
-		"Examples:\n"
-		"\trtl_power -f 88M:108M:125k fm_stations.csv\n"
-		"\t (creates 160 bins across the FM band,\n"
-		"\t  individual stations should be visible)\n"
-		"\trtl_power -f 100M:1G:1M -i 5m -1 survey.csv\n"
-		"\t (a five minute low res scan of nearly everything)\n"
-		"\trtl_power -f ... -i 15m -1 log.csv\n"
-		"\t (integrate for 15 minutes and exit afterwards)\n"
-		"\trtl_power -f ... -e 1h | gzip > log.csv.gz\n"
-		"\t (collect data for one hour and compress it on the fly)\n\n"
-		"Convert CSV to a waterfall graphic with:\n"
-		"\t http://kmkeen.com/tmp/heatmap.py.txt \n");
+//		"CSV FFT output columns:\n"
+//		"\tdate, time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...\n\n"
+//		"Examples:\n"
+//		"\trtl_power -f 88M:108M:125k fm_stations.csv\n"
+//		"\t (creates 160 bins across the FM band,\n"
+//		"\t  individual stations should be visible)\n"
+//		"\trtl_power -f 100M:1G:1M -i 5m -1 survey.csv\n"
+//		"\t (a five minute low res scan of nearly everything)\n"
+//		"\trtl_power -f ... -i 15m -1 log.csv\n"
+//		"\t (integrate for 15 minutes and exit afterwards)\n"
+//		"\trtl_power -f ... -e 1h | gzip > log.csv.gz\n"
+//		"\t (collect data for one hour and compress it on the fly)\n\n"
+//		"Convert CSV to a waterfall graphic with:\n"
+//		"\t http://kmkeen.com/tmp/heatmap.py.txt \n"
+		);
 	exit(1);
 }
 
@@ -863,7 +864,8 @@ void csv_dbm(struct tuning_state *ts)
 			spectrum->spectra[spectrum_index][spectrum_bin_index++] = dbm * 10; 
 		}
 	}
-	// this outputsi t twice, probably it was supposed to be a < instead of <= above 
+
+	// this outputs it twice, probably it was supposed to be a < instead of <= above 
 //	dbm = (double)ts->avg[i2] / ((double)ts->rate * (double)ts->samples);
 //	if (ts->bin_e == 0) {
 //		dbm = ((double)ts->avg[0] /((double)ts->rate * (double)ts->samples));}
