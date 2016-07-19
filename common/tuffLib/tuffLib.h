@@ -152,6 +152,10 @@ int tuff_setPhiSectors(tuff_dev_t * d,
 			  unsigned int nb);
 
 
+/** Return the temperature from the TUFF master for a given irfcm */ 
+float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm);
+
+
 
 /* \brief  Open serial device using correct settings , returning our opaque handle
  *

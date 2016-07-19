@@ -312,4 +312,35 @@ int tuff_close(tuff_dev_t * d)
 
 
  
+float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
+{
+
+  int i; 
+  unsigned char c; 
+  float ret; 
+  sprintf(buf,"{\"monitor\": %d}", irfcm); 
+  write(d->fd, buf, strlen(buf)); 
+
+  i = 0; 
+
+  while(1) 
+  {
+    read(d->fd, &c, 1); 
+    if (c == '\n')
+    {
+      buf[i] = 0; 
+      break; 
+    }
+    else
+    {
+      buf[i++] = c; 
+    }
+  }
+
+  sscanf(buf, "{\"temp\":%f}", &ret); 
+
+  return ret; 
+}
+
+
   
