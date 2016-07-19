@@ -1590,7 +1590,7 @@ int setSipdHkTelemOrder(int hk, int order)
   time_t rawtime;
   readSipdConfig();
   sipdHkTelemOrder[hk]=order;
-  configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,21,&rawtime);
+  configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,22,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
   return rawtime;    
 
@@ -1601,7 +1601,7 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
   time_t rawtime;
   readSipdConfig();
   sipdHkTelemMaxCopy[hk]=numPackets;
-  configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,21,&rawtime);
+  configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,22,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
   return rawtime;    
 
@@ -3329,7 +3329,7 @@ int readSipdConfig()
 		kvpErrorString(kvpStatus));
     }
 
-    tempNum=21;
+    tempNum=22;
     kvpStatus = kvpGetIntArray("hkTelemOrder",sipdHkTelemOrder,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(hkTelemOrder): %s",
@@ -3338,7 +3338,7 @@ int readSipdConfig()
 	fprintf(stderr,"kvpGetIntArray(hkTelemOrder): %s\n",
 		kvpErrorString(kvpStatus));
     }
-    tempNum=21;
+    tempNum=22;
     kvpStatus = kvpGetIntArray("hkTelemMaxCopy",sipdHkTelemMaxCopy,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxCopy): %s",
