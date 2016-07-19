@@ -210,8 +210,8 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   };
 
 //Will make these configurable soon
-int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,3,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3};
+int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,21};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,3,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3,1};
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
