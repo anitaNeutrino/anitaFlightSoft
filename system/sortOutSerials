@@ -47,5 +47,12 @@ then
     ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if03-port0` /dev/ttyLow2
 fi
 
+
+### This is possibly the device used at Palestine; might change for Antarctica  -- CSD 
+if [-L "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0" ] 
+then 
+    ln -sf `readlink -f /dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0` /dev/ttyTUFF 
+fi 
+
 ln -sf /dev/ttyS0 /dev/ttyLow1
 ln -sf /dev/ttyS1 /dev/ttyHigh1
