@@ -89,8 +89,9 @@ static int readConfig()
     startFrequency = kvpGetInt("startFrequency", 180000000); 
     endFrequency = kvpGetInt("endFrequency",  1250000000); 
     nFrequencies = kvpGetInt("nSteps", 4096); 
+    telemEvery = kvpGetInt("telemEvery",1); 
 
-    //TODO do somes smarter  math here to use approximately the number of steps specified... now there might be way more! 
+    //TODO do some smarter math here to use approximately the number of steps specified... now there might be way more! 
     if (printToScreen)
     {
        printf("startFrequency: %d; endFrequency:%d; nFrequencies %d \n", startFrequency, endFrequency, nFrequencies); 
@@ -161,6 +162,10 @@ void setupBreakfast()
 void cleanup()
 {
   int i; 
+
+
+  //avoid infinite seg faults, entertaining as they may be!
+  signal(SIGSEGV, SIG_DFL);
 
   for (i = 0; i < NUM_RTLSDR; i++) 
   {
@@ -264,7 +269,6 @@ void setupSignals()
   signal(SIGTERM, handleBadSigs);
   signal(SIGINT, handleBadSigs);
   signal(SIGSEGV, handleBadSigs);
- 
 }
 
 
@@ -290,8 +294,8 @@ int main(int nargs, char ** args)
 
   setupSignals(); 
   setupBreakfast(); 
-  setupWriter(); 
   setupBitmask(); 
+  setupWriter(); 
   setupDirs(); 
   setupShared(); 
 
@@ -363,7 +367,7 @@ int main(int nargs, char ** args)
       telemCount++; 
 
       //telemeter , if necessary 
-      if (telemCount >= telemEvery) 
+      if (telemEvery && telemCount >= telemEvery) 
       {
         if (printToScreen)
         {
