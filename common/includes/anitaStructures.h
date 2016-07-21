@@ -1647,7 +1647,7 @@ typedef struct
   unsigned int unixTimeStart;  //< time when scan was started (unix time) 
   unsigned short scanTime;  //<  approximate time it scan to finish finished (in decisecs). 
   unsigned short gain;  //< LNA gain, in cBm (i.e. 10 * dBm) 
-  short spectrum [RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra, in cBm
+  unsigned char spectrum [RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra... see anitaFlight.h for units
   unsigned char rtlNum ; //<which RTL is this? This is the SERIAL NUMBER (RTL%d), not the device enumeration order ( 4 bits is sufficient for < 15 devices) 
 } RtlSdrPowerSpectraStruct_t; 
 
