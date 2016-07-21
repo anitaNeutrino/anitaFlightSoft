@@ -1,7 +1,6 @@
 # 
 #
 #
-
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 LIB_OBJS         =  tuffLib.o
