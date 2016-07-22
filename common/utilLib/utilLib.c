@@ -1621,6 +1621,7 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
   case PACKET_GPU_AVE_POW_SPEC: gHdr->verId=VER_GPU_POW_SPEC; break;
   case PACKET_RTLSDR_POW_SPEC: gHdr->verId=VER_RTLSDR_POW_SPEC; break;
   case PACKET_TUFF_STATUS: gHdr->verId=VER_TUFF_STATUS; break;
+  case PACKET_TUFF_RAW_CMD: gHdr->verId=VER_TUFF_RAW_CMD; break;
   default: 
     gHdr->verId=0; break;
   }
@@ -1705,6 +1706,7 @@ int checkPacket(void *thePtr)
   case PACKET_ACQD_START: packetSize=sizeof(AcqdStartStruct_t); break;
   case PACKET_GPU_AVE_POW_SPEC: packetSize=sizeof(GpuPhiSectorPowerSpectrumStruct_t); break;
   case PACKET_TUFF_STATUS: packetSize=sizeof(TuffNotchStatus_t); break;
+  case PACKET_TUFF_RAW_CMD: packetSize=sizeof(TuffRawCmd_t); break;
   case PACKET_RTLSDR_POW_SPEC: packetSize=sizeof(RtlSdrPowerSpectraStruct_t); break;
 
   default: 
@@ -1761,6 +1763,7 @@ char *packetCodeAsString(PacketCode_t code) {
   case PACKET_SUM_TURF_RATE: string="SummedTurfRateStruct_t"; break;
   case PACKET_RTLSDR_POW_SPEC: string ="RtlSdrPowerSpectraStruct_t"; break; 
   case PACKET_TUFF_STATUS: string ="TuffNotchStatus_t"; break; 
+  case PACKET_TUFF_RAW_CMD: string ="TuffRawCmd_t"; break; 
 
 
   default: 

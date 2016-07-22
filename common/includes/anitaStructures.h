@@ -184,6 +184,7 @@
 #define VER_GPU_POW_SPEC 40
 #define VER_RTLSDR_POW_SPEC 40 
 #define VER_TUFF_STATUS 40 
+#define VER_TUFF_RAW_CMD 40 
 #endif
 
 
@@ -240,8 +241,9 @@ typedef enum {
     PACKET_LOGWATCHD_START = 0xc01, ///< LogWatchdStart_t -- Yes
     PACKET_ACQD_START = 0xc02, ///<AcqdStartStruct_t -- Yes
     PACKET_GPU_AVE_POW_SPEC = 0xd, ///<GpuPhiSectorPowerSpectrum_t -- Yes
-    PACKET_RTLSDR_POW_SPEC = 0xe , 
-    PACKET_TUFF_STATUS =0xf 
+    PACKET_RTLSDR_POW_SPEC = 0xe00 , 
+    PACKET_TUFF_STATUS =0xf00, 
+    PACKET_TUFF_RAW_CMD =0xf01
     
 } PacketCode_t;
 
@@ -1705,6 +1707,15 @@ typedef struct __attribute__((packed))
   char temperatures[NUM_RFCM];  //-128 if temperatures are not being read 
 } TuffNotchStatus_t; 
 
+typedef struct __attribute__((packed))
+{
+  GenericHeader_t gHdr; 
+  unsigned int requestedTime; 
+  unsigned int enactedTime; 
+  unsigned short cmd; 
+  unsigned char irfcm : 4; 
+  unsigned char tuffStack : 4; 
+} TuffRawCmd_t; 
 
 
 
