@@ -22,6 +22,53 @@
 #define DATA_SIZE 10240
 #define COMMAND "$PASHS,ELM,0\r\n"  /* set elevation mask angle to 0 degree */
 
+
+int fillBFileRawNav(RawAdu5BFileRawNav_t *bFileRawNav, RawAdu5PBNStruct_t pbn){
+
+  sprintf(bFileRawNav->sitename, "%s", pbn.sitename);
+  bFileRawNav->rcv_time=pbn.pben_time/1e3;
+  bFileRawNav->navx=pbn.navx;
+  bFileRawNav->navy=pbn.navy;
+  bFileRawNav->navz=pbn.navz;
+  bFileRawNav->navxdot=pbn.navxdot;
+  bFileRawNav->navydot=pbn.navydot;
+  bFileRawNav->navzdot=pbn.navzdot;
+  bFileRawNav->navt=(double)pbn.navt;
+  bFileRawNav->navtdot=(double)pbn.navtdot;
+  bFileRawNav->pdop=pbn.pdop;
+  bFileRawNav->num_sats=0;
+
+
+  return 0;
+}
+
+int fillBFileSatHeader(RawAdu5BFileSatelliteHeader_t *bFileSatHeader, RawAdu5MBNStruct_t mbn){
+
+  bFileSatHeader->svprn=mbn.svpm;
+  bFileSatHeader->elevation=mbn.el;
+  bFileSatHeader->azimuth=mbn.az;
+  bFileSatHeader->chnind=mbn.chnind;
+
+  return 0;
+}
+
+int fillBFileChanObs( RawAdu5BFileChanObs_t *bFileChanObs,  RawAdu5MBNStruct_t mbn){
+
+  bFileChanObs->raw_range=mbn.raw_range;
+  bFileChanObs->smth_corr= (float)((mbn.smoothing && 0xff0000)>>24);
+  bFileChanObs->smth_count=(mbn.smoothing && 0xffffff);
+  bFileChanObs->polarity_known=mbn.polarity_know;
+  bFileChanObs->warning=mbn.warn;
+  bFileChanObs->goodbad=mbn.good_bad;
+  bFileChanObs->ireg=mbn.ireg;
+  bFileChanObs->qa_phase=mbn.qa_phase;
+  bFileChanObs->doppler=mbn.doppler;
+  bFileChanObs->carphase=mbn.full_phase;
+
+  return 0;
+}
+
+
 int main(int argc, char **argv) {
   if(argc<3) {
     printf("Usage:\n%s <A or B> <num seconds>\n",argv[0]);
@@ -65,10 +112,24 @@ int main(int argc, char **argv) {
   /* send the commands to ADU5  */
   write(fdAdu5, buff, strlen(buff));
   
-  RawAdu5MBNStruct_t *mbnPtr;
-  RawAdu5PBNStruct_t *pbnPtr;
-  RawAdu5SNVStruct_t *snvPtr;
-  RawAdu5ATTStruct_t *attPtr;
+  RawAdu5MBNStruct_t mbnPtr;
+  RawAdu5PBNStruct_t pbnPtr;
+  RawAdu5SNVStruct_t snvPtr;
+  RawAdu5ATTStruct_t attPtr;
+
+  struct RawAdu5BFileHeader bFileHeader;
+  struct RawAdu5BFileRawNav bFileRawNav;
+  struct RawAdu5BFileSatelliteHeader bFileSatHeader[100]; //Arbitray large array
+  struct RawAdu5BFileChanObs bFileChanObs[100];
+
+  int numSat = 0;
+  fillDefaultBFileHeader(&bFileHeader);
+
+  FILE * pFile;
+  pFile = fopen ("myCalibFile.bin", "wb");
+
+  // First we write the RawHeadFile
+  fwrite (&bFileHeader , sizeof(char), sizeof(RawAdu5BFileHeader_t), pFile);
 
   for(i=0; i < strlen(buff); i++) printf("%c", buff[i]);
   
@@ -107,27 +168,67 @@ int main(int argc, char **argv) {
 	    if(adu5Output[1]=='P' && adu5Output[2]=='A' && adu5Output[3]=='S' && 
 	       adu5Output[4]=='H' && adu5Output[5]=='R' && adu5Output[6]==',') {
 	      printf("Got $PASHR,\n");
-	      if(adu5Output[7]=='M' && adu5Output[8]=='C' && adu5Output[9]=='A') {
-		//Handle MCA
-		if(adu5OutputLength-1==50) {
-		  printf("Got MCA\n");		
-		  //Right length
-		  fillRawMBNStruct(adu5Output, adu5OutputLength, mbnPtr);
-		  adu5OutputLength=1;
-		  continue;
-		}
-		else if(adu5OutputLength-1<50) continue;
-	      }
-	      else if(adu5Output[7]=='A' && adu5Output[8]=='T' && adu5Output[9]=='T') {
+	      if(adu5Output[7]=='A' && adu5Output[8]=='T' && adu5Output[9]=='T') {
 		if(adu5OutputLength-1==61) {
 		  printf("Got ATT\n");		
 		  //Right length
-		  fillRawATTStruct(adu5Output, adu5OutputLength, attPtr);
+		  fillRawATTStruct(adu5Output, adu5OutputLength, &attPtr);
 		  adu5OutputLength=1;
 		  continue;
 		}
 		else if(adu5OutputLength-1<61) continue;
-	      }	      
+	      }
+	      else if(adu5Output[7]=='P' && adu5Output[8]=='B' && adu5Output[9]=='N') {
+		if(adu5OutputLength-1==69) {
+		  printf("Got PBN\n");		
+		  //Right length
+		  fillRawPBNStruct(adu5Output, adu5OutputLength, &pbnPtr);
+		  fillBFileRawNav(&bFileRawNav, pbnPtr);
+
+		  numSat = 0;
+		  
+		  retVal=read(fdAdu5, tempData, DATA_SIZE);
+		  adu5Output[adu5OutputLength++]=tempData[i];
+		  while (adu5Output[7]=='M' && adu5Output[8]=='C' && adu5Output[9]=='A') {
+		    //Handle MCA
+		    if(adu5OutputLength-1==50) {
+		      printf("Got MCA\n");		
+		      //Right length
+		      fillRawMBNStruct(adu5Output, adu5OutputLength, &mbnPtr);
+		      fillBFileSatHeader(&bFileSatHeader[numSat], mbnPtr);
+		      fillBFileChanObs(&bFileChanObs[numSat],  mbnPtr);
+		    
+		      adu5OutputLength=1;
+		      adu5Output[adu5OutputLength++]=tempData[i];
+		      retVal=read(fdAdu5, tempData, DATA_SIZE);
+		      numSat++;
+		      continue;
+		    }
+
+		  }
+		  bFileRawNav.num_sats=(char)numSat;
+		  fwrite ( &bFileRawNav  , sizeof(char), sizeof(RawAdu5BFileRawNav_t), pFile);
+		  int isat;
+		  for (isat=0;isat<numSat;isat++){
+		      fwrite (&bFileSatHeader[numSat] , sizeof(char), sizeof(RawAdu5BFileSatelliteHeader_t), pFile);
+		      fwrite (&bFileChanObs[numSat] , sizeof(char), sizeof(RawAdu5BFileChanObs_t), pFile);
+		  }
+		  adu5OutputLength=1;
+		  continue;
+		}
+		else if(adu5OutputLength-1<69) continue;
+	      }
+	      else if(adu5Output[7]=='S' && adu5Output[8]=='N' && adu5Output[9]=='V') {
+		if(adu5OutputLength-1==145) {
+		  printf("Got SNV\n");
+		  //Right length
+		  fillRawSNVStruct(adu5Output, adu5OutputLength, &snvPtr);
+
+		  adu5OutputLength=1;
+		  continue;
+		}
+		else if(adu5OutputLength-1<145) continue;
+	      }
 	      else if(adu5Output[7]=='T' && adu5Output[8]=='T' && adu5Output[9]=='T') {
 		if(adu5OutputLength-1==34) {
 		  printf("Got TTT\n");		
@@ -137,7 +238,9 @@ int main(int argc, char **argv) {
 		  continue;
 		}
 		else if(adu5OutputLength-1<34) continue;
-	      }	      
+	      }
+
+	      
 	    }
 	    if(adu5OutputLength>30) { //RJN arbitrary number for now
 	      //Reset the counter for now
@@ -156,7 +259,7 @@ int main(int argc, char **argv) {
       
   // Steps for real
   // Work out
-
+  fclose (pFile);
   
 
   
