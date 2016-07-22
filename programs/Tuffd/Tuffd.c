@@ -293,6 +293,10 @@ int main(int nargs, char ** args)
   int read_config_ok; 
   int retVal; 
   int justChanged; 
+  int i;
+  unsigned int irfcmList[NUM_RFCM]; 
+  int numPongs; 
+
 
   retVal = sortOutPidFile(args[0]); 
   if (retVal) return retVal; 
@@ -307,14 +311,38 @@ int main(int nargs, char ** args)
   setupWriter(); 
 
 
+  // open the tuff 
   device = tuff_open(TUFF_DEVICE);
+
   if (!device) 
   {
-
-    syslog(LOG_ERR,"Tuffd could not find the Tuff. Aborting.."); 
+    syslog(LOG_ERR,"Tuffd could not open the Tuff. Aborting.."); 
     cleanup(); 
   }
  
+  // check if we can talk to it and reset 
+  for (i = 0; i < NUM_RFCM; i++) 
+  {
+    irfcmList[i] = i; 
+  }
+
+  numPongs = tuff_pingiRFCM(device, 10, NUM_RFCM, irfcmList); 
+
+  if (numPongs!= NUM_RFCM)
+  {
+    syslog(LOG_ERR," Tuffd could not get pongs from all of the IRFCM's! Heard %d pongs.\n", numPongs); 
+    cleanup(); 
+  }
+
+  // reset the tuffs 
+  for (i = 0; i < NUM_RFCM; i++) 
+  {
+    tuff_reset(device, i); 
+  }
+
+  //shut them up
+  tuff_setQuietMode(device,true); 
+
   do
   {
     read_config_ok = readConfig(); 
