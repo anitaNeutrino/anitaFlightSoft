@@ -471,22 +471,22 @@ int executeCommand(CommandStruct_t *theCmd)
     return rawtime;
   case CMD_KILL_PROGS:
     //Kill prog
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=killPrograms(ivalue);
     return retVal;
   case CMD_REALLY_KILL_PROGS:
     //Kill progs
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=reallyKillPrograms(ivalue);
     return retVal;
   case CMD_RESPAWN_PROGS:
     //Respawn progs
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=respawnPrograms(ivalue);	    
     return retVal;
   case CMD_START_PROGS:
     //Start progs
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=startPrograms(ivalue);	    
     return retVal;      
   case CMD_DISABLE_DISK:
@@ -3689,7 +3689,7 @@ int tryAndMountSatadrives()
 int executeRTLCommand(int command, unsigned char arg[2]) 
 {
   time_t when; 
-  unsigned short argAsShort = *((short*) arg); 
+  unsigned short argAsShort = arg[0] && ( arg[1] << 8); 
   int num_rtls = NUM_RTLSDR; 
   float gain[NUM_RTLSDR]; 
   switch(command)
@@ -3745,7 +3745,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break; 
 
     case TUFF_SEND_RAW: 
-       cmd = *((unsigned short*) arg+2); 
+       cmd = arg[2] & (arg[3] << 8); 
        doTuffRawCommand(arg[0], arg[1],cmd,&when); 
        break; 
 

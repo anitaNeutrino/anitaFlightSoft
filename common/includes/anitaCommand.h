@@ -31,7 +31,7 @@
 #define OPENPORTD_ID_MASK 0x4000
 #define RTLD_ID_MASK 0x8000
 #define TUFFD_ID_MASK 0x10000 
-#define ALL_ID_MASK 0xffffffff
+#define ALL_ID_MASK 0xffffff
 
 
 typedef enum {

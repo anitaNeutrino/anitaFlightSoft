@@ -61,7 +61,7 @@
 #define TURF_EVENT_DATA_SIZE 256
 
 //Process Stuff
-#define NUM_PROCESSES 16 //Actually a couple more than we need
+#define NUM_PROCESSES 20 //Actually a couple more than we need
 
 //GPS stuff
 #define MAX_SATS 12
