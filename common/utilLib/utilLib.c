@@ -2179,8 +2179,8 @@ int getIdMask(ProgramId_t prog) {
   case ID_LOGWATCHD: return LOGWATCHD_ID_MASK;
   case ID_NTUD: return NTUD_ID_MASK;
   case ID_OPENPORTD: return OPENPORTD_ID_MASK;
-  case ID_RTLD: return RTL_ID_MASK;
-  case ID_TUFFD: return TUFF_ID_MASK;
+  case ID_RTLD: return RTLD_ID_MASK;
+  case ID_TUFFD: return TUFFD_ID_MASK;
   default: break;
   }
   return 0;
