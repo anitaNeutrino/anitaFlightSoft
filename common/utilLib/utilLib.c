@@ -757,8 +757,8 @@ int normalSingleWrite(unsigned char *buffer, char *filename, int numBytes)
     }
     return -1;
   }   
+//  printf("normalSingleWrite: %d bytes to %s\n",numBytes,filename);
   numObjs=fwrite(buffer,numBytes,1,outfile);
-  //  printf("normalSingleWrite: %d bytes to %s\n",numBytes,filename);
   if(numObjs!=1) {
     if(errorCounter<100) {
       syslog (LOG_ERR,"fwrite: %s ---  %s\n",strerror(errno),filename);
