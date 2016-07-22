@@ -3689,7 +3689,7 @@ int tryAndMountSatadrives()
 int executeRTLCommand(int command, unsigned char arg[2]) 
 {
   time_t when; 
-  unsigned short argAsShort = arg[0] && ( arg[1] << 8); 
+  unsigned short argAsShort = arg[0] + ( arg[1] << 8); 
   int num_rtls = NUM_RTLSDR; 
   float gain[NUM_RTLSDR]; 
   switch(command)
@@ -3745,7 +3745,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break; 
 
     case TUFF_SEND_RAW: 
-       cmd = arg[2] & (arg[3] << 8); 
+       cmd = arg[2] + (arg[3] << 8); 
        doTuffRawCommand(arg[0], arg[1],cmd,&when); 
        break; 
 
