@@ -4,9 +4,18 @@
    
    July 2016 r.nichol@ucl.ac.uk
 */
-£ifndef GPSTOOLSLIB_H
+#ifndef GPSTOOLSLIB_H
 #define GPSTOOLSLIB_H
 
+#include "common/includes/anitaStructures.h"
+
+
+//! Fill the default RawAdu5BFileHeader_t structure
+/*!
+  Fills the default RawAdu5BFileHeader_t
+  \return { 0 on success, negative on failure }
+*/
+int fillDefaultBFileHeader(RawAdu5BFileHeader_t *hdrPtr);
 
 //! Fill a RawAdu5MBNStruct_t if inputStream contains one
 /*!

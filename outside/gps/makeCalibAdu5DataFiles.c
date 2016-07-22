@@ -6,7 +6,6 @@
     July 2016 r.nichol@ucl.ac.uk
 */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -17,6 +16,7 @@
 #include "includes/anitaFlight.h"
 #include "includes/anitaStructures.h"
 #include "serialLib/serialLib.h"
+#include "gpsToolsLib/gpsToolsLib.h"
 
 #define COMMAND_SIZE 1024
 #define DATA_SIZE 10240
@@ -65,7 +65,10 @@ int main(int argc, char **argv) {
   /* send the commands to ADU5  */
   write(fdAdu5, buff, strlen(buff));
   
-
+  RawAdu5MBNStruct_t *mbnPtr;
+  RawAdu5PBNStruct_t *pbnPtr;
+  RawAdu5SNVStruct_t *snvPtr;
+  RawAdu5ATTStruct_t *attPtr;
 
   for(i=0; i < strlen(buff); i++) printf("%c", buff[i]);
   
@@ -109,6 +112,7 @@ int main(int argc, char **argv) {
 		if(adu5OutputLength-1==50) {
 		  printf("Got MCA\n");		
 		  //Right length
+		  fillRawMBNStruct(adu5Output, adu5OutputLength, mbnPtr);
 		  adu5OutputLength=1;
 		  continue;
 		}
@@ -118,6 +122,7 @@ int main(int argc, char **argv) {
 		if(adu5OutputLength-1==61) {
 		  printf("Got ATT\n");		
 		  //Right length
+		  fillRawATTStruct(adu5Output, adu5OutputLength, attPtr);
 		  adu5OutputLength=1;
 		  continue;
 		}
@@ -127,6 +132,7 @@ int main(int argc, char **argv) {
 		if(adu5OutputLength-1==34) {
 		  printf("Got TTT\n");		
 		  //Right length
+		  
 		  adu5OutputLength=1;
 		  continue;
 		}
