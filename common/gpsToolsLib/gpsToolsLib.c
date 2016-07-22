@@ -14,15 +14,18 @@
 
 #include "gpsToolsLib/gpsToolsLib.h"
 
-/* int fillDefaultBFileHeader(char *inputStream, int length){//, RawAdu5BFileHeader_t *hdrPtr){ */
+void fillDefaultBFileHeader(RawAdu5BFileHeader_t *hdrPtr){
 
-/*   //  char inputStream[100]; */
+  sprintf(hdrPtr->version, "Version:"); 
+  hdrPtr->raw_version=3;
+  sprintf(hdrPtr->rcvr_type,"ADU5-0"); 
+  sprintf(hdrPtr->chan_ver,"YG04"); 
+  sprintf(hdrPtr->nav_ver,"____"); 
+  hdrPtr->capability=1;
+  hdrPtr->wb_start=0;
+  hdrPtr->num_obs_type=1;
 
-/*   //  memcpy(hdrPtr, inputStream, sizeof *hdrPtr); */
-
-/*   return 0; */
-
-/* } */
+}
 
 
 int fillRawMBNStruct(char *inputStream, int length, RawAdu5MBNStruct_t *mbnPtr){

@@ -10,12 +10,12 @@
 #include "common/includes/anitaStructures.h"
 
 
-//! Fill the default RawAdu5BFileHeader_t structure
+//! Fills the default RawAdu5BFileHeader_t structure
 /*!
   Fills the default RawAdu5BFileHeader_t
-  \return { 0 on success, negative on failure }
 */
-int fillDefaultBFileHeader(RawAdu5BFileHeader_t *hdrPtr);
+void fillDefaultBFileHeader(RawAdu5BFileHeader_t *hdrPtr);
+
 
 //! Fill a RawAdu5MBNStruct_t if inputStream contains one
 /*!
