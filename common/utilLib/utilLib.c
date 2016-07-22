@@ -2179,6 +2179,8 @@ int getIdMask(ProgramId_t prog) {
   case ID_LOGWATCHD: return LOGWATCHD_ID_MASK;
   case ID_NTUD: return NTUD_ID_MASK;
   case ID_OPENPORTD: return OPENPORTD_ID_MASK;
+  case ID_RTLD: return RTL_ID_MASK;
+  case ID_TUFFD: return TUFF_ID_MASK;
   default: break;
   }
   return 0;
@@ -2203,6 +2205,8 @@ char *getProgName(ProgramId_t prog) {
   case ID_LOGWATCHD: string="LogWatchd"; break;
   case ID_NTUD: string="NTUd"; break;
   case ID_OPENPORTD: string="Openportd"; break;
+  case ID_RTLD: string="RTLd"; break;
+  case ID_TUFFD: string="Tuffd"; break;
   default: string=NULL; break;
   }
   return string;
@@ -2225,6 +2229,8 @@ char *getPidFile(ProgramId_t prog) {
   case ID_LOGWATCHD: return LOGWATCHD_PID_FILE;
   case ID_NTUD: return NTUD_PID_FILE;
   case ID_OPENPORTD: return OPENPORTD_PID_FILE;
+  case ID_RTLD: return RTLD_PID_FILE;
+  case ID_TUFFD: return TUFFD_PID_FILE;
   default: break;
   }
   return NULL;
