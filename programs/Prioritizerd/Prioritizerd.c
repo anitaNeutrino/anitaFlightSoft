@@ -103,6 +103,7 @@ int main (int argc, char *argv[])
       exit(0);
     }
     numEventLinks=getNumLinks(wd);
+    ///    fprintf(stderr,"RJN numEventLinks_1=%d\n",numEventLinks);
   }
 
   /* 
@@ -136,7 +137,8 @@ int main (int argc, char *argv[])
 
       retVal=checkLinkDirs(1,0);
       if(retVal || numEventLinks) numEventLinks=getNumLinks(wd);
-	   
+      //      fprintf(stderr,"RJN numEventLinks_2=%d\n",numEventLinks);
+
       if(numEventLinks>=panicQueueLength) {
 	syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
       }
@@ -145,30 +147,40 @@ int main (int argc, char *argv[])
 	usleep(1000);
 	continue;
       }
-
-      /* Read data into program memory */
       int eventsReadIn = 0;
-      while(eventsReadIn<NUM_EVENTS && currentState==PROG_STATE_RUN){
-	numEventLinks=getNumLinks(wd);
-	tempString=getFirstLink(wd);
-	if(numEventLinks==0) break;
-	if(tempString==NULL) continue;
-	sscanf(tempString,"hd_%d.dat",&doingEvent);
-	if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
-	  syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent);
-	}
-	lastEventNumber=doingEvent;
+
+      if(numEventLinks > panicQueueLength || disableGpu){
+	/* Panic! Write all header files to archived directory with priority 7! */
+	panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);	
+      }
+      else {
+	/* Read data into program memory */
+	while(eventsReadIn<NUM_EVENTS && currentState==PROG_STATE_RUN){
+	  numEventLinks=getNumLinks(wd);
+	  //	  fprintf(stderr,"RJN numEventLinks_3=%d\n",numEventLinks);
 	
-	sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString);
-	sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent);
+	
+      	
+	  tempString=getFirstLink(wd);
+	  if(numEventLinks==0) break;
+	  if(tempString==NULL) continue;
+	  sscanf(tempString,"hd_%d.dat",&doingEvent);
+	  if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) {
+	    syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent);
+	  }
+	  lastEventNumber=doingEvent;
+	  
+	  sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString);
+	  sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent);
 
-	//RJN 4th June 2008
-	//Switch to Acqd writing psev files
-	sprintf(bodyFilename[eventsReadIn],"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
+	  //RJN 4th June 2008
+	  //Switch to Acqd writing psev files
+	  sprintf(bodyFilename[eventsReadIn],"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
+	  
+	  retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);	
+	
+       
 
-	retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);	
-
-	if(numEventLinks < panicQueueLength && !disableGpu){
 	  /* Then we add to GPU queue... */
 	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
 	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
@@ -180,12 +192,10 @@ int main (int argc, char *argv[])
 	  }
 	  eventsReadIn++;
 	}
-	else{/* Panic! Write all header files to archived directory with priority 7! */
-	  panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);
-	}
-      }
+      
 
-      printf("eventsReadIn = %d, max is %d.\n", eventsReadIn, NUM_EVENTS);
+	printf("eventsReadIn = %d, max is %d.\n", eventsReadIn, NUM_EVENTS);
+      }
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
       if(eventsReadIn>0 && !disableGpu){

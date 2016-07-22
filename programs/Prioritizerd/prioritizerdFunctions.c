@@ -9,8 +9,11 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
   char archiveHdFilename[FILENAME_MAX];
   char archiveBodyFilename[FILENAME_MAX];
   int numEventLinksAtPanic = getNumLinks(wd);
-  syslog(LOG_WARNING,"Prioritizerd queue has reached panicQueueLength=%d!\n", panicQueueLength);
-  syslog(LOG_WARNING, "Trying to recover by writing %d priority 7 events!\n", numEventLinksAtPanic);
+  if(numEventLinksAtPanic==0) return;
+  if(numEventLinksAtPanic>panicQueueLength) {
+    syslog(LOG_WARNING,"Prioritizerd queue has reached panicQueueLength=%d!\n", panicQueueLength);
+    syslog(LOG_WARNING, "Trying to recover by writing %d priority 7 events!\n", numEventLinksAtPanic);
+  }
   int doingEvent=0;
   int count=0;
   char* tempString;
@@ -34,6 +37,8 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
 	    doingEvent);
 
     sprintf(bodyFilename,"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
+    
+    //    fprintf(stderr,"Doing %s -- %s\n",linkFilename,hdFilename);
 
     AnitaEventHeader_t panicHeader;
     int retVal=fillHeader(&panicHeader,hdFilename);
