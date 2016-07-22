@@ -330,7 +330,7 @@ int main(int nargs, char ** args)
       {
 
         char * serial = serials[i]; 
-        sprintf(cmd, "RTL_singleshot_power -d %s  -c 0.3 -f %d:%d:%d -g %f %s/%s.out", 
+        sprintf(cmd, "RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
                       serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
         oneshots[i] = popen (cmd, "r"); 
         if (!oneshots[i])
