@@ -66,10 +66,10 @@ void dumpSpectrum(const RtlSdrPowerSpectraStruct_t * dump)
   printf("  Scan from RTL%c started at %s which took %f\n " , dump->rtlNum, buf, timetook); 
   printf("  gain was: %f\n",fgain); 
 
-  printf(" -------------- <spectrum> -------------------------------\n"); 
+  printf(" -------------- <spectrum N=%d> -------------------------------\n", dump->nFreq); 
   for (i = 0; i < dump->nFreq; i++) 
   {
-    db = dump->spectrum[i] /10.; 
+    db = ((double) dump->spectrum[i]) / RTL_SPECTRUM_DBM_SCALE + RTL_SPECTRUM_DBM_OFFSET; 
     printf ("   %f Hz:  %f dBm \n", f, db); 
     f+= dump->freqStep; 
   }

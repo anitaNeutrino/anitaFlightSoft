@@ -47,7 +47,6 @@ static RtlSdrPowerSpectraStruct_t * spectra[NUM_RTLSDR];
 static unsigned startFrequency; 
 static unsigned endFrequency; 
 static unsigned stepFrequency; 
-static unsigned nFrequencies; 
 static float gain[NUM_RTLSDR]; 
 static int printToScreen = 1; 
 static int verbosity = 0; 
@@ -88,18 +87,14 @@ static int readConfig()
   {
     startFrequency = kvpGetInt("startFrequency", 180000000); 
     endFrequency = kvpGetInt("endFrequency",  1250000000); 
-    nFrequencies = kvpGetInt("nSteps", 4096); 
+    stepFrequency = kvpGetInt("stepFrequency", 320000); 
     telemEvery = kvpGetInt("telemEvery",1); 
 
-    //TODO do some smarter math here to use approximately the number of steps specified... now there might be way more! 
     if (printToScreen)
     {
-       printf("startFrequency: %d; endFrequency:%d; nFrequencies %d \n", startFrequency, endFrequency, nFrequencies); 
+       printf("startFrequency: %d; endFrequency:%d; stepFrequency %d \n", startFrequency, endFrequency, stepFrequency); 
     }
 
-    stepFrequency = (endFrequency - startFrequency) / (nFrequencies); 
-
-    
     status = kvpGetFloatArray("gain", gain, &nread); 
     if (printToScreen)
     {
@@ -335,7 +330,7 @@ int main(int nargs, char ** args)
       {
 
         char * serial = serials[i]; 
-        sprintf(cmd, "RTL_singleshot_power -d %s  -f %d:%d:%d -g %f %s/%s.out", 
+        sprintf(cmd, "RTL_singleshot_power -d %s  -c 0.3 -f %d:%d:%d -g %f %s/%s.out", 
                       serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
         oneshots[i] = popen (cmd, "r"); 
         if (!oneshots[i])

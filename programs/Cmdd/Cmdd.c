@@ -3701,8 +3701,8 @@ int executeRTLCommand(int command, unsigned char arg[2])
     case RTL_SET_END_FREQUENCY: 
       configModifyInt("RTLd.config","rtl","endFreq",argAsShort * 1e6, &when); 
       break;
-    case RTL_SET_N_STEPS: 
-      configModifyInt("RTLd.config","rtl","nSteps",argAsShort, &when); 
+    case RTL_SET_FREQUENCY_STEP: 
+      configModifyInt("RTLd.config","rtl","stepFreq",argAsShort*1e3, &when); 
       break;
     case RTL_SET_GAIN: 
       configLoad("RTLd.config","rtl"); 

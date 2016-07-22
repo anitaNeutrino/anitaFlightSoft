@@ -251,7 +251,7 @@ typedef enum
   RTL_SET_START_FREQUENCY=2, 
   RTL_SET_END_FREQUENCY=3, 
   RTL_SET_GAIN = 4, 
-  RTL_SET_N_STEPS =5
+  RTL_SET_FREQUENCY_STEP =5
 } RTLdCommandCode_t; 
 
 typedef enum

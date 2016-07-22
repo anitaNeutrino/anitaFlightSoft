@@ -863,7 +863,7 @@ void csv_dbm(struct tuning_state *ts)
 
 		if(spectrum && spectrum_bin_index < RTLSDR_MAX_SPECTRUM_BINS)
 		{
-			spectrum->spectrum[spectrum_bin_index++] = (char)  ( (dbm + RTL_SPECTRUM_DBM_OFFSET) * RTL_SPECTRUM_DBM_SCALE ); 
+			spectrum->spectrum[spectrum_bin_index++] = (char)  ( (dbm - RTL_SPECTRUM_DBM_OFFSET) * RTL_SPECTRUM_DBM_SCALE ); 
 		}
 	}
 

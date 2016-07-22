@@ -327,9 +327,9 @@
 #define RTLSDR_MAX_SPECTRUM_BINS 4096  // The maximum number of bins we can save in a packet. 
 #define RTLD_SHARED_SPECTRUM_NAME "/RTLd_shared_spectrum_%s"  // The name of the shared memory location for the RTL spectrum struct (with the %s being the serial of the shared region's RTL) 
 
-// spectrum stored as (char) (dBm + OFFSET) * SCALE
-#define RTL_SPECTRUM_DBM_OFFSET -40 
-#define RTL_SPECTRUM_DBM_SCALE 4 
+// spectrum stored as (char) (dBm - OFFSET) * SCALE
+#define RTL_SPECTRUM_DBM_OFFSET -40. 
+#define RTL_SPECTRUM_DBM_SCALE 4. 
 
 // TUFF stuff
 #define NUM_TUFF_NOTCHES 3
