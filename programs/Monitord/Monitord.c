@@ -26,7 +26,7 @@
 #include "includes/anitaFlight.h"
 #include "includes/anitaCommand.h"
 
-#define NUM_HK_TELEM_DIRS 22
+#define NUM_HK_TELEM_DIRS 23
 
 typedef enum {
   MON_TELEM_FIRST=0,
@@ -52,6 +52,7 @@ typedef enum {
   MON_TELEM_PEDESTAL,
   MON_TELEM_REQUEST,
   MON_TELEM_RTL, 
+  MON_TELEM_TUFF, 
   MON_TELEM_NOT_A_TELEM
 } MONTelemType_t;
 
@@ -480,7 +481,8 @@ int checkQueues(QueueStruct_t *queuePtr) {
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
      REQUEST_TELEM_LINK_DIR, 
-     RTL_TELEM_LINK_DIR
+     RTL_TELEM_LINK_DIR, 
+     TUFF_TELEM_LINK_DIR
     };
   static char *telemDirs[NUM_HK_TELEM_DIRS]=
     {LOSD_CMD_ECHO_TELEM_DIR,
@@ -504,7 +506,8 @@ int checkQueues(QueueStruct_t *queuePtr) {
      OTHER_MONITOR_TELEM_DIR,
      PEDESTAL_TELEM_DIR,
      REQUEST_TELEM_DIR, 
-     RTL_TELEM_DIR
+     RTL_TELEM_DIR,
+     TUFF_TELEM_DIR
     };
 
   
