@@ -1654,14 +1654,15 @@ typedef struct
 
 /*! 
  * Struct to store TUFF start and end phi sectors 
- *
  **/ 
-typedef struct
+typedef struct __attribute__((packed)) 
 {
   GenericHeader_t gHdr; 
-  unsigned int unixTime; 
-  unsigned char startSectors[NUM_TUFF_NOTCHES]; 
-  unsigned char endSectors[NUM_TUFF_NOTCHES]; 
+  unsigned int notchSetTime;  // The last time the notches were set
+  unsigned int unixTime;  // The approximate time that this was written. If temperatures are read, the temperatures are read around this time
+  unsigned char startSectors[NUM_TUFF_NOTCHES]; //start sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
+  unsigned char endSectors[NUM_TUFF_NOTCHES]; //stop sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
+  char temperatures[NUM_RFCM];  //-128 if temperatures are not being read 
 } TuffNotchStatus_t; 
 
 

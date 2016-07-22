@@ -42,7 +42,7 @@
 
 
 #define SEND_REAL_SLOW_DATA 1
-#define NUM_HK_TELEM_DIRS 22
+#define NUM_HK_TELEM_DIRS 23
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -69,6 +69,7 @@ typedef enum {
   TDRSS_TELEM_PEDESTAL,
   TDRSS_TELEM_REQUEST,
   TDRSS_TELEM_RTL, 
+  TDRSS_TELEM_TUFF, 
   TDRSS_TELEM_NOT_A_TELEM
 } TDRSSTelemType_t;
 
@@ -169,7 +170,8 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
      REQUEST_TELEM_LINK_DIR, 
-     RTL_TELEM_LINK_DIR
+     RTL_TELEM_LINK_DIR,
+     TUFF_TELEM_LINK_DIR
   };
   static char *telemDirs[NUM_HK_TELEM_DIRS]=
     {SIPD_CMD_ECHO_TELEM_DIR,  //0
@@ -193,7 +195,8 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      OTHER_MONITOR_TELEM_DIR, //18
      PEDESTAL_TELEM_DIR, //19
      REQUEST_TELEM_DIR, //20
-     RTL_TELEM_DIR //21 
+     RTL_TELEM_DIR, //21 
+     TUFF_TELEM_DIR //22 
     }; 
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   {sizeof(CommandEcho_t),
@@ -217,7 +220,8 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(OtherMonitorStruct_t),
    sizeof(FullLabChipPedStruct_t),
    2000, //Who knows why
-   sizeof(RtlSdrPowerSpectraStruct_t) 
+   sizeof(RtlSdrPowerSpectraStruct_t),
+   sizeof(TuffNotchStatus_t) 
   };
 
 //Will make these configurable soon

@@ -30,6 +30,7 @@
 #define NTUD_ID_MASK 0x2000
 #define OPENPORTD_ID_MASK 0x4000
 #define RTLD_ID_MASK 0x8000
+#define TUFFD_ID_MASK 0x1000 
 #define ALL_ID_MASK 0xffff
 
 
@@ -51,9 +52,14 @@ typedef enum {
     ID_NTUD,
     ID_OPENPORTD,
     ID_RTLD, 
+    ID_TUFFD,
     ID_NOT_AN_ID
 } ProgramId_t;
 
+
+
+
+#define NUM_ANITA_COMMANDS 256 
 
 
 typedef enum {
@@ -64,6 +70,7 @@ typedef enum {
     LOG_REQUEST_COMMAND = 10,
     JOURNALCTL_REQUEST_COMMAND =11,
 
+    RTLD_COMMAND = 28,  
 
     CMD_REALLY_KILL_PROGS = 127,
     CMD_SIPD_REBOOT = 128,
@@ -170,10 +177,13 @@ typedef enum {
     //    ACQD_SET_RATE_SERVO = 249, //Was 3
     ACQD_RATE_COMMAND = 250, //Guess at 10 for now
   
+
+
     EVENTD_MATCH_GPS = 251,
     GPS_PHI_MASK_COMMAND = 252,
     PRIORITIZERD_COMMAND =253,  
-    PLAYBACKD_COMMAND =254    
+    PLAYBACKD_COMMAND =254, 
+    TUFFD_COMMAND = 255 
 } CommandCode_t;
 
 typedef enum {
@@ -232,6 +242,29 @@ typedef enum {
   PRI_POS_SATUATION=15,
   PRI_NEG_SATUATION=16
 } PrioritizerdCommandCode_t;
+
+
+#define NBITS_FOR_RTL_INDEX 3
+typedef enum
+{
+  RTL_SET_TELEM_EVERY = 1, 
+  RTL_SET_START_FREQUENCY=2, 
+  RTL_SET_END_FREQUENCY=3, 
+  RTL_SET_GAIN = 4, 
+  RTL_SET_N_STEPS =5
+} RTLdCommandCode_t; 
+
+typedef enum
+{
+  TUFF_SET_NOTCH = 1, 
+  TUFF_SEND_RAW = 2, 
+  TUFF_SET_SLEEP_AMOUNT =3, 
+  TUFF_SET_READ_TEMPERATURE =4 , 
+  TUFF_SET_TELEM_EVERY = 5, 
+  TUFF_SET_TELEM_AFTER_CHANGE = 6 
+  
+} TuffCommandCode_t; 
+
   
 typedef enum {
   GPS_PHI_MASK_ENABLE=1,
