@@ -15,7 +15,6 @@
 #include <time.h>
 #include <signal.h>
 #include <libgen.h> //For Mac OS X
-
 //Flightsoft includes
 #include "configLib/configLib.h"
 #include "kvpLib/keyValuePair.h"
@@ -41,6 +40,7 @@ int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
 int executeRTLCommand(int command, unsigned char arg[2]); 
 int executeTuffCommand(int command, unsigned char arg[6]); 
+int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm ); 
 int logRequestCommand(int logNum, int numLines);
 int writeCommandEcho(CommandStruct_t *theCommand, int unixTime);
 int readConfig();
@@ -196,6 +196,7 @@ int main (int argc, char *argv[])
   signal(SIGSEGV, handleBadSigs);
 
 
+
   makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
   makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
   makeDirectories(OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
@@ -203,6 +204,7 @@ int main (int argc, char *argv[])
   makeDirectories(REQUEST_TELEM_LINK_DIR);
   makeDirectories(PLAYBACK_LINK_DIR);
   makeDirectories(LOGWATCH_LINK_DIR);
+  makeDirectories(TUFF_RAWCMD_LINK_DIR);
 
   do {
     retVal=readConfig();
@@ -469,22 +471,22 @@ int executeCommand(CommandStruct_t *theCmd)
     return rawtime;
   case CMD_KILL_PROGS:
     //Kill prog
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=killPrograms(ivalue);
     return retVal;
   case CMD_REALLY_KILL_PROGS:
     //Kill progs
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=reallyKillPrograms(ivalue);
     return retVal;
   case CMD_RESPAWN_PROGS:
     //Respawn progs
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=respawnPrograms(ivalue);	    
     return retVal;
   case CMD_START_PROGS:
     //Start progs
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     retVal=startPrograms(ivalue);	    
     return retVal;      
   case CMD_DISABLE_DISK:
@@ -3687,7 +3689,7 @@ int tryAndMountSatadrives()
 int executeRTLCommand(int command, unsigned char arg[2]) 
 {
   time_t when; 
-  unsigned short argAsShort = *((short*) arg); 
+  unsigned short argAsShort = arg[0] + ( arg[1] << 8); 
   int num_rtls = NUM_RTLSDR; 
   float gain[NUM_RTLSDR]; 
   switch(command)
@@ -3727,7 +3729,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
 {
   time_t when; 
   int notch_array[2*NUM_TUFF_NOTCHES]; 
-  int raw_array[4]; 
+  unsigned short cmd; 
 
   switch(command)
   {
@@ -3743,11 +3745,8 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break; 
 
     case TUFF_SEND_RAW: 
-       raw_array[0] = 1; 
-       raw_array[1] = arg[0]; 
-       raw_array[2] = arg[1]; 
-       raw_array[3] = arg[2]; 
-       configModifyIntArray("Tuffd.config","raw","rawCmd", raw_array, 4, &when); 
+       cmd = arg[2] + (arg[3] << 8); 
+       doTuffRawCommand(arg[0], arg[1],cmd,&when); 
        break; 
 
     case TUFF_SET_SLEEP_AMOUNT: 
@@ -3772,4 +3771,23 @@ int executeTuffCommand(int command, unsigned char arg[6])
   return when; 
 }
 
+
+
+static int rawtuff_counter = 0; 
+int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm ) 
+{
+
+  TuffRawCmd_t raw; 
+  char outName[FILENAME_MAX]; 
+  time_t now = time(0); 
+  raw.requestedTime = now; 
+  raw.cmd = cmd; 
+  raw.irfcm = rfcm; 
+  raw.tuffStack = stack; 
+  sprintf(outName,"%s/tuff_rawcmd_%d.dat",TUFF_RAWCMD_DIR, rawtuff_counter++); 
+  writeStruct(&raw, outName, sizeof(TuffRawCmd_t)); 
+  makeLink(outName,TUFF_RAWCMD_LINK_DIR); 
+  *tm = now; 
+  return 0; 
+}
 

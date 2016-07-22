@@ -61,7 +61,7 @@
 #define TURF_EVENT_DATA_SIZE 256
 
 //Process Stuff
-#define NUM_PROCESSES 16 //Actually a couple more than we need
+#define NUM_PROCESSES 20 //Actually a couple more than we need
 
 //GPS stuff
 #define MAX_SATS 12
@@ -277,6 +277,9 @@
 #define LOGWATCH_LINK_DIR "/tmp/anita/logwatchd/link"
 #define NTUD_DIR "/tmp/anita/ntud"
 #define NTUD_LINK_DIR "/tmp/anita/ntud/link"
+
+#define TUFF_RAWCMD_DIR "/tmp/anita/tuff" 
+#define TUFF_RAWCMD_LINK_DIR "/tmp/anita/tuff/link" 
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"

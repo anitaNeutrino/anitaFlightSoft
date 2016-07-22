@@ -163,7 +163,7 @@
 #define VER_HK_FULL 40
 #define VER_HK_SS 40
 #define VER_CMD_ECHO 40
-#define VER_MONITOR 40
+#define VER_MONITOR 41
 #define VER_TURF_RATE 40
 #define VER_LAB_PED 40
 #define VER_FULL_PED 40
@@ -173,7 +173,7 @@
 #define VER_ZIPPED_FILE 40
 #define VER_ZIPPED_PACKET 40
 #define VER_RUN_START 40
-#define VER_OTHER_MON 40
+#define VER_OTHER_MON 41
 #define VER_GPSD_START 40
 #define VER_LOGWATCHD_START 40
 #define VER_AVG_SURF_HK 40
@@ -1199,7 +1199,7 @@ typedef struct {
 /*!
   Monitor inodes, inter-process communication lists and processes
 */
-typedef struct {
+typedef struct __attribute__((packed)) {
     GenericHeader_t gHdr;
     unsigned int unixTime;
     unsigned int ramDiskInodes;
@@ -1208,7 +1208,7 @@ typedef struct {
     unsigned int runNumber; ///<Run number
     unsigned short dirFiles[3]; ///< /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
     unsigned short dirLinks[3]; ///< /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/prioritizerd
-    unsigned short processBitMask;
+    unsigned int processBitMask;
   unsigned short reserved;
 } OtherMonitorStruct_t;
 
@@ -1713,9 +1713,10 @@ typedef struct __attribute__((packed))
   unsigned int requestedTime; 
   unsigned int enactedTime; 
   unsigned short cmd; 
-  unsigned char irfcm : 4; 
-  unsigned char tuffStack : 4; 
+  unsigned char irfcm;    //these could be packed more strongly 
+  unsigned char tuffStack;  //these could be packed more strongly 
 } TuffRawCmd_t; 
+
 
 
 
