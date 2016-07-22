@@ -1619,7 +1619,8 @@ void fillGenericHeader(void *thePtr, PacketCode_t code, unsigned short numBytes)
   case PACKET_LOGWATCHD_START: gHdr->verId=VER_LOGWATCHD_START; break;
   case PACKET_ACQD_START: gHdr->verId=VER_ACQD_START; break;
   case PACKET_GPU_AVE_POW_SPEC: gHdr->verId=VER_GPU_POW_SPEC; break;
-//  case PACKET_RTLSDR_POW_SPEC: gHdr->verId=VER_GPU_POW_SPEC; break;
+  case PACKET_RTLSDR_POW_SPEC: gHdr->verId=VER_RTLSDR_POW_SPEC; break;
+  case PACKET_TUFF_STATUS: gHdr->verId=VER_TUFF_STATUS; break;
   default: 
     gHdr->verId=0; break;
   }
