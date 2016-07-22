@@ -32,7 +32,7 @@
 #define SIGRTMIN 32
 #endif
 
-#define NUM_HK_TELEM_DIRS 22 
+#define NUM_HK_TELEM_DIRS 23 
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -59,6 +59,7 @@ typedef enum {
   OPENPORT_TELEM_PEDESTAL, //19
   OPENPORT_TELEM_REQUEST, //20
   OPENPORT_TELEM_RTL, //21
+  OPENPORT_TELEM_TUFF, //22
   OPENPORT_TELEM_NOT_A_TELEM
 } OPENPORTTelemType_t;
 
@@ -157,7 +158,8 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
    OTHER_MONITOR_TELEM_LINK_DIR,
    PEDESTAL_TELEM_LINK_DIR,
    REQUEST_TELEM_LINK_DIR,
-   RTL_TELEM_LINK_DIR  
+   RTL_TELEM_LINK_DIR,
+   TUFF_TELEM_LINK_DIR  
   };
 static char *telemDirs[NUM_HK_TELEM_DIRS]=
   {OPENPORTD_CMD_ECHO_TELEM_DIR,  //0
@@ -181,7 +183,8 @@ static char *telemDirs[NUM_HK_TELEM_DIRS]=
    OTHER_MONITOR_TELEM_DIR, //18
    PEDESTAL_TELEM_DIR, //19
    REQUEST_TELEM_DIR, //20
-   RTL_TELEM_DIR //21
+   RTL_TELEM_DIR, //21
+   TUFF_TELEM_DIR //22
   }; 
 
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
@@ -206,12 +209,14 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(OtherMonitorStruct_t),
    sizeof(FullLabChipPedStruct_t),
    2000, //Who knows why
-   sizeof(RtlSdrPowerSpectraStruct_t) 
+   sizeof(RtlSdrPowerSpectraStruct_t), 
+   sizeof(TuffNotchStatus_t) 
   };
 
 //Will make these configurable soon
-int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,21};
-int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,3,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3,1};
+int hkTelemOrder[NUM_HK_TELEM_DIRS]={0,20,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,21,22};
+int hkTelemMaxPackets[NUM_HK_TELEM_DIRS]={10,3,3,3,1,1,1,5,5,5,3,2,2,1,1,1,5,5,3,1,3,1,1};
+
 
 //Lazinesss
 int wdEvents[NUM_PRIORITIES]={0};
@@ -297,6 +302,7 @@ int main(int argc, char *argv[])
     makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
     makeDirectories(REQUEST_TELEM_LINK_DIR);
     makeDirectories(RTL_TELEM_LINK_DIR);
+    makeDirectories(TUFF_TELEM_LINK_DIR);
 
 
     retVal=readConfig();

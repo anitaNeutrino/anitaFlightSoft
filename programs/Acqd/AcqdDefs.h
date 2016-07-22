@@ -182,7 +182,7 @@ typedef struct {
 } TurfioTestPattern_t;
   
 
-int l1IndToRawScaler[L1S_PER_SURF]={12,13,14,15};
+int l1IndToRawScaler[L1S_PER_SURF]={12,13,14,15,16, 17};
 int logicalScalerToRawScaler[SCALERS_PER_SURF]={0,1,2,3,4,5,6,7,8,9,10,11};
 int rawScalerToLogicScaler[RAW_SCALERS_PER_SURF]={0,1,2,3,4,5,6,7,8,9,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
     

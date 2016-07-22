@@ -42,7 +42,7 @@
 #define BANDS_PER_ANT 4
 #define RAW_SCALERS_PER_SURF 32
 #define SCALERS_PER_SURF 12
-#define L1S_PER_SURF 4
+#define L1S_PER_SURF 6
 
 #define RFCHAN_PER_SURF 8
 #define NUM_DIGITZED_CHANNELS ACTIVE_SURFS*CHANNELS_PER_SURF
@@ -224,7 +224,8 @@
 #define HEADER_TELEM_DIR "/tmp/anita/telem/head"
 #define REQUEST_TELEM_DIR "/tmp/anita/telem/request"
 #define GPU_TELEM_DIR "/tmp/anita/telem/house/gpu"
-#define RTL_TELEM_DIR "/tmp/anita/telem/house/rtld" 
+#define RTL_TELEM_DIR "/tmp/anita/telem/house/rtl" 
+#define TUFF_TELEM_DIR "/tmp/anita/telem/house/tuff"
 
 #define LOSD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdlosd/link"
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
@@ -249,8 +250,8 @@
 #define REQUEST_TELEM_LINK_DIR "/tmp/anita/telem/request/link"
 #define OTHER_MONITOR_TELEM_LINK_DIR "/tmp/anita/telem/house/other/link"
 #define GPU_TELEM_LINK_DIR "/tmp/anita/telem/house/gpu/link"
-#define RTL_TELEM_LINK_DIR "/tmp/anita/telem/house/rtld/link" 
-
+#define RTL_TELEM_LINK_DIR "/tmp/anita/telem/house/rtl/link" 
+#define TUFF_TELEM_LINK_DIR "/tmp/anita/telem/house/tuff/link"
 
 
 //Event telemetry dirs
@@ -294,6 +295,7 @@
 #define NTUD_PID_FILE "/tmp/anita/pid/ntud.pid"
 #define OPENPORTD_PID_FILE "/tmp/anita/pid/openportd.pid"
 #define RTLD_PID_FILE "/tmp/anita/pid/rtld.pid" 
+#define TUFFD_PID_FILE "/tmp/anita/pid/tuffd.pid" 
 
 #define BASE_PRIORITY_PURGE_DIR "/mnt/data/anita/purged"
 
@@ -310,6 +312,7 @@
 #define EVENT_ARCHIVE_DIR "/current/event/"
 #define STARTUP_ARCHIVE_DIR "/current/start"
 #define RTL_ARCHIVE_DIR "/current/house/rtl" 
+#define TUFF_ARCHIVE_DIR "/current/house/tuff" 
 
 //Slow Rate Stuff
 #define SLOW_RF_FILE "/tmp/anita/latestSlowRf.dat"
@@ -324,9 +327,19 @@
 #define RTLSDR_MAX_SPECTRUM_BINS 4096  // The maximum number of bins we can save in a packet. 
 #define RTLD_SHARED_SPECTRUM_NAME "/RTLd_shared_spectrum_%s"  // The name of the shared memory location for the RTL spectrum struct (with the %s being the serial of the shared region's RTL) 
 
+// spectrum stored as (char) (dBm + OFFSET) * SCALE
+#define RTL_SPECTRUM_DBM_OFFSET -40 
+#define RTL_SPECTRUM_DBM_SCALE 4 
 
 // TUFF stuff
 #define NUM_TUFF_NOTCHES 3
+#define NUM_RFCM 4 
+#define TUFF_DEVICE "/dev/ttyTUFF"
+#define DEFAULT_TUFF_START_SECTOR {0, 16,16}  //default is notch 0 enabled, other notches disabled
+#define DEFAULT_TUFF_END_SECTOR  {15,16,16}  //default is notch 0 enabled, other notches disabled
+
+//EZ stuff 
+// haha that was a joke 
 
 #endif /* ANITA_FLIGHT_H */
 

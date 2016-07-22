@@ -8,6 +8,7 @@
 #include <sys/select.h>
 
 static char buf[1024];
+#define BAUDRATE B115200
 
 struct tuff_dev 
 {
@@ -233,6 +234,9 @@ void tuff_waitForAck(tuff_dev_t * d,
       if (p != NULL) {
 	p += 2+strlen("ack"); // move past '":'
 	check_irfcm = *p - '0';
+  // 42 is the only 2-character iRFCM.
+  // We're cheating and only checking the first character here.
+  if (irfcm == 42 && check_irfcm == 4) break;
 	if (check_irfcm == irfcm) break;
       }
       nb = 0;
@@ -245,7 +249,6 @@ void tuff_waitForAck(tuff_dev_t * d,
 
 
 
-#define BAUDRATE B115200
 
 
 tuff_dev_t * tuff_open(const char * dev) 
@@ -338,9 +341,23 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
   }
 
   sscanf(buf, "{\"temp\":%f}", &ret); 
-
   return ret; 
 }
 
+int tuff_getfd(tuff_dev_t * dev) 
+{
+  return dev->fd; 
+}
+
+
+int tuff_rawCommand(tuff_dev_t * d, unsigned int irfcm,  unsigned int tuffStack, unsigned int cmd)
+{
+  sprintf(buf, "{\"raw\":[%d,%d,%d]}\n\r",
+	    irfcm,
+	    tuffStack,
+	    cmd);
+
+  return write(d->fd, buf, strlen(buf));  
+}
 
   

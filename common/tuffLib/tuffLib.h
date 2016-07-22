@@ -155,12 +155,18 @@ int tuff_setPhiSectors(tuff_dev_t * d,
 /** Return the temperature from the TUFF master for a given irfcm */ 
 float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm);
 
+/** Perform a raw command.*/ 
+int tuff_rawCommand(tuff_dev_t * dev, unsigned int irfcm, unsigned int tuffStack, unsigned int cmd); 
 
+
+/** Get the file descriptor associated with the serial device */ 
+int tuff_getfd(tuff_dev_t * dev); 
 
 /* \brief  Open serial device using correct settings , returning our opaque handle
  *
  * Returns a tuff_dev_t * or NULL if could not open port 
  */
+
 tuff_dev_t * tuff_open(const char * device) ; 
 
 

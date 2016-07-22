@@ -39,6 +39,8 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5]);
 int executeSipdControlCommand(int command, unsigned char args[2]);
 int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
+int executeRTLCommand(int command, unsigned char arg[2]); 
+int executeTuffCommand(int command, unsigned char arg[6]); 
 int logRequestCommand(int logNum, int numLines);
 int writeCommandEcho(CommandStruct_t *theCommand, int unixTime);
 int readConfig();
@@ -94,11 +96,11 @@ int sortOutPidFile(char *progName);
 #define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
 
 /* Global variables */
-int cmdLengths[256];
+int cmdLengths[NUM_ANITA_COMMANDS];
 
 CommandStruct_t theCmds[MAX_COMMANNDS];
 
-int numCmds=256;
+int numCmds=NUM_ANITA_COMMANDS;
 
 
 //Debugging Output
@@ -1050,6 +1052,11 @@ int executeCommand(CommandStruct_t *theCmd)
   case LAST_CONFIG:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     return lastConfig(ivalue);
+  case  TUFFD_COMMAND: 
+    return executeTuffCommand(theCmd->cmd[1], theCmd->cmd+2); 
+  case  RTLD_COMMAND: 
+    return executeRTLCommand(theCmd->cmd[1], theCmd->cmd+2); 
+
   default:
     syslog(LOG_WARNING,"Unrecognised command %d\n",theCmd->cmd[0]);
     return retVal;
@@ -1590,7 +1597,7 @@ int setSipdHkTelemOrder(int hk, int order)
   time_t rawtime;
   readSipdConfig();
   sipdHkTelemOrder[hk]=order;
-  configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,21,&rawtime);
+  configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,22,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
   return rawtime;    
 
@@ -1601,7 +1608,7 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
   time_t rawtime;
   readSipdConfig();
   sipdHkTelemMaxCopy[hk]=numPackets;
-  configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,21,&rawtime);
+  configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,22,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
   return rawtime;    
 
@@ -3329,7 +3336,7 @@ int readSipdConfig()
 		kvpErrorString(kvpStatus));
     }
 
-    tempNum=21;
+    tempNum=22;
     kvpStatus = kvpGetIntArray("hkTelemOrder",sipdHkTelemOrder,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(hkTelemOrder): %s",
@@ -3338,7 +3345,7 @@ int readSipdConfig()
 	fprintf(stderr,"kvpGetIntArray(hkTelemOrder): %s\n",
 		kvpErrorString(kvpStatus));
     }
-    tempNum=21;
+    tempNum=22;
     kvpStatus = kvpGetIntArray("hkTelemMaxCopy",sipdHkTelemMaxCopy,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(hkTelemMaxCopy): %s",
@@ -3676,3 +3683,93 @@ int tryAndMountSatadrives()
   startDataPrograms();
   return rawtime;
 }
+
+int executeRTLCommand(int command, unsigned char arg[2]) 
+{
+  time_t when; 
+  unsigned short argAsShort = *((short*) arg); 
+  int num_rtls = NUM_RTLSDR; 
+  float gain[NUM_RTLSDR]; 
+  switch(command)
+  {
+    case RTL_SET_TELEM_EVERY: 
+      configModifyInt("RTLd.config","rtl","telemEvery",(int) arg[0], &when); 
+      break; 
+    case RTL_SET_START_FREQUENCY: 
+      configModifyInt("RTLd.config","rtl","startFreq",argAsShort * 1e6, &when); 
+      break;
+    case RTL_SET_END_FREQUENCY: 
+      configModifyInt("RTLd.config","rtl","endFreq",argAsShort * 1e6, &when); 
+      break;
+    case RTL_SET_N_STEPS: 
+      configModifyInt("RTLd.config","rtl","nSteps",argAsShort, &when); 
+      break;
+    case RTL_SET_GAIN: 
+      configLoad("RTLd.config","rtl"); 
+      kvpGetFloatArray("gain", gain, &num_rtls); 
+      gain[ argAsShort & (~(0xffff << NBITS_FOR_RTL_INDEX)) ] = 0.1  * (argAsShort >> NBITS_FOR_RTL_INDEX); 
+      configModifyFloatArray("RTLd.config","rtl","gain",gain, NUM_RTLSDR, &when); 
+      break;
+
+    default: 
+      syslog(LOG_ERR,"Unknown RTLd command -- %d\n",command);
+      return 0; 
+  }
+
+  sendSignal(ID_RTLD, SIGUSR1); 
+  return when; 
+
+  return 0; 
+}
+
+
+int executeTuffCommand(int command, unsigned char arg[6]) 
+{
+  time_t when; 
+  int notch_array[2*NUM_TUFF_NOTCHES]; 
+  int raw_array[4]; 
+
+  switch(command)
+  {
+
+    case TUFF_SET_NOTCH: 
+       notch_array[0] = arg[0]; 
+       notch_array[1] = arg[1]; 
+       notch_array[2] = arg[2]; 
+       notch_array[3] = arg[3]; 
+       notch_array[4] = arg[4]; 
+       notch_array[5] = arg[5]; 
+       configModifyIntArray("Tuffd.config","notch","notchPhiSectors",notch_array,2*NUM_TUFF_NOTCHES, &when); 
+       break; 
+
+    case TUFF_SEND_RAW: 
+       raw_array[0] = 1; 
+       raw_array[1] = arg[0]; 
+       raw_array[2] = arg[1]; 
+       raw_array[3] = arg[2]; 
+       configModifyIntArray("Tuffd.config","raw","rawCmd", raw_array, 4, &when); 
+       break; 
+
+    case TUFF_SET_SLEEP_AMOUNT: 
+       configModifyInt("Tuffd.config","behavior","sleepAmount", arg[0], &when); 
+       break;
+    case TUFF_SET_READ_TEMPERATURE: 
+       configModifyInt("Tuffd.config","behavior","readTemperature", arg[0], &when); 
+       break;
+    case TUFF_SET_TELEM_EVERY: 
+       configModifyInt("Tuffd.config","behavior","telemEvery", arg[0], &when); 
+       break;
+    case TUFF_SET_TELEM_AFTER_CHANGE: 
+       configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when); 
+       break;
+
+    default: 
+      syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);
+      return 0; 
+  }
+
+  sendSignal(ID_TUFFD, SIGUSR1); 
+  return when; 
+}
+
+
