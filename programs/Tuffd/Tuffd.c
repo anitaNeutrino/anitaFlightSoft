@@ -2,6 +2,7 @@
 #include "tuffLib/tuffLib.h" 
 #include "utilLib/utilLib.h"
 #include "configLib/configLib.h" 
+#include "linkWatchLib/linkWatchLib.h"
 #include "kvpLib/keyValuePair.h" 
 #include <unistd.h>
 #include <time.h>
@@ -25,8 +26,7 @@ static int bitmask = 0;
 static int telemeterEvery = 10; 
 static int telemeterAfterChange = 1; 
 
-static int sendRawCommand  = 0; 
-static int rawCommand[3]; 
+
 
 tuff_dev_t * device; 
 
@@ -34,6 +34,7 @@ static const unsigned char default_start_sector[NUM_TUFF_NOTCHES] = DEFAULT_TUFF
 static const unsigned char default_end_sector[NUM_TUFF_NOTCHES] = DEFAULT_TUFF_END_SECTOR; 
 
 static AnitaHkWriterStruct_t tuffWriter; 
+static AnitaHkWriterStruct_t tuffRawCmdWriter; 
 static TuffNotchStatus_t tuffStruct; 
 
 
@@ -62,6 +63,8 @@ int writeState(int changed)
       printf("Writing telemetry files!\n"); 
     }
 
+
+    fillGenericHeader(&tuffStruct, PACKET_TUFF_STATUS, sizeof(TuffNotchStatus_t)); 
     sprintf(fileName,"%s/tuff_%d.dat",TUFF_TELEM_DIR, tuffStruct.unixTime);
     retVal=writeStruct(&tuffStruct,fileName,sizeof(TuffNotchStatus_t));  
     if (retVal) syslog(LOG_ERR, "writeStruct returned %d\n", retVal); 
@@ -97,6 +100,7 @@ void cleanup()
 
   tuff_close(device); 
   closeHkFilesAndTidy(&tuffWriter);
+  closeHkFilesAndTidy(&tuffRawCmdWriter);
   unlink(TUFFD_PID_FILE); 
   syslog(LOG_INFO,"Tuffd terminating"); 
 }
@@ -106,11 +110,17 @@ static void setupWriter()
   int diskind; 
   sprintf(tuffWriter.relBaseName, TUFF_ARCHIVE_DIR); 
   sprintf(tuffWriter.filePrefix,"tuff"); 
-  //todo
+
+  sprintf(tuffRawCmdWriter.relBaseName, TUFF_ARCHIVE_DIR); 
+  sprintf(tuffRawCmdWriter.filePrefix,"tuff_rawcmd_"); 
+
   tuffWriter.writeBitMask= bitmask; 
+  tuffRawCmdWriter.writeBitMask= bitmask; 
+
   for (diskind = 0; diskind < DISK_TYPES; diskind++)
   {
     tuffWriter.currentFilePtr[diskind] = 0; 
+    tuffRawCmdWriter.currentFilePtr[diskind] = 0; 
   }
 }
 
@@ -195,8 +205,6 @@ int readConfig()
   int kvpStatus=0;
   //char* eString ;//TODO: actually print out bad things that happen
   int configStatus = 0; 
-  int empty[4] = {0,0,0,0}; 
-  time_t tm; 
  
   kvpReset();
   kvpStatus = configLoad ("Tuffd.config","output") ;
@@ -268,21 +276,6 @@ int readConfig()
   }
   else { configStatus+=4; }
 
-  kvpStatus = configLoad ("Tuffd.config","raw") ;
-  if(kvpStatus == CONFIG_E_OK)
-  {
-    int rawLength = 4;
-    int tempRaw[rawLength]; 
-    kvpGetIntArray("rawCmd",tempRaw, &rawLength); 
-    sendRawCommand = tempRaw[0]; 
-    memcpy(rawCommand, tempRaw+1, sizeof(rawCommand)); 
-  }
-  else { configStatus+=8; }
-
-
-  configModifyIntArray( "Tuffd.config","raw","rawCmd", empty, 4,&tm); 
-
-
 
   return configStatus; 
 }
@@ -296,6 +289,7 @@ int main(int nargs, char ** args)
   int i;
   unsigned int irfcmList[NUM_RFCM]; 
   int numPongs; 
+  int wd; 
 
 
   retVal = sortOutPidFile(args[0]); 
@@ -343,6 +337,18 @@ int main(int nargs, char ** args)
   //shut them up
   tuff_setQuietMode(device,true); 
 
+  // set up raw command watch director
+  
+  makeDirectories(TUFF_RAWCMD_LINK_DIR); 
+
+  wd = setupLinkWatchDir(TUFF_RAWCMD_LINK_DIR); 
+  if (!wd) 
+  {
+    fprintf(stderr,"Unable to watch %s\n",TUFF_RAWCMD_LINK_DIR);
+    syslog(LOG_ERR,"Unable to watch %s\n",TUFF_RAWCMD_LINK_DIR);
+  }
+
+
   do
   {
     read_config_ok = readConfig(); 
@@ -352,14 +358,51 @@ int main(int nargs, char ** args)
       syslog(LOG_ERR, "Tuffd had trouble reading the config. Returned: %d", read_config_ok); 
     }
 
-    if (sendRawCommand)
+    //check for raw commands 
+    while (getNumLinks(wd))
     {
-      tuff_rawCommand(device, rawCommand[0], rawCommand[1], rawCommand[3]); 
+      TuffRawCmd_t raw; 
+      char * fname = getFirstLink(wd); 
+      char rd_linkbuf[FILENAME_MAX]; 
+      char rd_buf[FILENAME_MAX]; 
+      char wr_linkbuf[FILENAME_MAX]; 
+      char wr_buf[FILENAME_MAX]; 
+      FILE * file; 
+
+      sprintf(rd_linkbuf, "%s/%s", TUFF_RAWCMD_LINK_DIR, fname); 
+      sprintf(rd_buf, "%s/%s", TUFF_RAWCMD_DIR, fname); 
+
+      //read in request
+      file = fopen(rd_linkbuf, "r"); 
+      fread( &raw, sizeof(raw), 1, file); 
+      fclose(file); 
+
+      //set the time 
+      raw.enactedTime = time(0); 
+
+      //enact the command 
+      tuff_rawCommand(device, raw.irfcm, raw.tuffStack, raw.cmd); 
+
+      // save it for telemetry 
+      fillGenericHeader(&raw, PACKET_TUFF_RAW_CMD, sizeof(TuffRawCmd_t)); 
+      sprintf(wr_linkbuf, "%s/%s", TUFF_TELEM_LINK_DIR, fname); 
+      writeStruct(&raw, wr_buf, sizeof(TuffRawCmd_t)); 
+      makeLink(wr_buf, TUFF_TELEM_LINK_DIR); 
+
+      //save it for posterity
+      cleverHkWrite((unsigned char*) &raw, sizeof(TuffRawCmd_t), raw.enactedTime, &tuffRawCmdWriter); 
+
+      //delete files
+      removeFile(rd_linkbuf); 
+      removeFile(rd_buf); 
     }
 
     setNotches(); 
     justChanged = 1; 
+
+
     currentState = PROG_STATE_RUN; 
+
 
     while (currentState == PROG_STATE_RUN)
     {

@@ -3784,7 +3784,7 @@ int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm )
   raw.cmd = cmd; 
   raw.irfcm = rfcm; 
   raw.tuffStack = stack; 
-  sprintf(outName,"%s/raw_%d.dat",TUFF_RAWCMD_DIR, rawtuff_counter++); 
+  sprintf(outName,"%s/tuff_rawcmd_%d.dat",TUFF_RAWCMD_DIR, rawtuff_counter++); 
   writeStruct(&raw, outName, sizeof(TuffRawCmd_t)); 
   makeLink(outName,TUFF_RAWCMD_LINK_DIR); 
   *tm = now; 
