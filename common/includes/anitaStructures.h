@@ -1713,9 +1713,10 @@ typedef struct __attribute__((packed))
   unsigned int requestedTime; 
   unsigned int enactedTime; 
   unsigned short cmd; 
-  unsigned char irfcm : 4; 
-  unsigned char tuffStack : 4; 
+  unsigned char irfcm;    //these could be packed more strongly 
+  unsigned char tuffStack;  //these could be packed more strongly 
 } TuffRawCmd_t; 
+
 
 
 

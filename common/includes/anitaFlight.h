@@ -278,6 +278,9 @@
 #define NTUD_DIR "/tmp/anita/ntud"
 #define NTUD_LINK_DIR "/tmp/anita/ntud/link"
 
+#define TUFF_RAWCMD_DIR "/tmp/anita/tuff" 
+#define TUFF_RAWCMD_LINK_DIR "/tmp/anita/tuff/link" 
+
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
 #define ARCHIVED_PID_FILE "/tmp/anita/pid/archived.pid"
