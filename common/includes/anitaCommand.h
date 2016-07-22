@@ -30,7 +30,7 @@
 #define NTUD_ID_MASK 0x2000
 #define OPENPORTD_ID_MASK 0x4000
 #define RTLD_ID_MASK 0x8000
-#define TUFFD_ID_MASK 0x1000 
+#define TUFFD_ID_MASK 0x10000 
 #define ALL_ID_MASK 0xffff
 
 
