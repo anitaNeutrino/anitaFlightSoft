@@ -106,7 +106,7 @@
 #define VER_SUM_TURF_RATE 16
 #define VER_ACQD_START 11
 #define VER_TURF_REG 10
-#else // ANITA_3_DATA
+#elif ANITA_3_DATA
 #define VER_EVENT_BODY 30
 #define VER_PEDSUBBED_EVENT_BODY 30
 #define VER_EVENT_HEADER 33
@@ -144,6 +144,46 @@
 #define VER_TURF_REG 30
 #define VER_TURF_EVENT_DATA 30
 #define VER_GPU_POW_SPEC 30
+#else //ANITA_4_DATA
+#define VER_EVENT_BODY 40
+#define VER_PEDSUBBED_EVENT_BODY 40
+#define VER_EVENT_HEADER 40
+#define SLAC_VER_EVENT_HEADER 40
+#define VER_WAVE_PACKET 40
+#define VER_SURF_PACKET 40
+#define VER_ENC_WAVE_PACKET 40
+#define VER_ENC_SURF_PACKET 40
+#define VER_SURF_HK 40
+#define VER_GPS_GGA 40
+#define VER_ADU5_PAT 40
+#define VER_ADU5_SAT 40
+#define VER_ADU5_VTG 40
+#define VER_G12_POS 40
+#define VER_G12_SAT 40
+#define VER_HK_FULL 40
+#define VER_HK_SS 40
+#define VER_CMD_ECHO 40
+#define VER_MONITOR 40
+#define VER_TURF_RATE 40
+#define VER_LAB_PED 40
+#define VER_FULL_PED 40
+#define VER_SLOW_1 40
+#define VER_SLOW_2 40
+#define VER_SLOW_FULL 40
+#define VER_ZIPPED_FILE 40
+#define VER_ZIPPED_PACKET 40
+#define VER_RUN_START 40
+#define VER_OTHER_MON 40
+#define VER_GPSD_START 40
+#define VER_LOGWATCHD_START 40
+#define VER_AVG_SURF_HK 40
+#define VER_SUM_TURF_RATE 40
+#define VER_ACQD_START 40
+#define VER_TURF_REG 40
+#define VER_TURF_EVENT_DATA 40
+#define VER_GPU_POW_SPEC 40
+#define VER_RTLSDR_POW_SPEC 40 
+#define VER_TUFF_STATUS 40 
 #endif
 
 
@@ -1664,7 +1704,6 @@ typedef struct __attribute__((packed))
   unsigned char endSectors[NUM_TUFF_NOTCHES]; //stop sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
   char temperatures[NUM_RFCM];  //-128 if temperatures are not being read 
 } TuffNotchStatus_t; 
-
 
 
 
