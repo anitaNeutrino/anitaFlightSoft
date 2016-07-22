@@ -1440,7 +1440,7 @@ typedef struct __attribute__((packed)) RawAdu5ATTStruct {
 } RawAdu5ATTStruct_t;
 
 
-struct __attribute__((packed)) RawAdu5BFileHeader {
+typedef struct __attribute__((packed)) RawAdu5BFileHeader {
     char version[10];
     unsigned char raw_version;
     char rcvr_type[10];
@@ -1452,7 +1452,7 @@ struct __attribute__((packed)) RawAdu5BFileHeader {
     char spare[42];
 }  RawAdu5BFileHeader_t;
 
-struct __attribute__((packed)) RawAdu5BFileRawNav {
+typedef struct __attribute__((packed)) RawAdu5BFileRawNav {
     char sitename[4];
     double rcv_time;
     double navx;
@@ -1467,7 +1467,7 @@ struct __attribute__((packed)) RawAdu5BFileRawNav {
     char num_sats;     
 }  RawAdu5BFileRawNav_t; 
 
-struct __attribute__((packed)) RawAdu5BFileChanObs {
+typedef struct __attribute__((packed)) RawAdu5BFileChanObs {
   double raw_range;
   float smth_corr;
   unsigned short smth_count;
@@ -1481,7 +1481,7 @@ struct __attribute__((packed)) RawAdu5BFileChanObs {
 }  RawAdu5BFileChanObs_t;
 
 
-struct __attribute__((packed)) RawAdu5BFileSatelliteHeader {
+typedef struct __attribute__((packed)) RawAdu5BFileSatelliteHeader {
   unsigned char svprn;
   unsigned char elevation;
   unsigned char azimuth;
