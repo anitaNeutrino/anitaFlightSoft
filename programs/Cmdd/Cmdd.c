@@ -1040,19 +1040,19 @@ int executeCommand(CommandStruct_t *theCmd)
     time(&rawtime);
     return rawtime;
   case SEND_CONFIG: 
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     return sendConfig(ivalue);	    
   case DEFAULT_CONFIG:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     return defaultConfig(ivalue);
   case SWITCH_CONFIG:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    return switchConfig(ivalue,theCmd->cmd[3]);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
+    return switchConfig(ivalue,theCmd->cmd[4]);
   case SAVE_CONFIG:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    return saveConfig(ivalue,theCmd->cmd[3]);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16); 
+    return saveConfig(ivalue,theCmd->cmd[4]);
   case LAST_CONFIG:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16); 
     return lastConfig(ivalue);
   case  TUFFD_COMMAND: 
     return executeTuffCommand(theCmd->cmd[1], theCmd->cmd+2); 
