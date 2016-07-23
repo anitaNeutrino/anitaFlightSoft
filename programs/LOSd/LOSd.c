@@ -97,6 +97,8 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
 
  char fakeOutputDir[]="/tmp/fake/los";
 
+ static struct timespec last_send; 
+
 
  //Packet Dirs
  char eventTelemDirs[NUM_PRIORITIES][FILENAME_MAX];
@@ -120,6 +122,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
  int numOrders=1000;
  int orderIndex=0;
  int currentPri=0;
+ static double minTimeWait = 0.012; 
 
  /*Global Variables*/
  unsigned char eventBuffer[1000+MAX_EVENT_SIZE];
@@ -141,6 +144,9 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
    time_t currentTime=0;
    char *tempString=0;
    char *progName=basename(argv[0]);
+
+   last_send.tv_sec = 0; 
+   last_send.tv_nsec = 0; 
 
    //Sort out PID File
    retVal=sortOutPidFile(progName);
@@ -409,6 +415,7 @@ int readConfig()
     sendData=kvpGetInt("sendData",0);
     sendWavePackets=kvpGetInt("sendWavePackets",0);
     maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
+    minTimeWait = kvpGetDouble("minTimeWait", 0.012); 
     laptopDebug=kvpGetInt("laptopDebug",0);
     losBus=kvpGetInt("losBus",1);
     losSlot=kvpGetInt("losSlot",1);
@@ -1337,17 +1344,35 @@ int sortOutPidFile(char *progName)
   return 0;
 }
 
+
+
+
+
+
 int writeLosData(unsigned char *buffer, int numBytesSci)
 {
 
+
+
   int nbytes, retVal;
   int retVal2=0;
+  struct timespec now; 
+  double elapsed; 
 #ifdef SEND_TEST_PACKET
   int i=0;
   numBytesSci=1024;
   for(i=0;i<numBytesSci;i++)
       buffer[i]=i;
 #endif
+
+  clock_gettime(CLOCK_MONOTONIC_RAW, &now); 
+
+
+  elapsed = (double) (now.tv_sec - last_send.tv_sec) + 1e-9 *( now.tv_nsec - last_send.tv_nsec); 
+  if (elapsed < minTimeWait)
+  {
+    usleep((minTimeWait - elapsed) * 1e6); 
+  }
 
   //  printf("Sending buffer length %d\n",numBytesSci);
 
@@ -1365,6 +1390,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
     if (retVal > 0) {
       // write will now not block
       retVal2=write(fdLos, wrappedBuffer, nbytes);
+      clock_gettime(CLOCK_MONOTONIC_RAW, &last_send); 
     //  fprintf(stderr,"retVal2 == %d\n",retVal2);
      // int i=0;
     //  for(i=0;i<nbytes;i++) {
