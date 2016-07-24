@@ -2397,6 +2397,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 int executeLosdControlCommand(int command, unsigned char args[2])
 {
   int ivalue=0,ivalue2=0;
+  double fvalue; 
   time_t rawtime;    
   int retVal=0;
   
@@ -2414,6 +2415,14 @@ int executeLosdControlCommand(int command, unsigned char args[2])
     retVal=sendSignal(ID_LOSD,SIGUSR1);    
     if(retVal!=0) return 0;
     return rawtime;	
+  case LOSD_MIN_WAIT_TIME: 
+    ivalue = args[0]; 
+    fvalue = ivalue / 1000.; 
+    configModifyFloat("LOSd.config","losd","minTimeWait", fvalue, &rawtime); 
+    retVal=sendSignal(ID_LOSD,SIGUSR1);    
+    if(retVal!=0) return 0;
+    return rawtime;	
+
   default:
     syslog(LOG_ERR,"Unknown LOSd command -- %d\n",command);
     fprintf(stderr,"Unknown LOSd command -- %d\n",command);

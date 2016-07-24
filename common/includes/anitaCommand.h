@@ -299,7 +299,9 @@ typedef enum {
 typedef enum {
   LOSD_SEND_DATA = 1,
   LOSD_PRIORITY_BANDWIDTH = 2,
-  LOSD_HK_BANDWIDTH = 3
+  LOSD_HK_BANDWIDTH = 3, 
+  LOSD_MIN_WAIT_TIME = 4
+   
 } LosdCommandCode_t;
   
 typedef enum {

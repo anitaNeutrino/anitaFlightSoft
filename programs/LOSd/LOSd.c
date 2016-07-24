@@ -122,7 +122,7 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
  int numOrders=1000;
  int orderIndex=0;
  int currentPri=0;
- static double minTimeWait = 0.012; 
+ static float minTimeWait = 0.012; 
 
  /*Global Variables*/
  unsigned char eventBuffer[1000+MAX_EVENT_SIZE];
@@ -415,7 +415,7 @@ int readConfig()
     sendData=kvpGetInt("sendData",0);
     sendWavePackets=kvpGetInt("sendWavePackets",0);
     maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
-    minTimeWait = kvpGetDouble("minTimeWait", 0.012); 
+    minTimeWait = kvpGetFloat("minTimeWait", 0.016); 
     laptopDebug=kvpGetInt("laptopDebug",0);
     losBus=kvpGetInt("losBus",1);
     losSlot=kvpGetInt("losSlot",1);
