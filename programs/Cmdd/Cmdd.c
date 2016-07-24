@@ -3745,8 +3745,8 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break; 
 
     case TUFF_SEND_RAW: 
-       cmd = arg[2] + (arg[3] << 8); 
-       doTuffRawCommand(arg[0], arg[1],cmd,&when); 
+       cmd = arg[1] + (arg[2] << 8); 
+       doTuffRawCommand(arg[0] >> 1, arg[0] & 1 ,cmd,&when); 
        break; 
 
     case TUFF_SET_SLEEP_AMOUNT: 
