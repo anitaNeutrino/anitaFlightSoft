@@ -3710,6 +3710,7 @@ int executeRTLCommand(int command, unsigned char arg[2])
   unsigned short argAsShort = arg[0] + ( arg[1] << 8); 
   int num_rtls = NUM_RTLSDR; 
   float gain[NUM_RTLSDR]; 
+  int disabled[NUM_RTLSDR]; 
   switch(command)
   {
     case RTL_SET_TELEM_EVERY: 
@@ -3729,7 +3730,22 @@ int executeRTLCommand(int command, unsigned char arg[2])
       kvpGetFloatArray("gain", gain, &num_rtls); 
       gain[ argAsShort & (~(0xffff << NBITS_FOR_RTL_INDEX)) ] = 0.1  * (argAsShort >> NBITS_FOR_RTL_INDEX); 
       configModifyFloatArray("RTLd.config","rtl","gain",gain, NUM_RTLSDR, &when); 
+      break; 
+    case RTL_SET_DISABLED:
+      configLoad("RTLd.config","rtl"); 
+      kvpGetIntArray("disabled", disabled, &num_rtls); 
+      disabled[arg[0]] = arg[1]; 
+      configModifyIntArray("RTLd.config","rtl","disabled",disabled, NUM_RTLSDR, &when); 
       break;
+    case RTL_SET_GRACEFUL_TIMEOUT:
+      configModifyInt("RTLd.config","rtl","gracefulTimeout", argAsShort, &when); 
+      break; 
+    case RTL_SET_FAIL_TIMEOUT:
+      configModifyInt("RTLd.config","rtl","failTimeout", argAsShort, &when); 
+      break; 
+    case RTL_SET_MAX_FAIL:
+      configModifyInt("RTLd.config","rtl","failThreshold", argAsShort, &when); 
+      break; 
 
     default: 
       syslog(LOG_ERR,"Unknown RTLd command -- %d\n",command);
