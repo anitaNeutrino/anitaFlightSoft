@@ -55,7 +55,7 @@ static int verbosity = 0;
 static int bitmask; 
 static int telemEvery = 1; 
 static int failThreshold = 5; 
-static int graceulTimeout = 60; 
+static int gracefulTimeout = 60; 
 static int failTimeout = 5; 
 static int disabled[NUM_RTLSDR]; 
 
