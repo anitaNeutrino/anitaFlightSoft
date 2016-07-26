@@ -122,7 +122,9 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
  int numOrders=1000;
  int orderIndex=0;
  int currentPri=0;
- static float minTimeWait = 0.012; 
+ static float minTimeWait = 0.; 
+ static float minTimeWait_b= 0.005; 
+ static float minTimeWait_m = 1e-5; 
 
  /*Global Variables*/
  unsigned char eventBuffer[1000+MAX_EVENT_SIZE];
@@ -415,7 +417,8 @@ int readConfig()
     sendData=kvpGetInt("sendData",0);
     sendWavePackets=kvpGetInt("sendWavePackets",0);
     maxEventsBetweenLists=kvpGetInt("maxEventsBetweenLists",100);
-    minTimeWait = kvpGetFloat("minTimeWait", 0.016); 
+    minTimeWait_b = kvpGetFloat("minTimeWait_b", 0.005); 
+    minTimeWait_m = kvpGetFloat("minTimeWait_m", 1e-5); 
     laptopDebug=kvpGetInt("laptopDebug",0);
     losBus=kvpGetInt("losBus",1);
     losSlot=kvpGetInt("losSlot",1);
@@ -1390,6 +1393,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
     if (retVal > 0) {
       // write will now not block
       retVal2=write(fdLos, wrappedBuffer, nbytes);
+      minTimeWait = minTimeWait_b + nbytes * minTimeWait_m; 
       clock_gettime(CLOCK_MONOTONIC_RAW, &last_send); 
     //  fprintf(stderr,"retVal2 == %d\n",retVal2);
      // int i=0;

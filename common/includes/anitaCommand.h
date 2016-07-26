@@ -300,7 +300,8 @@ typedef enum {
   LOSD_SEND_DATA = 1,
   LOSD_PRIORITY_BANDWIDTH = 2,
   LOSD_HK_BANDWIDTH = 3, 
-  LOSD_MIN_WAIT_TIME = 4
+  LOSD_MIN_WAIT_TIME_B = 4, 
+  LOSD_MIN_WAIT_TIME_M = 5
    
 } LosdCommandCode_t;
   

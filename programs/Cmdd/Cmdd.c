@@ -2415,13 +2415,22 @@ int executeLosdControlCommand(int command, unsigned char args[2])
     retVal=sendSignal(ID_LOSD,SIGUSR1);    
     if(retVal!=0) return 0;
     return rawtime;	
-  case LOSD_MIN_WAIT_TIME: 
+  case LOSD_MIN_WAIT_TIME_B: 
     ivalue = args[0]; 
     fvalue = ivalue / 1000.; 
-    configModifyFloat("LOSd.config","losd","minTimeWait", fvalue, &rawtime); 
+    configModifyFloat("LOSd.config","losd","minTimeWait_b", fvalue, &rawtime); 
     retVal=sendSignal(ID_LOSD,SIGUSR1);    
     if(retVal!=0) return 0;
     return rawtime;	
+
+  case LOSD_MIN_WAIT_TIME_M: 
+    ivalue = args[0]; 
+    fvalue = ivalue / 1.e6; 
+    configModifyFloat("LOSd.config","losd","minTimeWait_m", fvalue, &rawtime); 
+    retVal=sendSignal(ID_LOSD,SIGUSR1);    
+    if(retVal!=0) return 0;
+    return rawtime;	
+
 
   default:
     syslog(LOG_ERR,"Unknown LOSd command -- %d\n",command);
