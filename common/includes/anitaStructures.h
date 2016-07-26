@@ -153,7 +153,7 @@
 #define VER_SURF_PACKET 40
 #define VER_ENC_WAVE_PACKET 40
 #define VER_ENC_SURF_PACKET 40
-#define VER_SURF_HK 40
+#define VER_SURF_HK 41
 #define VER_GPS_GGA 40
 #define VER_ADU5_PAT 40
 #define VER_ADU5_SAT 40
@@ -176,7 +176,7 @@
 #define VER_OTHER_MON 41
 #define VER_GPSD_START 40
 #define VER_LOGWATCHD_START 40
-#define VER_AVG_SURF_HK 40
+#define VER_AVG_SURF_HK 41
 #define VER_SUM_TURF_RATE 40
 #define VER_ACQD_START 40
 #define VER_TURF_REG 40
@@ -1139,12 +1139,14 @@ typedef struct {
   unsigned short scalerGoals[NUM_ANTENNA_RINGS]; ///<What are we aiming for with the scaler rate
   unsigned short reserved;  
   unsigned short upperWords[ACTIVE_SURFS];
-  unsigned short scaler[ACTIVE_SURFS][SCALERS_PER_SURF];
-  unsigned short l1Scaler[ACTIVE_SURFS][L1S_PER_SURF];
-  unsigned short threshold[ACTIVE_SURFS][SCALERS_PER_SURF];
-  unsigned short setThreshold[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short scaler[TRIGGER_SURFS][SCALERS_PER_SURF];
+  unsigned short l1Scaler[TRIGGER_SURFS][L1S_PER_SURF];
+  unsigned short l2Scaler[TRIGGER_SURFS][L2S_PER_SURF];
+  unsigned short threshold[TRIGGER_SURFS][SCALERS_PER_SURF];
+  unsigned short setThreshold[TRIGGER_SURFS][SCALERS_PER_SURF];
   unsigned short rfPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
-  unsigned short surfTrigBandMask[ACTIVE_SURFS];
+  unsigned short surfTrigBandMask[TRIGGER_SURFS];
+  unsigned char surfTrigIndex[TRIGGER_SURFS]; ///< Which SURFs are in the trigger
 } FullSurfHkStruct_t;
 
 //! Average Surf Hk -- Telemetered
@@ -1159,15 +1161,15 @@ typedef struct {
   unsigned int hadError; ///<Bit mask to be defined
   unsigned short globalThreshold;
   unsigned short scalerGoals[NUM_ANTENNA_RINGS];
-  unsigned short avgScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
-  unsigned short rmsScaler[ACTIVE_SURFS][SCALERS_PER_SURF];
-  unsigned short avgL1[ACTIVE_SURFS][L1S_PER_SURF];
-  unsigned short rmsL1[ACTIVE_SURFS][L1S_PER_SURF];
-  unsigned short avgThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
-  unsigned short rmsThresh[ACTIVE_SURFS][SCALERS_PER_SURF];
+  unsigned short avgScaler[TRIGGER_SURFS][SCALERS_PER_SURF];
+  unsigned short rmsScaler[TRIGGER_SURFS][SCALERS_PER_SURF];
+  unsigned short avgL1[TRIGGER_SURFS][L1S_PER_SURF];
+  unsigned short rmsL1[TRIGGER_SURFS][L1S_PER_SURF];
+  unsigned short avgThresh[TRIGGER_SURFS][SCALERS_PER_SURF];
+  unsigned short rmsThresh[TRIGGER_SURFS][SCALERS_PER_SURF];
   unsigned short avgRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
   unsigned short rmsRFPower[ACTIVE_SURFS][RFCHAN_PER_SURF];
-  unsigned short surfTrigBandMask[ACTIVE_SURFS];
+  unsigned short surfTrigBandMask[TRIGGER_SURFS];
 } AveragedSurfHkStruct_t;
 
 //! Command Echo -- Telemetered
