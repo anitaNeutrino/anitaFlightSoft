@@ -301,8 +301,11 @@ sighandler(int signum)
 static void sighandler(int signum)
 {
 	do_exit++;
+	do_exit++;
 	multi_bail();
 }
+
+
 #endif
 
 /* more cond dumbness */
@@ -358,7 +361,7 @@ void sine_table(int size)
 	}
 }
 
-inline int16_t FIX_MPY(int16_t a, int16_t b)
+static inline int16_t FIX_MPY(int16_t a, int16_t b)
 /* fixed point multiply and scale */
 {
 	int c = ((int)a * (int)b) >> 14;

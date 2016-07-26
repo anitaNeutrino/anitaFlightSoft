@@ -44,6 +44,8 @@ static AnitaHkWriterStruct_t rtlWriter;
 static RtlSdrPowerSpectraStruct_t * spectra[NUM_RTLSDR]; 
 
 
+static unsigned nfails[NUM_RTLSDR]; 
+
 static unsigned startFrequency; 
 static unsigned endFrequency; 
 static unsigned stepFrequency; 
@@ -52,6 +54,10 @@ static int printToScreen = 1;
 static int verbosity = 0; 
 static int bitmask; 
 static int telemEvery = 1; 
+static int failThreshold = 5; 
+static int graceulTimeout = 60; 
+static int failTimeout = 5; 
+static int disabled[NUM_RTLSDR]; 
 
 void cleanup(); 
 
@@ -92,7 +98,7 @@ static int readConfig()
 
     if (printToScreen)
     {
-       printf("startFrequency: %d; endFrequency:%d; stepFrequency %d \n", startFrequency, endFrequency, stepFrequency); 
+       printf("startFrequency: %d; endFrequency:%d; stepFrequency: %d;   telemEvery: %d\n", startFrequency, endFrequency, stepFrequency, telemEvery); 
     }
 
     status = kvpGetFloatArray("gain", gain, &nread); 
@@ -107,6 +113,14 @@ static int readConfig()
       memset(gain + nread, 0,  (NUM_RTLSDR - nread) * sizeof(*gain)); 
     }
      
+    nread = NUM_RTLSDR; 
+
+    memset(disabled,0,sizeof(disabled)); 
+    status = kvpGetIntArray("disabled", disabled, &nread); 
+
+    failThreshold = kvpGetInt("failThreshold", 5); 
+    failTimeout = kvpGetInt("failTimeout", 5); 
+    gracefulTimeout = kvpGetInt("gracefulTimeout", 60); 
 
 
     if (status != KVP_E_OK || nread > NUM_RTLSDR)
@@ -317,6 +331,8 @@ int main(int nargs, char ** args)
 
     }
 
+    // reset fail counter 
+    memset(nfails, 0, sizeof(nfails)); 
 
 
     currentState = PROG_STATE_RUN; 
@@ -329,10 +345,13 @@ int main(int nargs, char ** args)
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
 
+        if (disabled[i]) continue; 
+
         char * serial = serials[i]; 
-        sprintf(cmd, "RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
-                      serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
+        sprintf(cmd, "timeout %d -k %d RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
+                      gracefulTimeout, failTimeout, serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
         oneshots[i] = popen (cmd, "r"); 
+
         if (!oneshots[i])
         {
           syslog(LOG_ERR, "popen with err %d on command: %s", errno, cmd); 
@@ -342,7 +361,41 @@ int main(int nargs, char ** args)
       //wait for them to finish
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
-        pclose(oneshots[i]); 
+
+        if (!disabled[i])
+        {
+          int ret= pclose(oneshots[i]); 
+
+          syslog(LOG_INFO, "RTLd: %s failed to finish within timeout", serials[i]); 
+
+          if (ret >= 128) 
+          {
+            syslog(LOG_ERR, "RTLd: %s had to be kill -9ed. This has happened %d times before.", serials[i], nfails[i]); 
+            nfails[i]++; 
+            if (nfails[i] >= failThreshold) 
+            {
+              syslog(LOG_ERR, "RTLd: %s has exceeded maximum sigkill count (%d out of %d). Disabling. ", serials[i], nfails[i], failThreshold); 
+              disabled[i] = 1; 
+            }
+
+            spectra[i]->startFreq = 666;  
+            sprintf(spectra[i]->spectrum, "This run was SIGKILLED. nfails is now %u", nfails[i]); 
+            spectra[i]->nFreq = 0;  
+            spectra[i]->unixTimeStart = time(NULL); 
+            spectra[i]->scanTime = 65535;
+          }
+
+        }
+        else 
+        {
+
+          spectra[i]->startFreq = 0;  
+          spectra[i]->nFreq = 0;  
+          spectra[i]->gain = 0; 
+          spectra[i]->unixTimeStart = time(NULL); 
+          spectra[i]->scanTime = 65535;
+
+        }
 
         if (verbosity > 0) 
         {
