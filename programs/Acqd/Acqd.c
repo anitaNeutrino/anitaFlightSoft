@@ -58,6 +58,8 @@ int turfioFd;
 //Global Variables
 BoardLocStruct_t turfioPos;
 BoardLocStruct_t surfPos[MAX_SURFS];
+int numTrigSurfs=0;
+int surfTrigIndex[MAX_SURFS];
 int dacSurfs[MAX_SURFS];
 int surfIndex[MAX_SURFS];
 int printToScreen=0,standAloneMode=0;
@@ -254,8 +256,8 @@ struct timeval lastTurfRateRead;
 unsigned short lastPPSNum=0;
 
 //RJN -- Nasty hack as SURF 2 is the only one we monitor busy on
-int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
-int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
+//int surfBusyWatch=1; //SURF 2 is the only one we monitor busy on
+//int surfClearIndex[9]={0,2,3,4,5,6,7,8,1};
 
 
 int main(int argc, char **argv) {
@@ -652,7 +654,7 @@ int main(int argc, char **argv) {
 	  intersperseSurfHk(&timeStruct);
 	  //Gives us a chance to read hk and servo thresholds
 	  newPhiMask=intersperseTurfRate(&timeStruct);
-	  //Also gives a chance to send software tiggers
+	  //Also gives a chance to send software triggers
 	  if(sendSoftTrigger)
 	    intersperseSoftTrig(&timeStruct);
 
@@ -1523,7 +1525,19 @@ int readConfigFile()
 	fprintf(stderr,"kvpGetIntArray(dacSurfs): %s\n",
 		kvpErrorString(kvpStatus));
     }
-	
+    numTrigSurfs=0;
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      if(dacSurfs[surf]) {
+	surfTrigIndex[numTrigSurfs]=surf;
+	numTrigSurfs++;
+      }
+    }
+    if(numTrigSurfs>TRIGGER_SURFS) {
+      syslog(LOG_ERR,"What is going on here we have enabled more trigger surfs (%d) than we are allowed (%d)\n",numTrigSurfs,TRIGGER_SURFS);
+      fprintf(stderr,"What is going on here we have enabled more trigger surfs (%d) than we are allowed (%d)\n",numTrigSurfs,TRIGGER_SURFS);
+      exit(0);
+    }
+    
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	thresholdArray[surf][dac]=0;
@@ -2334,7 +2348,7 @@ AcqdErrorCode_t doStartTest()
 	syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
       }	
     }
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+    for(surf=0;surf<TRIGGER_SURFS;surf++) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	startStruct.scalerVals[surf][dac][tInd]=theSurfHk.scaler[surf][dac];
       }
@@ -2593,10 +2607,10 @@ void outputEventData() {
 }
 
 //Global variables for this annoying thing
-float scalerMean[ACTIVE_SURFS][SCALERS_PER_SURF];
-float scalerMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
-float threshMean[ACTIVE_SURFS][SCALERS_PER_SURF];
-float threshMeanSq[ACTIVE_SURFS][SCALERS_PER_SURF];
+float scalerMean[TRIGGER_SURFS][SCALERS_PER_SURF];
+float scalerMeanSq[TRIGGER_SURFS][SCALERS_PER_SURF];
+float threshMean[TRIGGER_SURFS][SCALERS_PER_SURF];
+float threshMeanSq[TRIGGER_SURFS][SCALERS_PER_SURF];
 float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
 float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
 unsigned short numSurfHksInAvg=0;  
@@ -2612,21 +2626,28 @@ void doSurfHkAverage(int flushData)
     //      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
-      memset(scalerMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
-      memset(scalerMeanSq,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
-      memset(threshMean,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
-      memset(threshMeanSq,0,sizeof(float)*ACTIVE_SURFS*SCALERS_PER_SURF);
+      memset(scalerMean,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
+      memset(scalerMeanSq,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
+      memset(threshMean,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
+      memset(threshMeanSq,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
       memset(rfPowerMean,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
       memset(rfPowerMeanSq,0,sizeof(float)*ACTIVE_SURFS*RFCHAN_PER_SURF);
       //Set up initial values
       avgSurfHk.unixTime=theSurfHk.unixTime;
       avgSurfHk.globalThreshold=theSurfHk.globalThreshold;
       memcpy(avgSurfHk.scalerGoals,theSurfHk.scalerGoals,sizeof(short)*NUM_ANTENNA_RINGS);
-      memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*ACTIVE_SURFS);
+      memcpy(avgSurfHk.surfTrigBandMask,theSurfHk.surfTrigBandMask,sizeof(short)*TRIGGER_SURFS);
     }
     //Now add stuff to the average
     numSurfHksInAvg++;
-    for(surf=0;surf<ACTIVE_SURFS;surf++) {      
+    for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
+	//RJN added mask to exlclude top bit from average
+	rfPowerMean[surf][chan]+=theSurfHk.rfPower[surf][chan]&0x7fff;
+	rfPowerMeanSq[surf][chan]+=((theSurfHk.rfPower[surf][chan]&0x7fff)*(theSurfHk.rfPower[surf][chan]&0x7fff));
+      }
+    }
+    for(surf=0;surf<TRIGGER_SURFS;surf++) {
       if(theSurfHk.errorFlag & (1<<surf))
 	avgSurfHk.hadError |= (1<<(surf+16));
 
@@ -2640,17 +2661,25 @@ void doSurfHkAverage(int flushData)
 	  avgSurfHk.hadError |= (1<<surf);
 	}
       }
-      for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-	//RJN added mask to exlclude top bit from average
-	rfPowerMean[surf][chan]+=theSurfHk.rfPower[surf][chan]&0x7fff;
-	rfPowerMeanSq[surf][chan]+=((theSurfHk.rfPower[surf][chan]&0x7fff)*(theSurfHk.rfPower[surf][chan]&0x7fff));
-      }      
     }
     //    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
   }
   if((flushData && numSurfHksInAvg>0) || (numSurfHksInAvg>0 && numSurfHksInAvg==surfHkAverage)) {
     //Time to output
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
+	rfPowerMean[surf][chan]/=numSurfHksInAvg;
+	avgSurfHk.avgRFPower[surf][chan]=(int)(rfPowerMean[surf][chan]+0.5);
+	rfPowerMeanSq[surf][chan]/=numSurfHksInAvg;
+	tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
+	if(tempVal>0)
+	    avgSurfHk.rmsRFPower[surf][chan]=(int)(sqrt(tempVal)+0.5);
+	else
+	  avgSurfHk.rmsRFPower[surf][chan]=0;
+      }
+    }
+
+    for(surf=0;surf<TRIGGER_SURFS;surf++) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	scalerMean[surf][dac]/=numSurfHksInAvg;
 	avgSurfHk.avgScaler[surf][dac]=(int)(scalerMean[surf][dac]+0.5);
@@ -2669,16 +2698,6 @@ void doSurfHkAverage(int flushData)
 	  avgSurfHk.rmsThresh[surf][dac]=(int)(sqrt(tempVal)+0.5);
 	else
 	  avgSurfHk.rmsThresh[surf][dac]=0;
-      }
-      for(chan=0;chan<RFCHAN_PER_SURF;chan++) {
-	rfPowerMean[surf][chan]/=numSurfHksInAvg;
-	avgSurfHk.avgRFPower[surf][chan]=(int)(rfPowerMean[surf][chan]+0.5);
-	rfPowerMeanSq[surf][chan]/=numSurfHksInAvg;
-	tempVal=rfPowerMeanSq[surf][chan]-(rfPowerMean[surf][chan]*rfPowerMean[surf][chan]);
-	if(tempVal>0)
-	    avgSurfHk.rmsRFPower[surf][chan]=(int)(sqrt(tempVal)+0.5);
-	else
-	  avgSurfHk.rmsRFPower[surf][chan]=0;
       }
     }
     avgSurfHk.numHks=numSurfHksInAvg;
@@ -3203,7 +3222,7 @@ AcqdErrorCode_t readSurfHkData()
 {
 //    printf("readSurfHkData\n");
   AcqdErrorCode_t status=ACQD_E_OK;
-  int surf,rfChan,index,ring;
+  int surf,rfChan,index,ring,trigSurfCount=0;
   uint32_t buffer[96];
   uint32_t count=0;
   uint32_t dataInt;
@@ -3229,8 +3248,8 @@ AcqdErrorCode_t readSurfHkData()
       syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
     }	
   }
-
-
+  
+  trigSurfCount=0;
   for(surf=0;surf<numSurfs;surf++){  
     count=0;
     //Set the SURF to Hk mode
@@ -3251,12 +3270,7 @@ AcqdErrorCode_t readSurfHkData()
     /* count=0; */
     
     //Read the Hk data
-    if(writeRawScalers) {
-    	count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
-    }
-    else {
-    	count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
-    }
+    count = read(surfFds[surf], buffer, 96*sizeof(uint32_t));
     if (count < 0) {
       syslog(LOG_ERR,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
       fprintf(stderr,"Error reading housekeeping from SURF %d (%s)",surfIndex[surf],strerror(errno));
@@ -3268,9 +3282,6 @@ AcqdErrorCode_t readSurfHkData()
       //Persist anyhow
     }
 
-    //First just fill in antMask in SURF
-    theSurfHk.surfTrigBandMask[surf]=surfTrigBandMasks[surf];
-    
 
     if((printToScreen && verbosity>2) ) {
       for(index=0;index<96;index++) {
@@ -3278,64 +3289,95 @@ AcqdErrorCode_t readSurfHkData()
       }
     }
     
+    
     //Fill in the raw scaler data
     for(index=0;index<32;index++) {
       dataInt=buffer[index];
       theScalers.scaler[surf][index]=dataInt&0xffff;
     }
-      
-
-
-    //First stuff the scaler data
-    for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
-      index=logicalScalerToRawScaler[rfChan];
-      dataInt=buffer[index];
-      theSurfHk.scaler[surf][rfChan]=dataInt&0xffff;
-      if((printToScreen && verbosity>1) || HK_DEBUG) 
-	printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.scaler[surf][rfChan]);
-      
-      if(rfChan==0) {
-	//Do something with upperWord
-	theSurfHk.upperWords[surf]=GetUpper16(dataInt);
-      }
-      else if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
-	theSurfHk.errorFlag|=(1>>surf);
-      }      
-    }
     
-    //Then stuff the l1 scaler data
-    for(rfChan=0;rfChan<L1S_PER_SURF;rfChan++){
-      index=l1IndToRawScaler[rfChan];
-      dataInt=buffer[index];
-      theSurfHk.l1Scaler[surf][rfChan]=dataInt&0xffff;
-      if((printToScreen && verbosity>1) || HK_DEBUG) 
-	printf("SURF %d, L1 Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.l1Scaler[surf][rfChan]);
+    if(dacSurfs[surf]) {
+      //Then we have a trigger SURF
+      //First just fill in antMask in SURF
+      theSurfHk.surfTrigBandMask[trigSurfCount]=surfTrigBandMasks[surf];
     }
-
-
-    //Next comes the threshold (DAC val) data
-    for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
-      index=logicalScalerToRawScaler[rfChan];
-      dataInt=buffer[RAW_SCALERS_PER_SURF+index];
-      if(printToScreen && verbosity>2) {
-	printf("Surf %d, Threshold %d Word %d == %d\n",surfIndex[surf],rfChan,RAW_SCALERS_PER_SURF+index,dataInt&0xffff);
+      
+    if(dacSurfs[surf]) {
+      //First stuff the scaler data
+      for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
+	//0,1,2  Phi 0 -- top,mid,bottom RCP
+	//3,4,5  Phi 1 -- top,mid,bottom RCP
+	//6,7,8  Phi 0 -- top,mid,bottom LCP
+      //9,10,11  Phi 1 -- top,mid,bottom LCP
+	
+	
+	index=logicalScalerToRawScaler[rfChan];
+	dataInt=buffer[index];
+	theSurfHk.scaler[trigSurfCount][rfChan]=dataInt&0xffff;
+	if((printToScreen && verbosity>1) || HK_DEBUG) 
+	  printf("SURF %d, Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.scaler[trigSurfCount][rfChan]);
+	
+	if(rfChan==0) {
+	  //Do something with upperWord
+	  theSurfHk.upperWords[trigSurfCount]=GetUpper16(dataInt);
+	}
+	else if(theSurfHk.upperWords[trigSurfCount]!=GetUpper16(dataInt)) {
+	  theSurfHk.errorFlag|=(1>>surf);
+	}      
       }
-      theSurfHk.threshold[surf][rfChan]=dataInt&0xffff;
-      theSurfHk.setThreshold[surf][rfChan]=thresholdArray[surf][rfChan];
-      if((printToScreen && verbosity>1) || HK_DEBUG) 
-	printf("Surf %d, Threshold %d (Top bits %d) == %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff);
-      //Should check if it is the same or not
-      if(theSurfHk.upperWords[surf]!=GetUpper16(dataInt)) {
-	theSurfHk.errorFlag|=(1>>surf);
+      
+      //Then stuff the l1 scaler data
+      for(rfChan=0;rfChan<L1S_PER_SURF;rfChan++){
+	//0 -- Phi 0, top LCP&&RCP
+	//1 -- Phi 0, mid LCP&&RCP
+	//2 -- Phi 0, bottom LCP&&RCP
+	//3 -- Phi 1, top LCP&&RCP
+	//4 -- Phi 1, mid LCP&&RCP
+	//5 -- Phi 1, bottom LCP&&RCP
+	
+	
+	index=l1IndToRawScaler[rfChan];
+	dataInt=buffer[index];
+	theSurfHk.l1Scaler[trigSurfCount][rfChan]=dataInt&0xffff;
+	if((printToScreen && verbosity>1) || HK_DEBUG) 
+	  printf("SURF %d, L1 Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.l1Scaler[trigSurfCount][rfChan]);
       }
-      if(!doThresholdScan) {
-	if(!setGlobalThreshold) {
-	  if((theSurfHk.threshold[surf][rfChan]&0xfff)!=thresholdArray[surf][rfChan])
-	    {
+      
+      //Now comes the L2s
+      //18 -- Phi 0 -- L2
+      //19 -- Phi 1 -- L2
+      //20 -- L3 -- not currently implemented
+      //21 -- unused
+      // 22-27 -- Gated L1s
+      // 28-29 -- Gated L2s
+      // 30 -- Gated L3
+      // 31 -- unused
+      
+      
+      //Next comes the threshold (DAC val) data
+      for(rfChan=0;rfChan<SCALERS_PER_SURF;rfChan++){
+	index=logicalScalerToRawScaler[rfChan];
+	dataInt=buffer[RAW_SCALERS_PER_SURF+index];
+	if(printToScreen && verbosity>2) {
+	  printf("Surf %d, Threshold %d Word %d == %d\n",surfIndex[surf],rfChan,RAW_SCALERS_PER_SURF+index,dataInt&0xffff);
+	}
+	theSurfHk.threshold[trigSurfCount][rfChan]=dataInt&0xffff;
+	theSurfHk.setThreshold[trigSurfCount][rfChan]=thresholdArray[trigSurfCount][rfChan];
+	if((printToScreen && verbosity>1) || HK_DEBUG) 
+	  printf("Surf %d, Threshold %d (Top bits %d) == %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[trigSurfCount][rfChan]&0xf000)>>12,theSurfHk.threshold[trigSurfCount][rfChan]&0xfff);
+	//Should check if it is the same or not
+	if(theSurfHk.upperWords[trigSurfCount]!=GetUpper16(dataInt)) {
+	  theSurfHk.errorFlag|=(1>>surf);
+	}
+	if(!doThresholdScan) {
+	  if(!setGlobalThreshold) {
+	    if((theSurfHk.threshold[trigSurfCount][rfChan]&0xfff)!=thresholdArray[surf][rfChan])
+	      {
 	      if(surf<8) {
-		printf("Surf %d, Threshold %d (Top bits %d) -- Is %d Should be %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[surf][rfChan]&0xf000)>>12,theSurfHk.threshold[surf][rfChan]&0xfff,thresholdArray[surf][rfChan]);
+		printf("Surf %d, Threshold %d (Top bits %d) -- Is %d Should be %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[trigSurfCount][rfChan]&0xf000)>>12,theSurfHk.threshold[trigSurfCount][rfChan]&0xfff,thresholdArray[surf][rfChan]);
 	      }
-	    }
+	      }
+	  }
 	}
       }
     }
@@ -3362,6 +3404,13 @@ AcqdErrorCode_t readSurfHkData()
 	    theScalers.extraScaler[surf][index]=dataInt&0xffff;
 	}
     }
+
+    if(dacSurfs[surf]) {
+      // Increment the trigSurfCount
+      trigSurfCount++;
+    }
+
+    
   }
   return status;
 }
