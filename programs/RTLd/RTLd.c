@@ -123,6 +123,14 @@ static int readConfig()
     gracefulTimeout = kvpGetInt("gracefulTimeout", 60); 
 
 
+    if (printToScreen)
+    {
+    printf("gracefulTimeout: %d\n",gracefulTimeout); 
+    printf("failTimeout: %d\n",failTimeout); 
+    }
+
+
+
     if (status != KVP_E_OK || nread > NUM_RTLSDR)
     {
       syslog(LOG_ERR, "Error loading RTL SDR gains. Might have caused buffer overflow, so going to quit!"); 
@@ -348,9 +356,13 @@ int main(int nargs, char ** args)
         if (disabled[i]) continue; 
 
         char * serial = serials[i]; 
-        sprintf(cmd, "timeout %d -k %d RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
-                      gracefulTimeout, failTimeout, serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
+        sprintf(cmd, "timeout  -k %ds %ds RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
+                      failTimeout, gracefulTimeout, serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
         oneshots[i] = popen (cmd, "r"); 
+        if (printToScreen) 
+        {
+          printf("%s\n",cmd); 
+        }
 
         if (!oneshots[i])
         {
@@ -366,7 +378,16 @@ int main(int nargs, char ** args)
         {
           int ret= pclose(oneshots[i]); 
 
-          syslog(LOG_INFO, "RTLd: %s failed to finish within timeout", serials[i]); 
+          if (printToScreen) 
+          {
+            printf("%d returned %d\n",i,ret); 
+          }
+
+
+          if (ret) 
+          {
+            syslog(LOG_INFO, "RTLd: %s failed to finish within timeout", serials[i]); 
+          }
 
           if (ret >= 128) 
           {

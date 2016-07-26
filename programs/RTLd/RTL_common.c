@@ -63,7 +63,7 @@ void dumpSpectrum(const RtlSdrPowerSpectraStruct_t * dump)
   double db; 
 
   strftime(buf,128, "%D %T", temp); 
-  printf("  Scan from RTL%c started at %s which took %f\n " , dump->rtlNum, buf, timetook); 
+  printf("  Scan from RTL%d started at %s which took %f\n " , dump->rtlNum, buf, timetook); 
   printf("  gain was: %f\n",fgain); 
 
   printf(" -------------- <spectrum N=%d> -------------------------------\n", dump->nFreq); 
