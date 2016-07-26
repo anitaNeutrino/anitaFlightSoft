@@ -60,6 +60,8 @@ BoardLocStruct_t turfioPos;
 BoardLocStruct_t surfPos[MAX_SURFS];
 int numTrigSurfs=0;
 int surfTrigIndex[MAX_SURFS];
+int trigSurfToRawSurf[MAX_SURFS];
+int rawSurfToTrigSurf[MAX_SURFS];
 int dacSurfs[MAX_SURFS];
 int surfIndex[MAX_SURFS];
 int printToScreen=0,standAloneMode=0;
@@ -1527,7 +1529,10 @@ int readConfigFile()
     }
     numTrigSurfs=0;
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
+      rawSurfToTrigSurf[surf]=-1;
       if(dacSurfs[surf]) {
+	rawSurfToTrigSurf[surf]=numTrigSurfs;
+	trigSurfToRawSurf[numTrigSurfs]=surf;
 	surfTrigIndex[numTrigSurfs]=surf;
 	numTrigSurfs++;
       }
@@ -1890,10 +1895,13 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
   int dac,surf,index;
   unsigned int mask[2]={0};
   for(surf=0;surf<numSurfs;surf++) {
+    //    printf("fillDacValBuffer -- surf %d -- ",surf);
     mask[0]=0;
     mask[1]=0;
     for (dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
+
       index=rawScalerToLogicScaler[dac];
+      //      printf("%d ",thresholdArray[surfIndex[surf]-1][index]);
       if(index>=0) {
 	obuffer[surf][dac] = (dac<<16) + (thresholdArray[surfIndex[surf]-1][index]&0xfff);
 	if(dac<16) {
@@ -1913,6 +1921,7 @@ void fillDacValBuffer(unsigned int obuffer[MAX_SURFS][34])
 
     obuffer[surf][32] = (32 << 16) + mask[0];
     obuffer[surf][33] = (33 << 16) + mask[1];
+    //    printf("\n");
   }
 }
 
@@ -2143,7 +2152,7 @@ AcqdErrorCode_t doStartTest()
   AcqdStartStruct_t startStruct;
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF];
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; 
-  int rawScalers[ACTIVE_SURFS][RAW_SCALERS_PER_SURF][10];
+  int rawScalers[TRIGGER_SURFS][RAW_SCALERS_PER_SURF][10];
   char theFilename[FILENAME_MAX];
   int tempGlobalThreshold=setGlobalThreshold;
   int firstEvent=1,byteCount=0;
@@ -2330,7 +2339,7 @@ AcqdErrorCode_t doStartTest()
   for(tInd=0;tInd<10;tInd++) {
     dacVal=1000 + (300*tInd);
     if(printToScreen) 
-      printf("Setting Threshold -- %d\r",dacVal);
+      printf("Setting Threshold -- %d -- %d\n",tInd,dacVal);
     setGlobalDACThreshold(dacVal);
 //    if(firstLoop) {
 //    usleep(50000);
@@ -2348,14 +2357,18 @@ AcqdErrorCode_t doStartTest()
 	syslog(LOG_ERR,"Failed to send clear hk pulse on SURF %d.\n",surfIndex[surf]) ;
       }	
     }
+
     for(surf=0;surf<TRIGGER_SURFS;surf++) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	startStruct.scalerVals[surf][dac][tInd]=theSurfHk.scaler[surf][dac];
       }
+    }
+    for(surf=0;surf<TRIGGER_SURFS;++surf) {
       for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
-	rawScalers[surf][dac][tInd]=theScalers.scaler[surf][dac];
+    	rawScalers[surf][dac][tInd]=theScalers.scaler[surf][dac];
       }
     }
+    printf("End of loop\n");
   }
   setGlobalThreshold=tempGlobalThreshold; 
   setDACThresholds(); 
@@ -2399,7 +2412,7 @@ AcqdErrorCode_t doStartTest()
     printf("%5d ",startStruct.threshVals[tInd]);
   }
   printf("\n");
-  for(surf=0;surf<numSurfs;surf++) {
+  for(surf=0;surf<TRIGGER_SURFS;surf++) {    
     for(dac=0;dac<SCALERS_PER_SURF;dac++) {
       printf("Chan %02d_%02d: ",surfIndex[surf],dac+1);
       for(tInd=0;tInd<10;tInd++) {
@@ -2410,7 +2423,7 @@ AcqdErrorCode_t doStartTest()
   }
 
   if(verbosity>0  ) { //RJN hack
-    for(surf=0;surf<numSurfs;surf++) {
+    for(surf=0;surf<TRIGGER_SURFS;surf++) {
       for(dac=0;dac<RAW_SCALERS_PER_SURF;dac++) {
 	printf("Raw %02d_%02d: ",surfIndex[surf],dac+1);
 	for(tInd=0;tInd<10;tInd++) {
@@ -3362,7 +3375,7 @@ AcqdErrorCode_t readSurfHkData()
 	  printf("Surf %d, Threshold %d Word %d == %d\n",surfIndex[surf],rfChan,RAW_SCALERS_PER_SURF+index,dataInt&0xffff);
 	}
 	theSurfHk.threshold[trigSurfCount][rfChan]=dataInt&0xffff;
-	theSurfHk.setThreshold[trigSurfCount][rfChan]=thresholdArray[trigSurfCount][rfChan];
+	theSurfHk.setThreshold[trigSurfCount][rfChan]=thresholdArray[surf][rfChan];
 	if((printToScreen && verbosity>1) || HK_DEBUG) 
 	  printf("Surf %d, Threshold %d (Top bits %d) == %d\n",surfIndex[surf],rfChan,(theSurfHk.threshold[trigSurfCount][rfChan]&0xf000)>>12,theSurfHk.threshold[trigSurfCount][rfChan]&0xfff);
 	//Should check if it is the same or not
@@ -3892,12 +3905,13 @@ AcqdErrorCode_t setTriggerMasks()
 int updateThresholdsUsingPID() {
   static int avgCount=0;
   int wayOffCount=0;
-  int surf,dac,error,value,change,ring;
+  int surf,dac,error,value,change,ring,trigSurf;
   float pTerm, dTerm, iTerm;
   int chanGoal;
   avgCount++;
   for(surf=0;surf<numSurfs;surf++) {
     if(dacSurfs[surf]==1) {
+      trigSurf=rawSurfToTrigSurf[surf];
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	ring=dac%3;
 	int tempGoal=pidGoals[ring];	
@@ -3906,7 +3920,7 @@ int updateThresholdsUsingPID() {
 	if(chanGoal>16000) chanGoal=16000;
 	if(abs(theSurfHk.scaler[surf][dac]-chanGoal)>pidPanicVal)
 	  wayOffCount++;
-	avgScalerData[surf][dac]+=theSurfHk.scaler[surf][dac];
+	avgScalerData[surf][dac]+=theSurfHk.scaler[trigSurf][dac];
       }
     }
   }

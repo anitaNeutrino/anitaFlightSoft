@@ -178,7 +178,7 @@
 #define VER_LOGWATCHD_START 40
 #define VER_AVG_SURF_HK 41
 #define VER_SUM_TURF_RATE 40
-#define VER_ACQD_START 40
+#define VER_ACQD_START 41
 #define VER_TURF_REG 40
 #define VER_TURF_EVENT_DATA 40
 #define VER_GPU_POW_SPEC 40
@@ -1098,7 +1098,7 @@ typedef struct {
   float chanMean[ACTIVE_SURFS][CHANNELS_PER_SURF]; ///<Ped subtracted
   float chanRMS[ACTIVE_SURFS][CHANNELS_PER_SURF]; ///<Ped subtracted
   unsigned short threshVals[10];
-  unsigned short scalerVals[ACTIVE_SURFS][SCALERS_PER_SURF][10];
+  unsigned short scalerVals[TRIGGER_SURFS][SCALERS_PER_SURF][10];
 } AcqdStartStruct_t;
   
 //! Hk Data Struct -- Telemetered

@@ -1,4 +1,4 @@
-#!/bin/sh -
+#!/bin/sh 
 #-----------------------------------------------------------------------------
 #
 #      File         :  sortOutSerials
@@ -6,6 +6,11 @@
 #      Last Revision:  28-07-14
 #-----------------------------------------------------------------------------
 
+
+if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if00-port0" ]
+then
+    ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if00-port0` /dev/ttyTUFF
+fi
 
 if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if01-port0" ]
 then
@@ -49,10 +54,10 @@ fi
 
 
 ### This is possibly the device used at Palestine; might change for Antarctica  -- CSD 
-if [-L "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0" ] 
-then 
-    ln -sf `readlink -f /dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0` /dev/ttyTUFF 
-fi 
+#if [-L "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0" ] 
+#then 
+#    ln -sf `readlink -f /dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0` /dev/ttyTUFF 
+#fi 
 
 ln -sf /dev/ttyS0 /dev/ttyLow1
 ln -sf /dev/ttyS1 /dev/ttyHigh1
