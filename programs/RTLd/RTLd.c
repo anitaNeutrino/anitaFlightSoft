@@ -58,6 +58,7 @@ static int failThreshold = 5;
 static int gracefulTimeout = 60; 
 static int failTimeout = 5; 
 static int disabled[NUM_RTLSDR]; 
+static int config_disabled[NUM_RTLSDR]; 
 
 void cleanup(); 
 
@@ -115,8 +116,8 @@ static int readConfig()
      
     nread = NUM_RTLSDR; 
 
-    memset(disabled,0,sizeof(disabled)); 
-    status = kvpGetIntArray("disabled", disabled, &nread); 
+    memset(config_disabled,0,sizeof(disabled)); 
+    status = kvpGetIntArray("disabled", config_disabled, &nread); 
 
     failThreshold = kvpGetInt("failThreshold", 5); 
     failTimeout = kvpGetInt("failTimeout", 5); 
@@ -341,6 +342,7 @@ int main(int nargs, char ** args)
 
     // reset fail counter 
     memset(nfails, 0, sizeof(nfails)); 
+    memcpy(disabled, config_disabled, sizeof(config_disabled)); 
 
 
     currentState = PROG_STATE_RUN; 
@@ -349,11 +351,13 @@ int main(int nargs, char ** args)
     {
 
 
+      int nspawned = 0; 
       // Spawn the processes 
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
 
         if (disabled[i]) continue; 
+        nspawned++; 
 
         char * serial = serials[i]; 
         sprintf(cmd, "timeout  -k %ds %ds RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
@@ -370,6 +374,8 @@ int main(int nargs, char ** args)
         }
       }
 
+      sleep(1); //just because
+
       //wait for them to finish
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
@@ -383,15 +389,19 @@ int main(int nargs, char ** args)
             printf("%d returned %d\n",i,ret); 
           }
 
-
-          if (ret) 
+          if (ret == 0)
           {
-            syslog(LOG_INFO, "RTLd: %s failed to finish within timeout", serials[i]); 
+            syslog(LOG_INFO, "RTLd: %s returned unclean value %d.", serials[i], ret); 
+          }
+
+          if (ret == 124) 
+          {
+            syslog(LOG_INFO, "RTLd: %s failed to finish within timeout. Return value: %d", serials[i], ret); 
           }
 
           if (ret >= 128) 
           {
-            syslog(LOG_ERR, "RTLd: %s had to be kill -9ed. This has happened %d times before.", serials[i], nfails[i]); 
+            syslog(LOG_ERR, "RTLd: %s had to be kill -9ed or could not start RTL_singleshot_power. This has happened %d times before.", serials[i], nfails[i]); 
             nfails[i]++; 
             if (nfails[i] >= failThreshold) 
             {
@@ -400,7 +410,7 @@ int main(int nargs, char ** args)
             }
 
             spectra[i]->startFreq = 666;  
-            sprintf(spectra[i]->spectrum, "This run was SIGKILLED. nfails is now %u", nfails[i]); 
+            sprintf((char*) spectra[i]->spectrum, "This run was SIGKILLED. nfails is now %u", nfails[i]); 
             spectra[i]->nFreq = 0;  
             spectra[i]->unixTimeStart = time(NULL); 
             spectra[i]->scanTime = 65535;
@@ -428,6 +438,12 @@ int main(int nargs, char ** args)
         fillGenericHeader(spectra[i], PACKET_RTLSDR_POW_SPEC, sizeof(RtlSdrPowerSpectraStruct_t)); 
 
 
+        if (nspawned == 0) 
+        {
+
+          syslog(LOG_ERR, "RTLd: no processes spawned... all RTL's disabled! will sleep for a bit.\n"); 
+          sleep(10); 
+        }
         
 
       }
@@ -436,7 +452,7 @@ int main(int nargs, char ** args)
       telemCount++; 
 
       //telemeter , if necessary 
-      if (telemEvery && telemCount >= telemEvery) 
+      if (telemEvery && telemCount >= telemEvery && nspawned)  //don't telemeter if empty 
       {
         if (printToScreen)
         {
@@ -445,6 +461,7 @@ int main(int nargs, char ** args)
 
         for (i = 0; i < NUM_RTLSDR; i++)
         {
+          if (disabled[i]) continue; 
           char fileName[FILENAME_MAX]; 
           sprintf(fileName,"%s/rtl_%s_%d.dat",RTL_TELEM_DIR,serials[i], spectra[i]->unixTimeStart);
           retVal=writeStruct(spectra[i],fileName,sizeof(RtlSdrPowerSpectraStruct_t));  
