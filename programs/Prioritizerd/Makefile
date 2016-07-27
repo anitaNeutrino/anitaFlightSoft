@@ -47,7 +47,7 @@ $(Targets).o : ${Objs}
 
 $(Targets): % : %.o ${Objs}
 	@echo "<**Linking**> $@ ..."
-	@$(LD) $@.o $(Objs) $(CCFLAGS) $(INCLUDES) $(LDFLAGS) $(ANITA_LIBS) $(FFTW3_LIBDIR) $(FFTW_LIB) $(CL_LIB) -o $@
+	$(LD) $@.o $(Objs) $(CCFLAGS) $(INCLUDES) -L/usr/lib64 $(LDFLAGS) $(ANITA_LIBS) $(FFTW3_LIBDIR) $(FFTW_LIB) $(CL_LIB) -o $@
 	@chmod 555 $@
 	ln -sf $(shell pwd)/$@ ${ANITA_FLIGHT_SOFT_DIR}/bin
 
