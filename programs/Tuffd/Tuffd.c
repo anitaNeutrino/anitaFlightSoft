@@ -48,7 +48,10 @@ int writeState(int changed)
   tuffStruct.unixTime = t; 
   for (i = 0; i < NUM_RFCM; i++)
   {
-    tuffStruct.temperatures[i] = (char)  (readTemperatures ? tuff_getTemperature(device,i) : -128); 
+    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
+
+    printf("Writing temperatured %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); 
+
   }
 
   telemeterCount++; 
@@ -137,7 +140,7 @@ void handleBadSigs(int sig)
   }
 
   cleanup(); 
-  exit(0); 
+  exit(127 + sig); 
 }
 
 
@@ -312,6 +315,7 @@ int main(int nargs, char ** args)
   {
     syslog(LOG_ERR,"Tuffd could not open the Tuff. Aborting.."); 
     cleanup(); 
+    return 1; 
   }
  
   // check if we can talk to it and reset 
@@ -326,6 +330,7 @@ int main(int nargs, char ** args)
   {
     syslog(LOG_ERR," Tuffd could not get pongs from all of the IRFCM's! Heard %d pongs.\n", numPongs); 
     cleanup(); 
+    return 2; 
   }
 
   // reset the tuffs 
