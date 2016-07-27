@@ -675,9 +675,6 @@ void checkProcesses(int dontStart)
     int testPid=0;
     int retVal=0;
     CommandStruct_t theCmd;    
-    theCmd.fromSipd=0;
-    theCmd.numCmdBytes=3;
-    theCmd.cmd[0]=CMD_START_PROGS;
     unsigned int value=0;
     int sendCommand=0;
     int idMask=0;
@@ -739,10 +736,13 @@ void checkProcesses(int dontStart)
 	  }
 	}
     }
-    if(sendCommand) {
-	theCmd.cmd[1]=value&0xff;
-	theCmd.cmd[2]=(value&0xff00)>>8;
-	writeCommandAndLink(&theCmd);
+    if(sendCommand) {     
+      theCmd.fromSipd=0;
+      theCmd.numCmdBytes=3;
+      theCmd.cmd[0]=CMD_START_PROGS;      
+      theCmd.cmd[1]=value&0xff;
+      theCmd.cmd[2]=(value&0xff00)>>8;
+      writeCommandAndLink(&theCmd);
     }
 }
 
@@ -790,7 +790,6 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
     static int archivedLastVal=0;
     static int killedPrioritizerd=0;
     int retVal=0;
-    theCmd.fromSipd=0;
     otherPtr->unixTime=time(NULL);
     otherPtr->ramDiskInodes=getRamdiskInodes();
     if(printToScreen)
@@ -834,12 +833,13 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 		    syslog(LOG_INFO,"Archived has %d links to process",numLinks);
 		    if(archivedCheckCount>5) {
 			if(!killedPrioritizerd) {
-			    theCmd.numCmdBytes=3;
-			    theCmd.cmd[0]=CMD_REALLY_KILL_PROGS;
-			    theCmd.cmd[1]=0;
-			    theCmd.cmd[2]=0x1; //Prioritizerd
-			    writeCommandAndLink(&theCmd);
-			    killedPrioritizerd=1;
+			  theCmd.fromSipd=0;    
+			  theCmd.numCmdBytes=3;
+			  theCmd.cmd[0]=CMD_REALLY_KILL_PROGS;
+			  theCmd.cmd[1]=0;
+			  theCmd.cmd[2]=0x1; //Prioritizerd
+			  writeCommandAndLink(&theCmd);
+			  killedPrioritizerd=1;
 			}
 		    }			 
 		}
@@ -941,14 +941,13 @@ int sortOutPidFile(char *progName)
 void checkSatasAreWorking()
 {   
     CommandStruct_t theCmd;
-    theCmd.fromSipd=0;
     char testFilename[FILENAME_MAX];
     FILE *fp=0;
     int numObjs=0;
     int shouldDisableHelium2=0;
     int shouldDisableHelium1=0;
-    static int bladeErrCounter=0;
-    static int miniErrCounter=0;
+    static int helium1ErrCounter=0;
+    static int helium2ErrCounter=0;
     unsigned int increment;
     unsigned char testPattern[TEST_PATTERN_SIZE]={0};
     unsigned char readBackPattern[TEST_PATTERN_SIZE]={0};
@@ -1061,9 +1060,11 @@ void checkSatasAreWorking()
 
     if(!disableHelium1) {
 	if(shouldDisableHelium1==1) {
-	    bladeErrCounter++;
-	    if(bladeErrCounter>3) {
-		syslog(LOG_INFO,"Problem with satabblade -- will disable\n");
+	    helium1ErrCounter++;
+	    if(helium1ErrCounter>3) {
+		syslog(LOG_INFO,"Problem with Helium1 -- will disable\n");
+		theCmd.fromSipd=0;
+		theCmd.numCmdBytes=3;
 		theCmd.cmd[0]=CMD_DISABLE_DISK;
 		theCmd.cmd[1]=HELIUM1_DISK_MASK;
 		theCmd.cmd[2]=1;
@@ -1077,9 +1078,11 @@ void checkSatasAreWorking()
 
     if(!disableHelium2) {
 	if(shouldDisableHelium2==1) {
-	    miniErrCounter++;
-	    if(miniErrCounter>3) {
-		syslog(LOG_INFO,"Problem with satabmini -- will disable\n");
+	    helium2ErrCounter++;
+	    if(helium2ErrCounter>3) {
+		syslog(LOG_INFO,"Problem with Helium2 -- will disable\n");
+		theCmd.numCmdBytes=3;
+		theCmd.fromSipd=0;		
 		theCmd.cmd[0]=CMD_DISABLE_DISK;
 		theCmd.cmd[1]=HELIUM2_DISK_MASK;
 		theCmd.cmd[2]=1;
@@ -1091,5 +1094,5 @@ void checkSatasAreWorking()
 
 
     printf("Sata check Helium2 (%d %d) and Helium1 (%d %d)\n",
-	   shouldDisableHelium2,miniErrCounter,shouldDisableHelium1,bladeErrCounter);
+	   shouldDisableHelium2,helium2ErrCounter,shouldDisableHelium1,helium1ErrCounter);
 }

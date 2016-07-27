@@ -20,6 +20,7 @@
 #include "kvpLib/keyValuePair.h"
 #include "utilLib/utilLib.h"
 #include "linkWatchLib/linkWatchLib.h"
+#include <execinfo.h>
 
 #include "includes/anitaStructures.h"
 #include "includes/anitaFlight.h"
@@ -93,14 +94,14 @@ int sortOutPidFile(char *progName);
 
 
 
-#define MAX_COMMANNDS 100  //Hard to believe we can get to a hundred
+#define MAX_COMMANNDS 200  //Hard to believe we can get to a hundred
 
 /* Global variables */
 int cmdLengths[NUM_ANITA_COMMANDS];
 
 CommandStruct_t theCmds[MAX_COMMANNDS];
 
-int numCmds=NUM_ANITA_COMMANDS;
+int numCmdsInConfig=NUM_ANITA_COMMANDS;
 
 
 //Debugging Output
@@ -131,8 +132,8 @@ int alternateUsbs[NUM_PRIORITIES];
 float pidGoalScaleFactors[ACTIVE_SURFS][SCALERS_PER_SURF];
 int losdBandwidths[NUM_PRIORITIES];
 int sipdBandwidths[NUM_PRIORITIES];
-int sipdHkTelemOrder[20];
-int sipdHkTelemMaxCopy[20];
+int sipdHkTelemOrder[22];
+int sipdHkTelemMaxCopy[22];
 float dacIGain[3];  // integral gain
 float dacPGain[3];  // proportional gain
 float dacDGain[3];  // derivative gain
@@ -173,7 +174,7 @@ int main (int argc, char *argv[])
   int retVal;
   int count,ind=0;
   int numCmds;
-  char logMessage[180];
+  char logMessage[1024];
   /* Log stuff */
   char *progName=basename(argv[0]);
   retVal=sortOutPidFile(progName);
@@ -217,17 +218,21 @@ int main (int argc, char *argv[])
 	//Got at least one command
 	for(count=0;count<numCmds;count++) {
 	  if(printToScreen) 
-	    printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);		
+	    printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);
+	  printf("In loop count=%d\tnumCmds=%d\n",count,numCmds);		
+
+
 	  sprintf(logMessage,"Checking Cmd (%d bytes from SIPd %d)",
 		  theCmds[count].numCmdBytes,
 		  theCmds[count].fromSipd);
 	    
-	  for(ind=0;ind<theCmds[count].numCmdBytes;ind++) 
-	    sprintf(logMessage,"%s %d",logMessage,(int)theCmds[count].cmd[ind]);
-	  
-	  syslog(LOG_INFO,"%s",logMessage);
 		    
 	  if(checkCommand(&theCmds[count])) {
+	    for(ind=0;ind<theCmds[count].numCmdBytes;ind++) 
+	      sprintf(logMessage,"%s %d",logMessage,(int)theCmds[count].cmd[ind]);
+	    
+	    syslog(LOG_INFO,"%s",logMessage);
+
 	    if(printToScreen) 
 	      printf("cmd %d good , (%#x)\n",count,theCmds[count].cmd[0]);		
 	    syslog(LOG_INFO,"Got Cmd %d, numBytes %d\n",
@@ -289,7 +294,7 @@ int checkForNewCommand() {
     numCmdLinks=getNumLinks(wd);
   
   if(numCmdLinks) {
-    //    printf("There are %d cmd links\n",numCmdLinks);
+    printf("There are %d cmd links\n",numCmdLinks);
     for(uptoCmd=0;uptoCmd<numCmdLinks;uptoCmd++) {
       if(uptoCmd==MAX_COMMANNDS) break;
       tempString=getFirstLink(wd);
@@ -298,12 +303,18 @@ int checkForNewCommand() {
       fillCommand(&theCmds[uptoCmd],currentFilename);
       removeFile(currentFilename);
       removeFile(currentLinkname);
+      printf("Removing %s -- %s\n",currentFilename,currentLinkname);
     }
   }    
   return numCmdLinks;
 }
     
 int checkCommand(CommandStruct_t *theCmd) {
+  if (theCmd->numCmdBytes == 0)
+  {
+    syslog(LOG_ERR,"Wrong number of command bytes for %d is %d\n",theCmd->cmd[0], theCmd->numCmdBytes);	
+    return 0; 
+  }
   if(theCmd->numCmdBytes!=cmdLengths[(int)theCmd->cmd[0]]) {
     syslog(LOG_ERR,"Wrong number of command bytes for %d: expected %d, got %d\n",theCmd->cmd[0],cmdLengths[(int)theCmd->cmd[0]],theCmd->numCmdBytes);	
     fprintf(stderr,"Wrong number of command bytes for %d: expected %d, got %d\n",theCmd->cmd[0],cmdLengths[(int)theCmd->cmd[0]],theCmd->numCmdBytes);
@@ -383,7 +394,7 @@ int readConfig() {
 
     printToScreen=kvpGetInt("printToScreen",0);
     verbosity=kvpGetInt("verbosity",0);
-    kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmds);
+    kvpStatus=kvpGetIntArray ("cmdLengths",cmdLengths,&numCmdsInConfig);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_ERR,"Problem getting cmdLengths -- %s\n",
 	     kvpErrorString(kvpStatus));
@@ -415,6 +426,7 @@ int executeCommand(CommandStruct_t *theCmd)
   char theCommand[FILENAME_MAX];
     
     
+  printf("Command: %d\n", theCmd->cmd[0]); 
 
   switch(theCmd->cmd[0]) {
   case CMD_MAKE_NEW_RUN_DIRS:
@@ -491,8 +503,10 @@ int executeCommand(CommandStruct_t *theCmd)
     return retVal;      
   case CMD_DISABLE_DISK:
     ivalue=theCmd->cmd[1];
-    ivalue2=theCmd->cmd[2]+(theCmd->cmd[3]<<8);
-    return disableDisk(ivalue2,ivalue);
+    ivalue2=theCmd->cmd[2];//+(theCmd->cmd[3]<<8);
+    printf("CMD_DISABLE_DISK: %d %#x %#x\n",theCmd->cmd[0],theCmd->cmd[1],theCmd->cmd[2]);
+    printf("ivalue2==%d ivalue==%d\n",ivalue2,ivalue);
+    return disableDisk(ivalue,ivalue2);
   case CMD_MOUNT_ARGH:
     return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
@@ -3530,6 +3544,16 @@ void handleBadSigs(int sig)
   syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
   unlink(CMDD_PID_FILE);
   syslog(LOG_INFO,"Cmdd terminating");
+
+  if (sig == SIGSEGV) 
+  {
+    size_t size; 
+    void * traceback[20]; 
+    size = backtrace(traceback, 20); 
+    backtrace_symbols_fd(traceback,size, STDERR_FILENO); 
+  }
+
+
   exit(0);
 }
 
