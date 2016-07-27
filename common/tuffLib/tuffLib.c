@@ -3,10 +3,12 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <fcntl.h>
 #include <sys/select.h>
 
+#define _GNU_SOURCE
 static char buf[1024];
 #define BAUDRATE B115200
 
@@ -16,9 +18,30 @@ struct tuff_dev
   struct termios oldtio; 
 }; 
 
+
+
+// eats all available bytes. Yummy! 
+static int bytegobbler(int fd) 
+{
+
+  int nbytes; 
+  int nread = 0; 
+  char stomach[16]; 
+  ioctl(fd, FIONREAD, &nbytes); 
+
+  while (nbytes > 0) 
+  {
+    nread += read(fd, stomach, nbytes - nread> 16 ? 16 : nbytes - nread); 
+  }
+
+  return nread; 
+}
+
+
+
 int tuff_reset(tuff_dev_t * d,
 		  unsigned int irfcm) {
-  sprintf(buf, "{\"reset\":%d}\n\r", irfcm);
+  sprintf(buf, "\r\n{\"reset\":%d}\r\n", irfcm);
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -26,7 +49,7 @@ int tuff_onCommand(tuff_dev_t * d,
 		      unsigned int irfcm,
 		      unsigned int channel,
 		      unsigned int notchMask) {
-  sprintf(buf, "{\"on\":[%d,%d,%d]}\n\r",irfcm, channel, notchMask);
+  sprintf(buf, "\r\n{\"on\":[%d,%d,%d]}\r\n",irfcm, channel, notchMask);
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -34,7 +57,7 @@ int tuff_offCommand(tuff_dev_t * d,
 		       unsigned int irfcm,
 		       unsigned int channel,
 		       unsigned int notchMask) {
-  sprintf(buf, "{\"off\":[%d,%d,%d]}\n\r",irfcm,channel,notchMask);
+  sprintf(buf, "\r\n{\"off\":[%d,%d,%d]}\r\n",irfcm,channel,notchMask);
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -45,9 +68,9 @@ int tuff_setChannelNotches(tuff_dev_t * d,
   unsigned int notch = notchMask & 0x7;
   unsigned int notNotch = (~notchMask) & 0x7;
   
-  sprintf(buf,"{\"on\":[%d,%d,%d],\"off\":[%d,%d,%d]}\n\r", irfcm, channel,notch,
+  sprintf(buf,"\r\n{\"on\":[%d,%d,%d],\"off\":[%d,%d,%d]}\r\n", irfcm, channel,notch,
 	  irfcm,channel,notNotch);
-  printf("sending %s\n", buf);
+  printf("sending %s\r\n", buf);
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -70,7 +93,7 @@ int tuff_updateCaps(tuff_dev_t * d,
     cmd = ((1<<(channel-6)) << 8) | 0x4000;
   }
   cmd |= 0x60;
-  sprintf(buf, "{\"raw\":[%d,%d,%d]}\n\r",
+  sprintf(buf, "\r\n{\"raw\":[%d,%d,%d]}\r\n",
 	    irfcm,
 	    tuffStack,
 	    cmd);
@@ -104,17 +127,17 @@ int tuff_setCap(tuff_dev_t * d,
   // and v[4:0] is the value
   cmd |= capValue;
   cmd |= (notch << 5);
-  sprintf(buf, "{\"raw\":[%d,%d,%d]}\n\r",
+  sprintf(buf, "\r\n{\"raw\":[%d,%d,%d]}\r\n",
 	    irfcm,
 	    tuffStack,
 	    cmd);
-  printf("going to send %s\n", buf);
+  printf("going to send %s\r\n", buf);
   return write(d->fd, buf, strlen(buf));
 }
 
 int tuff_setQuietMode(tuff_dev_t * d,
 			  bool quiet) {
-  sprintf(buf,"{\"quiet\":%d}\n\r", quiet);
+  sprintf(buf,"\r\n{\"quiet\":%d}\r\n", quiet);
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -135,15 +158,15 @@ int tuff_pingiRFCM(tuff_dev_t * d,
 
   switch(numPing) {
   case 0: return 0;
-  case 1: sprintf(buf, "{\"ping\":[%d]}\n\r", irfcmList[0]); break;
-  case 2: sprintf(buf, "{\"ping\":[%d,%d]}\n\r",
+  case 1: sprintf(buf, "\r\n{\"ping\":[%d]}\r\n", irfcmList[0]); break;
+  case 2: sprintf(buf, "\r\n{\"ping\":[%d,%d]}\r\n",
 		  irfcmList[0],
 		  irfcmList[1]); break;
-  case 3: sprintf(buf, "{\"ping\":[%d,%d,%d]}\n\r",
+  case 3: sprintf(buf, "\r\n{\"ping\":[%d,%d,%d]}\r\n",
 		  irfcmList[0],
 		  irfcmList[1],
 		  irfcmList[2]); break;
-  case 4: sprintf(buf, "{\"ping\":[%d,%d,%d,%d]}\n\r",
+  case 4: sprintf(buf, "\r\n{\"ping\":[%d,%d,%d,%d]}\r\n",
 		  irfcmList[0],
 		  irfcmList[1],
 		  irfcmList[2],
@@ -193,7 +216,7 @@ int tuff_setNotchRange(tuff_dev_t * d,
   const char *notchStr[3] = { "r0", "r1", "r2" };
   if (notch > 2) return -1;
 
-  sprintf(buf, "{\"%s\":[%d,%d]}\n\r", notchStr[notch], phiStart,phiEnd);
+  sprintf(buf, "\r\n{\"%s\":[%d,%d]}\r\n", notchStr[notch], phiStart,phiEnd);
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -205,7 +228,7 @@ int tuff_setPhiSectors(tuff_dev_t * d,
   unsigned int i;
   int cnt;
   p = buf;
-  cnt = sprintf(buf, "{\"set\":{\"irfcm\":%d,\"phi\":[", irfcm);
+  cnt = sprintf(buf, "\r\n{\"set\":{\"irfcm\":%d,\"phi\":[", irfcm);
   p += cnt;
   for (i=0;i<nb;i++) {
     if (i != 0) {
@@ -215,7 +238,7 @@ int tuff_setPhiSectors(tuff_dev_t * d,
     cnt = sprintf(p, "%d", phiList[i]);
     p += cnt;
   }
-  sprintf(p, "]}}\n\r");
+  sprintf(p, "]}}\r\n");
   return write(d->fd, buf, strlen(buf));
 }
 
@@ -254,7 +277,9 @@ void tuff_waitForAck(tuff_dev_t * d,
 tuff_dev_t * tuff_open(const char * dev) 
 {
   char sbuf[512]; 
-  struct termios tio;; 
+  struct termios tio; 
+  memset(&tio, 0, sizeof(tio)); 
+
   int fd; 
 
   fd = open(dev, O_RDWR | O_NOCTTY); 
@@ -274,9 +299,14 @@ tuff_dev_t * tuff_open(const char * dev)
   /* save old settings */ 
   tcgetattr(fd, &ptr->oldtio); 
 
+
+  cfsetospeed(&tio, BAUDRATE); 
+  cfsetispeed(&tio, BAUDRATE); 
   
   /* set it up the way we like it */ 
-  tio.c_cflag = BAUDRATE | CRTSCTS | CS8 | CLOCAL | CREAD; 
+  tio.c_cflag =  CS8 | CLOCAL | CREAD; 
+  tio.c_cflag &= ~CRTSCTS; 
+  tio.c_cflag &= ~CSTOPB; 
   tio.c_iflag = IGNPAR | ICRNL;
   tio.c_oflag = 0;
   tio.c_lflag = ICANON;
@@ -321,7 +351,8 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
   int i; 
   unsigned char c; 
   float ret; 
-  sprintf(buf,"{\"monitor\": %d}", irfcm); 
+  bytegobbler(d->fd);  //EAT MOAR BYTES 
+  sprintf(buf,"\r\n{\"monitor\": %d}\r\n", irfcm); 
   write(d->fd, buf, strlen(buf)); 
 
   i = 0; 
@@ -352,7 +383,7 @@ int tuff_getfd(tuff_dev_t * dev)
 
 int tuff_rawCommand(tuff_dev_t * d, unsigned int irfcm,  unsigned int tuffStack, unsigned int cmd)
 {
-  sprintf(buf, "{\"raw\":[%d,%d,%d]}\n\r",
+  sprintf(buf, "\r\n{\"raw\":[%d,%d,%d]}\r\n",
 	    irfcm,
 	    tuffStack,
 	    cmd);

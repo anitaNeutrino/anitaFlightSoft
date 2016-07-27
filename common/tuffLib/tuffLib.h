@@ -80,7 +80,7 @@ int tuff_setCap(tuff_dev_t * d,
  * received from all TUFFs, it probably makes sense to
  * go ahead and turn off the ACKs for each command.
  *
- * Quiet mode does this. So call tuff_setQuietMode(serial_fd, 1);
+ * Quiet mode does this. So call tuff_set(serial_fd, 1);
  *
  * From then on, TUFFs will not acknowledge any commands
  * other than a ping.
