@@ -30,36 +30,36 @@ void fillDefaultBFileHeader(RawAdu5BFileHeader_t *hdrPtr){
 
 int fillRawMBNStruct(char *inputStream, int length, RawAdu5MBNStruct_t *mbnPtr){
 
-  if (length!=(sizeof *mbnPtr)) return -1;
+  if (length!=sizeof(RawAdu5MBNStruct_t)) return -1;
   
-  memcpy(mbnPtr, inputStream, sizeof *mbnPtr);
+  memcpy(mbnPtr, inputStream, sizeof(RawAdu5MBNStruct_t));
 
   return 0;
 }
 
 int fillRawPBNStruct(char *inputStream, int length, RawAdu5PBNStruct_t *mbnPtr){
 
-  if (length!=(sizeof *mbnPtr)) return -1;
+  if (length!=sizeof(RawAdu5PBNStruct_t)) return -1;
   
-  memcpy(mbnPtr, inputStream, sizeof *mbnPtr);
+  memcpy(mbnPtr, inputStream, sizeof(RawAdu5PBNStruct_t));
 
   return 0;
 }
 
 int fillRawSNVStruct(char *inputStream, int length, RawAdu5SNVStruct_t *mbnPtr){
 
-  if (length!=(sizeof *mbnPtr)) return -1;
+  if (length!=sizeof(RawAdu5SNVStruct_t)) return -1;
   
-  memcpy(mbnPtr, inputStream, sizeof *mbnPtr);
+  memcpy(mbnPtr, inputStream, sizeof(RawAdu5SNVStruct_t ));
 
   return 0;
 }
 
 int fillRawATTStruct(char *inputStream, int length, RawAdu5ATTStruct_t *mbnPtr){
 
-  if (length!=(sizeof *mbnPtr)) return -1;
+  if (length!=sizeof(RawAdu5ATTStruct_t )) return -1;
   
-  memcpy(mbnPtr, inputStream, sizeof *mbnPtr);
+  memcpy(mbnPtr, inputStream, sizeof(RawAdu5ATTStruct_t ));
 
   return 0;
 }
