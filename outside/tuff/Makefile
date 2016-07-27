@@ -3,7 +3,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets =  update cap notch temp ping phisector
+Targets =  update cap notch temp ping phisector reset_all set_phi_sectors
 
 all: $(Targets)
 
