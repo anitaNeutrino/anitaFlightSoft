@@ -33,7 +33,7 @@ CXXFLAGS      =  $(OPT2) -pipe -Wall -W -Woverloaded-virtual -I/usr/include/sys/
 LD            = gcc
 LDFLAGS       =  $(OPT2) -bind_at_load
 SYSCCFLAGS        = 
-SYS_LIBS = 
+SYS_LIBS = -L/usr/lib64
 # The SOFLAGS will be used to create the .dylib,
 # the .so will be created separately
 DllSuf       = dylib
