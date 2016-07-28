@@ -1337,13 +1337,13 @@ typedef struct {
 typedef struct __attribute__((packed)) RawAdu5MBNStruct {
   char header[11]; ///< $PASHR,MCA,
   unsigned short sequence_tag;  ///< Sequence ID number in units of 50ms, modulo 30 minutes
-  unsigned char mben_eft; ///< Number of remaining MBEN structures to be sent for current epoch.
+  unsigned char mben_left; ///< Number of remaining MBEN structures to be sent for current epoch.
   unsigned char svpm; ///< Satellite PRN number.
   unsigned char el; ///< Satellite elevation angle (degrees).
   unsigned char az; ///< Satellite azimuth angle (degrees).
   unsigned char chnind; ///< Channel ID (1 to 12).
   unsigned char warn; ///< Warning flag
-  unsigned char good_bad; ///< I3ndicates quality of the position measurement.
+  unsigned char good_bad; ///< Indicates quality of the position measurement.
   unsigned char polarity_know; ///< Indicates synchronization of receiver with NAV message
   unsigned char ireg; ///< Signal-to-noise ratio of satellite observation
   unsigned char qa_phase; ///< Phase quality indicator: 0 - 5 and 95 -100 are normal
