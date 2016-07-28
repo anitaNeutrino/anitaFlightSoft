@@ -42,15 +42,16 @@ static int telemeterCount = 0;
 
 int writeState(int changed)
 {
+  if (printToScreen) printf("writeState(%d)\n", changed); 
   int i = 0; 
   time_t t = time(NULL); 
 
   tuffStruct.unixTime = t; 
   for (i = 0; i < NUM_RFCM; i++)
   {
-    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
 
-    printf("Writing temperatured %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); 
+    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
+    printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); 
 
   }
 
@@ -215,7 +216,9 @@ int readConfig()
   {
    	printToScreen=kvpGetInt("printToScreen",1);
   	verbosity=kvpGetInt("verbosity",0);
+
   }
+
   else { configStatus+=1; }
 
 
@@ -225,10 +228,10 @@ int readConfig()
   {
 
     sleepAmount = kvpGetInt("sleepAmount",10); 
+    if (sleepAmount < 1) sleepAmount =1; //don't do stupid things 
     readTemperatures = kvpGetInt("readTemperature",1); 
     telemeterEvery = kvpGetInt("telemEvery",10); 
     telemeterAfterChange = kvpGetInt("telemAfterChange",1); 
-
   }
   else { configStatus+=2; }
 
@@ -253,7 +256,7 @@ int readConfig()
       int i = 0; 
       if (printToScreen) 
       {
-        printf(" Loaded notches from config file! "); 
+        printf(" Loaded notches from config file! \n"); 
         for (i = 0; i < NUM_TUFF_NOTCHES; i++)
         {
           printf("   Requested Notch %d:  (%d, %d)\n", i, notch_tmp[2*i], notch_tmp[2*i+1]); 
@@ -324,19 +327,27 @@ int main(int nargs, char ** args)
     irfcmList[i] = i; 
   }
 
-  numPongs = tuff_pingiRFCM(device, 10, NUM_RFCM, irfcmList); 
+  
 
+  // reset the tuffs 
+  for (i = 0; i < NUM_RFCM; i++) 
+  {
+    //just in case
+    tuff_setQuietMode(device, 0); 
+
+    printf("Resetting RFCM %d\n", i); 
+    tuff_reset(device, i); 
+    tuff_waitForAck(device,i); 
+    printf("Ack Received for %d\n", i); 
+  }
+
+  tuff_setQuietMode(device, false); 
+  numPongs = tuff_pingiRFCM(device, 10, NUM_RFCM, irfcmList); 
   if (numPongs!= NUM_RFCM)
   {
     syslog(LOG_ERR," Tuffd could not get pongs from all of the IRFCM's! Heard %d pongs.\n", numPongs); 
     cleanup(); 
     return 2; 
-  }
-
-  // reset the tuffs 
-  for (i = 0; i < NUM_RFCM; i++) 
-  {
-    tuff_reset(device, i); 
   }
 
   //shut them up
@@ -356,21 +367,30 @@ int main(int nargs, char ** args)
 
   do
   {
+    int numlinks; 
+    if (printToScreen) printf("Reading config: \n"); 
     read_config_ok = readConfig(); 
 
-    if (!read_config_ok)
+    if (read_config_ok)
     {
       syslog(LOG_ERR, "Tuffd had trouble reading the config. Returned: %d", read_config_ok); 
     }
 
+    //set the notches BEFORE checking for link dirs
+    setNotches(); 
+    justChanged = 1; 
+
+
+    checkLinkDirs(1,0); 
+    numlinks = getNumLinks(wd); 
+    printf("Numlinks: %d\n", numlinks); 
     //check for raw commands 
-    while (getNumLinks(wd))
+    while (numlinks)
     {
       TuffRawCmd_t raw; 
       char * fname = getFirstLink(wd); 
       char rd_linkbuf[FILENAME_MAX]; 
       char rd_buf[FILENAME_MAX]; 
-      char wr_linkbuf[FILENAME_MAX]; 
       char wr_buf[FILENAME_MAX]; 
       FILE * file; 
 
@@ -386,11 +406,15 @@ int main(int nargs, char ** args)
       raw.enactedTime = time(0); 
 
       //enact the command 
+      if (printToScreen)
+      {
+        printf("Tuff is executing raw command: IRFCM:%d, Stack:%d Command:0x%04x\n", raw.irfcm, raw.tuffStack, raw.cmd ); 
+      }
       tuff_rawCommand(device, raw.irfcm, raw.tuffStack, raw.cmd); 
 
       // save it for telemetry 
       fillGenericHeader(&raw, PACKET_TUFF_RAW_CMD, sizeof(TuffRawCmd_t)); 
-      sprintf(wr_linkbuf, "%s/%s", TUFF_TELEM_LINK_DIR, fname); 
+      sprintf(wr_buf, "%s/%s", TUFF_TELEM_DIR, fname); 
       writeStruct(&raw, wr_buf, sizeof(TuffRawCmd_t)); 
       makeLink(wr_buf, TUFF_TELEM_LINK_DIR); 
 
@@ -400,10 +424,10 @@ int main(int nargs, char ** args)
       //delete files
       removeFile(rd_linkbuf); 
       removeFile(rd_buf); 
+      checkLinkDirs(1,0); 
+      numlinks = getNumLinks(wd); 
     }
 
-    setNotches(); 
-    justChanged = 1; 
 
 
     currentState = PROG_STATE_RUN; 
