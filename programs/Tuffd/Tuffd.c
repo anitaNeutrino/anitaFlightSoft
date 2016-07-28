@@ -410,6 +410,7 @@ int main(int nargs, char ** args)
       {
         printf("Tuff is executing raw command: IRFCM:%d, Stack:%d Command:0x%04x\n", raw.irfcm, raw.tuffStack, raw.cmd ); 
       }
+      syslog(LOG_INFO, "Tuff is executing raw command: IRFCM:%d, Stack:%d Command:0x%04x\n", raw.irfcm, raw.tuffStack, raw.cmd ); 
       tuff_rawCommand(device, raw.irfcm, raw.tuffStack, raw.cmd); 
 
       // save it for telemetry 
