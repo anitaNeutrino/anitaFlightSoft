@@ -92,9 +92,9 @@ static int readConfig()
 
   if (status == CONFIG_E_OK)
   {
-    startFrequency = kvpGetInt("startFrequency", 180000000); 
-    endFrequency = kvpGetInt("endFrequency",  1250000000); 
-    stepFrequency = kvpGetInt("stepFrequency", 320000); 
+    startFrequency = kvpGetInt("startFreq", 180000000); 
+    endFrequency = kvpGetInt("endFreq",  1250000000); 
+    stepFrequency = kvpGetInt("stepFreq", 300000); 
     telemEvery = kvpGetInt("telemEvery",1); 
 
     if (printToScreen)
@@ -333,11 +333,9 @@ int main(int nargs, char ** args)
 
     if (read_config_ok)
     {
-
       syslog(LOG_ERR, "RTLd: Error reading config!\n"); 
       cleanup(); 
       exit(2); 
-
     }
 
     // reset fail counter 
@@ -360,7 +358,7 @@ int main(int nargs, char ** args)
         nspawned++; 
 
         char * serial = serials[i]; 
-        sprintf(cmd, "timeout  -k %ds %ds RTL_singleshot_power -d %s  -c 0.25 -f %d:%d:%d -g %f %s/%s.out", 
+        sprintf(cmd, "timeout  -k %ds %ds RTL_singleshot_power -d %s  -c 0.5 -f %d:%d:%d -g %f %s/%s.out", 
                       failTimeout, gracefulTimeout, serial, startFrequency, endFrequency, stepFrequency, gain[i], tmpdir, serial); 
         oneshots[i] = popen (cmd, "r"); 
         if (printToScreen) 
@@ -389,7 +387,7 @@ int main(int nargs, char ** args)
             printf("%d returned %d\n",i,ret); 
           }
 
-          if (ret == 0)
+          if (ret != 0)
           {
             syslog(LOG_INFO, "RTLd: %s returned unclean value %d.", serials[i], ret); 
           }
