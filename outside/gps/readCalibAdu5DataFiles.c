@@ -30,7 +30,6 @@ int main(int argc, char **argv) {
   printf("sizeof(RawAdu5PBNStruct_t)=%lu\n",sizeof(RawAdu5PBNStruct_t));
   printf("sizeof(RawAdu5ATTStruct_t)=%lu\n",sizeof(RawAdu5ATTStruct_t));
 
-  return 1;
 
   struct RawAdu5BFileHeader bFileHeader;
   struct RawAdu5BFileRawNav bFileRawNav;
@@ -79,6 +78,8 @@ int main(int argc, char **argv) {
     printf("bFileRawNav.pdop:\t%d\n",bFileRawNav.pdop);
     printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav.num_sats);
     
+
+    //    return 1;
     int satNum=0;
     for(satNum=0;satNum<(int)bFileRawNav.num_sats;satNum++) {
       fread(&bFileSatHeader[satNum],sizeof(RawAdu5BFileSatelliteHeader_t),1,bFilePtr);

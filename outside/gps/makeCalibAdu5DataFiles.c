@@ -12,6 +12,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <endian.h>
+#include <stdint.h>
+#include <time.h>
 
 #include "includes/anitaFlight.h"
 #include "includes/anitaStructures.h"
@@ -36,7 +39,6 @@ int fillBFileRawNav(RawAdu5BFileRawNav_t *bFileRawNav, RawAdu5PBNStruct_t pbn){
   bFileRawNav->navt=(double)pbn.navt;
   bFileRawNav->navtdot=(double)pbn.navtdot;
   bFileRawNav->pdop=pbn.pdop;
-  bFileRawNav->num_sats=0;
 
 
   printf("bFileRawNav.sitename:\t%s\n",bFileRawNav->sitename);
@@ -62,10 +64,10 @@ int fillBFileSatHeader(RawAdu5BFileSatelliteHeader_t *bFileSatHeader, RawAdu5MBN
   bFileSatHeader->azimuth=mbn.az;
   bFileSatHeader->chnind=mbn.chnind;
 
-  printf("bFileSatHeader.svprn:\t%d\n",(int)bFileSatHeader->svprn);
-  printf("bFileSatHeader.elevation:\t%d\n",(int)bFileSatHeader->elevation);
-  printf("bFileSatHeader.azimuth:\t%d\n",(int)bFileSatHeader->azimuth);
-  printf("bFileSatHeader.chnind:\t%d\n",(int)bFileSatHeader->chnind);
+  /* printf("bFileSatHeader.svprn:\t%d\n",(int)bFileSatHeader->svprn); */
+  /* printf("bFileSatHeader.elevation:\t%d\n",(int)bFileSatHeader->elevation); */
+  /* printf("bFileSatHeader.azimuth:\t%d\n",(int)bFileSatHeader->azimuth); */
+  /* printf("bFileSatHeader.chnind:\t%d\n",(int)bFileSatHeader->chnind); */
 
   return 0;
 }
@@ -74,7 +76,7 @@ int fillBFileChanObs( RawAdu5BFileChanObs_t *bFileChanObs,  RawAdu5MBNStruct_t m
 
   bFileChanObs->raw_range=mbn.raw_range;
   bFileChanObs->smth_corr= (float)((mbn.smoothing && 0xff0000)>>24);
-  bFileChanObs->smth_count=(mbn.smoothing && 0xffffff);
+  bFileChanObs->smth_count=(unsigned short)(mbn.smoothing && 0xffffff);
   bFileChanObs->polarity_known=mbn.polarity_know;
   bFileChanObs->warning=mbn.warn;
   bFileChanObs->goodbad=mbn.good_bad;
@@ -83,17 +85,16 @@ int fillBFileChanObs( RawAdu5BFileChanObs_t *bFileChanObs,  RawAdu5MBNStruct_t m
   bFileChanObs->doppler=mbn.doppler;
   bFileChanObs->carphase=mbn.full_phase;
 
-
-  printf("bFileChanObs.raw_range:\t%lf\n",bFileChanObs->raw_range);
-  printf("bFileChanObs.smth_corr:\t%f\n",bFileChanObs->smth_corr);
-  printf("bFileChanObs.smth_count:\t%d\n",bFileChanObs->smth_count);
-  printf("bFileChanObs.polarity_known:\t%d\n",(int)bFileChanObs->polarity_known);
-  printf("bFileChanObs.warning:\t%d\n",(int)bFileChanObs->warning);
-  printf("bFileChanObs.goodbad:\t%d\n",(int)bFileChanObs->goodbad);
-  printf("bFileChanObs.ireg:\t%d\n",(int)bFileChanObs->ireg);
-  printf("bFileChanObs.qa_phase:\t%d\n",(int)bFileChanObs->qa_phase);
-  printf("bFileChanObs.doppler:\t%d\n",bFileChanObs->doppler);
-  printf("bFileChanObs.carphase:\t%lf\n",bFileChanObs->carphase);
+  /* printf("bFileChanObs.raw_range:\t%g\n",bFileChanObs->raw_range); */
+  /* printf("bFileChanObs.smth_corr:\t%f\n",bFileChanObs->smth_corr); */
+  /* printf("bFileChanObs.smth_count:\t%d\n",bFileChanObs->smth_count); */
+  /* printf("bFileChanObs.polarity_known:\t%d\n",(int)bFileChanObs->polarity_known); */
+  /* printf("bFileChanObs.warning:\t%d\n",(int)bFileChanObs->warning); */
+  /* printf("bFileChanObs.goodbad:\t%d\n",(int)bFileChanObs->goodbad); */
+  /* printf("bFileChanObs.ireg:\t%d\n",(int)bFileChanObs->ireg); */
+  /* printf("bFileChanObs.qa_phase:\t%d\n",(int)bFileChanObs->qa_phase); */
+  /* printf("bFileChanObs.doppler:\t%i\n",bFileChanObs->doppler); */
+  /* printf("bFileChanObs.carphase:\t%g\n",bFileChanObs->carphase); */
 
 
   return 0;
@@ -120,9 +121,6 @@ int main(int argc, char **argv) {
     return -1;
   }
   else fdAdu5=retVal;
-
-
- 
   
   char buff[COMMAND_SIZE];
   char data[DATA_SIZE]={' '};
@@ -138,7 +136,9 @@ int main(int argc, char **argv) {
   strcat(buff,"$PASHS,ELM,10\r\n"); //Set elevation mask to 10 degrees
   strcat(buff,"$PASHS,RCI,001.0\r\n"); //Set raw data rate to 1 second
   strcat(buff,"$PASHS,PDS,OFF\r\n"); // Special setting needed for calibration must be switched back on at end
-  strcat(buff,"$PASHS,OUT,A,MBN,SNV,PBN,ATT,BIN\r\n"); //Request the output
+  strcat(buff, "$PASHS,SPD,A,9\r\n");
+   strcat(buff,"$PASHS,OUT,A,MBN,SNV,PBN,ATT,BIN\r\n"); //Request the output
+  //  strcat(buff,"$PASHS,OUT,A,PBN,BIN\r\n"); //Request the output
 
   /* send the commands to ADU5  */
   write(fdAdu5, buff, strlen(buff));
@@ -154,6 +154,8 @@ int main(int argc, char **argv) {
   struct RawAdu5BFileChanObs bFileChanObs[100];
 
   int numSat = 0;
+  unsigned int numPbn=0;
+  unsigned short sequence_tag = 0;
   fillDefaultBFileHeader(&bFileHeader);
 
   printf("version:\t%s\n",bFileHeader.version);
@@ -171,6 +173,7 @@ int main(int argc, char **argv) {
   // First we write the RawHeadFile
   fwrite (&bFileHeader , sizeof(char), sizeof(RawAdu5BFileHeader_t), pFile);
 
+
   for(i=0; i < strlen(buff); i++) printf("%c", buff[i]);
   
   printf("\n");
@@ -183,7 +186,7 @@ int main(int argc, char **argv) {
   while(nowTime < startTime + numSeconds) {
     static char adu5Output[DATA_SIZE]="";
     static int adu5OutputLength=0;
-    static int lastStar=-10;
+//    static int lastStar=-10;
     sleep(1);
     retVal=isThereDataNow(fdAdu5);
     usleep(5);
@@ -197,22 +200,22 @@ int main(int argc, char **argv) {
     printf("Num bytes %d\n",retVal);
     if(retVal>0) {
       for(i=0; i < retVal; i++) {
-	printf("%c", tempData[i]);
+	//	printf("%c", tempData[i]);
 	if(adu5OutputLength==0 && tempData[i]!='$') continue;
 	adu5Output[adu5OutputLength++]=tempData[i];
-	//	bytesRead=read(fdAdu5, data, DATA_SIZE);
-	//	printf("read  returned: %d\n",bytesRead);
+	//	bytesRead=read(fdAdu5, data, DATA_SIZE); 
+	/* printf("read  returned: %d\n",bytesRead); */
 	if(adu5OutputLength>1) {
 	  if(adu5Output[0]=='$' && adu5Output[adu5OutputLength-1]=='$') {
-	    printf("Got two dollars\t%d\n",adu5OutputLength);
+	    /* printf("Got two dollars\t%d\n",adu5OutputLength); */
 	    if(adu5Output[1]=='P' && adu5Output[2]=='A' && adu5Output[3]=='S' && 
 	       adu5Output[4]=='H' && adu5Output[5]=='R' && adu5Output[6]==',') {
-	      printf("Got $PASHR,\n");
+	      /* printf("Got $PASHR,\n"); */
 	      if(adu5Output[7]=='A' && adu5Output[8]=='T' && adu5Output[9]=='T') {
 		if(adu5OutputLength-1==61) {
-		  printf("Got ATT\n");		
+		  /* printf("Got ATT\n");		 */
 		  //Right length
-		  fillRawATTStruct(adu5Output, adu5OutputLength, &attPtr);
+		  /* fillRawATTStruct(adu5Output, adu5OutputLength-1, &attPtr); */
 		  adu5OutputLength=1;
 		  continue;
 		}
@@ -222,54 +225,74 @@ int main(int argc, char **argv) {
 		if(adu5OutputLength-1==69) {
 		  printf("Got PBN\n");		
 		  //Right length
-		  fillRawPBNStruct(adu5Output, adu5OutputLength, &pbnPtr);
-		  printf("PBN.pbenHeader:\t%s\n",pbnPtr.pbenHeader);
-		  printf("PBN.pben_time:\t%d\n",pbnPtr.pben_time);
-		  printf("PBN.sitename:\t%s\n",pbnPtr.sitename);
-		  printf("PBN.navx:\t%f\n",pbnPtr.navx);
-		  printf("PBN.navy:\t%f\n",pbnPtr.navy);
-		  printf("PBN.navz:\t%f\n",pbnPtr.navz);
-
+		  fillRawPBNStruct(adu5Output, adu5OutputLength-1, &pbnPtr);
+		  bFileRawNav.num_sats = (char)numSat;
 		  fillBFileRawNav(&bFileRawNav, pbnPtr);
+		  
+		  fwrite (&bFileRawNav , sizeof(char), sizeof(RawAdu5BFileRawNav_t), pFile);
+		  //		  printf("PBEN NUM SATELLITES: \t %d %d\n", numSat, bFileRawNav.num_sats);
+		  int isat=0;
+		  for (isat=0;isat<numSat;isat++){
+		    fwrite (&bFileSatHeader[isat] , sizeof(char), sizeof(RawAdu5BFileSatelliteHeader_t), pFile);
+		    fwrite (&bFileChanObs[isat] , sizeof(char), sizeof(RawAdu5BFileChanObs_t), pFile);
+		  }
+		  
+
 
 		  numSat = 0;
-		  
-		  /* retVal=read(fdAdu5, tempData, DATA_SIZE); */
-		  /* adu5Output[adu5OutputLength++]=tempData[i]; */
-		  /* while (adu5Output[7]=='M' && adu5Output[8]=='C' && adu5Output[9]=='A') { */
-		  /*   //Handle MCA */
-		  /*   if(adu5OutputLength-1==50) { */
-		  /*     printf("Got MCA\n");		 */
-		  /*     //Right length */
-		  /*     fillRawMBNStruct(adu5Output, adu5OutputLength, &mbnPtr); */
-		  /*     fillBFileSatHeader(&bFileSatHeader[numSat], mbnPtr); */
-		  /*     fillBFileChanObs(&bFileChanObs[numSat],  mbnPtr); */
-		    
-		  /*     adu5OutputLength=1; */
-		  /*     adu5Output[adu5OutputLength++]=tempData[i]; */
-		  /*     retVal=read(fdAdu5, tempData, DATA_SIZE); */
-		  /*     numSat++; */
-		  /*     continue; */
-		  /*   } */
-
-		  /* } */
-		  bFileRawNav.num_sats=(char)numSat;
-		  fwrite ( &bFileRawNav  , sizeof(char), sizeof(RawAdu5BFileRawNav_t), pFile);
-		  int isat;
-		  for (isat=0;isat<numSat;isat++){
-		      fwrite (&bFileSatHeader[numSat] , sizeof(char), sizeof(RawAdu5BFileSatelliteHeader_t), pFile);
-		      fwrite (&bFileChanObs[numSat] , sizeof(char), sizeof(RawAdu5BFileChanObs_t), pFile);
-		  }
 		  adu5OutputLength=1;
+		  numPbn++;
 		  continue;
-		}
-		else if(adu5OutputLength-1<69) continue;
+		} else if(adu5OutputLength-1<69) continue;
 	      }
+		  /* retVal=read(fdAdu5, tempData, DATA_SIZE);  */
+		  /* adu5Output[adu5OutputLength++]=tempData[i];  */
+	      else if (adu5Output[7]=='M' && adu5Output[8]=='C' && adu5Output[9]=='A') { 
+		//Handle MCA 
+		    if(adu5OutputLength-1==50) { 
+
+		      //Right length 
+		      /* printf("Got MCA\n"); */
+		      fillRawMBNStruct(adu5Output, adu5OutputLength-1, &mbnPtr);
+		      /* printf("fillRawMBNStruct returned %d\n",fillRawMBNStruct(adu5Output, adu5OutputLength-1, &mbnPtr));  */
+
+		      /* printf("MBN.header:\t%s\n",mbnPtr.header); */
+		      /* printf("MBN.sequence_tag:\t%u\n",mbnPtr.sequence_tag); */
+		      /* printf("MBN.full_phase:\t%g\n",mbnPtr.full_phase); */
+		      /* printf("MBN.doppler:\t%d\n",mbnPtr.doppler); */
+		      /* printf("MBN.smoothing:\t%d\n",mbnPtr.smoothing); */
+		      /* printf("MBN.checkSum:\t%u\n",mbnPtr.checkSum); */
+		      /* printf("MBN.carriageReturn:\t%d\n",mbnPtr.carriageReturn); */
+		      /* printf("MBN.lineFeed:\t%d\n",mbnPtr.lineFeed); */
+		      printf("Got MCA, sequence_tags: %u and %u numSat: %d\n", sequence_tag, mbnPtr.sequence_tag, numSat);
+		      if (sequence_tag==mbnPtr.sequence_tag){ 
+			numSat++;
+		      } else {
+			/* int isat=0; */
+			/* for (isat=0;isat<numSat;isat++){ */
+			/*   fwrite (&bFileSatHeader[isat] , sizeof(char), sizeof(RawAdu5BFileSatelliteHeader_t), pFile);  */
+			/*   fwrite (&bFileChanObs[isat] , sizeof(char), sizeof(RawAdu5BFileChanObs_t), pFile);  */
+			/* } */
+			
+			sequence_tag=mbnPtr.sequence_tag;
+			numSat=0;
+		      }
+		      fillBFileSatHeader(&bFileSatHeader[numSat], mbnPtr); 
+		      fillBFileChanObs(&bFileChanObs[numSat],  mbnPtr); 
+		  
+		      //		      fwrite (&bFileSatHeader[numSat] , sizeof(char), sizeof(RawAdu5BFileSatelliteHeader_t), pFile); 
+		      //		      fwrite (&bFileChanObs[numSat] , sizeof(char), sizeof(RawAdu5BFileChanObs_t), pFile); 
+
+		      adu5OutputLength=1; 
+		      continue; 
+		    }  else if(adu5OutputLength-1<50) continue;
+
+		  } 
 	      else if(adu5Output[7]=='S' && adu5Output[8]=='N' && adu5Output[9]=='V') {
 		if(adu5OutputLength-1==145) {
-		  printf("Got SNV\n");
-		  //Right length
-		  fillRawSNVStruct(adu5Output, adu5OutputLength, &snvPtr);
+		  /* printf("Got SNV\n"); */
+		  /* //Right length */
+		  /* fillRawSNVStruct(adu5Output, adu5OutputLength-1, &snvPtr); */
 
 		  adu5OutputLength=1;
 		  continue;
@@ -278,7 +301,7 @@ int main(int argc, char **argv) {
 	      }
 	      else if(adu5Output[7]=='T' && adu5Output[8]=='T' && adu5Output[9]=='T') {
 		if(adu5OutputLength-1==34) {
-		  printf("Got TTT\n");		
+		  /* printf("Got TTT\n");		 */
 		  //Right length
 		  
 		  adu5OutputLength=1;
@@ -329,7 +352,9 @@ int main(int argc, char **argv) {
     }
   }
   
+  printf("\nNumber of pbns received %d\n", numPbn);
   
   close(fdAdu5);
 
+  return 0; 
 }
