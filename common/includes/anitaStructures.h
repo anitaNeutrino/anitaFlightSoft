@@ -1491,6 +1491,57 @@ typedef struct __attribute__((packed)) RawAdu5BFileSatelliteHeader {
 }  RawAdu5BFileSatelliteHeader_t;
 
 
+//! This  is the E-file struct described on page 132 of the ADU5 manual
+/*!
+  This struct contains epheremis raw data. All of the comments come directly from the ADU5 manual
+*/
+typedef struct __attribute__((packed)) RawAdu5EFileStruct {
+  char prnnum; ///< (SV PRN number -1)
+  short weekNumber; ///< GPS week number.
+  int secondsInWeek; ///< Seconds of GPS week.
+  float groupDelay; ///< Group delay (sec).
+  int aodc; ///< Clock data issue.
+  int toc; ///< (sec).
+  float af2; ///< Clock: (sec/sec2)
+  float af1; ///< Clock (sec/sec)
+  float af0; ///< Clock (sec)
+  int aode; ///< Orbit data issue.
+  float deltaN; ///< Mean anomaly correction (semi-circle/sec).
+  double m0; ///< Mean anomaly at reference time (semi-circle).
+  double eccentricity; ///< Eccentricity.
+  double roota; ///< Square root of semi-major axis (meters p)
+  int toe; ///< Reference time for orbit (sec).
+  float cic; ///< Harmonic correction term (radians).
+  float crc; ///< Harmonic correction term (meters).
+  float cis; ///< Harmonic correction term (radians).
+  float crs; ///< Harmonic correction term (meters).
+  float cuc; ///< Harmonic correction term (radians).
+  float cus; ///< Harmonic correction term (radians).
+  double omega0; ///< Lon of Asc. node (semi-circles).
+  double omega; ///< Arg. of Perigee (semi-circles).
+  double i0; ///< Inclination angle at reference time (semi-circles).
+  float omegadot; ///< Rate of right Asc. (semi-circles per sec).
+  float idot; ///< Rate of inclination (semi-circles per sec).
+  short accuracy; ///< (coded).
+  short health; ///< (coded).
+  short fit; ///< Curve fit interval (coded).
+} RawAdu5EFileStruct_t;
+
+//! This is the A-file struct described on page 114 of the ADU5 manual
+/*!
+  A-file contains attitude information. All of the comments come directly from the ADU5 manual
+*/
+typedef struct __attribute__((packed)) RawAdu5AFileStruct {
+  double head; ///< Heading in degrees
+  double roll; ///< Roll in degrees
+  double pitch; ///< Pitch in degrees
+  double brms; ///< BRMS in meters
+  double mrms; ///< MRMS in meters
+  int timeOfWeek; ///< Seconds-of-Week in milliseconds
+  char reset; ///< Attitude reset flag
+  char spare; ///< Spare byte which is not used                                                                                                        
+} RawAdu5AFileStruct_t;
+
 ///////////////////////////////////////////////////////////////////////
 //Utility Structures
 //////////////////////////////////////////////////////////////////////

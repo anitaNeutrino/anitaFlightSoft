@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets = readCalibAdu5DataFiles makeCalibAdu5DataFiles adu5_command adu5_file adu5_output g12_command adu5_test setG12PPS
+Targets = readCalibAdu5DataFiles makeCalibAdu5DataFiles adu5_command adu5_file adu5_output g12_command adu5_test setG12PPS readCalibAdu5DataEFile
 
 all: $(Targets)
 

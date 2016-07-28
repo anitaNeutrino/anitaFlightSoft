@@ -102,12 +102,35 @@ int fillRawSNVStruct(char *inputStream, int length, RawAdu5SNVStruct_t *snvPtr){
   
   memcpy(snvPtr, inputStream, sizeof(RawAdu5SNVStruct_t ));
 
-  if (calculateSumOfWords( ((char*)&snvPtr->weekNumber), offsetof(RawAdu5SNVStruct_t,checkSum)-offsetof(RawAdu5SNVStruct_t,weekNumber) )!=snvPtr->checkSum ){ 
-    printf("Check sum problem \n");
-    return -1;
-  } 
+  /* if (calculateSumOfWords( ((char*)&snvPtr->weekNumber), offsetof(RawAdu5SNVStruct_t,checkSum)-offsetof(RawAdu5SNVStruct_t,weekNumber) )!=snvPtr->checkSum ){  */
+  /*   printf("Check sum problem \n"); */
+  /*   return -1; */
+  /* }  */
   
-
+  swapIntBytes(&snvPtr->secondsInWeek);
+  swapFloatBytes(&snvPtr->groupDelay);
+  swapIntBytes(&snvPtr->aodc);
+  swapIntBytes(&snvPtr->toc);
+  swapFloatBytes(&snvPtr->af2);
+  swapFloatBytes(&snvPtr->af1);
+  swapFloatBytes(&snvPtr->af0);
+  swapIntBytes(&snvPtr->aode);
+  swapFloatBytes(&snvPtr->deltaN);
+  swapDoubleBytes(&snvPtr->m0);
+  swapDoubleBytes(&snvPtr->eccentricity);
+  swapDoubleBytes(&snvPtr->roota);
+  swapIntBytes(&snvPtr->toe);
+  swapFloatBytes(&snvPtr->cic);
+  swapFloatBytes(&snvPtr->crc);
+  swapFloatBytes(&snvPtr->cis);
+  swapFloatBytes(&snvPtr->crs);
+  swapFloatBytes(&snvPtr->cuc);
+  swapFloatBytes(&snvPtr->cus);
+  swapDoubleBytes(&snvPtr->omega0);
+  swapDoubleBytes(&snvPtr->omega);
+  swapDoubleBytes(&snvPtr->i0);
+  swapFloatBytes(&snvPtr->omegadot);
+  swapFloatBytes(&snvPtr->idot);
 
   return 0;
 }
@@ -118,10 +141,17 @@ int fillRawATTStruct(char *inputStream, int length, RawAdu5ATTStruct_t *attPtr){
   
   memcpy(attPtr, inputStream, sizeof(RawAdu5ATTStruct_t ));
 
-  if (calculateSumOfWords( ((char*)&attPtr->head), offsetof(RawAdu5ATTStruct_t,checkSum)-offsetof(RawAdu5ATTStruct_t,head) )!=attPtr->checkSum ){ 
-    printf("Check sum problem \n");
-    return -1;
-  } 
+  /* if (calculateSumOfWords( ((char*)&attPtr->head), offsetof(RawAdu5ATTStruct_t,checkSum)-offsetof(RawAdu5ATTStruct_t,head) )!=attPtr->checkSum ){  */
+  /*   printf("Check sum problem \n"); */
+  /*   return -1; */
+  /* }  */
+  
+  swapDoubleBytes(&attPtr->head);
+  swapDoubleBytes(&attPtr->roll);
+  swapDoubleBytes(&attPtr->pitch);
+  swapDoubleBytes(&attPtr->brms);
+  swapDoubleBytes(&attPtr->mrms);
+  swapIntBytes(&attPtr->timeOfWeek);
 
   return 0;
 }

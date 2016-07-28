@@ -35,7 +35,6 @@ int main(int argc, char **argv) {
   struct RawAdu5BFileRawNav bFileRawNav;
   struct RawAdu5BFileSatelliteHeader bFileSatHeader[100]; //Arbitray large array
   struct RawAdu5BFileChanObs bFileChanObs[100];
-
   
   FILE *bFilePtr;
 
@@ -65,41 +64,41 @@ int main(int argc, char **argv) {
     if(numObjs<1) break;
     countStuff++;
     
-    printf("bFileRawNav.sitename:\t%s\n",bFileRawNav.sitename);
-    printf("bFileRawNav.rcv_time:\t%lf\n",bFileRawNav.rcv_time);
-    printf("bFileRawNav.navx:\t%lf\n",bFileRawNav.navx);
-    printf("bFileRawNav.navy:\t%lf\n",bFileRawNav.navy);
-    printf("bFileRawNav.navz:\t%lf\n",bFileRawNav.navz);
-    printf("bFileRawNav.navxdot:\t%f\n",bFileRawNav.navxdot);
-    printf("bFileRawNav.navydot:\t%f\n",bFileRawNav.navydot);
-    printf("bFileRawNav.navzdot:\t%f\n",bFileRawNav.navzdot);
-    printf("bFileRawNav.navt:\t%lf\n",bFileRawNav.navt);
-    printf("bFileRawNav.navtdot:\t%lf\n",bFileRawNav.navtdot);
-    printf("bFileRawNav.pdop:\t%d\n",bFileRawNav.pdop);
-    printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav.num_sats);
+    /* printf("bFileRawNav.sitename:\t%s\n",bFileRawNav.sitename); */
+    /* printf("bFileRawNav.rcv_time:\t%lf\n",bFileRawNav.rcv_time); */
+    /* printf("bFileRawNav.navx:\t%lf\n",bFileRawNav.navx); */
+    /* printf("bFileRawNav.navy:\t%lf\n",bFileRawNav.navy); */
+    /* printf("bFileRawNav.navz:\t%lf\n",bFileRawNav.navz); */
+    /* printf("bFileRawNav.navxdot:\t%f\n",bFileRawNav.navxdot); */
+    /* printf("bFileRawNav.navydot:\t%f\n",bFileRawNav.navydot); */
+    /* printf("bFileRawNav.navzdot:\t%f\n",bFileRawNav.navzdot); */
+    /* printf("bFileRawNav.navt:\t%lf\n",bFileRawNav.navt); */
+    /* printf("bFileRawNav.navtdot:\t%lf\n",bFileRawNav.navtdot); */
+    /* printf("bFileRawNav.pdop:\t%d\n",bFileRawNav.pdop); */
+    /* printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav.num_sats); */
     
 
     //    return 1;
     int satNum=0;
     for(satNum=0;satNum<(int)bFileRawNav.num_sats;satNum++) {
       fread(&bFileSatHeader[satNum],sizeof(RawAdu5BFileSatelliteHeader_t),1,bFilePtr);
-      printf("bFileSatHeader[%d].svprn:\t%d\n",satNum,(int)bFileSatHeader[satNum].svprn);
-      printf("bFileSatHeader[%d].elevation:\t%d\n",satNum,(int)bFileSatHeader[satNum].elevation);
-      printf("bFileSatHeader[%d].azimuth:\t%d\n",satNum,(int)bFileSatHeader[satNum].azimuth);
-      printf("bFileSatHeader[%d].chnind:\t%d\n",satNum,(int)bFileSatHeader[satNum].chnind);
+      /* printf("bFileSatHeader[%d].svprn:\t%d\n",satNum,(int)bFileSatHeader[satNum].svprn); */
+      /* printf("bFileSatHeader[%d].elevation:\t%d\n",satNum,(int)bFileSatHeader[satNum].elevation); */
+      /* printf("bFileSatHeader[%d].azimuth:\t%d\n",satNum,(int)bFileSatHeader[satNum].azimuth); */
+      /* printf("bFileSatHeader[%d].chnind:\t%d\n",satNum,(int)bFileSatHeader[satNum].chnind); */
       
       
       fread(&bFileChanObs[satNum],sizeof(RawAdu5BFileChanObs_t),1,bFilePtr);
-      printf("bFileChanObs[%d].raw_range:\t%lf\n",satNum,bFileChanObs[satNum].raw_range);
-      printf("bFileChanObs[%d].smth_corr:\t%f\n",satNum,bFileChanObs[satNum].smth_corr);
-      printf("bFileChanObs[%d].smth_count:\t%d\n",satNum,bFileChanObs[satNum].smth_count);
-      printf("bFileChanObs[%d].polarity_known:\t%d\n",satNum,(int)bFileChanObs[satNum].polarity_known);
-      printf("bFileChanObs[%d].warning:\t%d\n",satNum,(int)bFileChanObs[satNum].warning);
-      printf("bFileChanObs[%d].goodbad:\t%d\n",satNum,(int)bFileChanObs[satNum].goodbad);
-      printf("bFileChanObs[%d].ireg:\t%d\n",satNum,(int)bFileChanObs[satNum].ireg);
-      printf("bFileChanObs[%d].qa_phase:\t%d\n",satNum,(int)bFileChanObs[satNum].qa_phase);
-      printf("bFileChanObs[%d].doppler:\t%d\n",satNum,bFileChanObs[satNum].doppler);
-      printf("bFileChanObs[%d].carphase:\t%lf\n",satNum,bFileChanObs[satNum].carphase);
+      /* printf("bFileChanObs[%d].raw_range:\t%lf\n",satNum,bFileChanObs[satNum].raw_range); */
+      /* printf("bFileChanObs[%d].smth_corr:\t%f\n",satNum,bFileChanObs[satNum].smth_corr); */
+      /* printf("bFileChanObs[%d].smth_count:\t%d\n",satNum,bFileChanObs[satNum].smth_count); */
+      /* printf("bFileChanObs[%d].polarity_known:\t%d\n",satNum,(int)bFileChanObs[satNum].polarity_known); */
+      /* printf("bFileChanObs[%d].warning:\t%d\n",satNum,(int)bFileChanObs[satNum].warning); */
+      /* printf("bFileChanObs[%d].goodbad:\t%d\n",satNum,(int)bFileChanObs[satNum].goodbad); */
+      /* printf("bFileChanObs[%d].ireg:\t%d\n",satNum,(int)bFileChanObs[satNum].ireg); */
+      /* printf("bFileChanObs[%d].qa_phase:\t%d\n",satNum,(int)bFileChanObs[satNum].qa_phase); */
+      /* printf("bFileChanObs[%d].doppler:\t%d\n",satNum,bFileChanObs[satNum].doppler); */
+      /* printf("bFileChanObs[%d].carphase:\t%lf\n",satNum,bFileChanObs[satNum].carphase); */
       //    break;
     }
   }
