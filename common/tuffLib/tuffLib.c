@@ -245,14 +245,26 @@ int tuff_setPhiSectors(tuff_dev_t * d,
   return write(d->fd, buf, strlen(buf));
 }
 
-void tuff_waitForAck(tuff_dev_t * d,
-			unsigned int irfcm) {
+int tuff_waitForAck(tuff_dev_t * d,
+                     unsigned int irfcm,
+                     int timeout)
+{
   unsigned char nb;
   unsigned char c;
   char *p;
   unsigned int check_irfcm;
+  int rv; 
+  fd_set set; 
+  struct timeval tv; 
   nb = 0;
   while (1) {
+    FD_ZERO(&set); 
+    FD_SET(d->fd, &set); 
+    tv.tv_sec = timeout; 
+    tv.tv_usec = 0; 
+    rv = select(d->fd+1, &set, 0,0, &tv); 
+    if (rv ==0) return 1; 
+    if (rv == -1) return 2; 
     read(d->fd, &c, 1);
     if (c == '\n') {
       buf[nb] = 0;
@@ -271,6 +283,7 @@ void tuff_waitForAck(tuff_dev_t * d,
       nb++;
     }
   }  
+  return 0; 
 }
 
 

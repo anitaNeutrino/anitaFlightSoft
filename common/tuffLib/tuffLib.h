@@ -97,10 +97,14 @@ int tuff_setQuietMode(tuff_dev_t * d,
  * for the JSON message!
  *
  * This SHOULD NOT BE CALLED if the TUFFs are in quiet mode.
- * It'll hang forever.
+ * It'll just timeout. 
+ *
+ * Returns 0 if ack received. 
+ *
+ *
  */
-void tuff_waitForAck(tuff_dev_t * d,
-			unsigned int irfcm);
+int tuff_waitForAck(tuff_dev_t * d,
+			unsigned int irfcm, int timeout);
 
 /** \brief Saves the current capacitor values to default.
  *
