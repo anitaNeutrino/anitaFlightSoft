@@ -7,7 +7,7 @@ export ANITA_CONFIG_DIR=${ANITA_FLIGHT_SOFT_DIR}/config
 export PATH=${ANITA_FLIGHT_SOFT_DIR}/bin:${PATH}
 export LD_LIBRARY_PATH=${ANITA_FLIGHT_SOFT_DIR}/lib:${LD_LIBRARY_PATH}
 
-#X  2>&1 > /dev/null &
+X  2>&1 > /dev/null &
 DISPLAY=:0 xhost +
 
 daemon -u anita -r SIPd -n SIPd
@@ -34,6 +34,8 @@ daemon -u anita -r Monitord -n Monitord
 daemon -u anita -r Calibd -n Calibd
 daemon -u anita -r Playbackd -n Playbackd
 daemon -u anita -r LogWatchd -n LogWatchd
+daemon -u anita -r RTLd -n RTLd
+daemon -u anita -r Tuffd -n Tuffd
 daemon -u anita -r checkNtu.py -n checkNtu.py
 sleep 2
 /usr/sbin/runuser -u anita CmdTest 133 0 32
