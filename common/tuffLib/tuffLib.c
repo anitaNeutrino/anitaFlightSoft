@@ -20,6 +20,7 @@ struct tuff_dev
 
 
 
+/*
 // eats all available bytes. Yummy! 
 static int bytegobbler(int fd) 
 {
@@ -36,6 +37,7 @@ static int bytegobbler(int fd)
 
   return nread; 
 }
+*/
 
 
 
@@ -351,7 +353,8 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
   int i; 
   unsigned char c; 
   float ret; 
-  bytegobbler(d->fd);  //EAT MOAR BYTES 
+  char *p; 
+//  bytegobbler(d->fd);  //EAT MOAR BYTES 
   sprintf(buf,"\r\n{\"monitor\": %d}\r\n", irfcm); 
   write(d->fd, buf, strlen(buf)); 
 
@@ -363,16 +366,25 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
     if (c == '\n')
     {
       buf[i] = 0; 
-      break; 
+      p = strstr(buf, "temp\":"); 
+      if (p)
+      {
+        sscanf(p, "temp\":%f}", &ret); 
+        return ret; 
+      }
     }
     else
     {
       buf[i++] = c; 
+
+      if (i > sizeof(buf))
+      {
+        i = sizeof(buf)/2; 
+        memcpy(buf , buf + sizeof(buf)/2, sizeof(buf)/2); 
+      }
+
     }
   }
-
-  sscanf(buf, "{\"temp\":%f}", &ret); 
-  return ret; 
 }
 
 int tuff_getfd(tuff_dev_t * dev) 
