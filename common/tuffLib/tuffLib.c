@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <syslog.h>
 #include <fcntl.h>
 #include <sys/select.h>
 
@@ -395,6 +396,14 @@ int tuff_getfd(tuff_dev_t * dev)
 
 int tuff_rawCommand(tuff_dev_t * d, unsigned int irfcm,  unsigned int tuffStack, unsigned int cmd)
 {
+
+  if ( (cmd & 0xE0) == 0x40) 
+  {
+    fprintf(stderr, "Prevented dangerous raw TUFF command  (%x) from being sent, cmd\n",cmd); 
+    syslog(LOG_ERR, "Prevented dangerous raw TUFF command  (%x) from being sent, cmd\n",cmd); 
+    return 1; 
+  }
+
   sprintf(buf, "\r\n{\"raw\":[%d,%d,%d]}\r\n",
 	    irfcm,
 	    tuffStack,
