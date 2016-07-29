@@ -19,9 +19,31 @@
 
 
 //#define GPS_BAUDRATE B9600
+#define DEFAULT_GPS_BAUDRATE B9600
 #define GPS_BAUDRATE B115200
 #define GPS_NTP_BAUDRATE B4800
 #define MAGNETOMETER_BAUDRATE B38400
+
+int openGpsDeviceToSetSpeed(char devName[])
+/*! Does exactly what it says on the tin
+ */
+{
+    int retVal,fd;
+    retVal=toggleCRTCTS(devName);
+    if(retVal<0) return retVal;
+    fd = open(devName, O_RDWR | O_NOCTTY);
+    if(fd<0) { 	
+	syslog(LOG_ERR,"open %s: %s\n",devName,strerror(errno)); 
+	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
+	return -1;
+    }
+    retVal=setGpsTerminalOptions(fd,0,1);
+    if(retVal<0) {
+	close(fd);
+	return retVal;
+    }
+    return fd;
+}
 
 int openGpsDevice(char devName[])
 /*! Does exactly what it says on the tin
@@ -36,7 +58,7 @@ int openGpsDevice(char devName[])
 	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
 	return -1;
     }
-    retVal=setGpsTerminalOptions(fd,0);
+    retVal=setGpsTerminalOptions(fd,0,0);
     if(retVal<0) {
 	close(fd);
 	return retVal;
@@ -57,7 +79,7 @@ int openGpsNtpDevice(char devName[])
 	fprintf(stderr,"open %s: %s\n",devName,strerror(errno)); 
 	return -1;
     }
-    retVal=setGpsTerminalOptions(fd,1);
+    retVal=setGpsTerminalOptions(fd,1,0);
     if(retVal<0) {
 	close(fd);
 	return retVal;
@@ -86,7 +108,7 @@ int openMagnetometerDevice(char devName[])
     return fd;
 }
 
-int setGpsTerminalOptions(int fd,int isNtp)
+int setGpsTerminalOptions(int fd,int isNtp,int isFirstTime)
 /*! Sets the various termios options needed. 
 */
 {
@@ -116,6 +138,14 @@ int setGpsTerminalOptions(int fd,int isNtp)
 	cfsetispeed(&options, GPS_BAUDRATE);    /* set input speed */
 	cfsetospeed(&options, GPS_BAUDRATE);    /* set output speed */
     }
+
+    if(isFirstTime) {
+      //default to B9600
+      cfsetispeed(&options,DEFAULT_GPS_BAUDRATE);
+      cfsetospeed(&options,DEFAULT_GPS_BAUDRATE);
+    }
+      
+    
 
     options.c_cflag &= ~PARENB;         /* clear the parity bit  */
     options.c_cflag &= ~CSTOPB;         /* clear the stop bit  */

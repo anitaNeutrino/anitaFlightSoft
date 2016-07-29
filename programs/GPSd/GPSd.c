@@ -32,6 +32,7 @@
 
 // Forward declarations
 int readConfigFile();
+int openDevicesToSetSpeed();
 int openDevices();
 int setupG12();
 int setupAdu5A();
@@ -271,6 +272,7 @@ int main (int argc, char *argv[])
 	printf("Problem reading GPSd.config\n");
 	handleBadSigs(1000);
     }
+    openDevicesToSetSpeed();
     retVal=openDevices();
     prepWriterStructs();
 
@@ -607,6 +609,64 @@ int openDevices()
 }
 
 
+int openDevicesToSetSpeed()
+/*!
+  Open connections to the GPS just to send the speed message
+*/
+{
+    int retVal;
+    int tempFdG12=0,tempFdAdu5A=0,tempFdAdu5B=0;
+// Initialize the various devices    
+    retVal=openGpsDeviceToSetSpeed(G12A_DEV_NAME);
+    if(retVal<=0) {
+	syslog(LOG_ERR,"Couldn't open: %s\n",G12A_DEV_NAME);
+	if(printToScreen) printf("Couldn't open: %s\n",G12A_DEV_NAME);
+	handleBadSigs(1001);
+    }
+    else tempFdG12=retVal;
+    char tempCommand[180];
+    char tempCommand2[180];
+    sprintf(tempCommand,"$PASHS,SPD,A,9\n"); //Data
+    sprint(tempCommand2,"$PASHS,SPD,B,4\n");
+    strcat(tempCommand,tempCommand2);    
+    retVal=write(tempFdG12, tempCommand, strlen(tempCommand));
+    close(tempFdG12);
+
+    
+    retVal=openGpsDeviceToSetSpeed(ADU5A_DEV_NAME);	
+    if(retVal<=0) {
+	syslog(LOG_ERR,"Couldn't open: %s\n",ADU5A_DEV_NAME);
+	if(printToScreen) printf("Couldn't open: %s\n",ADU5A_DEV_NAME);
+	handleBadSigs(1);
+    }
+    else tempFdAdu5A=retVal;
+    
+    sprintf(tempCommand,"$PASHS,SPD,A,9\n");
+    sprint(tempCommand2,"$PASHS,SPD,B,9\n");
+    strcat(tempCommand,tempCommand2);    
+    retVal=write(tempFdAdu5A, tempCommand, strlen(tempCommand));
+    close(tempFdAdu5A);
+
+    retVal=openGpsDeviceToSetSpeed(ADU5B_DEV_NAME);	
+    if(retVal<=0) {
+	syslog(LOG_ERR,"Couldn't open: %s\n",ADU5B_DEV_NAME);
+	if(printToScreen) printf("Couldn't open: %s\n",ADU5B_DEV_NAME);
+	handleBadSigs(1);
+    }
+    else tempFdAdu5B=retVal;
+
+    sprintf(tempCommand,"$PASHS,SPD,A,9\n");
+    sprint(tempCommand2,"$PASHS,SPD,B,9\n");
+    strcat(tempCommand,tempCommand2);    
+    retVal=write(tempFdAdu5B, tempCommand, strlen(tempCommand));
+    close(tempFdAdu5B);
+
+    
+    //    printf("%s %s %s\n",G12A_DEV_NAME,ADU5A_DEV_NAME,ADU5B_DEV_NAME);
+    return 0;
+}
+
+
 int setupG12()
 /*! Initializes the G12 with the correct PPS and ZDA settings */
 {
@@ -675,9 +735,10 @@ int setupG12()
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",dataPort,g12SatPeriod);
     strcat(g12Command,tempCommand);
- 
-    //    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);
-    sprintf(tempCommand,"$PASHS,SPD,%c,9\n",ntpPort);
+
+    sprintf(tempCommand,"$PASHS,SPD,%c,9\n",dataPort);
+    strcat(g12Command,tempCommand);
+    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);
     strcat(g12Command,tempCommand);
@@ -2211,7 +2272,8 @@ int setupAdu5B()
 	}
     }
 
-    sprintf(adu5bCommand,"$PASHS,SPD,B,9\r\n");
+    sprintf(adu5bCommand,"$PASHS,SPD,A,9\r\n");
+    strcat(adu5bCommand,"$PASHS,SPD,B,9\r\n");
     strcat(adu5bCommand,"$PASHQ,PRT\r\n");
     strcat(adu5bCommand,"$PASHQ,RIO\r\n");
     strcat(adu5bCommand,"$PASHQ,BIT\r\n");

@@ -32,11 +32,12 @@
 #define CHARACTER_SIZE CS8
 
 /* Function that just toggles the CRTSCTS flag, needed after a reboot for some reason. */
+int openGpsDeviceToSetSpeed(char devName[]);
 int openGpsDevice(char devName[]);
 int openGpsNtpDevice(char devName[]);
 int openMagnetometerDevice(char devName[]);
 int toggleCRTCTS(char devName[]);
-int setGpsTerminalOptions(int fd,int isNtp);
+int setGpsTerminalOptions(int fd,int isNtp,int isFirstTime);
 int setMagnetometerTerminalOptions(int fd);
 
 int isThereDataNow(int filedes);
