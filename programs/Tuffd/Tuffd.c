@@ -296,6 +296,7 @@ int main(int nargs, char ** args)
   unsigned int irfcmList[NUM_RFCM]; 
   int numPongs; 
   int wd; 
+  int nattempts = 0; 
 
 
   retVal = sortOutPidFile(args[0]); 
@@ -337,7 +338,28 @@ int main(int nargs, char ** args)
 
     printf("Resetting RFCM %d\n", i); 
     tuff_reset(device, i); 
-    tuff_waitForAck(device,i); 
+    tuff_setQuietMode(device, 0); //just in case
+
+    if(tuff_waitForAck(device,i,3))
+    {
+      fprintf(stderr, "Did not get ack from TUFF %d in 3 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
+      syslog(nattempts < 10 ? LOG_INFO : LOG_ERR, "Did not get ack from TUFF %d in 3 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
+      nattempts++; 
+
+      if (nattempts == 100) //give up eventually 
+      {
+        syslog(LOG_ERR, "Tuffd giving up after 100 bad attempts\n"); 
+        fprintf(stderr, "Tuffd giving up after 100 bad attempts\n"); 
+
+        return 1; 
+      }
+
+      i--; 
+      continue; 
+    }
+
+    nattempts = 0; 
+
     printf("Ack Received for %d\n", i); 
   }
 
