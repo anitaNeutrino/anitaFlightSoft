@@ -17,6 +17,8 @@ int main (int argc, char ** argv)
   for (i = 0; i < NUM_IRFCM; i++) 
   {
     printf("Sending reset to IRFCM %d\n", i); 
+    tuff_setQuietMode(dev,false); 
+
     tuff_reset(dev, i); 
 
     tuff_waitForAck(dev,i); 
