@@ -30,7 +30,7 @@ int main(int argc, char **argv)
   
   tuff_updateCaps(dev, irfcm, channel);
   // wait for cap ack
-  tuff_waitForAck(dev, irfcm);
+  tuff_waitForAck(dev, irfcm,-1);
   printf("got ack; cap set complete\n");
 
 

@@ -21,7 +21,8 @@ int main (int argc, char ** argv)
 
     tuff_reset(dev, i); 
 
-    tuff_waitForAck(dev,i); 
+    tuff_setQuietMode(dev,false); 
+    tuff_waitForAck(dev,i,-1); 
     printf("Got ack from %d!\n", i); 
 
 

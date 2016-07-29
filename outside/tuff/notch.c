@@ -32,9 +32,9 @@ int main(int argc, char **argv)
 
   tuff_setChannelNotches(dev, irfcm, channel, notch);
   // wait for on ack
-  tuff_waitForAck(dev, irfcm);
+  tuff_waitForAck(dev, irfcm,-1);
   // wait for off ack
-  tuff_waitForAck(dev, irfcm);
+  tuff_waitForAck(dev, irfcm,-1);
 
   tuff_close(dev); 
   return 0; 

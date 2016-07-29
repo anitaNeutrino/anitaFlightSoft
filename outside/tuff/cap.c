@@ -42,7 +42,7 @@ int main(int argc, char **argv)
   tuff_setCap(dev, irfcm, channel, notch, cap);
 
   // wait for cap ack
-  tuff_waitForAck(dev, irfcm);
+  tuff_waitForAck(dev, irfcm,-1);
   printf("got ack; cap set complete\n");
 
 

@@ -29,7 +29,7 @@ int main (int argc, char ** argv)
   {
     printf("Sending %s to IRFCM %d\n", phi_sector_assignments[i], i); 
     write(fd, phi_sector_assignments[i], strlen(phi_sector_assignments[i])+1); 
-    tuff_waitForAck(dev,i); 
+    tuff_waitForAck(dev,i,-1); 
     printf("Got ack!\n"); 
   }
 
