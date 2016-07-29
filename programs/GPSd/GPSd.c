@@ -676,7 +676,8 @@ int setupG12()
     sprintf(tempCommand,"$PASHS,NME,SAT,%c,ON,%d\n",dataPort,g12SatPeriod);
     strcat(g12Command,tempCommand);
  
-    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);
+    //    sprintf(tempCommand,"$PASHS,SPD,%c,4\n",ntpPort);
+    sprintf(tempCommand,"$PASHS,SPD,%c,9\n",ntpPort);
     strcat(g12Command,tempCommand);
     sprintf(tempCommand,"$PASHS,NME,RMC,%c,ON,1\n",ntpPort);
     strcat(g12Command,tempCommand);
@@ -2120,6 +2121,9 @@ int setupAdu5A()
 	}
     }
 
+    // Temporary changing the baud rate to 115200
+    strcat(adu5aCommand,"$PASHS,SPD,A,9\r\n");
+
     strcat(adu5aCommand,"$PASHQ,PRT\r\n");
     strcat(adu5aCommand,"$PASHQ,RIO\r\n");
     strcat(adu5aCommand,"$PASHQ,BIT\r\n");
@@ -2165,6 +2169,7 @@ int setupAdu5A()
     strcat(adu5aCommand,"$PASHQ,3DF\r\n");
     if(adu5aEnableTtt) strcat(adu5aCommand,"$PASHS,NME,TTT,A,ON\r\n");
 
+
     if(printToScreen) printf("ADU5A:\n%s\n%s\n",ADU5A_DEV_NAME,adu5aCommand);
     retVal=write(fdAdu5A, adu5aCommand, strlen(adu5aCommand));
     if(retVal<0) {
@@ -2206,6 +2211,7 @@ int setupAdu5B()
 	}
     }
 
+    sprintf(adu5bCommand,"$PASHS,SPD,B,9\r\n");
     strcat(adu5bCommand,"$PASHQ,PRT\r\n");
     strcat(adu5bCommand,"$PASHQ,RIO\r\n");
     strcat(adu5bCommand,"$PASHQ,BIT\r\n");
