@@ -17,7 +17,9 @@
 
 #include "serialLib/serialLib.h"
 
-#define GPS_BAUDRATE B9600
+
+//#define GPS_BAUDRATE B9600
+#define GPS_BAUDRATE B115200
 #define GPS_NTP_BAUDRATE B4800
 #define MAGNETOMETER_BAUDRATE B38400
 
