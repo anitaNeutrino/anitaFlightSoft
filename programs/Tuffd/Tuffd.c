@@ -293,8 +293,6 @@ int main(int nargs, char ** args)
   int retVal; 
   int justChanged; 
   int i;
-  unsigned int irfcmList[NUM_RFCM]; 
-  int numPongs; 
   int wd; 
   int nattempts = 0; 
 
@@ -322,54 +320,45 @@ int main(int nargs, char ** args)
     return 1; 
   }
  
-  // check if we can talk to it and reset 
+
+
+
+
+  // reset and ping the tuffs 
   for (i = 0; i < NUM_RFCM; i++) 
   {
-    irfcmList[i] = i; 
-  }
-
-  
-
-  // reset the tuffs 
-  for (i = 0; i < NUM_RFCM; i++) 
-  {
-    //just in case
-    tuff_setQuietMode(device, 0); 
-
-    printf("Resetting RFCM %d\n", i); 
-    tuff_reset(device, i); 
-    tuff_setQuietMode(device, 0); //just in case
-
-    if(tuff_waitForAck(device,i,3))
+    //first try to ping them 
+    
+    unsigned rfcm = i ; 
+    int gotit = tuff_pingiRFCM(device,3,1,&rfcm); 
+    printf("%d %d\n", i, gotit) ; 
+      
+    
+    if (!gotit) 
     {
-      fprintf(stderr, "Did not get ack from TUFF %d in 3 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
-      syslog(nattempts < 10 ? LOG_INFO : LOG_ERR, "Did not get ack from TUFF %d in 3 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
-      nattempts++; 
-
-      if (nattempts == 100) //give up eventually 
+      printf("Resetting RFCM %d\n", i); 
+      tuff_reset(device, i); 
+      sleep(1); 
+      if(!tuff_pingiRFCM(device,10,1,&rfcm))
       {
-        syslog(LOG_ERR, "Tuffd giving up after 100 bad attempts\n"); 
-        fprintf(stderr, "Tuffd giving up after 100 bad attempts\n"); 
+        fprintf(stderr, "Did not get ping from TUFF %d in 10 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
+        syslog(nattempts < 10 ? LOG_INFO : LOG_ERR, "Did not get ping from TUFF %d in 10 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
+        nattempts++; 
 
-        return 1; 
+        if (nattempts == 100) //give up eventually 
+        {
+          syslog(LOG_ERR, "Tuffd giving up after 100 bad attempts\n"); 
+          fprintf(stderr, "Tuffd giving up after 100 bad attempts\n"); 
+          return 1; 
+        }
+
+        i--; 
+        continue; 
       }
 
-      i--; 
-      continue; 
     }
-
     nattempts = 0; 
-
-    printf("Ack Received for %d\n", i); 
-  }
-
-  tuff_setQuietMode(device, false); 
-  numPongs = tuff_pingiRFCM(device, 10, NUM_RFCM, irfcmList); 
-  if (numPongs!= NUM_RFCM)
-  {
-    syslog(LOG_ERR," Tuffd could not get pongs from all of the IRFCM's! Heard %d pongs.\n", numPongs); 
-    cleanup(); 
-    return 2; 
+    printf("Ping received for %u\n", i); 
   }
 
   //shut them up
