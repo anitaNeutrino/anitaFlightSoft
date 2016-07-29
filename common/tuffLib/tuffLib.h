@@ -99,6 +99,8 @@ int tuff_setQuietMode(tuff_dev_t * d,
  * This SHOULD NOT BE CALLED if the TUFFs are in quiet mode.
  * It'll just timeout. 
  *
+ * Use negative timeout for no timeout. 
+ *
  * Returns 0 if ack received. 
  *
  *

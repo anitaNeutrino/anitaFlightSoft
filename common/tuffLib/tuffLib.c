@@ -260,9 +260,12 @@ int tuff_waitForAck(tuff_dev_t * d,
   while (1) {
     FD_ZERO(&set); 
     FD_SET(d->fd, &set); 
-    tv.tv_sec = timeout; 
-    tv.tv_usec = 0; 
-    rv = select(d->fd+1, &set, 0,0, &tv); 
+    if (timeout > 0) 
+    {
+      tv.tv_sec = timeout; 
+      tv.tv_usec = 0; 
+    }
+    rv = select(d->fd+1, &set, 0,0, timeout > 0 ? &tv: 0); 
     if (rv ==0) return 1; 
     if (rv == -1) return 2; 
     read(d->fd, &c, 1);
