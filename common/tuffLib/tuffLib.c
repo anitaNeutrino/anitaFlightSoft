@@ -413,7 +413,7 @@ int tuff_getfd(tuff_dev_t * dev)
 int tuff_rawCommand(tuff_dev_t * d, unsigned int irfcm,  unsigned int tuffStack, unsigned int cmd)
 {
 
-  if ( (cmd & 0xE0) == 0x40) 
+  if ( ((cmd & 0xE0) == 0x40) || (cmd & 0x8000)) 
   {
     fprintf(stderr, "Prevented dangerous raw TUFF command  (%x) from being sent, cmd\n",cmd); 
     syslog(LOG_ERR, "Prevented dangerous raw TUFF command  (%x) from being sent, cmd\n",cmd); 
