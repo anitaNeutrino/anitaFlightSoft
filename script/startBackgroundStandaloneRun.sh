@@ -14,6 +14,7 @@ daemon --stop -n Prioritizerd
 daemon --stop -n Eventd
 daemon --stop -n LogWatchd
 daemon --stop -n RTLd
+daemon --stop -n Tuffd
 
 
 
@@ -67,6 +68,7 @@ daemon -r Monitord -n Monitord
 daemon -r Calibd -n Calibd
 daemon -r LogWatchd -n LogWatchd
 daemon -r RTLd -n RTLd 
+daemon -r Tuffd -n Tuffd 
 
 #Just to make sure
 daemon -r Prioritizerd -n Prioritizerd 

@@ -12,6 +12,7 @@ daemon --stop -n Eventd
 daemon --stop -n LogWatchd
 daemon --stop -n NTUd
 daemon --stop -n RTLd 
+daemon --stop -n Tuffd 
 #daemon --stop -n Openportd
 
 
@@ -70,6 +71,7 @@ daemon -r SIPd -n SIPd
 daemon -r Playbackd -n Playbackd
 daemon -r NTUd -n NTUd
 daemon -r RTLd -n RTLd 
+daemon -r Tuffd -n Tuffd 
 #daemon -r Openportd -n Openportd
 
 #LD_PRELOAD=/usr/lib64/libprofiler.so CPUPROFILE=/tmp/acqd.prof /home/anita/flightSoft/bin/Acqd
