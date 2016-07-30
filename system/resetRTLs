@@ -1,0 +1,2 @@
+#! /bin/sh
+/home/anita/flightSoft/bin/usbreset 110a:0407

@@ -12,12 +12,16 @@
 
 */ 
 
+
+#define RESET_USB_HUB_COMMAND "systemctl start rtlrestart"
+
 /* Flight software */ 
 #include "includes/anitaFlight.h" 
 #include "includes/anitaStructures.h" 
 #include "kvpLib/keyValuePair.h" 
 #include "configLib/configLib.h"
 #include "utilLib/utilLib.h" 
+#include "sys/wait.h"
 
 #include "RTL_common.h" 
 
@@ -296,6 +300,10 @@ int main(int nargs, char ** args)
   int read_config_ok; 
   int retVal; 
 
+  //start by resetting the hub 
+  
+
+ 
 
   retVal = sortOutPidFile(args[0]); 
 
@@ -308,6 +316,25 @@ int main(int nargs, char ** args)
   syslog(LOG_INFO,"RTld Starting");    
 
 
+  if (fork() == 0)
+  {
+    char const* argv[] = { "usbreset", RESET_USB_HUB_ARG, 0}; 
+    char const* envp[] = { 0} ; 
+
+    execve(RESET_USB_HUB_COMMAND,&argv[0],&envp[0]); 
+  }
+
+  wait(&retVal); 
+
+  if (retVal)
+  {
+    fprintf(stderr,"Problem running %s\n", RESET_USB_HUB_COMMAND); 
+    syslog(LOG_ERR,"Problem running %s\n", RESET_USB_HUB_COMMAND); 
+    return 1; 
+  }
+
+
+ 
   read_config_ok = readConfig(); 
 
   setupSignals(); 
@@ -354,7 +381,11 @@ int main(int nargs, char ** args)
       for (i = 0; i < NUM_RTLSDR; i++) 
       {
 
-        if (disabled[i]) continue; 
+        //CD QUICK HACK, THIS SHOULD PROBABLY NOT BE THE DEFAULT
+        if (disabled[i] && !config_disabled[i]) 
+        {
+          return 1; 
+        }
         nspawned++; 
 
         char * serial = serials[i]; 
@@ -390,28 +421,28 @@ int main(int nargs, char ** args)
           if (ret != 0)
           {
             syslog(LOG_INFO, "RTLd: %s returned unclean value %d.", serials[i], ret); 
-          }
 
-          if (ret == 124) 
-          {
-            syslog(LOG_INFO, "RTLd: %s failed to finish within timeout. Return value: %d", serials[i], ret); 
-          }
-
-          if (ret >= 128) 
-          {
-            syslog(LOG_ERR, "RTLd: %s had to be kill -9ed or could not start RTL_singleshot_power. This has happened %d times before.", serials[i], nfails[i]); 
-            nfails[i]++; 
-            if (nfails[i] >= failThreshold) 
+            if (ret == 124) 
             {
-              syslog(LOG_ERR, "RTLd: %s has exceeded maximum sigkill count (%d out of %d). Disabling. ", serials[i], nfails[i], failThreshold); 
-              disabled[i] = 1; 
+              syslog(LOG_INFO, "RTLd: %s failed to finish within timeout. Return value: %d", serials[i], ret); 
             }
 
-            spectra[i]->startFreq = 666;  
-            sprintf((char*) spectra[i]->spectrum, "This run was SIGKILLED. nfails is now %u", nfails[i]); 
-            spectra[i]->nFreq = 0;  
-            spectra[i]->unixTimeStart = time(NULL); 
-            spectra[i]->scanTime = 65535;
+            else  //don't seem to always get consistent return values, so anything non-zero should be treated as an error
+            {
+              syslog(LOG_ERR, "RTLd: %s had to be kill -9ed or could not start RTL_singleshot_power. This has happened %d times before.", serials[i], nfails[i]); 
+              nfails[i]++; 
+              if (nfails[i] >= failThreshold) 
+              {
+                syslog(LOG_ERR, "RTLd: %s has exceeded maximum fail count (%d out of %d). Disabling. ", serials[i], nfails[i], failThreshold); 
+                disabled[i] = 1; 
+              }
+
+              spectra[i]->startFreq = 666;  
+              sprintf((char*) spectra[i]->spectrum, "This returned %d. nfails is now %u", ret, nfails[i]); 
+              spectra[i]->nFreq = 0;  
+              spectra[i]->unixTimeStart = time(NULL); 
+              spectra[i]->scanTime = 65535;
+            }
           }
 
         }

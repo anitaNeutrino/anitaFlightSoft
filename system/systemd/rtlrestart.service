@@ -1,0 +1,10 @@
+[Unit] 
+Description= Reset RTL USB hub 
+
+
+[Service] 
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/home/anita/flightSoft/system/resetRTLs
+
+

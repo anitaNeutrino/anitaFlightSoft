@@ -15,6 +15,9 @@ daemon -u anita -r SIPd -n SIPd
 #turnAllOff
 
 
+### Do this so that the RTL's can restart themselves 
+chmod a+w -R /dev/bus/usb/
+
 
 #Start Cmdd
 daemon -u anita -r Cmdd -n Cmdd
