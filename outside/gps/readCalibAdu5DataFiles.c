@@ -38,13 +38,15 @@ int main(int argc, char **argv) {
   
   FILE *bFilePtr;
 
-  
+  double whatTime = 0;
+  unsigned int slips = 0;
   bFilePtr=fopen(argv[1],"rb");
   if (!bFilePtr) {
     printf("Unable to open file!");
     return 1;
   }
-  
+
+
   fread(&bFileHeader,sizeof(RawAdu5BFileHeader_t),1,bFilePtr);
 
   printf("version:\t%s\n",bFileHeader.version);
@@ -64,28 +66,33 @@ int main(int argc, char **argv) {
     if(numObjs<1) break;
     countStuff++;
     
-    /* printf("bFileRawNav.sitename:\t%s\n",bFileRawNav.sitename); */
-    /* printf("bFileRawNav.rcv_time:\t%lf\n",bFileRawNav.rcv_time); */
-    /* printf("bFileRawNav.navx:\t%lf\n",bFileRawNav.navx); */
-    /* printf("bFileRawNav.navy:\t%lf\n",bFileRawNav.navy); */
-    /* printf("bFileRawNav.navz:\t%lf\n",bFileRawNav.navz); */
-    /* printf("bFileRawNav.navxdot:\t%f\n",bFileRawNav.navxdot); */
-    /* printf("bFileRawNav.navydot:\t%f\n",bFileRawNav.navydot); */
-    /* printf("bFileRawNav.navzdot:\t%f\n",bFileRawNav.navzdot); */
-    /* printf("bFileRawNav.navt:\t%lf\n",bFileRawNav.navt); */
-    /* printf("bFileRawNav.navtdot:\t%lf\n",bFileRawNav.navtdot); */
-    /* printf("bFileRawNav.pdop:\t%d\n",bFileRawNav.pdop); */
-    /* printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav.num_sats); */
+    if (bFileRawNav.rcv_time-whatTime>1){
+      slips++;
+      printf("whatTime: %lf bFileRawNav.rcv_time:\t%lf\n",whatTime, bFileRawNav.rcv_time);
+    }
+    whatTime=bFileRawNav.rcv_time;
+    /* printf("bFileRawNav.sitename:\t%s\n",bFileRawNav.sitename);  */
+    /* printf("bFileRawNav.rcv_time:\t%lf\n",bFileRawNav.rcv_time);  */
+    /* printf("bFileRawNav.navx:\t%lf\n",bFileRawNav.navx);  */
+    /* printf("bFileRawNav.navy:\t%lf\n",bFileRawNav.navy);  */
+    /* printf("bFileRawNav.navz:\t%lf\n",bFileRawNav.navz);  */
+    /* printf("bFileRawNav.navxdot:\t%f\n",bFileRawNav.navxdot);  */
+    /* printf("bFileRawNav.navydot:\t%f\n",bFileRawNav.navydot);  */
+    /* printf("bFileRawNav.navzdot:\t%f\n",bFileRawNav.navzdot);  */
+    /* printf("bFileRawNav.navt:\t%lf\n",bFileRawNav.navt);  */
+    /* printf("bFileRawNav.navtdot:\t%lf\n",bFileRawNav.navtdot);  */
+    /* printf("bFileRawNav.pdop:\t%d\n",bFileRawNav.pdop);  */
+    /* printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav.num_sats);  */
     
 
     //    return 1;
     int satNum=0;
     for(satNum=0;satNum<(int)bFileRawNav.num_sats;satNum++) {
       fread(&bFileSatHeader[satNum],sizeof(RawAdu5BFileSatelliteHeader_t),1,bFilePtr);
-      /* printf("bFileSatHeader[%d].svprn:\t%d\n",satNum,(int)bFileSatHeader[satNum].svprn); */
-      /* printf("bFileSatHeader[%d].elevation:\t%d\n",satNum,(int)bFileSatHeader[satNum].elevation); */
-      /* printf("bFileSatHeader[%d].azimuth:\t%d\n",satNum,(int)bFileSatHeader[satNum].azimuth); */
-      /* printf("bFileSatHeader[%d].chnind:\t%d\n",satNum,(int)bFileSatHeader[satNum].chnind); */
+      /* printf("bFileSatHeader[%d].svprn:\t%d\n",satNum,(int)bFileSatHeader[satNum].svprn);  */
+      /* printf("bFileSatHeader[%d].elevation:\t%d\n",satNum,(int)bFileSatHeader[satNum].elevation);  */
+      /* printf("bFileSatHeader[%d].azimuth:\t%d\n",satNum,(int)bFileSatHeader[satNum].azimuth);  */
+      /* printf("bFileSatHeader[%d].chnind:\t%d\n",satNum,(int)bFileSatHeader[satNum].chnind);  */
       
       
       fread(&bFileChanObs[satNum],sizeof(RawAdu5BFileChanObs_t),1,bFilePtr);
@@ -103,6 +110,7 @@ int main(int argc, char **argv) {
     }
   }
     fclose(bFilePtr);
+    printf("Number of slips: \t%d\n",slips);
     return 0;
     
   }

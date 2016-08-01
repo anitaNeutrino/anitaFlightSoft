@@ -323,7 +323,6 @@ int main(int nargs, char ** args)
 
 
 
-
   // reset and ping the tuffs 
   for (i = 0; i < NUM_RFCM; i++) 
   {
@@ -349,6 +348,7 @@ int main(int nargs, char ** args)
         {
           syslog(LOG_ERR, "Tuffd giving up after 100 bad attempts\n"); 
           fprintf(stderr, "Tuffd giving up after 100 bad attempts\n"); 
+          cleanup(); 
           return 1; 
         }
 

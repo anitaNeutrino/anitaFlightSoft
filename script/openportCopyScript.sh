@@ -1,12 +1,14 @@
 #!/bin/bash
 
-#OPENPORT_USER=anita
-#OPENPORT_DEST_IP=67.239.76.219
-#OPENPORT_DEST_DIR=/data/anita/openport/
+#TDRSS1 via openport
+OPENPORT_USER=anita
+OPENPORT_DEST_IP=67.239.76.175
+OPENPORT_DEST_DIR=/data/anita/openport/
 
-OPENPORT_USER=radio
-OPENPORT_DEST_IP=192.168.1.2
-OPENPORT_DEST_DIR=/storage/antarctica14/telem/openport/
+#TDRSS1 via CSBF network
+#OPENPORT_USER=anita
+#OPENPORT_DEST_IP=192.168.20.225
+#OPENPORT_DEST_DIR=/data/anita/openport
 
 echo "openportCopyPid: $$"
 echo $$ > /tmp/openportCopyPid

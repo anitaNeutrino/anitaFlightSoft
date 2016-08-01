@@ -15,8 +15,8 @@
 
 #define LEAP_SECONDS 13
 
-#define COMMAND_SIZE 250
-#define DATA_SIZE 150
+#define COMMAND_SIZE 2500
+#define DATA_SIZE 1500
 #define COMMAND "$PASHS,ELM,0\n"  /* set elevation mask angle to 0 degree */
 
 void printGPSCommand(char *tempBuffer, int length);
@@ -41,15 +41,15 @@ int breakdownTimeString(char *subString, int *hour, int *minute, int *second);
 //#define MYBAUDRATE B19200
 //#define MYBAUDRATE B38400
 //#define MYBAUDRATE B57600
-//#define MYBAUDRATE B115200
+#define MYBAUDRATE B115200
 //#define MYBAUDRATE B230400
 
 
 //this was it originally
-#define MYBAUDRATE B9600
+//#define MYBAUDRATE B9600
 
 int main() { 
-    char devName[]="/dev/ttyADU5B";
+    char devName[]="/dev/ttyADU5A";
 
     int fd, i, retVal,currentIndex ; 
     struct termios options;
@@ -105,6 +105,7 @@ strcat(buff, "$PASHS,INI\r\n");
  strcat(buff, "$PASHQ,TST\r\n");
  strcat(buff, "$PASHQ,MEM\r\n");
  strcat(buff, "$PASHQ,PRT\r\n"); 
+ strcat(buff, "$PASHQ,3DF\r\n");
  //strcat(buff, "$PASHS,RCI,000.05\r\n"); 
 // strcat(buff, "$PASHQ,RAW\n"); 
 /* strcat(buff, "$PASHQ,STA\n"); */
@@ -112,7 +113,7 @@ strcat(buff, "$PASHS,INI\r\n");
 /* strcat(buff, "$PASHQ,STA\n"); */
 /* strcat(buff, "$PASHQ,POS\n"); */
 /* strcat(buff, "$PASHQ,PPS\n"); */
-strcat(buff, "$PASHS,SPD,B,5\r\n");
+//strcat(buff, "$PASHS,SPD,B,5\r\n");
 
 // strcat(buff, "$PASHS,NME,RMC,B,ON\n");
  //strcat(buff, "$PASHS,LTZ,0,0\n");

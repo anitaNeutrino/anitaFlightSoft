@@ -41,6 +41,8 @@ int main(int argc, char **argv) {
   }
   
 
+  double 
+
   int countStuff=0;
   while(1) {
     int numObjs=fread(&eFileStruct,sizeof(RawAdu5EFileStruct_t),1,eFilePtr);

@@ -627,7 +627,7 @@ int openDevicesToSetSpeed()
     char tempCommand[180];
     char tempCommand2[180];
     sprintf(tempCommand,"$PASHS,SPD,A,9\n"); //Data
-    sprint(tempCommand2,"$PASHS,SPD,B,4\n");
+    sprintf(tempCommand2,"$PASHS,SPD,B,4\n");
     strcat(tempCommand,tempCommand2);    
     retVal=write(tempFdG12, tempCommand, strlen(tempCommand));
     close(tempFdG12);
@@ -641,8 +641,8 @@ int openDevicesToSetSpeed()
     }
     else tempFdAdu5A=retVal;
     
-    sprintf(tempCommand,"$PASHS,SPD,A,9\n");
-    sprint(tempCommand2,"$PASHS,SPD,B,9\n");
+    sprintf(tempCommand,"$PASHS,SPD,A,9\r\n");
+    sprintf(tempCommand2,"$PASHS,SPD,B,9\r\n");
     strcat(tempCommand,tempCommand2);    
     retVal=write(tempFdAdu5A, tempCommand, strlen(tempCommand));
     close(tempFdAdu5A);
@@ -655,8 +655,8 @@ int openDevicesToSetSpeed()
     }
     else tempFdAdu5B=retVal;
 
-    sprintf(tempCommand,"$PASHS,SPD,A,9\n");
-    sprint(tempCommand2,"$PASHS,SPD,B,9\n");
+    sprintf(tempCommand,"$PASHS,SPD,A,9\r\n");
+    sprintf(tempCommand2,"$PASHS,SPD,B,9\r\n");
     strcat(tempCommand,tempCommand2);    
     retVal=write(tempFdAdu5B, tempCommand, strlen(tempCommand));
     close(tempFdAdu5B);
@@ -2184,7 +2184,7 @@ int setupAdu5A()
 
     // Temporary changing the baud rate to 115200
     strcat(adu5aCommand,"$PASHS,SPD,A,9\r\n");
-
+    strcat(adu5aCommand,"$PASHS,OUT,A\r\n"); //Turn off raw data messages to port A
     strcat(adu5aCommand,"$PASHQ,PRT\r\n");
     strcat(adu5aCommand,"$PASHQ,RIO\r\n");
     strcat(adu5aCommand,"$PASHQ,BIT\r\n");
