@@ -923,7 +923,7 @@ int closeMagnetometer()
 void prepWriterStructs() {
     int diskInd;
     if(printToScreen) 
-	printf("Preparing Writer Structs\n");
+      printf("Preparing Writer Structs -- hkDiskBitMask=%#x\n",hkDiskBitMask);
     //Hk Writer
     
     sprintf(hkRawWriter.relBaseName,"%s/raw",HK_ARCHIVE_DIR);

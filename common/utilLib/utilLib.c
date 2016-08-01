@@ -101,6 +101,7 @@ int cleverHkWrite(unsigned char *buffer, int numBytes, unsigned int unixTime, An
     if(!awsPtr->currentFilePtr[diskInd]) {
       //First time
       sprintf(fullBasename,"%s/%s",diskNames[diskInd],awsPtr->relBaseName);
+      printf("Here: %s -- %#x\n",fullBasename,awsPtr->writeBitMask);
       tempDir=getCurrentHkDir(fullBasename,unixTime);
       strncpy(awsPtr->currentDirName[diskInd],tempDir,FILENAME_MAX-1);
 

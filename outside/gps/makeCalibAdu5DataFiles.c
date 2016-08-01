@@ -42,18 +42,18 @@ int fillBFileRawNav(RawAdu5BFileRawNav_t *bFileRawNav, RawAdu5PBNStruct_t pbn){
   bFileRawNav->pdop=pbn.pdop;
 
 
-  printf("bFileRawNav.sitename:\t%s\n",bFileRawNav->sitename);
-  printf("bFileRawNav.rcv_time:\t%lf\n",bFileRawNav->rcv_time);
-  printf("bFileRawNav.navx:\t%lf\n",bFileRawNav->navx);
-  printf("bFileRawNav.navy:\t%lf\n",bFileRawNav->navy);
-  printf("bFileRawNav.navz:\t%lf\n",bFileRawNav->navz);
-  printf("bFileRawNav.navxdot:\t%f\n",bFileRawNav->navxdot);
-  printf("bFileRawNav.navydot:\t%f\n",bFileRawNav->navydot);
-  printf("bFileRawNav.navzdot:\t%f\n",bFileRawNav->navzdot);
-  printf("bFileRawNav.navt:\t%lf\n",bFileRawNav->navt);
-  printf("bFileRawNav.navtdot:\t%lf\n",bFileRawNav->navtdot);
-  printf("bFileRawNav.pdop:\t%d\n",bFileRawNav->pdop);
-  printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav->num_sats);
+  /* printf("bFileRawNav.sitename:\t%s\n",bFileRawNav->sitename); */
+  /* printf("bFileRawNav.rcv_time:\t%lf\n",bFileRawNav->rcv_time); */
+  /* printf("bFileRawNav.navx:\t%lf\n",bFileRawNav->navx); */
+  /* printf("bFileRawNav.navy:\t%lf\n",bFileRawNav->navy); */
+  /* printf("bFileRawNav.navz:\t%lf\n",bFileRawNav->navz); */
+  /* printf("bFileRawNav.navxdot:\t%f\n",bFileRawNav->navxdot); */
+  /* printf("bFileRawNav.navydot:\t%f\n",bFileRawNav->navydot); */
+  /* printf("bFileRawNav.navzdot:\t%f\n",bFileRawNav->navzdot); */
+  /* printf("bFileRawNav.navt:\t%lf\n",bFileRawNav->navt); */
+  /* printf("bFileRawNav.navtdot:\t%lf\n",bFileRawNav->navtdot); */
+  /* printf("bFileRawNav.pdop:\t%d\n",bFileRawNav->pdop); */
+  /* printf("bFileRawNav.num_sats:\t%d\n",(int)bFileRawNav->num_sats); */
 
   return 0;
 }
@@ -162,14 +162,16 @@ int main(int argc, char **argv) {
   time_t startTime = time(NULL);
 
   sprintf(buff, "$PASHQ,PRT\r\n");
-  strcat(buff,"$PASHS,NME,ALL,OFF\r\n"); //Turn off NMEA messages
+  strcat(buff,"$PASHS,NME,ALL,A,OFF\r\n"); //Turn off NMEA messages
   strcat(buff,"$PASHS,OUT,A\r\n"); //Turn off raw data messages to port A
   strcat(buff,"$PASHS,OUT,B\r\n"); //Turn off raw data messages to port B
   strcat(buff,"$PASHS,ELM,10\r\n"); //Set elevation mask to 10 degrees
   strcat(buff,"$PASHS,RCI,001.0\r\n"); //Set raw data rate to 1 second
   strcat(buff,"$PASHS,PDS,OFF\r\n"); // Special setting needed for calibration must be switched back on at end
-  strcat(buff, "$PASHS,SPD,A,9\r\n");
-  strcat(buff,"$PASHS,OUT,A,MBN,SNV,PBN,ATT,BIN\r\n"); //Request the output
+  strcat(buff,"$PASHS,SPD,A,9\r\n");
+  //  strcat(buff,"$PASHS,OUT,A,MBN,SNV,PBN,ATT,BIN\r\n"); //Request the output
+  strcat(buff,"$PASHS,OUT,A,MBN,SNV,PBN,BIN\r\n"); //Request the output
+
 
   /* send the commands to ADU5  */
   write(fdAdu5, buff, strlen(buff));
@@ -189,7 +191,9 @@ int main(int argc, char **argv) {
 
   int numSat = 0;
   unsigned int numPbn=0;
+  unsigned int numErrors=0;
   unsigned int numSnv=0;
+  unsigned int mben_left=-999;
   unsigned short sequence_tag = 0;
   fillDefaultBFileHeader(&bFileHeader);
 
@@ -204,16 +208,20 @@ int main(int argc, char **argv) {
 
   char timenow[32];
   strftime(timenow, 32, "%Y_%m_%d_time_%H_%M_%S", localtime(&startTime)); 
-  mkdir (timenow, 0777);
+  char dir[200];
+  sprintf(dir, "/mnt/helium1/gps/gpsCalibTest/*s", timenow);
+  mkdir (dir, 0777);
+  char dayOfYear[32];
+  strftime(dayOfYear, 32, "%j", localtime(&startTime));
+
   // B stands for binary satellite measurement file
   // CALI is a user-defined site name, four-character filename template
   // A is the session designator, a letter from A to Z
   // 16 is the last two digits of current year
   // 1200 is the day of the year
 
-  unsigned int dayOfYear = 200;
   char filename[100];
-  sprintf(filename, "%s/BCALIA16.%d", timenow, dayOfYear);
+  sprintf(filename, "%s/BCALIA16.%s", dir, dayOfYear);
   FILE * BFile;
   BFile = fopen (filename, "wb");
 
@@ -224,11 +232,11 @@ int main(int argc, char **argv) {
   // 163 = Day of year
 
   FILE * EFile;
-  sprintf(filename, "%s/ECALIA16.%d", timenow, dayOfYear);
+  sprintf(filename, "%s/ECALIA16.%s", dir, dayOfYear);
   EFile = fopen (filename, "wb");
 
   FILE * AFile;
-  sprintf(filename, "%s/ACALIA16.%d", timenow, dayOfYear);
+  sprintf(filename, "%s/ACALIA16.%s", dir, dayOfYear);
   AFile = fopen (filename, "wb");
 
   // First we write the RawHeadFile
@@ -258,10 +266,10 @@ int main(int argc, char **argv) {
       continue;
     }
     retVal=read(fdAdu5, tempData, DATA_SIZE);
-    printf("Num bytes %d\n",retVal);
+    /* printf("Num bytes %d\n",retVal);  */
     if(retVal>0) {
       for(i=0; i < retVal; i++) {
-	//	printf("%c", tempData[i]);
+	/* printf("%c", tempData[i]);   */
 	if(adu5OutputLength==0 && tempData[i]!='$') continue;
 	adu5Output[adu5OutputLength++]=tempData[i];
 	//	bytesRead=read(fdAdu5, data, DATA_SIZE); 
@@ -274,11 +282,11 @@ int main(int argc, char **argv) {
 	      /* printf("Got $PASHR,\n"); */
 	      if(adu5Output[7]=='A' && adu5Output[8]=='T' && adu5Output[9]=='T') {
 		if(adu5OutputLength-1==61) {
-		  printf("Got ATT\n");		 
+		  /* printf("Got ATT\n");		  */
 		  //Right length
-		  fillRawATTStruct(adu5Output, adu5OutputLength-1, &attPtr); 
-		  fillAFileStruct(&aFileStruct, attPtr);
-		  fwrite (&aFileStruct , sizeof(char), sizeof(RawAdu5AFileStruct_t), AFile);
+		  /* fillRawATTStruct(adu5Output, adu5OutputLength-1, &attPtr);  */
+		  /* fillAFileStruct(&aFileStruct, attPtr); */
+		  /* fwrite (&aFileStruct , sizeof(char), sizeof(RawAdu5AFileStruct_t), AFile); */
 		  adu5OutputLength=1;
 		  continue;
 		}
@@ -286,12 +294,19 @@ int main(int argc, char **argv) {
 	      }
 	      else if(adu5Output[7]=='P' && adu5Output[8]=='B' && adu5Output[9]=='N') {
 		if(adu5OutputLength-1==69) {
-		  printf("Got PBN\n");		
+		  printf("Got PBN\n"); 
 		  //Right length
 		  fillRawPBNStruct(adu5Output, adu5OutputLength-1, &pbnPtr);
+		  numSat++;
 		  bFileRawNav.num_sats = (char)numSat;
 		  fillBFileRawNav(&bFileRawNav, pbnPtr);
 		  fwrite (&bFileRawNav , sizeof(char), sizeof(RawAdu5BFileRawNav_t), BFile);
+
+		  if ((mben_left+1)!=numSat){
+		    printf("PROBLEM: mben_left=%d and numSat=%d\n", mben_left+1, numSat);
+		    numErrors++;
+		  }
+
 		  int isat=0;
 		  for (isat=0;isat<numSat;isat++){
 		    fwrite (&bFileSatHeader[isat] , sizeof(char), sizeof(RawAdu5BFileSatelliteHeader_t), BFile);
@@ -307,16 +322,16 @@ int main(int argc, char **argv) {
 		//Handle MCA 
 		    if(adu5OutputLength-1==50) { 
 		      //Right length 
-		      fillRawMBNStruct(adu5Output, adu5OutputLength-1, &mbnPtr);
 
-		      printf("Got MCA, sequence_tags: %u and %u numSat: %d\n", sequence_tag, mbnPtr.sequence_tag, numSat);
+		      fillRawMBNStruct(adu5Output, adu5OutputLength-1, &mbnPtr);
 		      if (sequence_tag==mbnPtr.sequence_tag){ 
 			numSat++;
 		      } else {
-			
 			sequence_tag=mbnPtr.sequence_tag;
+			mben_left=mbnPtr.mben_left;
 			numSat=0;
 		      }
+		       printf("Got MCA, sequence_tags: %u and %u numSat %d and mben_left: %d\n", sequence_tag, mbnPtr.sequence_tag, numSat, mbnPtr.mben_left); 
 		      fillBFileSatHeader(&bFileSatHeader[numSat], mbnPtr); 
 		      fillBFileChanObs(&bFileChanObs[numSat],  mbnPtr); 
 		  
@@ -328,45 +343,45 @@ int main(int argc, char **argv) {
 		  } 
 	      else if(adu5Output[7]=='S' && adu5Output[8]=='N' && adu5Output[9]=='V') {
 		if(adu5OutputLength-1==145) {
-		  printf("Got SNV\n"); 
+		   printf("Got SNV\n");  
 		  /* //Right length */
 		   fillRawSNVStruct(adu5Output, adu5OutputLength-1, &snvPtr); 
-		   printf("snv.snvHeader:\t%s\n",     snvPtr.snvHeader);
-		   printf("snv.weekNumber:\t%u\n",    snvPtr.weekNumber);
-		   printf("snv.secondsInWeek:\t%d\n", snvPtr.secondsInWeek);
-		   printf("snv.groupDelay:\t%f\n",    snvPtr.groupDelay);  
+		   /* printf("snv.snvHeader:\t%s\n",     snvPtr.snvHeader); */
+		   /* printf("snv.weekNumber:\t%u\n",    snvPtr.weekNumber); */
+		   /* printf("snv.secondsInWeek:\t%d\n", snvPtr.secondsInWeek); */
+		   /* printf("snv.groupDelay:\t%f\n",    snvPtr.groupDelay);   */
 		   fillEFileStruct(&eFileStruct, snvPtr);
 
 
-		   printf("eFileStruct.prnnum        :\t%d\n",  eFileStruct.prnnum        );      
-		   printf("eFileStruct.weekNumber   :\t%u\n",  eFileStruct.weekNumber   );      
-		   printf("eFileStruct.secondsInWeek :\t%d\n",  eFileStruct.secondsInWeek );      
-		   printf("eFileStruct.groupDelay   :\t%f\n",  eFileStruct.groupDelay   );      
-		   printf("eFileStruct.aodc   :\t%d\n",  eFileStruct.aodc   );      
-		   printf("eFileStruct.toc   :\t%d\n",  eFileStruct.toc   );      
-		   printf("eFileStruct.af2   :\t%f\n",  eFileStruct.af2   );      
-		   printf("eFileStruct.af1   :\t%f\n",  eFileStruct.af1   );      
-		   printf("eFileStruct.af0   :\t%f\n",  eFileStruct.af0   );      
-		   printf("eFileStruct.aode   :\t%d\n",  eFileStruct.aode   );      
-		   printf("eFileStruct.deltaN   :\t%f\n",  eFileStruct.deltaN   );      
-		   printf("eFileStruct.m0   :\t%f\n",  eFileStruct.m0   );      
-		   printf("eFileStruct.eccentricity  :\t%f\n",  eFileStruct.eccentricity  );      
-		   printf("eFileStruct.roota   :\t%f\n",  eFileStruct.roota   );      
-		   printf("eFileStruct.toe   :\t%d\n",  eFileStruct.toe   );      
-		   printf("eFileStruct.cic   :\t%f\n",  eFileStruct.cic   );      
-		   printf("eFileStruct.crc   :\t%f\n",  eFileStruct.crc   );      
-		   printf("eFileStruct.cis   :\t%f\n",  eFileStruct.cis   );      
-		   printf("eFileStruct.crs   :\t%f\n",  eFileStruct.crs   );      
-		   printf("eFileStruct.cuc   :\t%f\n",  eFileStruct.cuc   );      
-		   printf("eFileStruct.cus   :\t%f\n",  eFileStruct.cus   );      
-		   printf("eFileStruct.omega0   :\t%f\n",  eFileStruct.omega0   );      
-		   printf("eFileStruct.omega   :\t%f\n",  eFileStruct.omega   );      
-		   printf("eFileStruct.i0   :\t%f\n",  eFileStruct.i0   );      
-		   printf("eFileStruct.omegadot   :\t%f\n",  eFileStruct.omegadot   );      
-		   printf("eFileStruct.idot   :\t%f\n",  eFileStruct.idot   );      
-		   printf("eFileStruct.accuracy   :\t%u\n",  eFileStruct.accuracy   );      
-		   printf("eFileStruct.health   :\t%u\n",  eFileStruct.health   );      
-		   printf("eFileStruct.fit   :\t%u\n",  eFileStruct.fit   );      
+		   /* printf("eFileStruct.prnnum        :\t%d\n",  eFileStruct.prnnum        );       */
+		   /* printf("eFileStruct.weekNumber   :\t%u\n",  eFileStruct.weekNumber   );       */
+		   /* printf("eFileStruct.secondsInWeek :\t%d\n",  eFileStruct.secondsInWeek );       */
+		   /* printf("eFileStruct.groupDelay   :\t%f\n",  eFileStruct.groupDelay   );       */
+		   /* printf("eFileStruct.aodc   :\t%d\n",  eFileStruct.aodc   );       */
+		   /* printf("eFileStruct.toc   :\t%d\n",  eFileStruct.toc   );       */
+		   /* printf("eFileStruct.af2   :\t%f\n",  eFileStruct.af2   );       */
+		   /* printf("eFileStruct.af1   :\t%f\n",  eFileStruct.af1   );       */
+		   /* printf("eFileStruct.af0   :\t%f\n",  eFileStruct.af0   );       */
+		   /* printf("eFileStruct.aode   :\t%d\n",  eFileStruct.aode   );       */
+		   /* printf("eFileStruct.deltaN   :\t%f\n",  eFileStruct.deltaN   );       */
+		   /* printf("eFileStruct.m0   :\t%f\n",  eFileStruct.m0   );       */
+		   /* printf("eFileStruct.eccentricity  :\t%f\n",  eFileStruct.eccentricity  );       */
+		   /* printf("eFileStruct.roota   :\t%f\n",  eFileStruct.roota   );       */
+		   /* printf("eFileStruct.toe   :\t%d\n",  eFileStruct.toe   );       */
+		   /* printf("eFileStruct.cic   :\t%f\n",  eFileStruct.cic   );       */
+		   /* printf("eFileStruct.crc   :\t%f\n",  eFileStruct.crc   );       */
+		   /* printf("eFileStruct.cis   :\t%f\n",  eFileStruct.cis   );       */
+		   /* printf("eFileStruct.crs   :\t%f\n",  eFileStruct.crs   );       */
+		   /* printf("eFileStruct.cuc   :\t%f\n",  eFileStruct.cuc   );       */
+		   /* printf("eFileStruct.cus   :\t%f\n",  eFileStruct.cus   );       */
+		   /* printf("eFileStruct.omega0   :\t%f\n",  eFileStruct.omega0   );       */
+		   /* printf("eFileStruct.omega   :\t%f\n",  eFileStruct.omega   );       */
+		   /* printf("eFileStruct.i0   :\t%f\n",  eFileStruct.i0   );       */
+		   /* printf("eFileStruct.omegadot   :\t%f\n",  eFileStruct.omegadot   );       */
+		   /* printf("eFileStruct.idot   :\t%f\n",  eFileStruct.idot   );       */
+		   /* printf("eFileStruct.accuracy   :\t%u\n",  eFileStruct.accuracy   );       */
+		   /* printf("eFileStruct.health   :\t%u\n",  eFileStruct.health   );       */
+		   /* printf("eFileStruct.fit   :\t%u\n",  eFileStruct.fit   );       */
 
 		   numSnv++;
 		   fwrite (&eFileStruct , sizeof(char), sizeof(RawAdu5EFileStruct_t), EFile);
@@ -432,7 +447,8 @@ int main(int argc, char **argv) {
   
   printf("\nNumber of pbns received %d\n", numPbn);
   printf("\nNumber of snvs received %d\n", numSnv);
-  
+  printf("\nNumber of ERRORS in MBNs %d\n", numErrors);
+
   close(fdAdu5);
 
   return 0; 
