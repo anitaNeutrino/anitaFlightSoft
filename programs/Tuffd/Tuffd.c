@@ -28,10 +28,15 @@ static int telemeterAfterChange = 1;
 
 
 
-tuff_dev_t * device; 
+/** The device descriptor */ 
+static tuff_dev_t * device; 
+
+/* Array telling us if TUFF was found at startup or not */ 
+static int tuff_responds[NUM_RFCM]; 
 
 static const unsigned char default_start_sector[NUM_TUFF_NOTCHES] = DEFAULT_TUFF_START_SECTOR; 
 static const unsigned char default_end_sector[NUM_TUFF_NOTCHES] = DEFAULT_TUFF_END_SECTOR; 
+static const int MAX_ATTEMPTS=3; 
 
 static AnitaHkWriterStruct_t tuffWriter; 
 static AnitaHkWriterStruct_t tuffRawCmdWriter; 
@@ -50,8 +55,14 @@ int writeState(int changed)
   for (i = 0; i < NUM_RFCM; i++)
   {
 
+    if (!tuff_responds[i]) 
+    {
+      tuffStruct.temperatures[i] = 127;  
+      continue; 
+    }
+
     tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
-    printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); 
+/*    printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); */
 
   }
 
@@ -338,18 +349,18 @@ int main(int nargs, char ** args)
       printf("Resetting RFCM %d\n", i); 
       tuff_reset(device, i); 
       sleep(1); 
-      if(!tuff_pingiRFCM(device,10,1,&rfcm))
+      if(!tuff_pingiRFCM(device,5,1,&rfcm))
       {
         fprintf(stderr, "Did not get ping from TUFF %d in 10 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
-        syslog(nattempts < 10 ? LOG_INFO : LOG_ERR, "Did not get ping from TUFF %d in 10 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
+        syslog(nattempts < MAX_ATTEMPTS/2  ? LOG_INFO : LOG_ERR, "Did not get ping from TUFF %d in 5 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
         nattempts++; 
 
-        if (nattempts == 100) //give up eventually 
+        if (nattempts == MAX_ATTEMPTS) //give up eventually 
         {
-          syslog(LOG_ERR, "Tuffd giving up after 100 bad attempts\n"); 
-          fprintf(stderr, "Tuffd giving up after 100 bad attempts\n"); 
-          cleanup(); 
-          return 1; 
+          syslog(LOG_ERR, "Tuffd giving up on hearing from iRFCM %d after %d bad attempts\n", i, MAX_ATTEMPTS); 
+          fprintf(stderr, "Tuffd giving up on hearing from iRFCM %d after %d bad attempts\n", i, MAX_ATTEMPTS); 
+          tuff_responds[i] = 0; 
+          continue; 
         }
 
         i--; 
@@ -358,7 +369,8 @@ int main(int nargs, char ** args)
 
     }
     nattempts = 0; 
-    printf("Ping received for %u\n", i); 
+    printf("Ping received for %d\n", i); 
+    tuff_responds[i] = 1; 
   }
 
   //shut them up

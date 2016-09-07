@@ -1757,7 +1757,7 @@ typedef struct __attribute__((packed))
   unsigned int unixTime;  // The approximate time that this was written. If temperatures are read, the temperatures are read around this time
   unsigned char startSectors[NUM_TUFF_NOTCHES]; //start sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
   unsigned char endSectors[NUM_TUFF_NOTCHES]; //stop sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
-  char temperatures[NUM_RFCM];  //-128 if temperatures are not being read 
+  char temperatures[NUM_RFCM];  //-128 if temperatures are not being read , 127 if TUFF not responding. 
 } TuffNotchStatus_t; 
 
 typedef struct __attribute__((packed))
