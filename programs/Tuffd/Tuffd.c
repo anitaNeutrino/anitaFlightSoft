@@ -7,12 +7,16 @@
 #include <unistd.h>
 #include <time.h>
 #include <execinfo.h>
+#include <math.h>
 
+#define NUM_PHI PHI_SECTORS 
 
 /* * *   *    *       *           *              *                   *     * ** * ** * ** 
  * This program is really stupid... it just waits for changes and then applies them?   ***
  *                                                                  
  *  I guess Cmdd could just do all of this 
+ *
+ *  Actually now that it tries to analyze the power spectra, it's somewhat less stupid. 
  **************************************** * * * *    *     *        * * *     ***     * * *
  */ 
 
@@ -26,6 +30,11 @@ static int bitmask = 0;
 static int telemeterEvery = 10; 
 static int telemeterAfterChange = 1; 
 
+
+static int zeroes[NUM_TUFF_NOTCHES]; 
+static int adjustAccordingToGPU[NUM_TUFF_NOTCHES]; 
+static float gpu_bins[NUM_TUFF_NOTCHES];   
+static float tuff_threshold[NUM_TUFF_NOTCHES]; 
 
 
 /** The device descriptor */ 
@@ -41,9 +50,168 @@ static const int MAX_ATTEMPTS=3;
 static AnitaHkWriterStruct_t tuffWriter; 
 static AnitaHkWriterStruct_t tuffRawCmdWriter; 
 static TuffNotchStatus_t tuffStruct; 
+static TuffNotchStatus_t lastTuffStruct; 
+
+static float vals[NUM_PHI][NUM_TUFF_NOTCHES]; 
 
 
 static int telemeterCount = 0; 
+
+int analyzeGPUSpectrum()
+{
+  int notch; 
+  int bin0[NUM_TUFF_NOTCHES]; 
+  int bin1[NUM_TUFF_NOTCHES]; 
+  int min_phi_above_threshold[NUM_TUFF_NOTCHES]; 
+  int max_phi_above_threshold[NUM_TUFF_NOTCHES]; 
+  float frac[NUM_TUFF_NOTCHES]; 
+  int phi; 
+  char theFilename[FILENAME_MAX];
+
+  //read in the spectra, compute the values 
+
+
+  for (notch = 0; notch < NUM_TUFF_NOTCHES; notch++)  
+  {
+    if (!adjustAccordingToGPU[notch]) continue; 
+    bin0[notch] = gpu_bins[notch]; 
+    bin1[notch] = gpu_bins[notch] + 1; 
+    frac[notch] = gpu_bins[notch] - ((int) gpu_bins[notch]); 
+    min_phi_above_threshold[notch] = -1; 
+    max_phi_above_threshold[notch] = -1; 
+  }
+
+  for (phi = 0; phi < NUM_PHI; phi++) 
+  {
+    int retVal; 
+    //make links to try to avoid any stupid race condition
+    sprintf(theFilename,"%s/gpuPowSpec_phi%d.dat",GPU_SPECTRUM_DIR, phi); 
+    retVal=makeLink(theFilename,GPU_SPECTRUM_LINK_DIR);
+    if (!retVal)
+    {
+      syslog(LOG_ERR, "Tuffd: Could not calculate notches from phi spectra because could not load one of them. Abandoning effort\n"); 
+      return 1; 
+    }
+  }
+
+  for (phi = 0; phi < NUM_PHI; phi++) 
+  {
+    GpuPhiSectorPowerSpectrumStruct_t spectrum; 
+    int ring, pol; 
+    float val = 0;
+    sprintf(theFilename,"%s/gpuPowSpec_phi%d.dat",GPU_SPECTRUM_LINK_DIR, phi); 
+    genericReadOfFile((unsigned char * ) &spectrum, theFilename, sizeof(spectrum)); 
+
+    for (notch = 0; notch < NUM_TUFF_NOTCHES; notch++) 
+    {
+      if (!adjustAccordingToGPU[notch]) continue; 
+      for (ring = 0; ring < NUM_ANTENNA_RINGS; ring++)
+      {
+        for (pol = 0; pol < 2 ;pol++) 
+        {
+          /* Scale by short -> float conversion, then log to linear, then divide by 6 (3 antennas * 2 pols) */ 
+          double linear_val0 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin0[notch]] * 64.15/32767. / 10.)/6.;
+          double linear_val1 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin1[notch]] * 64.15/32767. / 10.)/6.;
+
+          val += (1-frac[notch]) * linear_val0 + (frac[notch]) * linear_val1; 
+        }
+      }
+
+
+
+      vals[phi][notch] = val; 
+
+      if (val > tuff_threshold[notch]) 
+      {
+        if (min_phi_above_threshold[notch] == -1) 
+        {
+          min_phi_above_threshold[notch] = phi; 
+        }
+
+        if (phi > max_phi_above_threshold[notch]) 
+        {
+          max_phi_above_threshold[notch] = phi; 
+        }
+      }
+
+      printf("Total power in phi sector %d, notch %d is %f\n", phi, notch, val); 
+    }
+
+
+    removeFile(theFilename); 
+  }
+
+  /**
+  *
+  * Now we have all the values. The strategy for picking 
+  * the filtered sectors will be to find all sectors above threshold and 
+  * then pick whichever maximum range that covers all of them has the higher average
+  *
+  *
+  * TODO: Perhaps there should be an option to OR the automatic notches with the
+  * notches from the config. 
+  *
+  */ 
+
+  for (notch = 0; notch < NUM_TUFF_NOTCHES; notch ++) 
+  {
+
+    if (!adjustAccordingToGPU[notch]) continue; 
+    // no phi sectors above thresholds, no notch needed
+    if (min_phi_above_threshold[notch] ==-1) 
+    {
+      tuffStruct.startSectors[notch] = 16; 
+      tuffStruct.endSectors[notch] = 16; 
+    }
+
+    //only one phi sector to mask 
+    else if (min_phi_above_threshold[notch] == max_phi_above_threshold[notch])
+    {
+      tuffStruct.startSectors[notch] = min_phi_above_threshold[notch]; 
+      tuffStruct.startSectors[notch] = min_phi_above_threshold[notch]; 
+        
+    }
+
+    // check which way has the higher average
+    else
+    {
+      float sum_increasing;  
+      float sum_decreasing; 
+      int n_increasing = max_phi_above_threshold[notch]+1 - min_phi_above_threshold[notch]; 
+      int n_decreasing = 2+ NUM_PHI - n_increasing; 
+
+      for (phi = min_phi_above_threshold[notch]; phi <= max_phi_above_threshold[notch]; phi++) 
+      {
+        sum_increasing += vals[phi][notch];
+      }
+
+      for (phi = max_phi_above_threshold[notch]; phi <= min_phi_above_threshold[notch] + NUM_PHI; phi++)
+
+      {
+        sum_decreasing += vals[phi % NUM_PHI][notch]; 
+      }
+
+
+      if (sum_increasing / n_increasing > sum_decreasing / n_decreasing) 
+      {
+        tuffStruct.startSectors[notch] = min_phi_above_threshold[notch]; 
+        tuffStruct.endSectors[notch] = max_phi_above_threshold[notch]; 
+      }
+      else
+      {
+        tuffStruct.startSectors[notch] = max_phi_above_threshold[notch]; 
+        tuffStruct.endSectors[notch] = min_phi_above_threshold[notch]; 
+      }
+    }
+  }
+
+
+  //TODO: Think about this, is this what we want??? 
+  tuffStruct.notchSetTime = time(0);
+
+  return 0; 
+
+}
 
 int writeState(int changed)
 {
@@ -157,9 +325,17 @@ void handleBadSigs(int sig)
 
 
 
+
 void setupSignals()
 {
-  signal(SIGUSR1, sigUsr1Handler);
+  struct sigaction act; 
+  act.sa_sigaction = sigactionUsr1Handler; 
+  act.sa_flags = SA_SIGINFO; 
+
+  // this way we know who sent us the signal! 
+  sigaction(SIGUSR1, &act,NULL); 
+
+//  signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
   signal(SIGTERM, handleBadSigs);
   signal(SIGINT, handleBadSigs);
@@ -243,6 +419,7 @@ int readConfig()
     readTemperatures = kvpGetInt("readTemperature",1); 
     telemeterEvery = kvpGetInt("telemEvery",10); 
     telemeterAfterChange = kvpGetInt("telemAfterChange",1); 
+
   }
   else { configStatus+=2; }
 
@@ -251,6 +428,8 @@ int readConfig()
   if (kvpStatus == CONFIG_E_OK) 
   {
     int notch_tmp [2*NUM_TUFF_NOTCHES]; 
+    int int_tmp [NUM_TUFF_NOTCHES]; 
+    float float_tmp [NUM_TUFF_NOTCHES]; 
     int nread = 2*NUM_TUFF_NOTCHES;
     int ok = 1; 
 
@@ -290,6 +469,47 @@ int readConfig()
       memcpy(&tuffStruct.startSectors, default_start_sector, sizeof(tuffStruct.startSectors)); 
       memcpy(&tuffStruct.endSectors, default_end_sector, sizeof(tuffStruct.endSectors)); 
     }
+
+    nread = NUM_TUFF_NOTCHES; 
+
+    kvpStatus = kvpGetIntArray("adjustAccordingToGpu", int_tmp, &nread); 
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      syslog(LOG_ERR, "Problem reading in adjustAccordingToGpu, will set to false"); 
+      memcpy(adjustAccordingToGPU, zeroes, sizeof(zeroes)); 
+    }
+    else
+    {
+      memcpy(adjustAccordingToGPU, int_tmp, sizeof(int_tmp)); 
+    }
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetFloatArray("gpuBins", float_tmp, &nread); 
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      syslog(LOG_ERR, "Problem reading in gpu_bins, disabling adjustAccordingToGpu"); 
+      memcpy(adjustAccordingToGPU, zeroes, sizeof(zeroes)); 
+    }
+    else
+    {
+      memcpy(gpu_bins, float_tmp, sizeof(float_tmp)); 
+    }
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetFloatArray("gpuThresholds", float_tmp, &nread); 
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      syslog(LOG_ERR, "Problem reading in gpu thresholds, disabling adjustAccordingToGpu"); 
+      memcpy(adjustAccordingToGPU, zeroes, sizeof(zeroes)); 
+    }
+    else
+    {
+      int i; 
+      for (i = 0; i < NUM_TUFF_NOTCHES; i++) 
+      {
+        tuff_threshold[i] = pow(10, float_tmp[i]/10);  // use linear scaling everywhere 
+      }
+    }
   }
   else { configStatus+=4; }
 
@@ -306,6 +526,7 @@ int main(int nargs, char ** args)
   int i;
   int wd; 
   int nattempts = 0; 
+  memset(zeroes, 0, sizeof(zeroes)); 
 
 
   retVal = sortOutPidFile(args[0]); 
@@ -379,6 +600,8 @@ int main(int nargs, char ** args)
   // set up raw command watch director
   
   makeDirectories(TUFF_RAWCMD_LINK_DIR); 
+  makeDirectories(GPU_SPECTRUM_DIR); 
+  makeDirectories(GPU_SPECTRUM_LINK_DIR); 
 
   wd = setupLinkWatchDir(TUFF_RAWCMD_LINK_DIR); 
   if (!wd) 
@@ -387,12 +610,24 @@ int main(int nargs, char ** args)
     syslog(LOG_ERR,"Unable to watch %s\n",TUFF_RAWCMD_LINK_DIR);
   }
 
+  memset(&lastTuffStruct,0,sizeof(TuffNotchStatus_t)); 
+
+  //set senderOfSigUSR1 to ID_NOT_AN_ID as it is uninitialized
+  senderOfSigUSR1 = ID_NOT_AN_ID; 
+
+
 
   do
   {
     int numlinks; 
     if (printToScreen) printf("Reading config: \n"); 
-    read_config_ok = readConfig(); 
+
+    // Don't read config if we know it's the Prioritizer, since that doesn't modify the config
+    if (senderOfSigUSR1 != ID_PRIORITIZERD)
+    {
+      read_config_ok = readConfig(); 
+    }
+
 
     if (read_config_ok)
     {
@@ -400,9 +635,21 @@ int main(int nargs, char ** args)
     }
 
     //set the notches BEFORE checking for link dirs
-    setNotches(); 
-    justChanged = 1; 
+    
+    if (memcmp(adjustAccordingToGPU, zeroes, sizeof(zeroes))) 
+    {
+      analyzeGPUSpectrum(); 
+    }
+    //check if tuff notch status is same 
+    justChanged = memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
+    justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
 
+    //if it changed, set the notches and copy the tuff struct to last tuff struct 
+    if (justChanged)
+    {
+      setNotches(); 
+      memcpy(&lastTuffStruct, &tuffStruct, sizeof(TuffNotchStatus_t)); 
+    }
 
     checkLinkDirs(1,0); 
     numlinks = getNumLinks(wd); 
@@ -415,15 +662,12 @@ int main(int nargs, char ** args)
       char rd_linkbuf[FILENAME_MAX]; 
       char rd_buf[FILENAME_MAX]; 
       char wr_buf[FILENAME_MAX]; 
-      FILE * file; 
 
       sprintf(rd_linkbuf, "%s/%s", TUFF_RAWCMD_LINK_DIR, fname); 
       sprintf(rd_buf, "%s/%s", TUFF_RAWCMD_DIR, fname); 
 
       //read in request
-      file = fopen(rd_linkbuf, "r"); 
-      fread( &raw, sizeof(raw), 1, file); 
-      fclose(file); 
+      genericReadOfFile((unsigned char *) &raw, rd_linkbuf, sizeof(raw)); 
 
       //set the time 
       raw.enactedTime = time(0); 
