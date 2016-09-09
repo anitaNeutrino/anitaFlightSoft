@@ -163,7 +163,15 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
 // this variable is used when catching signals 
 #ifndef RYAN_HACK_17
     extern ProgramStateCode currentState; 
+
+    // If you use sigactionUsr1Handler instead of sigUsr1Handler, we attempt to populate
+    // this with the process that sent the signal. It's not 100% reliable, however, as
+    // the originating process may have died (and perverseley, it's possible that another process
+    // now has that pid) 
+    extern ProgramId_t senderOfSigUSR1;  
 #endif
+    // sigaction handler that populates senderOfSigUSR1 
+    void sigactionUsr1Handler(int sig, siginfo_t * sinfo, void* ignore); 
     void sigUsr1Handler(int sig); 
     void sigUsr2Handler(int sig);
     void writePidFile(char *fileName);
@@ -180,6 +188,9 @@ int writeCommandAndLink(CommandStruct_t *theCmd);
 
   //Other stuff
   int telemeterFile(char *filename, int numLines);
+
+  /* Return the name of the command with the given ProgramId_t */ 
+  const char * getCommandName(ProgramId_t id); 
 
 #ifdef __cplusplus
 }

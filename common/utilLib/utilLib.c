@@ -1457,7 +1457,87 @@ int writeStruct(void *thePtr, char *filename, int numBytes)
 }
 
 
+const char * getCommandName(ProgramId_t id) 
+{
+  switch(id)
+  {
+      case ID_ACQD:    
+          return "Acqd";
+      case ID_ARCHIVED:    
+          return "Archived";
+      case ID_CALIBD:    
+          return "Calibd";
+      case ID_CMDD:    
+          return "Cmdd";
+      case ID_EVENTD:    
+          return "Eventd";
+      case ID_GPSD:    
+          return "GPSd";
+      case ID_HKD:    
+          return "Hkd";
+      case ID_LOSD:
+          return "LOSd";
+      case ID_PRIORITIZERD:
+          return "Prioritizerd";
+      case ID_SIPD:
+          return "SIPd";
+      case ID_MONITORD:
+          return "Monitord";
+      case ID_PLAYBACKD:
+          return "Playbackd";
+      case ID_NTUD:
+          return "NTUd";
+      case ID_OPENPORTD:
+          return "Openportd";
+      case ID_RTLD:
+          return "RTLd";
+      case ID_TUFFD:
+          return "Tuffd";
+      default: 
+            return "Badd";  //hahahaha
+  }
+}
 
+
+
+
+
+void sigactionUsr1Handler(int sig, siginfo_t * sinfo, void * ignore) 
+{
+  (void) ignore; 
+  pid_t pid = sinfo->si_pid; 
+  char buf[512]; 
+  FILE * f; 
+
+  // actually do what sigusr1 is supposed to do 
+  sigUsr1Handler(sig);  
+
+  //try to track down the sending program
+  sprintf(buf,"/proc/%d/comm", pid); 
+  f = fopen(buf,"r"); 
+
+
+  if (f) 
+  {
+    ProgramId_t id; 
+    //read the command line 
+    fgets(buf, sizeof(buf)-1, f); 
+    for (id = ID_ACQD; id < ID_NOT_AN_ID; id++)
+    {
+      if (strstr(buf,getCommandName(id)))
+      {
+        senderOfSigUSR1 = id; 
+        return; 
+      }
+    }
+  }
+
+  senderOfSigUSR1 = ID_NOT_AN_ID; 
+  return; 
+
+
+
+}
 
 
 
