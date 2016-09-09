@@ -283,6 +283,9 @@
 #define TUFF_RAWCMD_DIR "/tmp/anita/tuff" 
 #define TUFF_RAWCMD_LINK_DIR "/tmp/anita/tuff/link" 
 
+#define GPU_SPECTRUM_DIR "/tmp/anita/gpuspec"
+#define GPU_SPECTRUM_LINK_DIR "/tmp/anita/gpuspec/link"
+
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
 #define ARCHIVED_PID_FILE "/tmp/anita/pid/archived.pid"
