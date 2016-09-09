@@ -25,6 +25,7 @@
 #define NO_ZLIB
 
 ProgramStateCode currentState;
+ProgramId_t senderOfSigUSR1; 
 
 
 //
