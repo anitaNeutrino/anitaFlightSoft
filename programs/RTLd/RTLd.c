@@ -316,15 +316,7 @@ int main(int nargs, char ** args)
   syslog(LOG_INFO,"RTld Starting");    
 
 
-  if (fork() == 0)
-  {
-    char const* argv[] = { "usbreset", RESET_USB_HUB_ARG, 0}; 
-    char const* envp[] = { 0} ; 
-
-    execve(RESET_USB_HUB_COMMAND,&argv[0],&envp[0]); 
-  }
-
-  wait(&retVal); 
+  retVal = system(RESET_USB_HUB_COMMAND); 
 
   if (retVal)
   {
