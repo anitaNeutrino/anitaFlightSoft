@@ -3783,22 +3783,51 @@ int executeRTLCommand(int command, unsigned char arg[2])
 }
 
 
+static void char_arr_to_int_arr(int * vint, const unsigned char * vchar, int length)
+{
+  int i; 
+  for (i = 0; i < length; i++) 
+  {
+    vint[i] = vchar[i]; 
+  }
+}
+
+static void fillDbArray(float * dbArray, const unsigned char * vchar, int length)
+{
+  int i; 
+  for (i = 0; i < length; i++)
+  {
+    short as_short = vchar[2*i] + (vchar[2*i+1] << 8); 
+    dbArray[i] = as_short  * 64.15 / 32767;  //TODO this should be defined somewhere better
+  }
+
+}
+
+static void fillBinArray(float * binArray, const unsigned char * vchar, int length)
+{
+  int i; 
+  for (i = 0; i < length; i++)
+  {
+    short as_short = vchar[2*i] + (vchar[2*i+1] << 8); 
+    binArray[i] = as_short / 100.;  //TODO this should be defined somewhere better
+  }
+}
+
+
+
 int executeTuffCommand(int command, unsigned char arg[6]) 
 {
   time_t when; 
   int notch_array[2*NUM_TUFF_NOTCHES]; 
+  float db_array[NUM_TUFF_NOTCHES]; 
+  float bin_array[NUM_TUFF_NOTCHES]; 
   unsigned short cmd; 
 
   switch(command)
   {
 
     case TUFF_SET_NOTCH: 
-       notch_array[0] = arg[0]; 
-       notch_array[1] = arg[1]; 
-       notch_array[2] = arg[2]; 
-       notch_array[3] = arg[3]; 
-       notch_array[4] = arg[4]; 
-       notch_array[5] = arg[5]; 
+       char_arr_to_int_arr(notch_array, arg, 2 * NUM_TUFF_NOTCHES); 
        configModifyIntArray("Tuffd.config","notch","notchPhiSectors",notch_array,2*NUM_TUFF_NOTCHES, &when); 
        break; 
 
@@ -3819,7 +3848,18 @@ int executeTuffCommand(int command, unsigned char arg[6])
     case TUFF_SET_TELEM_AFTER_CHANGE: 
        configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when); 
        break;
-
+    case TUFF_ADJUST_ACCORDING_TO_GPU: 
+       char_arr_to_int_arr(notch_array, arg, NUM_TUFF_NOTCHES); 
+       configModifyIntArray("Tuffd.config","notch","adjustAccordingToGpu", notch_array, NUM_TUFF_NOTCHES, &when); 
+       break; 
+    case TUFF_GPU_BINS: 
+       fillBinArray(bin_array, arg, NUM_TUFF_NOTCHES); 
+       configModifyFloatArray("Tuffd.config","notch","gpuBins", bin_array, NUM_TUFF_NOTCHES, &when); 
+       break; 
+    case TUFF_GPU_THRESHOLD:
+       fillDbArray(db_array, arg, NUM_TUFF_NOTCHES); 
+       configModifyFloatArray("Tuffd.config","notch","gpuThresholds", db_array, NUM_TUFF_NOTCHES, &when); 
+       break; 
     default: 
       syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);
       return 0; 

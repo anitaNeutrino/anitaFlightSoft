@@ -59,6 +59,8 @@ typedef enum {
 
 
 
+
+
 #define NUM_ANITA_COMMANDS 256 
 
 
@@ -265,8 +267,10 @@ typedef enum
   TUFF_SET_SLEEP_AMOUNT =3, 
   TUFF_SET_READ_TEMPERATURE =4 , 
   TUFF_SET_TELEM_EVERY = 5, 
-  TUFF_SET_TELEM_AFTER_CHANGE = 6 
-  
+  TUFF_SET_TELEM_AFTER_CHANGE = 6, 
+  TUFF_ADJUST_ACCORDING_TO_GPU = 7, 
+  TUFF_GPU_BINS = 8, 
+  TUFF_GPU_THRESHOLD = 9
 } TuffCommandCode_t; 
 
   
