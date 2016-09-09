@@ -90,6 +90,8 @@ int main (int argc, char *argv[])
 
   makeDirectories(GPU_TELEM_DIR);
   makeDirectories(GPU_TELEM_LINK_DIR);
+  makeDirectories(GPU_SPECTRUM_DIR);
+  makeDirectories(GPU_SPECTRUM_LINK_DIR);
 
   retVal=0;
   /* Main event getting loop. */
@@ -209,6 +211,8 @@ int main (int argc, char *argv[])
 	  printf("Trying to write and link for phi sector %d...\n", phi);
 	  writeFileAndLink(&payloadPowSpec[phi], phi);
 	}
+        sendSignal(ID_TUFFD, SIGUSR1); 
+
 	if(currentState==PROG_STATE_RUN){
 	  /* Reset average */
 	  for(phi=0; phi<NUM_PHI_SECTORS; phi++){
@@ -339,10 +343,16 @@ int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi)
     
     fillGenericHeader(payloadPowSpec,PACKET_GPU_AVE_POW_SPEC,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
     
+    //write for telemetry
     sprintf(theFilename,"%s/gpuPowSpec_%u_phi%d.dat",
 	    GPU_TELEM_DIR,payloadPowSpec->unixTimeFirstEvent,phi);
     retVal=writeStruct(payloadPowSpec,theFilename,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
     retVal=makeLink(theFilename,GPU_TELEM_LINK_DIR);
+
+    //write for TUFF control. Note that we do want to overwrite 
+    sprintf(theFilename,"%s/gpuPowSpec_phi%d.dat",GPU_SPECTRUM_DIR, phi); 
+    retVal=writeStruct(payloadPowSpec,theFilename,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+
 
     retVal=cleverHkWrite((unsigned char*)payloadPowSpec,sizeof(GpuPhiSectorPowerSpectrumStruct_t),
 			 payloadPowSpec->unixTimeFirstEvent,&gpuWriter);
