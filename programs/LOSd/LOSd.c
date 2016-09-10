@@ -4,6 +4,7 @@
  * Started off as a modified version of Marty's driver program.
  */
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +137,50 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
  int fdLos=0;
 
 
+
+static  volatile unsigned long long nwrites_before = 0; 
+static  volatile unsigned long long nwrites_after = 0; 
+
+/** Watchdog for LOS, 
+ *
+ * Mostly it sleeps, but it tries to check the condition that we have something to write
+ * but it takes too long 
+ *
+ * I'm not convinced there are no race conditions here, but worst case LOSd just restarts. 
+ */ 
+void * watchdogThread(void * unused) 
+{
+  while(currentState != PROG_STATE_TERMINATE )
+  {
+
+    //See what the number of writes is 
+    //nwrites_before should only differ from n_writes_after during a write
+    //
+
+    int after = nwrites_after; 
+    int before = nwrites_before; 
+    
+    if (after == before)
+    {
+      sleep(1); 
+      continue; 
+    }
+
+
+    //wait a while
+    sleep(1); 
+
+    //Check if we're still in the same state after 1 second. 
+    if (nwrites_before == before && after == nwrites_after) 
+    {
+      syslog(LOG_ERR, "Took too long to write, LOSd self-terminating\n"); 
+      raise(SIGTERM);  // TODO: which signal should I send? 
+    }
+  }
+  return 0; 
+}
+
+
  #define MAX_ATTEMPTS 50
 
  int main(int argc, char *argv[])
@@ -241,6 +286,8 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
    }
    time(&lastRefresh);
 
+   pthread_t thread; 
+   pthread_create(&thread, 0, watchdogThread,0); 
 
    do {
      if(verbosity) printf("Initializing LOSd\n");
@@ -1393,7 +1440,10 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
    // fprintf(stderr,"retVal == %d\n",retVal);
     if (retVal > 0) {
       // write will now not block
+      nwrites_before++; 
       retVal2=write(fdLos, wrappedBuffer, nbytes);
+      nwrites_after++; 
+
       minTimeWait =  minTimeWait_b + nbytes * minTimeWait_m; 
 //      clock_gettime(CLOCK_MONOTONIC_RAW, &last_send); 
     //  fprintf(stderr,"retVal2 == %d\n",retVal2);
@@ -1423,6 +1473,7 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
   usleep(microseconds);
    printf("Sleeping %d us",microseconds);
 #endif
+
 
   return 0;
 }
