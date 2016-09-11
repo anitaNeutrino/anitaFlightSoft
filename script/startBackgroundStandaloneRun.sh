@@ -71,7 +71,7 @@ daemon -r RTLd -n RTLd
 daemon -r Tuffd -n Tuffd 
 
 #Just to make sure
-daemon -r Prioritizerd -n Prioritizerd 
+daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
 daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd

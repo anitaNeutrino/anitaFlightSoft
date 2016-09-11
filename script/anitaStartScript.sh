@@ -32,12 +32,13 @@ daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
 daemon -u anita -r LOSd -n LOSd
 daemon -u anita -r Openportd -n Openportd
-daemon -u anita -r Prioritizerd -n Prioritizerd
+daemon -u anita -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
 daemon -u anita -r Monitord -n Monitord
 daemon -u anita -r Calibd -n Calibd
 daemon -u anita -r Playbackd -n Playbackd
 daemon -u anita -r LogWatchd -n LogWatchd
 daemon -u anita -r RTLd -n RTLd
+daemon -u anita -r NTUd -n NTUd
 daemon -u anita -r Tuffd -n Tuffd
 daemon -u anita -r checkNtu.py -n checkNtu.py
 sleep 2
