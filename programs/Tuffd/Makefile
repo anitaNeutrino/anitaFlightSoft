@@ -5,7 +5,7 @@
 include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
-Targets =  Tuffd
+Targets =  Tuffd fakeTuffd 
 
 all: $(Targets)
 

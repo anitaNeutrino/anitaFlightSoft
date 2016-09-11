@@ -69,8 +69,8 @@ daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
 daemon -r Playbackd -n Playbackd
-daemon -r NTUd -n NTUd
 daemon -r RTLd -n RTLd 
+daemon -r NTUd -n NTUd
 daemon -r Tuffd -n Tuffd 
 #daemon -r Openportd -n Openportd
 

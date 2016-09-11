@@ -173,8 +173,13 @@ void * watchdogThread(void * unused)
     //Check if we're still in the same state after 1 second. 
     if (nwrites_before == before && after == nwrites_after) 
     {
+      int retVal; 
       syslog(LOG_ERR, "Took too long to write, LOSd self-terminating\n"); 
-      raise(SIGTERM);  // TODO: which signal should I send? 
+      retVal = raise(SIGTERM);  // TODO: which signal should I send? 
+      if (retVal) 
+      {
+        syslog(LOG_ERR, "raise returned %d\n", retVal); 
+      }
     }
   }
   return 0; 
@@ -287,7 +292,11 @@ void * watchdogThread(void * unused)
    time(&lastRefresh);
 
    pthread_t thread; 
-   pthread_create(&thread, 0, watchdogThread,0); 
+   retVal = pthread_create(&thread, 0, watchdogThread,0); 
+   if (retVal) 
+   {
+     syslog(LOG_ERR, "LOSd:  create watchdog thread returned %d\n", retVal); 
+   }
 
    do {
      if(verbosity) printf("Initializing LOSd\n");
@@ -312,6 +321,7 @@ void * watchdogThread(void * unused)
        //Check to see if we need to refresh the links
        time(&currentTime);
        if(currentTime>lastRefresh+REFRESH_LINKS_EVERY) {
+
 	   refreshLinkDirs();
 	   lastRefresh=currentTime;
        }
@@ -401,7 +411,7 @@ void * watchdogThread(void * unused)
    }
    //    if(numBytesInBuffer%2==1) numBytesInBuffer++;
    if(numBytesInBuffer>6000)
-     printf("Trying to write %d bytes\ -- %d\n",numBytesInBuffer,laptopDebug);
+     printf("Trying to write %d bytes -- %d\n",numBytesInBuffer,laptopDebug);
   if(!laptopDebug) {
     retVal=writeLosData(losBuffer,numBytesInBuffer);
     if(retVal!=0) {
@@ -1443,6 +1453,11 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
       nwrites_before++; 
       retVal2=write(fdLos, wrappedBuffer, nbytes);
       nwrites_after++; 
+
+      if (retVal2 != nbytes)
+      {
+        syslog(LOG_INFO, "write did not wrote %d bytes, not %d bytes requested", retVal2, nbytes); 
+      }
 
       minTimeWait =  minTimeWait_b + nbytes * minTimeWait_m; 
 //      clock_gettime(CLOCK_MONOTONIC_RAW, &last_send); 

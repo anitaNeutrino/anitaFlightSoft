@@ -8,6 +8,7 @@
 #include <time.h>
 #include <execinfo.h>
 #include <math.h>
+#include <errno.h> 
 
 #define NUM_PHI PHI_SECTORS 
 
@@ -98,9 +99,13 @@ int analyzeGPUSpectrum()
   {
     GpuPhiSectorPowerSpectrumStruct_t spectrum; 
     int ring, pol; 
+    int retVal; 
     float val = 0;
     sprintf(theFilename,"%s/gpuPowSpec_phi%d.dat",GPU_SPECTRUM_LINK_DIR, phi); 
-    genericReadOfFile((unsigned char * ) &spectrum, theFilename, sizeof(spectrum)); 
+    if (genericReadOfFile((unsigned char * ) &spectrum, theFilename, sizeof(spectrum)) == -1) 
+    {
+      syslog(LOG_ERR, "Trouble reading %s\n", theFilename); 
+    }
 
     for (notch = 0; notch < NUM_TUFF_NOTCHES; notch++) 
     {
@@ -138,7 +143,12 @@ int analyzeGPUSpectrum()
     }
 
 
-    removeFile(theFilename); 
+    
+    retVal = removeFile(theFilename); 
+    if (retVal) 
+    {
+      syslog(LOG_ERR, "Could not remove file %s\n",theFilename); 
+    }
   }
 
   /**
@@ -210,7 +220,6 @@ int analyzeGPUSpectrum()
   tuffStruct.notchSetTime = time(0);
 
   return 0; 
-
 }
 
 int writeState(int changed)
@@ -263,16 +272,14 @@ int writeState(int changed)
 int setNotches()
 {
   int i; 
-  int ret; 
 
   for (i = 0; i < NUM_TUFF_NOTCHES; i++)
   {
     syslog(LOG_INFO, "Tuffd: Setting notch %d range to [%d %d],", i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
-    ret = tuff_setNotchRange(device, i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
-    ret <<= 1; 
+    tuff_setNotchRange(device, i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
   }
 
-  return ret; 
+  return 0; 
 }
 
 void cleanup() 
@@ -333,10 +340,12 @@ void setupSignals()
   act.sa_flags = SA_SIGINFO; 
 
   // this way we know who sent us the signal! 
-  sigaction(SIGUSR1, &act,NULL); 
+  if (sigaction(SIGUSR1, &act,NULL)) 
+  {
+    syslog(LOG_ERR,"Problem setting sigaction. errno=%d\n", errno); 
+  }
 
-//  signal(SIGUSR1, sigUsr1Handler);
-  signal(SIGUSR2, sigUsr2Handler);
+  signal(SIGUSR2, sigUsr2Handler); 
   signal(SIGTERM, handleBadSigs);
   signal(SIGINT, handleBadSigs);
   signal(SIGSEGV, handleBadSigs);
@@ -683,11 +692,22 @@ int main(int nargs, char ** args)
       // save it for telemetry 
       fillGenericHeader(&raw, PACKET_TUFF_RAW_CMD, sizeof(TuffRawCmd_t)); 
       sprintf(wr_buf, "%s/%s", TUFF_TELEM_DIR, fname); 
-      writeStruct(&raw, wr_buf, sizeof(TuffRawCmd_t)); 
-      makeLink(wr_buf, TUFF_TELEM_LINK_DIR); 
+      if (writeStruct(&raw, wr_buf, sizeof(TuffRawCmd_t)))
+      {
+        syslog(LOG_ERR, "writeStruct failed for raw command\n"); 
+      }
+
+      if (makeLink(wr_buf, TUFF_TELEM_LINK_DIR))
+      {
+        syslog(LOG_ERR, "makeLink failed for raw command\n"); 
+      }
 
       //save it for posterity
-      cleverHkWrite((unsigned char*) &raw, sizeof(TuffRawCmd_t), raw.enactedTime, &tuffRawCmdWriter); 
+      if ( cleverHkWrite((unsigned char*) &raw, sizeof(TuffRawCmd_t), raw.enactedTime, &tuffRawCmdWriter))  
+      {
+        syslog(LOG_ERR,"cleverHkWrite failed for raw command\n"); 
+
+      }
 
       //delete files
       removeFile(rd_linkbuf); 
@@ -706,7 +726,7 @@ int main(int nargs, char ** args)
       retVal = writeState(justChanged); 
       if (!retVal) 
       {
-        // do something 
+        syslog(LOG_ERR,"writeState returned %d\n", retVal); 
 
       }
       justChanged = 0; 
