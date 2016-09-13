@@ -37,6 +37,18 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   cl_uint numDevices;
   clGetDeviceIDs(platformIds[myPlatform], devType, maxDevices, deviceIds, &numDevices);
   statusCheck(status, "clGetDeviceIDs");
+
+  /** Try to start X and try again!*/ 
+  if (numDevices == 0) 
+  {
+    printf("Prioritizerd: attempting to start X\n"); 
+    syslog(LOG_INFO,"attempting to start X\n"); 
+    system("sudo killall -9 X"); 
+    system("X &"); 
+    sleep(1); 
+    clGetDeviceIDs(platformIds[myPlatform], devType, maxDevices, deviceIds, &numDevices);
+  }
+
   
   /* Give up if we can't find any devices on chosen platform */
   if (numDevices==0) {
