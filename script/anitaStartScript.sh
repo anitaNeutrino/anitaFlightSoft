@@ -9,8 +9,8 @@ export LD_LIBRARY_PATH=${ANITA_FLIGHT_SOFT_DIR}/lib:${LD_LIBRARY_PATH}
 
 
 ### Now Prioritizerd will try to start X... hopefully this works !
-#X  2>&1 > /dev/null &
-#DISPLAY=:0 xhost +
+# Start X as user 
+daemon -u anita -r X -n X 
 
 daemon -u anita -r SIPd -n SIPd
 
