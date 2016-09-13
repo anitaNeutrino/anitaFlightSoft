@@ -86,6 +86,17 @@ int main (int argc, char *argv[])
 	}
 	while(currentState==PROG_STATE_RUN) {
 	  sleep(1);
+
+    //check to see that copy script is still alive 
+    retVal = kill(copyScriptPid, 0); 
+    if (retVal < 0) 
+    {
+      syslog(LOG_ERR, "copyScript seems to be dead! Sleeping 10 seconds and terminating."); 
+      sleep(10); 
+      currentState = PROG_STATE_TERMINATE; 
+    }
+    
+
 	}	 
 	if(copyScriptPid>0) stopCopyScript();
 	copyScriptPid=-1;
