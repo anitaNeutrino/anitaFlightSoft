@@ -64,7 +64,7 @@ nice daemon -r GPSd -n GPSd
 nice daemon -r Monitord -n Monitord
 nice daemon -r Calibd -n Calibd
 nice daemon -r LogWatchd -n LogWatchd
-daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
+daemon -r Prioritizerd -n Prioritizerd #--env="DISPLAY=:0"
 daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd

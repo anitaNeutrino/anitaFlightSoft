@@ -34,7 +34,10 @@ daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
 daemon -u anita -r LOSd -n LOSd
 daemon -u anita -r Openportd -n Openportd
-daemon -u anita -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0 COMPUTE=:0"
+
+## I don't think those environmental variables are needed anymore... perhaps even harmful? 
+#daemon -u anita -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0 COMPUTE=:0"
+daemon -u anita -r Prioritizerd -n Prioritizerd 
 daemon -u anita -r Monitord -n Monitord
 daemon -u anita -r Calibd -n Calibd
 daemon -u anita -r Playbackd -n Playbackd
