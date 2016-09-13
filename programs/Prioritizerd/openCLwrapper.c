@@ -47,7 +47,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   {
     printf("attempting to start X\n"); 
     syslog(LOG_INFO,"attempting to start X\n"); 
-    system("sudo killall -9 X"); 
+//    system("sudo killall -9 X"); 
     system("X > /dev/null 2>/dev/null &"); 
     printf("Started X and quitting... should be restarted by daemon I suppose?\n"); 
     sleep(2); 
