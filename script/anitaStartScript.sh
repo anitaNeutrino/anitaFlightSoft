@@ -32,7 +32,7 @@ daemon -u anita -r Archived -n Archived
 daemon -u anita  -r Eventd -n Eventd
 daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
-daemon -u anita -r LOSd -n LOSd
+daemon -u anita -r LOSd -n LOSd --attempts 20 
 daemon -u anita -r Openportd -n Openportd
 
 ## I don't think those environmental variables are needed anymore... perhaps even harmful? 
