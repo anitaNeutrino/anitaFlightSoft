@@ -481,7 +481,7 @@ int readConfig()
 
     nread = NUM_TUFF_NOTCHES; 
 
-    kvpStatus = kvpGetIntArray("adjustAccordingToGpu", int_tmp, &nread); 
+    kvpStatus = kvpGetIntArray("adjustAccordingToGPU", int_tmp, &nread); 
     if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
     {
       syslog(LOG_ERR, "Problem reading in adjustAccordingToGpu, will set to false"); 
@@ -570,7 +570,7 @@ int main(int nargs, char ** args)
     //first try to ping them 
     
     unsigned rfcm = i ; 
-    int gotit = tuff_pingiRFCM(device,3,1,&rfcm); 
+    int gotit = tuff_pingiRFCM(device,2,1,&rfcm); 
     printf("%d %d\n", i, gotit) ; 
       
     
@@ -579,17 +579,18 @@ int main(int nargs, char ** args)
       printf("Resetting RFCM %d\n", i); 
       tuff_reset(device, i); 
       sleep(1); 
-      if(!tuff_pingiRFCM(device,5,1,&rfcm))
+      if(!tuff_pingiRFCM(device,2,1,&rfcm))
       {
-        fprintf(stderr, "Did not get ping from TUFF %d in 10 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
-        syslog(nattempts < MAX_ATTEMPTS/2  ? LOG_INFO : LOG_ERR, "Did not get ping from TUFF %d in 5 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
+        fprintf(stderr, "Did not get ping from TUFF %d in 2 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
+        syslog(LOG_INFO, "Did not get ping from TUFF %d in 5 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
         nattempts++; 
 
-        if (nattempts == MAX_ATTEMPTS) //give up eventually 
+        if (nattempts >= MAX_ATTEMPTS) //give up eventually 
         {
           syslog(LOG_ERR, "Tuffd giving up on hearing from iRFCM %d after %d bad attempts\n", i, MAX_ATTEMPTS); 
           fprintf(stderr, "Tuffd giving up on hearing from iRFCM %d after %d bad attempts\n", i, MAX_ATTEMPTS); 
           tuff_responds[i] = 0; 
+          nattempts = 0; 
           continue; 
         }
 
@@ -635,6 +636,13 @@ int main(int nargs, char ** args)
     if (senderOfSigUSR1 != ID_PRIORITIZERD)
     {
       read_config_ok = readConfig(); 
+    }
+    else
+    {
+      if (printToScreen) 
+      {
+        printf("Woke up by prioritizer!\n"); 
+      }
     }
 
 
@@ -724,7 +732,7 @@ int main(int nargs, char ** args)
     while (currentState == PROG_STATE_RUN)
     {
       retVal = writeState(justChanged); 
-      if (!retVal) 
+      if (retVal) 
       {
         syslog(LOG_ERR,"writeState returned %d\n", retVal); 
 
