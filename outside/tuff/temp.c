@@ -20,18 +20,24 @@ int main(int nargs, char ** args)
 
   dev = tuff_open(args[1]); 
   irfcm = atoi(args[2]); 
+  /*
 //  sleep(1); 
   tuff_setQuietMode(dev,true); 
   sleep(1); 
   tuff_reset(dev,irfcm); 
+  printf("Reset!\n"); 
   sleep(1); 
 
-//  tuff_waitForAck(dev,true); 
+  
+  tuff_waitForAck(dev,irfcm,true); 
 //  printf("Got ack!\n"); 
 
+*/
   printf("Temperature reported by TUFF Master in  IRFCM %d is %f\n", irfcm, tuff_getTemperature(dev, irfcm)); 
 
-//  tuff_setQuietMode(dev,false); 
+  /*
+  tuff_setQuietMode(dev,true); 
+  */
 
 
   tuff_close(dev); 
