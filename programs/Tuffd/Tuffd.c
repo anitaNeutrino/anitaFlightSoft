@@ -235,11 +235,16 @@ int writeState(int changed)
     if (!tuff_responds[i]) 
     {
       tuffStruct.temperatures[i] = 127;  
+      printf("Writing temperature %d for RFCM %d\n", tuffStruct.temperatures[i],i); 
       continue; 
     }
 
     tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
-/*    printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); */
+
+    if (printToScreen) 
+    {
+      printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); 
+    }
 
   }
 
@@ -531,7 +536,7 @@ int main(int nargs, char ** args)
 
   int read_config_ok; 
   int retVal; 
-  int justChanged; 
+  int justChanged = 1; 
   int i;
   int wd; 
   int nattempts = 0; 
@@ -577,8 +582,12 @@ int main(int nargs, char ** args)
     if (!gotit) 
     {
       printf("Resetting RFCM %d\n", i); 
+      tuff_setQuietMode(device,false); 
       tuff_reset(device, i); 
-      sleep(1); 
+      tuff_setQuietMode(device,false); 
+      tuff_waitForAck(device,i,1); 
+      printf("Got ack from %d!\n", i); 
+//      sleep(1); 
       if(!tuff_pingiRFCM(device,2,1,&rfcm))
       {
         fprintf(stderr, "Did not get ping from TUFF %d in 2 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
@@ -658,7 +667,7 @@ int main(int nargs, char ** args)
       analyzeGPUSpectrum(); 
     }
     //check if tuff notch status is same 
-    justChanged = memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
+    justChanged = justChanged || memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
     justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
 
     //if it changed, set the notches and copy the tuff struct to last tuff struct 

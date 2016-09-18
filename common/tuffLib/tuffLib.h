@@ -158,8 +158,13 @@ int tuff_setPhiSectors(tuff_dev_t * d,
 			  unsigned int nb);
 
 
-/** Return the temperature from the TUFF master for a given irfcm */ 
-float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm);
+/** Return the temperature from the TUFF master for a given irfcm 
+ *
+ *  If timoeout is greater than zero, it's the maximum timeout in seconds. 
+ *  Will return -275 if select returns -1 and -274 if the timeout is exceeded.
+ *  It is unexpected that those temperatures would ever be measured in practice, so there should be no collisions. 
+ **/ 
+float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout);
 
 /** Perform a raw command.*/ 
 int tuff_rawCommand(tuff_dev_t * dev, unsigned int irfcm, unsigned int tuffStack, unsigned int cmd); 

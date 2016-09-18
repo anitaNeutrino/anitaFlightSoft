@@ -298,7 +298,6 @@ tuff_dev_t * tuff_open(const char * dev)
   char sbuf[512]; 
   struct termios tio; 
   memset(&tio, 0, sizeof(tio)); 
-  int iflags; 
   int fd; 
 
   fd = open(dev, O_RDWR | O_NOCTTY); 
@@ -315,24 +314,26 @@ tuff_dev_t * tuff_open(const char * dev)
   tuff_dev_t * ptr = malloc(sizeof(tuff_dev_t)); 
   ptr->fd = fd; 
 
-  /*turn off DTR */ 
-  iflags = TIOCM_DTR; 
-  ioctl(fd, TIOCMBIC, TIOCM_DTR); 
-
   /* save old settings */ 
   tcgetattr(fd, &ptr->oldtio); 
+
+  memcpy(&tio, &ptr->oldtio, sizeof(tio)); 
 
 
   cfsetospeed(&tio, BAUDRATE); 
   cfsetispeed(&tio, BAUDRATE); 
   
+
   /* set it up the way we like it */ 
-  tio.c_cflag =  CS8 | CLOCAL | CREAD;  
+  tio.c_cflag &= ~CSIZE; 
+  tio.c_cflag |=  CS8 | CLOCAL | CREAD;  
   tio.c_cflag &= ~CRTSCTS; /* NO RTSCTS */ 
   tio.c_cflag &= ~CSTOPB;  /* Just one stop bit */  
-  tio.c_iflag = IGNPAR | ICRNL;
-  tio.c_oflag = 0;
-  tio.c_lflag = ICANON;
+  tio.c_cflag &= ~PARENB;  /* clear the parity bit  */
+  tio.c_iflag |= IGNPAR | ICRNL;
+  tio.c_iflag &= ~(IXON | IXOFF | IXANY); 
+  tio.c_lflag &= ~(ECHO | ECHOE | ICANON | ISIG );
+  tio.c_oflag &= ~OPOST ; 
   tio.c_cc[VINTR]    = 0;
   tio.c_cc[VQUIT]    = 0; 
   tio.c_cc[VERASE]   = 0;
@@ -353,6 +354,9 @@ tuff_dev_t * tuff_open(const char * dev)
 
   tcflush(fd, TCIFLUSH);
   tcsetattr(fd,TCSANOW,&tio);
+
+
+
   return ptr; 
 }
 
@@ -368,13 +372,17 @@ int tuff_close(tuff_dev_t * d)
 
 
  
-float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
+float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
 {
 
   int i; 
   unsigned char c; 
   float ret; 
   char *p; 
+  fd_set set; 
+  struct timeval tv; 
+  int rv; 
+
 //  bytegobbler(d->fd);  //EAT MOAR BYTES 
   sprintf(buf,"\r\n{\"monitor\": %d}\r\n", irfcm); 
   write(d->fd, buf, strlen(buf)); 
@@ -383,7 +391,28 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm)
 
   while(1) 
   {
+    FD_ZERO(&set); 
+    FD_SET(d->fd, &set); 
+    if (timeout > 0) 
+    {
+      tv.tv_sec = timeout; 
+      tv.tv_usec = 0; 
+    }
+
+    rv = select(d->fd+1, &set, 0,0, timeout > 0  ? &tv : 0); 
+    if (rv < 1) 
+    {
+      if (rv > 0) 
+      {
+        syslog(LOG_ERR, "select returned %d in tuff_getTemperature\n"); 
+        return -275; 
+
+      }
+      return -274; 
+    }
+
     read(d->fd, &c, 1); 
+
     if (c == '\n')
     {
       buf[i] = 0; 
