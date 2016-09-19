@@ -7,10 +7,16 @@
 #-----------------------------------------------------------------------------
 
 
+
 if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if00-port0" ]
 then
     ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if00-port0` /dev/ttyTUFF
+else
+## Sometimes it seems that port0 takes a while to show up, so just symlink it anyway, even if it doesn't exist yet
+    ln -sf /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if00-port0 /dev/ttyTUFF
 fi
+
+
 
 if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if01-port0" ]
 then
@@ -51,6 +57,13 @@ if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if03-port0" ]
 then
     ln -sf `readlink -f /dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVQ0ZPH-if03-port0` /dev/ttyLow2
 fi
+
+if [ -L "/dev/serial/by-id/usb-FTDI_USB-COM232_Plus4_FTVP2XGY-if00-port0" ]
+then
+fi
+
+
+
 
 
 ### This is possibly the device used at Palestine; might change for Antarctica  -- CSD 
