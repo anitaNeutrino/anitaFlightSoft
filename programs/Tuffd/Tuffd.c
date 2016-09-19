@@ -235,11 +235,37 @@ int writeState(int changed)
     if (!tuff_responds[i]) 
     {
       tuffStruct.temperatures[i] = 127;  
-      continue; 
     }
 
-    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
-/*    printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); */
+    else if (readTemperatures) 
+    {
+      float temp = tuff_getTemperature(device,i,1); 
+      if (temp <= -273)  // this means it timed out
+      {
+        syslog(LOG_ERR," Reading temperature on irfcm %d timed out or otherwise failed, could it have dropped out?\n", i); 
+        tuffStruct.temperatures[i] = 127; 
+      }
+      
+      else if (temp < -127) tuffStruct.temperatures[i] = -127; //bottomed out... but hard to believe
+      else if (temp > 127) tuffStruct.temperatures[i]  = 127; //maxed out... but hard to believe
+
+      else 
+      {
+         tuffStruct.temperatures[i] = (char) (0.5  + temp); // round 
+      }
+
+    }
+    else
+    {
+
+      tuffStruct.temperatures[i] = -128;; 
+    }
+
+
+    if (printToScreen) 
+    {
+      printf("Writing temperature %d for RFCM %d%s\n", tuffStruct.temperatures[i], i, readTemperatures ? "" : " (temperature reading disabled) "); 
+    }
 
   }
 
@@ -481,7 +507,7 @@ int readConfig()
 
     nread = NUM_TUFF_NOTCHES; 
 
-    kvpStatus = kvpGetIntArray("adjustAccordingToGpu", int_tmp, &nread); 
+    kvpStatus = kvpGetIntArray("adjustAccordingToGPU", int_tmp, &nread); 
     if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
     {
       syslog(LOG_ERR, "Problem reading in adjustAccordingToGpu, will set to false"); 
@@ -531,7 +557,7 @@ int main(int nargs, char ** args)
 
   int read_config_ok; 
   int retVal; 
-  int justChanged; 
+  int justChanged = 1; 
   int i;
   int wd; 
   int nattempts = 0; 
@@ -556,40 +582,71 @@ int main(int nargs, char ** args)
 
   if (!device) 
   {
-    syslog(LOG_ERR,"Tuffd could not open the Tuff. Aborting.."); 
-    cleanup(); 
+    // Well, why don't we try running anita serial service again? 
+    syslog(LOG_ERR,"Trying to restart anitaserial service"); 
+    sleep(1); //just in case 
+    system("systemctl restart anitaserial") ;
+    device = tuff_open(TUFF_DEVICE);
+
+    if (!device) 
+    {
+      syslog(LOG_ERR,"Tuffd could not open the Tuff. Aborting.."); 
+      cleanup(); 
     return 1; 
+    }
   }
  
 
 
 
   // reset and ping the tuffs 
+  // This is a bit silly... resetting multiple times shouldn't really help at all, 
+  // but whatever! 
   for (i = 0; i < NUM_RFCM; i++) 
   {
-    //first try to ping them 
-    
     unsigned rfcm = i ; 
-    int gotit = tuff_pingiRFCM(device,3,1,&rfcm); 
+    int gotit; 
+    if (nattempts == 0) 
+    {
+      printf("Resetting RFCM %d\n", i); 
+      tuff_setQuietMode(device,false); 
+      tuff_reset(device, i); 
+      tuff_setQuietMode(device,false); 
+      gotit = tuff_waitForAck(device,i,1); 
+      if (!gotit) 
+      {
+          printf("Got ack from %d!\n", i); 
+      }
+    }
+
+    //first try to ping them 
+    gotit = tuff_pingiRFCM(device,1,1,&rfcm); 
     printf("%d %d\n", i, gotit) ; 
-      
     
     if (!gotit) 
     {
       printf("Resetting RFCM %d\n", i); 
+      tuff_setQuietMode(device,false); 
       tuff_reset(device, i); 
-      sleep(1); 
-      if(!tuff_pingiRFCM(device,5,1,&rfcm))
+      tuff_setQuietMode(device,false); 
+      gotit = tuff_waitForAck(device,i,1); 
+      if (!gotit) 
       {
-        fprintf(stderr, "Did not get ping from TUFF %d in 10 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
-        syslog(nattempts < MAX_ATTEMPTS/2  ? LOG_INFO : LOG_ERR, "Did not get ping from TUFF %d in 5 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
+        printf("Got ack from %d!\n", i); 
+      }
+//      sleep(1); 
+      if(!tuff_pingiRFCM(device,2,1,&rfcm))
+      {
+        fprintf(stderr, "Did not get ping from TUFF %d in 2 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
+        syslog(LOG_INFO, "Did not get ping from TUFF %d in 2 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
         nattempts++; 
 
-        if (nattempts == MAX_ATTEMPTS) //give up eventually 
+        if (nattempts >= MAX_ATTEMPTS) //give up eventually 
         {
           syslog(LOG_ERR, "Tuffd giving up on hearing from iRFCM %d after %d bad attempts\n", i, MAX_ATTEMPTS); 
           fprintf(stderr, "Tuffd giving up on hearing from iRFCM %d after %d bad attempts\n", i, MAX_ATTEMPTS); 
           tuff_responds[i] = 0; 
+          nattempts = 0; 
           continue; 
         }
 
@@ -636,6 +693,13 @@ int main(int nargs, char ** args)
     {
       read_config_ok = readConfig(); 
     }
+    else
+    {
+      if (printToScreen) 
+      {
+        printf("Woke up by prioritizer!\n"); 
+      }
+    }
 
 
     if (read_config_ok)
@@ -650,7 +714,7 @@ int main(int nargs, char ** args)
       analyzeGPUSpectrum(); 
     }
     //check if tuff notch status is same 
-    justChanged = memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
+    justChanged = justChanged || memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
     justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
 
     //if it changed, set the notches and copy the tuff struct to last tuff struct 
@@ -724,7 +788,7 @@ int main(int nargs, char ** args)
     while (currentState == PROG_STATE_RUN)
     {
       retVal = writeState(justChanged); 
-      if (!retVal) 
+      if (retVal) 
       {
         syslog(LOG_ERR,"writeState returned %d\n", retVal); 
 

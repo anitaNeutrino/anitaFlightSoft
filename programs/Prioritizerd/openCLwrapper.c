@@ -12,6 +12,8 @@
  */
 
 #include "openCLwrapper.h"
+#include <signal.h>
+#include <unistd.h>
 
 void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType){
 
@@ -20,6 +22,8 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   cl_int status = clGetPlatformIDs(maxPlatforms, platformIds, &numPlatforms);
   statusCheck(status, "clGetPlatformIds");
   printf("%d platform(s) detected.\n", numPlatforms);
+
+
 
   /* Get the names of the platforms and display to user. */
   char platNames[maxPlatforms][100];
@@ -37,6 +41,19 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   cl_uint numDevices;
   clGetDeviceIDs(platformIds[myPlatform], devType, maxDevices, deviceIds, &numDevices);
   statusCheck(status, "clGetDeviceIDs");
+
+  /** Try to start X and die*/ 
+  if (numDevices == 0) 
+  {
+    printf("attempting to start X\n"); 
+    syslog(LOG_INFO,"attempting to start X\n"); 
+//    system("sudo killall -9 X"); 
+    system("X > /dev/null 2>/dev/null &"); 
+    printf("Started X and quitting... should be restarted by daemon I suppose?\n"); 
+    sleep(2); 
+    raise(SIGTERM); 
+  }
+
   
   /* Give up if we can't find any devices on chosen platform */
   if (numDevices==0) {
@@ -46,7 +63,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     fprintf(stderr, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
-    exit(1);
+    raise(SIGTERM); 
   }
 
   /* Prints useful information about the GPU architecture to the screen.*/
@@ -132,7 +149,7 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
   if (!fp) {
     syslog(LOG_ERR, "There was an error opening %s, program will exit", fileName);
     fprintf(stderr, "There was an error opening %s, program will exit", fileName);
-    exit(-1);
+    raise(SIGTERM); 
   }
   source_str = (char *)malloc(MAX_SOURCE_SIZE);
   /* source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp); */
@@ -430,7 +447,7 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   else{
     printf("Could not interpret buffer data type.\n");
     printf("Exiting program.\n");
-    exit(-1);
+    raise(SIGTERM); 
   }
 
   /* sprintf(fileNameWithFolder, "../debugOutput/%s_%d", fileName, polInd); */
@@ -445,7 +462,7 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   if(outputFile == NULL){
     printf("Failed to open output file in printBufferToTextFile.\n");
     printf("Exiting Program.\n");
-    exit(-1);
+    raise(SIGTERM); 
   }
 
 
@@ -497,7 +514,7 @@ void statusCheck(cl_int status, const char* description){
     const char* errorName =  translateReturnValue(status);
     syslog(LOG_ERR, "%s returned status %s. Exiting host program.\n", description, errorName);
     fprintf(stderr, "%s returned status %s. Exiting host program.\n", description, errorName);
-    exit(status);
+    raise(SIGTERM); 
   }
 }
 

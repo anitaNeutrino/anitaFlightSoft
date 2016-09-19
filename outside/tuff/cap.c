@@ -39,6 +39,7 @@ int main(int argc, char **argv)
     exit(-1);
   }
   
+  tuff_setQuietMode(dev,false); 
   tuff_setCap(dev, irfcm, channel, notch, cap);
 
   // wait for cap ack
