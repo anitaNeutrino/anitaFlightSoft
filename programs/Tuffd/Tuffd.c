@@ -235,11 +235,32 @@ int writeState(int changed)
     if (!tuff_responds[i]) 
     {
       tuffStruct.temperatures[i] = 127;  
-      printf("Writing temperature %d for RFCM %d\n", tuffStruct.temperatures[i],i); 
-      continue; 
     }
 
-    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i,1)) : -128); 
+    else if (readTemperatures) 
+    {
+      float temp = tuff_getTemperature(device,i,1); 
+      if (temp <= -273)  // this means it timed out
+      {
+        syslog(LOG_ERR," Reading temperature on irfcm %d timed out or otherwise failed, could it have dropped out?\n", i); 
+        tuffStruct.temperatures[i] = 127; 
+      }
+      
+      else if (temp < -127) tuffStruct.temperatures[i] = -127; //bottomed out... but hard to believe
+      else if (temp > 127) tuffStruct.temperatures[i]  = 127; //maxed out... but hard to believe
+
+      else 
+      {
+         tuffStruct.temperatures[i] = (char) (0.5  + temp); // round 
+      }
+
+    }
+    else
+    {
+
+      tuffStruct.temperatures[i] = -128;; 
+    }
+
 
     if (printToScreen) 
     {
@@ -561,23 +582,46 @@ int main(int nargs, char ** args)
 
   if (!device) 
   {
-    syslog(LOG_ERR,"Tuffd could not open the Tuff. Aborting.."); 
-    cleanup(); 
+    // Well, why don't we try running anita serial service again? 
+    syslog(LOG_ERR,"Trying to restart anitaserial service"); 
+    sleep(1); //just in case 
+    system("systemctl restart anitaserial") ;
+    device = tuff_open(TUFF_DEVICE);
+
+    if (!device) 
+    {
+      syslog(LOG_ERR,"Tuffd could not open the Tuff. Aborting.."); 
+      cleanup(); 
     return 1; 
+    }
   }
  
 
 
 
   // reset and ping the tuffs 
+  // This is a bit silly... resetting multiple times shouldn't really help at all, 
+  // but whatever! 
   for (i = 0; i < NUM_RFCM; i++) 
   {
-    //first try to ping them 
-    
     unsigned rfcm = i ; 
-    int gotit = tuff_pingiRFCM(device,2,1,&rfcm); 
+    int gotit; 
+    if (nattempts == 0) 
+    {
+      printf("Resetting RFCM %d\n", i); 
+      tuff_setQuietMode(device,false); 
+      tuff_reset(device, i); 
+      tuff_setQuietMode(device,false); 
+      gotit = tuff_waitForAck(device,i,1); 
+      if (!gotit) 
+      {
+          printf("Got ack from %d!\n", i); 
+      }
+    }
+
+    //first try to ping them 
+    gotit = tuff_pingiRFCM(device,1,1,&rfcm); 
     printf("%d %d\n", i, gotit) ; 
-      
     
     if (!gotit) 
     {
@@ -585,13 +629,16 @@ int main(int nargs, char ** args)
       tuff_setQuietMode(device,false); 
       tuff_reset(device, i); 
       tuff_setQuietMode(device,false); 
-      tuff_waitForAck(device,i,1); 
-      printf("Got ack from %d!\n", i); 
+      gotit = tuff_waitForAck(device,i,1); 
+      if (!gotit) 
+      {
+        printf("Got ack from %d!\n", i); 
+      }
 //      sleep(1); 
       if(!tuff_pingiRFCM(device,2,1,&rfcm))
       {
         fprintf(stderr, "Did not get ping from TUFF %d in 2 seconds... trying to reset again. nattempts=%d \n",i, nattempts); 
-        syslog(LOG_INFO, "Did not get ping from TUFF %d in 5 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
+        syslog(LOG_INFO, "Did not get ping from TUFF %d in 2 seconds... trying to reset again. nattempts=%d \n",i,nattempts); 
         nattempts++; 
 
         if (nattempts >= MAX_ATTEMPTS) //give up eventually 
