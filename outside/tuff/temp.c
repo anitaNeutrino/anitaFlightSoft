@@ -33,7 +33,7 @@ int main(int nargs, char ** args)
 //  printf("Got ack!\n"); 
 
 */
-  printf("Temperature reported by TUFF Master in  IRFCM %d is %f\n", irfcm, tuff_getTemperature(dev, irfcm)); 
+  printf("Temperature reported by TUFF Master in  IRFCM %d is %f\n", irfcm, tuff_getTemperature(dev, irfcm,-1)); 
 
   /*
   tuff_setQuietMode(dev,true); 
