@@ -239,7 +239,7 @@ int writeState(int changed)
       continue; 
     }
 
-    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i)) : -128); 
+    tuffStruct.temperatures[i] = (char)  (readTemperatures ? (0.5 + tuff_getTemperature(device,i,1)) : -128); 
 
     if (printToScreen) 
     {
