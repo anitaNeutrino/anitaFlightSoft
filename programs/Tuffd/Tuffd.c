@@ -38,6 +38,7 @@ static float gpu_bins[NUM_TUFF_NOTCHES];
 static float tuff_threshold[NUM_TUFF_NOTCHES]; 
 
 
+
 /** The device descriptor */ 
 static tuff_dev_t * device; 
 
@@ -109,14 +110,19 @@ int analyzeGPUSpectrum()
 
     for (notch = 0; notch < NUM_TUFF_NOTCHES; notch++) 
     {
+      float adjust = 0; 
       if (!adjustAccordingToGPU[notch]) continue; 
+      if (tuffStruct.startSectors[notch] <= phi && tuffStruct.endSectors[notch] >= phi)
+      {
+        adjust = 20; ///TODO: make adjustable
+      }
       for (ring = 0; ring < NUM_ANTENNA_RINGS; ring++)
       {
         for (pol = 0; pol < 2 ;pol++) 
         {
           /* Scale by short -> float conversion, then log to linear, then divide by 6 (3 antennas * 2 pols) */ 
-          double linear_val0 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin0[notch]] * 64.15/32767. / 10.)/6.;
-          double linear_val1 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin1[notch]] * 64.15/32767. / 10.)/6.;
+          double linear_val0 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin0[notch]] * 64.15/32767. / 10.+ adjust)/6.;
+          double linear_val1 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin1[notch]] * 64.15/32767. / 10.+ adjust)/6.;
 
           val += (1-frac[notch]) * linear_val0 + (frac[notch]) * linear_val1; 
         }
