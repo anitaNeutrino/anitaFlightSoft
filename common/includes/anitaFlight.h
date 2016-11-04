@@ -286,6 +286,9 @@
 #define GPU_SPECTRUM_DIR "/tmp/anita/gpuspec"
 #define GPU_SPECTRUM_LINK_DIR "/tmp/anita/gpuspec/link"
 
+#define GPSD_HEADING_DIR "/tmp/anita/heading" 
+#define GPSD_HEADING_LINK_DIR "/tmp/anita/heading/link" 
+
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"
 #define ARCHIVED_PID_FILE "/tmp/anita/pid/archived.pid"

@@ -5,6 +5,7 @@
 #include "linkWatchLib/linkWatchLib.h"
 #include "kvpLib/keyValuePair.h" 
 #include <unistd.h>
+#include <dirent.h> 
 #include <time.h>
 #include <execinfo.h>
 #include <math.h>
@@ -34,6 +35,8 @@ static int telemeterAfterChange = 1;
 
 static int zeroes[NUM_TUFF_NOTCHES]; 
 static int adjustAccordingToGPU[NUM_TUFF_NOTCHES]; 
+static int adjustAccordingToHeading[NUM_TUFF_NOTCHES]; 
+static short degreesFromNorthDangerZone[NUM_TUFF_NOTCHES]; 
 static float gpu_bins[NUM_TUFF_NOTCHES];   
 static float tuff_threshold[NUM_TUFF_NOTCHES]; 
 
@@ -58,6 +61,186 @@ static float vals[NUM_PHI][NUM_TUFF_NOTCHES];
 
 
 static int telemeterCount = 0; 
+
+
+
+//Store 10 values of heading history
+
+const int NUM_HEADINGS = 10; 
+static float headingHistoryA[NUM_HEADINGS]; 
+static float headingHistoryB[NUM_HEADINGS]; 
+static float headingTimesA[NUM_HEADINGS]; 
+static float headingTimesB[NUM_HEADINGS]; 
+static int headingIndexA = -1; 
+static int headingIndexB = -1; 
+
+
+static float tdiff(float tod1, float tod2) 
+{
+
+  float diff; 
+
+  // invalid 
+  if (tod1 < 0 || tod2 < 0) return -999999; 
+
+
+  diff = tod1- tod2; 
+
+  // oops, we wrapped around midnight 
+  if (diff > 12*60*60) 
+  {
+    diff -= 24*60*60; 
+  }
+  else if (dif < -12*60*60)
+  {
+    diff += 24*60*60; 
+  }
+
+  return diff; 
+}
+
+int analyzeHeading() 
+{
+  char buf[FILENAME_MAX]; 
+  struct dirent ** list; 
+  int i; 
+  int nAOk, int nBok; 
+
+
+  if (headingIndexA < 0) 
+  {
+    // initialize to uninitialized
+    for (i = 0; i < NUM_HEADINGS; i++) 
+    {
+      headingHistoryA[i] = -1; 
+      headingTimesA[i] = -1; 
+      headingHistoryB[i] = -1; 
+      headingTimesB[i] = -1; 
+    }
+
+    headingIndexA = 0; 
+    headingIndexB = 0; 
+  }
+
+  // read in headings 
+
+  i = scandir(GPSD_HEADING_LINK_DIR, &list,0,&versionsort);  
+
+  if (i <= 0) 
+  {
+    if (i < 0) 
+    {
+      syslog(LOG_WARNING,"Trying to analyze headings, but link dir doesn't exist)"; 
+    }
+    free(list); 
+    return 0; 
+  }
+
+
+
+  //We do this in reverse order , which means we will see things in reverse time order
+  //which is what we want
+  while(i--) 
+  {
+    float tod; 
+    int nASeen = 0; 
+    int nBSeen = 0;
+    int Apast = 0; 
+    int Bpast = 0; 
+    //this is a pat 
+    if (strstr(list[i],d_name,"pat"))
+    {
+      sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
+
+      //this is ADU5A and we haven't seen more than NUM_HEADINGS things
+      if(strstr(list[i]->d_name,"patA") && nASeen++ < NUM_HEADINGS)
+      {
+        // we don't need to read stuff in the past
+        if (Apast) continue; 
+
+        if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
+        {
+          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+          continue; 
+        }
+        tod = pat->timeOfDay/1000. 
+
+          //only add it if at least half a second newer than last value in A 
+        if (headingTimesA[headingIndexA]  < 0 || tdiff(tod, headingTimesA[headingIndexA]) > 0.5)
+        {
+          headingTimesA[nA] = tod;
+          headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
+          headingHistoryA[headingIndexA] = pat->heading; 
+        }
+        else //since we're in reverse order, we don't have to read in any others 
+        {
+          Apast = 1; 
+        }
+
+      }
+
+      //this is ADU5B and we haven't seen more than NUM_HEADINGS things
+      else if(strstr(list[i]->d_name,"patB") && nBSeen++ < NUM_HEADINGS)
+      {
+
+        if (Bpast) continue; 
+
+        if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
+        {
+          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+          continue; 
+        }
+
+        tod =  pat->timeOfDay/1000; 
+
+        if (headingTimesB[headingIndexB] < 0 || tdiff(tod, headingTimesB[headingTimesB]) > 0.5)
+        {
+          headingTimesB[nB] = tod; 
+          headingIndexB = (headingIndexA + 1) % NUM_HEADINGS; 
+          headingHistoryB[headingIndexB] = pat->heading; 
+        }
+      }
+
+      else //weird file, or we have seen too many of these 
+      {
+        //delete the link and the file
+        if(!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+
+        }
+        sprintf("%s/%s",GPS_HEADING_DIR, list[i]->d_name); 
+        if (!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+        }
+      }
+    }
+  }
+
+  free(list); 
+
+  nAOk = 0; 
+  nBOk = 0; 
+
+  //count how many good values we have 
+  for (i = 0; i < NUM_HEADINGS; i++)
+  {
+    if (headingHistoryA[i] >=0) nAOk++; 
+    if (headingHistoryB[i] >=0) nBOk++; 
+  }
+
+
+
+  //now calculate slope aof each
+
+
+
+  
+
+
+}
+
 
 int analyzeGPUSpectrum()
 {
@@ -455,7 +638,7 @@ int readConfig()
   if (kvpStatus == CONFIG_E_OK) 
   {
 
-    sleepAmount = kvpGetInt("sleepAmount",10); 
+    sleepAmount = kvpGetInt("sleepAmount",1); 
     if (sleepAmount < 1) sleepAmount =1; //don't do stupid things 
     readTemperatures = kvpGetInt("readTemperature",1); 
     telemeterEvery = kvpGetInt("telemEvery",10); 
@@ -674,6 +857,7 @@ int main(int nargs, char ** args)
   makeDirectories(TUFF_RAWCMD_LINK_DIR); 
   makeDirectories(GPU_SPECTRUM_DIR); 
   makeDirectories(GPU_SPECTRUM_LINK_DIR); 
+  makeDirectories(GPSD_HEADING_LINK_DIR); 
 
   wd = setupLinkWatchDir(TUFF_RAWCMD_LINK_DIR); 
   if (!wd) 
@@ -694,8 +878,8 @@ int main(int nargs, char ** args)
     int numlinks; 
     if (printToScreen) printf("Reading config: \n"); 
 
-    // Don't read config if we know it's the Prioritizer, since that doesn't modify the config
-    if (senderOfSigUSR1 != ID_PRIORITIZERD)
+    // Don't read config if we know it's the Prioritizer or GPS, since that doesn't modify the config
+    if (senderOfSigUSR1 != ID_PRIORITIZERD && senderOfSigUSR1 != ID_GPSD)
     {
       read_config_ok = readConfig(); 
     }
@@ -714,11 +898,12 @@ int main(int nargs, char ** args)
     }
 
     //set the notches BEFORE checking for link dirs
-    
     if (memcmp(adjustAccordingToGPU, zeroes, sizeof(zeroes))) 
     {
       analyzeGPUSpectrum(); 
     }
+
+
     //check if tuff notch status is same 
     justChanged = justChanged || memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
     justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
@@ -793,7 +978,14 @@ int main(int nargs, char ** args)
 
     while (currentState == PROG_STATE_RUN)
     {
+      // Adjust according to heading overrides everything else right now
+      if (memcmp(adjustAccordingToHeading, zeroes, sizeof(zeroes)))
+      {
+          justChanged = analyzeHeading(); 
+      }
+ 
       retVal = writeState(justChanged); 
+
       if (retVal) 
       {
         syslog(LOG_ERR,"writeState returned %d\n", retVal); 
@@ -801,10 +993,11 @@ int main(int nargs, char ** args)
       }
       justChanged = 0; 
 
+
       if (currentState == PROG_STATE_RUN) //check again, although still technically a race condition
       {
         sleep(sleepAmount);  //this will be woken up by signals 
-      }
+     }
     }
 
   } while(currentState == PROG_STATE_INIT); 

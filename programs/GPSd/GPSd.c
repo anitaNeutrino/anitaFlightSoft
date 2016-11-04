@@ -251,6 +251,7 @@ int main (int argc, char *argv[])
       syslog(LOG_ERR,"Error reading %s -- %s",GLOBAL_CONF_FILE,eString);
     }
     makeDirectories(GPSD_SUBTIME_LINK_DIR);
+    makeDirectories(GPSD_HEADING_LINK_DIR);
     makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
     makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
     makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
@@ -1980,6 +1981,24 @@ void processAdu5bSatString(char *gpsString, int gpsLength,  int isSat) {
 }
 
 
+void writeSharedHeading(GpsAdu5PatStruct_t * pat, char whichPAT)
+{
+    char theFilename[FILENAME_MAX];
+    sprintf(theFileName, "%s/pat%c_%d.dat", GPSD_HEADING_DIR, whichPAT, pat->unixTime); 
+    retVal = writeStruct(pat, theFilename, sizeof(GpsAdu5PatStruct_t)); 
+    if (retVal < 0) 
+    {
+      syslog(LOG_INFO, "Couldn't write ADU5%cPat to GPSD_HEADING_DIR for some reason", whichPAT); 
+    }
+
+    retVal = makeLink(theFilename, GPSD_HEADING_LINK_DIR); 
+
+    if (retVal < 0) 
+    {
+      syslog(LOG_INFO, "Couldn't link ADU5%cPat to GPSD_HEADING_LINK_DIR for some reason", whichPAT); 
+    }
+}
+
 
 void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
   static int telemCount[3]={0};
@@ -2065,6 +2084,8 @@ void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
       telemCount[fromAdu5]=0;
     }
 
+    writeSharedHeading(&thePat, 'A'); 
+
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&thePat,sizeof(GpsAdu5PatStruct_t),
 			 thePat.unixTime,&adu5aPatWriter);
@@ -2083,6 +2104,8 @@ void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
       retVal=makeLink(theFilename,ADU5B_PAT_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;
     }
+
+    writeSharedHeading(&thePat, 'B'); 
 
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&thePat,sizeof(GpsAdu5PatStruct_t),
