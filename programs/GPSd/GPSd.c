@@ -1984,7 +1984,8 @@ void processAdu5bSatString(char *gpsString, int gpsLength,  int isSat) {
 void writeSharedHeading(GpsAdu5PatStruct_t * pat, char whichPAT)
 {
     char theFilename[FILENAME_MAX];
-    sprintf(theFileName, "%s/pat%c_%d.dat", GPSD_HEADING_DIR, whichPAT, pat->unixTime); 
+    int retVal; 
+    sprintf(theFilename, "%s/pat%c_%d.dat", GPSD_HEADING_DIR, whichPAT, pat->unixTime); 
     retVal = writeStruct(pat, theFilename, sizeof(GpsAdu5PatStruct_t)); 
     if (retVal < 0) 
     {
