@@ -226,8 +226,6 @@ int analyzeHeading()
     if (headingHistoryB[i] >=0) nBOk++; 
   }
 
-
-
   //now calculate slope aof each
 
 
