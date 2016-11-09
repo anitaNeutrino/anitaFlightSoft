@@ -660,7 +660,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
     else if(diffFlag==1 || threshFlag==1){
       /* There was CW in these events... not an optimal solution...*/
-      priority = 8;
+      /* priority = 8; */
+      /* When CW is filtered out go up one in priority  */
+      priority++;
     }
     else{
       for(priority=1; priority<NUM_PRIORITIES; priority++){

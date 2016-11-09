@@ -388,8 +388,8 @@ int readConfig()
   }
   else {
     eString=configErrorString (status) ;
-    syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
-    fprintf(stderr,"Error reading LOSd.config: %s\n",eString);
+    syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
+    fprintf(stderr,"Error reading Prioritizerd.config: %s\n",eString);
   }
   kvpReset();
   status = configLoad ("Prioritizerd.config","prioritizerd");
