@@ -32,40 +32,41 @@
 #define numUpsampledClockSamples 256*upsampleFactor
 #define lengthClockFFT numUpsampledClockSamples*2
 
-gsl_interp_accel *acc;
-const gsl_interp_type *akimaSpline;
-gsl_spline *spline;
+static gsl_interp_accel *acc;
+static const gsl_interp_type *akimaSpline;
+static gsl_spline *spline;
 
-fftw_plan clockPlanForward;
-fftw_plan clockPlanReverse;
+static fftw_plan clockPlanForward;
+static fftw_plan clockPlanReverse;
 
-double justBinByBin[ACTIVE_SURFS][LABRADORS_PER_SURF][2][MAX_NUMBER_SAMPLES];
-double epsilonFromBenS[ACTIVE_SURFS][LABRADORS_PER_SURF][2] = {{{1}}};
-double voltageCalibHarm[ACTIVE_SURFS][CHANNELS_PER_SURF-1][LABRADORS_PER_SURF] = {{{1}}};
-int rcoLatchStart[ACTIVE_SURFS][LABRADORS_PER_SURF];
-int rcoLatchEnd[ACTIVE_SURFS][LABRADORS_PER_SURF];
-double relativeCableDelays[ACTIVE_SURFS][CHANNELS_PER_SURF];
+static double justBinByBin[ACTIVE_SURFS][LABRADORS_PER_SURF][2][MAX_NUMBER_SAMPLES];
+static double epsilonFromBenS[ACTIVE_SURFS][LABRADORS_PER_SURF][2] = {{{1}}};
+static double voltageCalibHarm[ACTIVE_SURFS][CHANNELS_PER_SURF-1][LABRADORS_PER_SURF] = {{{1}}};
+static int rcoLatchStart[ACTIVE_SURFS][LABRADORS_PER_SURF];
+static int rcoLatchEnd[ACTIVE_SURFS][LABRADORS_PER_SURF];
+static double relativeCableDelays[ACTIVE_SURFS][CHANNELS_PER_SURF];
 
-double volts[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-int nSamps[ACTIVE_SURFS][CHANNELS_PER_SURF];
+static double volts[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+static int nSamps[ACTIVE_SURFS][CHANNELS_PER_SURF];
 
-double times[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+static double times[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 
-double clockJitters[ACTIVE_SURFS];
+static double clockJitters[ACTIVE_SURFS];
 //int nClockSamps[ACTIVE_SURFS];
 
-int whbs[ACTIVE_SURFS];
-int earliestSampleInds[ACTIVE_SURFS];
-int latestSampleInds[ACTIVE_SURFS];
-int rcos[ACTIVE_SURFS];
-int labChips[ACTIVE_SURFS];
+static int whbs[ACTIVE_SURFS];
+static int earliestSampleInds[ACTIVE_SURFS];
+static int latestSampleInds[ACTIVE_SURFS];
+static int rcos[ACTIVE_SURFS];
+static int labChips[ACTIVE_SURFS];
 
-double* clockTimeDomain;
-fftw_complex* clockFreqDomain;
-fftw_complex* clockFreqHolder;
+static double* clockTimeDomain;
+static fftw_complex* clockFreqDomain;
+static fftw_complex* clockFreqHolder;
 
-int positiveSaturation = 1000;
-int negativeSaturation = -1000;
+static int positiveSaturation = 1000;
+static int negativeSaturation = -1000;
+static float maxBottomToTopRatio = 5; 
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
@@ -73,19 +74,11 @@ void prepareTimingCalibThings(){
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
 
-  #ifdef __APPLE__
-  readInCalibratedDeltaTs("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/justBinByBin.dat");
-  readInEpsilons("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/epsilonFromBenS.dat");
-  readInRcoLatchDelay("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/rcoLatchDelay.dat");
-  readInRelativeCableDelay("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
-  readInVoltageCalib("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
-  #else
   readInCalibratedDeltaTs("/home/anita/flightSoft/programs/Prioritizerd/justBinByBin.dat");
   readInEpsilons("/home/anita/flightSoft/programs/Prioritizerd/epsilonFromBenS.dat");
   readInRcoLatchDelay("/home/anita/flightSoft/programs/Prioritizerd/rcoLatchDelay.dat");
   readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
   readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
-  #endif
 
   clockTimeDomain = (double*) fftw_malloc(sizeof(double)*lengthClockFFT);
   clockFreqDomain = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT);
@@ -95,7 +88,6 @@ void prepareTimingCalibThings(){
   clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain, 
 					  clockTimeDomain, FFTW_MEASURE);
 
-  #ifndef __APPLE__
   kvpReset();
   KvpErrorCode err = KVP_E_OK;
   err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
@@ -104,7 +96,7 @@ void prepareTimingCalibThings(){
   }
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
-  #endif
+  maxBottomToTopRatio = kvpGetInt("blastMaxBottomToTopRatio", 100); 
 
   /* preCalculateTimeArrays(); */
 }
@@ -457,7 +449,6 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
       if(chan != 8){ // don't fuck with the clock...
       time = relativeCableDelays[surf][chan];
       voltCalib = voltageCalibHarm[surf][chan][labChip]; 
-      int ant = abs(surfToAntMap[surf][chan]);
 #ifdef CALIBRATION
       if(surf==0 && chan==0){
 	printf("Calibration mode...\n");
@@ -559,17 +550,13 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 
 
 
-#ifdef __APPLE__
-void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
-			 PedSubbedEventBody_t pedSubBody,
-			 double* finalVolts[],
-			 double* finalTimes){
-#else
 void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 			 PedSubbedEventBody_t pedSubBody,
 			 double* finalVolts[]){
-#endif
 
+
+  double maxVppTop = 0; 
+  double maxVppBottom = 0; 
   theHeader->prioritizerStuff = 0;
 
   /* printf("Before... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
@@ -594,18 +581,55 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
+  /* printf("After... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
+  processEventAG(pedSubBody);
+
+
+
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     int chan=0;
+    int samp = 0; 
     for(chan=0; chan<8; chan++){
       int chanIndex=surf*CHANNELS_PER_SURF + chan;
-      if((pedSubBody.channel[chanIndex].xMax > positiveSaturation || pedSubBody.channel[chanIndex].xMin < negativeSaturation) && theHeader->prioritizerStuff == 0 && chanIndex!=ALPHA_CHAN_INDEX){
-	theHeader->prioritizerStuff = 1;
+      double vmax = -1e9; 
+      double vmin =  1e9; 
+      double vpp = 0;
+      int ant = abs(surfToAntMap[surf][chan]);
+      if((pedSubBody.channel[chanIndex].xMax > positiveSaturation || pedSubBody.channel[chanIndex].xMin < negativeSaturation) && theHeader->prioritizerStuff == 0){
+        theHeader->prioritizerStuff = 1;
       }
+
+
+      //now check for blasts 
+
+      if (ant < 16 || ant >= 32) 
+      {
+        for (samp = 0; samp < nSamps[surf][chan]; samp++) 
+        {
+          double v = volts[surf][chan][samp] ;
+          if ( v < vmin) vmin = v; 
+          if ( v > vmax) vmax = v; 
+        }
+        vpp = vmax-vmin; 
+
+        if (ant < 16 && vpp > maxVppTop) maxVppTop = vpp; 
+        else if (ant >= 32 && vpp > maxVppBottom) maxVppBottom = vpp; 
+      }
+
     }
   }
 
-  /* printf("After... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
-  processEventAG(pedSubBody);
+  if (maxVppBottom / maxVppTop > maxBottomToTopRatio) 
+  {
+    theHeader->prioritizerStuff |= 2; 
+  }
+
+
+
+
+
+
+
 
 
   /* int numUpZC[ACTIVE_SURFS] = {0}; */
@@ -786,13 +810,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
 
 
-#ifdef __APPLE__
-  int samp=0;
-  for(samp=0; samp<256; samp++){
-    finalTimes[samp] = startTime + samp*deltaT;
-    /* printf("finalTimes[%d] = %lf\n", samp, finalTimes[samp]); */
-  }
-#endif
   /* Tidy up. */
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     free(interpClocks[surf]);

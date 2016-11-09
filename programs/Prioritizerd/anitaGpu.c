@@ -620,7 +620,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     printf("anitaGpu start... header[eventInd].prioritizerStuff= %hu\n", header[eventInd].prioritizerStuff);
 
     /* Read previously set lowest bit saturation flag */
-    unsigned short saturationFlag = (header[eventInd].prioritizerStuff);
+    unsigned short saturationFlag = (header[eventInd].prioritizerStuff & 1);
+    unsigned short blastFlag = (header[eventInd].prioritizerStuff >> 1);
     header[eventInd].prioritizerStuff = 0;
 
     /* Value goes between 0->1, get 16 bit precision by multiplying by maximum value of unsigned short... */
@@ -640,10 +641,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     /* Still have 5 bits remaining, going to use up two more... */
     header[eventInd].prioritizerStuff |= (threshFlag << 12);
     header[eventInd].prioritizerStuff |= (diffFlag << 13);
-    header[eventInd].prioritizerStuff |= (saturationFlag << 14);
-    
     /* Now 3 bits remaining...! */
+    header[eventInd].prioritizerStuff |= (saturationFlag << 14);
     /* Now 2 bits remaining */
+    header[eventInd].prioritizerStuff |= (blastFlag << 15);
     
 
     /* Now actually assign the priority in the header file*/
@@ -655,6 +656,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     if(saturationFlag > 0){
       /* Found saturation when unwrapping */
       priority = 9;
+    }
+    if (blastFlag > 0) 
+    {
+      priority = 8; 
     }
     else if(diffFlag==1 || threshFlag==1){
       /* There was CW in these events... not an optimal solution...*/
