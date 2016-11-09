@@ -66,6 +66,8 @@ static float headingHistoryA[NUM_HEADINGS];
 static float headingHistoryB[NUM_HEADINGS]; 
 static float headingTimesA[NUM_HEADINGS]; 
 static float headingTimesB[NUM_HEADINGS]; 
+static float headingWeightsA[NUM_HEADING];
+static float headingWeightsB[NUM_HEADING];
 static int headingIndexA = -1; 
 static int headingIndexB = -1; 
 
@@ -108,9 +110,11 @@ int analyzeHeading()
     for (i = 0; i < NUM_HEADINGS; i++) 
     {
       headingHistoryA[i] = -1; 
-      headingTimesA[i] = -1; 
+      headingTimesA[i]   = -1; 
       headingHistoryB[i] = -1; 
-      headingTimesB[i] = -1; 
+      headingTimesB[i]   = -1;
+      headingWeightsA[i] = -1;
+      headingWeightsB[i] = -1;
     }
 
     headingIndexA = 0; 
@@ -165,8 +169,9 @@ int analyzeHeading()
         if (headingTimesA[headingIndexA]  < 0 || tdiff(tod, headingTimesA[headingIndexA]) > 0.5)
         {
           headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
-          headingTimesA[headingIndexA] = tod;
-          headingHistoryA[headingIndexA] = pat.heading; 
+          headingTimesA[headingIndexA]   = tod;
+          headingHistoryA[headingIndexA] = pat.heading;
+	  headingWeightsA[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
         else //since we're in reverse order, we don't have to read in any others 
         {
@@ -192,8 +197,9 @@ int analyzeHeading()
         if (headingTimesB[headingIndexB] < 0 || tdiff(tod, headingTimesB[headingIndexB]) > 0.5)
         {
           headingIndexB = (headingIndexA + 1) % NUM_HEADINGS; 
-          headingTimesB[headingIndexB] = tod; 
-          headingHistoryB[headingIndexB] = pat.heading; 
+          headingTimesB[headingIndexB]   = tod; 
+          headingHistoryB[headingIndexB] = pat.heading;
+	  headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
       }
 
