@@ -96,7 +96,7 @@ void prepareTimingCalibThings(){
   }
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
-  maxBottomToTopRatio = kvpGetInt("blastMaxBottomToTopRatio", 100); 
+  maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 100); 
 
   /* preCalculateTimeArrays(); */
 }
