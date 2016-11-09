@@ -10,9 +10,8 @@
 #define NUM_IRFCM 4 
 #define NUM_ASSIGNMENTS 4
 
-//32649
-//32713  this is value for upper tuffs with mystery bit changed, try using it!! maybe it does a thing?
-
+//16265  Expected 'correct' value for lower tuffs
+//32649  Expected 'correct' value for bottom tuffs
 
 const char * notch_assignments[NUM_ASSIGNMENTS] = {
 "\r\n{\"set\":{\"irfcm\":%d,\"default\":[0,16265]}}\r\n" , 
