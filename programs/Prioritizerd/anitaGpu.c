@@ -608,13 +608,11 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	}
 	#endif
 	
-	if(!(polBit==0 && imagePeakPhiSector[index2]==4 && ring==0)){ /* Skip alpha channel 5TH*/
-          if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x1){
-	    threshFlag = 1;
-          }
-	  if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x2){
-	    diffFlag = 1;
-          }
+	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x1){
+	  threshFlag = 1;
+	}
+	if(passFilter[freqInd2]<0 && passFilter[freqInd] & 0x2){
+	  diffFlag = 1;
 	}
       }
     }
