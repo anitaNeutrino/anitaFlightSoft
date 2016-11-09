@@ -453,13 +453,11 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
       int index=0;
       double time=0;
       double voltCalib = 1;
-      int orientFactor = 1; /* Injecting directly, don't care that some antennas are flipped.*/
 
       if(chan != 8){ // don't fuck with the clock...
-	time = relativeCableDelays[surf][chan];
-	voltCalib = voltageCalibHarm[surf][chan][labChip]*orientFactor;
-	int ant = abs(surfToAntMap[surf][chan]);
-	orientFactor = ant <= 16 && chan!=8 ? -1 : 1; /* Top row of antennas are flipped, but don't flip the clock! */
+      time = relativeCableDelays[surf][chan];
+      voltCalib = voltageCalibHarm[surf][chan][labChip]; 
+      int ant = abs(surfToAntMap[surf][chan]);
 #ifdef CALIBRATION
       if(surf==0 && chan==0){
 	printf("Calibration mode...\n");
@@ -543,20 +541,11 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
     /* Okay now add Stephen's check to make sure that all */
     /*    the channels on the SURF have the same number of points. */
     for(chan=0;chan<8;chan++) {
-      if(nSamps[surf][chan]<nSamps[surf][8]) {
-    	nSamps[surf][chan]=nSamps[surf][8];
-    	int samp=0;
-    	for(samp=0;samp<nSamps[surf][8];samp++) {
-    	  times[surf][chan][samp]=times[surf][8][samp];
-    	}
-      }
 
-      if(nSamps[surf][chan]>nSamps[surf][8]) {
-    	nSamps[surf][chan]=nSamps[surf][8];
-    	int samp=0;
-    	for(samp=0;samp<nSamps[surf][8];samp++) {
-    	  times[surf][chan][samp]=times[surf][8][samp];
-    	}
+      if(nSamps[surf][chan]!=nSamps[surf][8])
+      {
+        nSamps[surf][chan]=nSamps[surf][8];
+        memcpy( times[surf][chan], times[surf][8], nSamps[surf][8] * sizeof(double)); 
       }
     }
     /* int samp=0; */
