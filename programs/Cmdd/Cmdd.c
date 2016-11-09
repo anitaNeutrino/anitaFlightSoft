@@ -1833,6 +1833,11 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
 int executePrioritizerdCommand(int command, int value, int value2)
 {
   time_t rawtime;
+  union 
+  {
+    unsigned int u; 
+    float f;
+  } cheat; 
   readPrioritizerdConfig();
   switch(command) {
   case PRI_PANIC_QUEUE_LENGTH:
@@ -1888,6 +1893,12 @@ int executePrioritizerdCommand(int command, int value, int value2)
   case PRI_NEG_SATUATION:
     configModifyInt("Prioritizerd.config","prioritizerd","negativeSaturation",-1*value2,&rawtime);
     break;	    	   
+  case PRI_BLAST_RATIO:
+    //TODO: check this! 
+    cheat.u = (value & 0xffff)  | (( value2 & 0xffff) << 16); 
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastMaxBottomToTopRatio",cheat.f,&rawtime);
+    break;	    	   
+
   default:
     return -1;
   }	    

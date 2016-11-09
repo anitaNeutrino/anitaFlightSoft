@@ -242,7 +242,8 @@ typedef enum {
   PRI_ANT_R_POS=13,
   PRI_ANT_Z_POS=14,
   PRI_POS_SATUATION=15,
-  PRI_NEG_SATUATION=16
+  PRI_NEG_SATUATION=16, 
+  PRI_BLAST_RATIO=17
 } PrioritizerdCommandCode_t;
 
 
