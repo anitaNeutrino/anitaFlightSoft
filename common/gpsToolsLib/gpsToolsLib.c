@@ -93,6 +93,8 @@ int fillRawPBNStruct(char *inputStream, int length, RawAdu5PBNStruct_t *pbnPtr){
   swapFloatBytes(&pbnPtr->navzdot); 
   swapFloatBytes(&pbnPtr->navtdot); 
 
+  pbnPtr->pdop=be16toh(pbnPtr->pdop);
+
   return 0;
 }
 
@@ -107,7 +109,7 @@ int fillRawSNVStruct(char *inputStream, int length, RawAdu5SNVStruct_t *snvPtr){
   /*   return -1; */
   /* }  */
   
-  swapIntBytes(&snvPtr->secondsInWeek);
+  /* swapIntBytes(&snvPtr->secondsInWeek); */
   swapFloatBytes(&snvPtr->groupDelay);
   swapIntBytes(&snvPtr->aodc);
   swapIntBytes(&snvPtr->toc);
@@ -131,6 +133,8 @@ int fillRawSNVStruct(char *inputStream, int length, RawAdu5SNVStruct_t *snvPtr){
   swapDoubleBytes(&snvPtr->i0);
   swapFloatBytes(&snvPtr->omegadot);
   swapFloatBytes(&snvPtr->idot);
+
+  snvPtr->health=be16toh(snvPtr->health);
 
   return 0;
 }
