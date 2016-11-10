@@ -29,6 +29,5 @@
 #define NUM_BINS_THETA 256
 #define PI 3.141592653589f
 #define SPEED_OF_LIGHT 2.99792458e8
-#define ALPHA_CHAN_INDEX 104
 
 #endif

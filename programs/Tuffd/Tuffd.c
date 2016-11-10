@@ -66,6 +66,8 @@ static float headingHistoryA[NUM_HEADINGS];
 static float headingHistoryB[NUM_HEADINGS]; 
 static float headingTimesA[NUM_HEADINGS]; 
 static float headingTimesB[NUM_HEADINGS]; 
+static float headingWeightsA[NUM_HEADING];
+static float headingWeightsB[NUM_HEADING];
 static int headingIndexA = -1; 
 static int headingIndexB = -1; 
 
@@ -108,9 +110,11 @@ int analyzeHeading()
     for (i = 0; i < NUM_HEADINGS; i++) 
     {
       headingHistoryA[i] = -1; 
-      headingTimesA[i] = -1; 
+      headingTimesA[i]   = -1; 
       headingHistoryB[i] = -1; 
-      headingTimesB[i] = -1; 
+      headingTimesB[i]   = -1;
+      headingWeightsA[i] = -1;
+      headingWeightsB[i] = -1;
     }
 
     headingIndexA = 0; 
@@ -165,8 +169,9 @@ int analyzeHeading()
         if (headingTimesA[headingIndexA]  < 0 || tdiff(tod, headingTimesA[headingIndexA]) > 0.5)
         {
           headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
-          headingTimesA[headingIndexA] = tod;
-          headingHistoryA[headingIndexA] = pat.heading; 
+          headingTimesA[headingIndexA]   = tod;
+          headingHistoryA[headingIndexA] = pat.heading;
+	  headingWeightsA[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
         else //since we're in reverse order, we don't have to read in any others 
         {
@@ -191,9 +196,10 @@ int analyzeHeading()
 
         if (headingTimesB[headingIndexB] < 0 || tdiff(tod, headingTimesB[headingIndexB]) > 0.5)
         {
-          headingIndexB = (headingIndexA + 1) % NUM_HEADINGS; 
-          headingTimesB[headingIndexB] = tod; 
-          headingHistoryB[headingIndexB] = pat.heading; 
+          headingIndexB = (headingIndexB + 1) % NUM_HEADINGS; 
+          headingTimesB[headingIndexB]   = tod; 
+          headingHistoryB[headingIndexB] = pat.heading;
+	  headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
       }
 
@@ -215,21 +221,54 @@ int analyzeHeading()
   }
 
   free(list); 
-
+  
+  //count how many good values we have 
   nAOk = 0; 
   nBOk = 0; 
 
-  //count how many good values we have 
+  //and calculate slope aof each
+  float sumXXA = 0;
+  float sumXYA = 0;
+  float sumXA  = 0;
+  float sumYA  = 0;
+  float sumWA  = 0;
+  float sumXXB = 0;
+  float sumXYB = 0;
+  float sumXB  = 0;
+  float sumYB  = 0;
+  float sumWB  = 0;
+  
   for (i = 0; i < NUM_HEADINGS; i++)
   {
-    if (headingHistoryA[i] >=0) nAOk++; 
-    if (headingHistoryB[i] >=0) nBOk++; 
+    if (headingHistoryA[i] >=0){
+      sumXYA+= headingHistoryA[i]*headingTimeA[i]*headingWeightA[i];
+      sumXXA+= headingTimeA[i]*headingTimeA[i]*headingWeightA[i];
+      sumXA += headingTimeA[i]*headingWeightA[i];
+      sumYA += headingHistoryA[i]*headingWeighA[i];
+      sumWA += headingWeightA[i];
+      nAOk++;
+    }
+    if (headingHistoryB[i] >=0){
+      sumXYB+= headingHistoryB[i]*headingTimeB[i]*headingWeightB[i];
+      sumXXB+= headingTimeB[i]*headingTimeB[i]*headingWeightB[i];
+      sumXB += headingTimeB[i]*headingWeightB[i];
+      sumYB += headingHistoryB[i]*headingWeighB[i];
+      sumWB += headingWeightB[i];
+      nBOk++;
+    }
   }
 
-  //now calculate slope aof each
+  float delta       = (sumWA*sumXXA - sumXA*sumXA);
+  float slopeA      = (sumWA*sumXYA - sumXA*sumYA)  / delta ;
+  float interceptA  = (sumYA*sumXXA - sumXA*sumXYA) / delta ;
+  float sigmaSlopeA = sqrt(sumWA/delta);
+  float sigmaInterA = sqrt(sumXXA/delta);
 
-
-
+  delta             = (sumWB*sumXXB - sumXB*sumXB);
+  float slopeB      = (sumWB*sumXYB - sumXB*sumYB)  / delta ;
+  float interceptB  = (sumYB*sumXXB - sumXB*sumXYB) / delta ;
+  float sigmaSlopeB = sqrt(sumWB/delta);
+  float sigmaInterB = sqrt(sumXXB/delta);
   
 
   return 0; 
