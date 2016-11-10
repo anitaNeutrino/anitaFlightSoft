@@ -284,8 +284,13 @@
 #define TUFF_RAWCMD_LINK_DIR "/tmp/anita/tuff/link" 
 
 
-#define GPSD_HEADING_DIR "/tmp/anita/heading" 
-#define GPSD_HEADING_LINK_DIR "/tmp/anita/heading/link" 
+#define GPSD_HEADING_DIR "/tmp/anita/attitude/adu5" 
+#define GPSD_HEADING_LINK_DIR "/tmp/anita/attitude/adu5/link" 
+
+#define MAGNETOMETER_DIR "/tmp/anita/attitude/mag" 
+#define MAGNETOMETER_LINK_DIR "/tmp/anita/attitude/mag/link" 
+
+
 
 //PID Files
 #define ACQD_PID_FILE "/tmp/anita/pid/acqd.pid"

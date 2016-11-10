@@ -597,6 +597,18 @@ typedef struct {
     float z;
 } MagnetometerDataStruct_t;
 
+
+/** 
+ *  Used for interprocess-sharing of magnetometer
+ */
+typedef struct
+{
+  unsigned int unixTime;
+  unsigned int unixTimeUs;
+  MagnetometerDataStruct_t mag; 
+} TimedMagnetometerDataStruct_t; 
+
+
 //!  Debugging use only scaler data
 /*!
   Debugging use only scaler data

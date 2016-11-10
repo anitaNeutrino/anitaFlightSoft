@@ -83,6 +83,7 @@ FullAnalogueStruct_t rawDataStruct;
 FullAnalogueStruct_t calDataStruct;
 AnalogueCorrectedDataStruct_t corDataStruct[NUM_IP320_BOARDS];
 MagnetometerDataStruct_t magData;
+TimedMagnetometerDataStruct_t timedMagData; 
 SBSTemperatureDataStruct_t sbsData;
 
 
@@ -226,6 +227,8 @@ int main (int argc, char *argv[])
 
     makeDirectories(HK_TELEM_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
+    makeDirectories(MAGNETOMETER_DIR); 
+    makeDirectories(MAGNETOMETER_LINK_DIR); 
 
     prepWriterStructs();
 	
@@ -255,7 +258,11 @@ int main (int argc, char *argv[])
 /* 		//Send down calibration info */
 /* 	    } */
 	    if((millisecs % readoutPeriod)==0) {
-	      if(fdMag) retVal=checkMagnetometer(); 
+
+	      if(fdMag)
+              {
+                retVal=checkMagnetometer(); 
+              }
 		
 		time(&rawTime);		
 //		if(fdMag && sendMagRequests) sendMagnetometerRequest();
@@ -581,6 +588,19 @@ int outputData(AnalogueCode_t code)
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&theHkData,sizeof(HkDataStruct_t),
 			 theHkData.unixTime,wrPtr);
+
+
+    //write file for TUFFd 
+    if (magData.x != 0 && magData.y !=0 && magData.z !=0) 
+    {
+      timedMagData.unixTime = timeStruct.tv_sec; 
+      timedMagData.unixTimeUs = timeStruct.tv_usec; 
+      retVal = writeStruct(&timedMagData, fullFilename, sizeof(timedMagData)); 
+      retVal += makeLink(fullFilename, MAGNETOMETER_LINK_DIR); 
+    }
+
+    
+    
     if(retVal<0) {
 	//Had an error
 	//Do something
@@ -904,11 +924,14 @@ int checkMagnetometer()
 	    if(countSpaces==3) break;
 //	    printf("%d %c %d\n",otherChecksum,tempData[i],countSpaces);
 	}
-	if(checksum!=otherChecksum) {
-//	    syslog(LOG_WARNING,"Bad Magnetometer Checksum %s",tempData);
-//	    return -1;
-	}
+
 	if(printToScreen) printf("Checksums:\t%d %d\n",checksum,otherChecksum);
+
+	if(checksum!=otherChecksum) {
+	    syslog(LOG_WARNING,"Bad Magnetometer Checksum %s",tempData);
+            memset(&magData,0, sizeof(magData)); 
+	    return -1;
+	}
     }
     return retVal;
 }
@@ -1267,4 +1290,5 @@ void quickAddNeobrickPressAndTemp()
     rawDataStruct.board[1].data[38]=tempAdc;
     rawDataStruct.board[1].data[39]=presAdc;
 }
+
 
