@@ -68,20 +68,24 @@ static float headingTimesA[NUM_HEADINGS];
 static float headingTimesB[NUM_HEADINGS]; 
 static float headingWeightsA[NUM_HEADING];
 static float headingWeightsB[NUM_HEADING];
+static float headingHistoryMag[NUM_HEADINGS];
+static float headingTimesMag[NUM_HEADINGS];
+static float headingWeightsMag[NUM_HEADINGS];
 static int headingIndexA = -1; 
 static int headingIndexB = -1; 
+static int headingIndexMag = -1; 
 
 
-static float tdiff(float tod1, float tod2) 
+static float tdiff(float *tod1, float tod2) 
 {
 
   float diff; 
 
   // invalid 
-  if (tod1 < 0 || tod2 < 0) return -999999; 
+  if (*tod1 < 0 || tod2 < 0) return -999999; 
 
 
-  diff = tod1- tod2; 
+  diff = *tod1- tod2; 
 
   // oops, we wrapped around midnight 
   if (diff > 12*60*60) 
@@ -93,8 +97,12 @@ static float tdiff(float tod1, float tod2)
     diff += 24*60*60; 
   }
 
+  *tod1 = tod2 +diff; 
+
   return diff; 
 }
+
+
 
 int analyzeHeading() 
 {
@@ -111,31 +119,31 @@ int analyzeHeading()
     {
       headingHistoryA[i] = -1; 
       headingTimesA[i]   = -1; 
+      headingWeightsA[i] = -1;
       headingHistoryB[i] = -1; 
       headingTimesB[i]   = -1;
-      headingWeightsA[i] = -1;
       headingWeightsB[i] = -1;
+      headingHistoryMag[i] = -1; 
+      headingTimesMag[i]   = -1;
+      headingWeightsMag[i] = -1;
+ 
     }
 
     headingIndexA = 0; 
     headingIndexB = 0; 
+    headingIndexMag = 0; 
   }
 
-  // read in headings 
+  // read in headings from ADU5 
 
   i = scandir(GPSD_HEADING_LINK_DIR, &list,0,&alphasort);  
 
-  if (i <= 0) 
-  {
-    if (i < 0) 
-    {
-      syslog(LOG_WARNING,"Trying to analyze headings, but link dir doesn't exist)"); 
-    }
-    free(list); 
-    return 0; 
-  }
-
-
+   if (i < 0) 
+   {
+     syslog(LOG_WARNING,"Trying to analyze headings, but GPSD_HEADING_LINK_DIR  doesn't exist)"); 
+     free(list); 
+     return 0; 
+   }
 
   //We do this in reverse order , which means we will see things in reverse time order
   //which is what we want
@@ -166,12 +174,12 @@ int analyzeHeading()
         tod = pat.timeOfDay/1000. ; 
 
           //only add it if at least half a second newer than last value in A 
-        if (headingTimesA[headingIndexA]  < 0 || tdiff(tod, headingTimesA[headingIndexA]) > 0.5)
+        if (headingTimesA[headingIndexA]  < 0 || tdiff(&tod, headingTimesA[headingIndexA]) > 0.5)
         {
           headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
           headingTimesA[headingIndexA]   = tod;
           headingHistoryA[headingIndexA] = pat.heading;
-	  headingWeightsA[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
+          headingWeightsA[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
         else //since we're in reverse order, we don't have to read in any others 
         {
@@ -194,12 +202,12 @@ int analyzeHeading()
 
         tod =  pat.timeOfDay/1000; 
 
-        if (headingTimesB[headingIndexB] < 0 || tdiff(tod, headingTimesB[headingIndexB]) > 0.5)
+        if (headingTimesB[headingIndexB] < 0 || tdiff(&tod, headingTimesB[headingIndexB]) > 0.5)
         {
           headingIndexB = (headingIndexB + 1) % NUM_HEADINGS; 
           headingTimesB[headingIndexB]   = tod; 
           headingHistoryB[headingIndexB] = pat.heading;
-	  headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
+          headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
       }
 
@@ -221,6 +229,51 @@ int analyzeHeading()
   }
 
   free(list); 
+
+
+  //now read and process headings from magnetometer 
+  
+  i = scandir(MAGNETOMETER_LINK_DIR, &list,0,alphasort); 
+  if (i < 0) 
+  {
+    syslog(LOG_WARNING,"Trying to analyze headings, but MAGNETOMETER_LINK_DIR  doesn't exist)"); 
+    free(list); 
+    return 0; 
+  }
+
+
+  while(i--) 
+  {
+    double time; 
+    int nseen = 0; 
+    int past = 0;
+    TimedMagnetometerDataStruct_t magdata; 
+    sprintf(buf, "%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
+
+    if (nseen++ < NUM_HEADINGS) 
+    {
+      if(past) continue; 
+
+      if (genericReadOfFile((unsigned char*), &magdata,buf, sizeof(magdata))  == -1)
+      {
+         syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+         continue; 
+      }
+      time = magData.unixTime + magData.unixTime * 1e-6; 
+
+      if (headingTimesMag[headingIndexMag] < 0 || (time - headingTimesB > 0.5))
+      {
+        headingIndexMag = (headingIndexMag + 1 ) % NUM_HEADINGS; 
+        headingTimesMag[headingIndexMag] = time; 
+
+        //TODO compute heading! 
+
+      }
+    }
+  }
+  
+
+
   
   //count how many good values we have 
   nAOk = 0; 
@@ -682,6 +735,7 @@ int main(int nargs, char ** args)
   
   makeDirectories(TUFF_RAWCMD_LINK_DIR); 
   makeDirectories(GPSD_HEADING_LINK_DIR); 
+  makeDirectories(MAGNETOMETER_LINK_DIR); 
 
   wd = setupLinkWatchDir(TUFF_RAWCMD_LINK_DIR); 
   if (!wd) 
@@ -702,8 +756,8 @@ int main(int nargs, char ** args)
     int numlinks; 
     if (printToScreen) printf("Reading config: \n"); 
 
-    // Don't read config if we know it's the Prioritizer or GPS, since that doesn't modify the config
-    if (senderOfSigUSR1 != ID_GPSD)
+    // Don't read config if we know it's the HKd  or GPS, since that doesn't modify the config
+    if (senderOfSigUSR1 != ID_GPSD || senderOfSigUSR1 != ID_HKD)
     {
       read_config_ok = readConfig(); 
     }
@@ -711,7 +765,10 @@ int main(int nargs, char ** args)
     {
       if (printToScreen) 
       {
-        printf("Woke up by GPSd!\n"); 
+        if (senderOfSigUSR1 == ID_GPSD) 
+          printf("Woke up by GPSd!\n"); 
+        if (senderOfSigUSR1 == ID_HKD) 
+          printf("Woke up by HKd!\n"); 
       }
     }
 
