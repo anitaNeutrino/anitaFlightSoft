@@ -66,8 +66,8 @@ static float headingHistoryA[NUM_HEADINGS];
 static float headingHistoryB[NUM_HEADINGS]; 
 static float headingTimesA[NUM_HEADINGS]; 
 static float headingTimesB[NUM_HEADINGS]; 
-static float headingWeightsA[NUM_HEADING];
-static float headingWeightsB[NUM_HEADING];
+static float headingWeightsA[NUM_HEADINGS];
+static float headingWeightsB[NUM_HEADINGS];
 static float headingHistoryMag[NUM_HEADINGS];
 static float headingTimesMag[NUM_HEADINGS];
 static float headingWeightsMag[NUM_HEADINGS];
@@ -75,7 +75,7 @@ static int headingIndexA = -1;
 static int headingIndexB = -1; 
 static int headingIndexMag = -1; 
 
-int weightedLinearRegression(static float heading[NUM_HEADINGS], static float times[NUM_HEADINGS], static float weights[NUM_HEADING], float regressed[4]);
+int weightedLinearRegression(float heading[NUM_HEADINGS], float times[NUM_HEADINGS], float weights[NUM_HEADINGS], float regressed[4]);
 
 
 static float tdiff(float *tod1, float tod2) 
@@ -256,14 +256,14 @@ int analyzeHeading()
     {
       if(past) continue; 
 
-      if (genericReadOfFile((unsigned char*), &magdata,buf, sizeof(magdata))  == -1)
+      if (genericReadOfFile((unsigned char*) &magdata,buf, sizeof(magdata))  == -1)
       {
          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
          continue; 
       }
-      time = magData.unixTime + magData.unixTime * 1e-6; 
+      time = magdata.unixTime + magdata.unixTime * 1e-6; 
 
-      if (headingTimesMag[headingIndexMag] < 0 || (time - headingTimesB > 0.5))
+      if (headingTimesMag[headingIndexMag] < 0 || (time - headingTimesB[headingIndexMag] > 0.5))
       {
         headingIndexMag = (headingIndexMag + 1 ) % NUM_HEADINGS; 
         headingTimesMag[headingIndexMag] = time; 
@@ -282,15 +282,15 @@ int analyzeHeading()
   float regressedA[4];
   float regressedB[4];
 
-  int errA = weightedLinearRegression(headingHistoryA, headingTimeA, headingWeightsA, regressedA);
-  int errB = weightedLinearRegression(headingHistoryB, headingTimeB, headingWeightsB, regressedB);
+  int errA = weightedLinearRegression(headingHistoryA, headingTimesA, headingWeightsA, regressedA);
+  int errB = weightedLinearRegression(headingHistoryB, headingTimesB, headingWeightsB, regressedB);
   
   return 0; 
 
 }
 
 
-int weightedLinearRegression(static float heading[NUM_HEADINGS], static float times[NUM_HEADINGS], static float weights[NUM_HEADINGS], float regressed[4]){
+int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADINGS],  float weights[NUM_HEADINGS], float regressed[4]){
 
   float sumXXA = 0;
   float sumXYA = 0;
