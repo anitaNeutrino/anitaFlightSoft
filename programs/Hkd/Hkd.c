@@ -229,6 +229,7 @@ int main (int argc, char *argv[])
     makeDirectories(HK_TELEM_LINK_DIR);
     makeDirectories(MAGNETOMETER_DIR); 
     makeDirectories(MAGNETOMETER_LINK_DIR); 
+    timedMagData.unixTime = 0; 
 
     prepWriterStructs();
 	
@@ -591,7 +592,7 @@ int outputData(AnalogueCode_t code)
 
 
     //write file for TUFFd 
-    if (magData.x != 0 && magData.y !=0 && magData.z !=0) 
+    if (magData.x != 0 && magData.y !=0 && magData.z !=0 && timeStruct.tv_sec > timedMagData.unixTime) 
     {
       timedMagData.unixTime = timeStruct.tv_sec; 
       timedMagData.unixTimeUs = timeStruct.tv_usec; 
