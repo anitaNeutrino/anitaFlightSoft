@@ -71,6 +71,8 @@ static float headingWeightsB[NUM_HEADING];
 static int headingIndexA = -1; 
 static int headingIndexB = -1; 
 
+int weightedLinearRegression(static float heading[NUM_HEADINGS], static float times[NUM_HEADINGS], static float weights[NUM_HEADING], float regressed[4]);
+
 
 static float tdiff(float tod1, float tod2) 
 {
@@ -222,59 +224,50 @@ int analyzeHeading()
 
   free(list); 
   
-  //count how many good values we have 
-  nAOk = 0; 
-  nBOk = 0; 
+  // weighted linear regression
+  // 0: slope 1: intercept 2: slope error 3: intercept error
+  float regressedA[4];
+  float regressedB[4];
 
-  //and calculate slope aof each
+  int errA = weightedLinearRegression(headingHistoryA, headingTimeA, headingWeightsA, regressedA);
+  int errB = weightedLinearRegression(headingHistoryB, headingTimeB, headingWeightsB, regressedB);
+  
+  return 0; 
+
+}
+
+
+int weightedLinearRegression(static float heading[NUM_HEADINGS], static float times[NUM_HEADINGS], static float weights[NUM_HEADINGS], float regressed[4]){
+
   float sumXXA = 0;
   float sumXYA = 0;
   float sumXA  = 0;
   float sumYA  = 0;
   float sumWA  = 0;
-  float sumXXB = 0;
-  float sumXYB = 0;
-  float sumXB  = 0;
-  float sumYB  = 0;
-  float sumWB  = 0;
+  int numA = 0;
   
   for (i = 0; i < NUM_HEADINGS; i++)
   {
-    if (headingHistoryA[i] >=0){
-      sumXYA+= headingHistoryA[i]*headingTimeA[i]*headingWeightA[i];
-      sumXXA+= headingTimeA[i]*headingTimeA[i]*headingWeightA[i];
-      sumXA += headingTimeA[i]*headingWeightA[i];
-      sumYA += headingHistoryA[i]*headingWeighA[i];
-      sumWA += headingWeightA[i];
-      nAOk++;
+    if (heading[i] >=0){
+      sumXYA+= heading[i]*times[i]*weights[i];
+      sumXXA+= times[i]*times[i]*weights[i];
+      sumXA += times[i]*weights[i];
+      sumYA += heading[i]*weights[i];
+      sumWA += weights[i];
+      numA++;
     }
-    if (headingHistoryB[i] >=0){
-      sumXYB+= headingHistoryB[i]*headingTimeB[i]*headingWeightB[i];
-      sumXXB+= headingTimeB[i]*headingTimeB[i]*headingWeightB[i];
-      sumXB += headingTimeB[i]*headingWeightB[i];
-      sumYB += headingHistoryB[i]*headingWeighB[i];
-      sumWB += headingWeightB[i];
-      nBOk++;
-    }
-  }
-
-  float delta       = (sumWA*sumXXA - sumXA*sumXA);
-  float slopeA      = (sumWA*sumXYA - sumXA*sumYA)  / delta ;
-  float interceptA  = (sumYA*sumXXA - sumXA*sumXYA) / delta ;
-  float sigmaSlopeA = sqrt(sumWA/delta);
-  float sigmaInterA = sqrt(sumXXA/delta);
-
-  delta             = (sumWB*sumXXB - sumXB*sumXB);
-  float slopeB      = (sumWB*sumXYB - sumXB*sumYB)  / delta ;
-  float interceptB  = (sumYB*sumXXB - sumXB*sumXYB) / delta ;
-  float sigmaSlopeB = sqrt(sumWB/delta);
-  float sigmaInterB = sqrt(sumXXB/delta);
+  } 
   
+  float delta  = (sumWA*sumXXA - sumXA*sumXA);
+  regressed[0] = (sumWA*sumXYA - sumXA*sumYA)  / delta ;        // slope
+  regressed[1] = (sumYA*sumXXA - sumXA*sumXYA) / delta ;        // intercept
+  regressed[2] = sqrt(sumWA/delta);                             // slope error
+  regressed[3] = sqrt(sumXXA/delta);                            // intercept error
 
-  return 0; 
-
+  if (numA>0) return 0;
+  else return -1;
+  
 }
-
 
 
 int writeState(int changed)
