@@ -1247,6 +1247,24 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
     
 }
 
+void writeSharedPosition(GpsG12PosStruct_t * pos)
+{
+    char theFilename[FILENAME_MAX];
+    int retVal; 
+    sprintf(theFilename, "%s/posG12_%d.dat", GPSD_HEADING_DIR, pos->unixTime); 
+    retVal = writeStruct(pos, theFilename, sizeof(GpsG12PosStruct_t)); 
+    if (retVal < 0) 
+    {
+      syslog(LOG_INFO, "Couldn't write G12Pos to GPSD_HEADING_DIR for some reason"); 
+    }
+
+    retVal = makeLink(theFilename, GPSD_HEADING_LINK_DIR); 
+
+    if (retVal < 0) 
+    {
+      syslog(LOG_INFO, "Couldn't link G12Pos to GPSD_HEADING_LINK_DIR for some reason"); 
+    }
+}
 
 void processPosString(char *gpsString, int gpsLength) {
   static int telemCount=0;
@@ -1327,11 +1345,13 @@ void processPosString(char *gpsString, int gpsLength) {
     //Write file to main disk
     retVal=cleverHkWrite((unsigned char*)&thePos,sizeof(GpsG12PosStruct_t),
 			 thePos.unixTime,&g12PosWriter);
+
     if(retVal<0) {
 	//Had an error
 	//Do something
     }
 
+    writeSharedPosition(&thePos);
 
 }
 
@@ -1999,7 +2019,6 @@ void writeSharedHeading(GpsAdu5PatStruct_t * pat, char whichPAT)
       syslog(LOG_INFO, "Couldn't link ADU5%cPat to GPSD_HEADING_LINK_DIR for some reason", whichPAT); 
     }
 }
-
 
 void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
   static int telemCount[3]={0};
