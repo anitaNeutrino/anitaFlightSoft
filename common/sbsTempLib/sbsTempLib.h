@@ -25,8 +25,8 @@ typedef enum {
 const char *getSBSTemperatureLabel(SbsTempIndex_t index);
 int readSBSTemperature(SbsTempIndex_t index);
 int readSBSTemperatureFile(const char *tempFile);
-inline int convertRawToAnita(int rawTempInmC) {return (rawTempInmC/100);}
-inline float convertAnitaToHuman(int anitaTemp) {return (anitaTemp/10.);}
+int convertRawToAnita(int rawTempInmC) {return (rawTempInmC/100);}
+float convertAnitaToHuman(int anitaTemp) {return (anitaTemp/10.);}
 int readNTUTemps(SbsTempIndex_t index);
 
 
