@@ -185,22 +185,19 @@ int setMagnetometerTerminalOptions(int fd)
 
     cfsetispeed(&options, MAGNETOMETER_BAUDRATE);    /* set input speed */
     cfsetospeed(&options, MAGNETOMETER_BAUDRATE);    /* set output speed */
-
+    cfmakeraw(&options); 
     options.c_cflag &= ~PARENB;         /* clear the parity bit  */
     options.c_cflag &= ~CSTOPB;         /* clear the stop bit  */
     options.c_cflag &= ~CSIZE;          /* clear the character size  */
     options.c_cflag |= CHARACTER_SIZE;  /* set charater size to 8 bits  */
     options.c_cflag &= ~CRTSCTS;        /* clear the flow control bits  */
-    options.c_lflag &= (ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
-    options.c_cflag |= (CLOCAL | CREAD); 
-    options.c_oflag |= ( ONLCR | OPOST);
 
  
     retVal=tcsetattr(fd, TCSANOW, &options);   /* activate the settings  */
     if(retVal<0) {
-	syslog(LOG_ERR,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
-	fprintf(stderr,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
-	return -1;
+      syslog(LOG_ERR,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
+      fprintf(stderr,"tcsetattr on fd %d: %s\n",fd,strerror(errno));
+      return -1;
     }
     return 0;
 }
@@ -246,7 +243,7 @@ int toggleCRTCTS(char devName[])
     options.c_cflag &= ~CSIZE;          /* clear the character size  */
     options.c_cflag |= CHARACTER_SIZE;  /* set charater size to 8 bits  */
     options.c_cflag |= CRTSCTS;        /* Toggle on */
-    options.c_lflag &= (ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
+    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /* raw input mode  */
     options.c_cflag |= (CLOCAL | CREAD); 
 
     options.c_oflag &= ~(OPOST | ONLCR );
@@ -292,7 +289,7 @@ int isThereData(int filedes,struct timeval *waitTimePtr)
     FD_ZERO (&active_fd_set);
     FD_SET (filedes, &active_fd_set);
     read_fd_set = active_fd_set;
-    numReady=select (FD_SETSIZE, &read_fd_set, NULL, NULL, waitTimePtr);
+    numReady=select (filedes+1, &read_fd_set, NULL, NULL, waitTimePtr);
     if ( numReady< 0)
     {
 	syslog (LOG_ERR,"select on %d: %s\n",filedes,strerror(errno));
