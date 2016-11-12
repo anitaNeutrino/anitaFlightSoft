@@ -68,6 +68,9 @@ static float headingTimesA[NUM_HEADINGS];
 static float headingTimesB[NUM_HEADINGS]; 
 static float headingWeightsA[NUM_HEADINGS];
 static float headingWeightsB[NUM_HEADINGS];
+static float headingLatitudeG12; 
+static float headingLongitudeG12; 
+static float headingAltitudeG12; 
 static float headingHistoryMag[NUM_HEADINGS];
 static float headingTimesMag[NUM_HEADINGS];
 static float headingWeightsMag[NUM_HEADINGS];
@@ -111,26 +114,27 @@ int analyzeHeading()
   char buf[FILENAME_MAX]; 
   struct dirent ** list; 
   int i; 
-  int nAOk; int nBOk; 
-
 
   if (headingIndexA < 0) 
   {
     // initialize to uninitialized
     for (i = 0; i < NUM_HEADINGS; i++) 
     {
-      headingHistoryA[i] = -1; 
-      headingTimesA[i]   = -1; 
-      headingWeightsA[i] = -1;
-      headingHistoryB[i] = -1; 
-      headingTimesB[i]   = -1;
-      headingWeightsB[i] = -1;
-      headingHistoryMag[i] = -1; 
-      headingTimesMag[i]   = -1;
-      headingWeightsMag[i] = -1;
+      headingHistoryA[i]     = -1; 
+      headingTimesA[i]       = -1; 
+      headingWeightsA[i]     = -1;
+      headingHistoryB[i]     = -1; 
+      headingTimesB[i]       = -1;
+      headingWeightsB[i]     = -1;      
+      headingHistoryMag[i]   = -1; 
+      headingTimesMag[i]     = -1;
+      headingWeightsMag[i]   = -1;
  
     }
 
+    headingLatitudeG12  = -1;
+    headingLongitudeG12 = -1;
+    headingAltitudeG12  = -1;
     headingIndexA = 0; 
     headingIndexB = 0; 
     headingIndexMag = 0; 
@@ -146,17 +150,22 @@ int analyzeHeading()
      free(list); 
      return 0; 
    }
-
+   
+   
   //We do this in reverse order , which means we will see things in reverse time order
   //which is what we want
   while(i--) 
   {
     float tod; 
-    int nASeen = 0; 
-    int nBSeen = 0;
-    int Apast = 0; 
-    int Bpast = 0; 
-    GpsAdu5PatStruct_t pat; 
+    int nASeen   = 0; 
+    int nBSeen   = 0;
+    int Apast    = 0; 
+    int Bpast    = 0;
+    bool readG12 = false;
+    
+    GpsAdu5PatStruct_t pat;
+    GpsG12PosStruct_t  pos;
+    
     //this is a pat 
     if (strstr(list[i]->d_name,"pat"))
     {
@@ -212,10 +221,24 @@ int analyzeHeading()
           headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
         }
       }
-
+      else  if (strstr(list[i]->d_name,"pos") && !readG12)
+	{
+	  sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
+	  
+	  if (genericReadOfFile((unsigned char *) &pos, buf, sizeof(pos)) == -1)
+	    {
+	      syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+	    }
+	  
+	  headingLatitudeG12   = pos.latitude;
+	  headingLongitudeG12  = pos.longitude;
+	  headingAltitudeG12   = pos.altitude;
+	  readG12 = true;
+	}
+      
       else //weird file, or we have seen too many of these 
-      {
-        //delete the link and the file
+	{
+	  //delete the link and the file
         if(!unlink(buf))
         {
           syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
@@ -227,7 +250,7 @@ int analyzeHeading()
           syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
         }
       }
-    }
+    }    
   }
 
   free(list); 
@@ -289,9 +312,7 @@ int analyzeHeading()
     }
   }
   
-
   free(list); 
-
 
   
   // weighted linear regression
