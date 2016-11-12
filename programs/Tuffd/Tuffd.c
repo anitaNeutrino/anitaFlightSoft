@@ -272,8 +272,25 @@ int analyzeHeading()
 
       }
     }
+    else
+    {
+        //delete the link and the file
+        if(!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+
+        }
+        sprintf(buf,"%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
+        if (!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+        }
+ 
+    }
   }
   
+
+  free(list); 
 
 
   
