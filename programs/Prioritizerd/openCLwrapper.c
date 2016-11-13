@@ -24,6 +24,8 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   printf("%d platform(s) detected.\n", numPlatforms);
 
 
+  /#/overwrite the $DISPLAY because sometimes it seems messed up
+  setenv("DISPLAY",":0.0",1); 
 
   /* Get the names of the platforms and display to user. */
   char platNames[maxPlatforms][100];
