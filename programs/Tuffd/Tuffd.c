@@ -336,8 +336,10 @@ int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADI
   float sumYA  = 0;
   float sumWA  = 0;
   int   numA   = 0;
+
+  int i=0;
   
-  for (unsigned int i = 0; i < NUM_HEADINGS; i++)
+  for (i = 0; i < NUM_HEADINGS; i++)
   {
     if (heading[i] >=0){
       sumXYA += heading[i]*times[i]*weights[i];
