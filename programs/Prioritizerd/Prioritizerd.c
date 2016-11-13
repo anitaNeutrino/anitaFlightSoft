@@ -302,6 +302,7 @@ int readConfig()
 	     "Couldn't fetch printToScreen, defaulting to zero");
       printToScreen=0;
     }
+    disableGpu=kvpGetInt("disableGpu",0);
   }
   else {
     eString=configErrorString (status) ;
