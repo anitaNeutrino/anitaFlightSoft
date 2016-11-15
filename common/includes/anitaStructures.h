@@ -164,7 +164,7 @@
 #define VER_HK_SS 40
 #define VER_CMD_ECHO 40
 #define VER_MONITOR 41
-#define VER_TURF_RATE 40
+#define VER_TURF_RATE 41
 #define VER_LAB_PED 40
 #define VER_FULL_PED 40
 #define VER_SLOW_1 40
@@ -177,7 +177,7 @@
 #define VER_GPSD_START 40
 #define VER_LOGWATCHD_START 40
 #define VER_AVG_SURF_HK 41
-#define VER_SUM_TURF_RATE 40
+#define VER_SUM_TURF_RATE 41
 #define VER_ACQD_START 41
 #define VER_TURF_REG 40
 #define VER_TURF_EVENT_DATA 40
@@ -185,6 +185,7 @@
 #define VER_RTLSDR_POW_SPEC 40 
 #define VER_TUFF_STATUS 40 
 #define VER_TUFF_RAW_CMD 40 
+#define VER_TURF_RAW_BANK3 40 
 #endif
 
 
@@ -612,7 +613,8 @@ typedef struct {
 /*!
   Debugging use only TURF scaler data
 */
-typedef struct {
+typedef struct __attribute__((packed))
+{
   GenericHeader_t gHdr;
     unsigned int unixTime;
     unsigned int unixTimeUs;
@@ -797,18 +799,51 @@ typedef struct {
 typedef struct {
   GenericHeader_t gHdr;
   unsigned int unixTime;
+  unsigned int c3poNum;
   unsigned short ppsNum; ///<It's only updated every second so no need for sub-second timing
   unsigned short deadTime; ///<How much were we dead??
-  unsigned short l1Rates[PHI_SECTORS][2]; //
-  unsigned char l3Rates[PHI_SECTORS][2]; /// to get Hz
+  unsigned short l1Rates[PHI_SECTORS]; // L1 rates, 1 per phi sector, in kHz
+  unsigned short rfScaler; 
+  unsigned char l3Rates[PHI_SECTORS]; /// L3 rates, 1 per phi sector, in Hz 
+  unsigned char l3RatesGated[PHI_SECTORS]; // Gated L3 Rates 
   unsigned short l1TrigMask; ///< As read from TURF (16-bit upper phi, lower phi)
-  unsigned short l1TrigMaskH; ///< As read from TURF (16-bit upper phi, lower phi)
   unsigned short phiTrigMask; ///< 16 bit phi-sector mask
-  unsigned short phiTrigMaskH; ///< 16 bit phi-sector mask
   unsigned char errorFlag;///<Bit 1-4 bufferdepth, Bits 5,6,7 are for upper,lower,nadir trig mask match
-  unsigned char reserved[3];
-  unsigned int c3poNum;
+  unsigned char refPulses; 
 } TurfRateStruct_t;
+
+
+/** This is just a mirror of the register contents. 
+ *
+ * Will be copied into TurfRateStruct as needed 
+ *
+ *  NOT telemetered
+ */ 
+typedef struct __attribute__((packed))
+{
+  GenericHeader_t gHdr; 
+  unsigned int unixTime; 
+  unsigned int unixTimeUs; 
+  unsigned int whichBank; //just to match TurfRegisterContents_t
+  unsigned short l1Rates[16]; 
+  unsigned int unused[8]; 
+  unsigned char l3Rates[16]; 
+  unsigned int unused2[4]; 
+  unsigned char l3RatesGated[16]; 
+  unsigned int unused3[4]; 
+  unsigned char refPulses; 
+  unsigned char unused4[3]; 
+  unsigned short deadTime; 
+  unsigned short ppsNum; 
+  unsigned short rfScaler; 
+  unsigned short unused5; 
+  unsigned int c3poNum; 
+  unsigned int shadowed[12]; 
+  unsigned int garbage[16]; 
+} TurfRawBank3Struct_t; 
+
+
+
 
 //!  Summed Turf Rates -- Telemetered
 /*!
@@ -821,11 +856,10 @@ typedef struct {
     unsigned short deltaT; ///<Difference in time between first and last 
     unsigned int deadTime; ///<Summed dead time between first and last
     unsigned char bufferCount[4]; ///<Counting filled buffers
-    unsigned short l3Rates[PHI_SECTORS][2]; ///</numRates to get Hz z  
+    unsigned short l3Rates[16]; ///</numRates to get Hz z  
+    unsigned short l3RatesGated[16]; ///</numRates to get Hz z  
     unsigned short l1TrigMask; ///<As read from TURF (16-bit phi)
-    unsigned short l1TrigMaskH; ///<As read from TURF (16-bit phi)
     unsigned short phiTrigMask; ///<16-bit phi-sector mask
-    unsigned short phiTrigMaskH; ///<16-bit phi-sector mask
     unsigned char errorFlag;///<Bit 1-4 bufferdepth, Bits 5,6,7 are for upper,lower,nadir trig mask match
 } SummedTurfRateStruct_t;
 
