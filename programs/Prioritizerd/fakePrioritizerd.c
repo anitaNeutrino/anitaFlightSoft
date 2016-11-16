@@ -1,6 +1,6 @@
 /*! \file Prioritizerd.c
-  \brief The Prioritizerd program that creates Event objects 
-  
+  \brief The Prioritizerd program that creates Event objects
+
   Reads the event objects written by Eventd, assigns a priority to each event based on the likelihood that it is an interesting event. Events with the highest priority will be transmitted to the ground first.
   March 2005 rjn@mps.ohio-state.edu
 */
@@ -46,12 +46,12 @@ AnitaHkWriterStruct_t gpuWriter;
 
 
 // Three phi sector pulsing (-10 deg)
-#define NUM_RUNS 14
-int runs[NUM_RUNS] = {11685, 11684, 11683, 11682, 11681, 11680, 11679, 11678, 11677, 11676, 11675, 11674, 11673, 11672};
-int firstEvents[NUM_RUNS] = {71658301, 71653101, 71648601, 71644501, 71640501, 71636301, 71632301, 71627001, 71622701, 71618501, 71611901, 71607501, 71602801, 71598501};
-int lastEvents[NUM_RUNS] = {71661640, 71658292, 71653082, 71648541, 71644406, 71640434, 71636252, 71632298, 71626963, 71622602, 71618494, 71611800, 71607424, 71602714};
+/* #define NUM_RUNS 14 */
+/* int runs[NUM_RUNS] = {11685, 11684, 11683, 11682, 11681, 11680, 11679, 11678, 11677, 11676, 11675, 11674, 11673, 11672}; */
+/* int firstEvents[NUM_RUNS] = {71658301, 71653101, 71648601, 71644501, 71640501, 71636301, 71632301, 71627001, 71622701, 71618501, 71611901, 71607501, 71602801, 71598501}; */
+/* int lastEvents[NUM_RUNS] = {71661640, 71658292, 71653082, 71648541, 71644406, 71640434, 71636252, 71632298, 71626963, 71622602, 71618494, 71611800, 71607424, 71602714}; */
 
-const int selectedRun = 11672;
+/* const int selectedRun = 11672; */
 
 /* #define NUM_RUNS 1 */
 /* int runs[NUM_RUNS] = {11672}; */
@@ -89,6 +89,13 @@ const int selectedRun = 11672;
 /* int firstEvents[NUM_RUNS] = {76697001}; */
 /* int lastEvents[NUM_RUNS] = {76800500}; */
 
+
+#define NUM_RUNS 1
+int runs[NUM_RUNS] = {352};
+int firstEvents[NUM_RUNS] = {60831701};
+int lastEvents[NUM_RUNS] = {60839900};
+const int selectedRun = 352;
+
 int main(int argc, char *argv[]){
 
   {
@@ -111,7 +118,7 @@ int main(int argc, char *argv[]){
   int wd=0;
   /* char *tempString; */
   int numEventLinks;
-    
+
   /* Log stuff */
   char *progName=basename(argv[0]);
 
@@ -136,7 +143,7 @@ int main(int argc, char *argv[]){
 
   //Dont' wait for children
   //RJN hack will have to fix this somehow
-  signal(SIGCLD, SIG_IGN); 
+  signal(SIGCLD, SIG_IGN);
 
 
   /* Setup log */
@@ -166,7 +173,7 @@ int main(int argc, char *argv[]){
     numEventLinks=getNumLinks(wd);
   }
 
-  /* 
+  /*
      This function  mallocs at some global pointers
      so needs to be outside any kind of loop.
   */
@@ -177,7 +184,7 @@ int main(int argc, char *argv[]){
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
     memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
   }
-  
+
   prepWriterStructs();
 
   do {
@@ -196,7 +203,8 @@ int main(int argc, char *argv[]){
       int run = runs[runInd];
       if(run!=selectedRun) continue;
 
-      const char* baseDir = "/home/anita/anitaStorage/antarctica14/raw";
+      /* const char* baseDir = "/home/anita/anitaStorage/antarctica14/raw"; */
+      const char* baseDir = "/mnt/ben";
       int eventFileNum=0;
       int firstFile = 100*(firstEvents[runInd]/100) + 100;
       int lastFile = 100*(lastEvents[runInd]/100) - 100;
@@ -221,13 +229,13 @@ int main(int argc, char *argv[]){
 	eventDir1 *= 1000000;
 	int eventDir2 = eventFileNum/10000;
 	eventDir2 *= 10000;
-      
+
 	char dir[FILENAME_MAX];
 	sprintf(dir, "%s/run%d/event/ev%d/ev%d", baseDir, run, eventDir1, eventDir2);
 
 	char fileName1[FILENAME_MAX];
 	sprintf(fileName1, "%s/psev_%d.dat.gz", dir, eventFileNum);
-	char fileName2[FILENAME_MAX];	
+	char fileName2[FILENAME_MAX];
 	sprintf(fileName2, "%s/hd_%d.dat.gz", dir, eventFileNum);
 
 	printf("%s\n", fileName1);
@@ -331,7 +339,7 @@ int main(int argc, char *argv[]){
 	  /* writeStruct(&theHeader[count],archiveHdFilename,sizeof(AnitaEventHeader_t)); */
 
 	  /* makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR); */
-    
+
 	  /* //Write Header and make Link for telemetry */
 	  /* sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR, */
 	  /* 	theHeader[count].eventNumber); */
@@ -349,7 +357,7 @@ int main(int argc, char *argv[]){
 	}
       }
     }
-  } while(currentState==PROG_STATE_INIT && 0); 
+  } while(currentState==PROG_STATE_INIT && 0);
   unlink(PRIORITIZERD_PID_FILE);
 
 
@@ -421,9 +429,9 @@ int readConfig()
 int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi) {
     char theFilename[FILENAME_MAX];
     int retVal=0;
-    
+
     fillGenericHeader(payloadPowSpec,PACKET_GPU_AVE_POW_SPEC,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
-    
+
     sprintf(theFilename,"%s/gpuPowSpec_%u_phi%d.dat",
 	    GPU_TELEM_DIR,payloadPowSpec->unixTimeFirstEvent,phi);
     retVal=writeStruct(payloadPowSpec,theFilename,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
@@ -436,13 +444,13 @@ int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi)
     if(retVal<0) {
 	//Had an error
     }
-    
+
     return retVal;
 }
 
 void prepWriterStructs() {
     int diskInd;
-    if(printToScreen) 
+    if(printToScreen)
 	printf("Preparing Writer Structs\n");
     //Hk Writer
 
