@@ -69,6 +69,7 @@ int dacSurfs[MAX_SURFS];
 int surfIndex[MAX_SURFS];
 int printToScreen=0,standAloneMode=0;
 int printPidStuff=1;
+int printTurfStuff=1;
 unsigned int eventEpoch=0;
 int numSurfs=0,doingEvent=0,hkNumber=0;
 int slipCounter=0;
@@ -90,6 +91,7 @@ int niceValue=-20;
 int disableUsb=0;
 int disableHelium2=0;
 int disableHelium1=0;
+int useLastRunThresholds = 0; 
 unsigned short data_array[MAX_SURFS][N_CHAN][N_SAMP]; 
 AnitaEventFull_t theEvent;
 AnitaEventHeader_t *hdPtr;//=&(theEvent.header);
@@ -124,6 +126,8 @@ int pedSwitchConfigAtEnd=1; //Need to work out exactly what this does
 int enableStartTest=1;
 int startSoftTrigs=10;
 
+
+int printPidEvery = 20; //TODO make this configurable
 
 
 //Temporary Global Variables
@@ -426,7 +430,10 @@ int main(int argc, char **argv) {
 	//		return -1;
       }
 
-      updateToLastThresholds();
+      if (useLastRunThresholds)
+      {
+        updateToLastThresholds();
+      }
     }
     if(pauseBeforeEvents && firstTimeThrough) {
 	printf("Masking off triggers at start\n");
@@ -1340,6 +1347,7 @@ int readConfigFile()
       addedVerbosity--;
     }
     printPidStuff=kvpGetInt("printPidStuff",1);
+    printTurfStuff=kvpGetInt("printTurfStuff",1);
     surfHkPeriod=kvpGetInt("surfHkPeriod",1);
     surfHkTelemEvery=kvpGetInt("surfHkTelemEvery",1);
     surfHkAverage=kvpGetInt("surfHkAverage",1);
@@ -1375,6 +1383,7 @@ int readConfigFile()
     thresholdScanPointsPerStep=kvpGetInt("thresholdScanPointsPerStep",0);
     threshSwitchConfigAtEnd=kvpGetInt("threshSwitchConfigAtEnd",1);
     setGlobalThreshold=kvpGetInt("setGlobalThreshold",0);
+    useLastRunThresholds = kvpGetInt("useLastRunThresholds",0); 
     globalThreshold=kvpGetInt("globalThreshold",0);
     
     //PID Stuff
@@ -2500,7 +2509,18 @@ AcqdErrorCode_t doGlobalThresholdScan()
     }
     theSurfHk.unixTime=timeStruct.tv_sec;
     theSurfHk.unixTimeUs=timeStruct.tv_usec;
+    theScalers.unixTime =timeStruct.tv_sec; 
     writeSurfHousekeeping(1);
+
+
+
+    ///hack hack hack hack 
+    if(writeRawScalers) {
+        int retVal=cleverHkWrite((unsigned char*)&theScalers,sizeof(SimpleScalerStruct_t),theScalers.unixTime,&rawScalerWriter);
+        if(retVal!=0) {
+          syslog(LOG_ERR,"Error writing SimpleScalerStruct_t\n");
+        }
+    }
 
     if(threshScanCounter>=thresholdScanPointsPerStep) {
       dacVal+=thresholdScanStepSize;
@@ -3654,6 +3674,9 @@ AcqdErrorCode_t readTurfEventDataVer6()
 }
 
 
+
+static unsigned turf_printf_time = 0; 
+
 void copyTurfBank3Vals( const TurfRawBank3Struct_t * raw, TurfRateStruct_t *rate)
 {
 
@@ -3666,6 +3689,63 @@ void copyTurfBank3Vals( const TurfRawBank3Struct_t * raw, TurfRateStruct_t *rate
   rate->refPulses = raw->refPulses; 
   rate->c3poNum = raw->c3poNum; 
   rate->rfScaler = raw->rfScaler; 
+
+  if (printTurfStuff && turf_printf_time < raw->unixTime)
+  {
+    int i,j; 
+    turf_printf_time = raw->unixTime; 
+    printf("\t\tTurfRate Struct at unixTime=%u\n", raw->unixTime); 
+
+    printf("\t\t\t ppsNum: %u\n", raw->ppsNum); 
+    printf("\t\t\t deadTime: %u\n", raw->deadTime); 
+    printf("\t\t\t refPulses: %u\n", raw->refPulses); 
+    printf("\t\t\t rfScaler: %u\n", raw->rfScaler); 
+    printf("\t\t\t c3poNum: %u\n", raw->c3poNum); 
+
+    printf("\t\t\t Phi Sector:    "); 
+    for (i = 0; i < 16; i++) 
+      printf("%-5u ", i+1); 
+    printf("\n"); 
+
+    printf("\t\t\t------------------------------------------------------------------------------------\n"); 
+
+    printf("\t\t\t l1Rates:      ["); 
+    for (i = 0; i < 16; i++) 
+      printf("%-5u ", raw->l1Rates[i]); 
+    printf("] \n"); 
+
+    printf("\t\t\t l3Rates:      ["); 
+    for (i = 0; i < 16; i++) 
+      printf("%-5u ", raw->l3Rates[i]); 
+    printf("]\n"); 
+
+    printf("\t\t\t l3RatesGated: ["); 
+    for (i = 0; i < 16; i++) 
+      printf("%-5u ", raw->l3RatesGated[i]); 
+    printf("]\n"); 
+
+    printf("\n\n"); 
+
+
+    printf("\t\t\t Surf Scalers  (from %u.%06u: \n", theScalers.unixTime,theScalers.unixTimeUs); 
+
+    printf("\t\t\tSurf:          "); 
+    for (i = 0; i < ACTIVE_SURFS; i++) 
+      printf("%-5u ", i+1); 
+
+    printf("\n"); 
+
+    for (j = 0; j < 32; j++) 
+    {
+      printf("\t\t\tScaler %02u:    ", j ); 
+      for (i = 0; i < ACTIVE_SURFS; i++) 
+      {
+        printf("%-5u ", theScalers.scaler[i][j]); 
+      }
+      printf("\n"); 
+    }
+  }
+
 }
 
 
@@ -3795,12 +3875,16 @@ AcqdErrorCode_t setTriggerMasks()
 }
 
 
+static int count_pid_prints = 0; 
+
 int updateThresholdsUsingPID() {
   static int avgCount=0;
   int wayOffCount=0;
   int surf,dac,error,value,change,ring,trigSurf;
   float pTerm, dTerm, iTerm;
   int chanGoal;
+  int printPidStuffNow = printPidStuff && ((count_pid_prints % printPidEvery) == 0); 
+  count_pid_prints++; 
   avgCount++;
   for(surf=0;surf<numSurfs;surf++) {
     if(dacSurfs[surf]==1) {
@@ -3823,14 +3907,14 @@ int updateThresholdsUsingPID() {
  
   
   if(avgCount==pidAverage || wayOffCount>100) {
-    if(printPidStuff) {
+    if(printPidStuffNow) {
       printf("PID Status:Ring Goals:");
       for(ring=0;ring<NUM_ANTENNA_RINGS;ring++) 
 	printf(" %d",pidGoals[ring]);
       printf("\n");
     }
     for(surf=0;surf<numSurfs;surf++) {
-      if(printPidStuff)
+      if(printPidStuffNow)
 	printf("SURF %2d: ",surfIndex[surf]);
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {		
 	ring=dac%3;
@@ -3842,7 +3926,7 @@ int updateThresholdsUsingPID() {
 	  value=avgScalerData[surf][dac]/avgCount;
 	  avgScalerData[surf][dac]=0;
 	  error=chanGoal-value;
-	  if(printPidStuff)
+	  if(printPidStuffNow)
 	    printf("%4d ",value);
 
 	  //		    printf("%d %d %d %d\n",thePids[surf][dac].iState,
@@ -3882,7 +3966,7 @@ int updateThresholdsUsingPID() {
 	  //		       pTerm,iTerm,dTerm);
 	}
       }
-      if(printPidStuff)
+      if(printPidStuffNow)
 	printf("\n");
     }
     avgCount=0;
