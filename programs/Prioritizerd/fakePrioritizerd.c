@@ -131,7 +131,7 @@ int main(int argc, char *argv[]){
     FILE* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r");
     int run = 0;
     int eventNumber;
-    const int numWaisPulses = 118160; // from wc -l
+    const int numWaisPulses = 5625; //118160; // from wc -l
     int numPulsesReadIn = 0; // counter
 
 
