@@ -243,6 +243,12 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
     return 0;
   }
 
+
+  /* if(surf>0){ */
+  /*   /\* by definition *\/ */
+  /*   return 0; */
+  /* } */
+
   const double clockFreq_MHz = 33;
   double clockPeriod_ns = 1./(clockFreq_MHz*1e-3);
   int clockPeriod_samples = clockPeriod_ns/deltaT_ns;
@@ -472,9 +478,9 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
       time = relativeCableDelays[surf][chan];
       voltCalib = voltageCalibHarm[surf][chan][labChip];
 #ifdef CALIBRATION
-      if(surf==0 && chan==0){
-	printf("Calibration mode...\n");
-      }
+      /* if(surf==0 && chan==0){ */
+      /* 	printf("Calibration mode...\n"); */
+      /* } */
 #else
 
 #endif
@@ -555,8 +561,7 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
     /*    the channels on the SURF have the same number of points. */
     for(chan=0;chan<8;chan++) {
 
-      if(nSamps[surf][chan]!=nSamps[surf][8])
-      {
+      if(nSamps[surf][chan]!=nSamps[surf][8]){
         nSamps[surf][chan]=nSamps[surf][8];
         memcpy( times[surf][chan], times[surf][8], nSamps[surf][8] * sizeof(double));
       }
@@ -605,8 +610,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
   /* printf("After... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
   processEventAG(pedSubBody);
-
-
 
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     int chan=0;

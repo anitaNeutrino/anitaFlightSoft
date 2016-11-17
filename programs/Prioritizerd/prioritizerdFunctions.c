@@ -108,6 +108,140 @@ void readInEvent(PedSubbedEventBody_t *psev, AnitaEventHeader_t* head, const cha
 
 
 
+
+
+
+
+
+/* // where the first event is n=0 */
+/* void readInNthUnzippedEvent(int n, const char* psevFileName, PedSubbedEventBody_t *theBody, const char* headFileName, AnitaEventHeader_t* theHeader){ */
+
+/*   /\* gzFile infile = gzopen (psevFileName, "rb"); *\/ */
+/*   FILE* infile = fopen (psevFileName, "rb"); */
+
+/*   int numElements; */
+/*   /\* int i=0; *\/ */
+/*   fseek(infile, n*sizeof(PedSubbedEventBody_t), SEEK_SET); */
+/*   /\* for(i=0;i<100;i++) { *\/ */
+/*     /\* numBytes=gzread(infile,&theBody[i],sizeof(PedSubbedEventBody_t)); *\/ */
+/*     numElements=fread(&theBody[i],sizeof(PedSubbedEventBody_t), 1, infile); */
+/*     if(numElements!=1) { */
+/*       printf("%s\n", psevFileName); */
+/*       fprintf(stderr, "Balls\n"); */
+/*       break; */
+/*     } */
+
+/*     //RJN hack for now */
+/*     /\* if(runNumber>=10000 && runNumber<=10057) { *\/ */
+/*     /\*   if(counter>1 && i==1) { *\/ */
+/*     /\* 	if(theBody.eventNumber!=lastEventNumber+1) { *\/ */
+/*     /\* 	  gzrewind(infile); *\/ */
+/*     /\* 	  numBytes=gzread(infile,&theBody,sizeof(PedSubbedEventBody_t)); *\/ */
+/*     /\* 	  gzread(infile,&theBody,616); *\/ */
+/*     /\* 	  numBytes=gzread(infile,&theBody,sizeof(PedSubbedEventBody_t)); *\/ */
+/*     /\* 	} *\/ */
+/*     /\*   } *\/ */
+/*     /\* } *\/ */
+/*     /\* int lastEventNumber=theBody.eventNumber; *\/ */
+/*     /\* printf("i=%d\n", i); *\/ */
+/*   /\* } *\/ */
+/*   /\* gzclose(infile); *\/ */
+/*   fclose(infile); */
+
+/*   /\* infile = gzopen(headFileName, "rb"); *\/ */
+/*   infile = fopen(headFileName, "rb"); */
+
+/*   /\* int j=0; *\/ */
+/*   /\* for(j=0;j<100;j++) { *\/ */
+/*   fseek(infile, n*sizeof(AnitaEventHeader_t), SEEK_SET); */
+/*     /\* int numBytesExpected=sizeof(AnitaEventHeader_t); *\/ */
+/*     /\* if(version==VER_EVENT_HEADER) { *\/ */
+/*       /\* numBytes=gzread(infile,&theHeader[j],sizeof(AnitaEventHeader_t)); *\/ */
+/*     numElements=fread(&theHeader[j],sizeof(AnitaEventHeader_t), 1, infile); */
+/*     /\* } *\/ */
+/*     /\* if(numBytes==-1) { *\/ */
+/*     /\*   int errorNum=0; *\/ */
+/*     /\*   /\\* printf("%s\t%d\n", gzerror(infile,&errorNum), errorNum); *\\/ *\/ */
+/*     /\* } *\/ */
+/*     if(numElements!=1) { */
+/*       fprintf(stderr, "Balls\n"); */
+/*     } */
+/*     /\* printf("j=%d\n", j); *\/ */
+/*     /\* processHeader(version); *\/ */
+/*   /\* } *\/ */
+/*   /\* gzclose(infile); *\/ */
+/*   fclose(infile); */
+
+/* } */
+
+
+
+
+
+
+
+
+void readIn100UnzippedEvents(const char* psevFileName, PedSubbedEventBody_t *theBody, const char* headFileName, AnitaEventHeader_t* theHeader){
+
+  /* gzFile infile = gzopen (psevFileName, "rb"); */
+  FILE* infile = fopen (psevFileName, "rb");
+
+  int numElements;
+  int i=0;
+  for(i=0;i<100;i++) {
+    /* numBytes=gzread(infile,&theBody[i],sizeof(PedSubbedEventBody_t)); */
+    numElements=fread(&theBody[i],sizeof(PedSubbedEventBody_t), 1, infile);
+    if(numElements!=1) {
+      printf("%s\n", psevFileName);
+      fprintf(stderr, "Balls\n");
+      break;
+    }
+
+    //RJN hack for now
+    /* if(runNumber>=10000 && runNumber<=10057) { */
+    /*   if(counter>1 && i==1) { */
+    /* 	if(theBody.eventNumber!=lastEventNumber+1) { */
+    /* 	  gzrewind(infile); */
+    /* 	  numBytes=gzread(infile,&theBody,sizeof(PedSubbedEventBody_t)); */
+    /* 	  gzread(infile,&theBody,616); */
+    /* 	  numBytes=gzread(infile,&theBody,sizeof(PedSubbedEventBody_t)); */
+    /* 	} */
+    /*   } */
+    /* } */
+    /* int lastEventNumber=theBody.eventNumber; */
+    /* printf("i=%d\n", i); */
+  }
+  /* gzclose(infile); */
+  fclose(infile);
+
+  /* infile = gzopen(headFileName, "rb"); */
+  infile = fopen(headFileName, "rb");
+
+  int j=0;
+  for(j=0;j<100;j++) {
+    int numBytesExpected=sizeof(AnitaEventHeader_t);
+    /* if(version==VER_EVENT_HEADER) { */
+      /* numBytes=gzread(infile,&theHeader[j],sizeof(AnitaEventHeader_t)); */
+    numElements=fread(&theHeader[j],sizeof(AnitaEventHeader_t), 1, infile);
+    /* } */
+    /* if(numBytes==-1) { */
+    /*   int errorNum=0; */
+    /*   /\* printf("%s\t%d\n", gzerror(infile,&errorNum), errorNum); *\/ */
+    /* } */
+    if(numElements!=1) {
+      fprintf(stderr, "Balls\n");
+    }
+    /* printf("j=%d\n", j); */
+    /* processHeader(version); */
+  }
+  /* gzclose(infile); */
+  fclose(infile);
+
+}
+
+
+
+
 void readIn100Events(const char* psevFileName, PedSubbedEventBody_t *theBody, const char* headFileName, AnitaEventHeader_t* theHeader){
 
   gzFile infile = gzopen (psevFileName, "rb");

@@ -13,7 +13,8 @@ CL_LIBDIR = $(CL)/lib
 #DEBUG=1
 CALIBRATION=1
 #TIME_STAMP=1
-#PROFILER
+#PROFILER=1
+
 
 LDFLAGS +=-lOpenCL -lgsl
 CCFLAGS +=-g
@@ -21,9 +22,9 @@ CCFLAGS +=-g
 Targets = Prioritizerd fakePrioritizerd
 Objs= openCLwrapper.o anitaGpu.o anitaTimingCalib.c prioritizerdFunctions.o
 
-
 ifdef PROFILER
-LDFLAGS += -ltcmalloc -lprofiler
+#LDFLAGS += -ltcmalloc -lprofiler
+LDFLAGS += -lprofiler
 endif
 
 ifdef TIME_STAMP

@@ -127,7 +127,8 @@ int main(int argc, char *argv[]){
     const char* baseDir = "/mnt/ben";
 
     // calibration badassery
-    FILE* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r");
+    /* FILE* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r"); */
+    FILE* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r");
     int run = 0;
     int eventNumber;
     const int numWaisPulses = 118160; // from wc -l
@@ -173,14 +174,20 @@ int main(int argc, char *argv[]){
 	char dir[FILENAME_MAX];
 	sprintf(dir, "%s/run%d/event/ev%d/ev%d", baseDir, run, eventDir1, eventDir2);
 
+	/* char fileName1[FILENAME_MAX]; */
+	/* sprintf(fileName1, "%s/psev_%d.dat.gz", dir, eventFileNum); */
+	/* char fileName2[FILENAME_MAX]; */
+	/* sprintf(fileName2, "%s/hd_%d.dat.gz", dir, eventFileNum); */
+
 	char fileName1[FILENAME_MAX];
-	sprintf(fileName1, "%s/psev_%d.dat.gz", dir, eventFileNum);
+	sprintf(fileName1, "%s/psev_%d.dat", dir, eventFileNum);
 	char fileName2[FILENAME_MAX];
-	sprintf(fileName2, "%s/hd_%d.dat.gz", dir, eventFileNum);
+	sprintf(fileName2, "%s/hd_%d.dat", dir, eventFileNum);
+
 
 	/* printf("%s\n", fileName1); */
 
-	readIn100Events(fileName1, pedSubBody, fileName2, theHeader);
+	readIn100UnzippedEvents(fileName1, pedSubBody, fileName2, theHeader);
 
 	/* readInTextFile(pedSubBody, theHeader); */
 
@@ -215,7 +222,7 @@ int main(int argc, char *argv[]){
 	    // OK so let's skip events that aren't in the read-in list.
 	    if(theHeader[eventsReadFromDisk].eventNumber==eventNumber){
 
-	      printf("I found eventNumber %d in run %d\n", eventNumber, run);
+	      /* printf("I found eventNumber %d in run %d\n", eventNumber, run); */
 
 	      /* Then we add to GPU queue... */
 	      double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
@@ -232,7 +239,7 @@ int main(int argc, char *argv[]){
 	      }
 
 	      fscanf(waisPulseEventNumbers, "%d\t%d", &run, &eventNumber);
-	      printf("I'm looking in run %d for eventNumber %d\n", run, eventNumber);
+	      /* printf("I'm looking in run %d for eventNumber %d\n", run, eventNumber); */
 	      numPulsesReadIn++;
 	      numEventsInGpuQueue++;
 	    }
