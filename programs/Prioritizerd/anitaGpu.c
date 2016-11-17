@@ -28,6 +28,9 @@ const float PHI_RANGE = 22.5;
 FILE* gpuOutput;
 #endif
 
+
+static int invertTopRingInSoftware = 1;
+
 void prepareGpuThings(){
 
   #ifdef CALIBRATION
@@ -62,6 +65,9 @@ void prepareGpuThings(){
   thetaAngleLowForDemotion = kvpGetFloat("thetaAngleLowForDemotion", -40);
   thetaAngleHighForDemotion = kvpGetFloat("thetaAngleHighForDemotion", 10);
   thetaAnglePriorityDemotion = kvpGetInt("thetaAnglePriorityDemotion", 1);
+
+  invertTopRingInSoftware = kvpGetInt("invertTopRingInSoftware", 0);
+  printf("invertTopRingInSoftware = %d\n", invertTopRingInSoftware);
 
   /* Large buffers, which will be mapped to GPU memory */
   numEventSamples = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*sizeof(float));
@@ -298,8 +304,6 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
 
   int antInd=0;
   /* For each channel, copy the data into the places where the GPU expects it. */
-
-  const int invertTopRingInSoftware = 1;
 
   for(antInd=0; antInd<NUM_ANTENNAS; antInd++){
     int vPolChanInd = antToSurfMap[antInd]*9 + vAntToChan[antInd];
