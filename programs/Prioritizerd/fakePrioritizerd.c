@@ -142,111 +142,124 @@ int main(int argc, char *argv[]){
     /* This one is the main while loop */
     int entry = 0;
     for(entry=0; entry < numWaisPulses; entry++){
-      numPulsesReadIn = 0;
-      //	usleep(1);
-      retVal = checkLinkDirs(1,0);
-      if(retVal || numEventLinks) {
-	numEventLinks = getNumLinks(wd);
-      }
 
-      if(numEventLinks >= panicQueueLength) {
-	syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
-      }
+      int numEventsInGpuQueue = 0;
+      while(numEventsInGpuQueue < 100){
 
-      /* if(!numEventLinks){ */
-      /* 	usleep(1000); */
-      /* 	continue; */
-      /* } */
-
-      int eventFileNum = 100*(eventNumber/100);
-
-      /* Read data into program memory */
-      int eventDir1 = eventFileNum/1000000;
-      eventDir1 *= 1000000;
-      int eventDir2 = eventFileNum/10000;
-      eventDir2 *= 10000;
-
-      char dir[FILENAME_MAX];
-      sprintf(dir, "%s/run%d/event/ev%d/ev%d", baseDir, run, eventDir1, eventDir2);
-
-      char fileName1[FILENAME_MAX];
-      sprintf(fileName1, "%s/psev_%d.dat.gz", dir, eventFileNum);
-      char fileName2[FILENAME_MAX];
-      sprintf(fileName2, "%s/hd_%d.dat.gz", dir, eventFileNum);
-
-      /* printf("%s\n", fileName1); */
-
-      readIn100Events(fileName1, pedSubBody, fileName2, theHeader);
-
-      /* readInTextFile(pedSubBody, theHeader); */
-
-
-      int eventsReadFromDisk = 0;
-      while(eventsReadFromDisk<100 && currentState==PROG_STATE_RUN){
-
-	/* numEventLinks=getNumLinks(wd); */
-	/* tempString=getFirstLink(wd); */
-	/* if(numEventLinks==0) break; */
-	/* if(tempString==NULL) continue; */
-	/* //	printf("tempString = %s\n", tempString); */
-	/* //	printf("%s\n",eventLinkList[eventsReadFromDisk]->d_name);  */
-	/* sscanf(tempString,"hd_%d.dat",&doingEvent); */
-	/* if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) { */
-	/*   syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent); */
-	/* } */
-	/* lastEventNumber=doingEvent; */
-
-	/* sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString); */
-	/* sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent); */
-
-	/* //RJN 4th June 2008 */
-	/* //Switch to Acqd writing psev files */
-	/* sprintf(bodyFilename[eventsReadFromDisk],"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent); */
-
-	/* retVal=fillHeader(&theHeader[eventsReadFromDisk],hdFilename); */
-
-	/* if(numEventLinks < panicQueueLength){ */
-	if(numEventLinks < panicQueueLength){
-
-	  // OK so let's skip events that aren't in the read-in list.
-	  if(theHeader[eventsReadFromDisk].eventNumber==eventNumber){
-
-	    printf("I found eventNumber %d in run %d\n", eventNumber, run);
-
-	    /* Then we add to GPU queue... */
-	    double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
-	    doTimingCalibration(eventsReadFromDisk, &theHeader[eventsReadFromDisk], pedSubBody[eventsReadFromDisk], finalVolts);
-	    /* addEventToGpuQueue(eventsReadFromDisk, finalVolts, theHeader[eventsReadFromDisk]); */
-	    addEventToGpuQueue(numPulsesReadIn, finalVolts, theHeader[eventsReadFromDisk]);
-	    hackyHeaders[numPulsesReadIn] = theHeader[eventsReadFromDisk];
-
-	    int chanInd=0;
-	    for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
-	      free(finalVolts[chanInd]);
-	    }
-
-	    fscanf(waisPulseEventNumbers, "%d\t%d", &run, &eventNumber);
-	    printf("I'm looking in run %d for eventNumber %d\n", run, eventNumber);
-	    numPulsesReadIn++;
-
-	  }
-	  eventsReadFromDisk++;
+	numPulsesReadIn = 0;
+	//	usleep(1);
+	retVal = checkLinkDirs(1,0);
+	if(retVal || numEventLinks) {
+	  numEventLinks = getNumLinks(wd);
 	}
-	else{/* Panic! Write all header files to archived directory with priority 7! */
-	  panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);
+
+	if(numEventLinks >= panicQueueLength) {
+	  syslog(LOG_INFO,"Prioritizerd is getting behind (%d events in inbox), will have some prioritity 7 events",numEventLinks);
+	}
+
+	/* if(!numEventLinks){ */
+	/* 	usleep(1000); */
+	/* 	continue; */
+	/* } */
+
+	int eventFileNum = 100*(eventNumber/100);
+
+	/* Read data into program memory */
+	int eventDir1 = eventFileNum/1000000;
+	eventDir1 *= 1000000;
+	int eventDir2 = eventFileNum/10000;
+	eventDir2 *= 10000;
+
+	char dir[FILENAME_MAX];
+	sprintf(dir, "%s/run%d/event/ev%d/ev%d", baseDir, run, eventDir1, eventDir2);
+
+	char fileName1[FILENAME_MAX];
+	sprintf(fileName1, "%s/psev_%d.dat.gz", dir, eventFileNum);
+	char fileName2[FILENAME_MAX];
+	sprintf(fileName2, "%s/hd_%d.dat.gz", dir, eventFileNum);
+
+	/* printf("%s\n", fileName1); */
+
+	readIn100Events(fileName1, pedSubBody, fileName2, theHeader);
+
+	/* readInTextFile(pedSubBody, theHeader); */
+
+
+	int eventsReadFromDisk = 0;
+	while(eventsReadFromDisk<100 && currentState==PROG_STATE_RUN){
+
+	  /* numEventLinks=getNumLinks(wd); */
+	  /* tempString=getFirstLink(wd); */
+	  /* if(numEventLinks==0) break; */
+	  /* if(tempString==NULL) continue; */
+	  /* //	printf("tempString = %s\n", tempString); */
+	  /* //	printf("%s\n",eventLinkList[eventsReadFromDisk]->d_name);  */
+	  /* sscanf(tempString,"hd_%d.dat",&doingEvent); */
+	  /* if(lastEventNumber>0 && doingEvent!=lastEventNumber+1) { */
+	  /*   syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent); */
+	  /* } */
+	  /* lastEventNumber=doingEvent; */
+
+	  /* sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString); */
+	  /* sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent); */
+
+	  /* //RJN 4th June 2008 */
+	  /* //Switch to Acqd writing psev files */
+	  /* sprintf(bodyFilename[eventsReadFromDisk],"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent); */
+
+	  /* retVal=fillHeader(&theHeader[eventsReadFromDisk],hdFilename); */
+
+	  /* if(numEventLinks < panicQueueLength){ */
+	  if(numEventLinks < panicQueueLength){
+
+	    // OK so let's skip events that aren't in the read-in list.
+	    if(theHeader[eventsReadFromDisk].eventNumber==eventNumber){
+
+	      printf("I found eventNumber %d in run %d\n", eventNumber, run);
+
+	      /* Then we add to GPU queue... */
+	      double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
+	      doTimingCalibration(eventsReadFromDisk, &theHeader[eventsReadFromDisk], pedSubBody[eventsReadFromDisk], finalVolts);
+	      /* addEventToGpuQueue(eventsReadFromDisk, finalVolts, theHeader[eventsReadFromDisk]); */
+	      addEventToGpuQueue(numEventsInGpuQueue, finalVolts, theHeader[eventsReadFromDisk]);
+	      /* addEventToGpuQueue(numPulsesReadIn, finalVolts, theHeader[eventsReadFromDisk]);	       */
+	      /* hackyHeaders[numPulsesReadIn] = theHeader[eventsReadFromDisk]; */
+	      hackyHeaders[numEventsInGpuQueue] = theHeader[eventsReadFromDisk];
+
+	      int chanInd=0;
+	      for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
+		free(finalVolts[chanInd]);
+	      }
+
+	      fscanf(waisPulseEventNumbers, "%d\t%d", &run, &eventNumber);
+	      printf("I'm looking in run %d for eventNumber %d\n", run, eventNumber);
+	      numPulsesReadIn++;
+	      numEventsInGpuQueue++;
+	    }
+	    eventsReadFromDisk++;
+	  }
+	  else{/* Panic! Write all header files to archived directory with priority 7! */
+	    panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);
+	  }
 	}
       }
       /* exit(-1); */
 
 
-      printf("eventsReadFromDisk = %d, added %d to queue, max is %d.\n", eventsReadFromDisk, numPulsesReadIn, NUM_EVENTS);
+      /* printf("eventsReadFromDisk = %d, added %d to queue, max is %d.\n", eventsReadFromDisk, numPulsesReadIn, NUM_EVENTS); */
+      printf("numEventsInGpuQueue = %d, max is %d.\n", numEventsInGpuQueue, NUM_EVENTS);
       /* printf("Doing main gpu loop...\n"); */
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadFromDisk... */
-      if(numPulsesReadIn > 0){
-	/* mainGpuLoop(eventsReadFromDisk, theHeader, payloadPowSpec, writePowSpecPeriodSeconds); */
-	mainGpuLoop(numPulsesReadIn, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds);
-	numPulsesReadIn = 0;
+      /* if(numPulsesReadIn > 0){ */
+      /* 	/\* mainGpuLoop(eventsReadFromDisk, theHeader, payloadPowSpec, writePowSpecPeriodSeconds); *\/ */
+      /* 	mainGpuLoop(numPulsesReadIn, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds); */
+      /* 	numPulsesReadIn = 0; */
+      /* } */
+      if(numEventsInGpuQueue > 0){
+      	/* mainGpuLoop(eventsReadFromDisk, theHeader, payloadPowSpec, writePowSpecPeriodSeconds); */
+      	mainGpuLoop(numEventsInGpuQueue, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds);
+      	numPulsesReadIn = 0;
       }
 
       /* if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds */
