@@ -24,20 +24,17 @@ float binToBinDifferenceThresh_dB;
 const float THETA_RANGE = 150;
 const float PHI_RANGE = 22.5;
 
-#ifdef CALIBRATION
-FILE* gpuOutput;
-#endif
+FILE* gpuOutput = NULL;
 
+/* GPU option flags that take values from Prioritizerd.config */
+int invertTopRingInSoftware = 0;
+int printCalibTextFile = 0;
 
-static int invertTopRingInSoftware = 1;
 
 void prepareGpuThings(){
 
-  #ifdef CALIBRATION
-  gpuOutput = NULL;
-  gpuOutput = fopen("/tmp/gpuOutput.dat", "w");
-  printf("Compiled with CALIBRATION flag! Will generate a file /tmp/gpuOutput.dat with lovely things in it.\n");
-  #endif
+
+
 
   /* Read in GPU output to priority mappings */
   kvpReset();
@@ -68,6 +65,14 @@ void prepareGpuThings(){
 
   invertTopRingInSoftware = kvpGetInt("invertTopRingInSoftware", 0);
   printf("invertTopRingInSoftware = %d\n", invertTopRingInSoftware);
+
+  printCalibTextFile = kvpGetInt("printCalibTextFile", 0);
+
+  gpuOutput = NULL;
+  if(printCalibTextFile > 0){
+    gpuOutput = fopen("/tmp/gpuOutput.dat", "w");
+    printf("Compiled with printCalibTextFile flag! Will generate a file /tmp/gpuOutput.dat with lovely things in it.\n");
+  }
 
   /* Large buffers, which will be mapped to GPU memory */
   numEventSamples = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*sizeof(float));
@@ -733,25 +738,24 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     /* printf("eventNumber %u, saturationFlag %hu, priority %d\n", header[eventInd].eventNumber, saturationFlag, priority); */
     printf("I assigned eventNumber %u priority %d\n", header[eventInd].eventNumber, priority);
 
-    #ifdef CALIBRATION
-    fprintf(gpuOutput, "%u %f %f %d %d %d %lf %lf %lf %d ",
-	    header[eventInd].eventNumber,
-	    imagePeakVal[index2],
-	    hilbertPeak[index2],
-	    imagePeakTheta2[index2],
-	    imagePeakPhi2[index2],
-	    imagePeakPhiSector[index2],
-	    priorityParam,
-	    normalizedHilbertPeak,
-	    higherImagePeak,
-	    priority);
-    /* fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, priorityParam, normalizedHilbertPeak, higherImagePeak, priority);     */
-    /* for(ring=0; ring<3; ring++){ */
-    /*   fprintf(gpuOutput, "%f %d %f %d ", maxPhiSectPower[ring], maxPhiSectPowerBin[ring], maxDiffPowSpec[ring], maxDiffPowSpecBin[ring]); */
-    /* } */
-    fprintf(gpuOutput, "\n");
-    fflush(gpuOutput);
-    #endif
+    if(printCalibTextFile > 0){
+      fprintf(gpuOutput, "%u %f %f %d %d %d %lf %lf %lf %d ",
+	      header[eventInd].eventNumber,
+	      imagePeakVal[index2],
+	      hilbertPeak[index2],
+	      imagePeakTheta2[index2],
+	      imagePeakPhi2[index2],
+	      imagePeakPhiSector[index2],
+	      priorityParam,
+	      normalizedHilbertPeak,
+	      higherImagePeak,
+	      priority);
+      /* fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, priorityParam, normalizedHilbertPeak, higherImagePeak, priority);     */
+      /* for(ring=0; ring<3; ring++){ */
+      /*   fprintf(gpuOutput, "%f %d %f %d ", maxPhiSectPower[ring], maxPhiSectPowerBin[ring], maxDiffPowSpec[ring], maxDiffPowSpecBin[ring]); */
+      /* } */
+      fprintf(gpuOutput, "\n");
+    }
   }
 
   /* Add information to gpuPowSpec packet */
@@ -795,9 +799,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 #ifdef DEBUG_MODE
   printf("Only allowing one loop through main GPU calculation function in debug mode.\n");
   printf("Exiting program.\n");
-#ifdef CALIBRATION
-  fclose(gpuOutput);
-#endif
+
+  if(printCalibTextFile > 0){
+    fclose(gpuOutput);
+  }
   exit(0);
 #endif
 
@@ -814,9 +819,9 @@ void tidyUpGpuThings(){
      Needless to say, nothing will work after this function is called.
   */
 
-#ifdef CALIBRATION
-  fclose(gpuOutput);
-#endif
+  if(printCalibTextFile > 0){
+    fclose(gpuOutput);
+  }
 
 #ifdef TSTAMP
   TS_SAVE(1,"../timingAnalysis/stompings.dat");
