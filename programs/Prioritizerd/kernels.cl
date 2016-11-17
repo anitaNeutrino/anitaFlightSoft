@@ -39,12 +39,12 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
     inInd2 >>= 1;
     inInd3 >>= 1;
   }
-  
+
   complexScratch[outInd0] = (float2)(fftInput.s0, fftInput.s1);
   complexScratch[outInd1] = (float2)(fftInput.s2, fftInput.s3);
   complexScratch[outInd2] = (float2)(fftInput.s4, fftInput.s5);
   complexScratch[outInd3] = (float2)(fftInput.s6, fftInput.s7);
-  
+
   // Wait for all work items to get to this point.
   barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -57,19 +57,19 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
 
 #pragma unroll
   for(unsigned short length = 2; length<=NUM_SAMPLES; length<<=1){/* equivalent to length*=2 */
-  
+
     // I have arranged arrays so that the output put of even sub-ffts are on the left
     // the corresponding odd ffts are on the right, offset by half the total length
     // of the sub sequence.
 
-    // In the sub-FT I am 'assembling' at this loop, the odd-numbered elements 
+    // In the sub-FT I am 'assembling' at this loop, the odd-numbered elements
     // are positioned this after from the even ones...
     short oddOffset = length/2;
 
 
 #pragma unroll
     // Each work item will do 4 samples/frequencies.
-    // However, symmetry of FFT means it makes sense to do 
+    // However, symmetry of FFT means it makes sense to do
     // two values at each time through the loop, so have two 'localInds'
     for(short localInd = 0; localInd < 2; localInd++){
 
@@ -123,7 +123,7 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
 				       __global float4* normalData,
 				       __local float4* square,
 				       __local float4* mean){
-  
+
   // work item identifier
   int antInd = get_global_id(1);
   int eventInd = get_global_id(2);
@@ -131,7 +131,7 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
   int localInd = get_local_id(0);
   int dataInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/4 + antInd*NUM_SAMPLES/4 + localInd;
 
-  
+
   // look up how many raw samples in the waveform
   short numSamps = numSampsBuffer[eventInd*NUM_ANTENNAS + antInd];
 
@@ -172,7 +172,7 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
   // broadcast sum to private memory
   float4 square4 = square[0];
   float4 mean4 = mean[0];
-  
+
   // get sum of float4 components
   float x = square4.x + square4.y + square4.z + square4.w;
   float y = mean4.x + mean4.y + mean4.z + mean4.w;
@@ -189,7 +189,7 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
     rmsBuffer[eventInd*NUM_ANTENNAS + antInd] = rms;
   }
 
-  // normalize the data, 
+  // normalize the data,
   store = (store - y) / rms;
 
   /*
@@ -216,7 +216,7 @@ __kernel void normaliseWaveforms(__global float* rmsBuffer,
 				 __global float4* normalData,
 				 __local float4* square,
 				 __local float4* mean){
-  
+
   // work item identifier
   int antInd = get_global_id(1);
   int eventInd = get_global_id(2);
@@ -251,7 +251,7 @@ __kernel void normaliseWaveforms(__global float* rmsBuffer,
   // broadcast sum to private memory
   float4 square4 = square[0];
   float4 mean4 = mean[0];
-  
+
   // get sum of float4 components
   float x = square4.x + square4.y + square4.z + square4.w;
   float y = mean4.x + mean4.y + mean4.z + mean4.w;
@@ -410,7 +410,7 @@ __kernel void findImagePeakInTheta(__global float* image,
 
   for(int phiSector = 0; phiSector < NUM_PHI_SECTORS; phiSector++){
 
-    /* 
+    /*
        Not really necessary, but makes for much easier interpretation of output.
        Otherwise there's non-initialized crap in the output...
        If it turns out there's a massive overhead, I'll comment this out.
@@ -420,15 +420,15 @@ __kernel void findImagePeakInTheta(__global float* image,
     }
 
 
-    
+
     /* if(phiTrig[eventInd*NUM_PHI_SECTORS + phiSector]  */
     /* 	|| phiTrig[eventInd*NUM_PHI_SECTORS + (phiSector+1)%16]  */
     /* 	|| phiTrig[eventInd*NUM_PHI_SECTORS + (phiSector+15)%16]){*/
     if(phiTrig[eventInd*NUM_PHI_SECTORS + phiSector]){
-    
-      int pixelInd = (eventInd*NUM_PHI_SECTORS*NUM_BINS_PHI*NUM_BINS_THETA 
-		      + phiSector*NUM_BINS_PHI*NUM_BINS_THETA 
-		      + phiInd*NUM_BINS_THETA 
+
+      int pixelInd = (eventInd*NUM_PHI_SECTORS*NUM_BINS_PHI*NUM_BINS_THETA
+		      + phiSector*NUM_BINS_PHI*NUM_BINS_THETA
+		      + phiInd*NUM_BINS_THETA
 		      + thetaInd);
       float corr = image[pixelInd];
 
@@ -444,13 +444,13 @@ __kernel void findImagePeakInTheta(__global float* image,
       // numPixels will be decreasing...
       // it's a competition!
       for(int numPixels = NUM_BINS_THETA; numPixels > 1; numPixels/=2){
-	
+
 	// even indices will compare even/odd pixels
 	if(thetaInd%2 == 0 && thetaInd < numPixels){
 	  // get image vals from neighbouring pixels
 	  corr1 = corrScratch[thetaInd];
 	  corr2 = corrScratch[thetaInd + 1];
-	
+
 	  // larger correlation is the winner!
 	  largerThetaInd = corr2 > corr1 ? indScratch[thetaInd + 1] : indScratch[thetaInd];
 	  largerCorr = corr2 > corr1 ? corr2 : corr1;
@@ -595,7 +595,7 @@ __kernel void findMaxPhiSector(
 
 __kernel void coherentlySumWaveForms(__global int* maxTheta2,
 				     __global int* maxPhi2,
-				     __global int* maxPhiSector, 
+				     __global int* maxPhiSector,
 				     __global float* normalData,
 				     __global float4* coherentWaveBuffer,
 				     __global float* rmsBuffer,
@@ -697,12 +697,12 @@ __kernel void coherentlySumWaveForms(__global int* maxTheta2,
 
     dataInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES + ant*NUM_SAMPLES;
     samp = dataInd + sampBase + dt;
-    
+
     coherentValue.s0 += (samp >= dataInd && samp < dataInd+NUM_SAMPLES) ? rms*normalData[samp] : 0;
     coherentValue.s1 += (samp+1 >= dataInd && samp+1 < dataInd+NUM_SAMPLES) ? rms*normalData[samp+1] : 0;
     coherentValue.s2 += (samp+2 >= dataInd && samp+2 < dataInd+NUM_SAMPLES) ? rms*normalData[samp+2] : 0;
     coherentValue.s3 += (samp+3 >= dataInd && samp+3 < dataInd+NUM_SAMPLES) ? rms*normalData[samp+3] : 0;
-      
+
   }
 
   coherentWaveBuffer[(eventInd*NUM_SAMPLES + sampBase)/4] = coherentValue;
@@ -732,14 +732,14 @@ __kernel void makeHilbertEnvelope(__global float4* coherentWaveBuffer,
     Here sgn is the signum function def= -1 for freq <0, 0 for freq = 0, and 1 for freq > 0.
     Of the 1024 samples, 0 is the 0th freq, 1-512 are +1, 513-1023 are -1.
   */
-  
+
   coherentFFToutput = (float8)(coherentFFToutput.s1, -coherentFFToutput.s0,
 			       coherentFFToutput.s3, -coherentFFToutput.s2,
 			       coherentFFToutput.s5, -coherentFFToutput.s4,
 			       coherentFFToutput.s7, -coherentFFToutput.s6);
 
   coherentFFToutput = dataInd < 128 ? -1*coherentFFToutput : coherentFFToutput; /* Signum function */
-  coherentFFToutput.s01 = dataInd == 0 ? 0 : coherentFFToutput.s01; /* Signum function */  
+  coherentFFToutput.s01 = dataInd == 0 ? 0 : coherentFFToutput.s01; /* Signum function */
   coherentFFToutput.s01 = dataInd == 128 ? 0 : coherentFFToutput.s01; /* Signum function */
 
   /* Do the inverse fourier transform */
@@ -766,7 +766,7 @@ __kernel void makeHilbertEnvelope(__global float4* coherentWaveBuffer,
 __kernel void findHilbertEnvelopePeak(__global float4* coherentWave,
 				      __local float* scratch,
 				      __global float* absCoherentMax){
-  
+
   int localInd = get_global_id(0);
   int eventInd = get_global_id(1);
 
@@ -786,7 +786,7 @@ __kernel void findHilbertEnvelopePeak(__global float4* coherentWave,
   // put into LDS
   scratch[localInd] = largerCoherent;
   barrier(CLK_LOCAL_MEM_FENCE);
-  
+
   //  int numSamples = get_global_size(0);
   int numSamples = NUM_SAMPLES/4;
   largerCoherent = -1; // this will be smaller than the smallest since we have taken abs of each value
@@ -897,6 +897,11 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
+
+  // Work in progress for ANITA-4
+  // Removing ANITA-3 logic as it never really worked although something similar may get installed at some point
+
+  /*
   // Grab neighbouring result for difference
   float y3 = sampInd < get_global_size(0) -1 ? powSpecScratch[sampInd + 1].x : summedPowSpec.y;
 
@@ -908,11 +913,11 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   short2 passFilter;
   passFilter.x = fabs(diff.x) > binToBinDifferenceThresh_dB ? -1 : 0;
   passFilter.y = fabs(diff.y) > binToBinDifferenceThresh_dB ? -1 : 0;
-  
+
   // maximum bin value cut
   passFilter.x += summedPowSpec.x > maxThreshold_dBm ? -2 : 0;
   passFilter.y += summedPowSpec.y > maxThreshold_dBm ? -2 : 0;
-  
+
   // Finally the band pass...
   float highPass = 200; // MHz
   float lowPass = 1200; // MHz
@@ -923,7 +928,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // Factor of 2 since using float2s for data...
   int highPassWI = highPass/(deltaF*2);
   int lowPassWI = lowPass/(deltaF*2);
-  
+
   // Easy stuff first. Implement bandpass frequencies.
   passFilter.x += 2*sampInd*deltaF > highPass && 2*sampInd*deltaF < lowPass ? 0 : -4;
   passFilter.y += (2*sampInd+1)*deltaF > highPass && (2*sampInd+1)*deltaF < lowPass ? 0 : -4;
@@ -932,6 +937,13 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   passFilter.x = passFilter.x < 0 ? passFilter.x : 1;
   passFilter.y = passFilter.y < 0 ? passFilter.y : 1;
 
+  */
+
+  // Work in progress for ANITA-4
+  short2 passFilter;
+  passFilter.x = 1;
+  passFilter.y = 1;
+
   passFilterBuffer[ant*NUM_SAMPLES/4 + sampInd] = passFilter;
 }
 
@@ -939,7 +951,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
 __kernel void filterWaveforms(__global short2* passFilterBuffer,
 			      __global float4* waveformsFourierDomain){
-  /* 
+  /*
      This kernel just multiplies a bin in the fourier domain by zero or one,
      contained in the the passFilter buffer.
      Pretty simple really.
@@ -997,7 +1009,7 @@ __kernel void invFourierTransformFilteredWaveforms(__global float4* normalData,
   // wrap around
   deltaPhiSect = deltaPhiSect > 7 ? deltaPhiSect - NUM_PHI_SECTORS : deltaPhiSect;
   deltaPhiSect = deltaPhiSect < -7 ? deltaPhiSect + NUM_PHI_SECTORS : deltaPhiSect;
-  
+
   /* if(deltaPhiSect < 2 && deltaPhiSect > -2){ */
     // will pass to the FFT function
     float8 fftInput;
@@ -1009,9 +1021,9 @@ __kernel void invFourierTransformFilteredWaveforms(__global float4* normalData,
     float8 data = filteredWaveforms[globalDataInd]/NUM_SAMPLES;
 
     // Swap re and im whilst preparing to put data into FFT function.
-    fftInput = (float8) (data.s1, data.s0, 
-			 data.s3, data.s2, 
-			 data.s5, data.s4, 
+    fftInput = (float8) (data.s1, data.s0,
+			 data.s3, data.s2,
+			 data.s5, data.s4,
 			 data.s7, data.s6);
 
     float8 fftOutput = doRadix2FFT(dataInd, fftInput, complexScratch, 1);
