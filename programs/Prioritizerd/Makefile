@@ -11,11 +11,11 @@ CL_INCDIR = $(CL)/include
 CL_LIBDIR = $(CL)/lib
 
 #DEBUG=1
-#CALIBRATION=1
+CALIBRATION=1
 #TIME_STAMP=1
 #PROFILER
 
-LDFLAGS +=-lOpenCL -lgsl 
+LDFLAGS +=-lOpenCL -lgsl
 CCFLAGS +=-g
 
 Targets = Prioritizerd fakePrioritizerd

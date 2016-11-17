@@ -37,7 +37,7 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
 	    doingEvent);
 
     sprintf(bodyFilename,"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
-    
+
     //    fprintf(stderr,"Doing %s -- %s\n",linkFilename,hdFilename);
 
     AnitaEventHeader_t panicHeader;
@@ -45,7 +45,7 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
     if(retVal!=0){
       fprintf(stderr, "fillHeader returned %d\n", retVal);
     }
-    
+
     panicHeader.priority = panicPri;
 
     int pri=panicHeader.priority&0xf;
@@ -58,7 +58,7 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
 
     //Now Fill Generic Header and calculate checksum
     fillGenericHeader(&panicHeader,panicHeader.gHdr.code,sizeof(AnitaEventHeader_t));
-  
+
     //Rename body and write header for Archived
     sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 	    panicHeader.eventNumber);
@@ -73,7 +73,7 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
     writeStruct(&panicHeader,archiveHdFilename,sizeof(AnitaEventHeader_t));
 
     makeLink(archiveHdFilename,PRIORITIZERD_EVENT_LINK_DIR);
-    
+
     //Write Header and make Link for telemetry
     sprintf(telemHdFilename,"%s/hd_%d.dat",HEADER_TELEM_DIR,
 	    panicHeader.eventNumber);
@@ -89,22 +89,23 @@ void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priority
     sprintf(hdFilename,"%s/hd_%d.dat",EVENTD_EVENT_DIR,
 	    panicHeader.eventNumber);
     removeFile(linkFilename);
-    removeFile(hdFilename);    
+    removeFile(hdFilename);
   }
 }
 
 
 void readInEvent(PedSubbedEventBody_t *psev, AnitaEventHeader_t* head, const char* dir, int eventNumber){
-  
+
   char fileName[FILENAME_MAX];
   sprintf(fileName, "%s/psev_%d.dat.gz", dir, eventNumber);
   fillPedSubbedBody(psev, fileName);
 
   sprintf(fileName, "%s/hd_%d.dat.gz", dir, eventNumber);
   fillHeader(head, fileName);
-  
+
   printf("Just read in event %d %d\n", head->eventNumber, psev->eventNumber);
 }
+
 
 
 void readIn100Events(const char* psevFileName, PedSubbedEventBody_t *theBody, const char* headFileName, AnitaEventHeader_t* theHeader){
@@ -170,7 +171,7 @@ void readIn100Events(const char* psevFileName, PedSubbedEventBody_t *theBody, co
 
 void handleBadSigs(int sig)
 {
-  syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig); 
+  syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);
   unlink(PRIORITIZERD_PID_FILE);
   syslog(LOG_INFO,"Prioritizerd terminating");
   exit(0);
@@ -179,7 +180,7 @@ void handleBadSigs(int sig)
 
 int sortOutPidFile(char *progName)
 {
-  
+
   int retVal=checkPidFile(PRIORITIZERD_PID_FILE);
   if(retVal) {
     fprintf(stderr,"%s already running (%d)\nRemove pidFile to over ride (%s)\n",progName,retVal,PRIORITIZERD_PID_FILE);
@@ -189,4 +190,3 @@ int sortOutPidFile(char *progName)
   writePidFile(PRIORITIZERD_PID_FILE);
   return 0;
 }
-

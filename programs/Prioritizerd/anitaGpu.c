@@ -35,9 +35,6 @@ void prepareGpuThings(){
   gpuOutput = fopen("/tmp/gpuOutput.dat", "w");
   printf("Compiled with CALIBRATION flag! Will generate a file /tmp/gpuOutput.dat with lovely things in it.\n");
   #endif
-  #ifdef SEAVEY_ORIENTATION_OFF
-  printf("Compiled with SEAVEY_ORIENTATION_OFF flag! This will remove antenna orientation effects as I am expecting pulses through the cables...\n");
-  #endif
 
   /* Read in GPU output to priority mappings */
   kvpReset();
@@ -302,22 +299,39 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
   int antInd=0;
   /* For each channel, copy the data into the places where the GPU expects it. */
 
+  const int invertTopRingInSoftware = 1;
+
   for(antInd=0; antInd<NUM_ANTENNAS; antInd++){
     int vPolChanInd = antToSurfMap[antInd]*9 + vAntToChan[antInd];
     int hPolChanInd = antToSurfMap[antInd]*9 + hAntToChan[antInd];
 
+    int ringFactor = 1;
+    if(invertTopRingInSoftware > 0 && antInd < NUM_PHI){
+      ringFactor = -1;
+    }
+
     /* Lay out the vpol data in the 1st half of the arrays and hpol data in the second half...*/
     int samp=0;
     for(samp=0; samp<NUM_SAMPLES; samp++){
-      eventData[eventInd*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = (float)finalVolts[vPolChanInd][samp];
+      eventData[eventInd*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = ringFactor*(float)finalVolts[vPolChanInd][samp];
+
+      /* printf("%f, ", eventData[eventInd*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp]); */
+
     }
+    /* printf("\n\n"); */
+
     numEventSamples[eventInd*NUM_ANTENNAS + antInd] = NUM_SAMPLES;
 
+
+
     for(samp=0; samp<NUM_SAMPLES; samp++){
-      eventData[(NUM_EVENTS+eventInd)*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = (float)finalVolts[hPolChanInd][samp];
+
+      eventData[(NUM_EVENTS+eventInd)*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = ringFactor*(float)finalVolts[hPolChanInd][samp];
     }
     numEventSamples[(NUM_EVENTS+eventInd)*NUM_ANTENNAS + antInd] = NUM_SAMPLES;
   }
+
+
 
   /* Unpack the "L3" trigger, actually the 2/3 coincidence trigger in the phi-sector. */
   int phiInd=0;
@@ -327,7 +341,6 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
     /* HPOL, goes in back half of array */
     phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
   }
-
 }
 
 void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int writePowSpecPeriodSeconds){
@@ -403,16 +416,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 #ifdef DEBUG_MODE
     clFinish(commandQueue);
-    if( polInd == 0 ){
-      printBufferToTextFile2(commandQueue, "rawBufferVPol.txt", polInd, rawBufferVPol, NUM_EVENTS, nEvents);
-      printBufferToTextFile2(commandQueue, "phiSectorTriggerBufferVPol.txt", polInd, phiSectorTriggerBufferVPol, NUM_EVENTS, 1);
-      printBufferToTextFile2(commandQueue, "numSampsBufferVPol.txt", polInd, numSampsBufferVPol, NUM_EVENTS, 1);
-    }
-    else{
-      printBufferToTextFile2(commandQueue, "rawBufferHPol.txt", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
-      printBufferToTextFile2(commandQueue, "phiSectorTriggerBufferHPol.txt", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
-      printBufferToTextFile2(commandQueue, "numSampsBufferHPol.txt", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
-    }
+    printBufferToTextFile2(commandQueue, "rawBuffer", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
 #endif
 
     /* Normalization zero-means the waveform and sets RMS=1. */
@@ -490,7 +496,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 					      1, &findMaxPhiSectorEvent);
     timeStamp(stamp++, 4, &dataFromGpuEvents[polInd][0]);
 
-    /* Know we know the phi-sector maximum, inverse fourier transform the waveforms from that region */
+    /* Now we know the phi-sector maximum, inverse fourier transform the waveforms from that region */
     status = clEnqueueNDRangeKernel(commandQueue, iFFTFilteredWaveformsKernel, 3, NULL, gInvFFTSize, lInvFFTSize, 1, &findMaxPhiSectorEvent, &invFFTWaveformsEvent);
     statusCheck(status, "clEnqueueNDRangeKernel iFFTFilteredWaveformsKernel");
     timeStamp(stamp++, 1, &invFFTWaveformsEvent);
@@ -522,25 +528,25 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     */
 #ifdef DEBUG_MODE
     clFinish(commandQueue);
-    printBufferToTextFile2(commandQueue, "normalBuffer.txt", polInd, normalBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "rmsBuffer.txt", polInd, rmsBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "fourierBuffer.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "powSpecBuffer.txt", polInd, powSpecBuffer, 1, 1);
-    printBufferToTextFile2(commandQueue, "passFilterBuffer.txt", polInd, passFilterBuffer, 1, 1);
-    printBufferToTextFile2(commandQueue, "fourierBuffer2.txt", polInd, fourierBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "circularCorrelationBuffer.txt", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "image.txt", polInd, imageBuffer, NUM_EVENTS, 10);
-    printBufferToTextFile2(commandQueue, "maxThetaInds.txt", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakValBuffer.txt", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakValBuffer2.txt", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer.txt", polInd, imagePeakPhiBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer2.txt", polInd, imagePeakPhiBuffer2, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer.txt", polInd, imagePeakPhiSectorBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakThetaBuffer2.txt", polInd, imagePeakThetaBuffer2, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "normalBuffer2.txt", polInd, normalBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "coherentWaveForm.txt", polInd, coherentWaveBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "hilbertEnvelope.txt", polInd, hilbertBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "hilbertPeak.txt", polInd, hilbertPeakBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "normalBuffer", polInd, normalBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "rmsBuffer", polInd, rmsBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "powSpecBuffer", polInd, powSpecBuffer, 1, 1);
+    printBufferToTextFile2(commandQueue, "passFilterBuffer", polInd, passFilterBuffer, 1, 1);
+    printBufferToTextFile2(commandQueue, "fourierBuffer2", polInd, fourierBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "circularCorrelationBuffer", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "image", polInd, imageBuffer, NUM_EVENTS, 10);
+    printBufferToTextFile2(commandQueue, "maxThetaInds", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakValBuffer", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakValBuffer2", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer", polInd, imagePeakPhiBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer2", polInd, imagePeakPhiBuffer2, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer", polInd, imagePeakPhiSectorBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "imagePeakThetaBuffer2", polInd, imagePeakThetaBuffer2, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "normalBuffer2", polInd, normalBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "coherentWaveForm", polInd, coherentWaveBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "hilbertEnvelope", polInd, hilbertBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "hilbertPeak", polInd, hilbertPeakBuffer, NUM_EVENTS, 1);
 
     if(polInd==0){
       printf("First pass buffers printed...\n");
@@ -560,11 +566,13 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     int ant=0;
     for(ant=0; ant<NUM_ANTENNAS; ant++){
       int freqInd=0;
-      for(freqInd = 0; freqInd < NUM_SAMPLES/2 /* Hackity hack hack*/; freqInd++){
+
+      // Note I'm dropping the (NUM_SAMPLES/2 + 1)-th frequency bin
+      for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
 	int freqInd2 = polInd*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
 	powSpec[freqInd2] = 10*log10(powSpec[freqInd2]/50);
       }
-      for(freqInd = 0; freqInd < NUM_SAMPLES/2 /* Hackity hack hack*/; freqInd++){
+      for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
 	int freqInd2 = polInd*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
 	if(freqInd==0 || freqInd == (NUM_SAMPLES/2) - 1){
 	  diffPowSpec[freqInd2] = 0;
@@ -628,7 +636,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       }
     }
 
-    printf("anitaGpu start... header[eventInd].prioritizerStuff= %hu\n", header[eventInd].prioritizerStuff);
+    /* printf("anitaGpu start... header[eventInd].prioritizerStuff= %hu\n", header[eventInd].prioritizerStuff); */
 
     /* Read previously set lowest bit saturation flag */
     unsigned short saturationFlag = (header[eventInd].prioritizerStuff & 1);
@@ -663,34 +671,39 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     float normalizedHilbertPeak = (hilbertPeak[index2] - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
     float priorityParam = sqrt(normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak);
 
+    printf("Interferometric figures of merit... %f \t %f \t %f \n", higherImagePeak, normalizedHilbertPeak, priorityParam);
+
     int priority = 0;
     if(saturationFlag > 0){
       /* Found saturation when unwrapping */
       priority = 9;
+      printf("Found saturation\n");
     }
     if (blastFlag > 0)
     {
       priority = 8;
+      printf("Blast Flag\n");
     }
-    else if(diffFlag==1 || threshFlag==1){
-      /* There was CW in these events... not an optimal solution...*/
-      /* priority = 8; */
-      /* When CW is filtered out go up one in priority  */
-      priority++;
-    }
+    /* else if(diffFlag==1 || threshFlag==1){ */
+    /*   /\* There was CW in these events... not an optimal solution...*\/ */
+    /*   /\* priority = 8; *\/ */
+    /*   /\* When CW is filtered out go up one in priority  *\/ */
+    /*   printf("diffFlag = %d, threshFlag = %d\n", diffFlag, threshFlag); */
+    /*   priority++; */
+    /* } */
     else{
       for(priority=1; priority<NUM_PRIORITIES; priority++){
 	if(priorityParam >= priorityParamsLowBinEdge[priority] && priorityParam<priorityParamsHighBinEdge[priority]){
+
+	  printf("Found my priority! %f is between %f and %f at priority %d\n",
+		 priorityParam,
+		 priorityParamsLowBinEdge[priority],
+		 priorityParamsHighBinEdge[priority],
+		 priority);
 	  break;
 	}
       }
     }
-    if(priority<=0 || priority >= 10){ /* Check I didn't mess up... */
-      fprintf(stderr, "Something went wrong with priority assignment for event number %u. Will assign priority 9.\n", header[eventInd].eventNumber);
-      syslog(LOG_ERR, "Something went wrong with priority assignment for event number %u. Will assign priority 9.\n", header[eventInd].eventNumber);
-      priority = 9;
-    }
-
 
     printf("(header[eventInd].prioritizerStuff & 0x4000)>>14 = %hu\n", (header[eventInd].prioritizerStuff & 0x4000)>>14);
     printf("saturationFlag = %hu\n", saturationFlag);
@@ -701,16 +714,39 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       priority += thetaAnglePriorityDemotion;
     }
 
+    if(priority<=0 || priority >= 10){ /* Check I didn't mess up... */
+      char errorString[FILENAME_MAX];
+      sprintf(errorString, "Something went wrong with priority assignment for event number %u. (It got assigned priority %d. I will assign priority 9.\n", header[eventInd].eventNumber, priority);
+
+      // inform the world of your mistakes
+      fprintf(stderr, "%s", errorString);
+      syslog(LOG_ERR, "%s", errorString);
+      priority = 9;
+    }
+
     header[eventInd].priority = priority;
 
-    printf("eventNumber %u, saturationFlag %hu, priority %d\n", header[eventInd].eventNumber, saturationFlag, priority);
+    /* printf("eventNumber %u, saturationFlag %hu, priority %d\n", header[eventInd].eventNumber, saturationFlag, priority); */
+    printf("I assigned eventNumber %u priority %d\n", header[eventInd].eventNumber, priority);
 
     #ifdef CALIBRATION
-    fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, priorityParam, normalizedHilbertPeak, higherImagePeak, priority);
-    for(ring=0; ring<3; ring++){
-      fprintf(gpuOutput, "%f %d %f %d ", maxPhiSectPower[ring], maxPhiSectPowerBin[ring], maxDiffPowSpec[ring], maxDiffPowSpecBin[ring]);
-    }
+    fprintf(gpuOutput, "%u %f %f %d %d %d %lf %lf %lf %d ",
+	    header[eventInd].eventNumber,
+	    imagePeakVal[index2],
+	    hilbertPeak[index2],
+	    imagePeakTheta2[index2],
+	    imagePeakPhi2[index2],
+	    imagePeakPhiSector[index2],
+	    priorityParam,
+	    normalizedHilbertPeak,
+	    higherImagePeak,
+	    priority);
+    /* fprintf(gpuOutput, "%u %f %f %d %d %d %u %u %hhu %u %lf %lf %lf %d ", header[eventInd].eventNumber, imagePeakVal[index2], hilbertPeak[index2], imagePeakTheta2[index2], imagePeakPhi2[index2], imagePeakPhiSector[index2], header[eventInd].turfio.trigTime, header[eventInd].turfio.c3poNum, header[eventInd].turfio.trigType, header[eventInd].unixTime, priorityParam, normalizedHilbertPeak, higherImagePeak, priority);     */
+    /* for(ring=0; ring<3; ring++){ */
+    /*   fprintf(gpuOutput, "%f %d %f %d ", maxPhiSectPower[ring], maxPhiSectPowerBin[ring], maxDiffPowSpec[ring], maxDiffPowSpecBin[ring]); */
+    /* } */
     fprintf(gpuOutput, "\n");
+    fflush(gpuOutput);
     #endif
   }
 
@@ -760,6 +796,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 #endif
   exit(0);
 #endif
+
+
+  printf("\n\n\n");
 }
 
 
