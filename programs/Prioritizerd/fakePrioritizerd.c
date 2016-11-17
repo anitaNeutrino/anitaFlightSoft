@@ -175,9 +175,11 @@ int main(int argc, char *argv[]){
       sprintf(fileName2, "%s/hd_%d.dat.gz", dir, eventFileNum);
 
       /* printf("%s\n", fileName1); */
+
       readIn100Events(fileName1, pedSubBody, fileName2, theHeader);
 
       /* readInTextFile(pedSubBody, theHeader); */
+
 
       int eventsReadFromDisk = 0;
       while(eventsReadFromDisk<100 && currentState==PROG_STATE_RUN){
