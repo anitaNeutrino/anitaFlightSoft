@@ -158,7 +158,7 @@ void prepareGpuThings(){
      At this point the connection to the GPU via the X-server should have been made
      or printed something to screen if not so lets' open the output file.
   */
-  //#define DEBUG_MODE
+  #define DEBUG_MODE
 
   showCompileLog = 1;
   numDevicesToUse = 1;
@@ -230,6 +230,7 @@ void prepareGpuThings(){
   eventPowSpecKernel = createKernel(prog, "makeAveragePowerSpectrumForEvents");
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
+
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
   passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
 
@@ -238,9 +239,12 @@ void prepareGpuThings(){
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
   /* filters the waveforms */
+  staticPassFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_SAMPLES/2, "s", "staticPassFilterBuffer");
+  copyArrayToGPU(commandQueue, staticPassFilterBuffer, staticPassFilter);
+
   filterWaveformsKernel = createKernel(prog, "filterWaveforms");
-#define numFilterArgs 2
-  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, fourierBuffer};
+#define numFilterArgs 3
+  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, fourierBuffer};
   setKernelArgs(filterWaveformsKernel, numFilterArgs, filterArgs, "filterWaveformKernel");
 
 
@@ -595,9 +599,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "powSpecBuffer", polInd, powSpecBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "passFilterBuffer", polInd, passFilterBuffer, 1, 1);
+    printBufferToTextFile2(commandQueue, "staticPassFilterBuffer", polInd, staticPassFilterBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "fourierBuffer2", polInd, fourierBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "circularCorrelationBuffer", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "image", polInd, imageBuffer, NUM_EVENTS, 10);
+    printBufferToTextFile2(commandQueue, "image", polInd, imageBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "maxThetaInds", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakValBuffer", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakValBuffer2", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
@@ -709,7 +714,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     header[eventInd].imagePeak = (unsigned short)(imagePeakVal[index2]*65535);
     header[eventInd].coherentSumPeak = (unsigned short) hilbertPeak[index2];
     header[eventInd].peakThetaBin = (unsigned char) imagePeakTheta2[index2];
-    float thetaDegPeak = -1*THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
+    /* float thetaDegPeak = -1*THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5); */
+    float thetaDegPeak = THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
 
 
     /* Only need 10 bits for this number. */
@@ -915,6 +921,7 @@ void tidyUpGpuThings(){
   destroyBuffer(circularCorrelationBuffer);
   destroyBuffer(imageBuffer);
   destroyBuffer(passFilterBuffer);
+  destroyBuffer(staticPassFilterBuffer);
   destroyBuffer(powSpecBuffer);
   destroyBuffer(maxThetaIndsBuffer);
   destroyBuffer(imagePeakValBuffer);
@@ -965,12 +972,12 @@ void tidyUpGpuThings(){
 int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
 		      const float* phiArray, const float* rArray, const float* zArray)
 {
-  double tanThetaW = tan(thetaWave);
+  double tanThetaW = tan(-thetaWave);
   double part1 = zArray[ant1]*tanThetaW - rArray[ant1]*cos(phiWave-phiArray[ant1]);
   double part2 = zArray[ant2]*tanThetaW - rArray[ant2]*cos(phiWave-phiArray[ant2]);
   // nb have *-1 compared to ANITA library definition, I think it makes more sense to do
   // t2 - t1 NOT t1 - t2
-  double tdiff = 1e9*((cos(thetaWave) * (part2 - part1))/SPEED_OF_LIGHT); // Returns time in ns
+  double tdiff = 1e9*((cos(-thetaWave) * (part2 - part1))/SPEED_OF_LIGHT); // Returns time in ns
   tdiff /= NOMINAL_SAMPLING;
   return floor(tdiff + 0.5);
 }

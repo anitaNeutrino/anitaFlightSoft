@@ -145,7 +145,8 @@ int main(int argc, char *argv[]){
     for(entry=0; entry < numWaisPulses; entry++){
 
       int numEventsInGpuQueue = 0;
-      while(numEventsInGpuQueue < 100){
+      /* while(numEventsInGpuQueue < 100){ */
+      while(numEventsInGpuQueue < 1){
 
 	numPulsesReadIn = 0;
 	//	usleep(1);

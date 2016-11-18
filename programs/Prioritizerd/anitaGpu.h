@@ -170,6 +170,7 @@ buffer* numEventsBuffer;
 cl_kernel eventPowSpecKernel;
 buffer* powSpecBuffer;
 buffer* passFilterBuffer;
+buffer* staticPassFilterBuffer;
 buffer* powSpecScratchBuffer;
 buffer* isMinimaBuffer;
 buffer* passFilterLocalBuffer;
