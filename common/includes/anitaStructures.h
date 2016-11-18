@@ -834,11 +834,14 @@ typedef struct __attribute__((packed))
   unsigned char refPulses; 
   unsigned char unused4[3]; 
   unsigned short deadTime; 
-  unsigned short ppsNum; 
+  unsigned short nothingtoseehere; 
   unsigned short rfScaler; 
   unsigned short unused5; 
+  unsigned int moreunused[4];
   unsigned int c3poNum; 
-  unsigned int shadowed[12]; 
+  unsigned char morejunk[6]; 
+  unsigned short ppsNum; 
+  unsigned int shadowed[6]; 
   unsigned int garbage[16]; 
 } TurfRawBank3Struct_t; 
 
