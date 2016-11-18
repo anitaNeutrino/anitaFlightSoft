@@ -176,6 +176,8 @@ buffer* isMinimaBuffer;
 buffer* passFilterLocalBuffer;
 
 cl_kernel filterWaveformsKernel;
+buffer* newRmsBuffer;
+buffer* complexSquareLocalBuffer;
 
 cl_kernel circularCorrelationKernel;
 buffer* circularCorrelationBuffer;

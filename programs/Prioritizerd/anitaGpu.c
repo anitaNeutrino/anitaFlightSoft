@@ -234,6 +234,7 @@ void prepareGpuThings(){
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
   passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
 
+
 #define numPowSpecArgs 9
   buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, rmsBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
@@ -243,8 +244,11 @@ void prepareGpuThings(){
   copyArrayToGPU(commandQueue, staticPassFilterBuffer, staticPassFilter);
 
   filterWaveformsKernel = createKernel(prog, "filterWaveforms");
-#define numFilterArgs 3
-  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, fourierBuffer};
+  complexSquareLocalBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES, "complexSquareLocalBuffer");
+  newRmsBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_EVENTS*NUM_ANTENNAS, "f","newRmsBuffer");
+
+#define numFilterArgs 5
+  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, fourierBuffer, complexSquareLocalBuffer, newRmsBuffer};
   setKernelArgs(filterWaveformsKernel, numFilterArgs, filterArgs, "filterWaveformKernel");
 
 
@@ -611,6 +615,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer", polInd, imagePeakPhiSectorBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "imagePeakThetaBuffer2", polInd, imagePeakThetaBuffer2, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "normalBuffer2", polInd, normalBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "newRmsBuffer", polInd, newRmsBuffer, NUM_EVENTS, 1);
+
     printBufferToTextFile2(commandQueue, "coherentWaveForm", polInd, coherentWaveBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "hilbertEnvelope", polInd, hilbertBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "hilbertPeak", polInd, hilbertPeakBuffer, NUM_EVENTS, 1);
@@ -716,7 +722,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     header[eventInd].peakThetaBin = (unsigned char) imagePeakTheta2[index2];
     /* float thetaDegPeak = -1*THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5); */
     float thetaDegPeak = THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
-
 
     /* Only need 10 bits for this number. */
     header[eventInd].prioritizerStuff |= (0x3ff & ((unsigned short) imagePeakPhiSector[index2]*NUM_BINS_PHI + imagePeakPhi2[index2]));

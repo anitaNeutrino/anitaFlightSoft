@@ -211,65 +211,6 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
 
 
 
-__kernel void normaliseWaveforms(__global float* rmsBuffer,
-				 __global short4* rawData,
-				 __global float4* normalData,
-				 __local float4* square,
-				 __local float4* mean){
-
-  // work item identifier
-  int antInd = get_global_id(1);
-  int eventInd = get_global_id(2);
-
-  int localInd = get_local_id(0);
-  int dataInd = eventInd*NUM_ANTENNAS*get_local_size(0) + antInd*get_local_size(0) + localInd;
-
-  // hold 4 samples of data in private memory
-  float4 store;
-  store.x = rawData[dataInd].x;
-  store.y = rawData[dataInd].y;
-  store.z = rawData[dataInd].z;
-  store.w = rawData[dataInd].w;
-
-  // to get rms need linear combos of square and sum
-  // first put in LDS
-  square[localInd] = store*store / NUM_SAMPLES;
-  mean[localInd] = store / NUM_SAMPLES;
-  barrier(CLK_LOCAL_MEM_FENCE);
-
-  // Now data is in LDS, add up the the pieces
-  for(int offset = 1; offset < get_local_size(0); offset += offset){
-    if (localInd % (2*offset) == 0){
-      square [localInd] += square [localInd + offset];
-      mean [localInd] += mean [localInd + offset];
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-  }
-
-  barrier(CLK_LOCAL_MEM_FENCE);
-
-  // broadcast sum to private memory
-  float4 square4 = square[0];
-  float4 mean4 = mean[0];
-
-  // get sum of float4 components
-  float x = square4.x + square4.y + square4.z + square4.w;
-  float y = mean4.x + mean4.y + mean4.z + mean4.w;
-
-  // varience = the mean of the square minus the square of the mean
-  float rms = sqrt(x - y*y);
-
-  // in case of all blank channel
-  rms = rms <= 0 ? 1 : rms;
-
-  // only need one WI to do this
-  if(localInd == 0){
-    rmsBuffer[eventInd*NUM_ANTENNAS + antInd] = rms;
-  }
-
-  // output data
-  normalData[dataInd] = (store - y) / rms;
-}
 
 __kernel void crossCorrelationFourierDomain(__global short* phiSectorTrig,
 					    __global float8* waveformFourier,
@@ -954,7 +895,9 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
 __kernel void filterWaveforms(__global short2* passFilterBuffer,
 			      __global short2* staticPassFilterBuffer,
-			      __global float4* waveformsFourierDomain){
+			      __global float4* waveformsFourierDomain,
+			      __local float4* complexSquare,
+			      __global float* newRms){
   /*
      This kernel just multiplies a bin in the fourier domain by zero or one,
      contained in the the passFilter buffer.
@@ -993,20 +936,59 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   filteredFreq0.xy = filterState.x*freq0.xy;
   filteredFreq0.zw = filterState.y*freq0.zw;
 
-  /* filteredFreq0.xy *= staticFilterState.x; */
-  /* filteredFreq0.zw *= staticFilterState.y; */
 
-
-  // symmetry of power spectrum -> swapping filterState indices
+  // symmetry of fourier transform -> swapping filterState indices
   float4 filteredFreq1;
   filteredFreq1.xy = filterState.y*freq1.xy;
   filteredFreq1.zw = filterState.x*freq1.zw;
 
-  /* filteredFreq1.xy *= staticFilterState.y; */
-  /* filteredFreq1.zw *= staticFilterState.x; */
-
   waveformsFourierDomain[freqInd0] = filteredFreq0;
   waveformsFourierDomain[freqInd1] = filteredFreq1;
+
+
+
+
+
+
+
+  // now I need to recalculate the "RMS" to renormalize the filtered waveforms.
+  // It's late afternoon, I've had some coffee but the caffine hasn't kicked in yet.
+  // This probably won't work...
+  int localInd = get_local_id(0);
+  complexSquare[localInd] = (filteredFreq0*filteredFreq0 + filteredFreq1*filteredFreq1)/(NUM_SAMPLES*NUM_SAMPLES);
+
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  // Now data is in LDS, add up the the pieces
+  for(int offset = 1; offset < get_local_size(0); offset += offset){
+    if (localInd % (2*offset) == 0){
+      complexSquare [localInd] += complexSquare [localInd + offset];
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+  }
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  // broadcast sum to private memory
+  float4 square4 = complexSquare[0];
+
+  // get sum of float4 components
+  float x = square4.x + square4.y + square4.z + square4.w;
+
+  // varience = the mean of the square minus the square of the mean
+  float rms = sqrt(x);
+
+  // in case of all blank channel, which is stupendously unlikely in practise
+  // but does occur in my simple test conditions
+  rms = rms <= 0 ? 1 : rms;
+
+  // only need one WI to do this
+  if(localInd == 0){
+    newRms[eventInd*NUM_ANTENNAS + antInd] = rms;
+  }
+
+  // for now...
+  waveformsFourierDomain[freqInd0] = filteredFreq0/rms;
+  waveformsFourierDomain[freqInd1] = filteredFreq1/rms;
 
 }
 
