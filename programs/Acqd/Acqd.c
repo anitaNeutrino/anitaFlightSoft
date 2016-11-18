@@ -3347,18 +3347,26 @@ AcqdErrorCode_t readSurfHkData()
 	//3 -- Phi 1, top LCP&&RCP
 	//4 -- Phi 1, mid LCP&&RCP
 	//5 -- Phi 1, bottom LCP&&RCP
-	
-	
+		
 	index=l1IndToRawScaler[rfChan];
 	dataInt=buffer[index];
 	theSurfHk.l1Scaler[trigSurfCount][rfChan]=dataInt&0xffff;
 	if((printToScreen && verbosity>1) || HK_DEBUG) 
 	  printf("SURF %d, L1 Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.l1Scaler[trigSurfCount][rfChan]);
       }
+
+      for(rfChan=0;rfChan<L2S_PER_SURF;rfChan++) {	
+	//Now comes the L2s
+	//18 -- Phi 0 -- L2
+	//19 -- Phi 1 -- L2
+	index=l2IndToRawScaler[rfChan];
+	dataInt=buffer[index];
+	theSurfHk.l2Scaler[trigSurfCount][rfChan]=dataInt&0xffff;
+	if((printToScreen && verbosity>1) || HK_DEBUG) 
+	  printf("SURF %d, L2 Scaler %d == %d\n",surfIndex[surf],rfChan,theSurfHk.l2Scaler[trigSurfCount][rfChan]);
+      }
+	
       
-      //Now comes the L2s
-      //18 -- Phi 0 -- L2
-      //19 -- Phi 1 -- L2
       //20 -- L3 -- not currently implemented
       //21 -- unused
       // 22-27 -- Gated L1s
