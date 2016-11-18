@@ -225,8 +225,8 @@ unsigned int countLastTurfRates;
 unsigned short phiTrigMask=0; // phi sectors 1-16 bitmask v-pol
 unsigned short phiTrigMaskH=0; // phi sectors 1-16 bitmask h-pol
 unsigned short gpsPhiTrigMask=0; // phi sectors 1-16 bitmask from GPS
-unsigned short l1TrigMask=0; // phi sectors 1-16
-unsigned short l1TrigMaskH=0; // phi sectors 1-16
+unsigned short l2TrigMask=0; // phi sectors 1-16
+unsigned short l2TrigMaskH=0; // phi sectors 1-16
 
 
 //TURFIO Register Magic
@@ -351,8 +351,8 @@ int main(int argc, char **argv) {
 
   unsigned int pausePhiMaskV=phiTrigMask;
   unsigned int pausePhiMaskH=phiTrigMaskH;
-  unsigned short pauseL1TrigMask=l1TrigMask;
-  unsigned short pauseL1TrigMaskH=l1TrigMaskH;
+  unsigned short pauseL2TrigMask=l2TrigMask;
+  unsigned short pauseL2TrigMaskH=l2TrigMaskH;
   int pauseMasksSet=0;
 
   if(standAloneMode) {
@@ -404,8 +404,8 @@ int main(int argc, char **argv) {
     lastSurfHkRead.tv_usec=0;
     lastTurfRateRead.tv_sec=0;
     lastTurfRateRead.tv_usec=0;
-    unsigned int tempTrigMask=l1TrigMask;
-    unsigned int tempTrigMaskH=l1TrigMaskH;
+    unsigned int tempTrigMask=l2TrigMask;
+    unsigned int tempTrigMaskH=l2TrigMaskH;
     unsigned short tempPhiTrigMaskV=phiTrigMask;
     unsigned short tempPhiTrigMaskH=phiTrigMaskH;
     pauseMasksSet=0;
@@ -417,8 +417,8 @@ int main(int argc, char **argv) {
 	printf("Resetting phi mask after clear\n");
 	phiTrigMask=tempPhiTrigMaskV;
 	phiTrigMaskH=tempPhiTrigMaskH;
-	l1TrigMask=tempTrigMask;
-	l1TrigMaskH=tempTrigMaskH;
+	l2TrigMask=tempTrigMask;
+	l2TrigMaskH=tempTrigMaskH;
 	setTriggerMasks();
     }
 
@@ -436,8 +436,8 @@ int main(int argc, char **argv) {
 	printf("Masking off triggers at start\n");
 	phiTrigMask=0xffff;
 	phiTrigMaskH=0xffff;
-	l1TrigMask=0xffff;
-	l1TrigMaskH=0xffff;
+	l2TrigMask=0xffff;
+	l2TrigMaskH=0xffff;
 	setTriggerMasks();
 	pauseMasksSet=1;
 	gettimeofday(&startTimeStruct,NULL);
@@ -493,8 +493,8 @@ int main(int argc, char **argv) {
 
     if(doThresholdScan || pedestalMode) {
       //If we're doing a threshold or a pedestal scan disable all antennas
-      l1TrigMask=0xffff;
-      l1TrigMaskH=0xffff;
+      l2TrigMask=0xffff;
+      l2TrigMaskH=0xffff;
 
       //      Also disable surfTrigBandMasks
       for(surf=0;surf<ACTIVE_SURFS;surf++) {
@@ -633,13 +633,13 @@ int main(int argc, char **argv) {
 	 	  firstTimeThrough=0; 
 		  phiTrigMask=pausePhiMaskV;
 		  phiTrigMaskH=pausePhiMaskH;
-		  l1TrigMask=pauseL1TrigMask;
-		  l1TrigMaskH=pauseL1TrigMaskH;
+		  l2TrigMask=pauseL2TrigMask;
+		  l2TrigMaskH=pauseL2TrigMaskH;
 		  printf("Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
-			 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l1TrigMask);
+			 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l2TrigMask);
 		  syslog(LOG_INFO,
 			 "Setting Trigger Masks (after %d secs) to %#x %#x %#x\n",
-			 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l1TrigMask);
+			 pauseBeforeEvents,phiTrigMask,phiTrigMaskH,l2TrigMask);
 		  
 		  setTriggerMasks();
 		  pauseMasksSet=0;
@@ -776,8 +776,8 @@ int main(int argc, char **argv) {
 	//	hdPtr->surfMask=surfMask;
 	hdPtr->phiTrigMask=phiTrigMask;
 	hdPtr->phiTrigMaskH=phiTrigMaskH;
-	hdPtr->l1TrigMask=(unsigned int)l1TrigMask;	       
-	hdPtr->l1TrigMaskH=(unsigned int)l1TrigMaskH;	       
+	hdPtr->l2TrigMask=(unsigned int)l2TrigMask;	       
+	hdPtr->l2TrigMaskH=(unsigned int)l2TrigMaskH;	       
 		
 	//Filled by Eventd
 	//hdPtr->gpsSubTime;
@@ -806,17 +806,17 @@ int main(int argc, char **argv) {
 	 
 	  
       if(newPhiMask) {
-	//	unsigned short tempL1TrigMask=l1TrigMask;
-	//	l1TrigMask=0xffff;
-	//	unsigned short tempL1TrigMaskH=l1TrigMaskH;
-	//	l1TrigMaskH=0xffff;
+	//	unsigned short tempL2TrigMask=l2TrigMask;
+	//	l2TrigMask=0xffff;
+	//	unsigned short tempL2TrigMaskH=l2TrigMaskH;
+	//	l2TrigMaskH=0xffff;
 	time(&lastNewPhiMask);
 	printf("Dynamically setting phi mask to %#x--%#x at %u\n",phiTrigMask,phiTrigMaskH,
 	       (unsigned int)lastNewPhiMask);
 	setTriggerMasks();
 
-	//	l1TrigMask=tempL1TrigMask;
-	//	l1TrigMaskH=tempL1TrigMaskH;
+	//	l2TrigMask=tempL2TrigMask;
+	//	l2TrigMaskH=tempL2TrigMaskH;
 	//	setTriggerMasks();
 
 	doSurfHkAverage(1); //Flush the surf hk average
@@ -1000,8 +1000,8 @@ char *turfControlActionAsString(TurfControlAction_t action) {
   case SetPhiTrigMask : 
     string = "SetPhiTrigMask";
     break;
-  case SetL1TrigMask : 
-    string = "SetL1TrigMask";
+  case SetL2TrigMask : 
+    string = "SetL2TrigMask";
     break;
   case SetEventEpoch : 
     string = "SetEventEpoch";
@@ -1133,9 +1133,9 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	  uvalue=phiTrigMask | (phiTrigMaskH<<16);
 	  status+=setTurfioReg(TurfRegControlPhiMask,uvalue);
 	  break;
-	case SetL1TrigMask:
-	  uvalue=l1TrigMask | (l1TrigMaskH<<16);
-	  status+=setTurfioReg(TurfRegControlL1TrigMask,uvalue);
+	case SetL2TrigMask:
+	  uvalue=l2TrigMask | (l2TrigMaskH<<16);
+	  status+=setTurfioReg(TurfRegControlL2TrigMask,uvalue);
 	    break;
 	case SetEventEpoch:
 	    uvalue=0;
@@ -1451,8 +1451,8 @@ int readConfigFile()
     gpsPhiTrigMask=kvpGetUnsignedInt("gpsPhiTrigMask",0);
     phiTrigMask|=gpsPhiTrigMask;
     phiTrigMaskH|=gpsPhiTrigMask;
-    l1TrigMask=kvpGetUnsignedInt("l1TrigMask",0);
-    l1TrigMaskH=kvpGetUnsignedInt("l1TrigMaskH",0);
+    l2TrigMask=kvpGetUnsignedInt("l2TrigMask",0);
+    l2TrigMaskH=kvpGetUnsignedInt("l2TrigMaskH",0);
 	
     if(printToScreen) printf("Print to screen flag is %d\n",printToScreen);
 
@@ -1723,8 +1723,8 @@ AcqdErrorCode_t clearDevices()
   
   phiTrigMask=0xffff;
   phiTrigMaskH=0xffff;
-  l1TrigMask=0xffff;    
-  l1TrigMaskH=0xffff;    
+  l2TrigMask=0xffff;    
+  l2TrigMaskH=0xffff;    
   //Mask off all antennas
   if(verbosity && printToScreen)
     fprintf(stderr,"Masking off antennas\n");
@@ -1761,8 +1761,8 @@ AcqdErrorCode_t clearDevices()
     fprintf(stderr,"Masking off antennas\n");
   phiTrigMask=0xffff;
   phiTrigMaskH=0xffff;
-  l1TrigMask=0xffff;    
-  l1TrigMaskH=0xffff;    
+  l2TrigMask=0xffff;    
+  l2TrigMaskH=0xffff;    
   status=setTriggerMasks();
   if(status!=ACQD_E_OK) {
     syslog(LOG_ERR,"Failed to write antenna trigger mask\n");
@@ -2098,7 +2098,7 @@ AcqdErrorCode_t runPedestalMode()
       bdPtr->eventNumber=hdPtr->eventNumber;
       //      hdPtr->surfMask=surfMask;
 //      hdPtr->phiTrigMask=phiTrigMask;
-//      hdPtr->l1TrigMask=(unsigned int)l1TrigMask;	       
+//      hdPtr->l2TrigMask=(unsigned int)l2TrigMask;	       
       //Filled by Eventd
       //hdPtr->gpsSubTime;
       //hdPtr->calibStatus;
@@ -2145,8 +2145,8 @@ AcqdErrorCode_t doStartTest()
   struct timeval timeStruct;
   unsigned int boardVersion=0;
   unsigned int boardName=0;
-  unsigned int tempTrigMask=l1TrigMask;
-  unsigned int tempTrigMaskH=l1TrigMaskH;
+  unsigned int tempTrigMask=l2TrigMask;
+  unsigned int tempTrigMaskH=l2TrigMaskH;
   unsigned short tempPhiTrigMaskV=phiTrigMask;
   unsigned short tempPhiTrigMaskH=phiTrigMaskH;
   AcqdStartStruct_t startStruct;
@@ -2162,8 +2162,8 @@ AcqdErrorCode_t doStartTest()
   memset(chanRMS,0,sizeof(float)*ACTIVE_SURFS*CHANNELS_PER_SURF);
 
   //Disable triggers
-  l1TrigMask=0xffff;
-  l1TrigMaskH=0xffff;
+  l2TrigMask=0xffff;
+  l2TrigMaskH=0xffff;
   phiTrigMask=0xffff;
   phiTrigMaskH=0xffff;
   setTriggerMasks(); 
@@ -2436,8 +2436,8 @@ AcqdErrorCode_t doStartTest()
 
   
 
-  l1TrigMask=tempTrigMask;
-  l1TrigMaskH=tempTrigMaskH;
+  l2TrigMask=tempTrigMask;
+  l2TrigMaskH=tempTrigMaskH;
   phiTrigMask=tempPhiTrigMaskV;  
   phiTrigMaskH=tempPhiTrigMaskH;  
 
@@ -2780,8 +2780,8 @@ void doTurfRateSum(int flushData) {
       sumTurf.unixTime=turfRates.unixTime;
       sumTurf.phiTrigMask=turfRates.phiTrigMask;
       sumTurf.phiTrigMaskH=turfRates.phiTrigMaskH;
-      sumTurf.l1TrigMask=turfRates.l1TrigMask;
-      sumTurf.l1TrigMaskH=turfRates.l1TrigMaskH;
+      sumTurf.l2TrigMask=turfRates.l2TrigMask;
+      sumTurf.l2TrigMaskH=turfRates.l2TrigMaskH;
       sumTurf.phiTrigMask=turfRates.phiTrigMask;
       sumTurf.phiTrigMaskH=turfRates.phiTrigMaskH;
     }
@@ -3672,7 +3672,7 @@ AcqdErrorCode_t readTurfEventDataVer6()
     /* 	   turfioPtr->l3TrigPattern); */
 
     printf("Masks:\nAntenna:\t%#x\nPhi:\t%#x\t%#x\n",
-	   hdPtr->l1TrigMask,
+	   hdPtr->l2TrigMask,
 	   hdPtr->phiTrigMask,
 	   hdPtr->phiTrigMaskH);
 
@@ -3682,8 +3682,8 @@ AcqdErrorCode_t readTurfEventDataVer6()
 //    newTurfRateData=1;
   }
   //Make sure to copy relevant mask data to turfRate struct
-  turfRates.l1TrigMask=hdPtr->l1TrigMask;
-  turfRates.l1TrigMaskH=hdPtr->l1TrigMaskH;
+  turfRates.l2TrigMask=hdPtr->l2TrigMask;
+  turfRates.l2TrigMaskH=hdPtr->l2TrigMaskH;
   turfRates.phiTrigMask=hdPtr->phiTrigMask;
   turfRates.phiTrigMaskH=hdPtr->phiTrigMaskH;
   lastPPSNum=turfRates.ppsNum;
@@ -3720,7 +3720,7 @@ AcqdErrorCode_t readTurfHkData()
 	status=readTurfioReg(i,&uvalue);
 	theTurfReg.values[i]=uvalue;
 	if(i<16) {
-	    //L1 rates
+	    //L2 rates
 	    usvalue=uvalue&0xffff;
 	    usvalue2=(uvalue&0xffff0000)>>16;
 	    //	    ring=1-(i<8); //0 is upper, 1 is lower
@@ -3730,8 +3730,8 @@ AcqdErrorCode_t readTurfHkData()
 	      phi-=16;
 	      pol=1;
 	    }
-	    turfRates.l1Rates[phi][pol]=usvalue;
-	    turfRates.l1Rates[phi+1][pol]=usvalue2;
+	    turfRates.l2Rates[phi][pol]=usvalue;
+	    turfRates.l2Rates[phi+1][pol]=usvalue2;
 	    //	    if(i==1)	    printf("readTurfHk\t%d %d %d %d %d\n",i,phi,pol,usvalue,usvalue2);
 	}
 	else if(i<20) {
@@ -3840,9 +3840,9 @@ AcqdErrorCode_t readTurfHkData()
 	return status;
 
     //Ant Trig Mask
-    status=readTurfioReg(TurfRegControlL1TrigMask,&uvalue);   
-    turfRates.l1TrigMask=uvalue&0xffff;
-    turfRates.l1TrigMaskH=(uvalue&0xffff0000)>>16;
+    status=readTurfioReg(TurfRegControlL2TrigMask,&uvalue);   
+    turfRates.l2TrigMask=uvalue&0xffff;
+    turfRates.l2TrigMaskH=(uvalue&0xffff0000)>>16;
     
 
     status=readTurfioReg(TurfRegControlPhiMask,&uvalue);   
@@ -3863,12 +3863,12 @@ AcqdErrorCode_t setTriggerMasks()
 */
 {
 //    printf("Setting Trigger Masks %#x %#x %#x\n",
-//	   phiTrigMask,l1TrigMask);
+//	   phiTrigMask,l2TrigMask);
   unsigned int uvalue=0;
   int countErrs=0;
   
   //Now need to actually do something
-  AcqdErrorCode_t status=setTurfControl(SetL1TrigMask);
+  AcqdErrorCode_t status=setTurfControl(SetL2TrigMask);
   status+=setTurfControl(SetPhiTrigMask);
   if(status!=ACQD_E_OK)
       return status;
@@ -3882,12 +3882,12 @@ AcqdErrorCode_t setTriggerMasks()
   
   //Ant Trig Mask
   uvalue=0;
-  status+=readTurfioReg(TurfRegControlL1TrigMask,&uvalue);
-  if((uvalue&0xffff)!=l1TrigMask) {
-    fprintf(stderr,"Error reading back l1TrigMask wanted %#x got %#x\n",
-	    l1TrigMask,uvalue);
-    syslog(LOG_ERR,"Error reading back l1TrigMask wanted %#x got %#x\n",
-	    l1TrigMask,uvalue);
+  status+=readTurfioReg(TurfRegControlL2TrigMask,&uvalue);
+  if((uvalue&0xffff)!=l2TrigMask) {
+    fprintf(stderr,"Error reading back l2TrigMask wanted %#x got %#x\n",
+	    l2TrigMask,uvalue);
+    syslog(LOG_ERR,"Error reading back l2TrigMask wanted %#x got %#x\n",
+	    l2TrigMask,uvalue);
     countErrs++;
   }
    
@@ -4474,21 +4474,19 @@ int checkTurfRates()
   int numLastTurfs=0;
   static int funcCounter=0;
   int phi=0,tInd=0,pol=0;
-  int l1HitCount[PHI_SECTORS][2];
-  int l1MissCount[PHI_SECTORS][2];  
-  int l3HitCount[PHI_SECTORS][2];
-  int l3MissCount[PHI_SECTORS][2];
+  int l2HitCount[PHI_SECTORS];
+  int l2MissCount[PHI_SECTORS];  
+  int l3HitCount[PHI_SECTORS];
+  int l3MissCount[PHI_SECTORS];
   int turfRateIndex=(countLastTurfRates%NUM_DYN_TURF_RATE);
   unsigned int newPhiMask=0;
-  unsigned int newPhiMaskH=0;
-  unsigned int newL1TrigMask=0;
-  unsigned int newL1TrigMaskH=0;
+  unsigned int newL2TrigMask=0;
   int changedSomething=0;
   
-  memset(l1HitCount,0,sizeof(int)*PHI_SECTORS*2);
-  memset(l1MissCount,0,sizeof(int)*PHI_SECTORS*2);
-  memset(l3HitCount,0,sizeof(int)*PHI_SECTORS*2);
-  memset(l3MissCount,0,sizeof(int)*PHI_SECTORS*2);
+  memset(l2HitCount,0,sizeof(int)*PHI_SECTORS);
+  memset(l2MissCount,0,sizeof(int)*PHI_SECTORS);
+  memset(l3HitCount,0,sizeof(int)*PHI_SECTORS);
+  memset(l3MissCount,0,sizeof(int)*PHI_SECTORS);
 
   funcCounter++;
   //Number between 0 and NUM_DYN_TURF_RATE-1
@@ -4502,29 +4500,20 @@ int checkTurfRates()
     
     for(tInd=0;tInd<numLastTurfs;tInd++) {
       for(phi=0;phi<PHI_SECTORS;phi++) {
-	for(pol=0;pol<2;pol++) {
-	  if(lastTurfRates[tInd].l3Rates[phi][pol]>dynamicPhiThresholdOverRate) 
-	    l3HitCount[phi][pol]++;
-	  if(lastTurfRates[tInd].l3Rates[phi][pol]<dynamicPhiThresholdUnderRate)
-	    l3MissCount[phi][pol]++;
-
-	  if(lastTurfRates[tInd].l1Rates[phi][pol]>dynamicAntThresholdOverRate) 
-	    l1HitCount[phi][pol]++;
-	  if(lastTurfRates[tInd].l1Rates[phi][pol]<dynamicAntThresholdUnderRate)
-	    l1MissCount[phi][pol]++;
-	  //	  for(ring=0;ring<2;ring++) {
-	  //	  if(lastTurfRates[tInd].l1Rates[phi][ring]>dynamicAntThresholdOverRate) 
-	  //	    l1HitCount[phi][ring]++;
-	  //	  if(lastTurfRates[tInd].l1Rates[phi][ring]<dynamicAntThresholdUnderRate)
-	  //	    l1MissCount[phi][ring]++;
-	}
+	if(lastTurfRates[tInd].l3Rates[phi][0]>dynamicPhiThresholdOverRate) 
+	  l3HitCount[phi]++;
+	if(lastTurfRates[tInd].l3Rates[phi][0]<dynamicPhiThresholdUnderRate)
+	  l3MissCount[phi]++;
+	
+	if(lastTurfRates[tInd].l2Rates[phi][0]>dynamicAntThresholdOverRate) 
+	  l2HitCount[phi]++;
+	if(lastTurfRates[tInd].l2Rates[phi][0]<dynamicAntThresholdUnderRate)
+	  l2MissCount[phi]++;
       }  
     }
     
     newPhiMask=phiTrigMask;
-    newPhiMaskH=phiTrigMaskH;
-    newL1TrigMask=l1TrigMask;    
-    newL1TrigMaskH=l1TrigMaskH;    
+    newL2TrigMask=l2TrigMask;    
     for(phi=0;phi<PHI_SECTORS;phi++) {
       if(l3HitCount[phi][0]>dynamicPhiThresholdOverWindow) {
 	//Got a hot channel
@@ -4536,38 +4525,18 @@ int checkTurfRates()
 //	  printf("cold channel %d -- %d\n",phi,l3MissCount[phi]);
 	newPhiMask &= ~(1<<phi);
       }
-      if(l3HitCount[phi][1]>dynamicPhiThresholdOverWindow) {
+      
+      //RJN need to add L2 something here      
+      if(l2HitCount[phi][0]>dynamicAntThresholdOverWindow) {
 	//Got a hot channel
-//	  printf("hot channel %d -- %d\n",phi,l3HitCount[phi]);
-	  newPhiMaskH |= (1<<phi);
+//	  printf("hot channel %d -- %d\n",phi,l2HitCount[phi]);
+	  newL2TrigMask |= (1<<phi);
       }
-      if(l3MissCount[phi][1]>dynamicPhiThresholdUnderWindow) {
+      if(l2MissCount[phi][0]>dynamicAntThresholdUnderWindow) {
 	//Got a quiet channel
-//	  printf("cold channel %d -- %d\n",phi,l3MissCount[phi]);
-	newPhiMaskH &= ~(1<<phi);
+//	  printf("cold channel %d -- %d\n",phi,l2MissCount[phi]);
+	newL2TrigMask &= ~(1<<phi);
       }
-      //RJN need to add L1 something here      
-      if(l1HitCount[phi][0]>dynamicAntThresholdOverWindow) {
-	//Got a hot channel
-//	  printf("hot channel %d -- %d\n",phi,l1HitCount[phi]);
-	  newL1TrigMask |= (1<<phi);
-      }
-      if(l1MissCount[phi][0]>dynamicAntThresholdUnderWindow) {
-	//Got a quiet channel
-//	  printf("cold channel %d -- %d\n",phi,l1MissCount[phi]);
-	newL1TrigMask &= ~(1<<phi);
-      }
-      if(l1HitCount[phi][1]>dynamicAntThresholdOverWindow) {
-	//Got a hot channel
-//	  printf("hot channel %d -- %d\n",phi,l1HitCount[phi]);
-	  newL1TrigMaskH |= (1<<phi);
-      }
-      if(l1MissCount[phi][1]>dynamicAntThresholdUnderWindow) {
-	//Got a quiet channel
-//	  printf("cold channel %d -- %d\n",phi,l1MissCount[phi]);
-	newL1TrigMaskH &= ~(1<<phi);
-      }
-
     }
   
     if(phiTrigMask!=newPhiMask) {
@@ -4579,30 +4548,12 @@ int checkTurfRates()
 	    changedSomething=1;
 	}
     }
-    if(phiTrigMaskH!=newPhiMaskH) {
-	if(enableDynamicPhiMasking) {
-	    if(printToScreen) {
-		printf("Changing HPol phi mask from %#x to %#x (%d -- %d)\n",phiTrigMaskH,newPhiMaskH,funcCounter,countLastTurfRates);
-	    }
-	    phiTrigMaskH=newPhiMaskH | gpsPhiTrigMask;
-	    changedSomething=1;
-	}
-    }
-    if(newL1TrigMask!=l1TrigMask) {
+    if(newL2TrigMask!=l2TrigMask) {
 	if(enableDynamicAntMasking) {
 	    if(printToScreen) {
-		printf("Changing antenna mask from %#x to %#x\n",l1TrigMask,newL1TrigMask);
+		printf("Changing antenna mask from %#x to %#x\n",l2TrigMask,newL2TrigMask);
 	    }
-	    l1TrigMask=newL1TrigMask;
-	    changedSomething=1;
-	}
-    }
-    if(newL1TrigMaskH!=l1TrigMaskH) {
-	if(enableDynamicAntMasking) {
-	    if(printToScreen) {
-		printf("Changing antenna mask from %#x to %#x\n",l1TrigMask,newL1TrigMask);
-	    }
-	    l1TrigMaskH=newL1TrigMaskH;
+	    l2TrigMask=newL2TrigMask;
 	    changedSomething=1;
 	}
     }
