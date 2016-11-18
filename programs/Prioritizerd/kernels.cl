@@ -154,43 +154,43 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
 
   // to get rms need linear combos of square and sum
   // first put in LDS
-  square[localInd] = store*store/numSamps; //NUM_SAMPLES;
-  mean[localInd] = store/numSamps; //NUM_SAMPLES;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  /* square[localInd] = store*store/numSamps; //NUM_SAMPLES; */
+  /* mean[localInd] = store/numSamps; //NUM_SAMPLES; */
+  /* barrier(CLK_LOCAL_MEM_FENCE); */
 
-  // Now data is in LDS, add up the the pieces
-  for(int offset = 1; offset < get_local_size(0); offset += offset){
-    if (localInd % (2*offset) == 0){
-      square [localInd] += square [localInd + offset];
-      mean [localInd] += mean [localInd + offset];
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-  }
+  /* // Now data is in LDS, add up the the pieces */
+  /* for(int offset = 1; offset < get_local_size(0); offset += offset){ */
+  /*   if (localInd % (2*offset) == 0){ */
+  /*     square [localInd] += square [localInd + offset]; */
+  /*     mean [localInd] += mean [localInd + offset]; */
+  /*   } */
+  /*   barrier(CLK_LOCAL_MEM_FENCE); */
+  /* } */
 
-  barrier(CLK_LOCAL_MEM_FENCE);
+  /* barrier(CLK_LOCAL_MEM_FENCE); */
 
-  // broadcast sum to private memory
-  float4 square4 = square[0];
-  float4 mean4 = mean[0];
+  /* // broadcast sum to private memory */
+  /* float4 square4 = square[0]; */
+  /* float4 mean4 = mean[0]; */
 
-  // get sum of float4 components
-  float x = square4.x + square4.y + square4.z + square4.w;
-  float y = mean4.x + mean4.y + mean4.z + mean4.w;
+  /* // get sum of float4 components */
+  /* float x = square4.x + square4.y + square4.z + square4.w; */
+  /* float y = mean4.x + mean4.y + mean4.z + mean4.w; */
 
-  // varience = the mean of the square minus the square of the mean
-  float rms = sqrt(x - y*y);
+  /* // varience = the mean of the square minus the square of the mean */
+  /* float rms = sqrt(x - y*y); */
 
-  // in case of all blank channel, which is stupendously unlikely in practise
-  // but does occur in my simple test conditions
-  rms = rms <= 0 ? 1 : rms;
+  /* // in case of all blank channel, which is stupendously unlikely in practise */
+  /* // but does occur in my simple test conditions */
+  /* rms = rms <= 0 ? 1 : rms; */
 
-  // only need one WI to do this
-  if(localInd == 0){
-    rmsBuffer[eventInd*NUM_ANTENNAS + antInd] = rms;
-  }
+  /* // only need one WI to do this */
+  /* if(localInd == 0){ */
+  /*   rmsBuffer[eventInd*NUM_ANTENNAS + antInd] = rms; */
+  /* } */
 
-  // normalize the data,
-  store = (store - y) / rms;
+  /* // normalize the data, */
+  /* store = (store - y) / rms; */
 
   /*
     Would have offset trailing zero-pad since we subtracted the mean values.
