@@ -332,7 +332,8 @@ void prepareGpuThings(){
   coherentSumKernel = createKernel(prog, "coherentlySumWaveForms");
   coherentWaveBuffer = createBuffer(context, 0, sizeof(float)*NUM_EVENTS*NUM_SAMPLES, "f", "coherentWaveBuffer");
 #define numCoherentArgs 7
-  buffer* coherentArgs[numCoherentArgs] = {imagePeakThetaBuffer2, imagePeakPhiBuffer2, imagePeakPhiSectorBuffer, normalBuffer, coherentWaveBuffer, rmsBuffer, lookupBuffer};
+  buffer* coherentArgs[numCoherentArgs] = {imagePeakThetaBuffer2, imagePeakPhiBuffer2, imagePeakPhiSectorBuffer, normalBuffer, coherentWaveBuffer, newRmsBuffer, lookupBuffer};
+  /* buffer* coherentArgs[numCoherentArgs] = {imagePeakThetaBuffer2, imagePeakPhiBuffer2, imagePeakPhiSectorBuffer, normalBuffer, coherentWaveBuffer, rmsBuffer, lookupBuffer};   */
   setKernelArgs(coherentSumKernel, numCoherentArgs, coherentArgs, "coherentSumKernel");
 
   /*
