@@ -264,7 +264,8 @@ void prepareGpuThings(){
   /* Kernel to sum the time domain cross correlations to make in image, only does triggered phi-sectors.*/
   imageKernel = createKernel(prog, "makeImageFromFourierDomain");
   imageBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_EVENTS*NUM_PHI_SECTORS*NUM_BINS_THETA*NUM_BINS_PHI, "f", "imageBuffer");
-  lookupBuffer = createBuffer(context, memFlags,sizeof(short)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_THETA*NUM_BINS_PHI, "s", "lookupBuffer");
+  lookupBuffer = createBuffer(context, memFlags,sizeof(float)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_THETA*NUM_BINS_PHI, "f", "lookupBuffer");
+  /* lookupBuffer = createBuffer(context, memFlags,sizeof(short)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_THETA*NUM_BINS_PHI, "s", "lookupBuffer");   */
   offsetInd = fillDeltaTArrays();
   copyArrayToGPU(commandQueue, lookupBuffer, offsetInd);
 #define numImageArgs 4
@@ -975,7 +976,7 @@ void tidyUpGpuThings(){
 
 }
 
-int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
+float getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
 		      const float* phiArray, const float* rArray, const float* zArray)
 {
   double tanThetaW = tan(-thetaWave);
@@ -984,13 +985,15 @@ int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
   // nb have *-1 compared to ANITA library definition, I think it makes more sense to do
   // t2 - t1 NOT t1 - t2
   double tdiff = 1e9*((cos(-thetaWave) * (part2 - part1))/SPEED_OF_LIGHT); // Returns time in ns
-  tdiff /= NOMINAL_SAMPLING;
-  return floor(tdiff + 0.5);
+  /* tdiff /= NOMINAL_SAMPLING; */
+  /* return floor(tdiff + 0.5); */
+  return tdiff;
 }
 
 // Various bits taken from AnitaGeometry.cxx on 29/11/2013
-short* fillDeltaTArrays(){
-  short* offsetInd = malloc(sizeof(short)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_PHI*NUM_BINS_THETA);
+float* fillDeltaTArrays(){
+  /* short* offsetInd = malloc(sizeof(short)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_PHI*NUM_BINS_THETA); */
+  float* offsetInd = malloc(sizeof(float)*NUM_PHI_SECTORS*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_PHI*NUM_BINS_THETA);
 
   float rArray[NUM_ANTENNAS]={0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,0.9675,0.7402,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447,2.0447};
 
@@ -1079,14 +1082,15 @@ short* fillDeltaTArrays(){
 	for(thetaInd = 0; thetaInd < NUM_BINS_THETA; thetaInd++){
 	  double thetaDeg = THETA_RANGE*((double)thetaInd/NUM_BINS_THETA - 0.5);
 	  double thetaWave = thetaDeg*PI/180; //TMath::DegToRad();
-	  short offset = getDeltaTExpected(ant1, ant2, phiWave, thetaWave, phiArray, rArray, zArray);
+	  /* short offset = getDeltaTExpected(ant1, ant2, phiWave, thetaWave, phiArray, rArray, zArray); */
+	  float offset = getDeltaTExpected(ant1, ant2, phiWave, thetaWave, phiArray, rArray, zArray);
 	  /* if(phiSector==15 && phiInd == 0 && thetaInd == NUM_BINS_THETA/2){ */
 	  /*   printf("%d %d %hd\n", ant1, ant2, offset); */
 	  /* } */
 
-	  if(offset < 0){
-	    offset += NUM_SAMPLES;
-	  }
+	  /* if(offset < 0){ */
+	  /*   offset += NUM_SAMPLES; */
+	  /* } */
 	  uint offsetIndInd = (phiSector*NUM_LOCAL_COMBOS_PER_PHI_SECTOR*NUM_BINS_PHI*NUM_BINS_THETA
 			       + combo*NUM_BINS_PHI*NUM_BINS_THETA
 			       + phiInd*NUM_BINS_THETA

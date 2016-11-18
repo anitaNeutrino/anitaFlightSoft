@@ -44,12 +44,13 @@
 /***********************/
 
 /* calculates the deltaT between two antennas for a plane wave arriving from a given direction */
-int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
-		      const float* phiArray, const float* rArray, const float* zArray);
+float getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
+			const float* phiArray, const float* rArray, const float* zArray);
 
 
 /* generates look up deltaT table for GPU interferometry calcs */
-short* fillDeltaTArrays();
+// short* fillDeltaTArrays();
+float* fillDeltaTArrays();
 
 /* for measuring speed of GPU calcs */
 void timeStamp(int stampNo, int numEvents, cl_event* waitList);
@@ -190,7 +191,8 @@ buffer* complexCorrScratch;
 cl_kernel imageKernel;
 buffer* imageBuffer;
 buffer* lookupBuffer;
-short* offsetInd;
+// short* offsetInd;
+float* offsetInd;
 
 cl_kernel findImagePeakInThetaKernel;
 buffer* corrScratchBuffer4;

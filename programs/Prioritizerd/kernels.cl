@@ -298,7 +298,8 @@ __kernel void crossCorrelationFourierDomain(__global short* phiSectorTrig,
 __kernel void makeImageFromFourierDomain(__global short* phiSectorTrigBuffer,
 					 __global float* circularCorrBuffer,
 					 __global float4* image,
-					 __global short4* lookup){
+					 /* __global short4* lookup){ */
+					 __global float4* lookup){
 
   int eventInd = get_global_id(2);
   int phiInd = get_global_id(1);
@@ -318,7 +319,27 @@ __kernel void makeImageFromFourierDomain(__global short* phiSectorTrigBuffer,
 			  + comboLocal*NUM_BINS_THETA*NUM_BINS_PHI/4
 			  + phiInd*NUM_BINS_THETA/4
 			  + thetaInd);
-	short4 dt = lookup[lookupInd];
+	/* short4 dt = lookup[lookupInd]; */
+	float4 dt = lookup[lookupInd];
+
+	int4 offset;
+	offset.x = floor((dt.x/NOMINAL_SAMPLING) + 0.5);
+	offset.y = floor((dt.y/NOMINAL_SAMPLING) + 0.5);
+	offset.z = floor((dt.z/NOMINAL_SAMPLING) + 0.5);
+	offset.w = floor((dt.w/NOMINAL_SAMPLING) + 0.5);
+
+
+	offset.x = offset.x < 0 ? offset.x + NUM_SAMPLES : offset.x;
+	offset.y = offset.y < 0 ? offset.y + NUM_SAMPLES : offset.y;
+	offset.z = offset.z < 0 ? offset.z + NUM_SAMPLES : offset.z;
+	offset.w = offset.w < 0 ? offset.w + NUM_SAMPLES : offset.w;
+
+
+	/* offset.x = 0; */
+	/* offset.y = 0; */
+	/* offset.z = 0; */
+	/* offset.w = 0; */
+
 
 	int phiSectorCorr = (phiSector + 15 + comboLocal/NUM_GLOBAL_COMBOS_PER_PHI_SECTOR)%NUM_PHI_SECTORS;
 	uint comboCorr = comboLocal % NUM_GLOBAL_COMBOS_PER_PHI_SECTOR;
@@ -326,10 +347,16 @@ __kernel void makeImageFromFourierDomain(__global short* phiSectorTrigBuffer,
 			    + phiSectorCorr*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR
 			    + comboCorr);
 
-	corr.x += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.x];
-	corr.y += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.y];
-	corr.z += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.z];
-	corr.w += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.w];
+
+	/* corr.x += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.x]; */
+	/* corr.y += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.y]; */
+	/* corr.z += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.z]; */
+	/* corr.w += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.w]; */
+	corr.x += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.x];
+	corr.y += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.y];
+	corr.z += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.z];
+	corr.w += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.w];
+
       }
       corr/=(NUM_LOCAL_COMBOS_PER_PHI_SECTOR);
     }
