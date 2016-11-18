@@ -939,6 +939,9 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
   */
 
+
+
+
   // Work in progress for ANITA-4
   short2 passFilter;
   passFilter.x = 1;
@@ -950,6 +953,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
 
 __kernel void filterWaveforms(__global short2* passFilterBuffer,
+			      __global short2* staticPassFilterBuffer,
 			      __global float4* waveformsFourierDomain){
   /*
      This kernel just multiplies a bin in the fourier domain by zero or one,
@@ -965,27 +969,44 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   filterState.x = filterState.x < 0 ? 0 : filterState.x;
   filterState.y = filterState.y < 0 ? 0 : filterState.y;
 
-  int corrBaseInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/2;
+  // there's NUM_SAMPLES/2 freq bins divided among NUM_SAMPLES/4 work items
+  // so each work item does two... I'm sure I understood this in 2014.
+  short2 staticFilterState = staticPassFilterBuffer[sampInd];
+  staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1;
+  staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1;
+
+  // AND the static and "dynamic" state.
+  filterState.x *= staticFilterState.x;
+  filterState.y *= staticFilterState.y;
+
+  int freqBaseInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/2;
   int sampInd0 = antInd*NUM_SAMPLES/2 + sampInd;
   int sampInd1 = antInd*NUM_SAMPLES/2 + NUM_SAMPLES/2 - (sampInd+1);
 
-  int corrInd0 = corrBaseInd + sampInd0;
-  int corrInd1 = corrBaseInd + sampInd1;
+  int freqInd0 = freqBaseInd + sampInd0;
+  int freqInd1 = freqBaseInd + sampInd1;
 
-  float4 corr0 = waveformsFourierDomain[corrInd0];
-  float4 corr1 = waveformsFourierDomain[corrInd1];
+  float4 freq0 = waveformsFourierDomain[freqInd0];
+  float4 freq1 = waveformsFourierDomain[freqInd1];
 
-  float4 filteredCorr0;
-  filteredCorr0.xy = filterState.x*corr0.xy;
-  filteredCorr0.zw = filterState.y*corr0.zw;
+  float4 filteredFreq0;
+  filteredFreq0.xy = filterState.x*freq0.xy;
+  filteredFreq0.zw = filterState.y*freq0.zw;
+
+  /* filteredFreq0.xy *= staticFilterState.x; */
+  /* filteredFreq0.zw *= staticFilterState.y; */
+
 
   // symmetry of power spectrum -> swapping filterState indices
-  float4 filteredCorr1;
-  filteredCorr1.xy = filterState.y*corr1.xy;
-  filteredCorr1.zw = filterState.x*corr1.zw;
+  float4 filteredFreq1;
+  filteredFreq1.xy = filterState.y*freq1.xy;
+  filteredFreq1.zw = filterState.x*freq1.zw;
 
-  waveformsFourierDomain[corrInd0] = filteredCorr0;
-  waveformsFourierDomain[corrInd1] = filteredCorr1;
+  /* filteredFreq1.xy *= staticFilterState.y; */
+  /* filteredFreq1.zw *= staticFilterState.x; */
+
+  waveformsFourierDomain[freqInd0] = filteredFreq0;
+  waveformsFourierDomain[freqInd1] = filteredFreq1;
 
 }
 
