@@ -33,9 +33,9 @@
 #define MAX_VAL 600
 
 
-/* 
+/*
    If you want to take a look at how long things are taking,
-   then keep "#define TSTAMP", although bear in mind that 
+   then keep "#define TSTAMP", although bear in mind that
    things are moving towareds a highly non-blocking configuration.
 */
 
@@ -44,17 +44,17 @@
 /***********************/
 
 /* calculates the deltaT between two antennas for a plane wave arriving from a given direction */
-int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave, 
+int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
 		      const float* phiArray, const float* rArray, const float* zArray);
 
 
-/* generates look up deltaT table for GPU interferometry calcs */ 
+/* generates look up deltaT table for GPU interferometry calcs */
 short* fillDeltaTArrays();
 
 /* for measuring speed of GPU calcs */
-void timeStamp(int stampNo, int numEvents, cl_event* waitList); 
+void timeStamp(int stampNo, int numEvents, cl_event* waitList);
 
-/* Simple named functions which handle initialization, calculation and destruction of GPU objects */ 
+/* Simple named functions which handle initialization, calculation and destruction of GPU objects */
 void prepareGpuThings();
 void tidyUpGpuThings();
 //void addEventToGpuQueue(int eventInd, PedSubbedEventBody_t pedSubBody, AnitaEventHeader_t theHeader, const int alreadyUnwrappedAndCalibrated);
@@ -110,7 +110,7 @@ static const int hAntToChan[NUM_ANTENNAS]={7,5,7,1,5,7,5,7,6,4,6,4,4,6,4,6,
 					   5,7,5,7,7,5,7,5,4,6,4,6,6,4,6,4,
 					   7,5,7,5,5,7,5,7,6,4,6,4,4,6,4,6};
 
-  
+
 static const int vAntToChan[NUM_ANTENNAS]={3,1,3,5,1,3,1,3,2,0,2,0,0,2,0,2,
 					   1,3,1,3,3,1,3,1,0,2,0,2,2,0,2,0,
 					   3,1,3,1,1,3,1,3,2,0,2,0,0,2,0,2};
@@ -238,7 +238,7 @@ static const size_t lNormWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
 cl_event fourierEvent;
 static const size_t gFourierWorkSize[3] = {NUM_SAMPLES/4, NUM_ANTENNAS, NUM_EVENTS};
 static const size_t lFourierWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
-   
+
 cl_event powSpecEvent;
 static const size_t gPowSpecWorkSize[2] = {NUM_SAMPLES/4, NUM_ANTENNAS};
 static const size_t lPowSpecWorkSize[2] = {NUM_SAMPLES/4, 1};
@@ -250,7 +250,7 @@ static const size_t lFilterWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
 cl_event circCorrelationEvent;
 static const size_t gCircCorrWorkSize[3] = {NUM_SAMPLES/4, NUM_PHI_SECTORS*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR, NUM_EVENTS};
 static const size_t lCircCorrWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
-  
+
 cl_event peakCorrEvent;
 static const size_t gPeakCorrWorkSize[3] = {NUM_SAMPLES/4, NUM_PHI_SECTORS*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR, NUM_EVENTS};
 static const size_t lPeakCorrWorkSize[3] = {NUM_SAMPLES/4, 1, 1};
@@ -284,7 +284,7 @@ static const size_t gHilbertWorkSize[2] = {NUM_SAMPLES/4, NUM_EVENTS};
 static const size_t lHilbertWorkSize[2] = {NUM_SAMPLES/4, 1};
 
 cl_event hilbertPeakEvent;
-static const size_t gHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, NUM_EVENTS}; 
+static const size_t gHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, NUM_EVENTS};
 static const size_t lHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, 1};
 
 
@@ -301,6 +301,7 @@ int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
 float* powSpec;
 short* passFilter;
+short* staticPassFilter;
 float* tempPowSpecHolder;
 // short* anyFailDifference;
 // short* anyFailMagnitude;

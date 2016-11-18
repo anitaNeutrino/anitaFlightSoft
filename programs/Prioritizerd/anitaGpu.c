@@ -5,6 +5,18 @@
 float priorityParamsLowBinEdge[NUM_PRIORITIES] = {100, 0.04, 0.05, 0.03, 0.02, 0.01, 0.00, 0, 0, 0};
 float priorityParamsHighBinEdge[NUM_PRIORITIES] = {99, 0.05, 1.00, 0.04 ,0.03 ,0.02 ,0.01, 1, 1, 1};
 
+
+/* GPU option flags that take values from Prioritizerd.config */
+int invertTopRingInSoftware = 0;
+int printCalibTextFile = 0;
+
+/* Globals, to be overwritten by values from Prioritizerd.config */
+/* Used to assign priority, should never assign priority 0!*/
+#define MAX_NOTCHES 10
+float staticNotchesLowEdgeMHz[MAX_NOTCHES] = {0,0,0,0,0,0,0,0,0,0};
+float staticNotchesHighEdgeMHz[MAX_NOTCHES] = {0,0,0,0,0,0,0,0,0,0};
+
+
 /* Used to map imagePeak and hilbertPeak to a single figure of merit */
 float slopeOfImagePeakVsHilbertPeak;
 float interceptOfImagePeakVsHilbertPeak;
@@ -21,19 +33,17 @@ int thetaAnglePriorityDemotion=1;
 float binToBinDifferenceThresh_dB;
 #define floatToShortConversionForPacket 32767./64.15
 
+
 const float THETA_RANGE = 150;
 const float PHI_RANGE = 22.5;
 
+
+// For printing calibration numbers to /tmp
 FILE* gpuOutput = NULL;
 
-/* GPU option flags that take values from Prioritizerd.config */
-int invertTopRingInSoftware = 0;
-int printCalibTextFile = 0;
-
+#define NUM_FREQ_BINS_IN_ANITA_BAND 99
 
 void prepareGpuThings(){
-
-
 
 
   /* Read in GPU output to priority mappings */
@@ -54,6 +64,18 @@ void prepareGpuThings(){
     fprintf(stderr, "Warning! Trying to do load priorityParamsHighBinEdge from Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
 
+  int maxNotches = MAX_NOTCHES;
+  err = kvpGetFloatArray ("staticNotchesLowEdgeMHz", staticNotchesLowEdgeMHz, &maxNotches);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load staticNotchesLowEdgeMHz from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+  err = kvpGetFloatArray ("staticNotchesHighEdgeMHz", staticNotchesHighEdgeMHz, &maxNotches);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load staticNotchesHighEdgeMHz from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+
+
   binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",5);
   absMagnitudeThresh_dBm=kvpGetFloat("absMagnitudeThresh_dBm",50);
   interceptOfImagePeakVsHilbertPeak = kvpGetFloat ("interceptOfImagePeakVsHilbertPeak", 1715.23327523);
@@ -68,10 +90,11 @@ void prepareGpuThings(){
 
   printCalibTextFile = kvpGetInt("printCalibTextFile", 0);
 
+
   gpuOutput = NULL;
   if(printCalibTextFile > 0){
     gpuOutput = fopen("/tmp/gpuOutput.dat", "w");
-    printf("Compiled with printCalibTextFile flag! Will generate a file /tmp/gpuOutput.dat with lovely things in it.\n");
+    printf("printCalibTextFile flag is set! Will generate a file /tmp/gpuOutput.dat with lovely things in it.\n");
   }
 
   /* Large buffers, which will be mapped to GPU memory */
@@ -80,8 +103,38 @@ void prepareGpuThings(){
   powSpec = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(float));
   passFilter = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(short));
 
+  staticPassFilter = malloc((NUM_SAMPLES/2)*sizeof(short)); // this one is not so large
+  const int numFreqsHacky = NUM_SAMPLES/2;
+  int freqInd=0;
+  for(freqInd=0; freqInd < numFreqsHacky; freqInd++){
+    staticPassFilter[freqInd] = 1;
+  }
+  const double df = 1e3/(NOMINAL_SAMPLING*NUM_SAMPLES);
+
+  int notchInd = 0;
+  for(notchInd = 0; notchInd < MAX_NOTCHES; notchInd++){
+    printf("The Prioritizerd has static notch %d has low edge at %.1f MHz and high edge at %.1f MHz\n",
+	   notchInd, staticNotchesLowEdgeMHz[notchInd], staticNotchesHighEdgeMHz[notchInd]);
+
+    // first get the bin that contains the low bin edge
+    for(freqInd=0; freqInd < numFreqsHacky; freqInd++){
+      double f = freqInd*df;
+      if(f >= staticNotchesLowEdgeMHz[notchInd] && f < staticNotchesHighEdgeMHz[notchInd]){
+	// then we notch this frequency
+	staticPassFilter[freqInd] = 0;
+      }
+    }
+  }
+
+  for(freqInd=0; freqInd < numFreqsHacky; freqInd++){
+    double f = freqInd*df;
+    printf("%.1f - %hd\n", f, staticPassFilter[freqInd]);
+  }
+
+
+
   /* Keep floating point precision while accumulating average */
-  tempPowSpecHolder = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*99*sizeof(float));
+  tempPowSpecHolder = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*NUM_FREQ_BINS_IN_ANITA_BAND*sizeof(float));
 
   /* Use opencl functions to find out what platforms and devices we can use for this program. */
   myPlatform = 0; /* Here we choose platform 0 in advance of querying to see what's there. */
@@ -362,7 +415,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       payloadPowSpec[phi].unixTimeFirstEvent = header[0].unixTime;
     }
   }
-  memset(tempPowSpecHolder, 0, sizeof(float)*2*NUM_ANTENNAS*99);
+  memset(tempPowSpecHolder, 0, sizeof(float)*2*NUM_ANTENNAS*NUM_FREQ_BINS_IN_ANITA_BAND);
 
   /* Start time stamping. */
   uint stamp;
@@ -623,7 +676,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     for(ring=0; ring<3; ring++){
       int ant = imagePeakPhiSector[index2] + ring*NUM_PHI_SECTORS;
       int freqInd=20;
-      for(freqInd = 20; freqInd < 20+99; freqInd++){
+      for(freqInd = 20; freqInd < 20+NUM_FREQ_BINS_IN_ANITA_BAND; freqInd++){
 	int freqInd2 = (1-polBit)*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + freqInd;
 	#ifdef CALIBRATION
 	if(powSpec[freqInd2] > maxPhiSectPower[ring]){
@@ -767,8 +820,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
 	int antInd = phi + NUM_PHI_SECTORS*ring;
 	int bin=0;
-	for(bin=0; bin<99; bin++){
-	  tempPowSpecHolder[polInd*NUM_ANTENNAS*99 + antInd*99 + bin]+= (nEvents*powSpec[(polInd*NUM_ANTENNAS + antInd)*NUM_SAMPLES/2 + offset + bin]);
+	for(bin=0; bin<NUM_FREQ_BINS_IN_ANITA_BAND; bin++){
+	  tempPowSpecHolder[polInd*NUM_ANTENNAS*NUM_FREQ_BINS_IN_ANITA_BAND + antInd*NUM_FREQ_BINS_IN_ANITA_BAND + bin]+= (nEvents*powSpec[(polInd*NUM_ANTENNAS + antInd)*NUM_SAMPLES/2 + offset + bin]);
 	}
       }
     }
@@ -788,8 +841,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
 	  int antInd = phi + NUM_PHI_SECTORS*ring;
 	  int bin=0;
-	  for(bin=0; bin<99; bin++){
-	    payloadPowSpec[phi].powSpectra[ring][polInd].bins[bin] = (short) (floatToShortConversionForPacket*10*log10(tempPowSpecHolder[polInd*NUM_ANTENNAS*99 + antInd*99 + bin]/50));
+	  for(bin=0; bin<NUM_FREQ_BINS_IN_ANITA_BAND; bin++){
+	    payloadPowSpec[phi].powSpectra[ring][polInd].bins[bin] = (short) (floatToShortConversionForPacket*10*log10(tempPowSpecHolder[polInd*NUM_ANTENNAS*NUM_FREQ_BINS_IN_ANITA_BAND + antInd*NUM_FREQ_BINS_IN_ANITA_BAND + bin]/50));
 	  }
 	}
       }
@@ -807,7 +860,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 #endif
 
 
-  printf("\n\n\n");
+  printf("\n");
 }
 
 
@@ -846,7 +899,8 @@ void tidyUpGpuThings(){
   free(eventData);
   free(offsetInd);
   free(numEventSamples);
-  free(passFilterBuffer);
+  free(passFilter);
+  free(staticPassFilter);
   free(tempPowSpecHolder);
 
   clFlush(commandQueue);
