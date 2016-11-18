@@ -322,23 +322,34 @@ __kernel void makeImageFromFourierDomain(__global short* phiSectorTrigBuffer,
 	/* short4 dt = lookup[lookupInd]; */
 	float4 dt = lookup[lookupInd];
 
-	int4 offset;
-	offset.x = floor((dt.x/NOMINAL_SAMPLING) + 0.5);
-	offset.y = floor((dt.y/NOMINAL_SAMPLING) + 0.5);
-	offset.z = floor((dt.z/NOMINAL_SAMPLING) + 0.5);
-	offset.w = floor((dt.w/NOMINAL_SAMPLING) + 0.5);
+
+	/* offset.x = floor((dt.x/NOMINAL_SAMPLING) + 0.5); */
+	/* offset.y = floor((dt.y/NOMINAL_SAMPLING) + 0.5); */
+	/* offset.z = floor((dt.z/NOMINAL_SAMPLING) + 0.5); */
+	/* offset.w = floor((dt.w/NOMINAL_SAMPLING) + 0.5); */
+
+	int4 offset1;
+	offset1.x = floor(dt.x/NOMINAL_SAMPLING);
+	offset1.y = floor(dt.y/NOMINAL_SAMPLING);
+	offset1.z = floor(dt.z/NOMINAL_SAMPLING);
+	offset1.w = floor(dt.w/NOMINAL_SAMPLING);
+
+	float4 t1;
+	t1.x = NOMINAL_SAMPLING*offset1.x;
+	t1.y = NOMINAL_SAMPLING*offset1.y;
+	t1.z = NOMINAL_SAMPLING*offset1.z;
+	t1.w = NOMINAL_SAMPLING*offset1.w;
 
 
-	offset.x = offset.x < 0 ? offset.x + NUM_SAMPLES : offset.x;
-	offset.y = offset.y < 0 ? offset.y + NUM_SAMPLES : offset.y;
-	offset.z = offset.z < 0 ? offset.z + NUM_SAMPLES : offset.z;
-	offset.w = offset.w < 0 ? offset.w + NUM_SAMPLES : offset.w;
+	offset1 = offset1 < 0 ? offset1 + NUM_SAMPLES : offset1;
 
+	int4 offset2;
+	offset2.x = ceil(dt.x/NOMINAL_SAMPLING);
+	offset2.y = ceil(dt.y/NOMINAL_SAMPLING);
+	offset2.z = ceil(dt.z/NOMINAL_SAMPLING);
+	offset2.w = ceil(dt.w/NOMINAL_SAMPLING);
 
-	/* offset.x = 0; */
-	/* offset.y = 0; */
-	/* offset.z = 0; */
-	/* offset.w = 0; */
+	offset2 = offset2 < 0 ? offset2 + NUM_SAMPLES : offset2;
 
 
 	int phiSectorCorr = (phiSector + 15 + comboLocal/NUM_GLOBAL_COMBOS_PER_PHI_SECTOR)%NUM_PHI_SECTORS;
@@ -347,15 +358,32 @@ __kernel void makeImageFromFourierDomain(__global short* phiSectorTrigBuffer,
 			    + phiSectorCorr*NUM_GLOBAL_COMBOS_PER_PHI_SECTOR
 			    + comboCorr);
 
-
 	/* corr.x += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.x]; */
 	/* corr.y += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.y]; */
 	/* corr.z += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.z]; */
 	/* corr.w += circularCorrBuffer[corrIndBase*NUM_SAMPLES + dt.w]; */
-	corr.x += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.x];
-	corr.y += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.y];
-	corr.z += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.z];
-	corr.w += circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset.w];
+	float4 corr1;
+	corr1.x = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset1.x];
+	corr1.y = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset1.y];
+	corr1.z = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset1.z];
+	corr1.w = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset1.w];
+
+
+	float4 corr2;
+	corr2.x = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset2.x];
+	corr2.y = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset2.y];
+	corr2.z = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset2.z];
+	corr2.w = circularCorrBuffer[corrIndBase*NUM_SAMPLES + offset2.w];
+
+
+
+	float4 corrInterp;
+	corrInterp.x = (dt.x - t1.x)*(corr2.x - corr1.x)/NOMINAL_SAMPLING + corr1.x;
+	corrInterp.y = (dt.y - t1.y)*(corr2.y - corr1.y)/NOMINAL_SAMPLING + corr1.y;
+	corrInterp.z = (dt.z - t1.z)*(corr2.z - corr1.z)/NOMINAL_SAMPLING + corr1.z;
+	corrInterp.w = (dt.w - t1.w)*(corr2.w - corr1.w)/NOMINAL_SAMPLING + corr1.w;
+
+	corr += corrInterp;
 
       }
       corr/=(NUM_LOCAL_COMBOS_PER_PHI_SECTOR);
