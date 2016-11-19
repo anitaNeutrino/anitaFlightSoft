@@ -862,8 +862,8 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // WI itendifiers
   int sampInd = get_global_id(0);
   int ant = get_global_id(1);
-  float rms = rmsBuffer[ant];
-  float var = rms*rms;
+  //  float rms = rmsBuffer[ant];
+  //  float var = rms*rms;
   int numEvents = numEventsBuffer[0];
 
   float2 summedPowSpec = 0;
@@ -875,7 +875,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
     float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
     float2 samplesPow = (float2)(samples.x*samples.x + samples.y*samples.y,
   				 samples.z*samples.z + samples.w*samples.w);
-    summedPowSpec += samplesPow*var;
+    summedPowSpec += samplesPow;//*var;
   }
 
   summedPowSpec *= 2; // For negative frequencies
@@ -887,56 +887,23 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // Write unfiltered power spectrum to global buffer
   powSpecOut[ant*NUM_SAMPLES/4 + sampInd] = summedPowSpec;
 
-  summedPowSpec.x = 10*log10(summedPowSpec.x/50);
-  summedPowSpec.y = 10*log10(summedPowSpec.y/50);
+  /* summedPowSpec.x = 10*log10(summedPowSpec.x/50); */
+  /* summedPowSpec.y = 10*log10(summedPowSpec.y/50); */
+
+
   powSpecScratch[sampInd] = summedPowSpec;
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
+  int sampInd0 = sampInd > 0 ? sampInd - 1 : 0;
+  /* int sampInd2 = sampInd < NUM_SAMPLES - 1 ? sampInd + 1 : NUM_SAMPLES - 1; */
 
-  // Work in progress for ANITA-4
-  // Removing ANITA-3 logic as it never really worked although something similar may get installed at some point
+  float2 leftPowSpec = powSpecScratch[sampInd0];
+  /* float2 rightPowSpec = powSpecScratch[sampInd2];   */
 
-  /*
-  // Grab neighbouring result for difference
-  float y3 = sampInd < get_global_size(0) -1 ? powSpecScratch[sampInd + 1].x : summedPowSpec.y;
-
-  float2 diff;
-  diff.x = sampInd>0 ? summedPowSpec.y - summedPowSpec.x : 0; // 0th will be tiny due to zero meaning...
-  diff.y = y3 - summedPowSpec.y;
-
-  // difference cut
-  short2 passFilter;
-  passFilter.x = fabs(diff.x) > binToBinDifferenceThresh_dB ? -1 : 0;
-  passFilter.y = fabs(diff.y) > binToBinDifferenceThresh_dB ? -1 : 0;
-
-  // maximum bin value cut
-  passFilter.x += summedPowSpec.x > maxThreshold_dBm ? -2 : 0;
-  passFilter.y += summedPowSpec.y > maxThreshold_dBm ? -2 : 0;
-
-  // Finally the band pass...
-  float highPass = 200; // MHz
-  float lowPass = 1200; // MHz
-
-  // NOMINAL_SAMPLING in ns, 1e3 takes us from GHz to MHz
-  float deltaF = 1000.0/(NUM_SAMPLES*NOMINAL_SAMPLING); // MHz
-
-  // Factor of 2 since using float2s for data...
-  int highPassWI = highPass/(deltaF*2);
-  int lowPassWI = lowPass/(deltaF*2);
-
-  // Easy stuff first. Implement bandpass frequencies.
-  passFilter.x += 2*sampInd*deltaF > highPass && 2*sampInd*deltaF < lowPass ? 0 : -4;
-  passFilter.y += (2*sampInd+1)*deltaF > highPass && (2*sampInd+1)*deltaF < lowPass ? 0 : -4;
-
-  // set anything still at 0 to 1 in order to pass...
-  passFilter.x = passFilter.x < 0 ? passFilter.x : 1;
-  passFilter.y = passFilter.y < 0 ? passFilter.y : 1;
-
-  */
-
-
-
+  float2 powSpecDer;
+  powSpecDer.x = summedPowSpec.x - leftPowSpec.y;
+  powSpecDer.y = summedPowSpec.y - summedPowSpec.x;
 
   // Work in progress for ANITA-4
   short2 passFilter;

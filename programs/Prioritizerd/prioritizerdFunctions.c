@@ -1,4 +1,5 @@
 #include "prioritizerdFunctions.h"
+#include "anitaGpu.h"
 
 void panicWriteAllLinks(int wd, int panicPri, int panicQueueLength, int priorityPPS1, int priorityPPS2){
 
@@ -307,6 +308,7 @@ void handleBadSigs(int sig)
 {
   syslog(LOG_WARNING,"Received sig %d -- will exit immeadiately\n",sig);
   unlink(PRIORITIZERD_PID_FILE);
+  tidyUpGpuThings(); // be more graceful
   syslog(LOG_INFO,"Prioritizerd terminating");
   exit(0);
 }

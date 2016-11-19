@@ -28,7 +28,7 @@
 #define NUM_SURF 12
 #define NUM_RCO 2
 #define NUM_WRAP_POSSIBILITIES 2
-#define upsampleFactor 16
+#define upsampleFactor 1
 #define numUpsampledClockSamples 256*upsampleFactor
 #define lengthClockFFT numUpsampledClockSamples*2
 
@@ -199,33 +199,57 @@ double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTim
 
   double* interpWave = (double*) malloc(nInterp*sizeof(double));
 
-  float time = t0interp;
-  int voltsSamp = 0;
-  int t1Ind = 0;
-  int t2Ind = 0;
+  double time=t0interp;
+  int voltSamp=0;
+  int unevenInd = 1;
+  for(voltSamp=0; voltSamp < nInterp; voltSamp++){
 
-  for(voltsSamp=0; voltsSamp<nInterp; voltsSamp++){
-
-    while(unevenTimes[t2Ind] <= time && t2Ind < nRaw-1){
-      t2Ind++;
+    if(time < unevenTimes[0] || time > unevenTimes[nRaw-1]){
+      interpWave[voltSamp] = 0;
     }
-    t1Ind = t2Ind;
-    while(unevenTimes[t1Ind] >= time && t1Ind > 0){
-      t1Ind--;
-    }
-
-    /* If we are inside known time band, then interpolate. */
-    if(time >= unevenTimes[0] && time <= unevenTimes[nRaw-1]){
-      interpWave[voltsSamp] = (time - unevenTimes[t1Ind])*(rawWave[t2Ind] - rawWave[t1Ind])/(unevenTimes[t2Ind] - unevenTimes[t1Ind]) + rawWave[t1Ind];
-    }
-
-    /* Zero waveform outside set of known unevenTimes. */
     else{
-      interpWave[voltsSamp] = 0;
+      interpWave[voltSamp] = (time - unevenTimes[unevenInd-1])*(rawWave[unevenInd] - rawWave[unevenInd-1])/(unevenTimes[unevenInd] - unevenTimes[unevenInd-1]) + rawWave[unevenInd-1];
+
     }
 
     time += dtNsInterp;
+    if(time > unevenTimes[unevenInd]){
+      unevenInd++;
+    }
+    if(unevenInd >= nRaw){
+      break;
+    }
   }
+
+
+  /* float time = t0interp; */
+  /* int voltsSamp = 0; */
+  /* int t1Ind = 0; */
+  /* int t2Ind = 0; */
+
+  /* for(voltsSamp=0; voltsSamp<nInterp; voltsSamp++){ */
+
+  /*   while(unevenTimes[t2Ind] <= time && t2Ind < nRaw-1){ */
+  /*     t2Ind++; */
+  /*   } */
+  /*   t1Ind = t2Ind; */
+  /*   while(unevenTimes[t1Ind] >= time && t1Ind > 0){ */
+  /*     t1Ind--; */
+  /*   } */
+
+  /*   /\* If we are inside known time band, then interpolate. *\/ */
+  /*   if(time >= unevenTimes[0] && time <= unevenTimes[nRaw-1]){ */
+  /*     interpWave[voltsSamp] = (time - unevenTimes[t1Ind])*(rawWave[t2Ind] - rawWave[t1Ind])/(unevenTimes[t2Ind] - unevenTimes[t1Ind]) + rawWave[t1Ind]; */
+  /*   } */
+
+  /*   /\* Zero waveform outside set of known unevenTimes. *\/ */
+  /*   else{ */
+  /*     interpWave[voltsSamp] = 0; */
+  /*   } */
+
+  /*   time += dtNsInterp; */
+  /* } */
+
 
   return interpWave;
 }
@@ -475,17 +499,11 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
       double voltCalib = 1;
 
       if(chan != 8){ // don't fuck with the clock...
-      time = relativeCableDelays[surf][chan];
-      voltCalib = voltageCalibHarm[surf][chan][labChip];
-#ifdef CALIBRATION
-      /* if(surf==0 && chan==0){ */
-      /* 	printf("Calibration mode...\n"); */
-      /* } */
-#else
-
-#endif
-
+	time = relativeCableDelays[surf][chan];
+	voltCalib = voltageCalibHarm[surf][chan][labChip];
       }
+
+
       if(latestSample<earliestSample) {
 	//We have two RCOs
 	int nextExtra=256;
@@ -779,7 +797,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     /* for(int samp=0; samp< nSamps[surf][8]; samp++){ */
     /*   printf("times[%d][8][%d] = %lf\n", surf, samp, times[surf][8][samp]); */
     /* } */
-    interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
+    interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8],
+    /* interpClocks[surf] = interpolateWaveform(nSamps[surf][8],					      */
     					     volts[surf][8],
     					     times[surf][8],
     					     numUpsampledClockSamples,
@@ -820,8 +839,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
       	newTimes[samp] -= clockJitters[surf];
       }
 
-      //finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan],
-      finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
+      finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan],
+      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan], */
 								      //volts2[surf][chan],
 								      volts[surf][chan],
 								      newTimes,
