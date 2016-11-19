@@ -1115,11 +1115,11 @@ AcqdErrorCode_t setTurfControl(TurfControlAction_t action) {
 	    status+=setTurfioReg(TurfRegControlClear,uvalue);	    
 	    break;
 	case SetPhiTrigMask:
-	  uvalue=phiTrigMask //| (phiTrigMaskH<<16);
+	  uvalue=phiTrigMask; //| (phiTrigMaskH<<16);
 	  status+=setTurfioReg(TurfRegControlPhiMask,uvalue);
 	  break;
 	case SetL2TrigMask:
-	  uvalue=l2TrigMask //| (l2TrigMaskH<<16);
+	  uvalue=l2TrigMask; //| (l2TrigMaskH<<16);
 	  status+=setTurfioReg(TurfRegControlL2TrigMask,uvalue);
 	    break;
 	case SetEventEpoch:
@@ -2744,7 +2744,7 @@ void doTurfRateSum(int flushData) {
   char theFilename[FILENAME_MAX];
   static SummedTurfRateStruct_t sumTurf;
   static int numRates=0;
-  int retVal=0,phi,pol;
+  int retVal=0,phi;//,pol;
   if(!flushData) {
     if(numRates==0) {
       //Need to initialize sumTurf
@@ -4436,7 +4436,7 @@ int checkTurfRates()
   //then check if we need to mask out a phi sector  
   int numLastTurfs=0;
   static int funcCounter=0;
-  int phi=0,tInd=0,pol=0;
+  int phi=0,tInd=0;//,pol=0;
   int l2HitCount[PHI_SECTORS];
   int l2MissCount[PHI_SECTORS];  
   int l3HitCount[PHI_SECTORS];
@@ -4478,24 +4478,24 @@ int checkTurfRates()
     newPhiMask=phiTrigMask;
     newL2TrigMask=l2TrigMask;    
     for(phi=0;phi<PHI_SECTORS;phi++) {
-      if(l3HitCount[phi][0]>dynamicPhiThresholdOverWindow) {
+      if(l3HitCount[phi]>dynamicPhiThresholdOverWindow) {
 	//Got a hot channel
 //	  printf("hot channel %d -- %d\n",phi,l3HitCount[phi]);
 	  newPhiMask |= (1<<phi);
       }
-      if(l3MissCount[phi][0]>dynamicPhiThresholdUnderWindow) {
+      if(l3MissCount[phi]>dynamicPhiThresholdUnderWindow) {
 	//Got a quiet channel
 //	  printf("cold channel %d -- %d\n",phi,l3MissCount[phi]);
 	newPhiMask &= ~(1<<phi);
       }
       
       //RJN need to add L2 something here      
-      if(l2HitCount[phi][0]>dynamicAntThresholdOverWindow) {
+      if(l2HitCount[phi]>dynamicAntThresholdOverWindow) {
 	//Got a hot channel
 //	  printf("hot channel %d -- %d\n",phi,l2HitCount[phi]);
 	  newL2TrigMask |= (1<<phi);
       }
-      if(l2MissCount[phi][0]>dynamicAntThresholdUnderWindow) {
+      if(l2MissCount[phi]>dynamicAntThresholdUnderWindow) {
 	//Got a quiet channel
 //	  printf("cold channel %d -- %d\n",phi,l2MissCount[phi]);
 	newL2TrigMask &= ~(1<<phi);
