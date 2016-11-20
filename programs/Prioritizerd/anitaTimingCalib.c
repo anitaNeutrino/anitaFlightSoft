@@ -15,7 +15,7 @@
   2.) Interpolating the waveforms to give evenly sampled time domains. Uses gsl library.
 
   These functions should do it all, hiding the annoying APIs of the gsl and fftw libraries behind
-  some friendly functions which handle ANITA structs. (It might be quick enough since it's the 
+  some friendly functions which handle ANITA structs. (It might be quick enough since it's the
   combinatorics of the cross-correlatsions of interferometry that makes things slow).
  */
 
@@ -32,40 +32,41 @@
 #define numUpsampledClockSamples 256*upsampleFactor
 #define lengthClockFFT numUpsampledClockSamples*2
 
-gsl_interp_accel *acc;
-const gsl_interp_type *akimaSpline;
-gsl_spline *spline;
+static gsl_interp_accel *acc;
+static const gsl_interp_type *akimaSpline;
+static gsl_spline *spline;
 
-fftw_plan clockPlanForward;
-fftw_plan clockPlanReverse;
+static fftw_plan clockPlanForward;
+static fftw_plan clockPlanReverse;
 
-double justBinByBin[ACTIVE_SURFS][LABRADORS_PER_SURF][2][MAX_NUMBER_SAMPLES];
-double epsilonFromBenS[ACTIVE_SURFS][LABRADORS_PER_SURF][2] = {{{1}}};
-double voltageCalibHarm[ACTIVE_SURFS][CHANNELS_PER_SURF-1][LABRADORS_PER_SURF] = {{{1}}};
-int rcoLatchStart[ACTIVE_SURFS][LABRADORS_PER_SURF];
-int rcoLatchEnd[ACTIVE_SURFS][LABRADORS_PER_SURF];
-double relativeCableDelays[ACTIVE_SURFS][CHANNELS_PER_SURF];
+static double justBinByBin[ACTIVE_SURFS][LABRADORS_PER_SURF][2][MAX_NUMBER_SAMPLES];
+static double epsilonFromBenS[ACTIVE_SURFS][LABRADORS_PER_SURF][2] = {{{1}}};
+static double voltageCalibHarm[ACTIVE_SURFS][CHANNELS_PER_SURF-1][LABRADORS_PER_SURF] = {{{1}}};
+static int rcoLatchStart[ACTIVE_SURFS][LABRADORS_PER_SURF];
+static int rcoLatchEnd[ACTIVE_SURFS][LABRADORS_PER_SURF];
+static double relativeCableDelays[ACTIVE_SURFS][CHANNELS_PER_SURF];
 
-double volts[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
-int nSamps[ACTIVE_SURFS][CHANNELS_PER_SURF];
+static double volts[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+static int nSamps[ACTIVE_SURFS][CHANNELS_PER_SURF];
 
-double times[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
+static double times[ACTIVE_SURFS][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 
-double clockJitters[ACTIVE_SURFS];
+static double clockJitters[ACTIVE_SURFS];
 //int nClockSamps[ACTIVE_SURFS];
 
-int whbs[ACTIVE_SURFS];
-int earliestSampleInds[ACTIVE_SURFS];
-int latestSampleInds[ACTIVE_SURFS];
-int rcos[ACTIVE_SURFS];
-int labChips[ACTIVE_SURFS];
+static int whbs[ACTIVE_SURFS];
+static int earliestSampleInds[ACTIVE_SURFS];
+static int latestSampleInds[ACTIVE_SURFS];
+static int rcos[ACTIVE_SURFS];
+static int labChips[ACTIVE_SURFS];
 
-double* clockTimeDomain;
-fftw_complex* clockFreqDomain;
-fftw_complex* clockFreqHolder;
+static double* clockTimeDomain;
+static fftw_complex* clockFreqDomain;
+static fftw_complex* clockFreqHolder;
 
-int positiveSaturation = 1000;
-int negativeSaturation = -1000;
+static int positiveSaturation = 1000;
+static int negativeSaturation = -1000;
+static float maxBottomToTopRatio = 5;
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
@@ -73,29 +74,42 @@ void prepareTimingCalibThings(){
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
 
-  #ifdef __APPLE__
-  readInCalibratedDeltaTs("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/justBinByBin.dat");
-  readInEpsilons("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/epsilonFromBenS.dat");
-  readInRcoLatchDelay("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/rcoLatchDelay.dat");
-  readInRelativeCableDelay("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
-  readInVoltageCalib("/Users/benstrutt/UCL/ANITA/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
-  #else
-  readInCalibratedDeltaTs("/home/anita/flightSoft/programs/Prioritizerd/justBinByBin.dat");
-  readInEpsilons("/home/anita/flightSoft/programs/Prioritizerd/epsilonFromBenS.dat");
-  readInRcoLatchDelay("/home/anita/flightSoft/programs/Prioritizerd/rcoLatchDelay.dat");
-  readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
-  readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
-  #endif
+  const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR");
+
+  char justBinByBinFileName[FILENAME_MAX];
+  sprintf(justBinByBinFileName, "%s/programs/Prioritizerd/justBinByBin.dat", flightSoftDir);
+  readInCalibratedDeltaTs(justBinByBinFileName);
+
+  //readInEpsilons("/home/anita/flightSoft/programs/Prioritizerd/epsilonFromBenS.dat");
+  char epsilonFromBenSFileName[FILENAME_MAX];
+  sprintf(epsilonFromBenSFileName, "%s/programs/Prioritizerd/epsilonFromBenS.dat", flightSoftDir);
+  readInEpsilons(epsilonFromBenSFileName);
+
+  //readInRcoLatchDelay("/home/anita/flightSoft/programs/Prioritizerd/rcoLatchDelay.dat");
+  char rcoLatchDelayFileName[FILENAME_MAX];
+  sprintf(rcoLatchDelayFileName, "%s/programs/Prioritizerd/rcoLatchDelay.dat", flightSoftDir);
+  readInRcoLatchDelay(rcoLatchDelayFileName);
+
+
+  //readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
+  char relativeCableDelaysFileName[FILENAME_MAX];
+  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelays.dat", flightSoftDir);
+  readInRelativeCableDelay(relativeCableDelaysFileName);
+
+  //readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
+  char simpleVoltageCalibrationHarmFileName[FILENAME_MAX];
+  sprintf(simpleVoltageCalibrationHarmFileName, "%s/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt", flightSoftDir);
+  readInVoltageCalib(simpleVoltageCalibrationHarmFileName);
+
 
   clockTimeDomain = (double*) fftw_malloc(sizeof(double)*lengthClockFFT);
   clockFreqDomain = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT);
   clockFreqHolder = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT);
-  clockPlanForward = fftw_plan_dft_r2c_1d(lengthClockFFT, clockTimeDomain, 
+  clockPlanForward = fftw_plan_dft_r2c_1d(lengthClockFFT, clockTimeDomain,
 					  clockFreqDomain, FFTW_MEASURE);
-  clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain, 
+  clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain,
 					  clockTimeDomain, FFTW_MEASURE);
 
-  #ifndef __APPLE__
   kvpReset();
   KvpErrorCode err = KVP_E_OK;
   err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
@@ -104,7 +118,7 @@ void prepareTimingCalibThings(){
   }
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
-  #endif
+  maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 100);
 
   /* preCalculateTimeArrays(); */
 }
@@ -130,12 +144,12 @@ void tidyUpTimingCalibThings(){
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Interpolation functions. GSL for fancy things. */
 /*--------------------------------------------------------------------------------------------------------------*/
-double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes, 
+double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
 			    int nInterp, double t0interp, double dtNsInterp){
 
   spline = gsl_spline_alloc (akimaSpline, nRaw);
   gsl_spline_init (spline, unevenTimes, rawWave, nRaw);
-  
+
   double* interpWave = (double*) malloc(nInterp*sizeof(double));
 
   float time = t0interp;
@@ -180,7 +194,7 @@ double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
 
 
 
-double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes, 
+double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
 				    int nInterp, double t0interp, double dtNsInterp){
 
   double* interpWave = (double*) malloc(nInterp*sizeof(double));
@@ -189,7 +203,7 @@ double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTim
   int voltsSamp = 0;
   int t1Ind = 0;
   int t2Ind = 0;
-  
+
   for(voltsSamp=0; voltsSamp<nInterp; voltsSamp++){
 
     while(unevenTimes[t2Ind] <= time && t2Ind < nRaw-1){
@@ -228,6 +242,12 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
     /* by definition */
     return 0;
   }
+
+
+  /* if(surf>0){ */
+  /*   /\* by definition *\/ */
+  /*   return 0; */
+  /* } */
 
   const double clockFreq_MHz = 33;
   double clockPeriod_ns = 1./(clockFreq_MHz*1e-3);
@@ -288,7 +308,7 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
       /* (a-ib)(c+id) = ac + iad - ibc + db = (ac + bd) + i(ad - bc)  */
 
       X[0] = (clockFreqDomain[freqInd][0]*clockFreqHolder[freqInd][0] + clockFreqDomain[freqInd][1]*clockFreqHolder[freqInd][1]);
-    
+
       X[1] = (-clockFreqDomain[freqInd][0]*clockFreqHolder[freqInd][1] + clockFreqDomain[freqInd][1]*clockFreqHolder[freqInd][0]);
     }
 
@@ -297,10 +317,10 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
 
     freq += deltaF_MHz;
   }
-  
+
   fftw_execute(clockPlanReverse);
   /*So now cross correlations should be in the clockTimeDomain array*/
-  
+
   /* Let's give them their own array */
   double* crossCorrelatedClocks = (double*) malloc(sizeof(double)*lengthClockFFT);
   //  double* crossCorrelatedClocks = malloc(sizeof(double)*numSamples);
@@ -319,7 +339,7 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
     else {
       //Negative
       //      xVals[i-(N/2)]=((samp-lengthFFT)*deltaT)+offset;
-      //      yVals[i-(N/2)]=corVals[i];	  
+      //      yVals[i-(N/2)]=corVals[i];
       crossCorrelatedClocks[samp-(lengthClockFFT/2)]=clockTimeDomain[samp];
       xVals[samp-(lengthClockFFT/2)] = (samp-lengthClockFFT)*deltaT_ns;
     }
@@ -347,7 +367,7 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
 
 
 int findIndexOfMaximumWithinLimits(double* array, int startInd, int stopInd){
-  /* 
+  /*
      Returns -1 on failure.
   */
   int i=0;
@@ -378,7 +398,7 @@ int getRco(PedSubbedEventBody_t pedSubBody, int chanInd){
 
 }
 
-int getEarliestSample(PedSubbedEventBody_t pedSubBody, int chanInd){ 
+int getEarliestSample(PedSubbedEventBody_t pedSubBody, int chanInd){
   int lastHitBus = getLastHitBus(pedSubBody, chanInd);
   int firstHitbus = getFirstHitBus(pedSubBody, chanInd);
   int wrappedHitBus = getWrappedHitBus(pedSubBody, chanInd);
@@ -394,7 +414,7 @@ int getEarliestSample(PedSubbedEventBody_t pedSubBody, int chanInd){
   return 1;
 }
 
-int getLatestSample(PedSubbedEventBody_t pedSubBody, int chanInd){ 
+int getLatestSample(PedSubbedEventBody_t pedSubBody, int chanInd){
   int lastHitBus = getLastHitBus(pedSubBody, chanInd);
   int firstHitbus = getFirstHitBus(pedSubBody, chanInd);
   int wrappedHitBus = getWrappedHitBus(pedSubBody, chanInd);
@@ -409,7 +429,7 @@ int getLatestSample(PedSubbedEventBody_t pedSubBody, int chanInd){
   return 259;
 }
 
-int getLastHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){ 
+int getLastHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){
   int lastHitBus = pedSubBody.channel[chanInd].header.lastHitbus;
   int firstHitBus = getFirstHitBus(pedSubBody, chanInd);
   if(lastHitBus < firstHitBus){
@@ -417,10 +437,10 @@ int getLastHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){
   }
   return lastHitBus;
 }
-int getFirstHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){ 
+int getFirstHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){
   return pedSubBody.channel[chanInd].header.firstHitbus;
 }
-int getWrappedHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){ 
+int getWrappedHitBus(PedSubbedEventBody_t pedSubBody, int chanInd){
   return (pedSubBody.channel[chanInd].header.chipIdFlag&0x8)>>3;
 }
 
@@ -436,7 +456,7 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
     int chan=0;
     for(chan=0;chan<CHANNELS_PER_SURF;chan++) {
       int chanIndex=surf*CHANNELS_PER_SURF + chan;
-      
+
       int labChip = labChips[surf];
       int rco = rcos[surf];
       int earliestSample = earliestSampleInds[surf];
@@ -453,17 +473,14 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
       int index=0;
       double time=0;
       double voltCalib = 1;
-      int orientFactor = 1; /* Injecting directly, don't care that some antennas are flipped.*/
 
       if(chan != 8){ // don't fuck with the clock...
-	time = relativeCableDelays[surf][chan];
-	voltCalib = voltageCalibHarm[surf][chan][labChip]*orientFactor;
-	int ant = abs(surfToAntMap[surf][chan]);
-	orientFactor = ant <= 16 && chan!=8 ? -1 : 1; /* Top row of antennas are flipped, but don't flip the clock! */
+      time = relativeCableDelays[surf][chan];
+      voltCalib = voltageCalibHarm[surf][chan][labChip];
 #ifdef CALIBRATION
-      if(surf==0 && chan==0){
-	printf("Calibration mode...\n");
-      }
+      /* if(surf==0 && chan==0){ */
+      /* 	printf("Calibration mode...\n"); */
+      /* } */
 #else
 
 #endif
@@ -495,8 +512,8 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 	  nextExtra=260;
 	  extraTime=0;
 	}
-	
-	
+
+
 	if(latestSample>=1) {
 	  /* We are going to ignore sample zero for now */
 	  time+=(justBinByBin[surf][labChip][rco][0])*tempFactor;
@@ -543,20 +560,10 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
     /* Okay now add Stephen's check to make sure that all */
     /*    the channels on the SURF have the same number of points. */
     for(chan=0;chan<8;chan++) {
-      if(nSamps[surf][chan]<nSamps[surf][8]) {
-    	nSamps[surf][chan]=nSamps[surf][8];
-    	int samp=0;
-    	for(samp=0;samp<nSamps[surf][8];samp++) {
-    	  times[surf][chan][samp]=times[surf][8][samp];
-    	}
-      }
 
-      if(nSamps[surf][chan]>nSamps[surf][8]) {
-    	nSamps[surf][chan]=nSamps[surf][8];
-    	int samp=0;
-    	for(samp=0;samp<nSamps[surf][8];samp++) {
-    	  times[surf][chan][samp]=times[surf][8][samp];
-    	}
+      if(nSamps[surf][chan]!=nSamps[surf][8]){
+        nSamps[surf][chan]=nSamps[surf][8];
+        memcpy( times[surf][chan], times[surf][8], nSamps[surf][8] * sizeof(double));
       }
     }
     /* int samp=0; */
@@ -564,23 +571,19 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
     /*   printf("surf %d clock[%d] = %lf\t", surf, samp, volts[surf][8][samp]); */
     /*   printf("surf %d clockTimes[%d] = %lf\n", surf, samp, times[surf][8][samp]); */
     /* } */
-    
+
   }
 }
 
 
 
-#ifdef __APPLE__
-void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
-			 PedSubbedEventBody_t pedSubBody,
-			 double* finalVolts[],
-			 double* finalTimes){
-#else
 void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 			 PedSubbedEventBody_t pedSubBody,
 			 double* finalVolts[]){
-#endif
 
+
+  double maxVppTop = 0;
+  double maxVppBottom = 0;
   theHeader->prioritizerStuff = 0;
 
   /* printf("Before... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
@@ -605,18 +608,53 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
+  /* printf("After... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
+  processEventAG(pedSubBody);
+
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     int chan=0;
+    int samp = 0;
     for(chan=0; chan<8; chan++){
       int chanIndex=surf*CHANNELS_PER_SURF + chan;
-      if((pedSubBody.channel[chanIndex].xMax > positiveSaturation || pedSubBody.channel[chanIndex].xMin < negativeSaturation) && theHeader->prioritizerStuff == 0 && chanIndex!=ALPHA_CHAN_INDEX){
-	theHeader->prioritizerStuff = 1;
+      double vmax = -1e9;
+      double vmin =  1e9;
+      double vpp = 0;
+      int ant = abs(surfToAntMap[surf][chan]);
+      if((pedSubBody.channel[chanIndex].xMax > positiveSaturation || pedSubBody.channel[chanIndex].xMin < negativeSaturation) && theHeader->prioritizerStuff == 0){
+        theHeader->prioritizerStuff = 1;
       }
+
+
+      //now check for blasts
+
+      if (ant < 16 || ant >= 32)
+      {
+        for (samp = 0; samp < nSamps[surf][chan]; samp++)
+        {
+          double v = volts[surf][chan][samp] ;
+          if ( v < vmin) vmin = v;
+          if ( v > vmax) vmax = v;
+        }
+        vpp = vmax-vmin;
+
+        if (ant < 16 && vpp > maxVppTop) maxVppTop = vpp;
+        else if (ant >= 32 && vpp > maxVppBottom) maxVppBottom = vpp;
+      }
+
     }
   }
 
-  /* printf("After... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
-  processEventAG(pedSubBody);
+  if (maxVppBottom / maxVppTop > maxBottomToTopRatio)
+  {
+    theHeader->prioritizerStuff |= 2;
+  }
+
+
+
+
+
+
+
 
 
   /* int numUpZC[ACTIVE_SURFS] = {0}; */
@@ -666,7 +704,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   /*   /\* } *\/ */
   /* } */
 
-  
+
   /* clockJitters[0] = 0; */
   /* clockJitters[1] = 2.09135; */
   /* clockJitters[2] = 0.649038; */
@@ -714,7 +752,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
   /* Upsample clocks */
   double* interpClocks[ACTIVE_SURFS];
-  for(surf=0; surf<ACTIVE_SURFS; surf++){  
+  for(surf=0; surf<ACTIVE_SURFS; surf++){
     /* double* tempClock = interpolateWaveform(nSamps[surf][8], */
     /* 					    volts[surf][8], */
     /* 					    times[surf][8], */
@@ -788,7 +826,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 								      volts[surf][chan],
 								      newTimes,
 								      //times[surf][chan],
-								      256, 
+								      256,
 								      startTime,
 								      deltaT);
 
@@ -797,13 +835,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
 
 
-#ifdef __APPLE__
-  int samp=0;
-  for(samp=0; samp<256; samp++){
-    finalTimes[samp] = startTime + samp*deltaT;
-    /* printf("finalTimes[%d] = %lf\n", samp, finalTimes[samp]); */
-  }
-#endif
   /* Tidy up. */
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     free(interpClocks[surf]);
@@ -820,7 +851,7 @@ double* simpleBandPass(double* volts, int length, double dt, double highPassMHz,
 
   fftw_complex* fftOut = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*NUM_SAMPLES);
   double* fftIn = (double*) malloc(sizeof(double)*NUM_SAMPLES);
-  
+
   int samp=0;
   for(samp=0; samp<length; samp++){
     fftIn[samp] = volts[samp];
@@ -857,7 +888,7 @@ double* simpleBandPass(double* volts, int length, double dt, double highPassMHz,
   fftw_plan thePlan2 = fftw_plan_dft_c2r_1d(NUM_SAMPLES,fftOut,fftIn,FFTW_MEASURE);
   fftw_execute(thePlan2);
   fftw_free(fftOut);
-  fftw_destroy_plan(thePlan2);  
+  fftw_destroy_plan(thePlan2);
 
   return fftIn;
 }
@@ -891,7 +922,7 @@ void readInCalibratedDeltaTs(const char* fileName){
       char word[100];
       fscanf(inFile, "%s ", word);
     }
-  }  
+  }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }

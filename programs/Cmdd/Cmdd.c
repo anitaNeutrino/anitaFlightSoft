@@ -36,7 +36,7 @@ int executePlaybackCommand(int command, unsigned int value1, unsigned int value2
 int executeAcqdRateCommand(int command, unsigned char args[8]);
 int executeAcqdExtraCommand(int command, unsigned char arg);
 int executeGpsPhiMaskCommand(int command, unsigned char args[5]);
-int executeSipdControlCommand(int command, unsigned char args[2]);
+int executeSipdControlCommand(int command, unsigned char args[3]);
 int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
 int executeRTLCommand(int command, unsigned char arg[2]); 
@@ -1833,6 +1833,11 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
 int executePrioritizerdCommand(int command, int value, int value2)
 {
   time_t rawtime;
+  union 
+  {
+    unsigned int u; 
+    float f;
+  } cheat; 
   readPrioritizerdConfig();
   switch(command) {
   case PRI_PANIC_QUEUE_LENGTH:
@@ -1888,6 +1893,12 @@ int executePrioritizerdCommand(int command, int value, int value2)
   case PRI_NEG_SATUATION:
     configModifyInt("Prioritizerd.config","prioritizerd","negativeSaturation",-1*value2,&rawtime);
     break;	    	   
+  case PRI_BLAST_RATIO:
+    //TODO: check this! 
+    cheat.u = (value & 0xffff)  | (( value2 & 0xffff) << 16); 
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastMaxBottomToTopRatio",cheat.f,&rawtime);
+    break;	    	   
+
   default:
     return -1;
   }	    
@@ -2213,10 +2224,10 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_ENABLE_DYNAMIC_ANT_MASK: 	    
+  case ACQD_RATE_ENABLE_DYNAMIC_L2_MASK: 	    
     utemp=(args[0]);	    
     ivalue[0]=utemp;
-    configModifyInt("Acqd.config","rates","enableDynamicAntMasking",ivalue[0],&rawtime);
+    configModifyInt("Acqd.config","rates","enableDynamicL2Masking",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2240,7 +2251,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_ANT_MASK_OVER: 	    
+  case ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER: 	    
     utemp=(args[0]);	    
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2251,12 +2262,12 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<24);
     utemp=(args[4]);	          
     ivalue[0]=utemp; //This is the window size in seconds
-    configModifyUnsignedInt("Acqd.config","rates","dynamicAntThresholdOverRate",uvalue[0],&rawtime);
-    configModifyInt("Acqd.config","rates","dynamicAntThresholdOverWindow",ivalue[0],&rawtime);
+    configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdOverRate",uvalue[0],&rawtime);
+    configModifyInt("Acqd.config","rates","dynamicL2ThresholdOverWindow",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_ANT_MASK_UNDER: 		    
+  case ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER: 		    
     utemp=(args[0]);	    
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2267,8 +2278,8 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<24);
     utemp=(args[4]);	          
     ivalue[0]=utemp; //This is the window size in seconds
-    configModifyUnsignedInt("Acqd.config","rates","dynamicAntThresholdUnderRate",uvalue[0],&rawtime);
-    configModifyInt("Acqd.config","rates","dynamicAntThresholdUnderWindow",ivalue[0],&rawtime);
+    configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdUnderRate",uvalue[0],&rawtime);
+    configModifyInt("Acqd.config","rates","dynamicL2ThresholdUnderWindow",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;    
@@ -2472,7 +2483,7 @@ int executeSipdControlCommand(int command, unsigned char args[3])
     return rawtime;
   case SIPD_THROTTLE_RATE:
     ivalue=args[0]+(args[1]<<8); 
-    if(ivalue>680) return -1;
+    //    if(ivalue>680) return -1;
     configModifyInt("SIPd.config","sipd","throttleRate",ivalue,&rawtime);	
     retVal=sendSignal(ID_SIPD,SIGUSR1);    
     if(retVal!=0) return 0;
@@ -3792,35 +3803,11 @@ static void char_arr_to_int_arr(int * vint, const unsigned char * vchar, int len
   }
 }
 
-static void fillDbArray(float * dbArray, const unsigned char * vchar, int length)
-{
-  int i; 
-  for (i = 0; i < length; i++)
-  {
-    short as_short = vchar[2*i] + (vchar[2*i+1] << 8); 
-    dbArray[i] = as_short  * 64.15 / 32767;  //TODO this should be defined somewhere better
-  }
-
-}
-
-static void fillBinArray(float * binArray, const unsigned char * vchar, int length)
-{
-  int i; 
-  for (i = 0; i < length; i++)
-  {
-    short as_short = vchar[2*i] + (vchar[2*i+1] << 8); 
-    binArray[i] = as_short / 100.;  //TODO this should be defined somewhere better
-  }
-}
-
-
 
 int executeTuffCommand(int command, unsigned char arg[6]) 
 {
   time_t when; 
   int notch_array[2*NUM_TUFF_NOTCHES]; 
-  float db_array[NUM_TUFF_NOTCHES]; 
-  float bin_array[NUM_TUFF_NOTCHES]; 
   unsigned short cmd; 
 
   switch(command)
@@ -3848,18 +3835,6 @@ int executeTuffCommand(int command, unsigned char arg[6])
     case TUFF_SET_TELEM_AFTER_CHANGE: 
        configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when); 
        break;
-    case TUFF_ADJUST_ACCORDING_TO_GPU: 
-       char_arr_to_int_arr(notch_array, arg, NUM_TUFF_NOTCHES); 
-       configModifyIntArray("Tuffd.config","notch","adjustAccordingToGpu", notch_array, NUM_TUFF_NOTCHES, &when); 
-       break; 
-    case TUFF_GPU_BINS: 
-       fillBinArray(bin_array, arg, NUM_TUFF_NOTCHES); 
-       configModifyFloatArray("Tuffd.config","notch","gpuBins", bin_array, NUM_TUFF_NOTCHES, &when); 
-       break; 
-    case TUFF_GPU_THRESHOLD:
-       fillDbArray(db_array, arg, NUM_TUFF_NOTCHES); 
-       configModifyFloatArray("Tuffd.config","notch","gpuThresholds", db_array, NUM_TUFF_NOTCHES, &when); 
-       break; 
     default: 
       syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);
       return 0; 

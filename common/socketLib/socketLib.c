@@ -993,7 +993,7 @@ int isSocketReadyForSending(int filedes,struct timeval *waitTimePtr)
     FD_ZERO (&active_fd_set);
     FD_SET (filedes, &active_fd_set);
     write_fd_set = active_fd_set;
-    numReady=select (FD_SETSIZE, NULL, &write_fd_set, NULL, waitTimePtr);
+    numReady=select (filedes+1, NULL, &write_fd_set, NULL, waitTimePtr);
     if ( numReady< 0)
     {
 	syslog (LOG_ERR,"select on %d: %s",filedes,strerror(errno));
@@ -1034,7 +1034,7 @@ int isSocketReadyForReceiving(int filedes,struct timeval *waitTimePtr)
     FD_ZERO (&active_fd_set);
     FD_SET (filedes, &active_fd_set);
     read_fd_set = active_fd_set;
-    numReady=select (FD_SETSIZE, &read_fd_set, NULL, NULL, waitTimePtr);
+    numReady=select (filedes+1, &read_fd_set, NULL, NULL, waitTimePtr);
     if ( numReady< 0)
     {
 	syslog (LOG_ERR,"select on %d: %s",filedes,strerror(errno));

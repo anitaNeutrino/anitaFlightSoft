@@ -5,6 +5,7 @@
 #include "linkWatchLib/linkWatchLib.h"
 #include "kvpLib/keyValuePair.h" 
 #include <unistd.h>
+#include <dirent.h> 
 #include <time.h>
 #include <execinfo.h>
 #include <math.h>
@@ -33,9 +34,9 @@ static int telemeterAfterChange = 1;
 
 
 static int zeroes[NUM_TUFF_NOTCHES]; 
-static int adjustAccordingToGPU[NUM_TUFF_NOTCHES]; 
-static float gpu_bins[NUM_TUFF_NOTCHES];   
-static float tuff_threshold[NUM_TUFF_NOTCHES]; 
+static int adjustAccordingToHeading[NUM_TUFF_NOTCHES]; 
+static short degreesFromNorthDangerZone[NUM_TUFF_NOTCHES]; 
+
 
 
 /** The device descriptor */ 
@@ -53,174 +54,314 @@ static AnitaHkWriterStruct_t tuffRawCmdWriter;
 static TuffNotchStatus_t tuffStruct; 
 static TuffNotchStatus_t lastTuffStruct; 
 
-static float vals[NUM_PHI][NUM_TUFF_NOTCHES]; 
-
 
 static int telemeterCount = 0; 
 
-int analyzeGPUSpectrum()
+
+
+//Store 10 values of heading history
+
+#define NUM_HEADINGS 10 
+static float headingHistoryA[NUM_HEADINGS]; 
+static float headingHistoryB[NUM_HEADINGS]; 
+static float headingTimesA[NUM_HEADINGS]; 
+static float headingTimesB[NUM_HEADINGS]; 
+static float headingWeightsA[NUM_HEADINGS];
+static float headingWeightsB[NUM_HEADINGS];
+static float headingLatitudeG12; 
+static float headingLongitudeG12; 
+static float headingAltitudeG12; 
+static float headingHistoryMag[NUM_HEADINGS];
+static float headingTimesMag[NUM_HEADINGS];
+static float headingWeightsMag[NUM_HEADINGS];
+static int headingIndexA = -1; 
+static int headingIndexB = -1; 
+static int headingIndexMag = -1; 
+
+int weightedLinearRegression(float heading[NUM_HEADINGS], float times[NUM_HEADINGS], float weights[NUM_HEADINGS], float regressed[4]);
+
+
+static float tdiff(float *tod1, float tod2) 
 {
-  int notch; 
-  int bin0[NUM_TUFF_NOTCHES]; 
-  int bin1[NUM_TUFF_NOTCHES]; 
-  int min_phi_above_threshold[NUM_TUFF_NOTCHES]; 
-  int max_phi_above_threshold[NUM_TUFF_NOTCHES]; 
-  float frac[NUM_TUFF_NOTCHES]; 
-  int phi; 
-  char theFilename[FILENAME_MAX];
 
-  //read in the spectra, compute the values 
+  float diff; 
+
+  // invalid 
+  if (*tod1 < 0 || tod2 < 0) return -999999; 
 
 
-  for (notch = 0; notch < NUM_TUFF_NOTCHES; notch++)  
+  diff = *tod1- tod2; 
+
+  // oops, we wrapped around midnight 
+  if (diff > 12*60*60) 
   {
-    if (!adjustAccordingToGPU[notch]) continue; 
-    bin0[notch] = gpu_bins[notch]; 
-    bin1[notch] = gpu_bins[notch] + 1; 
-    frac[notch] = gpu_bins[notch] - ((int) gpu_bins[notch]); 
-    min_phi_above_threshold[notch] = -1; 
-    max_phi_above_threshold[notch] = -1; 
+    diff -= 24*60*60; 
+  }
+  else if (diff < -12*60*60)
+  {
+    diff += 24*60*60; 
   }
 
-  for (phi = 0; phi < NUM_PHI; phi++) 
+  *tod1 = tod2 +diff; 
+
+  return diff; 
+}
+
+
+
+int analyzeHeading() 
+{
+  char buf[FILENAME_MAX]; 
+  struct dirent ** list; 
+  int i; 
+
+  if (headingIndexA < 0) 
   {
-    int retVal; 
-    //make links to try to avoid any stupid race condition
-    sprintf(theFilename,"%s/gpuPowSpec_phi%d.dat",GPU_SPECTRUM_DIR, phi); 
-    retVal=makeLink(theFilename,GPU_SPECTRUM_LINK_DIR);
-    if (!retVal)
+    // initialize to uninitialized
+    for (i = 0; i < NUM_HEADINGS; i++) 
     {
-      syslog(LOG_ERR, "Tuffd: Could not calculate notches from phi spectra because could not load one of them. Abandoning effort\n"); 
-      return 1; 
+      headingHistoryA[i]     = -1; 
+      headingTimesA[i]       = -1; 
+      headingWeightsA[i]     = -1;
+      headingHistoryB[i]     = -1; 
+      headingTimesB[i]       = -1;
+      headingWeightsB[i]     = -1;      
+      headingHistoryMag[i]   = -1; 
+      headingTimesMag[i]     = -1;
+      headingWeightsMag[i]   = -1;
+ 
     }
+
+    headingLatitudeG12  = -1;
+    headingLongitudeG12 = -1;
+    headingAltitudeG12  = -1;
+    headingIndexA = 0; 
+    headingIndexB = 0; 
+    headingIndexMag = 0; 
   }
 
-  for (phi = 0; phi < NUM_PHI; phi++) 
+  // read in headings from ADU5 
+
+  i = scandir(GPSD_HEADING_LINK_DIR, &list,0,&alphasort);  
+
+   if (i < 0) 
+   {
+     syslog(LOG_WARNING,"Trying to analyze headings, but GPSD_HEADING_LINK_DIR  doesn't exist)"); 
+     free(list); 
+     return 0; 
+   }
+   
+   
+  //We do this in reverse order , which means we will see things in reverse time order
+  //which is what we want
+  while(i--) 
   {
-    GpuPhiSectorPowerSpectrumStruct_t spectrum; 
-    int ring, pol; 
-    int retVal; 
-    float val = 0;
-    sprintf(theFilename,"%s/gpuPowSpec_phi%d.dat",GPU_SPECTRUM_LINK_DIR, phi); 
-    if (genericReadOfFile((unsigned char * ) &spectrum, theFilename, sizeof(spectrum)) == -1) 
-    {
-      syslog(LOG_ERR, "Trouble reading %s\n", theFilename); 
-    }
-
-    for (notch = 0; notch < NUM_TUFF_NOTCHES; notch++) 
-    {
-      if (!adjustAccordingToGPU[notch]) continue; 
-      for (ring = 0; ring < NUM_ANTENNA_RINGS; ring++)
-      {
-        for (pol = 0; pol < 2 ;pol++) 
-        {
-          /* Scale by short -> float conversion, then log to linear, then divide by 6 (3 antennas * 2 pols) */ 
-          double linear_val0 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin0[notch]] * 64.15/32767. / 10.)/6.;
-          double linear_val1 =  pow(10,spectrum.powSpectra[ring][pol].bins[bin1[notch]] * 64.15/32767. / 10.)/6.;
-
-          val += (1-frac[notch]) * linear_val0 + (frac[notch]) * linear_val1; 
-        }
-      }
-
-
-
-      vals[phi][notch] = val; 
-
-      if (val > tuff_threshold[notch]) 
-      {
-        if (min_phi_above_threshold[notch] == -1) 
-        {
-          min_phi_above_threshold[notch] = phi; 
-        }
-
-        if (phi > max_phi_above_threshold[notch]) 
-        {
-          max_phi_above_threshold[notch] = phi; 
-        }
-      }
-
-      printf("Total power in phi sector %d, notch %d is %f\n", phi, notch, val); 
-    }
-
-
+    float tod; 
+    int nASeen   = 0; 
+    int nBSeen   = 0;
+    int Apast    = 0; 
+    int Bpast    = 0;
+    bool readG12 = false;
     
-    retVal = removeFile(theFilename); 
-    if (retVal) 
+    GpsAdu5PatStruct_t pat;
+    GpsG12PosStruct_t  pos;
+    
+    //this is a pat 
+    if (strstr(list[i]->d_name,"pat"))
     {
-      syslog(LOG_ERR, "Could not remove file %s\n",theFilename); 
-    }
+      sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
+
+      //this is ADU5A and we haven't seen more than NUM_HEADINGS things
+      if(strstr(list[i]->d_name,"patA") && nASeen++ < NUM_HEADINGS)
+      {
+        // we don't need to read stuff in the past
+        if (Apast) continue; 
+
+        if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
+        {
+          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+          continue; 
+        }
+        tod = pat.timeOfDay/1000. ; 
+
+          //only add it if at least half a second newer than last value in A 
+        if (headingTimesA[headingIndexA]  < 0 || tdiff(&tod, headingTimesA[headingIndexA]) > 0.5)
+        {
+          headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
+          headingTimesA[headingIndexA]   = tod;
+          headingHistoryA[headingIndexA] = pat.heading;
+          headingWeightsA[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
+        }
+        else //since we're in reverse order, we don't have to read in any others 
+        {
+          Apast = 1; 
+        }
+
+      }
+
+      //this is ADU5B and we haven't seen more than NUM_HEADINGS things
+      else if(strstr(list[i]->d_name,"patB") && nBSeen++ < NUM_HEADINGS)
+      {
+
+        if (Bpast) continue; 
+
+        if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
+        {
+          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+          continue; 
+        }
+
+        tod =  pat.timeOfDay/1000; 
+
+        if (headingTimesB[headingIndexB] < 0 || tdiff(&tod, headingTimesB[headingIndexB]) > 0.5)
+        {
+          headingIndexB = (headingIndexB + 1) % NUM_HEADINGS; 
+          headingTimesB[headingIndexB]   = tod; 
+          headingHistoryB[headingIndexB] = pat.heading;
+          headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
+        }
+      }
+      else  if (strstr(list[i]->d_name,"pos") && !readG12)
+	{
+	  sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
+	  
+	  if (genericReadOfFile((unsigned char *) &pos, buf, sizeof(pos)) == -1)
+	    {
+	      syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+	    }
+	  
+	  headingLatitudeG12   = pos.latitude;
+	  headingLongitudeG12  = pos.longitude;
+	  headingAltitudeG12   = pos.altitude;
+	  readG12 = true;
+	}
+      
+      else //weird file, or we have seen too many of these 
+	{
+	  //delete the link and the file
+        if(!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+
+        }
+        sprintf(buf,"%s/%s",GPSD_HEADING_DIR, list[i]->d_name); 
+        if (!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+        }
+      }
+    }    
   }
 
-  /**
-  *
-  * Now we have all the values. The strategy for picking 
-  * the filtered sectors will be to find all sectors above threshold and 
-  * then pick whichever maximum range that covers all of them has the higher average
-  *
-  *
-  * TODO: Perhaps there should be an option to OR the automatic notches with the
-  * notches from the config. 
-  *
-  */ 
+  free(list); 
 
-  for (notch = 0; notch < NUM_TUFF_NOTCHES; notch ++) 
+
+  //now read and process headings from magnetometer 
+  
+  i = scandir(MAGNETOMETER_LINK_DIR, &list,0,alphasort); 
+  if (i < 0) 
   {
+    syslog(LOG_WARNING,"Trying to analyze headings, but MAGNETOMETER_LINK_DIR  doesn't exist)"); 
+    free(list); 
+    return 0; 
+  }
 
-    if (!adjustAccordingToGPU[notch]) continue; 
-    // no phi sectors above thresholds, no notch needed
-    if (min_phi_above_threshold[notch] ==-1) 
+
+  while(i--) 
+  {
+    double time; 
+    int nseen = 0; 
+    int past = 0;
+    TimedMagnetometerDataStruct_t magdata; 
+    sprintf(buf, "%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
+
+    if (nseen++ < NUM_HEADINGS) 
     {
-      tuffStruct.startSectors[notch] = 16; 
-      tuffStruct.endSectors[notch] = 16; 
-    }
+      if(past) continue; 
 
-    //only one phi sector to mask 
-    else if (min_phi_above_threshold[notch] == max_phi_above_threshold[notch])
-    {
-      tuffStruct.startSectors[notch] = min_phi_above_threshold[notch]; 
-      tuffStruct.startSectors[notch] = min_phi_above_threshold[notch]; 
-        
-    }
+      if (genericReadOfFile((unsigned char*) &magdata,buf, sizeof(magdata))  == -1)
+      {
+         syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+         continue; 
+      }
+      time = magdata.unixTime + magdata.unixTime * 1e-6; 
 
-    // check which way has the higher average
+      if (headingTimesMag[headingIndexMag] < 0 || (time - headingTimesB[headingIndexMag] > 0.5))
+      {
+        headingIndexMag = (headingIndexMag + 1 ) % NUM_HEADINGS; 
+        headingTimesMag[headingIndexMag] = time; 
+
+        //TODO compute heading! 
+
+      }
+    }
     else
     {
-      float sum_increasing;  
-      float sum_decreasing; 
-      int n_increasing = max_phi_above_threshold[notch]+1 - min_phi_above_threshold[notch]; 
-      int n_decreasing = 2+ NUM_PHI - n_increasing; 
+        //delete the link and the file
+        if(!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
 
-      for (phi = min_phi_above_threshold[notch]; phi <= max_phi_above_threshold[notch]; phi++) 
-      {
-        sum_increasing += vals[phi][notch];
-      }
-
-      for (phi = max_phi_above_threshold[notch]; phi <= min_phi_above_threshold[notch] + NUM_PHI; phi++)
-
-      {
-        sum_decreasing += vals[phi % NUM_PHI][notch]; 
-      }
-
-
-      if (sum_increasing / n_increasing > sum_decreasing / n_decreasing) 
-      {
-        tuffStruct.startSectors[notch] = min_phi_above_threshold[notch]; 
-        tuffStruct.endSectors[notch] = max_phi_above_threshold[notch]; 
-      }
-      else
-      {
-        tuffStruct.startSectors[notch] = max_phi_above_threshold[notch]; 
-        tuffStruct.endSectors[notch] = min_phi_above_threshold[notch]; 
-      }
+        }
+        sprintf(buf,"%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
+        if (!unlink(buf))
+        {
+          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+        }
+ 
     }
   }
+  
+  free(list); 
 
+  
+  // weighted linear regression
+  // 0: slope 1: intercept 2: slope error 3: intercept error
+  float regressedA[4];
+  float regressedB[4];
 
-  //TODO: Think about this, is this what we want??? 
-  tuffStruct.notchSetTime = time(0);
-
+  int errA = weightedLinearRegression(headingHistoryA, headingTimesA, headingWeightsA, regressedA);
+  int errB = weightedLinearRegression(headingHistoryB, headingTimesB, headingWeightsB, regressedB);
+  
   return 0; 
+
 }
+
+
+int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADINGS],  float weights[NUM_HEADINGS], float regressed[4]){
+
+  float sumXXA = 0;
+  float sumXYA = 0;
+  float sumXA  = 0;
+  float sumYA  = 0;
+  float sumWA  = 0;
+  int   numA   = 0;
+
+  int i=0;
+  
+  for (i = 0; i < NUM_HEADINGS; i++)
+  {
+    if (heading[i] >=0){
+      sumXYA += heading[i]*times[i]*weights[i];
+      sumXXA += times[i]*times[i]*weights[i];
+      sumXA  += times[i]*weights[i];
+      sumYA  += heading[i]*weights[i];
+      sumWA  += weights[i];
+      numA++;
+    }
+  } 
+  
+  float delta  = (sumWA*sumXXA - sumXA*sumXA);
+  regressed[0] = (sumWA*sumXYA - sumXA*sumYA)  / delta ;        // slope
+  regressed[1] = (sumYA*sumXXA - sumXA*sumXYA) / delta ;        // intercept
+  regressed[2] = sqrt(sumWA/delta);                             // slope error
+  regressed[3] = sqrt(sumXXA/delta);                            // intercept error
+
+  if (numA>0) return 0;
+  else return -1;
+  
+}
+
 
 int writeState(int changed)
 {
@@ -449,7 +590,7 @@ int readConfig()
   if (kvpStatus == CONFIG_E_OK) 
   {
 
-    sleepAmount = kvpGetInt("sleepAmount",10); 
+    sleepAmount = kvpGetInt("sleepAmount",1); 
     if (sleepAmount < 1) sleepAmount =1; //don't do stupid things 
     readTemperatures = kvpGetInt("readTemperature",1); 
     telemeterEvery = kvpGetInt("telemEvery",10); 
@@ -463,8 +604,6 @@ int readConfig()
   if (kvpStatus == CONFIG_E_OK) 
   {
     int notch_tmp [2*NUM_TUFF_NOTCHES]; 
-    int int_tmp [NUM_TUFF_NOTCHES]; 
-    float float_tmp [NUM_TUFF_NOTCHES]; 
     int nread = 2*NUM_TUFF_NOTCHES;
     int ok = 1; 
 
@@ -507,44 +646,6 @@ int readConfig()
 
     nread = NUM_TUFF_NOTCHES; 
 
-    kvpStatus = kvpGetIntArray("adjustAccordingToGPU", int_tmp, &nread); 
-    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
-    {
-      syslog(LOG_ERR, "Problem reading in adjustAccordingToGpu, will set to false"); 
-      memcpy(adjustAccordingToGPU, zeroes, sizeof(zeroes)); 
-    }
-    else
-    {
-      memcpy(adjustAccordingToGPU, int_tmp, sizeof(int_tmp)); 
-    }
-
-    nread = NUM_TUFF_NOTCHES; 
-    kvpStatus = kvpGetFloatArray("gpuBins", float_tmp, &nread); 
-    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
-    {
-      syslog(LOG_ERR, "Problem reading in gpu_bins, disabling adjustAccordingToGpu"); 
-      memcpy(adjustAccordingToGPU, zeroes, sizeof(zeroes)); 
-    }
-    else
-    {
-      memcpy(gpu_bins, float_tmp, sizeof(float_tmp)); 
-    }
-
-    nread = NUM_TUFF_NOTCHES; 
-    kvpStatus = kvpGetFloatArray("gpuThresholds", float_tmp, &nread); 
-    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
-    {
-      syslog(LOG_ERR, "Problem reading in gpu thresholds, disabling adjustAccordingToGpu"); 
-      memcpy(adjustAccordingToGPU, zeroes, sizeof(zeroes)); 
-    }
-    else
-    {
-      int i; 
-      for (i = 0; i < NUM_TUFF_NOTCHES; i++) 
-      {
-        tuff_threshold[i] = pow(10, float_tmp[i]/10);  // use linear scaling everywhere 
-      }
-    }
   }
   else { configStatus+=4; }
 
@@ -666,8 +767,8 @@ int main(int nargs, char ** args)
   // set up raw command watch director
   
   makeDirectories(TUFF_RAWCMD_LINK_DIR); 
-  makeDirectories(GPU_SPECTRUM_DIR); 
-  makeDirectories(GPU_SPECTRUM_LINK_DIR); 
+  makeDirectories(GPSD_HEADING_LINK_DIR); 
+  makeDirectories(MAGNETOMETER_LINK_DIR); 
 
   wd = setupLinkWatchDir(TUFF_RAWCMD_LINK_DIR); 
   if (!wd) 
@@ -688,8 +789,8 @@ int main(int nargs, char ** args)
     int numlinks; 
     if (printToScreen) printf("Reading config: \n"); 
 
-    // Don't read config if we know it's the Prioritizer, since that doesn't modify the config
-    if (senderOfSigUSR1 != ID_PRIORITIZERD)
+    // Don't read config if we know it's the HKd  or GPS, since that doesn't modify the config
+    if (senderOfSigUSR1 != ID_GPSD || senderOfSigUSR1 != ID_HKD)
     {
       read_config_ok = readConfig(); 
     }
@@ -697,7 +798,10 @@ int main(int nargs, char ** args)
     {
       if (printToScreen) 
       {
-        printf("Woke up by prioritizer!\n"); 
+        if (senderOfSigUSR1 == ID_GPSD) 
+          printf("Woke up by GPSd!\n"); 
+        if (senderOfSigUSR1 == ID_HKD) 
+          printf("Woke up by HKd!\n"); 
       }
     }
 
@@ -707,12 +811,7 @@ int main(int nargs, char ** args)
       syslog(LOG_ERR, "Tuffd had trouble reading the config. Returned: %d", read_config_ok); 
     }
 
-    //set the notches BEFORE checking for link dirs
-    
-    if (memcmp(adjustAccordingToGPU, zeroes, sizeof(zeroes))) 
-    {
-      analyzeGPUSpectrum(); 
-    }
+
     //check if tuff notch status is same 
     justChanged = justChanged || memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
     justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
@@ -787,7 +886,14 @@ int main(int nargs, char ** args)
 
     while (currentState == PROG_STATE_RUN)
     {
+      // Adjust according to heading overrides everything else right now
+      if (memcmp(adjustAccordingToHeading, zeroes, sizeof(zeroes)))
+      {
+          justChanged = analyzeHeading(); 
+      }
+ 
       retVal = writeState(justChanged); 
+
       if (retVal) 
       {
         syslog(LOG_ERR,"writeState returned %d\n", retVal); 
@@ -795,10 +901,11 @@ int main(int nargs, char ** args)
       }
       justChanged = 0; 
 
+
       if (currentState == PROG_STATE_RUN) //check again, although still technically a race condition
       {
         sleep(sleepAmount);  //this will be woken up by signals 
-      }
+     }
     }
 
   } while(currentState == PROG_STATE_INIT); 

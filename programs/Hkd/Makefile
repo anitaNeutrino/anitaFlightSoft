@@ -6,7 +6,7 @@ include ${ANITA_FLIGHT_SOFT_DIR}/standard_definitions.mk
 
 
 #Targets = eventd fakeAcqd fakeCalibd fakePrioritizerd fakeGPSd
-Targets = Hkd fakeHkd HkReadout
+Targets = Hkd fakeHkd HkReadout HkMag
 
 
 

@@ -298,7 +298,6 @@ void * watchdogThread(void * unused)
      syslog(LOG_ERR, "LOSd:  create watchdog thread returned %d\n", retVal); 
    }
 
-
    do {
      if(verbosity) printf("Initializing LOSd\n");
      int lastSendData=sendData;
@@ -1459,7 +1458,6 @@ int writeLosData(unsigned char *buffer, int numBytesSci)
       {
         syslog(LOG_INFO, "write did not wrote %d bytes, not %d bytes requested", retVal2, nbytes); 
       }
-
 
       minTimeWait =  minTimeWait_b + nbytes * minTimeWait_m; 
 //      clock_gettime(CLOCK_MONOTONIC_RAW, &last_send); 

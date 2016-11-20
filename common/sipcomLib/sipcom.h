@@ -115,7 +115,7 @@ typedef void (*cmd_callback)(unsigned char *);
  * 	- <sipcom_highrate_set_throttle> for IMPORTANT WARNING!
  */
 int sipcom_init(unsigned long throttle_rate, char *config_dir,
-                                                unsigned char sipmux_enable);
+		unsigned char sipmux_enable);
 
 /*
  * Function: sipcom_end
