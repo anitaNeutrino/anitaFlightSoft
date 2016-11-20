@@ -98,6 +98,7 @@ int writeLookupFile=0;
 int ip320Ranges[NUM_IP320_BOARDS];
 int numIP320s;
 int printToScreen=0;
+int writeMagnetometerForTuff=0; 
 int adcAverage=1;
 int readoutPeriod; //in ms
 int telemEvery;
@@ -227,9 +228,12 @@ int main (int argc, char *argv[])
 
     makeDirectories(HK_TELEM_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
-    makeDirectories(MAGNETOMETER_DIR); 
-    makeDirectories(MAGNETOMETER_LINK_DIR); 
-    timedMagData.unixTime = 0; 
+    if (writeMagnetometerForTuff)
+    {
+      makeDirectories(MAGNETOMETER_DIR); 
+      makeDirectories(MAGNETOMETER_LINK_DIR); 
+      timedMagData.unixTime = 0; 
+    }
 
     prepWriterStructs();
 	
@@ -320,6 +324,7 @@ int readConfigFile()
 	analogueCarrierNum=kvpGetInt("analogueCarrierNum",0);
 	numIP320s=kvpGetInt("numIP320s",3);
 	printToScreen=kvpGetInt("printToScreen",-1);
+  writeMagnetometerForTuff = kvpGetInt("writeMagnetometerForTuff",0); 
 	writeLookupFile=kvpGetInt("writeLookupFile",-1);
 	readoutPeriod=kvpGetInt("readoutPeriod",60);
 	telemEvery=kvpGetInt("telemEvery",60);
@@ -592,7 +597,7 @@ int outputData(AnalogueCode_t code)
 
 
     //write file for TUFFd 
-    if (magData.x != 0 && magData.y !=0 && magData.z !=0 && timeStruct.tv_sec > timedMagData.unixTime) 
+    if (writeMagnetometerForTuff && magData.x != 0 && magData.y !=0 && magData.z !=0 && timeStruct.tv_sec > timedMagData.unixTime) 
     {
       timedMagData.unixTime = timeStruct.tv_sec; 
       timedMagData.unixTimeUs = timeStruct.tv_usec; 
