@@ -596,6 +596,7 @@ int outputData(AnalogueCode_t code)
     {
       timedMagData.unixTime = timeStruct.tv_sec; 
       timedMagData.unixTimeUs = timeStruct.tv_usec; 
+      sprintf(fullFilename,"%s/%s",MAGNETOMETER_DIR,theFilename);
       retVal = writeStruct(&timedMagData, fullFilename, sizeof(timedMagData)); 
       retVal += makeLink(fullFilename, MAGNETOMETER_LINK_DIR); 
     }
