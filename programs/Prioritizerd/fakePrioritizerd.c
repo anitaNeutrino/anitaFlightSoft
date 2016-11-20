@@ -135,7 +135,6 @@ int main(int argc, char *argv[]){
     // calibration badassery
     int run = 0;
     int eventNumber = getNextEventNumber(&run);
-    printf("run %d eventNumber %d", run,  eventNumber);
 
     /* This one is the main while loop */
     int entry = 0;
@@ -449,7 +448,7 @@ int getNextEventNumber(int* run){
   }
   int eventNumber;
   fscanf(waisPulseEventNumbers, "%d\t%d", run, &eventNumber);
-  printf("I'm looking in run %d for eventNumber %d\n", run[0], eventNumber);
+  /* printf("I'm looking in run %d for eventNumber %d\n", run[0], eventNumber); */
   numPulsesReadIn++;
 
   return eventNumber;

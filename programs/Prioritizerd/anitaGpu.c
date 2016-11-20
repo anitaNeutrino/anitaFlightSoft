@@ -797,17 +797,17 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     float normalizedHilbertPeak = (hilbertPeak[index2] - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
     float priorityParam = sqrt(normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak);
 
-    printf("Interferometric figures of merit... %f \t %f \t %f \t %f \n", higherImagePeak, hilbertPeak[index2], normalizedHilbertPeak, priorityParam);
+    /* printf("Interferometric figures of merit... %f \t %f \t %f \t %f \n", higherImagePeak, hilbertPeak[index2], normalizedHilbertPeak, priorityParam); */
 
     int priority = 0;
     if(saturationFlag > 0){
       /* Found saturation when unwrapping */
       priority = 9;
-      printf("Found saturation\n");
+      /* printf("Found saturation\n"); */
     }
     if(blastFlag > 0){
       priority = 8;
-      printf("Blast Flag\n");
+      /* printf("Blast Flag\n"); */
     }
     /* else if(diffFlag==1 || threshFlag==1){ */
     /*   /\* There was CW in these events... not an optimal solution...*\/ */
@@ -820,19 +820,19 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       for(priority=1; priority<NUM_PRIORITIES; priority++){
 	if(priorityParam >= priorityParamsLowBinEdge[priority] && priorityParam<priorityParamsHighBinEdge[priority]){
 
-	  printf("Found my priority! %f is between %f and %f at priority %d\n",
-		 priorityParam,
-		 priorityParamsLowBinEdge[priority],
-		 priorityParamsHighBinEdge[priority],
-		 priority);
+	  /* printf("Found my priority! %f is between %f and %f at priority %d\n", */
+	  /* 	 priorityParam, */
+	  /* 	 priorityParamsLowBinEdge[priority], */
+	  /* 	 priorityParamsHighBinEdge[priority], */
+	  /* 	 priority); */
 	  break;
 	}
       }
     }
 
-    printf("(header[eventInd].prioritizerStuff & 0x4000)>>14 = %hu\n", (header[eventInd].prioritizerStuff & 0x4000)>>14);
-    printf("saturationFlag = %hu\n", saturationFlag);
-    printf("priority = %d\n", priority);
+    /* printf("(header[eventInd].prioritizerStuff & 0x4000)>>14 = %hu\n", (header[eventInd].prioritizerStuff & 0x4000)>>14); */
+    /* printf("saturationFlag = %hu\n", saturationFlag); */
+    /* printf("priority = %d\n", priority); */
 
     /* Finally tweak priority based on reconstructed angle .. */
     if((thetaDegPeak > thetaAngleHighForDemotion || thetaDegPeak < thetaAngleLowForDemotion) && priority <6){
@@ -852,7 +852,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     header[eventInd].priority = priority;
 
     /* printf("eventNumber %u, saturationFlag %hu, priority %d\n", header[eventInd].eventNumber, saturationFlag, priority); */
-    printf("I assigned eventNumber %u priority %d\n", header[eventInd].eventNumber, priority);
+    /* printf("I assigned eventNumber %u priority %d\n", header[eventInd].eventNumber, priority); */
 
     if(printCalibTextFile > 0){
       fprintf(gpuOutput, "%u %f %f %d %d %d %lf %lf %lf %d ",
@@ -882,13 +882,20 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     int ant = 0;
     for(ant=0; ant < NUM_ANTENNAS; ant++){
       for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
+	if(isinf(powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
+	  printf("I got an inf!!!\n");
+	}
+	else if(isnan(powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
+	  printf("I got a nan!!!\n");
+	}
+
 	longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd];
       }
     }
   }
   longTimeAvePowSpecNumEvents += nEvents;
 
-  const int longTime = 10;
+  const int longTime = 60;
   if(header[nEvents-1].unixTime - longTimeStartTime >= longTime){
 
     FILE* fOut = fopen("/tmp/longTimePowSpec.txt", "w");
@@ -982,7 +989,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  float f = deltaF_MHz*freqInd;
 
 	  if(lookingForSpikeStart > 0){
-	    if(isLocalMaximum[freqInd] > 0){
+	    if(isLocalMinimum[freqInd] > 0){
 	      // start of a spike
 	      spikeStartBin = freqInd;
 	      lookingForSpikeStart = 0;
@@ -994,6 +1001,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 	      // is the spike big enough?
 	      float spikeSize_dB = longTimeAvePowSpec[longBaseInd + spikePeakBin] - longTimeAvePowSpec[longBaseInd + spikeStartBin];
+
+	      if(pol==0 && ant==2){
+		printf("%f %.1f MHz - %.1f MHz\n", spikeSize_dB, deltaF_MHz*spikeStartBin, deltaF_MHz*spikePeakBin);
+	      }
 
 	      if(spikeSize_dB > spikeThresh_dB){
 		int freqInd2 = spikeStartBin;
@@ -1017,9 +1028,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
 
     fclose(fOut);
-    tidyUpGpuThings();
-    printf("There were %d events in this longTime GPU average power spectrum ", longTimeAvePowSpecNumEvents);
-    exit(0);
+    printf("There were %d events in this longTime GPU average power spectrum\n", longTimeAvePowSpecNumEvents);
+    handleBadSigs();
   }
 
 
@@ -1070,14 +1080,15 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   printf("Only allowing one loop through main GPU calculation function in debug mode.\n");
   printf("Exiting program.\n");
 
-  if(printCalibTextFile > 0){
+  if(gpuOutput!=NULL){
     fclose(gpuOutput);
+    gpuOutput = NULL;
   }
-  exit(0);
+  handleBadSigs();
 #endif
 
 
-  printf("\n");
+  /* printf("\n"); */
 }
 
 
@@ -1089,8 +1100,9 @@ void tidyUpGpuThings(){
      Needless to say, nothing will work after this function is called.
   */
 
-  if(printCalibTextFile > 0){
+  if(gpuOutput!=NULL){
     fclose(gpuOutput);
+    gpuOutput = NULL;
   }
 
 #ifdef TSTAMP
@@ -1252,8 +1264,6 @@ void tidyUpGpuThings(){
   if(context){
     clReleaseContext(context);
   }
-
-
 }
 
  void timeStamp(int stampNo, int numEvents, cl_event* eventList){
