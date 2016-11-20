@@ -14,7 +14,7 @@ int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi)
 
 int hkDiskBitMask=0;
 int panicQueueLength=5000;
-int disableGpu=0;
+int disableGpu=1;
 
 //Global Control Variables
 int printToScreen=0;
