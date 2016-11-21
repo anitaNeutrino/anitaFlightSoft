@@ -351,6 +351,8 @@
 #define TUFF_DEVICE "/dev/ttyTUFF"
 #define DEFAULT_TUFF_START_SECTOR {0, 16,16}  //default is notch 0 enabled, other notches disabled
 #define DEFAULT_TUFF_END_SECTOR  {15,16,16}  //default is notch 0 enabled, other notches disabled
+#define TUFF_NOTCH_LOOKUP "/tmp/anita/currentNotches"
+#define TUFF_NOTCH_BIN_LOOKUP "/tmp/anita/currentNotches.bin"
 
 //EZ stuff 
 // haha that was a joke 
