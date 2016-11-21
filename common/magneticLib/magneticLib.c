@@ -107,19 +107,20 @@ void solveForAttitude( const double Bfield[3], const double BfieldErr[3],
 
   b[0] = mag.N * 1e-6; //magnetometer reads out in gauss, program give nT
   b[1] = mag.E * 1e-6; 
-  b[2] = mag.Z * 1e-6 - BfieldErr[2]; //correct for any calibration error on z here
+  b[2] = mag.Z * 1e-6;
 
-  double v[3];
-  crossProduct(Bfield, b, v); 
-  double c = dotProduct(Bfield,b); 
+  double Bf[3] = {Bfield[0], Bfield[1], Bfield[2] - BfieldErr[2]}; // correct calibration error in z
+	double v[3];
+  crossProduct(Bf, b, v); 
+  double c = dotProduct(Bf,b); 
 
-	double heading = atan2(v[2], c - Bfield[2]*b[2]);
+	double heading = atan2(v[2], c - Bf[2]*b[2]);
 
 	//for now gonna fill attitudeErr with these rotated guys to help with calibration
 
 	//now that we have the heading, rotate into it and find pitch next
 	//correct for calibration error here after rotating into heading
-	double BfieldR[3] = {cos(heading) * Bfield[0] - sin(heading) * Bfield[1] - BfieldErr[0], sin(heading) * Bfield[0] + cos(heading) * Bfield[1] - BfieldErr[1], Bfield[2]};
+	double BfieldR[3] = {cos(heading) * Bfield[0] - sin(heading) * Bfield[1] - BfieldErr[0], sin(heading) * Bfield[0] + cos(heading) * Bfield[1] - BfieldErr[1], Bf[2]};
 
 	attitudeErr[0] = BfieldR[0];
 	attitudeErr[1] = BfieldR[1];
