@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
     options.c_cflag &= ~CRTSCTS; //Clear the flow control bits 
     options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); //Raw input mode 
     options.c_cflag |= (CLOCAL | CREAD); 
+    options.c_oflag &= ~(OPOST | ONLCR );
 //options.c_oflag |= 0; 
     tcsetattr(fd, TCSANOW, &options);
     
@@ -81,12 +82,12 @@ int main(int argc, char **argv) {
     strcat(buff, "$PASHS,NME,ALL,B,OFF\r\n");
     strcat(buff, "$PASHS,NME,ALL,A,OFF\r\n");
     strcat(buff, "$PASHQ,PRT\r\n"); 
-    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%3.2f,R\n",g12PpsPeriod,
+    sprintf(tempCommand, "$PASHS,PPS,%2.2f,%3.2f,R\r\n",g12PpsPeriod,
 	    g12PpsOffset);
 //    strcat(buff,tempCommand);
 //    sprintf(tempCommand,"$PASHS,NME,POS,A,ON,%d\n",10);
     strcat(buff,tempCommand);
-    sprintf(tempCommand,"$PASHS,NME,SAT,A,ON,%d\n",60);
+    sprintf(tempCommand,"$PASHS,NME,SAT,A,ON,%d\r\n",60);
     strcat(buff,tempCommand);
     strcat(buff, "$PASHQ,PRT\r\n"); 
     
