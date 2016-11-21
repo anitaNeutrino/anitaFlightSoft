@@ -139,7 +139,8 @@ void solveForAttitude( const double Bfield[3], const double BfieldErr[3],
 
 	double roll = atan2(v[0], c - BfieldRR[0]*b[0]);
 
-	heading = heading * RAD2DEG + 180;
+	double phi_sector = 22.5; //magnetometer seems to be ~1 sector over for anita 3.  it's 3 for anita 4
+	heading = heading * RAD2DEG + 180 - 1 * phi_sector;
 	if (heading < 0) heading = 360 + heading;
 
 	attitude[0] = heading; //all our reading are in degrees
