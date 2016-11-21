@@ -1,30 +1,13 @@
+// this macro loops through all the adu5 and magnetometer data of one run and graphs the B fields and attitude for measured and calculated.  so far only heading works well
+
 #include "magneticLib.c"
-#include <root_things.h>
+#include <TGraph.h>
+#include <TTree.h>
+#include <TCanvas.h>
+#include <TFile.h>
+
 #include "Adu5Pat.h"
 #include "PrettyAnitaHk.h"
-
-double middle_of_3(double a, double b, double c)
-{
-	double middle;
-	if ((a <= b) && (a <= c)) middle = (b<=c) ? b : c;
-	else if ((b <= a) && (b <= c)) middle = (a <= c) ? a : c;
-	else middle = (a <= b) ? a : b;
-	return middle;
-}
-
-void medianFilter(TGraph * bGraph)
-{
-	double * Y = bGraph->GetY();
-	double med = 0;
-	for (int ii = 1; ii < bGraph->GetN()/3; ii++) 
-	{
-		int i = 3*ii;
-		med = middle_of_3(Y[i-1], Y[i], Y[i+1]);
-		bGraph->GetY()[i-1] = med;
-		bGraph->GetY()[i] = med;
-		bGraph->GetY()[i+1] = med;
-	}			
-}
 
 void removeSpikes(TGraph * bGraph, double delta)
 {
@@ -72,8 +55,7 @@ void rootMagnetometer()
 	struct tm t;
 
 	double attitude[3];
-	//may some day do something with these
-	double BfieldErr[3] = {-0.1,0.2,-.204};
+	double BfieldErr[3] = {-0.1,0.2,-.204}; //a rough guess at calibration
 	double attitudeErr[3];
 
 	int entriesNum = hkTree->GetEntries();
@@ -217,21 +199,4 @@ void rootMagnetometer()
 	
 	rollCalc->Draw("al");
 	rollMeas->Draw("lsame");
-/*
-	TImage *imgX = TImage::Create();
-	imgX->FromPad(c1);
-
-	TImage *imgY = TImage::Create();
-	imgY->FromPad(c2);
-
-	TImage *imgZ = TImage::Create();
-	imgZ->FromPad(c3);
-
-
-	imgX->WriteImage("rootImages/B_X.png");
-	imgY->WriteImage("rootImages/B_Y.png");
-	imgZ->WriteImage("rootImages/B_Z.png");
-
-	printf("done\n");
-*/
 }
