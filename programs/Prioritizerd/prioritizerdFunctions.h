@@ -34,10 +34,15 @@ int sortOutPidFile(char *progName);
 
 /* for fakePrioritizerd */
 void readInEvent(PedSubbedEventBody_t *psev, AnitaEventHeader_t* head, const char* dir, int eventNumber);
-void readIn100Events(const char* psevFileName, 
-		     PedSubbedEventBody_t *theBody, 
-		     const char* headFileName, 
+void readIn100Events(const char* psevFileName,
+		     PedSubbedEventBody_t *theBody,
+		     const char* headFileName,
 		     AnitaEventHeader_t* theHeader);
+
+void readIn100UnzippedEvents(const char* psevFileName,
+			     PedSubbedEventBody_t *theBody,
+			     const char* headFileName,
+			     AnitaEventHeader_t* theHeader);
 
 
 

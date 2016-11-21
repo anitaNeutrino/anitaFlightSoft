@@ -513,7 +513,7 @@ void fakeTurfRate(struct timeval *currentTime) {
     for(i=0;i<PHI_SECTORS;i++) {
       //	theTurfRates.upperL2Rates[i]=255-i;
       //	theTurfRates.lowerL2Rates[i]=i;
-	theTurfRates.l3Rates[i][0]=128+i;
+      theTurfRates.l3Rates[i]=128+i;
     }
 
     fillGenericHeader(&theTurfRates,PACKET_TURF_RATE,sizeof(TurfRateStruct_t));

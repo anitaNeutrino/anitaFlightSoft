@@ -24,6 +24,9 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   printf("%d platform(s) detected.\n", numPlatforms);
 
 
+  //overwrite the $DISPLAY because sometimes it seems messed up
+  setenv("DISPLAY",":0",1); 
+  setenv("COMPUTE",":0",1); 
 
   /* Get the names of the platforms and display to user. */
   char platNames[maxPlatforms][100];
@@ -34,7 +37,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     statusCheck(status, "clGetPlatformInfo");
     printf("\tPlatform %d: %s\n", plat, platNames[plat]);
   }
-  
+
   /* see how many devices our chosen platform platform ...*/
   const cl_uint maxDevices = 4;
   cl_device_id deviceIds[maxDevices];
@@ -42,19 +45,6 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   clGetDeviceIDs(platformIds[myPlatform], devType, maxDevices, deviceIds, &numDevices);
   statusCheck(status, "clGetDeviceIDs");
 
-  /** Try to start X and die*/ 
-  if (numDevices == 0) 
-  {
-    printf("attempting to start X\n"); 
-    syslog(LOG_INFO,"attempting to start X\n"); 
-//    system("sudo killall -9 X"); 
-    system("X > /dev/null 2>/dev/null &"); 
-    printf("Started X and quitting... should be restarted by daemon I suppose?\n"); 
-    sleep(2); 
-    raise(SIGTERM); 
-  }
-
-  
   /* Give up if we can't find any devices on chosen platform */
   if (numDevices==0) {
     syslog(LOG_ERR, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
@@ -63,6 +53,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     fprintf(stderr, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
+    sleep(10); 
     raise(SIGTERM); 
   }
 
@@ -74,15 +65,15 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     size_t length;
     status = clGetDeviceInfo(deviceIds[dev], CL_DEVICE_NAME, sizeof(devNames[dev]), devNames, &length);
     statusCheck(status, "clGetDeviceInfo");
-     
+
     cl_bool available;
     status = clGetDeviceInfo(deviceIds[dev], CL_DEVICE_AVAILABLE, sizeof(available), &available, &length);
     statusCheck(status, "clGetDeviceInfo");
-     
+
     cl_uint maxComputeUnits;
     status = clGetDeviceInfo(deviceIds[dev], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(maxComputeUnits), &maxComputeUnits, &length);
     statusCheck(status, "clGetDeviceInfo");
-     
+
     cl_uint maxWorkItemDimension;
     status = clGetDeviceInfo(deviceIds[dev], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(maxWorkItemDimension), &maxWorkItemDimension, &length);
     statusCheck(status, "clGetDeviceInfo");
@@ -97,7 +88,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     cl_ulong maxMemAllocSize = 0;
     status = clGetDeviceInfo(deviceIds[dev], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(maxMemAllocSize), &maxMemAllocSize, &length);
     statusCheck(status, "clGetDeviceInfo");
-      
+
     cl_ulong deviceLocalMemSize = 0;
     status = clGetDeviceInfo(deviceIds[dev], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(deviceLocalMemSize), &deviceLocalMemSize, &length);
     statusCheck(status, "clGetDeviceInfo");
@@ -130,7 +121,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
 
  */
 cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_context context, cl_device_id* deviceList, cl_uint numDevicesToUse, uint showCompileLog){
-  
+
   cl_int status;            /*For error checking*/
   FILE *fp;                 /*File containing kernel source code*/
   /* size_t source_size;       /\*Size*\/ */
@@ -142,14 +133,14 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
   char *buffer;             /* Pointer to c-style string containing compiler output - for debugging */
   size_t len;               /* Size of c-style string */
 
-#define MAX_SOURCE_SIZE (0x100000) 
+#define MAX_SOURCE_SIZE (0x100000)
 
   /* Load kernel source code */
   fp = fopen(fileName, "rb");
   if (!fp) {
     syslog(LOG_ERR, "There was an error opening %s, program will exit", fileName);
     fprintf(stderr, "There was an error opening %s, program will exit", fileName);
-    raise(SIGTERM); 
+    raise(SIGTERM);
   }
   source_str = (char *)malloc(MAX_SOURCE_SIZE);
   /* source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp); */
@@ -188,7 +179,7 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
 
 
 
-/*! 
+/*!
   @brief
   Creates a cl_kernel and checks it for errors.
 
@@ -212,7 +203,7 @@ cl_kernel createKernel(cl_program prog, const char* kernelName){
 
 
 
-/*! 
+/*!
   @brief
   Essentially a holder for a NULL pointer plus a size.
 */
@@ -225,7 +216,7 @@ buffer* createLocalBuffer(size_t size, const char* bufferName){
   return theBuffer;
 }
 
-/*! 
+/*!
   @brief
   Creates a cl_mem buffer, checks it for errors, wraps it up and returns it.
 
@@ -235,7 +226,7 @@ buffer* createLocalBuffer(size_t size, const char* bufferName){
 
 buffer* createBuffer(cl_context context, cl_mem_flags memFlags, size_t size, const char* typeChar, const char* bufferName){
   cl_int status;
-  /* 
+  /*
      I am not using alloc host pointer method, since I prefer to copy data explicitly in code.
      (I think it makes it more obvious what is going on.)
   */
@@ -251,7 +242,7 @@ buffer* createBuffer(cl_context context, cl_mem_flags memFlags, size_t size, con
   wrappedBuffer->size = size;
   wrappedBuffer->name = bufferName;
   wrappedBuffer->typeChar = typeChar;
-  
+
   return wrappedBuffer;
 }
 
@@ -270,7 +261,7 @@ void destroyBuffer(buffer* theBuffer){
 
 
 
-/*! 
+/*!
   @brief
   Sets all arguments for a kernel in a single function.
 
@@ -295,12 +286,12 @@ void setKernelArgs(cl_kernel kernel, int numArgs, buffer** buffers, const char* 
   /*   /\* Opencl error checking *\/ */
   /*   sprintf(errorDescription, "setKernelArg %d %s", arg, kernelName); */
   /*   statusCheck(status, errorDescription); */
-  } 
+  }
 }
 
 
 void setKernelArg(cl_kernel kernel, uint arg, buffer* theBuffer, const char* kernelName){
-  
+
   cl_int status;
   char errorDescription[1024];
   if(theBuffer->mem != NULL){ /*  For global memory */
@@ -331,7 +322,7 @@ void setKernelArg(cl_kernel kernel, uint arg, buffer* theBuffer, const char* ker
  */
 cl_event writeBuffer(cl_command_queue cq, buffer* theBuffer, void* array, cl_uint wlSize, const cl_event* wl){
   //  cl_event* copyEvent = malloc(sizeof(cl_event));
-  cl_event copyEvent; 
+  cl_event copyEvent;
   cl_int status = clEnqueueWriteBuffer(cq, theBuffer->mem, CL_FALSE,
 				       0, theBuffer->size, array,
 				       //				       wlSize, wl, copyEvent);
@@ -355,7 +346,7 @@ cl_event writeBuffer(cl_command_queue cq, buffer* theBuffer, void* array, cl_uin
  */
 cl_event readBuffer(cl_command_queue cq, buffer* theBuffer, void* array, cl_uint wlSize, const cl_event* wl){
   //  cl_event* copyEvent = malloc(sizeof(cl_event));
-  cl_event copyEvent; 
+  cl_event copyEvent;
   cl_int status = clEnqueueReadBuffer(cq, theBuffer->mem, CL_FALSE,
 				      0, theBuffer->size, array,
 				      //				      wlSize, wl, copyEvent);
@@ -402,14 +393,14 @@ void moveDataBetweenCPUandGPU(cl_command_queue cq, buffer* theBuffer, void* arra
   char errorDescription[1024];
   sprintf(errorDescription, "clEnqueueMapBuffer (in moveDataBetweenCPUandGPU) %s", theBuffer->name);
   statusCheck(status, errorDescription);
-  
+
   if(directionFlag == 0){
     memcpy(mappedArray, array, theBuffer->size);
   }
   else{
     memcpy(array, mappedArray, theBuffer->size);
   }
-  
+
   status = clEnqueueUnmapMemObject(cq, theBuffer->mem, mappedArray, 0, NULL, NULL);
   sprintf(errorDescription, "clEnqueueUnmapMemObject (in moveDataBetweenCPUandGPU) %s", theBuffer->name);
   statusCheck(status, errorDescription);
@@ -447,13 +438,13 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   else{
     printf("Could not interpret buffer data type.\n");
     printf("Exiting program.\n");
-    raise(SIGTERM); 
+    raise(SIGTERM);
   }
 
   /* sprintf(fileNameWithFolder, "../debugOutput/%s_%d", fileName, polInd); */
-  sprintf(fileNameWithFolder, "/tmp/%s_%d", fileName, polInd);
+  sprintf(fileNameWithFolder, "/tmp/%s_%d.txt", fileName, polInd);
 
-  size_t numBytes = theBuffer->size; 
+  size_t numBytes = theBuffer->size;
   void* array = malloc(numBytes);
   copyArrayFromGPU(cq, theBuffer, array);
 
@@ -462,7 +453,7 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   if(outputFile == NULL){
     printf("Failed to open output file in printBufferToTextFile.\n");
     printf("Exiting Program.\n");
-    raise(SIGTERM); 
+    raise(SIGTERM);
   }
 
 
@@ -471,8 +462,8 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   /* uint nb = 0; */
   uint numElements = theBuffer->size/dataSize;
   uint elementsPerLine = numElements/numEvents;
-  
-  /* 
+
+  /*
      This pointer typecasting arithmetic is everything wrong with c.
      It shouldn't be allowed, but it is...
   */
@@ -486,7 +477,7 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
     if(event >= numEventsToPrint ){
       break;
     }
-    
+
     if(typeInd == 0){
       fprintf(outputFile, "%f ", *(((float*)array)+element));
     }
@@ -502,7 +493,7 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   free(array);
 }
 
-/*! 
+/*!
   @brief
   Reads cl_int status variable to see if a function returned successfully.
 
@@ -514,7 +505,7 @@ void statusCheck(cl_int status, const char* description){
     const char* errorName =  translateReturnValue(status);
     syslog(LOG_ERR, "%s returned status %s. Exiting host program.\n", description, errorName);
     fprintf(stderr, "%s returned status %s. Exiting host program.\n", description, errorName);
-    raise(SIGTERM); 
+    raise(SIGTERM);
   }
 }
 
@@ -523,7 +514,7 @@ void statusCheck(cl_int status, const char* description){
 
 
 
-/*! 
+/*!
   @brief Translates the horrible opencl error list into something human readable.
 
   @detailed
