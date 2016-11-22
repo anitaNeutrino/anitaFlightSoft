@@ -161,29 +161,44 @@ double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
   /*   nClockSamps[clockNum] = 0; */
   /* } */
 
+  /* t0interp = unevenTimes[0]; */
 
+  int firstGoodSamp = -1;
+  double sum=0;
+  int numRealSamp = 0;
   for(sampInd=0; sampInd<nInterp; sampInd++){
 
     /* If we are inside known time band then interpolate. */
     if(time >= unevenTimes[0] && time <= unevenTimes[nRaw-1]){
       interpWave[sampInd] = gsl_spline_eval(spline, time, acc);
-      /* if( clockNum>=0){ */
-      /* 	nClockSamps[clockNum]++; */
-      /* } */
+      /* interpWave[sampInd] = rawWave[sampInd]; */
+      if(firstGoodSamp < 0){
+    	firstGoodSamp = sampInd;
+      }
+      sum += interpWave[sampInd];
+      numRealSamp++;
     }
 
-    /* Zero waveform outside set of known unevenTimes. */
+    /* /\* Zero waveform outside set of known unevenTimes. *\/ */
     else{
       interpWave[sampInd] = 0;
     }
 
-    /* if(clockNum<0){ */
-    /*   printf("t = %lf, v = %lf\n", time, interpWave[sampInd]); */
-    /* } */
-
-
     time += dtNsInterp;
   }
+
+  double mean = sum / numRealSamp;
+
+  for(sampInd = firstGoodSamp; sampInd < firstGoodSamp + numRealSamp; sampInd++){
+    interpWave[sampInd] -= mean;
+  }
+
+
+  /* for(sampInd=0; sampInd<nInterp; sampInd++){ */
+  /*   const double omega = 2*3.14159*500/1e3; */
+  /*   interpWave[sampInd] = 10*sin(omega*time); */
+  /*   time += dtNsInterp; */
+  /* } */
 
   gsl_spline_free(spline);
   gsl_interp_accel_reset(acc);

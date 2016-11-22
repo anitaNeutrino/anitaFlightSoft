@@ -441,12 +441,12 @@ void prepWriterStructs() {
 int getNextEventNumber(int* run){
 
   if(waisPulseEventNumbers==NULL){
-    numWaisPulses = 5625; //10001; //from wc -l
+    numWaisPulses = 10001; //from wc -l
     /* numWaisPulses = 2000; //499; 5625; //118160; // from wc -l     */
-    /* waisPulseEventNumbers = fopen("run352EventNumbers.txt", "r"); */
+    waisPulseEventNumbers = fopen("run352EventNumbers.txt", "r");
     /* waisPulseEventNumbers = fopen("run152EventNumbers.txt", "r"); */
     /* waisPulseEventNumbers = fopen("run130EventNumbers.txt", "r");     */
-    waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r");
+    /* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r"); */
     /* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r"); */
   }
   int eventNumber;
