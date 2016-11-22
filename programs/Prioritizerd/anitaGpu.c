@@ -265,7 +265,7 @@ void prepareGpuThings(){
      At this point the connection to the GPU via the X-server should have been made
      or printed something to screen if not so lets' open the output file.
   */
-  /* #define DEBUG_MODE */
+  #define DEBUG_MODE
 
   showCompileLog = 1;
   numDevicesToUse = 1;
@@ -528,6 +528,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
   }
 
+  if(longTimeAvePowSpecNumEvents==0){
+    longTimeStartTime = header[0].unixTime;
+  }
+
   /* Start time stamping. */
   uint stamp;
   stamp = 1;
@@ -634,6 +638,33 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     statusCheck(status, "clEnqueueNDRangeKernel circularCorrelationKernel");
     timeStamp(stamp++, 1, &circCorrelationEvent);
 
+
+    // Doing this while the GPU does the cross correlations is maybe the most efficient?
+    int ant = 0;
+    for(ant=0; ant < NUM_ANTENNAS; ant++){
+      int freqInd = 0;
+      for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
+	if(isinf(powSpec[ant*NUM_SAMPLES/2 + freqInd]) || isnan(powSpec[ant*NUM_SAMPLES/2 + freqInd])){
+	  if(isinf(powSpec[ant*NUM_SAMPLES/2 + freqInd])){
+	    printf("I got an inf!!! at %d %d %d \n", polInd, ant, freqInd);
+	  }
+	  else if(isnan(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
+	    printf("I got a nan!!! at %d %d %d \n", polInd, ant, freqInd);
+	  }
+
+	  /* printf("Let's find the bastard. I dumped all the buffers and I'm quitting!\n"); */
+	  /* handleBadSigs(); */
+	}
+
+	longTimeAvePowSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += powSpec[ant*NUM_SAMPLES/2 + freqInd];
+      }
+    }
+    if(polInd==0){ // avoid double counting
+      longTimeAvePowSpecNumEvents += nEvents;
+    }
+
+
+
     /* Sums the cross-correlations into an "interferometric image" */
     status = clEnqueueNDRangeKernel(commandQueue, imageKernel, 3, NULL, gImageWorkSize, lImageWorkSize, 1, &circCorrelationEvent, &imageEvent);
     statusCheck(status, "clEnqueueNDRangeKernel imageKernel");
@@ -695,6 +726,12 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 					      1, &hilbertPeakEvent);
     timeStamp(stamp++, 1, &dataFromGpuEvents[polInd][4]);
 
+
+
+
+
+
+
     /*
       Heavy handed debugging! Dump all the data from every buffer into text files.
       This is insanely slow so will exit the program after the main gpu function is called once.
@@ -703,7 +740,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     clFinish(commandQueue);
     printBufferToTextFile2(commandQueue, "normalBuffer", polInd, normalBuffer, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "rmsBuffer", polInd, rmsBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, nEvents);
     printBufferToTextFile2(commandQueue, "powSpecBuffer", polInd, powSpecBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "passFilterBuffer", polInd, passFilterBuffer, 1, 1);
     printBufferToTextFile2(commandQueue, "staticPassFilterBuffer", polInd, staticPassFilterBuffer, 1, 1);
@@ -881,69 +918,19 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 
 
-  if(longTimeAvePowSpecNumEvents==0){
-    longTimeStartTime = header[0].unixTime;
-  }
-
-  int freqInd = 0;
-  int pol=0;
-  for(pol=0; pol < NUM_POLARIZATIONS; pol++){
-
-    int ant = 0;
-    for(ant=0; ant < NUM_ANTENNAS; ant++){
-      for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
-	if(isinf(powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]) || isnan(powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
-	  if(isinf(powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
-	    printf("I got an inf!!! at %d %d %d \n", pol, ant, freqInd);
-	  }
-	  else if(isnan(powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
-	    printf("I got a nan!!! at %d %d %d \n", pol, ant, freqInd);
-	  }
-
-	  printBufferToTextFile2(commandQueue, "rawBuffer", pol, rawBufferHPol, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", pol, phiSectorTriggerBufferHPol, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "numSampsBuffer", pol, numSampsBufferHPol, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "normalBuffer", pol, normalBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "rmsBuffer", pol, rmsBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "newRmsBuffer", pol, rmsBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "fourierBuffer", pol, fourierBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "powSpecBuffer", pol, powSpecBuffer, 1, 1);
-	  printBufferToTextFile2(commandQueue, "passFilterBuffer", pol, passFilterBuffer, 1, 1);
-	  printBufferToTextFile2(commandQueue, "staticPassFilterBuffer", pol, staticPassFilterBuffer, 1, 1);
-	  printBufferToTextFile2(commandQueue, "fourierBuffer2", pol, fourierBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "circularCorrelationBuffer", pol, circularCorrelationBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "image", pol, imageBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "maxThetaInds", pol, maxThetaIndsBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "imagePeakValBuffer", pol, imagePeakValBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "imagePeakValBuffer2", pol, imagePeakValBuffer2, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer", pol, imagePeakPhiBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer2", pol, imagePeakPhiBuffer2, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer", pol, imagePeakPhiSectorBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "imagePeakThetaBuffer2", pol, imagePeakThetaBuffer2, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "normalBuffer2", pol, normalBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "newRmsBuffer", pol, newRmsBuffer, NUM_EVENTS, nEvents);
-
-	  printBufferToTextFile2(commandQueue, "coherentWaveForm", pol, coherentWaveBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "hilbertEnvelope", pol, hilbertBuffer, NUM_EVENTS, nEvents);
-	  printBufferToTextFile2(commandQueue, "hilbertPeak", pol, hilbertPeakBuffer, NUM_EVENTS, nEvents);
-	  printf("Let's find the bastard. I dumped all the buffers and I'm quitting!\n");
-	  handleBadSigs();
-	}
-
-	longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += powSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd];
-      }
-    }
-  }
-  longTimeAvePowSpecNumEvents += nEvents;
-
   const int longTime = 120;
+
+#ifdef DEBUG_MODE
+  {
+#else
   if(header[nEvents-1].unixTime - longTimeStartTime >= longTime){
-
+#endif
     FILE* fOut = fopen("/tmp/longTimePowSpec.txt", "w");
-
+    int pol = 0;
     for(pol=0; pol < NUM_POLARIZATIONS; pol++){
       int ant = 0;
       for(ant=0; ant < NUM_ANTENNAS; ant++){
+        int freqInd = 0;
 	for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
 	  longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]/=longTimeAvePowSpecNumEvents;
 
