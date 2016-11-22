@@ -782,7 +782,6 @@ __kernel void fourierTransformNormalizedData(__global float4* realIn,
 
   // Forward FFT
   complexOut[globalDataInd] = fftOutput;
-  complexOut[globalDataInd] = fftInput;
 
   /* fftInput = (float8)(globalDataInd, globalDataInd, */
   /* 		      globalDataInd, globalDataInd, */
@@ -817,22 +816,35 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   //  float var = rms*rms;
   int numEvents = numEventsBuffer[0];
 
-  float2 summedPowSpec = 0;
+  float2 summedPowSpec = (float2)(0, 0);
 
   float binToBinDifferenceThresh_dB = binToBinDifferenceThresh_dBBuffer[0];
   float maxThreshold_dBm = absMagnitudeThresh_dBmBuffer[0];
 
+
+  // At the time of writing this commet, sampInd goes from 0 to NUM_SAMPLES/4 (see global work item size arrays)
+  // There are NUM_SAMPLES floats in the raw waves
+  // There are 2*NUM_SAMPLES floats (i.e. NUM_SAMPLES complex numbers) in the GPU FFTs.
+  // I only need to access the first NUM_SAMPLES/2 complex numbers (NUM_SAMPLES floats) of each antenna.
+  // So each work item, needs to fetch 2 complex numbers (4 floats).
+
+  // This is exactly the sort of place I would make an indexing error...
   for(int event=0; event<numEvents; event++){
+
     float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
+
     float2 samplesPow = (float2)(samples.x*samples.x + samples.y*samples.y,
   				 samples.z*samples.z + samples.w*samples.w);
+
     summedPowSpec += samplesPow;//*var;
   }
 
+
   summedPowSpec *= 2; // For negative frequencies
-  summedPowSpec /= numEvents; // Average of all events
+  summedPowSpec  = numEvents > 0 ? summedPowSpec/numEvents : 0; // Average of all events
 
   // Put in scratch so we can share with other WIs
+  // for dynamic filtering
   powSpecScratch[sampInd] = summedPowSpec;
 
   // Write unfiltered power spectrum to global buffer
@@ -840,7 +852,6 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
   /* summedPowSpec.x = 10*log10(summedPowSpec.x/50); */
   /* summedPowSpec.y = 10*log10(summedPowSpec.y/50); */
-
 
   powSpecScratch[sampInd] = summedPowSpec;
 
@@ -866,11 +877,17 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
 
 
-__kernel void filterWaveforms(__global short2* passFilterBuffer,
-			      __global short2* staticPassFilterBuffer,
-			      __global float4* waveformsFourierDomain,
-			      __local float4* complexSquare,
+__kernel void filterWaveforms(__global short4* passFilterBuffer,
+			      __global short4* staticPassFilterBuffer,
+			      __global float8* waveformsFourierDomain,
+			      __local float8* complexSquare,
 			      __global float* newRms){
+/* __kernel void filterWaveforms(__global short2* passFilterBuffer, */
+/* 			      __global short2* staticPassFilterBuffer, */
+/* 			      __global float4* waveformsFourierDomain, */
+/* 			      __local float4* complexSquare, */
+/* 			      __global float* newRms){ */
+
   /*
      This kernel just multiplies a bin in the fourier domain by zero or one,
      contained in the the passFilter buffer.
@@ -885,8 +902,8 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   filterState.x = filterState.x < 0 ? 0 : filterState.x;
   filterState.y = filterState.y < 0 ? 0 : filterState.y;
 
-  // there's NUM_SAMPLES/2 freq bins divided among NUM_SAMPLES/4 work items
-  // so each work item does two... I'm sure I understood this in 2014.
+  // there's NUM_SAMPLES freq bins divided among NUM_SAMPLES/4 work items
+  // so each work item does four...
   short2 staticFilterState = staticPassFilterBuffer[sampInd];
   staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1;
   staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1;
@@ -895,73 +912,74 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   filterState.x *= staticFilterState.x;
   filterState.y *= staticFilterState.y;
 
+
   int freqBaseInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/2;
-  int sampInd0 = antInd*NUM_SAMPLES/2 + sampInd;
-  int sampInd1 = antInd*NUM_SAMPLES/2 + NUM_SAMPLES/2 - (sampInd+1);
+  /* int sampInd0 = antInd*NUM_SAMPLES/2 + sampInd; */
+  /* int sampInd1 = antInd*NUM_SAMPLES/2 + NUM_SAMPLES/2 - (sampInd+1); */
 
-  int freqInd0 = freqBaseInd + sampInd0;
-  int freqInd1 = freqBaseInd + sampInd1;
+  /* int freqInd0 = freqBaseInd + sampInd0; */
+  /* int freqInd1 = freqBaseInd + sampInd1; */
 
-  float4 freq0 = waveformsFourierDomain[freqInd0];
-  float4 freq1 = waveformsFourierDomain[freqInd1];
+  /* float4 freq0 = waveformsFourierDomain[freqInd0]; */
+  /* float4 freq1 = waveformsFourierDomain[freqInd1]; */
 
-  float4 filteredFreq0;
-  filteredFreq0.xy = filterState.x*freq0.xy;
-  filteredFreq0.zw = filterState.y*freq0.zw;
-
-
-  // symmetry of fourier transform -> swapping filterState indices
-  float4 filteredFreq1;
-  filteredFreq1.xy = filterState.y*freq1.xy;
-  filteredFreq1.zw = filterState.x*freq1.zw;
-
-  waveformsFourierDomain[freqInd0] = filteredFreq0;
-  waveformsFourierDomain[freqInd1] = filteredFreq1;
+  /* float4 filteredFreq0; */
+  /* filteredFreq0.xy = filterState.x*freq0.xy; */
+  /* filteredFreq0.zw = filterState.y*freq0.zw; */
 
 
+  /* // symmetry of fourier transform -> swapping filterState indices */
+  /* float4 filteredFreq1; */
+  /* filteredFreq1.xy = filterState.y*freq1.xy; */
+  /* filteredFreq1.zw = filterState.x*freq1.zw; */
+
+  /* waveformsFourierDomain[freqInd0] = filteredFreq0; */
+  /* waveformsFourierDomain[freqInd1] = filteredFreq1; */
 
 
 
 
 
-  // now I need to recalculate the "RMS" to renormalize the filtered waveforms.
-  // It's late afternoon, I've had some coffee but the caffine hasn't kicked in yet.
-  // This probably won't work...
-  int localInd = get_local_id(0);
-  complexSquare[localInd] = (filteredFreq0*filteredFreq0 + filteredFreq1*filteredFreq1)/(NUM_SAMPLES*NUM_SAMPLES);
 
-  barrier(CLK_LOCAL_MEM_FENCE);
 
-  // Now data is in LDS, add up the the pieces
-  for(int offset = 1; offset < get_local_size(0); offset += offset){
-    if (localInd % (2*offset) == 0){
-      complexSquare [localInd] += complexSquare [localInd + offset];
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-  }
-  barrier(CLK_LOCAL_MEM_FENCE);
+  /* // now I need to recalculate the "RMS" to renormalize the filtered waveforms. */
+  /* // It's late afternoon, I've had some coffee but the caffine hasn't kicked in yet. */
+  /* // This probably won't work... */
+  /* int localInd = get_local_id(0); */
+  /* complexSquare[localInd] = (filteredFreq0*filteredFreq0 + filteredFreq1*filteredFreq1)/(NUM_SAMPLES*NUM_SAMPLES); */
 
-  // broadcast sum to private memory
-  float4 square4 = complexSquare[0];
+  /* barrier(CLK_LOCAL_MEM_FENCE); */
 
-  // get sum of float4 components
-  float x = square4.x + square4.y + square4.z + square4.w;
+  /* // Now data is in LDS, add up the the pieces */
+  /* for(int offset = 1; offset < get_local_size(0); offset += offset){ */
+  /*   if (localInd % (2*offset) == 0){ */
+  /*     complexSquare [localInd] += complexSquare [localInd + offset]; */
+  /*   } */
+  /*   barrier(CLK_LOCAL_MEM_FENCE); */
+  /* } */
+  /* barrier(CLK_LOCAL_MEM_FENCE); */
 
-  // varience = the mean of the square minus the square of the mean
-  float rms = sqrt(x);
+  /* // broadcast sum to private memory */
+  /* float4 square4 = complexSquare[0]; */
 
-  // in case of all blank channel, which is stupendously unlikely in practise
-  // but does occur in my simple test conditions
-  rms = rms <= 0 ? 1 : rms;
+  /* // get sum of float4 components */
+  /* float x = square4.x + square4.y + square4.z + square4.w; */
 
-  // only need one WI to do this
-  if(localInd == 0){
-    newRms[eventInd*NUM_ANTENNAS + antInd] = rms;
-  }
+  /* // varience = the mean of the square minus the square of the mean */
+  /* float rms = sqrt(x); */
 
-  // for now...
-  waveformsFourierDomain[freqInd0] = filteredFreq0/rms;
-  waveformsFourierDomain[freqInd1] = filteredFreq1/rms;
+  /* // in case of all blank channel, which is stupendously unlikely in practise */
+  /* // but does occur in my simple test conditions */
+  /* rms = rms <= 0 ? 1 : rms; */
+
+  /* // only need one WI to do this */
+  /* if(localInd == 0){ */
+  /*   newRms[eventInd*NUM_ANTENNAS + antInd] = rms; */
+  /* } */
+
+  /* // for now... */
+  /* waveformsFourierDomain[freqInd0] = filteredFreq0/rms; */
+  /* waveformsFourierDomain[freqInd1] = filteredFreq1/rms; */
 
 }
 
