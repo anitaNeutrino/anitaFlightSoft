@@ -263,8 +263,7 @@ int main(int argc, char *argv[]){
       	mainGpuLoop(numEventsInGpuQueue, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds);
       	numPulsesReadIn = 0;
       }
-      /* raise(SIGTERM); */
-      return 0;
+
       /* if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds */
       /* 	 || currentState!=PROG_STATE_RUN){ */
       /* 	int phi=0; */

@@ -139,6 +139,20 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
   short numSamps = numSampsBuffer[eventInd*NUM_ANTENNAS + antInd];
   float4 store = rawData[dataInd];
 
+  // probably should do some pre-checking on the CPU
+  // and figure out where these are coming from.
+  // Crappy interpolation probably...
+
+  store.x = isinf(store.x) == 0 ? store.x : 0;
+  store.y = isinf(store.y) == 0 ? store.y : 0;
+  store.z = isinf(store.z) == 0 ? store.z : 0;
+  store.w = isinf(store.w) == 0 ? store.w : 0;
+
+  store.x = isnan(store.x) == 0 ? store.x : 0;
+  store.y = isnan(store.y) == 0 ? store.y : 0;
+  store.z = isnan(store.z) == 0 ? store.z : 0;
+  store.w = isnan(store.w) == 0 ? store.w : 0;
+
   /*
     Addition to effectively zero pad the waveforms which are sent to the GPU.
   */
@@ -773,21 +787,20 @@ __kernel void fourierTransformNormalizedData(__global float4* realIn,
   float4 data = realIn[globalDataInd];
 
   // Setting imaginary component as zero.
+  /* fftInput = (float8)(data.x, data.x, */
+  /* 		      data.y, data.y, */
+  /* 		      data.z, data.z, */
+  /* 		      data.w, data.w); */
   fftInput = (float8)(data.x, 0,
-		      data.y, 0,
-		      data.z, 0,
-		      data.w, 0);
+  		      data.y, 0,
+  		      data.z, 0,
+  		      data.w, 0);
+
 
   float8 fftOutput = doRadix2FFT(dataInd, fftInput, complexScratch, 1);
 
   // Forward FFT
   complexOut[globalDataInd] = fftOutput;
-
-  /* fftInput = (float8)(globalDataInd, globalDataInd, */
-  /* 		      globalDataInd, globalDataInd, */
-  /* 		      globalDataInd, globalDataInd, */
-  /* 		      globalDataInd, globalDataInd); */
-  /* complexOut[globalDataInd] = fftInput; */
 }
 
 
@@ -877,21 +890,18 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
 
 
-__kernel void filterWaveforms(__global short4* passFilterBuffer,
-			      __global short4* staticPassFilterBuffer,
-			      __global float8* waveformsFourierDomain,
-			      __local float8* complexSquare,
+__kernel void filterWaveforms(__global short2* passFilterBuffer,
+			      __global short2* staticPassFilterBuffer,
+			      __global float4* waveformsFourierDomain,
+			      __local float4* complexSquare,
 			      __global float* newRms){
-/* __kernel void filterWaveforms(__global short2* passFilterBuffer, */
-/* 			      __global short2* staticPassFilterBuffer, */
-/* 			      __global float4* waveformsFourierDomain, */
-/* 			      __local float4* complexSquare, */
-/* 			      __global float* newRms){ */
 
   /*
-     This kernel just multiplies a bin in the fourier domain by zero or one,
-     contained in the the passFilter buffer.
-     Pretty simple really.
+    The numbers here will require some commentry. Here are some comments.
+    There are NUM_SAMPLES/2 filter bits (static and dynamic).
+    However, there are NUM_SAMPLES complex numbers (2*NUM_SAMPLES floats) in the GPU FFTs.
+    We need to apply the filter to the  positive and negative frequency compenents.
+    I think I was messing this up in ANITA-3, lets try and do better this time around.
   */
 
   int sampInd = get_global_id(0);
@@ -899,87 +909,93 @@ __kernel void filterWaveforms(__global short4* passFilterBuffer,
   int eventInd = get_global_id(2);
 
   short2 filterState = passFilterBuffer[antInd*NUM_SAMPLES/4 + sampInd];
-  filterState.x = filterState.x < 0 ? 0 : filterState.x;
-  filterState.y = filterState.y < 0 ? 0 : filterState.y;
+  /* short2 filterState = passFilterBuffer[antInd*NUM_SAMPLES/4 + sampInd];   */
+  /* filterState.x = filterState.x < 0 ? 0 : filterState.x; */
+  /* filterState.y = filterState.y < 0 ? 0 : filterState.y; */
 
   // there's NUM_SAMPLES freq bins divided among NUM_SAMPLES/4 work items
   // so each work item does four...
-  short2 staticFilterState = staticPassFilterBuffer[sampInd];
-  staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1;
-  staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1;
+  /* short2 staticFilterState = staticPassFilterBuffer[sampInd]; */
+  /* staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1; */
+  /* staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1; */
 
   // AND the static and "dynamic" state.
-  filterState.x *= staticFilterState.x;
-  filterState.y *= staticFilterState.y;
+  /* filterState.x *= staticFilterState.x; */
+  /* filterState.y *= staticFilterState.y; */
+
+
+  // Need to encode symmetry in these indices...
+  // there are 2*NUM_SAMPLES floats in the GPU FFTs per channel
+  // Currently using a float4 for the fourier waveforms, which is 2 complex numbers.
+  // So each WI needs to do one positive frequency float4 and one negative frequency float4
+
+
+
+
+
 
 
   int freqBaseInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/2;
-  /* int sampInd0 = antInd*NUM_SAMPLES/2 + sampInd; */
-  /* int sampInd1 = antInd*NUM_SAMPLES/2 + NUM_SAMPLES/2 - (sampInd+1); */
 
-  /* int freqInd0 = freqBaseInd + sampInd0; */
-  /* int freqInd1 = freqBaseInd + sampInd1; */
+  int sampInd0 = antInd*NUM_SAMPLES/2 + sampInd;
+  int sampInd1 = antInd*NUM_SAMPLES/2 + NUM_SAMPLES/2 - (sampInd+1);
 
-  /* float4 freq0 = waveformsFourierDomain[freqInd0]; */
-  /* float4 freq1 = waveformsFourierDomain[freqInd1]; */
+  int freqInd0 = freqBaseInd + sampInd0;
+  int freqInd1 = freqBaseInd + sampInd1;
 
-  /* float4 filteredFreq0; */
-  /* filteredFreq0.xy = filterState.x*freq0.xy; */
-  /* filteredFreq0.zw = filterState.y*freq0.zw; */
+  float4 freq0 = waveformsFourierDomain[freqInd0];
+  float4 freq1 = waveformsFourierDomain[freqInd1];
 
+  float4 filteredFreq0;
+  filteredFreq0.xy = filterState.x*freq0.xy;
+  filteredFreq0.zw = filterState.y*freq0.zw;
 
-  /* // symmetry of fourier transform -> swapping filterState indices */
-  /* float4 filteredFreq1; */
-  /* filteredFreq1.xy = filterState.y*freq1.xy; */
-  /* filteredFreq1.zw = filterState.x*freq1.zw; */
+  // symmetry of fourier transform -> swapping filterState indices
+  float4 filteredFreq1;
+  filteredFreq1.xy = filterState.y*freq1.xy;
+  filteredFreq1.zw = filterState.x*freq1.zw;
 
-  /* waveformsFourierDomain[freqInd0] = filteredFreq0; */
-  /* waveformsFourierDomain[freqInd1] = filteredFreq1; */
+  // now I need to recalculate the "RMS" to renormalize the filtered waveforms.
+  // It's late afternoon, I've had some coffee but the caffine hasn't kicked in yet.
+  // This probably won't work...
+  int localInd = get_local_id(0);
+  complexSquare[localInd] = (filteredFreq0*filteredFreq0 + filteredFreq1*filteredFreq1)/(NUM_SAMPLES*NUM_SAMPLES);
 
+  barrier(CLK_LOCAL_MEM_FENCE);
 
+  // Now data is in LDS, add up the the pieces
+  for(int offset = 1; offset < get_local_size(0); offset += offset){
+    if (localInd % (2*offset) == 0){
+      complexSquare [localInd] += complexSquare [localInd + offset];
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+  }
+  barrier(CLK_LOCAL_MEM_FENCE);
 
+  // broadcast sum to private memory
+  float4 square4 = complexSquare[0];
 
+  // get sum of float4 components
+  float x = square4.x + square4.y + square4.z + square4.w;
 
+  // varience = the mean of the square minus the square of the mean
+  float rms = sqrt(x);
 
+  // in case of all blank channel, which is stupendously unlikely in practise
+  // but does occur in my simple test conditions
+  rms = (rms > 0 ) ? rms : 1;
 
-  /* // now I need to recalculate the "RMS" to renormalize the filtered waveforms. */
-  /* // It's late afternoon, I've had some coffee but the caffine hasn't kicked in yet. */
-  /* // This probably won't work... */
-  /* int localInd = get_local_id(0); */
-  /* complexSquare[localInd] = (filteredFreq0*filteredFreq0 + filteredFreq1*filteredFreq1)/(NUM_SAMPLES*NUM_SAMPLES); */
+  // only need one WI to do this
+  if(localInd == 0){
+    newRms[eventInd*NUM_ANTENNAS + antInd] = rms;
+    /* newRms[eventInd*NUM_ANTENNAS + antInd] = eventInd*NUM_ANTENNAS + antInd; */
+  }
 
-  /* barrier(CLK_LOCAL_MEM_FENCE); */
-
-  /* // Now data is in LDS, add up the the pieces */
-  /* for(int offset = 1; offset < get_local_size(0); offset += offset){ */
-  /*   if (localInd % (2*offset) == 0){ */
-  /*     complexSquare [localInd] += complexSquare [localInd + offset]; */
-  /*   } */
-  /*   barrier(CLK_LOCAL_MEM_FENCE); */
-  /* } */
-  /* barrier(CLK_LOCAL_MEM_FENCE); */
-
-  /* // broadcast sum to private memory */
-  /* float4 square4 = complexSquare[0]; */
-
-  /* // get sum of float4 components */
-  /* float x = square4.x + square4.y + square4.z + square4.w; */
-
-  /* // varience = the mean of the square minus the square of the mean */
-  /* float rms = sqrt(x); */
-
-  /* // in case of all blank channel, which is stupendously unlikely in practise */
-  /* // but does occur in my simple test conditions */
-  /* rms = rms <= 0 ? 1 : rms; */
-
-  /* // only need one WI to do this */
-  /* if(localInd == 0){ */
-  /*   newRms[eventInd*NUM_ANTENNAS + antInd] = rms; */
-  /* } */
-
-  /* // for now... */
-  /* waveformsFourierDomain[freqInd0] = filteredFreq0/rms; */
-  /* waveformsFourierDomain[freqInd1] = filteredFreq1/rms; */
+  // for now...
+  /* waveformsFourierDomain[freqInd0] = x; */
+  /* waveformsFourierDomain[freqInd1] = x; */
+  waveformsFourierDomain[freqInd0] = filteredFreq0/rms;
+  waveformsFourierDomain[freqInd1] = filteredFreq1/rms;
 
 }
 

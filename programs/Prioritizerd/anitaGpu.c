@@ -733,11 +733,15 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 #endif
 
 
-    printf("printing normal buffer always %d\n", polInd);
-    printBufferToTextFile2(commandQueue, "normalBuffer_always_", polInd, normalBuffer, NUM_EVENTS, nEvents);
+    /* printf("printing normal buffer always %d\n", polInd); */
+    /* printBufferToTextFile2(commandQueue, "normalBuffer_always_", polInd, normalBuffer, NUM_EVENTS, nEvents); */
 
-    printf("printing fourier buffer always %d\n", polInd);
-    printBufferToTextFile2(commandQueue, "fourierBuffer_always_", polInd, fourierBuffer, NUM_EVENTS, nEvents);
+    /* printf("printing fourier buffer always %d\n", polInd); */
+    /* printBufferToTextFile2(commandQueue, "fourierBuffer_always_", polInd, fourierBuffer, NUM_EVENTS, nEvents); */
+
+    /* printf("printing newRms buffer always %d\n", polInd); */
+    /* printBufferToTextFile2(commandQueue, "newRmsBuffer_always_", polInd, newRmsBuffer, NUM_EVENTS, nEvents); */
+
   }
 
   /* Since all copy GPU-to-CPU buffer reading commands are non-blocking we actually need to wait... */
