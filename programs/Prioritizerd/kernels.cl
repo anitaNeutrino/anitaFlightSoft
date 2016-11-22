@@ -787,10 +787,6 @@ __kernel void fourierTransformNormalizedData(__global float4* realIn,
   float4 data = realIn[globalDataInd];
 
   // Setting imaginary component as zero.
-  /* fftInput = (float8)(data.x, data.x, */
-  /* 		      data.y, data.y, */
-  /* 		      data.z, data.z, */
-  /* 		      data.w, data.w); */
   fftInput = (float8)(data.x, 0,
   		      data.y, 0,
   		      data.z, 0,
@@ -825,8 +821,6 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // WI itendifiers
   int sampInd = get_global_id(0);
   int ant = get_global_id(1);
-  //  float rms = rmsBuffer[ant];
-  //  float var = rms*rms;
   int numEvents = numEventsBuffer[0];
 
   float2 summedPowSpec = (float2)(0, 0);
@@ -854,7 +848,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
 
 
   summedPowSpec *= 2; // For negative frequencies
-  summedPowSpec  = numEvents > 0 ? summedPowSpec/numEvents : 0; // Average of all events
+  summedPowSpec = numEvents > 0 ? summedPowSpec/numEvents : 0; // Average of all events
 
   // Put in scratch so we can share with other WIs
   // for dynamic filtering
@@ -863,22 +857,9 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // Write unfiltered power spectrum to global buffer
   powSpecOut[ant*NUM_SAMPLES/4 + sampInd] = summedPowSpec;
 
-  /* summedPowSpec.x = 10*log10(summedPowSpec.x/50); */
-  /* summedPowSpec.y = 10*log10(summedPowSpec.y/50); */
-
-  powSpecScratch[sampInd] = summedPowSpec;
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  int sampInd0 = sampInd > 0 ? sampInd - 1 : 0;
-  /* int sampInd2 = sampInd < NUM_SAMPLES - 1 ? sampInd + 1 : NUM_SAMPLES - 1; */
-
-  float2 leftPowSpec = powSpecScratch[sampInd0];
-  /* float2 rightPowSpec = powSpecScratch[sampInd2];   */
-
-  float2 powSpecDer;
-  powSpecDer.x = summedPowSpec.x - leftPowSpec.y;
-  powSpecDer.y = summedPowSpec.y - summedPowSpec.x;
 
   // Work in progress for ANITA-4
   short2 passFilter;
@@ -910,18 +891,18 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
 
   short2 filterState = passFilterBuffer[antInd*NUM_SAMPLES/4 + sampInd];
   /* short2 filterState = passFilterBuffer[antInd*NUM_SAMPLES/4 + sampInd];   */
-  /* filterState.x = filterState.x < 0 ? 0 : filterState.x; */
-  /* filterState.y = filterState.y < 0 ? 0 : filterState.y; */
+  filterState.x = filterState.x < 0 ? 0 : filterState.x;
+  filterState.y = filterState.y < 0 ? 0 : filterState.y;
 
-  // there's NUM_SAMPLES freq bins divided among NUM_SAMPLES/4 work items
-  // so each work item does four...
-  /* short2 staticFilterState = staticPassFilterBuffer[sampInd]; */
-  /* staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1; */
-  /* staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1; */
+  // there's NUM_SAMPLES/2 freq bins divided among NUM_SAMPLES/4 work items
+  // so each work item does two...
+  short2 staticFilterState = staticPassFilterBuffer[sampInd];
+  staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1;
+  staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1;
 
   // AND the static and "dynamic" state.
-  /* filterState.x *= staticFilterState.x; */
-  /* filterState.y *= staticFilterState.y; */
+  filterState.x *= staticFilterState.x;
+  filterState.y *= staticFilterState.y;
 
 
   // Need to encode symmetry in these indices...
@@ -929,14 +910,7 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   // Currently using a float4 for the fourier waveforms, which is 2 complex numbers.
   // So each WI needs to do one positive frequency float4 and one negative frequency float4
 
-
-
-
-
-
-
   int freqBaseInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/2;
-
   int sampInd0 = antInd*NUM_SAMPLES/2 + sampInd;
   int sampInd1 = antInd*NUM_SAMPLES/2 + NUM_SAMPLES/2 - (sampInd+1);
 
@@ -949,6 +923,7 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   float4 filteredFreq0;
   filteredFreq0.xy = filterState.x*freq0.xy;
   filteredFreq0.zw = filterState.y*freq0.zw;
+
 
   // symmetry of fourier transform -> swapping filterState indices
   float4 filteredFreq1;
@@ -988,12 +963,9 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   // only need one WI to do this
   if(localInd == 0){
     newRms[eventInd*NUM_ANTENNAS + antInd] = rms;
-    /* newRms[eventInd*NUM_ANTENNAS + antInd] = eventInd*NUM_ANTENNAS + antInd; */
   }
 
   // for now...
-  /* waveformsFourierDomain[freqInd0] = x; */
-  /* waveformsFourierDomain[freqInd1] = x; */
   waveformsFourierDomain[freqInd0] = filteredFreq0/rms;
   waveformsFourierDomain[freqInd1] = filteredFreq1/rms;
 
@@ -1020,32 +992,29 @@ __kernel void invFourierTransformFilteredWaveforms(__global float4* invFftWavefo
   deltaPhiSect = deltaPhiSect > 7 ? deltaPhiSect - NUM_PHI_SECTORS : deltaPhiSect;
   deltaPhiSect = deltaPhiSect < -7 ? deltaPhiSect + NUM_PHI_SECTORS : deltaPhiSect;
 
-  /* if(deltaPhiSect < 2 && deltaPhiSect > -2){ */
-    // will pass to the FFT function
-    float8 fftInput;
+  if(deltaPhiSect < 2 && deltaPhiSect > -2){
 
-    // Use WI itentifiers to get data.
     int globalDataInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES/4 + antInd*NUM_SAMPLES/4 + dataInd;
 
-    // Normalize inverse fft input by dividing by number of samples.
+    /* Normalize inverse fft input by dividing by number of samples. */
     float8 data = filteredWaveforms[globalDataInd]/NUM_SAMPLES;
 
-    // Swap re and im whilst preparing to put data into FFT function.
-    fftInput = (float8) (data.s1, data.s0,
-			 data.s3, data.s2,
-			 data.s5, data.s4,
-			 data.s7, data.s6);
+    /* Swap re and im whilst preparing to put data into FFT function. */
+    float8 fftInput = (float8) (data.s1, data.s0,
+				data.s3, data.s2,
+				data.s5, data.s4,
+				data.s7, data.s6);
 
     float8 fftOutput = doRadix2FFT(dataInd, fftInput, complexScratch, 1);
 
     float4 output;
-    // The output also needs to be swapped.
-    // so put imaginary parts into output array.
+    /* The output also needs to be swapped. */
+    /*   so put imaginary parts into output array. */
     output.x = fftOutput.s1;
     output.y = fftOutput.s3;
     output.z = fftOutput.s5;
     output.w = fftOutput.s7;
 
     invFftWaveforms[globalDataInd] = output;
-  /* } */
+  }
 }

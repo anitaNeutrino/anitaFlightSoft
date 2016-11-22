@@ -936,7 +936,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   }
   longTimeAvePowSpecNumEvents += nEvents;
 
-  const int longTime = 60;
+  const int longTime = 120;
   if(header[nEvents-1].unixTime - longTimeStartTime >= longTime){
 
     FILE* fOut = fopen("/tmp/longTimePowSpec.txt", "w");
@@ -1043,9 +1043,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	      // is the spike big enough?
 	      float spikeSize_dB = longTimeAvePowSpec[longBaseInd + spikePeakBin] - longTimeAvePowSpec[longBaseInd + spikeStartBin];
 
-	      if(pol==0 && ant==2){
-		printf("%f %.1f MHz - %.1f MHz\n", spikeSize_dB, deltaF_MHz*spikeStartBin, deltaF_MHz*spikePeakBin);
-	      }
+	      /* if(pol==0 && ant==2){ */
+	      /* 	printf("%f %.1f MHz - %.1f MHz\n", spikeSize_dB, deltaF_MHz*spikeStartBin, deltaF_MHz*spikePeakBin); */
+	      /* } */
 
 	      if(spikeSize_dB > spikeThresh_dB){
 		int freqInd2 = spikeStartBin;
@@ -1129,7 +1129,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 #endif
 
 
-  printf("\n");
+  /* printf("\n"); */
 }
 
 

@@ -797,8 +797,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     /* for(int samp=0; samp< nSamps[surf][8]; samp++){ */
     /*   printf("times[%d][8][%d] = %lf\n", surf, samp, times[surf][8][samp]); */
     /* } */
-    interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8],
-    /* interpClocks[surf] = interpolateWaveform(nSamps[surf][8],					      */
+    /* interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8], */
+    interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
     					     volts[surf][8],
     					     times[surf][8],
     					     numUpsampledClockSamples,
@@ -839,8 +839,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
       	newTimes[samp] -= clockJitters[surf];
       }
 
-      finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan],
-      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan], */
+      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan], */
+      finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
 								      //volts2[surf][chan],
 								      volts[surf][chan],
 								      newTimes,
