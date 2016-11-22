@@ -31,7 +31,7 @@ typedef struct
 
 void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType);
 
-cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_context context, cl_device_id* deviceList, 
+cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_context context, cl_device_id* deviceList,
 				    cl_uint numDevicesToUse, uint showCompileLog);
 
 cl_kernel createKernel(cl_program prog, const char* kernelName);
@@ -54,6 +54,8 @@ void moveDataBetweenCPUandGPU(cl_command_queue cq, buffer* theBuffer, void* arra
 
 void printBufferToTextFile(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents);
 void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents, const int numEventsToPrint);
+
+void printBufferToTextFile3(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents, const int numEventsToPrint, int firstEvent);
 
 void setKernelArgs(cl_kernel kernel, int numArgs, buffer** buffers, const char* kernelName);
 void setKernelArg(cl_kernel kernel, uint arg, buffer* theBuffer, const char* kernelName);

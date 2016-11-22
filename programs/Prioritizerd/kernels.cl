@@ -1,5 +1,7 @@
 #include "myInterferometryConstants.h"
 
+static float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* complexScratch, int dir);
+
 inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* complexScratch, int dir){
 
   //  short debug= dir > 1 ? 1 : 0;
@@ -24,8 +26,6 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
 #pragma unroll
 
   for(short bit=RADIX_BIT_SWITCH; bit>=0; bit--){
-    //    for(short bit=9; bit>=0; bit--){ /* NUM_SAMPLES = 1024 */
-    //  for(short bit=7; bit>=0; bit--){ /* NUM_SAMPLES = 256 */
 
     // Put bit in reverse position (0->9, 1->8, etc...)
     outInd0 += (inInd0 & 1)*pown(2.f,bit);
@@ -45,6 +45,7 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
   complexScratch[outInd2] = (float2)(fftInput.s4, fftInput.s5);
   complexScratch[outInd3] = (float2)(fftInput.s6, fftInput.s7);
 
+
   // Wait for all work items to get to this point.
   barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -56,6 +57,7 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
   // At the end of each loop iteration, we should have DFTs of length 'length'.
 
 #pragma unroll
+  /* for(unsigned short length = 2; length<=1; length<<=1){/\* equivalent to length*=2 *\/ */
   for(unsigned short length = 2; length<=NUM_SAMPLES; length<<=1){/* equivalent to length*=2 */
 
     // I have arranged arrays so that the output put of even sub-ffts are on the left
@@ -86,6 +88,7 @@ inline float8 doRadix2FFT(short dataInd, float8 fftInput, __local float2* comple
       // apprently (and now measured to be the case for me) native_sin, native_cos are faster than sin, cos
       float reTwiddle = native_cos(theta);
       float imTwiddle = native_sin(theta);
+
 
       // Get input to this FFT before overwriting.
       float2 complexEvenIn = complexScratch[evenInd];
@@ -134,72 +137,12 @@ __kernel void normalizeAndPadWaveforms(__global short* numSampsBuffer,
 
   // look up how many raw samples in the waveform
   short numSamps = numSampsBuffer[eventInd*NUM_ANTENNAS + antInd];
-
-  // hold 4 samples of data in private memory
-  /* float4 storeShort = rawData[dataInd]; */
-  /* float4 store; */
-  /* store.x = storeShort.x; */
-  /* store.y = storeShort.y; */
-  /* store.z = storeShort.z; */
-  /* store.w = storeShort.w; */
   float4 store = rawData[dataInd];
 
   /*
     Addition to effectively zero pad the waveforms which are sent to the GPU.
   */
-  store.x = localInd*4 < numSamps ? store.x : 0;
-  store.y = localInd*4 + 1 < numSamps ? store.y : 0;
-  store.z = localInd*4 + 2 < numSamps ? store.z : 0;
-  store.w = localInd*4 + 3 < numSamps ? store.w : 0;
 
-  // to get rms need linear combos of square and sum
-  // first put in LDS
-  /* square[localInd] = store*store/numSamps; //NUM_SAMPLES; */
-  /* mean[localInd] = store/numSamps; //NUM_SAMPLES; */
-  /* barrier(CLK_LOCAL_MEM_FENCE); */
-
-  /* // Now data is in LDS, add up the the pieces */
-  /* for(int offset = 1; offset < get_local_size(0); offset += offset){ */
-  /*   if (localInd % (2*offset) == 0){ */
-  /*     square [localInd] += square [localInd + offset]; */
-  /*     mean [localInd] += mean [localInd + offset]; */
-  /*   } */
-  /*   barrier(CLK_LOCAL_MEM_FENCE); */
-  /* } */
-
-  /* barrier(CLK_LOCAL_MEM_FENCE); */
-
-  /* // broadcast sum to private memory */
-  /* float4 square4 = square[0]; */
-  /* float4 mean4 = mean[0]; */
-
-  /* // get sum of float4 components */
-  /* float x = square4.x + square4.y + square4.z + square4.w; */
-  /* float y = mean4.x + mean4.y + mean4.z + mean4.w; */
-
-  /* // varience = the mean of the square minus the square of the mean */
-  /* float rms = sqrt(x - y*y); */
-
-  /* // in case of all blank channel, which is stupendously unlikely in practise */
-  /* // but does occur in my simple test conditions */
-  /* rms = rms <= 0 ? 1 : rms; */
-
-  /* // only need one WI to do this */
-  /* if(localInd == 0){ */
-  /*   rmsBuffer[eventInd*NUM_ANTENNAS + antInd] = rms; */
-  /* } */
-
-  /* // normalize the data, */
-  /* store = (store - y) / rms; */
-
-  /*
-    Would have offset trailing zero-pad since we subtracted the mean values.
-    So now set trailing values to zero again.
-    Note that during development, the zero-padding at the start of the waveform
-    (which corrects for different cable delays) is not fixed by this.
-    This will eventually not be a problem as the cable delays should be fixed in
-    the deltaT lookup table.
-  */
   store.x = localInd*4 < numSamps ? store.x : 0;
   store.y = localInd*4 + 1 < numSamps ? store.y : 0;
   store.z = localInd*4 + 2 < numSamps ? store.z : 0;
@@ -595,7 +538,7 @@ __kernel void coherentlySumWaveForms(__global int* maxTheta2,
 				     __global float* normalData,
 				     __global float4* coherentWaveBuffer,
 				     __global float* rmsBuffer,
-				     __global short* lookup){
+				     __global float* lookup){
 
   int eventInd = get_global_id(1);
   int phiSector = maxPhiSector[eventInd];
@@ -688,7 +631,8 @@ __kernel void coherentlySumWaveForms(__global int* maxTheta2,
 
 
     //    short dt = orderFactor*(lookup[lookupInd]);
-    short dt = lookup[lookupInd];
+    float dtFloat = lookup[lookupInd];
+    short dt = floor(dtFloat/NOMINAL_SAMPLING + 0.5);
     dt = orderFactor < 0 ? NUM_SAMPLES - dt : dt;
 
     dataInd = eventInd*NUM_ANTENNAS*NUM_SAMPLES + ant*NUM_SAMPLES;
@@ -838,11 +782,18 @@ __kernel void fourierTransformNormalizedData(__global float4* realIn,
 
   // Forward FFT
   complexOut[globalDataInd] = fftOutput;
+  complexOut[globalDataInd] = fftInput;
+
+  /* fftInput = (float8)(globalDataInd, globalDataInd, */
+  /* 		      globalDataInd, globalDataInd, */
+  /* 		      globalDataInd, globalDataInd, */
+  /* 		      globalDataInd, globalDataInd); */
+  /* complexOut[globalDataInd] = fftInput; */
 }
 
 
 __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
-						__global float* rmsBuffer,
+						/* __global float* rmsBuffer, */
 						__global float2* powSpecOut,
 						__local float2* powSpecScratch,
 						__global short2* passFilterBuffer,
@@ -1014,7 +965,7 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
 
 }
 
-__kernel void invFourierTransformFilteredWaveforms(__global float4* normalData,
+__kernel void invFourierTransformFilteredWaveforms(__global float4* invFftWaveforms,
 						   __global float8* filteredWaveforms,
 						   __local float2* complexScratch,
 						   __global int* maxPhiSectorBuffer){
@@ -1061,6 +1012,6 @@ __kernel void invFourierTransformFilteredWaveforms(__global float4* normalData,
     output.z = fftOutput.s5;
     output.w = fftOutput.s7;
 
-    normalData[globalDataInd] = output;
+    invFftWaveforms[globalDataInd] = output;
   /* } */
 }

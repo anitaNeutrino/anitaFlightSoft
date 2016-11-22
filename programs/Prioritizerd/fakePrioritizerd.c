@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
   signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
   signal(SIGTERM, handleBadSigs);
-  signal(SIGINT, handleBadSigs);
+  /* signal(SIGINT, handleBadSigs); */
   signal(SIGSEGV, handleBadSigs);
 
   //Dont' wait for children
@@ -263,7 +263,8 @@ int main(int argc, char *argv[]){
       	mainGpuLoop(numEventsInGpuQueue, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds);
       	numPulsesReadIn = 0;
       }
-
+      /* raise(SIGTERM); */
+      return 0;
       /* if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds */
       /* 	 || currentState!=PROG_STATE_RUN){ */
       /* 	int phi=0; */
@@ -441,8 +442,10 @@ void prepWriterStructs() {
 int getNextEventNumber(int* run){
 
   if(waisPulseEventNumbers==NULL){
-    numWaisPulses = 499; //5625; //118160; // from wc -l
-    waisPulseEventNumbers = fopen("run130EventNumbers.txt", "r");
+    numWaisPulses = 2000; //499; //5625; //118160; // from wc -l
+    waisPulseEventNumbers = fopen("run352EventNumbers.txt", "r");
+    /* waisPulseEventNumbers = fopen("run152EventNumbers.txt", "r"); */
+    /* waisPulseEventNumbers = fopen("run130EventNumbers.txt", "r");     */
     /* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r"); */
     /* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r"); */
   }

@@ -222,6 +222,7 @@ extern buffer* complexScratchBuffer3;
 extern cl_kernel hilbertPeakKernel;
 extern buffer* hilbertPeakBuffer;
 extern buffer* scratchBuffer;
+extern buffer* invFftBuffer;
 
 extern struct timeval startTime;
 extern struct timezone dummy;
