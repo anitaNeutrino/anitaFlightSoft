@@ -38,7 +38,7 @@ static int zeroes[NUM_TUFF_NOTCHES];
 static int adjustAccordingToHeading[NUM_TUFF_NOTCHES]; 
 static int useMagnetometerForHeading = 0;  
 static int degreesFromNorthToNotch[NUM_TUFF_NOTCHES]; 
-static int thresholdToNotchNextSector[NUM_TUFF_NOTCHES]; 
+static int slopeThresholdToNotchNextSector[NUM_TUFF_NOTCHES]; 
 static int maxHeadingAge = 120;  
 
 
@@ -487,10 +487,10 @@ int analyzeHeading()
       tuffStruct.startSectors[i] =   (phi_start_notch) /  22.5; 
       tuffStruct.endSectors[i] =   (int) (ceil((phi_stop_notch) /  22.5)) % 16; 
 
-      if (heading_slope_sumw2 && heading_slope_estimate > thresholdToNotchNextSector[i])
+      if (heading_slope_sumw2 && heading_slope_estimate > slopeThresholdToNotchNextSector[i])
         tuffStruct.endSectors[i] = (tuffStruct.endSectors[i] + 1) % 16; 
 
-      if (heading_slope_sumw2 && heading_slope_estimate < -thresholdToNotchNextSector[i])
+      if (heading_slope_sumw2 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
         tuffStruct.startSectors[i] = (tuffStruct.startSectors[i] - 1) % 16; 
     }
   }
@@ -810,6 +810,7 @@ int readConfig()
   {
     int notch_tmp [2*NUM_TUFF_NOTCHES]; 
     int nread = 2*NUM_TUFF_NOTCHES;
+    int tmp[3];
     int ok = 1; 
 
     kvpStatus = kvpGetIntArray("notchPhiSectors", notch_tmp, &nread); 
@@ -849,7 +850,76 @@ int readConfig()
       memcpy(&tuffStruct.endSectors, default_end_sector, sizeof(tuffStruct.endSectors)); 
     }
 
+
+    useMagnetometerForHeading = kvpGetInt("useMagnetometerForHeading", 0); 
+    maxHeadingAge = kvpGetInt("maxHeadingAge", 120); 
+
+
     nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("adjustAccordingToHeading", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      syslog(LOG_ERR, "Problem reading in adjsut according to heading, turning off"); 
+      memset(adjustAccordingToHeading,0, sizeof(adjustAccordingToHeading)); 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting adjustAccording to heading to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(adjustAccordingToHeading, tmp, sizeof(adjustAccordingToHeading)); 
+    }
+    
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("degreesFromNorthToNotch", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      int i ; 
+      syslog(LOG_ERR, "Problem reading in degreesFromNorthToNotch, turning to 90"); 
+      for (i = 0; i < 3; i++) degreesFromNorthToNotch[i] = 90; 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting degreesFromNorthToNotch to heading to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(degreesFromNorthToNotch, tmp, sizeof(degreesFromNorthToNotch)); 
+    }
+    
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("slopeThresholdToNotchNextSector", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      int i;
+      syslog(LOG_ERR, "Problem reading in slopeThresholdToNotchNextSector, turning to 23"); 
+      for (i = 0; i < 3; i++) slopeThresholdToNotchNextSector[i] = 23; 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting slopeThresholdToNotchNextSector to heading to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(slopeThresholdToNotchNextSector, tmp, sizeof(slopeThresholdToNotchNextSector)); 
+    }
+
+
 
   }
   else { configStatus+=4; }
