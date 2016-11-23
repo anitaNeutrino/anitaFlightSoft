@@ -43,7 +43,8 @@ buffer* numEventsBuffer = NULL;
 cl_kernel eventPowSpecKernel = 0;
 buffer* powSpecBuffer = NULL;
 buffer* passFilterBuffer = NULL;
-buffer* longDynamicPassFilterBuffer = NULL;
+buffer* longDynamicPassFilterBufferVPol = NULL;
+buffer* longDynamicPassFilterBufferHPol = NULL;
 buffer* staticPassFilterBuffer = NULL;
 buffer* powSpecScratchBuffer = NULL;
 buffer* isMinimaBuffer = NULL;
@@ -357,14 +358,15 @@ void prepareGpuThings(){
   skipUpdatingAvePowSpec = createBuffer(context, memFlags, sizeof(unsigned short)*NUM_EVENTS, "s", "skipUpdatingAvePowSpec");
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
-  longDynamicPassFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "longDynamicPassFilterBuffer");
+  longDynamicPassFilterBufferVPol = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "longDynamicPassFilterBufferVPol");
+  longDynamicPassFilterBufferHPol = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "longDynamicPassFilterBufferHPol");
 
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
   passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
 
 
-#define numPowSpecArgs 10
-  buffer* powSpecArgs[numPowSpecArgs] = {skipUpdatingAvePowSpec, fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer,longDynamicPassFilterBuffer,  binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
+#define numPowSpecArgs 9
+  buffer* powSpecArgs[numPowSpecArgs] = {skipUpdatingAvePowSpec, fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer,  binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
 
@@ -396,7 +398,7 @@ void prepareGpuThings(){
 
 
 #define numFilterArgs 6
-  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, longDynamicPassFilterBuffer, fourierBuffer, complexSquareLocalBuffer, newRmsBuffer};
+  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, longDynamicPassFilterBufferVPol, fourierBuffer, complexSquareLocalBuffer, newRmsBuffer};
   setKernelArgs(filterWaveformsKernel, numFilterArgs, filterArgs, "filterWaveformKernel");
 
 
@@ -746,7 +748,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 				      numEventSamples, 0, NULL);
   dataToGpuEvents[0][2] = writeBuffer(commandQueue, phiSectorTriggerBufferVPol,
 				      phiTrig, 0, NULL);
-  dataToGpuEvents[0][3] = writeBuffer(commandQueue, longDynamicPassFilterBuffer,
+  dataToGpuEvents[0][3] = writeBuffer(commandQueue, longDynamicPassFilterBufferVPol,
 				      longDynamicPassFilter, 0, NULL);
 
 
@@ -756,8 +758,23 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 				     &numEventSamples[NUM_EVENTS*NUM_ANTENNAS], 0, NULL);
   dataToGpuEvents[1][2] = writeBuffer(commandQueue, phiSectorTriggerBufferHPol,
 				     &phiTrig[NUM_EVENTS*NUM_PHI_SECTORS], 0, NULL);
-  dataToGpuEvents[1][3] = writeBuffer(commandQueue, longDynamicPassFilterBuffer,
+  dataToGpuEvents[1][3] = writeBuffer(commandQueue, longDynamicPassFilterBufferHPol,
 				      &longDynamicPassFilter[NUM_ANTENNAS*NUM_SAMPLES/2], 0, NULL);
+
+  if(debugMode > 0){
+    int pol=0;
+    for(pol=0; pol < NUM_POLARIZATIONS; pol++){
+      int ant=0;
+      for(ant = 0; ant < NUM_ANTENNAS; ant++){
+	int freqInd=0;
+	printf("pol %d ant %d:\n", pol, ant);
+	for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){
+	  printf("%hd ", longDynamicPassFilter[pol*(NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]);
+	}
+	printf("\n");
+      }
+    }
+  }
 
 
   cl_event dataFromGpuEvents[NUM_POLARIZATIONS][7];
@@ -776,6 +793,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     if(polInd == 0){
       setKernelArg(normalizationKernel, 0, numSampsBufferVPol, "normalizationKernel");
       setKernelArg(normalizationKernel, 2, rawBufferVPol, "normalizationKernel");
+      setKernelArg(filterWaveformsKernel, 2, longDynamicPassFilterBufferVPol, "filterWaveformsKernel");
       setKernelArg(circularCorrelationKernel, 0, phiSectorTriggerBufferVPol, "circularCorrelationKernel");
       setKernelArg(imageKernel, 0, phiSectorTriggerBufferVPol, "imageKernel");
       setKernelArg(findImagePeakInThetaKernel, 1, phiSectorTriggerBufferVPol, "findImagePeakInThetaKernel");
@@ -783,6 +801,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     else{
       setKernelArg(normalizationKernel, 0, numSampsBufferHPol, "normalizationKernel");
       setKernelArg(normalizationKernel, 2, rawBufferHPol, "normalizationKernel");
+      setKernelArg(filterWaveformsKernel, 2, longDynamicPassFilterBufferHPol, "filterWaveformsKernel");
       setKernelArg(circularCorrelationKernel, 0, phiSectorTriggerBufferHPol, "circularCorrelationKernel");
       setKernelArg(imageKernel, 0, phiSectorTriggerBufferHPol, "imageKernel");
       setKernelArg(findImagePeakInThetaKernel, 1, phiSectorTriggerBufferHPol, "findImagePeakInThetaKernel");
@@ -817,7 +836,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     timeStamp(stamp++, 1, &dataFromGpuEvents[polInd][5]);
 
     /* Filters frequency bins based on the steepness of the power spectra */
-    status = clEnqueueNDRangeKernel(commandQueue, filterWaveformsKernel, 3, NULL, gFilterWorkSize, lFilterWorkSize, 1, &powSpecEvent, &filterEvent);
+    cl_event filterDependencies[2] = {powSpecEvent, dataToGpuEvents[polInd][3]};
+    status = clEnqueueNDRangeKernel(commandQueue, filterWaveformsKernel, 3, NULL, gFilterWorkSize, lFilterWorkSize, 2, filterDependencies, &filterEvent);
     statusCheck(status, "clEnqueueNDRangeKernel filterWaveformsKernel");
     timeStamp(stamp++, 1, &filterEvent);
 
@@ -907,8 +927,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     */
 
     if(debugMode > 0){
-      clFinish(CommandQueue);
-      dumpBuffersToTextFiles(polInd);
+      clFinish(commandQueue);
+      dumpBuffersToTextFiles(polInd, nEvents);
     }
   }
 
@@ -1048,6 +1068,17 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   }
 
 
+
+  if(debugMode > 0){
+    printf("debugMode flag = %d.\n", debugMode);
+    printf("Exiting program.\n");
+
+    if(gpuOutput!=NULL){
+      fclose(gpuOutput);
+      gpuOutput = NULL;
+    }
+    handleBadSigs();
+  }
 
 
   // it does seem to be rather retarded than the CPU and GPU both calculate this normalization...
@@ -1210,7 +1241,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
     fclose(fOut);
     printf("There were %d events in this longTime GPU average power spectrum\n", longTimeAvePowSpecNumEvents);
-    handleBadSigs();
+    debugMode = 1; // REMOVE
   }
 
 
@@ -1254,19 +1285,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   /* } */
 
   /* timeStamp(stamp++, 0, NULL); */
-
-
-  if(debugMode > 0){
-    printf("debugMode flag = %d.\n", debugMode);
-    printf("Exiting program.\n");
-
-    if(gpuOutput!=NULL){
-      fclose(gpuOutput);
-      gpuOutput = NULL;
-    }
-    handleBadSigs();
-  }
-
 
   /* printf("\n"); */
 }
@@ -1323,6 +1341,9 @@ void tidyUpGpuThings(){
   if(longTimeAvePowSpec){
     free(longTimeAvePowSpec);
   }
+  if(longDynamicPassFilter){
+    free(longDynamicPassFilter);
+  }
 
   if(commandQueue){
     clFlush(commandQueue);
@@ -1349,6 +1370,13 @@ void tidyUpGpuThings(){
   if(fourierBuffer){
     destroyBuffer(fourierBuffer);
   }
+  if(longDynamicPassFilterBufferVPol){
+    destroyBuffer(longDynamicPassFilterBufferVPol);
+  }
+  if(longDynamicPassFilterBufferHPol){
+    destroyBuffer(longDynamicPassFilterBufferHPol);
+  }
+
   if(circularCorrelationBuffer){
     destroyBuffer(circularCorrelationBuffer);
   }
@@ -1651,15 +1679,29 @@ float* fillDeltaTArrays(){
  }
 
 
- void dumpBuffersToTextFiles(int polInd){
+void dumpBuffersToTextFiles(int polInd, int nEvents){
 
-    printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", polInd, skipUpdatingAvePowSpec, NUM_EVENTS, nEvents);
-    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", polInd, longDynamicPassFilterBuffer, NUM_EVENTS, nEvents);
+
+  // GPU input buffers
+  printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", polInd, skipUpdatingAvePowSpec, NUM_EVENTS, nEvents);
+
+
+  if(polInd==0){
+    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", polInd, longDynamicPassFilterBufferVPol, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "rawBuffer", polInd, rawBufferVPol, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", polInd, phiSectorTriggerBufferVPol, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferVPol, NUM_EVENTS, 1);
+  }
+  else{
+    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", polInd, longDynamicPassFilterBufferHPol, NUM_EVENTS, nEvents);
     printBufferToTextFile2(commandQueue, "rawBuffer", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
     printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
+  }
 
 
+
+  // GPU internals/output buffers
    printBufferToTextFile2(commandQueue, "normalBuffer", polInd, normalBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "rmsBuffer", polInd, rmsBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, nEvents);
