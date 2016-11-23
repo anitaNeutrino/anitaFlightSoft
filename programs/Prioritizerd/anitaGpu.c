@@ -1286,6 +1286,18 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
   /* timeStamp(stamp++, 0, NULL); */
 
+
+  if(debugMode > 0){
+    printf("debugMode flag = %d.\n", debugMode);
+    printf("Exiting program.\n");
+
+    if(gpuOutput!=NULL){
+      fclose(gpuOutput);
+      gpuOutput = NULL;
+    }
+    handleBadSigs();
+  }
+
   /* printf("\n"); */
 }
 
@@ -1701,7 +1713,6 @@ void dumpBuffersToTextFiles(int polInd, int nEvents){
 
 
 
-  // GPU internals/output buffers
    printBufferToTextFile2(commandQueue, "normalBuffer", polInd, normalBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "rmsBuffer", polInd, rmsBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, nEvents);
