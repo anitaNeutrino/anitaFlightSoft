@@ -106,6 +106,8 @@ int main (int argc, char *argv[])
     ///    fprintf(stderr,"RJN numEventLinks_1=%d\n",numEventLinks);
   }
 
+  retVal=readConfig();
+
   /* 
      This function  mallocs at some global pointers
      so needs to be outside any kind of loop.
@@ -119,7 +121,7 @@ int main (int argc, char *argv[])
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
     memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
   }
-  retVal=readConfig();
+
   prepWriterStructs();
   
   do {
@@ -302,7 +304,6 @@ int readConfig()
 	     "Couldn't fetch printToScreen, defaulting to zero");
       printToScreen=0;
     }
-    disableGpu=kvpGetInt("disableGpu",0);
   }
   else {
     eString=configErrorString (status) ;
@@ -314,6 +315,7 @@ int readConfig()
   if(status == CONFIG_E_OK) {
       panicQueueLength=kvpGetInt("panicQueueLength",5000);
       writePowSpecPeriodSeconds=kvpGetInt("writePowSpecPeriodSeconds",60);
+      disableGpu=kvpGetInt("disableGpu",0);    
   }
   else {
     eString=configErrorString (status) ;
