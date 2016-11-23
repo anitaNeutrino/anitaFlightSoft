@@ -66,7 +66,6 @@ static fftw_complex* clockFreqHolder;
 
 static int positiveSaturation = 1000;
 static int negativeSaturation = -1000;
-static float maxBottomToTopRatio = 5;
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
@@ -118,7 +117,7 @@ void prepareTimingCalibThings(){
   }
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
-  maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 100);
+  /* maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 3); */
 
   /* preCalculateTimeArrays(); */
 }
@@ -537,8 +536,6 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 	    }
 	    index++;
 	  }
-	  //time+=epsilonFromBenS[surf][labChip][rco]*tempFactor*fEpsilonTempScale;
-	  //time+=epsilonFromBenS[surf][labChip][1-rco]*tempFactor*fEpsilonTempScale;
 	  time+=epsilonFromBenS[surf][labChip][rco]*tempFactor*fEpsilonTempScale;
 	}
 	else {
@@ -614,15 +611,13 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 			 PedSubbedEventBody_t pedSubBody,
 			 double* finalVolts[]){
 
-
-  double maxVppTop = 0;
-  double maxVppBottom = 0;
+  // Set bad event flags to zero
   theHeader->prioritizerStuff = 0;
 
-  /* printf("Before... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
 
+
+  // extract SURF numbers and unwrap event
   const double deltaT = NOMINAL_SAMPLING;
-
   int surf=0;
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     int chanIndex = CHANNELS_PER_SURF*surf + 8;
@@ -641,177 +636,136 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
-  /* printf("After... theHeader->prioritizerStuff = %hu\n", theHeader->prioritizerStuff); */
+
+
+  // this puts the data into the volts[][][] global array
   processEventAG(pedSubBody);
 
+
+
+
+
+
+
+
+
+
+
+
+  // now we do some checks for self-triggered blasts / SURF saturation
+
+  float topRingPeakToPeak[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
+  float bottomRingPeakToPeak[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
+  float eventVMax = -1e9;
+  float eventVMin = +1e9;
+  float eventAsym = 0;
+
+  // Search for saturation and self triggered blasts.
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     int chan=0;
     int samp = 0;
     for(chan=0; chan<8; chan++){
-      int chanIndex=surf*CHANNELS_PER_SURF + chan;
-      double vmax = -1e9;
-      double vmin =  1e9;
-      double vpp = 0;
-      int ant = abs(surfToAntMap[surf][chan]);
-      if((pedSubBody.channel[chanIndex].xMax > positiveSaturation || pedSubBody.channel[chanIndex].xMin < negativeSaturation) && theHeader->prioritizerStuff == 0){
-        theHeader->prioritizerStuff = 1;
+      /* int chanIndex=surf*CHANNELS_PER_SURF + chan; */
+      float vMax = -1e9;
+      float vMin =  1e9;
+
+      for(samp=0; samp < nSamps[surf][chan]; samp++){
+	if(volts[surf][chan][samp] > vMax){
+	  vMax = volts[surf][chan][samp];
+	}
+	if(volts[surf][chan][samp] < vMin){
+	  vMin = volts[surf][chan][samp];
+	}
+      };
+
+      float asym = vMax + vMin;
+      float peakToPeak = vMax - vMin;
+
+      int ant = abs(surfToAntMap[surf][chan]) - 1;
+
+      int phi = ant%NUM_PHI;
+      int ring = ant/NUM_PHI;
+      int pol = surfToAntMap[surf][chan] < 0 ? 1 : 0;
+
+      if(ring==0){
+	topRingPeakToPeak[pol][phi] = peakToPeak;
+      }
+      else if(ring == 2){
+	bottomRingPeakToPeak[pol][phi] = peakToPeak;
       }
 
-
-      //now check for blasts
-
-      if (ant < 16 || ant >= 32)
-      {
-        for (samp = 0; samp < nSamps[surf][chan]; samp++)
-        {
-          double v = volts[surf][chan][samp] ;
-          if ( v < vmin) vmin = v;
-          if ( v > vmax) vmax = v;
-        }
-        vpp = vmax-vmin;
-
-        if (ant < 16 && vpp > maxVppTop) maxVppTop = vpp;
-        else if (ant >= 32 && vpp > maxVppBottom) maxVppBottom = vpp;
+      // now compare channel numbers to event numbers
+      if(fabs(asym) > fabs(eventAsym)){
+	eventAsym = asym;
+      }
+      if(vMax > eventVMax){
+	eventVMax = vMax;
+      }
+      if(vMin < eventVMin){
+	eventVMin = vMin;
       }
 
+      if(theHeader->eventNumber==60831702){
+	printf("surf %d, chan %d, ant %d, pol %d, phi %d, ring %d\n", surf, chan, ant, pol, phi, ring);
+      }
     }
   }
 
-  if (maxVppBottom / maxVppTop > maxBottomToTopRatio)
-  {
+  // now find largest peak-to-peak ratio for self triggered blasts.
+  float maxBottomToTopPeakToPeakRatio = 0;
+  int phi=0;
+  int pol = 0;
+  int maxPhi, maxPol;
+  short skipRatio[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
+  for(pol=0; pol < NUM_POLARIZATIONS; pol++){
+    for(phi=0; phi < NUM_PHI; phi++){
+      skipRatio[pol][phi] = 0;
+    }
+  }
+  skipRatio[1][7] = 1;
+
+
+  for(pol=0; pol < NUM_POLARIZATIONS; pol++){
+    for(phi=0; phi < NUM_PHI; phi++){
+      if(bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi] > maxBottomToTopPeakToPeakRatio
+	 && !skipRatio[pol][phi]){
+	maxBottomToTopPeakToPeakRatio = bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi];
+	maxPol = pol;
+	maxPhi = phi;
+      }
+    }
+  }
+
+
+  // Now set flags...
+
+  const float asymThresh = 500;
+  // Set surf saturation flag
+  if (fabs(eventAsym) > asymThresh || eventVMax > positiveSaturation || eventVMin < negativeSaturation){
+    theHeader->prioritizerStuff |= 1;
+  }
+
+
+  const float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
+  const float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
+
+  // Set self triggered blast flag
+  if (maxBottomToTopPeakToPeakRatio > maxThresholdBottomToTopRingPeakToPeakRatio ||
+      maxBottomToTopPeakToPeakRatio < minThresholdBottomToTopRingPeakToPeakRatio){
     theHeader->prioritizerStuff |= 2;
   }
 
 
 
+  if(theHeader->prioritizerStuff > 0){
+    printf("eventNumber %u, vMax %4.2f, vMin %4.2f, vAsym %4.2f, maxPeakToPeakRatio %4.2f, maxPol %d, maxPhi %d, prioritizerStuff %hu\n", theHeader->eventNumber, eventVMax, eventVMin, eventAsym, maxBottomToTopPeakToPeakRatio, maxPol, maxPhi, theHeader->prioritizerStuff);
+  }
 
-
-
-
-
-
-  /* int numUpZC[ACTIVE_SURFS] = {0}; */
-  /* double upZCs[ACTIVE_SURFS][10] = {{0}}; */
-
-  /* for(surf=0; surf<ACTIVE_SURFS; surf++){ */
-  /*   /\* Let's look for upgoing zero-crossings *\/ */
-
-  /*   /\* /\\* Normalize clocks *\\/ *\/ */
-  /*   int samp=0; */
-  /*   double meanHigh = 0; */
-  /*   int numHigh = 0; */
-  /*   double meanLow = 0; */
-  /*   int numLow = 0; */
-  /*   for(samp=0; samp<nSamps[surf][8]; samp++){ */
-  /*     if(volts[surf][8][samp]>0){ */
-  /*   	meanHigh += volts[surf][8][samp]; */
-  /*   	numHigh++; */
-  /*     } */
-  /*     else{ */
-  /*   	meanLow += volts[surf][8][samp]; */
-  /*   	numLow++; */
-  /*     } */
-  /*   } */
-  /*   meanHigh/=numHigh; */
-  /*   meanLow/=numLow; */
-  /*   double offset = (meanHigh+meanLow)/2; */
-  /*   double maxVal = meanHigh - offset; */
-  /*   for(samp=0; samp<nSamps[surf][8]; samp++){ */
-  /*     volts[surf][8][samp] -= offset; */
-  /*     volts[surf][8][samp]/=maxVal; */
-  /*   } */
-
-  /*   /\* for(samp=0; samp<nSamps[surf][8]-1; samp++){ *\/ */
-  /*   /\*   /\\* printf("surf %d, volts[surf][8][%d] = %lf\n", surf, samp, volts[surf][8][samp]); *\\/ *\/ */
-  /*   /\*   if(volts[surf][8][samp]<0 && volts[surf][8][samp+1]>=0){ *\/ */
-  /*   /\* 	/\\* printf("ZC!!!!\n"); *\\/ *\/ */
-  /*   /\* 	double m = (volts[surf][8][samp+1] - volts[surf][8][samp])/(times[surf][8][samp+1]-times[surf][8][samp]); *\/ */
-  /*   /\* 	upZCs[surf][numUpZC[surf]] = times[surf][8][samp] - volts[surf][8][samp]/m; *\/ */
-  /*   /\* 	numUpZC[surf]++; *\/ */
-  /*   /\*   } *\/ */
-  /*   /\* } *\/ */
-  /*   /\* int zc=0; *\/ */
-  /*   /\* printf("surf %d, numUpZC = %d\n", surf, numUpZC[surf]); *\/ */
-  /*   /\* for(zc=0; zc<numUpZC[surf]; zc++){ *\/ */
-  /*   /\*   printf("surf %d, zc %d, t = %lf\n", surf, zc, upZCs[surf][zc]); *\/ */
-  /*   /\* } *\/ */
-  /* } */
-
-
-  /* clockJitters[0] = 0; */
-  /* clockJitters[1] = 2.09135; */
-  /* clockJitters[2] = 0.649038; */
-  /* clockJitters[3] = 4.03846; */
-  /* clockJitters[4] = 1.4423; */
-  /* clockJitters[5] = -2.42788; */
-  /* clockJitters[6] = -5; */
-  /* clockJitters[7] = -1.53579; */
-  /* clockJitters[8] = -6.5625; */
-  /* clockJitters[9] = -2.09135; */
-  /* clockJitters[10] = -0.3125; */
-  /* clockJitters[11] = -3.67788; */
-
-  /* /\* Find clock jitter correction from upgoing zero crossings... *\/ */
-  /* for(surf=1; surf<ACTIVE_SURFS; surf++){ */
-  /*   clockJitters[surf] = 0; */
-  /*   if(numUpZC[surf]==numUpZC[0]){ */
-  /*     int zc=0; */
-  /*     for(zc=0; zc<numUpZC[surf]; zc++){ */
-  /* 	clockJitters[surf] += upZCs[surf][zc] - upZCs[0][zc]; */
-  /*     } */
-  /*     clockJitters[surf] /= numUpZC[surf]; */
-  /*   } */
-  /*   else{ */
-  /*     int maxOffset = abs(numUpZC[surf] - numUpZC[0]); */
-  /*     int smallerNumZCs = numUpZC[0] < numUpZC[surf] ? numUpZC[0] : numUpZC[surf]; */
-  /*     int largerNumZCs = numUpZC[0] < numUpZC[surf] ? numUpZC[surf] : numUpZC[0]; */
-  /*     int offset=0; */
-  /*     double smallerClockJitter = 100000; */
-  /*     for(offset=-maxOffset; offset<=maxOffset; offset++){ */
-  /* 	clockJitters[surf] = 0; */
-  /* 	int zc=0; */
-  /* 	for(zc=0; zc<largerNumZCs; zc++){ */
-  /* 	  if(zc + offset >=0 && zc + offset< numUpZC[surf]){ */
-  /* 	    clockJitters[surf] += upZCs[surf][zc+offset] - upZCs[0][zc]; */
-  /* 	  } */
-  /* 	} */
-  /* 	clockJitters[surf] /= smallerNumZCs; */
-  /* 	smallerClockJitter  = fabs(clockJitters[surf]) < fabs(smallerClockJitter) ? clockJitters[surf] : smallerClockJitter; */
-  /*     } */
-  /*     clockJitters[surf] = smallerClockJitter; */
-  /*   } */
-  /* } */
 
 
   /* Upsample clocks */
   double* interpClocks[ACTIVE_SURFS];
   for(surf=0; surf<ACTIVE_SURFS; surf++){
-    /* double* tempClock = interpolateWaveform(nSamps[surf][8], */
-    /* 					    volts[surf][8], */
-    /* 					    times[surf][8], */
-    /* 					    nSamps[surf][8], */
-    /* 					    times[surf][8][0], */
-    /* 					    deltaT); */
-    /* double tempTimes[NUM_SAMPLES]; */
-    /* int samp=0; */
-    /* for(samp=0; samp<NUM_SAMPLES; samp++){ */
-    /*   tempTimes[samp] = samp*deltaT; */
-    /* } */
-
-    /* double* tempClock2 = simpleBandPass(tempClock, nSamps[surf][8], deltaT, 0, 150); */
-
-    /* interpClocks[surf] = interpolateWaveform(NUM_SAMPLES, */
-    /* 					     tempClock2, */
-    /* 					     tempTimes, */
-    /* 					     numUpsampledClockSamples, */
-    /* 					     times[surf][8][0], */
-    /* 					     deltaT/upsampleFactor); */
-    /* free(tempClock); */
-    /* free(tempClock2); */
-
-    /* for(int samp=0; samp< nSamps[surf][8]; samp++){ */
-    /*   printf("times[%d][8][%d] = %lf\n", surf, samp, times[surf][8][samp]); */
-    /* } */
     /* interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8], */
     interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
     					     volts[surf][8],
@@ -832,7 +786,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   }
 
 
-  double startTime=10000;
+  double startTime=1e9;
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     int chan=0;
     for(chan=0; chan<CHANNELS_PER_SURF; chan++){
@@ -860,7 +814,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 								      volts[surf][chan],
 								      newTimes,
 								      //times[surf][chan],
-								      256,
+								      NUM_SAMPLES,
 								      startTime,
 								      deltaT);
 
@@ -868,12 +822,10 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   }
 
 
-
   /* Tidy up. */
   for(surf=0; surf<ACTIVE_SURFS; surf++){
     free(interpClocks[surf]);
   }
-
 
 }
 

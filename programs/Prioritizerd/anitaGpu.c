@@ -1086,7 +1086,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   longTimeAvePowSpecNumEvents += nEvents;
 
 
-  const int longTime = 60;
+  const int longTime = 28;
 
 #ifdef DEBUG_MODE
   {
