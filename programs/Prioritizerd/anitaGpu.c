@@ -149,6 +149,8 @@ float* longTimeAvePowSpec = NULL;
 int longTimeAvePowSpecNumEvents = 0;
 unsigned int longTimeStartTime = 0;
 
+int debugMode = 0;
+
 // For printing calibration numbers to /tmp
 FILE* gpuOutput = NULL;
 
@@ -184,7 +186,6 @@ void prepareGpuThings(){
   if(err!=KVP_E_OK){
     fprintf(stderr, "Warning! Trying to do load staticNotchesHighEdgeMHz from Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
-
 
 
   binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",5);
@@ -274,10 +275,8 @@ void prepareGpuThings(){
   statusCheck(status, "clCreateCommandQueue");
 
   /*
-     At this point the connection to the GPU via the X-server should have been made
-     or printed something to screen if not so lets' open the output file.
+     At this point the connection to the GPU via the X-server should have been made.
   */
-  /* #define DEBUG_MODE */
 
   showCompileLog = 1;
   numDevicesToUse = 1;
@@ -301,6 +300,8 @@ void prepareGpuThings(){
   */
 
   memFlags=CL_MEM_USE_PERSISTENT_MEM_AMD;
+
+
 
 
 
@@ -788,14 +789,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
     timeStamp(stamp++, 3, &dataToGpuEvents[polInd][0]);
 
-#ifdef DEBUG_MODE
-    clFinish(commandQueue);
-    printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", polInd, skipUpdatingAvePowSpec, NUM_EVENTS, nEvents);
-    printBufferToTextFile2(commandQueue, "rawBuffer", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
-    printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
-#endif
-
 
     /* Normalization zero-means the waveform and sets RMS=1. */
     status = clEnqueueNDRangeKernel(commandQueue, normalizationKernel, 3, NULL,
@@ -912,49 +905,11 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       Heavy handed debugging! Dump all the data from every buffer into text files.
       This is insanely slow so will exit the program after the main gpu function is called once.
     */
-#ifdef DEBUG_MODE
-    clFinish(commandQueue);
-    printBufferToTextFile2(commandQueue, "normalBuffer", polInd, normalBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "rmsBuffer", polInd, rmsBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, nEvents);
-    printBufferToTextFile2(commandQueue, "powSpecBuffer", polInd, powSpecBuffer, 1, 1);
-    printBufferToTextFile2(commandQueue, "passFilterBuffer", polInd, passFilterBuffer, 1, 1);
-    printBufferToTextFile2(commandQueue, "staticPassFilterBuffer", polInd, staticPassFilterBuffer, 1, 1);
-    printBufferToTextFile2(commandQueue, "fourierBuffer2", polInd, fourierBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "circularCorrelationBuffer", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "image", polInd, imageBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "maxThetaInds", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakValBuffer", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakValBuffer2", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer", polInd, imagePeakPhiBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer2", polInd, imagePeakPhiBuffer2, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer", polInd, imagePeakPhiSectorBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "imagePeakThetaBuffer2", polInd, imagePeakThetaBuffer2, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "normalBuffer2", polInd, normalBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "newRmsBuffer", polInd, newRmsBuffer, NUM_EVENTS, 1);
 
-    printBufferToTextFile2(commandQueue, "coherentWaveForm", polInd, coherentWaveBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "hilbertEnvelope", polInd, hilbertBuffer, NUM_EVENTS, 1);
-    printBufferToTextFile2(commandQueue, "hilbertPeak", polInd, hilbertPeakBuffer, NUM_EVENTS, 1);
-
-    if(polInd==0){
-      printf("First pass buffers printed...\n");
+    if(debugMode > 0){
+      clFinish(CommandQueue);
+      dumpBuffersToTextFiles(polInd);
     }
-    else{
-      printf("Second pass buffers printed...\n");
-    }
-#endif
-
-
-    /* printf("printing normal buffer always %d\n", polInd); */
-    /* printBufferToTextFile2(commandQueue, "normalBuffer_always_", polInd, normalBuffer, NUM_EVENTS, nEvents); */
-
-    /* printf("printing fourier buffer always %d\n", polInd); */
-    /* printBufferToTextFile2(commandQueue, "fourierBuffer_always_", polInd, fourierBuffer, NUM_EVENTS, nEvents); */
-
-    /* printf("printing newRms buffer always %d\n", polInd); */
-    /* printBufferToTextFile2(commandQueue, "newRmsBuffer_always_", polInd, newRmsBuffer, NUM_EVENTS, nEvents); */
-
   }
 
   /* Since all copy GPU-to-CPU buffer reading commands are non-blocking we actually need to wait... */
@@ -1133,11 +1088,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
   const int longTime = 28;
 
-#ifdef DEBUG_MODE
-  {
-#else
-  if(header[nEvents-1].unixTime - longTimeStartTime >= longTime){
-#endif
+  if(header[nEvents-1].unixTime - longTimeStartTime >= longTime || debugMode > 0){
     FILE* fOut = fopen("/tmp/longTimePowSpec.txt", "w");
     int pol = 0;
     for(pol=0; pol < NUM_POLARIZATIONS; pol++){
@@ -1305,17 +1256,16 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   /* timeStamp(stamp++, 0, NULL); */
 
 
+  if(debugMode > 0){
+    printf("debugMode flag = %d.\n", debugMode);
+    printf("Exiting program.\n");
 
-#ifdef DEBUG_MODE
-  printf("Only allowing one loop through main GPU calculation function in debug mode.\n");
-  printf("Exiting program.\n");
-
-  if(gpuOutput!=NULL){
-    fclose(gpuOutput);
-    gpuOutput = NULL;
+    if(gpuOutput!=NULL){
+      fclose(gpuOutput);
+      gpuOutput = NULL;
+    }
+    handleBadSigs();
   }
-  handleBadSigs();
-#endif
 
 
   /* printf("\n"); */
@@ -1698,4 +1648,42 @@ float* fillDeltaTArrays(){
        }
      }
    }
+ }
+
+
+ void dumpBuffersToTextFiles(int polInd){
+
+    printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", polInd, skipUpdatingAvePowSpec, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", polInd, longDynamicPassFilterBuffer, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "rawBuffer", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
+
+
+   printBufferToTextFile2(commandQueue, "normalBuffer", polInd, normalBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "rmsBuffer", polInd, rmsBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "fourierBuffer", polInd, fourierBuffer, NUM_EVENTS, nEvents);
+   printBufferToTextFile2(commandQueue, "powSpecBuffer", polInd, powSpecBuffer, 1, 1);
+   printBufferToTextFile2(commandQueue, "passFilterBuffer", polInd, passFilterBuffer, 1, 1);
+   printBufferToTextFile2(commandQueue, "staticPassFilterBuffer", polInd, staticPassFilterBuffer, 1, 1);
+   printBufferToTextFile2(commandQueue, "fourierBuffer2", polInd, fourierBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "circularCorrelationBuffer", polInd, circularCorrelationBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "image", polInd, imageBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "maxThetaInds", polInd, maxThetaIndsBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "imagePeakValBuffer", polInd, imagePeakValBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "imagePeakValBuffer2", polInd, imagePeakValBuffer2, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer", polInd, imagePeakPhiBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "imagePeakPhiBuffer2", polInd, imagePeakPhiBuffer2, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "imagePeakPhiSectorBuffer", polInd, imagePeakPhiSectorBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "imagePeakThetaBuffer2", polInd, imagePeakThetaBuffer2, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "normalBuffer2", polInd, normalBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "newRmsBuffer", polInd, newRmsBuffer, NUM_EVENTS, 1);
+
+   printBufferToTextFile2(commandQueue, "coherentWaveForm", polInd, coherentWaveBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "hilbertEnvelope", polInd, hilbertBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "hilbertPeak", polInd, hilbertPeakBuffer, NUM_EVENTS, 1);
+
+
+   printf("PolInd %d buffers printed...\n", polInd);
+
  }
