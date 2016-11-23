@@ -119,7 +119,7 @@ int disableUsb=0;
 AnitaHkWriterStruct_t monWriter;
 AnitaHkWriterStruct_t otherMonWriter;
 
-int diskScaleFactors[8]={1,1,1,1,128,128,4,16};
+int diskScaleFactors[8]={1,1,1,1,128,128,4,64};
 char *diskLocations[7]={"/tmp","/var","/home","/",HELIUM1_DATA_MOUNT,HELIUM2_DATA_MOUNT,USB_DATA_MOUNT};
 char *otherDirLoc[3]={ACQD_EVENT_DIR,EVENTD_EVENT_DIR,PRIORITIZERD_EVENT_DIR};
 char *otherLinkLoc[3]={ACQD_EVENT_LINK_DIR,EVENTD_EVENT_LINK_DIR,PRIORITIZERD_EVENT_LINK_DIR};
@@ -430,7 +430,7 @@ int checkDisks(DiskSpaceStruct_t *dsPtr) {
 	else {
 	    megaBytes=lastNeoSpaceAvailable/(1024);
 	}
-	megaBytes/=16;
+	megaBytes/=diskScaleFactors[7];
 	if(megaBytes<65535) megaBytes_short=megaBytes;
 	else megaBytes_short=65535;
 	dsPtr->diskSpace[7]=megaBytes_short;
