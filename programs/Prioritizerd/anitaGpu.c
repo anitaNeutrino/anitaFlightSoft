@@ -243,6 +243,17 @@ void prepareGpuThings(){
 
 
   longTimeAvePowSpec = malloc(sizeof(float)*NUM_POLARIZATIONS*NUM_ANTENNAS*NUM_SAMPLES/2);
+  longDynamicPassFilter = malloc(sizeof(short)*NUM_POLARIZATIONS*NUM_ANTENNAS*NUM_SAMPLES/2);
+  int pol=0;
+  for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+    int ant=0;
+    for(ant = 0; ant < NUM_ANTENNAS; ant++){
+      const int longBaseInd = (pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2);
+      for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){
+	longDynamicPassFilter[longBaseInd + freqInd] = 1;
+      }
+    }
+  }
 
   /* Use opencl functions to find out what platforms and devices we can use for this program. */
   myPlatform = 0; /* Here we choose platform 0 in advance of querying to see what's there. */
@@ -345,7 +356,7 @@ void prepareGpuThings(){
   skipUpdatingAvePowSpec = createBuffer(context, memFlags, sizeof(unsigned short)*NUM_EVENTS, "s", "skipUpdatingAvePowSpec");
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
-  longDynamicPassFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_POLARIZATIONS*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "longDynamicPassFilterBuffer");
+  longDynamicPassFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "longDynamicPassFilterBuffer");
 
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
   passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
@@ -383,8 +394,8 @@ void prepareGpuThings(){
   newRmsBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_EVENTS*NUM_ANTENNAS, "f","newRmsBuffer");
 
 
-#define numFilterArgs 5
-  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, fourierBuffer, complexSquareLocalBuffer, newRmsBuffer};
+#define numFilterArgs 6
+  buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, longDynamicPassFilterBuffer, fourierBuffer, complexSquareLocalBuffer, newRmsBuffer};
   setKernelArgs(filterWaveformsKernel, numFilterArgs, filterArgs, "filterWaveformKernel");
 
 
@@ -726,7 +737,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   cl_event prioritizerStuffToGpu = writeBuffer(commandQueue, skipUpdatingAvePowSpec,
 					       prioritizerStuffs, 0, NULL);
 
-  cl_event dataToGpuEvents[NUM_POLARIZATIONS][3];
+  cl_event dataToGpuEvents[NUM_POLARIZATIONS][4];
 
   dataToGpuEvents[0][0] = writeBuffer(commandQueue, rawBufferVPol,
 				      eventData, 0, NULL);
@@ -734,6 +745,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 				      numEventSamples, 0, NULL);
   dataToGpuEvents[0][2] = writeBuffer(commandQueue, phiSectorTriggerBufferVPol,
 				      phiTrig, 0, NULL);
+  dataToGpuEvents[0][3] = writeBuffer(commandQueue, longDynamicPassFilterBuffer,
+				      longDynamicPassFilter, 0, NULL);
+
 
   dataToGpuEvents[1][0] = writeBuffer(commandQueue, rawBufferHPol,
 				     &eventData[NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES], 0, NULL);
@@ -741,6 +755,9 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 				     &numEventSamples[NUM_EVENTS*NUM_ANTENNAS], 0, NULL);
   dataToGpuEvents[1][2] = writeBuffer(commandQueue, phiSectorTriggerBufferHPol,
 				     &phiTrig[NUM_EVENTS*NUM_PHI_SECTORS], 0, NULL);
+  dataToGpuEvents[1][3] = writeBuffer(commandQueue, longDynamicPassFilterBuffer,
+				      &longDynamicPassFilter[NUM_ANTENNAS*NUM_SAMPLES/2], 0, NULL);
+
 
   cl_event dataFromGpuEvents[NUM_POLARIZATIONS][7];
 
@@ -1213,14 +1230,27 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 	// every frequency bin passes (=1) by default.
 	// I'm setting that condition here
-	int longDynamicPassFilter[NUM_SAMPLES/2] = {0};
+	const int longBaseInd = (pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2);
 	for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){
-	  longDynamicPassFilter[freqInd] = 1;
+	  longDynamicPassFilter[longBaseInd + freqInd] = 1;
 	}
-	updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB);
+
+
+	/* const float deltaF_MHz = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING); */
+	/* int startInd = floor(rollOffFrequency_MHz/deltaF_MHz); */
+	/* int endInd = NUM_SAMPLES/2; */
+	int startInd = 0;
+	int endInd = NUM_SAMPLES/2;
+
+	updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB, startInd, endInd);
+
+	/* startInd = startInd + 1; */
+	/* endInd = 0; */
+	/* updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB, startInd, endInd); */
+
 
 	for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){
-	  fprintf(fOut, "%f ", longDynamicPassFilter[freqInd]*longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd]);
+	  fprintf(fOut, "%f ", longDynamicPassFilter[longBaseInd+freqInd]*longTimeAvePowSpec[longBaseInd + freqInd]);
 	}
 
 	fprintf(fOut, "\n");
@@ -1626,18 +1656,19 @@ float* fillDeltaTArrays(){
  * @param isLocalMaximum
  * @param spikeThresh_dB
  */
- void updateLongDynamicPassFilter(int pol, int ant, int* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB){
+ void updateLongDynamicPassFilter(int pol, int ant, short* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB, int startFreqInd, int endFreqInd){
 
 
-   const float deltaF_MHz = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING);
    int lookingForSpikeStart = 1;
    int spikeStartBin = 0;
    int spikePeakBin = 0;
    const int longBaseInd = (pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2);
 
+   int loopDeltaFreqInd = endFreqInd > startFreqInd ? 1 : -1;
+
    int freqInd = 0;
-   for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){
-     float f = deltaF_MHz*freqInd;
+   /* for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){ */
+   for(freqInd=startFreqInd; freqInd != endFreqInd; freqInd += loopDeltaFreqInd){
 
      if(lookingForSpikeStart > 0){
        if(isLocalMinimum[freqInd] > 0){
@@ -1656,8 +1687,9 @@ float* fillDeltaTArrays(){
 
 	   // then filter twice the distance from the maximum to the minimum
 	   int freqInd2 = spikeStartBin;
-	   for(freqInd2 = spikeStartBin; freqInd2 < 2*spikePeakBin - spikeStartBin; freqInd2++){
-	     longDynamicPassFilter[freqInd2] = 0;
+	   /* for(freqInd2 = spikeStartBin; freqInd2 < 2*spikePeakBin - spikeStartBin; freqInd2++){ */
+	   for(freqInd2 = spikeStartBin; freqInd2 != 2*spikePeakBin - spikeStartBin; freqInd2+=loopDeltaFreqInd){
+	     longDynamicPassFilter[longBaseInd+freqInd2] = 0;
 	   }
 	 }
 

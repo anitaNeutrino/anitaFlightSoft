@@ -881,6 +881,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global short* skipAverage,
 
 __kernel void filterWaveforms(__global short2* passFilterBuffer,
 			      __global short2* staticPassFilterBuffer,
+			      __global short2* longDynamicPassFilterBuffer,
 			      __global float4* waveformsFourierDomain,
 			      __local float4* complexSquare,
 			      __global float* newRms){
@@ -902,15 +903,27 @@ __kernel void filterWaveforms(__global short2* passFilterBuffer,
   filterState.x = filterState.x < 0 ? 0 : filterState.x;
   filterState.y = filterState.y < 0 ? 0 : filterState.y;
 
+
+
   // there's NUM_SAMPLES/2 freq bins divided among NUM_SAMPLES/4 work items
   // so each work item does two...
   short2 staticFilterState = staticPassFilterBuffer[sampInd];
   staticFilterState.x = staticFilterState.x <= 0 ? 0 : 1;
   staticFilterState.y = staticFilterState.y <= 0 ? 0 : 1;
 
+
+
+  short2 longDynamicFilterState = longDynamicPassFilterBuffer[antInd*NUM_SAMPLES/4 + sampInd];
+  longDynamicFilterState.x = longDynamicFilterState.x < 0 ? 0 : longDynamicFilterState.x;
+  longDynamicFilterState.y = longDynamicFilterState.y < 0 ? 0 : longDynamicFilterState.y;
+
+
+
   // AND the static and "dynamic" state.
   filterState.x *= staticFilterState.x;
   filterState.y *= staticFilterState.y;
+  filterState.x *= longDynamicFilterState.x;
+  filterState.y *= longDynamicFilterState.y;
 
 
   // Need to encode symmetry in these indices...

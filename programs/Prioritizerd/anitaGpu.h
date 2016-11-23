@@ -69,7 +69,7 @@ float compareForSort(const void* a, const void* b);
 
 int unwrapAndBaselinePedSubbedEventBen(PedSubbedEventBody_t *pedSubBdPtr, AnitaTransientBodyF_t *uwTransPtr, const int alreadyUnwrappedAndCalibrated);
 
-void updateLongDynamicPassFilter(int pol, int ant, int* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB);
+void updateLongDynamicPassFilter(int pol, int ant, short* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB, int startFreqInd, int endFreqInd);
 
 /***********************/
 /*       Structs       */
@@ -303,6 +303,7 @@ int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
 float* powSpec;
 short* passFilter;
+short* longDynamicPassFilter;
 short* staticPassFilter;
 float* tempPowSpecHolder;
 // short* anyFailDifference;
