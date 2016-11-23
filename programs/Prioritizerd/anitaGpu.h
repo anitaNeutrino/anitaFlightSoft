@@ -69,7 +69,12 @@ float compareForSort(const void* a, const void* b);
 
 int unwrapAndBaselinePedSubbedEventBen(PedSubbedEventBody_t *pedSubBdPtr, AnitaTransientBodyF_t *uwTransPtr, const int alreadyUnwrappedAndCalibrated);
 
+
+void dumpBuffersToTextFiles(int polInd);
+
 void updateLongDynamicPassFilter(int pol, int ant, short* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB, int startFreqInd, int endFreqInd);
+
+
 
 /***********************/
 /*       Structs       */
