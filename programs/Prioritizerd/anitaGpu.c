@@ -207,12 +207,15 @@ void prepareGpuThings(){
   }
 
   /* Large buffers, which will be mapped to GPU memory */
+  /* These should have a factor of NUM_POLARIZATIONS in, as we do VPol first, then HPol  */
+  /* Both are mapped to V/H */
   numEventSamples = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*sizeof(float));
   eventData = malloc(NUM_POLARIZATIONS*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES*sizeof(float));
-  powSpec = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(float));
-  passFilter = malloc(NUM_POLARIZATIONS*NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(short));
+  powSpec = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(float));
+  passFilter = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(short));
+  staticPassFilter = malloc((NUM_SAMPLES/2)*sizeof(short));
 
-  staticPassFilter = malloc((NUM_SAMPLES/2)*sizeof(short)); // this one is not so large
+
   const int numFreqsHacky = NUM_SAMPLES/2;
   int freqInd=0;
   for(freqInd=0; freqInd < numFreqsHacky; freqInd++){
@@ -234,11 +237,6 @@ void prepareGpuThings(){
       }
     }
   }
-
-  /* for(freqInd=0; freqInd < numFreqsHacky; freqInd++){ */
-  /*   double f = freqInd*df; */
-  /*   printf("%.1f - %hd\n", f, staticPassFilter[freqInd]); */
-  /* } */
 
 
   longTimeAvePowSpec = malloc(sizeof(float)*NUM_POLARIZATIONS*NUM_ANTENNAS*NUM_SAMPLES/2);
@@ -265,7 +263,7 @@ void prepareGpuThings(){
      At this point the connection to the GPU via the X-server should have been made
      or printed something to screen if not so lets' open the output file.
   */
-  #define DEBUG_MODE
+  /* #define DEBUG_MODE */
 
   showCompileLog = 1;
   numDevicesToUse = 1;
@@ -274,26 +272,25 @@ void prepareGpuThings(){
   char prioritizerDir[FILENAME_MAX];
   sprintf(prioritizerDir, "%s/programs/Prioritizerd", flightSoftDir);
 
-
   char clCompileFlags[FILENAME_MAX];
   sprintf(clCompileFlags, "-w -I%s", prioritizerDir);
 
   char kernelSourceCodeFileName[FILENAME_MAX];
   sprintf(kernelSourceCodeFileName, "%s/programs/Prioritizerd/kernels.cl", flightSoftDir);
   prog = compileKernelsFromSource(kernelSourceCodeFileName, clCompileFlags, context, deviceList, numDevicesToUse, showCompileLog);
-  /* prog = compileKernelsFromSource("/home/anita/flightSoft/programs/Prioritizerd/kernels.cl", opt, context, deviceList, numDevicesToUse, showCompileLog);   */
+
+
 
   /*
      With the program compiled, we need to pick out the individual kernels by
-     their name in the kernels.cl file. This is why the kernels have names.
+     their name in the kernels.cl file.
   */
 
   memFlags=CL_MEM_USE_PERSISTENT_MEM_AMD;
 
-  /*
-     Create the normalization kernel and the buffers it needs to do it's job, which is normalizing
-     zero-padding the waveforms, zero-meaning and setting rms = 1
-  */
+
+
+
   normalizationKernel = createKernel(prog, "normalizeAndPadWaveforms");
   rawBufferVPol = createBuffer(context, 0, sizeof(float)*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES, "f", "rawBufferVPol");
   rawBufferHPol = createBuffer(context, 0, sizeof(float)*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES, "f", "rawBufferHPol");
@@ -310,6 +307,13 @@ void prepareGpuThings(){
   setKernelArgs(normalizationKernel, numNormalArgs, normalArgs, "normalizationKernel");
 
 
+
+
+
+
+
+
+
   /* The fourier kernel does a GPU FFT on each channel. */
   fourierKernel = createKernel(prog, "fourierTransformNormalizedData");
   fourierBuffer = createBuffer(context, memFlags, sizeof(float)*2*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES, "f", "fourierBuffer");
@@ -317,6 +321,12 @@ void prepareGpuThings(){
 #define numFourierArgs 3
   buffer* fourierArgs[numFourierArgs] = {normalBuffer, fourierBuffer, complexScratchBuffer};
   setKernelArgs(fourierKernel, numFourierArgs, fourierArgs, "fourierKernel");
+
+
+
+
+
+
 
 
   /* Send the read in value of the derivative threshold filter to the GPU */
@@ -340,6 +350,25 @@ void prepareGpuThings(){
   buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   /* filters the waveforms */
   staticPassFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_SAMPLES/2, "s", "staticPassFilterBuffer");
   copyArrayToGPU(commandQueue, staticPassFilterBuffer, staticPassFilter);
@@ -348,9 +377,18 @@ void prepareGpuThings(){
   complexSquareLocalBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES, "complexSquareLocalBuffer");
   newRmsBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_EVENTS*NUM_ANTENNAS, "f","newRmsBuffer");
 
+
 #define numFilterArgs 5
   buffer* filterArgs[numFilterArgs] = {passFilterBuffer, staticPassFilterBuffer, fourierBuffer, complexSquareLocalBuffer, newRmsBuffer};
   setKernelArgs(filterWaveformsKernel, numFilterArgs, filterArgs, "filterWaveformKernel");
+
+
+
+
+
+
+
+
 
 
   /* Kernel to do (circular) cross-correlations in the fourier domain with the output of the FFTs.*/
@@ -360,6 +398,22 @@ void prepareGpuThings(){
 #define numCircCorrArgs 4
   buffer* circCorrelationArgs[numCircCorrArgs] = {phiSectorTriggerBufferVPol, fourierBuffer, complexCorrScratch, circularCorrelationBuffer};
   setKernelArgs(circularCorrelationKernel, numCircCorrArgs, circCorrelationArgs, "circularCorrelationKernel");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   /* Kernel to sum the time domain cross correlations to make in image, only does triggered phi-sectors.*/
@@ -372,6 +426,26 @@ void prepareGpuThings(){
 #define numImageArgs 4
   buffer* imageArgs[numImageArgs] = {phiSectorTriggerBufferVPol, circularCorrelationBuffer, imageBuffer, lookupBuffer};
   setKernelArgs(imageKernel, numImageArgs, imageArgs, "imageKernel");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   /*
     Kernel to compare the bins in the interferformetric image to find the peak.
@@ -386,6 +460,19 @@ void prepareGpuThings(){
   buffer* imagePeakThetaArgs[numImagePeakThetaArgs] = {imageBuffer, phiSectorTriggerBufferVPol, corrScratchBuffer4, indScratchBuffer4, maxThetaIndsBuffer};
   setKernelArgs(findImagePeakInThetaKernel, numImagePeakThetaArgs, imagePeakThetaArgs, "findImagePeakInThetaKernel");
 
+
+
+
+
+
+
+
+
+
+
+
+
+
   /*
      Kernel to compare the bins in the interferformetric image to find the peak. This is step two.
   */
@@ -399,6 +486,16 @@ void prepareGpuThings(){
 #define numFindPeakArgs 8
   buffer* findPeakArgs[numFindPeakArgs] = {maxThetaIndsBuffer,  imageBuffer, corrScratchBuffer2, thetaIndScratchBuffer, phiIndScratchBuffer, imagePeakValBuffer, imagePeakThetaBuffer, imagePeakPhiBuffer};
   setKernelArgs(findImagePeakInPhiSectorKernel, numFindPeakArgs, findPeakArgs, "findImagePeakInPhiSectorKernel");
+
+
+
+
+
+
+
+
+
+
 
 
   /*
@@ -418,6 +515,19 @@ void prepareGpuThings(){
   buffer* findMaxPhiSectArgs[numFindMaxPhiSectArgs] = {corrScratchBuffer3, phiIndScratchBuffer2, thetaIndScratchBuffer2, phiSectScratchBuffer, imagePeakValBuffer, imagePeakThetaBuffer, imagePeakPhiBuffer, imagePeakValBuffer2, imagePeakThetaBuffer2, imagePeakPhiBuffer2, imagePeakPhiSectorBuffer};
   setKernelArgs(findMaxPhiSectorKernel, numFindMaxPhiSectArgs, findMaxPhiSectArgs, "findMaxPhiSectorKernel");
 
+
+
+
+
+
+
+
+
+
+
+
+
+
   /*
     Now we have a direction peak direction we want to coherently sum the waveforms.
     We need a kernel to inverse fourier transform the waveforms in the direction of the peak.
@@ -431,6 +541,19 @@ void prepareGpuThings(){
   /* buffer* invFFTArgs[numInvFFTArgs] = {normalBuffer, fourierBuffer, complexScratchBuffer2, imagePeakPhiSectorBuffer};   */
   setKernelArgs(iFFTFilteredWaveformsKernel, numInvFFTArgs, invFFTArgs, "iFFTFilteredWaveformsKernel");
 
+
+
+
+
+
+
+
+
+
+
+
+
+
   /*
     Kernel to sum the inverse fourier transformed waveforms with the offset implied by the image peak.
   */
@@ -440,6 +563,20 @@ void prepareGpuThings(){
   buffer* coherentArgs[numCoherentArgs] = {imagePeakThetaBuffer2, imagePeakPhiBuffer2, imagePeakPhiSectorBuffer, invFftBuffer, coherentWaveBuffer, newRmsBuffer, lookupBuffer};
   /* buffer* coherentArgs[numCoherentArgs] = {imagePeakThetaBuffer2, imagePeakPhiBuffer2, imagePeakPhiSectorBuffer, normalBuffer, coherentWaveBuffer, rmsBuffer, lookupBuffer};   */
   setKernelArgs(coherentSumKernel, numCoherentArgs, coherentArgs, "coherentSumKernel");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   /*
     Kernel to create hilbert envelope from coherently summed waveform.
@@ -459,10 +596,17 @@ void prepareGpuThings(){
   buffer* hilbertPeakArgs[numHilbertPeakArgs] = {hilbertBuffer, scratchBuffer, hilbertPeakBuffer};
   setKernelArgs(hilbertPeakKernel, numHilbertPeakArgs, hilbertPeakArgs, "hilbertPeakKernel");
 
+
+
+
+
+
 #ifdef TSTAMP
   TS_OPEN(4000,1);
   TS_START(1);
 #endif
+
+
 
   gettimeofday(&startTime,&dummy);
   if(getrusage(RUSAGE_SELF, &resourcesStart)){
@@ -470,6 +614,10 @@ void prepareGpuThings(){
   }
 
 }
+
+
+
+
 
 
 void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t header){
@@ -516,6 +664,21 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
     phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int writePowSpecPeriodSeconds){
 
@@ -598,12 +761,15 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
 #endif
 
+
     /* Normalization zero-means the waveform and sets RMS=1. */
     status = clEnqueueNDRangeKernel(commandQueue, normalizationKernel, 3, NULL,
 				    gNormWorkSize, lNormWorkSize, 3,
 				    &dataToGpuEvents[polInd][0], &normalEvent);
     statusCheck(status, "clEnqueueNDRangeKernel normalizationKernel");
     timeStamp(stamp++, 1, &normalEvent);
+
+
 
     /* Fourier transforms the normalized data. */
     status = clEnqueueNDRangeKernel(commandQueue, fourierKernel, 3, NULL,
@@ -638,30 +804,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     statusCheck(status, "clEnqueueNDRangeKernel circularCorrelationKernel");
     timeStamp(stamp++, 1, &circCorrelationEvent);
 
-
-    // Doing this while the GPU does the cross correlations is maybe the most efficient?
-    int ant = 0;
-    for(ant=0; ant < NUM_ANTENNAS; ant++){
-      int freqInd = 0;
-      for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
-	if(isinf(powSpec[ant*NUM_SAMPLES/2 + freqInd]) || isnan(powSpec[ant*NUM_SAMPLES/2 + freqInd])){
-	  if(isinf(powSpec[ant*NUM_SAMPLES/2 + freqInd])){
-	    printf("I got an inf!!! at %d %d %d \n", polInd, ant, freqInd);
-	  }
-	  else if(isnan(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
-	    printf("I got a nan!!! at %d %d %d \n", polInd, ant, freqInd);
-	  }
-
-	  /* printf("Let's find the bastard. I dumped all the buffers and I'm quitting!\n"); */
-	  /* handleBadSigs(); */
-	}
-
-	longTimeAvePowSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += powSpec[ant*NUM_SAMPLES/2 + freqInd];
-      }
-    }
-    if(polInd==0){ // avoid double counting
-      longTimeAvePowSpecNumEvents += nEvents;
-    }
 
 
 
@@ -918,7 +1060,33 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 
 
-  const int longTime = 120;
+
+  // Doing this while the GPU does the cross correlations is maybe the most efficient?
+  for(polInd=0; polInd < NUM_POLARIZATIONS; polInd++){
+    int ant = 0;
+    for(ant=0; ant < NUM_ANTENNAS; ant++){
+      int freqInd = 0;
+      for(freqInd = 0; freqInd < NUM_SAMPLES/2; freqInd++){
+	if(isinf(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]) || isnan(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
+	  if(isinf(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
+	    printf("I got an inf!!! at %d %d %d \n", polInd, ant, freqInd);
+	  }
+	  else if(isnan(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
+	    printf("I got a nan!!! at %d %d %d \n", polInd, ant, freqInd);
+	  }
+
+	  /* printf("Let's find the bastard. I dumped all the buffers and I'm quitting!\n"); */
+	  /* handleBadSigs(); */
+	}
+
+	longTimeAvePowSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd];
+      }
+    }
+  }
+  longTimeAvePowSpecNumEvents += nEvents;
+
+
+  const int longTime = 60;
 
 #ifdef DEBUG_MODE
   {
