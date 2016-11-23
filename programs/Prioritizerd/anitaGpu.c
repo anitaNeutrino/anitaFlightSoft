@@ -700,6 +700,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     longTimeStartTime = header[0].unixTime;
   }
 
+
   /* Start time stamping. */
   uint stamp;
   stamp = 1;
@@ -1070,7 +1071,18 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 
 
-  // Doing this while the GPU does the cross correlations is maybe the most efficient?
+  // it does seem to be rather retarded than the CPU and GPU both calculate this normalization...
+  // but it's probably not the end of the world
+  int numToSkip = 0;
+  for(eventInd=0; eventInd < nEvents; eventInd++){
+    if(prioritizerStuffs[eventInd] > 0){
+      numToSkip++;
+    }
+  }
+
+
+  const int numEventsInPowSpec = nEvents - numToSkip;
+  // Here we add the power spectra calcualated on this GPU loop to the rolling average
   for(polInd=0; polInd < NUM_POLARIZATIONS; polInd++){
     int ant = 0;
     for(ant=0; ant < NUM_ANTENNAS; ant++){
@@ -1083,16 +1095,16 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  else if(isnan(powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd])){
 	    printf("I got a nan!!! at %d %d %d \n", polInd, ant, freqInd);
 	  }
-
 	  /* printf("Let's find the bastard. I dumped all the buffers and I'm quitting!\n"); */
 	  /* handleBadSigs(); */
 	}
 
-	longTimeAvePowSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd];
+	longTimeAvePowSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd] += numEventsInPowSpec*powSpec[(polInd*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd];
       }
     }
   }
-  longTimeAvePowSpecNumEvents += nEvents;
+
+  longTimeAvePowSpecNumEvents += (numEventsInPowSpec);
 
 
   const int longTime = 28;
