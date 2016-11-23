@@ -43,6 +43,7 @@ buffer* numEventsBuffer = NULL;
 cl_kernel eventPowSpecKernel = 0;
 buffer* powSpecBuffer = NULL;
 buffer* passFilterBuffer = NULL;
+buffer* longDynamicPassFilterBuffer = NULL;
 buffer* staticPassFilterBuffer = NULL;
 buffer* powSpecScratchBuffer = NULL;
 buffer* isMinimaBuffer = NULL;
@@ -344,13 +345,14 @@ void prepareGpuThings(){
   skipUpdatingAvePowSpec = createBuffer(context, memFlags, sizeof(unsigned short)*NUM_EVENTS, "s", "skipUpdatingAvePowSpec");
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
+  longDynamicPassFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_POLARIZATIONS*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "longDynamicPassFilterBuffer");
 
   powSpecScratchBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES/2, "powSpecScratchBuffer");
   passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
 
 
-#define numPowSpecArgs 9
-  buffer* powSpecArgs[numPowSpecArgs] = {skipUpdatingAvePowSpec, fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
+#define numPowSpecArgs 10
+  buffer* powSpecArgs[numPowSpecArgs] = {skipUpdatingAvePowSpec, fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer,longDynamicPassFilterBuffer,  binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
 
@@ -617,6 +619,11 @@ void prepareGpuThings(){
   }
 
 }
+
+
+
+
+
 
 
 
@@ -1178,6 +1185,13 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 	isAboveDiffThresh[NUM_SAMPLES/2 - 1] = 0; // this point must be zero
 
+
+
+
+
+
+
+
 	for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){
 	  fprintf(fOut, "%f ", isLocalMaximum[freqInd]*longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd]);
 	}
@@ -1190,55 +1204,24 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  fprintf(fOut, "%f ", isAboveDiffThresh[freqInd]*longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd]);
 	}
 
+
+
+
+
+
+
+
 	// every frequency bin passes (=1) by default.
 	// I'm setting that condition here
 	int longDynamicPassFilter[NUM_SAMPLES/2] = {0};
 	for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){
 	  longDynamicPassFilter[freqInd] = 1;
 	}
-
-	float deltaF_MHz = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING);
-	int lookingForSpikeStart = 1;
-	int spikeStartBin = 0;
-	int spikePeakBin = 0;
-	const int longBaseInd = (pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2);
-	for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){
-	  float f = deltaF_MHz*freqInd;
-
-	  if(lookingForSpikeStart > 0){
-	    if(isLocalMinimum[freqInd] > 0){
-	      // start of a spike
-	      spikeStartBin = freqInd;
-	      lookingForSpikeStart = 0;
-	    }
-	  }
-	  else{ // then looking for localMaxima
-	    if(isLocalMaximum[freqInd]){
-	      spikePeakBin = freqInd;
-
-	      // is the spike big enough?
-	      float spikeSize_dB = longTimeAvePowSpec[longBaseInd + spikePeakBin] - longTimeAvePowSpec[longBaseInd + spikeStartBin];
-
-	      /* if(pol==0 && ant==2){ */
-	      /* 	printf("%f %.1f MHz - %.1f MHz\n", spikeSize_dB, deltaF_MHz*spikeStartBin, deltaF_MHz*spikePeakBin); */
-	      /* } */
-
-	      if(spikeSize_dB > spikeThresh_dB){
-		int freqInd2 = spikeStartBin;
-		int maxFreqInd2 = spikePeakBin;
-		for(freqInd2 = spikeStartBin; freqInd2 < 2*spikePeakBin - spikeStartBin; freqInd2++){
-		  longDynamicPassFilter[freqInd2] = 0;
-		}
-	      }
-	      lookingForSpikeStart = 1;
-	    }
-	  }
-	}
+	updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB);
 
 	for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){
 	  fprintf(fOut, "%f ", longDynamicPassFilter[freqInd]*longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd]);
 	}
-
 
 	fprintf(fOut, "\n");
       }
@@ -1628,3 +1611,59 @@ float* fillDeltaTArrays(){
   return offsetInd;
 
 }
+
+
+
+
+
+/**
+ * This function is supposed to reduce code dupliation at the end of the main GPU loop.
+ *
+ * @param pol is the polarization
+ * @param ant is the antenna
+ * @param longDynamicPassFilter
+ * @param isLocalMinimum
+ * @param isLocalMaximum
+ * @param spikeThresh_dB
+ */
+ void updateLongDynamicPassFilter(int pol, int ant, int* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB){
+
+
+   const float deltaF_MHz = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING);
+   int lookingForSpikeStart = 1;
+   int spikeStartBin = 0;
+   int spikePeakBin = 0;
+   const int longBaseInd = (pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2);
+
+   int freqInd = 0;
+   for(freqInd=0; freqInd < NUM_SAMPLES/2; ++freqInd){
+     float f = deltaF_MHz*freqInd;
+
+     if(lookingForSpikeStart > 0){
+       if(isLocalMinimum[freqInd] > 0){
+	 // start of a spike
+	 spikeStartBin = freqInd;
+	 lookingForSpikeStart = 0;
+       }
+     }
+     else{ // then looking for localMaxima
+       if(isLocalMaximum[freqInd]){
+	 spikePeakBin = freqInd;
+
+	 // is the spike big enough?
+	 float spikeSize_dB = longTimeAvePowSpec[longBaseInd + spikePeakBin] - longTimeAvePowSpec[longBaseInd + spikeStartBin];
+	 if(spikeSize_dB > spikeThresh_dB){
+
+	   // then filter twice the distance from the maximum to the minimum
+	   int freqInd2 = spikeStartBin;
+	   for(freqInd2 = spikeStartBin; freqInd2 < 2*spikePeakBin - spikeStartBin; freqInd2++){
+	     longDynamicPassFilter[freqInd2] = 0;
+	   }
+	 }
+
+	 // find next minimum
+	 lookingForSpikeStart = 1;
+       }
+     }
+   }
+ }

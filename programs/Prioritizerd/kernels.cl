@@ -805,6 +805,7 @@ __kernel void makeAveragePowerSpectrumForEvents(__global short* skipAverage,
 						__global float2* powSpecOut,
 						__local float2* powSpecScratch,
 						__global short2* passFilterBuffer,
+						__global short2* longDynamicFilter,
 						__global float* binToBinDifferenceThresh_dBBuffer,
 						__global int* numEventsBuffer,
 						__local short2* passFilterLocalBuffer,
@@ -827,7 +828,6 @@ __kernel void makeAveragePowerSpectrumForEvents(__global short* skipAverage,
 
   float binToBinDifferenceThresh_dB = binToBinDifferenceThresh_dBBuffer[0];
   float maxThreshold_dBm = absMagnitudeThresh_dBmBuffer[0];
-
 
   // At the time of writing this commet, sampInd goes from 0 to NUM_SAMPLES/4 (see global work item size arrays)
   // There are NUM_SAMPLES floats in the raw waves

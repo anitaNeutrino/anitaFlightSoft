@@ -69,6 +69,8 @@ float compareForSort(const void* a, const void* b);
 
 int unwrapAndBaselinePedSubbedEventBen(PedSubbedEventBody_t *pedSubBdPtr, AnitaTransientBodyF_t *uwTransPtr, const int alreadyUnwrappedAndCalibrated);
 
+void updateLongDynamicPassFilter(int pol, int ant, int* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB);
+
 /***********************/
 /*       Structs       */
 /***********************/
@@ -167,6 +169,7 @@ extern cl_kernel eventPowSpecKernel;
 extern buffer* powSpecBuffer;
 extern buffer* passFilterBuffer;
 extern buffer* staticPassFilterBuffer;
+extern buffer* longDynamicPassFilterBuffer;
 extern buffer* powSpecScratchBuffer;
 extern buffer* isMinimaBuffer;
 extern buffer* passFilterLocalBuffer;
