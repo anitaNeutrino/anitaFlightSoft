@@ -263,7 +263,7 @@ void prepareGpuThings(){
      At this point the connection to the GPU via the X-server should have been made
      or printed something to screen if not so lets' open the output file.
   */
-  /* #define DEBUG_MODE */
+  #define DEBUG_MODE
 
   showCompileLog = 1;
   numDevicesToUse = 1;
@@ -803,7 +803,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     status = clEnqueueNDRangeKernel(commandQueue, circularCorrelationKernel, 3, NULL, gCircCorrWorkSize, lCircCorrWorkSize, 1, &filterEvent, &circCorrelationEvent);
     statusCheck(status, "clEnqueueNDRangeKernel circularCorrelationKernel");
     timeStamp(stamp++, 1, &circCorrelationEvent);
-
 
 
 
