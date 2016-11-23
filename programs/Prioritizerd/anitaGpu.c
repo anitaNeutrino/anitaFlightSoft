@@ -47,6 +47,7 @@ buffer* staticPassFilterBuffer = NULL;
 buffer* powSpecScratchBuffer = NULL;
 buffer* isMinimaBuffer = NULL;
 buffer* passFilterLocalBuffer = NULL;
+buffer* skipUpdatingAvePowSpec = NULL;
 
 cl_kernel filterWaveformsKernel = 0;
 buffer* newRmsBuffer = NULL;
@@ -214,6 +215,7 @@ void prepareGpuThings(){
   powSpec = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(float));
   passFilter = malloc(NUM_POLARIZATIONS*NUM_ANTENNAS*(NUM_SAMPLES/2)*sizeof(short));
   staticPassFilter = malloc((NUM_SAMPLES/2)*sizeof(short));
+  prioritizerStuffs = malloc(NUM_EVENTS*sizeof(unsigned short));
 
 
   const int numFreqsHacky = NUM_SAMPLES/2;
@@ -263,7 +265,7 @@ void prepareGpuThings(){
      At this point the connection to the GPU via the X-server should have been made
      or printed something to screen if not so lets' open the output file.
   */
-  #define DEBUG_MODE
+  /* #define DEBUG_MODE */
 
   showCompileLog = 1;
   numDevicesToUse = 1;
@@ -339,6 +341,7 @@ void prepareGpuThings(){
 
   /* Makes power spectrum from fourier transform and figures out filtering logic... */
   eventPowSpecKernel = createKernel(prog, "makeAveragePowerSpectrumForEvents");
+  skipUpdatingAvePowSpec = createBuffer(context, memFlags, sizeof(unsigned short)*NUM_EVENTS, "s", "skipUpdatingAvePowSpec");
   powSpecBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_ANTENNAS*NUM_SAMPLES/2, "f", "powSpecBuffer");
   passFilterBuffer = createBuffer(context, memFlags, sizeof(short)*NUM_ANTENNAS*NUM_SAMPLES/2, "s", "passFilterBuffer");
 
@@ -346,8 +349,8 @@ void prepareGpuThings(){
   passFilterLocalBuffer = createLocalBuffer(sizeof(short)*NUM_SAMPLES/2, "passFilterLocalBuffer");
 
 
-#define numPowSpecArgs 8
-  buffer* powSpecArgs[numPowSpecArgs] = {fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
+#define numPowSpecArgs 9
+  buffer* powSpecArgs[numPowSpecArgs] = {skipUpdatingAvePowSpec, fourierBuffer, powSpecBuffer, powSpecScratchBuffer, passFilterBuffer, binToBinDifferenceThresh_dBBuffer, numEventsInQueueBuffer, passFilterLocalBuffer, absMagnitudeThresh_dBmBuffer};
   setKernelArgs(eventPowSpecKernel, numPowSpecArgs, powSpecArgs, "eventPowSpecKernel");
 
 
@@ -655,6 +658,8 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
     numEventSamples[(NUM_EVENTS+eventInd)*NUM_ANTENNAS + antInd] = NUM_SAMPLES;
   }
 
+  prioritizerStuffs[eventInd] = header.prioritizerStuff;
+
   /* Unpack the "L3" trigger, actually the L2 triggered phi-sectors. */
   int phiInd=0;
   for(phiInd=0; phiInd<NUM_PHI_SECTORS; phiInd++){
@@ -709,6 +714,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
      polarizations off to the GPU before starting calculations with them.
   */
 
+
+  cl_event prioritizerStuffToGpu = writeBuffer(commandQueue, skipUpdatingAvePowSpec,
+					       prioritizerStuffs, 0, NULL);
+
   cl_event dataToGpuEvents[NUM_POLARIZATIONS][3];
 
   dataToGpuEvents[0][0] = writeBuffer(commandQueue, rawBufferVPol,
@@ -756,6 +765,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 #ifdef DEBUG_MODE
     clFinish(commandQueue);
+    printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", polInd, skipUpdatingAvePowSpec, NUM_EVENTS, nEvents);
     printBufferToTextFile2(commandQueue, "rawBuffer", polInd, rawBufferHPol, NUM_EVENTS, nEvents);
     printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", polInd, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "numSampsBuffer", polInd, numSampsBufferHPol, NUM_EVENTS, 1);
@@ -777,8 +787,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     statusCheck(status, "clEnqueueNDRangeKernel fourierKernel");
     timeStamp(stamp++, 1, &fourierEvent);
 
-    cl_event powSpecDependencies[2] = {writeNumEventsToGPU, fourierEvent};
-    status = clEnqueueNDRangeKernel(commandQueue, eventPowSpecKernel, 2, NULL, gPowSpecWorkSize, lPowSpecWorkSize, 2, powSpecDependencies, &powSpecEvent);
+    cl_event powSpecDependencies[3] = {writeNumEventsToGPU, fourierEvent, prioritizerStuffToGpu};
+    status = clEnqueueNDRangeKernel(commandQueue, eventPowSpecKernel, 2, NULL, gPowSpecWorkSize, lPowSpecWorkSize, 3, powSpecDependencies, &powSpecEvent);
     statusCheck(status, "clEnqueueNDRangeKernel eventPowSpecKernel");
     timeStamp(stamp++, 1, &powSpecEvent);
 

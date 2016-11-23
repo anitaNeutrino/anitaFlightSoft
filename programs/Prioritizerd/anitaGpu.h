@@ -290,6 +290,7 @@ static const size_t lHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, 1};
 short* numEventSamples;
 float* eventData;
 short phiTrig[NUM_POLARIZATIONS*NUM_EVENTS*NUM_PHI_SECTORS];
+unsigned short* prioritizerStuffs;
 
 /* Output */
 float imagePeakVal[NUM_POLARIZATIONS*NUM_EVENTS];

@@ -800,8 +800,8 @@ __kernel void fourierTransformNormalizedData(__global float4* realIn,
 }
 
 
-__kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
-						/* __global float* rmsBuffer, */
+__kernel void makeAveragePowerSpectrumForEvents(__global short* skipAverage,
+						__global float4* ftWaves,
 						__global float2* powSpecOut,
 						__local float2* powSpecScratch,
 						__global short2* passFilterBuffer,
@@ -836,16 +836,24 @@ __kernel void makeAveragePowerSpectrumForEvents(__global float4* ftWaves,
   // So each work item, needs to fetch 2 complex numbers (4 floats).
 
   // This is exactly the sort of place I would make an indexing error...
+  int numEventsSkipped=0;
   for(int event=0; event<numEvents; event++){
 
-    float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
+    if(skipAverage[event] == 0){
 
-    float2 samplesPow = (float2)(samples.x*samples.x + samples.y*samples.y,
-  				 samples.z*samples.z + samples.w*samples.w);
+      float4 samples = ftWaves[event*NUM_ANTENNAS*NUM_SAMPLES/2 + ant*NUM_SAMPLES/2 + sampInd];
 
-    summedPowSpec += samplesPow;//*var;
+      float2 samplesPow = (float2)(samples.x*samples.x + samples.y*samples.y,
+    				   samples.z*samples.z + samples.w*samples.w);
+
+      summedPowSpec += samplesPow;//*var;
+    }
+    else{
+      numEventsSkipped++;
+    }
   }
 
+  numEvents -= numEventsSkipped;
 
   summedPowSpec *= 2; // For negative frequencies
   summedPowSpec = numEvents > 0 ? summedPowSpec/numEvents : 0; // Average of all events
