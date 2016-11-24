@@ -147,14 +147,12 @@ void prepareTimingCalibThings(){
   readInRcoLatchDelay(rcoLatchDelayFileName);
 
 
-  //readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
   char relativeCableDelaysFileName[FILENAME_MAX];
   sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelaysAnita%d.dat", flightSoftDir, anitaCalibVersion);
   readInRelativeCableDelay(relativeCableDelaysFileName);
 
-  //readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
   char simpleVoltageCalibrationHarmFileName[FILENAME_MAX];
-  sprintf(simpleVoltageCalibrationHarmFileName, "%s/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt", flightSoftDir);
+  sprintf(simpleVoltageCalibrationHarmFileName, "%s/programs/Prioritizerd/simpleVoltageCalibrationAnita%d.txt", flightSoftDir, anitaCalibVersion);
   readInVoltageCalib(simpleVoltageCalibrationHarmFileName);
 
 
