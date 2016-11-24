@@ -236,7 +236,7 @@
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
 #define OPENPORTD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdopenportd/link"
 #define HK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
-#define SSHK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
+#define SSHK_TELEM_LINK_DIR "/tmp/anita/telem/house/sshk/link"
 #define SURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/surfhk/link"
 #define AVGSURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/avgsurfhk/link"
 #define PEDESTAL_TELEM_LINK_DIR "/tmp/anita/telem/house/pedestal/link"

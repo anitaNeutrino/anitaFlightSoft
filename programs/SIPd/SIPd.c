@@ -1044,9 +1044,9 @@ int readAndSendEventRamdisk(char *headerLinkFilename) {
 	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
       }
       
-      removeFile(currentTouchname);
-      removeFile(headerFilename);
-      removeFile(waveFilename);
+      unlink(currentTouchname);
+      unlink(headerFilename);
+      unlink(waveFilename);
       
       //Bollocks
       return 0;
@@ -1082,10 +1082,10 @@ int readAndSendEventRamdisk(char *headerLinkFilename) {
 	fprintf(stderr,"Problem reading %s\n",waveFilename);
 	syslog(LOG_ERR,"Problem reading %s\n",waveFilename);
 
-//	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);	
-	removeFile(currentTouchname);
+//	unlink(headerLinkFilename);
+	unlink(headerFilename);
+	unlink(waveFilename);	
+	unlink(currentTouchname);
 	//Bollocks
 	return 0;
     }
@@ -1134,18 +1134,18 @@ int readAndSendEventRamdisk(char *headerLinkFilename) {
 	       headerLinkFilename);
 	        
     if(!checkFileExists(currentLOSTouchname)) {
-//	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);
-	removeFile(currentTouchname);
+//	unlink(headerLinkFilename);
+	unlink(headerFilename);
+	unlink(waveFilename);
+	unlink(currentTouchname);
     }
     else {
-	sleep(1);
-//	removeFile(headerLinkFilename);
-	removeFile(headerFilename);
-	removeFile(waveFilename);
-	removeFile(currentTouchname);
-	removeFile(currentLOSTouchname);
+	usleep(100);
+//	unlink(headerLinkFilename);
+	unlink(headerFilename);
+	unlink(waveFilename);
+	unlink(currentTouchname);
+	unlink(currentLOSTouchname);
     }
 
     return 1;
@@ -1574,9 +1574,9 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 //	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 //		   currentFilename);
 //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-	    removeFile(currentFilename);
-	    removeFile(currentLinkname);
-	    removeFile(currentTouchname);
+	    unlink(currentFilename);
+	    unlink(currentLinkname);
+	    unlink(currentTouchname);
 	    continue;
 	}
 	numBytes=retVal;
@@ -1606,16 +1606,16 @@ int checkLinkDirAndTdrss(int maxCopy, char *telemDir, char *linkDir, int fileSiz
 	totalBytes+=numBytes;
 
 	if(!checkFileExists(currentLOSTouchname)) {
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	    removeFile(currentTouchname);
+	    unlink(currentLinkname);
+	    unlink(currentFilename);
+	    unlink(currentTouchname);
 	}
 	else {
-	    sleep(1);
-	    removeFile(currentLinkname);
-	    removeFile(currentFilename);
-	    removeFile(currentTouchname);
-	    removeFile(currentLOSTouchname);
+	    usleep(100);
+	    unlink(currentLinkname);
+	    unlink(currentFilename);
+	    unlink(currentTouchname);
+	    unlink(currentLOSTouchname);
 	}
 	int j;
 	int tempInds[3]={1,3,6};
@@ -1734,7 +1734,7 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       touchFile(currentTouchname);
       
       if(checkFileExists(currentLOSTouchname)) {	  
-	  removeFile(currentTouchname);	  
+	  unlink(currentTouchname);	  
 	  continue;
       }
 
@@ -1747,9 +1747,9 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
 	//	    syslog(LOG_ERR,"Error opening file, will delete: %s",
 	//		   currentFilename);
 	//	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-	removeFile(currentFilename);	
-	removeFile(currentLinkname);
-	removeFile(currentTouchname);
+	unlink(currentFilename);	
+	unlink(currentLinkname);
+	unlink(currentTouchname);
 	continue;
       }
       numBytes=retVal;
@@ -1779,16 +1779,16 @@ int readHkAndTdrss(int wd,int maxCopy, char *telemDir, char *linkDir, int fileSi
       totalBytes+=numBytes;
       
       if(!checkFileExists(currentLOSTouchname)) {
-	removeFile(currentLinkname);
-	removeFile(currentFilename);
-	removeFile(currentTouchname);
+	unlink(currentLinkname);
+	unlink(currentFilename);
+	unlink(currentTouchname);
       }
       else {
-	sleep(1);
-	removeFile(currentLinkname);
-	removeFile(currentFilename);
-	removeFile(currentTouchname);
-	removeFile(currentLOSTouchname);
+	usleep(100);
+	unlink(currentLinkname);
+	unlink(currentFilename);
+	unlink(currentTouchname);
+	unlink(currentLOSTouchname);
       }
       (*numSent)++;
 

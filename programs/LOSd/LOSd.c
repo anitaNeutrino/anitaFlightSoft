@@ -626,10 +626,10 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
       //	    syslog(LOG_ERR,"Error opening file, will delete: %s",
       //		   currentFilename);
       //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-      removeFile(currentFilename);
-      removeFile(currentLOSTouchname);
-      removeFile(currentLinkname);
-      removeFile(currentTouchname);
+      unlink(currentFilename);
+      unlink(currentLOSTouchname);
+      unlink(currentLinkname);
+      unlink(currentTouchname);
       continue;
     }
     numBytes=retVal;
@@ -651,9 +651,9 @@ int checkLinkDir(int maxCopy, char *telemDir, char *linkDir, int fileSize)
     totalBytes+=numBytes;
 
     if(!checkFileExists(currentTouchname)) {
-      removeFile(currentLinkname);
-      removeFile(currentFilename);
-      removeFile(currentLOSTouchname);
+      unlink(currentLinkname);
+      unlink(currentFilename);
+      unlink(currentLOSTouchname);
     }
     else {
       printf("%s exists\n",currentTouchname);
@@ -700,8 +700,13 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
     sprintf(currentLOSTouchname,"%s.losd",currentFilename);
     sprintf(currentLinkname,"%s/%s",linkDir,tempString);
 
-    if(!checkFileExists(currentLinkname))
+    printf("RJN -- %s\n",currentFilename);
+
+    if(!checkFileExists(currentLinkname)) {
+      //      printf("%s -- doesn't exist\n",currentLinkname);
+      unlink(currentLinkname);
       continue;
+    }
 
     if(checkFileExists(currentTouchname)) continue;
     touchFile(currentLOSTouchname);
@@ -714,10 +719,10 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
       //	    syslog(LOG_ERR,"Error opening file, will delete: %s",
       //		   currentFilename);
       //	    fprintf(stderr,"Error reading file %s -- %d\n",currentFilename,retVal);
-      removeFile(currentFilename);
-      removeFile(currentLOSTouchname);
-      removeFile(currentLinkname);
-      removeFile(currentTouchname);
+      unlink(currentFilename);
+      unlink(currentLOSTouchname);
+      unlink(currentLinkname);
+      unlink(currentTouchname);
       continue;
     }
     numBytes=retVal;
@@ -739,9 +744,9 @@ int addToTelemetryBuffer(int maxCopy, int wd, char *telemDir, char *linkDir, int
     totalBytes+=numBytes;
 
     if(!checkFileExists(currentTouchname)) {
-      removeFile(currentLinkname);
-      removeFile(currentFilename);
-      removeFile(currentLOSTouchname);
+      unlink(currentLinkname);
+      unlink(currentFilename);
+      unlink(currentLOSTouchname);
     }
     else {
       printf("%s exists\n",currentTouchname);
@@ -895,10 +900,10 @@ void readAndSendEvent(char *headerFilename, unsigned int eventNumber) {
 	 
      
   if(retVal<0) {
-    removeFile(headerFilename);
+    unlink(headerFilename);
     sprintf(waveFilename,"%s/ev_%d.dat",eventTelemDirs[currentPri], 
 	    theHeader->eventNumber);
-    removeFile(waveFilename);
+    unlink(waveFilename);
 	 
     //Bollock
     return;
@@ -927,8 +932,8 @@ void readAndSendEvent(char *headerFilename, unsigned int eventNumber) {
   /* 	if(!gzippedEventFile) { */
   /* 	    syslog(LOG_ERR,"Couldn't open %s -- %s",waveFilename,strerror(errno)); */
   /* 	    fprintf(stderr,"Couldn't open %s -- %s\n",waveFilename,strerror(errno));	 */
-  /* 	    removeFile(headerFilename); */
-  /* 	    removeFile(waveFilename); */
+  /* 	    unlink(headerFilename); */
+  /* 	    unlink(waveFilename); */
   /* 	    return; */
   /* 	} */
   /* 	useGzip=1; */
@@ -963,8 +968,8 @@ void readAndSendEvent(char *headerFilename, unsigned int eventNumber) {
   if(printToScreen && verbosity>1) 
     printf("Removing files %s\t%s\n",headerFilename,waveFilename);
 	        
-  removeFile(headerFilename);
-  removeFile(waveFilename);
+  unlink(headerFilename);
+  unlink(waveFilename);
 
 }
 
@@ -996,7 +1001,7 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
   touchFile(currentLOSTouchname);
   //Removing headerLinkFilename
   //  fprintf(stderr,"Removing %s\n",headerLinkFilename);
-  removeFile(headerLinkFilename);
+  unlink(headerLinkFilename);
 
 
 
@@ -1013,9 +1018,9 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
 
     
   if(retVal<0) {
-    removeFile(headerFilename);
-    removeFile(waveFilename);
-    removeFile(currentLOSTouchname);
+    unlink(headerFilename);
+    unlink(waveFilename);
+    unlink(currentLOSTouchname);
     //Bollocks
     return;
   }
@@ -1033,9 +1038,9 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
   retVal=genericReadOfFile(eventBuffer,waveFilename,MAX_EVENT_SIZE);
   if(retVal<0) {
     fprintf(stderr,"Problem reading %s\n",waveFilename);
-    removeFile(headerFilename);
-    removeFile(waveFilename);
-    removeFile(currentLOSTouchname);
+    unlink(headerFilename);
+    unlink(waveFilename);
+    unlink(currentLOSTouchname);
 	
     //Bollocks
     return;
@@ -1079,9 +1084,9 @@ void readAndSendEventRamdisk(char *headerLinkFilename) {
     printf("Removing files %s\t%s\n",headerFilename,waveFilename);
 
   if(!checkFileExists(currentTouchname)) {
-    removeFile(headerFilename);
-    removeFile(waveFilename);
-    removeFile(currentLOSTouchname);
+    unlink(headerFilename);
+    unlink(waveFilename);
+    unlink(currentLOSTouchname);
   }
   else {
     printf("Not removing %s because checkFileExists == %d\n",
