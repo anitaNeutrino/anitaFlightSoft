@@ -228,6 +228,8 @@ int main (int argc, char *argv[])
 
     makeDirectories(HK_TELEM_DIR);
     makeDirectories(HK_TELEM_LINK_DIR);
+    makeDirectories(SSHK_TELEM_LINK_DIR);
+    makeDirectories(SSHK_TELEM_DIR);
     if (writeMagnetometerForTuff)
     {
       makeDirectories(MAGNETOMETER_DIR); 

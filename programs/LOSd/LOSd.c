@@ -39,7 +39,7 @@
 #define LOS_DEVICE "/dev/los"
 #endif
 
-#define NUM_HK_TELEM_DIRS 23 
+#define NUM_HK_TELEM_DIRS 25
 
 typedef enum {
   LOS_TELEM_FIRST=0,
@@ -61,6 +61,8 @@ typedef enum {
   LOS_TELEM_ADU5B_GGA,
   LOS_TELEM_SURFHK,
   LOS_TELEM_TURFRATE,
+  LOS_TELEM_AVGSURFHK,
+  LOS_TELEM_SUMTURFRATE,
   LOS_TELEM_OTHER,
   LOS_TELEM_PEDESTAL,
   LOS_TELEM_REQUEST,
@@ -246,6 +248,8 @@ void * watchdogThread(void * unused)
    makeDirectories(HEADER_TELEM_LINK_DIR);
    makeDirectories(SURFHK_TELEM_LINK_DIR);
    makeDirectories(TURFHK_TELEM_LINK_DIR);
+   makeDirectories(AVGSURFHK_TELEM_LINK_DIR);
+   makeDirectories(SUMTURFHK_TELEM_LINK_DIR);
    makeDirectories(PEDESTAL_TELEM_LINK_DIR);
    makeDirectories(HK_TELEM_LINK_DIR);
    makeDirectories(MONITOR_TELEM_LINK_DIR);
@@ -754,6 +758,8 @@ void fillBufferWithHk()
      ADU5B_GGA_TELEM_LINK_DIR,
      SURFHK_TELEM_LINK_DIR,
      TURFHK_TELEM_LINK_DIR,
+     AVGSURFHK_TELEM_LINK_DIR,
+     SUMTURFHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
      REQUEST_TELEM_LINK_DIR, 
@@ -779,6 +785,8 @@ void fillBufferWithHk()
      ADU5B_GGA_TELEM_DIR,
      SURFHK_TELEM_DIR,
      TURFHK_TELEM_DIR,
+     AVGSURFHK_TELEM_DIR,
+     SUMTURFHK_TELEM_DIR,
      OTHER_MONITOR_TELEM_DIR,
      PEDESTAL_TELEM_DIR,
      REQUEST_TELEM_DIR, 
@@ -804,6 +812,7 @@ void fillBufferWithHk()
      sizeof(GpsGgaStruct_t),     
      sizeof(FullSurfHkStruct_t),
      sizeof(TurfRateStruct_t),
+     sizeof(Av
      sizeof(OtherMonitorStruct_t),
      sizeof(FullLabChipPedStruct_t),
      4000, //Who knows why, 
