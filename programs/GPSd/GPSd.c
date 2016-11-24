@@ -83,6 +83,7 @@ int fdG12,fdAdu5A,fdAdu5B;//,fdMag
 //Output config stuff
 int printToScreen=0;
 int verbosity=0;
+int saveAttitudeForTuff = 0; 
 
 // Config stuff for G12
 float g12PpsPeriod=1;
@@ -400,6 +401,7 @@ int readConfigFile()
     if(kvpStatus == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",-1);
 	verbosity=kvpGetInt("verbosity",-1);
+        saveAttitudeForTuff = kvpGetInt("saveAttitudeForTuff",0); 
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,
 		   "Couldn't fetch printToScreen, defaulting to zero");
@@ -1251,6 +1253,9 @@ void writeSharedPosition(GpsG12PosStruct_t * pos)
 {
     char theFilename[FILENAME_MAX];
     int retVal; 
+
+    if (!saveAttitudeForTuff) return; 
+
     sprintf(theFilename, "%s/posG12_%d.dat", GPSD_HEADING_DIR, pos->unixTime); 
     retVal = writeStruct(pos, theFilename, sizeof(GpsG12PosStruct_t)); 
     if (retVal < 0) 
@@ -2005,6 +2010,7 @@ void writeSharedHeading(GpsAdu5PatStruct_t * pat, char whichPAT)
 {
     char theFilename[FILENAME_MAX];
     int retVal; 
+    if (!saveAttitudeForTuff) return; 
     sprintf(theFilename, "%s/pat%c_%d.dat", GPSD_HEADING_DIR, whichPAT, pat->unixTime); 
     retVal = writeStruct(pat, theFilename, sizeof(GpsAdu5PatStruct_t)); 
     if (retVal < 0) 

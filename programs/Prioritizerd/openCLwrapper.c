@@ -24,6 +24,9 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   printf("%d platform(s) detected.\n", numPlatforms);
 
 
+  //overwrite the $DISPLAY because sometimes it seems messed up
+  setenv("DISPLAY",":0",1); 
+  setenv("COMPUTE",":0",1); 
 
   /* Get the names of the platforms and display to user. */
   char platNames[maxPlatforms][100];
@@ -42,19 +45,6 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   clGetDeviceIDs(platformIds[myPlatform], devType, maxDevices, deviceIds, &numDevices);
   statusCheck(status, "clGetDeviceIDs");
 
-  /** Try to start X and die*/
-  if (numDevices == 0)
-  {
-    printf("attempting to start X\n");
-    syslog(LOG_INFO,"attempting to start X\n");
-//    system("sudo killall -9 X");
-    system("X > /dev/null 2>/dev/null &");
-    printf("Started X and quitting... should be restarted by daemon I suppose?\n");
-    sleep(2);
-    raise(SIGTERM);
-  }
-
-
   /* Give up if we can't find any devices on chosen platform */
   if (numDevices==0) {
     syslog(LOG_ERR, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
@@ -63,7 +53,8 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     fprintf(stderr, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
-    raise(SIGTERM);
+    sleep(10); 
+    raise(SIGTERM); 
   }
 
   /* Prints useful information about the GPU architecture to the screen.*/

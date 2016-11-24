@@ -172,8 +172,8 @@ int main (int argc, char *argv[])
     }
 
     makeDirectories(CALIBD_STATUS_LINK_DIR);
-    makeDirectories(HK_TELEM_DIR);
-    makeDirectories(HK_TELEM_LINK_DIR);
+    makeDirectories(SSHK_TELEM_DIR);
+    makeDirectories(SSHK_TELEM_LINK_DIR);
 
     prepWriterStructs();
 
@@ -736,9 +736,9 @@ int outputData(AnalogueCode_t code)
     if(telemCount>=telemEvery) {    
 	//Write file and make link for SIPd
       if(printToScreen) printf("%s\n",theFilename);
-	sprintf(fullFilename,"%s/%s",HK_TELEM_DIR,theFilename);
+	sprintf(fullFilename,"%s/%s",SSHK_TELEM_DIR,theFilename);
 	retVal=writeStruct(&theHkData,fullFilename,sizeof(SSHkDataStruct_t));     
-	retVal+=makeLink(fullFilename,HK_TELEM_LINK_DIR);      
+	retVal+=makeLink(fullFilename,SSHK_TELEM_LINK_DIR);      
 	
 	telemCount=0;
     }

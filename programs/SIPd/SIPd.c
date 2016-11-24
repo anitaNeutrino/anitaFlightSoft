@@ -42,7 +42,7 @@
 
 
 #define SEND_REAL_SLOW_DATA 1
-#define NUM_HK_TELEM_DIRS 23
+#define NUM_HK_TELEM_DIRS 26
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -65,6 +65,9 @@ typedef enum {
   TDRSS_TELEM_ADU5B_GGA,
   TDRSS_TELEM_SURFHK,
   TDRSS_TELEM_TURFRATE,
+  TDRSS_TELEM_AVGSURFHK,
+  TDRSS_TELEM_SUMTURFRATE,
+  TDRSS_TELEM_SSHK,
   TDRSS_TELEM_OTHER,
   TDRSS_TELEM_PEDESTAL,
   TDRSS_TELEM_REQUEST,
@@ -167,6 +170,9 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      ADU5B_GGA_TELEM_LINK_DIR,   
      SURFHK_TELEM_LINK_DIR,
      TURFHK_TELEM_LINK_DIR,
+     AVGSURFHK_TELEM_LINK_DIR,
+     SUMTURFHK_TELEM_LINK_DIR,
+     SSHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
      REQUEST_TELEM_LINK_DIR, 
@@ -191,12 +197,15 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
      ADU5A_GGA_TELEM_DIR, //14
      ADU5B_GGA_TELEM_DIR, //15
      SURFHK_TELEM_DIR, //16
-     TURFHK_TELEM_DIR,//17
-     OTHER_MONITOR_TELEM_DIR, //18
-     PEDESTAL_TELEM_DIR, //19
-     REQUEST_TELEM_DIR, //20
-     RTL_TELEM_DIR, //21 
-     TUFF_TELEM_DIR //22 
+     AVGSURFHK_TELEM_DIR, //17
+     SUMTURFHK_TELEM_DIR, //18
+     SSHK_TELEM_DIR, //19
+     TURFHK_TELEM_DIR,//20
+     OTHER_MONITOR_TELEM_DIR, //21
+     PEDESTAL_TELEM_DIR, //22
+     REQUEST_TELEM_DIR, //23
+     RTL_TELEM_DIR, //24 
+     TUFF_TELEM_DIR //25 
     }; 
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
   {sizeof(CommandEcho_t),
@@ -217,6 +226,9 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(GpsGgaStruct_t),     
    sizeof(FullSurfHkStruct_t),
    sizeof(TurfRateStruct_t),
+   sizeof(AveragedSurfHkStruct_t),
+   sizeof(SummedTurfRateStruct_t),
+   sizeof(SSHkDataStruct_t),
    sizeof(OtherMonitorStruct_t),
    sizeof(FullLabChipPedStruct_t),
    2000, //Who knows why
