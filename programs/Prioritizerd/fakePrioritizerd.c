@@ -264,20 +264,21 @@ int main(int argc, char *argv[]){
       	numPulsesReadIn = 0;
       }
 
-      /* if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds */
-      /* 	 || currentState!=PROG_STATE_RUN){ */
-      /* 	int phi=0; */
-      /* 	for(phi=0; phi<NUM_PHI_SECTORS; phi++){ */
-      /* 	  printf("Trying to write and link for phi sector %d...\n", phi); */
-      /* 	  writeFileAndLink(&payloadPowSpec[phi], phi); */
-      /* 	} */
-      /* 	if(currentState==PROG_STATE_RUN){ */
-      /* 	  /\* Reset average *\/ */
-      /* 	  for(phi=0; phi<NUM_PHI_SECTORS; phi++){ */
-      /* 	    memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t)); */
-      /* 	  } */
-      /* 	} */
-      /* } */
+      if((payloadPowSpec[0].unixTimeLastEvent > 0 &&
+	  payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
+      	 || currentState!=PROG_STATE_RUN){
+      	int phi=0;
+      	for(phi=0; phi<NUM_PHI_SECTORS; phi++){
+      	  printf("Trying to write and link for phi sector %d...\n", phi);
+      	  writeFileAndLink(&payloadPowSpec[phi], phi);
+      	}
+      	if(currentState==PROG_STATE_RUN){
+      	  /* Reset average */
+      	  for(phi=0; phi<NUM_PHI_SECTORS; phi++){
+      	    memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+      	  }
+      	}
+      }
 
       int count = 0;
       /* for(count=0;count<eventsReadFromDisk;count++) { */

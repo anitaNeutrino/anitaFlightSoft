@@ -218,7 +218,7 @@ double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTim
   int unevenInd = 1;
   for(voltSamp=0; voltSamp < nInterp; voltSamp++){
 
-    if(time < unevenTimes[0] || time > unevenTimes[nRaw-1]){
+    if(time < unevenTimes[0] || time > unevenTimes[nRaw-1] || unevenInd >= nRaw - 1){
       interpWave[voltSamp] = 0;
     }
     else{
@@ -229,9 +229,6 @@ double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTim
     time += dtNsInterp;
     if(time > unevenTimes[unevenInd]){
       unevenInd++;
-    }
-    if(unevenInd >= nRaw){
-      break;
     }
   }
 
@@ -712,7 +709,9 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   }
 
   // now find largest peak-to-peak ratio for self triggered blasts.
-  float maxBottomToTopPeakToPeakRatio = 0;
+  const float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
+  const float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
+
   int phi=0;
   int pol = 0;
   int maxPhi, maxPol;
@@ -722,9 +721,11 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
       skipRatio[pol][phi] = 0;
     }
   }
-  skipRatio[1][7] = 1;
 
+  skipRatio[1][7] = 1; // REMOVE
 
+  int numRatiosTested = 0;
+  float maxBottomToTopPeakToPeakRatio = 0;
   for(pol=0; pol < NUM_POLARIZATIONS; pol++){
     for(phi=0; phi < NUM_PHI; phi++){
       if(bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi] > maxBottomToTopPeakToPeakRatio
@@ -732,6 +733,7 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 	maxBottomToTopPeakToPeakRatio = bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi];
 	maxPol = pol;
 	maxPhi = phi;
+	numRatiosTested++;
       }
     }
   }
@@ -746,12 +748,9 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   }
 
 
-  const float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
-  const float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
-
   // Set self triggered blast flag
-  if (maxBottomToTopPeakToPeakRatio > maxThresholdBottomToTopRingPeakToPeakRatio ||
-      maxBottomToTopPeakToPeakRatio < minThresholdBottomToTopRingPeakToPeakRatio){
+  if (numRatiosTested > 0 && (maxBottomToTopPeakToPeakRatio > maxThresholdBottomToTopRingPeakToPeakRatio ||
+			      maxBottomToTopPeakToPeakRatio < minThresholdBottomToTopRingPeakToPeakRatio) ){
     theHeader->prioritizerStuff |= 2;
   }
 
@@ -766,8 +765,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   /* Upsample clocks */
   double* interpClocks[ACTIVE_SURFS];
   for(surf=0; surf<ACTIVE_SURFS; surf++){
-    /* interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8], */
-    interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
+    interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8],
+    /* interpClocks[surf] = interpolateWaveform(nSamps[surf][8], */
     					     volts[surf][8],
     					     times[surf][8],
     					     numUpsampledClockSamples,
@@ -808,8 +807,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
       	newTimes[samp] -= clockJitters[surf];
       }
 
-      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan], */
-      finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
+      finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan],
+      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan], */
 								      //volts2[surf][chan],
 								      volts[surf][chan],
 								      newTimes,
