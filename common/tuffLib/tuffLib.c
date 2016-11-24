@@ -331,7 +331,7 @@ tuff_dev_t * tuff_open(const char * dev)
   tio.c_cflag &= ~CSTOPB;  /* Just one stop bit */  
   tio.c_cflag &= ~PARENB;  /* clear the parity bit  */
   tio.c_iflag |= IGNPAR;
-  tio.c_iflag &= ~(IXON | IXOFF | IXANY); 
+  tio.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL); 
   tio.c_lflag &= ~(ECHO | ECHOE | ICANON | ISIG );
   tio.c_oflag &= ~OPOST ; 
   tio.c_cc[VINTR]    = 0;
@@ -404,7 +404,7 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
     {
       if (rv > 0) 
       {
-        syslog(LOG_ERR, "select returned %d in tuff_getTemperature\n"); 
+        syslog(LOG_ERR, "select returned %d in tuff_getTemperature\n", rv); 
         return -275; 
 
       }
@@ -425,9 +425,8 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
       if (p) 
       {
 
-        syslog(LOG_ERR,"Reboot detected "); 
+        syslog(LOG_ERR,"Reboot detected while reading temperature. Partial buffer: %s", p); 
         return -999; 
-
 
 
       }

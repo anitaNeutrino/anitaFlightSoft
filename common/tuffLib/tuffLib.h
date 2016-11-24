@@ -162,7 +162,7 @@ int tuff_setPhiSectors(tuff_dev_t * d,
  *
  *  If timoeout is greater than zero, it's the maximum timeout in seconds. 
  *  Will return -275 if select returns -1 and -274 if the timeout is exceeded.
- *  If a reboot is detected, it returns -999 
+ *  If a reboot is detected, it returns -999
  *  It is unexpected that those temperatures would ever be measured in practice, so there should be no collisions. 
  **/ 
 float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout);
