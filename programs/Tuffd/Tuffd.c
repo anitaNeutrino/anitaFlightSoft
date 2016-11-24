@@ -104,16 +104,56 @@ typedef struct
 int weightedLinearRegression(float heading[NUM_HEADINGS], float times[NUM_HEADINGS], float weights[NUM_HEADINGS], regression_result_t * result);
 
 
-static float tdiff(float *tod1, float tod2) 
+
+void unwrapHeadings(float * harr)
+{
+  int i; 
+  float adjust = 0;
+  float last = 0; 
+  int bad[NUM_HEADINGS];
+  for (i = 0; i < NUM_HEADINGS; i++) 
+  {
+    if (harr[i] >=0 &&  harr[i] <= 360)
+    {
+      if (harr[i] - last + adjust > 180)
+      {
+        adjust -=360; 
+      }
+      else if (harr[i] - last + adjust < -180)
+      {
+        adjust += 360; 
+      }
+
+      harr[i] += adjust; 
+      last = harr[i]; 
+      bad[i] = 0; 
+    }
+    else 
+    {
+      bad[i] = 1;
+    }
+  }
+
+
+  for (i = 0; i < NUM_HEADINGS; i++)
+  {
+    if (!bad[i] && harr[i] < 0) harr[i] += 360; 
+  }
+
+
+
+}
+
+static float tdiff(float tod1, float tod2) 
 {
 
   float diff; 
 
   // invalid 
-  if (*tod1 < 0 || tod2 < 0) return -999999; 
+  if (tod1 < 0 || tod2 < 0) return -999999; 
 
 
-  diff = *tod1- tod2; 
+  diff = tod1- tod2; 
 
   // oops, we wrapped around midnight 
   if (diff > 12*60*60) 
@@ -124,8 +164,6 @@ static float tdiff(float *tod1, float tod2)
   {
     diff += 24*60*60; 
   }
-
-  *tod1 = tod2 +diff; 
 
   return diff; 
 }
@@ -149,9 +187,14 @@ int analyzeHeading()
 
   float heading_slope_estimate; 
   float heading_slope_sumw2; 
+  int nASeen   = 0; 
+  int nBSeen   = 0;
+  int readG12 = 0;
+ 
+  int nseen = 0; 
 
 
-
+  timeNow %= (3600*24); //seconds since midnight 
 
   if (headingIndexA < 0) 
   {
@@ -173,11 +216,11 @@ int analyzeHeading()
     headingLatitudeG12  = -1;
     headingLongitudeG12 = -1;
     headingAltitudeG12  = -1;
-    headingIndexA = 0; 
-    headingIndexB = 0; 
-    headingIndexMag = 0; 
   }
 
+    headingIndexA = NUM_HEADINGS -1; 
+    headingIndexB = NUM_HEADINGS -1; 
+    headingIndexMag =NUM_HEADINGS -1; 
 
   /* Here, we read in the magnetometer data. 
    *
@@ -203,100 +246,83 @@ int analyzeHeading()
   while(i--) 
   {
     float tod; 
-    int nASeen   = 0; 
-    int nBSeen   = 0;
-    int Apast    = 0; 
-    int Bpast    = 0;
-    bool readG12 = false;
-    
+   
     GpsAdu5PatStruct_t pat;
     GpsG12PosStruct_t  pos;
     
+    sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
     //this is a pat 
-    if (strstr(list[i]->d_name,"pat"))
+    if(strstr(list[i]->d_name,"patA") && nASeen++ < NUM_HEADINGS)
     {
-      sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
 
-      //this is ADU5A and we haven't seen more than NUM_HEADINGS things
-      if(strstr(list[i]->d_name,"patA") && nASeen++ < NUM_HEADINGS)
-      {
-        // we don't need to read stuff in the past
-        if (Apast) continue; 
 
         if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
         {
           syslog(LOG_ERR, "Trouble reading %s\n", buf); 
           continue; 
         }
-
 
         tod = pat.timeOfDay/1000. ; 
+        headingTimesA[headingIndexA]   = tod;
 
-         //only add it if at least half a second newer than last value in A 
-        if (headingTimesA[headingIndexA]  < 0 || tdiff(&tod, headingTimesA[headingIndexA]) > 0.5)
-        {
-          headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
-          headingTimesA[headingIndexA]   = tod;
-          headingHistoryA[headingIndexA] = pat.heading;
-          headingWeightsA[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
-        }
-        else //since we're in reverse order, we don't have to read in any others 
-        {
-          Apast = 1; 
-        }
+        if (pat.heading < 0 || pat.heading > 360) pat.heading = -1; 
+        headingHistoryA[headingIndexA] = pat.heading ;
+        headingWeightsA[headingIndexA] = 1./(pat.brms*pat.brms + pat.mrms*pat.mrms);
+//        printf("%f \n", headingWeightsA[headingIndexA]); 
+        headingIndexA--;
 
-      }
+    }
 
-      //this is ADU5B and we haven't seen more than NUM_HEADINGS things
-      else if(strstr(list[i]->d_name,"patB") && nBSeen++ < NUM_HEADINGS)
+    //this is ADU5B and we haven't seen more than NUM_HEADINGS things
+    else if(strstr(list[i]->d_name,"patB") && nBSeen++ < NUM_HEADINGS)
+    {
+
+
+      if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
       {
-
-        if (Bpast) continue; 
-
-        if (genericReadOfFile((unsigned char *) &pat, buf, sizeof(pat)) == -1)
-        {
-          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
-          continue; 
-        }
-
-        tod =  pat.timeOfDay/1000; 
-
-        if (headingTimesB[headingIndexB] < 0 || tdiff(&tod, headingTimesB[headingIndexB]) > 0.5)
-        {
-          headingIndexB = (headingIndexB + 1) % NUM_HEADINGS; 
-          headingTimesB[headingIndexB]   = tod; 
-          headingHistoryB[headingIndexB] = pat.heading;
-          headingWeightsB[headingIndexA] = 1/(pat.brms*pat.brms + pat.mrms*pat.mrms);
-        }
+        syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+        continue; 
       }
-      else  if (strstr(list[i]->d_name,"pos") && !readG12)
-	{
-	  sprintf(buf, "%s/%s",GPSD_HEADING_LINK_DIR, list[i]->d_name); 
-	  
-	  if (genericReadOfFile((unsigned char *) &pos, buf, sizeof(pos)) == -1)
-	    {
-	      syslog(LOG_ERR, "Trouble reading %s\n", buf); 
-	    }
-	  
-	  headingLatitudeG12   = pos.latitude;
-	  headingLongitudeG12  = pos.longitude;
-	  headingAltitudeG12   = pos.altitude;
-	  readG12 = true;
-	}
-      
-  else //weird file, or we have seen too many of these so we can delete it! 
-	{
-	  //delete the link and the file
-        if(!unlink(buf))
-        {
-          syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
 
-        }
-        sprintf(buf,"%s/%s",GPSD_HEADING_DIR, list[i]->d_name); 
-        if (!unlink(buf))
-        {
+      tod =  pat.timeOfDay/1000.; 
+
+      if (pat.heading < 0 || pat.heading > 360) pat.heading = -1; 
+      headingTimesB[headingIndexB]   = tod; 
+      headingHistoryB[headingIndexB] = pat.heading;
+      headingWeightsB[headingIndexA] = 1./(pat.brms*pat.brms + pat.mrms*pat.mrms);
+      headingIndexB--; 
+    }
+
+
+    else if (strstr(list[i]->d_name,"pos") && !readG12)
+    {
+        
+      if (genericReadOfFile((unsigned char *) &pos, buf, sizeof(pos)) == -1)
+      {
+        syslog(LOG_ERR, "Trouble reading %s\n", buf); 
+      }
+        
+      headingLatitudeG12   = pos.latitude;
+      headingLongitudeG12  = pos.longitude;
+      headingAltitudeG12   = pos.altitude;
+      readG12 = 1;
+    }
+      
+    else if (list[i]->d_name[0] != '.') //weird file, or we have seen too many of these so we can delete it! 
+    {
+      //delete the link and the file
+
+      if(unlink(buf))
+      {
+        syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
+      }
+
+      sprintf(buf,"%s/%s",GPSD_HEADING_DIR, list[i]->d_name); 
+
+      //printf("Deleting %s\n", buf); 
+      if (unlink(buf))
+      {
           syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
-        }
       }
     }    
   }
@@ -308,7 +334,7 @@ int analyzeHeading()
   //same logic here. 
   
   i = scandir(MAGNETOMETER_LINK_DIR, &list,0,alphasort); 
-  if (i < 0) 
+  if (i < 0 && useMagnetometerForHeading) 
   {
     syslog(LOG_WARNING,"Trying to analyze headings, but MAGNETOMETER_LINK_DIR  doesn't exist)"); 
     free(list); 
@@ -319,15 +345,11 @@ int analyzeHeading()
   while(i--) 
   {
     float time; 
-    int nseen = 0; 
-    int past = 0;
     TimedMagnetometerDataStruct_t magdata; 
     sprintf(buf, "%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
 
     if (useMagnetometerForHeading && nseen++ < NUM_HEADINGS) 
     {
-      if(past) continue; 
-
       if (genericReadOfFile((unsigned char*) &magdata,buf, sizeof(magdata))  == -1)
       {
          syslog(LOG_ERR, "Trouble reading %s\n", buf); 
@@ -335,25 +357,22 @@ int analyzeHeading()
       }
       time = magdata.unixTime + magdata.unixTime * 1e-6; 
 
-      if (headingTimesMag[headingIndexMag] < 0 || (time - headingTimesB[headingIndexMag] > 0.5))
-      {
-        headingIndexMag = (headingIndexMag + 1 ) % NUM_HEADINGS; 
-        headingTimesMag[headingIndexMag] = time; 
+      headingTimesMag[headingIndexMag] = time; 
+      headingIndexMag --;
 
-        //TODO compute heading! 
+      //TODO compute heading! 
 
-      }
     }
-    else
+    else if (list[i]->d_name[0] != '.') 
     {
         //delete the link and the file
-        if(!unlink(buf))
+        if(unlink(buf))
         {
           syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
 
         }
-        sprintf(buf,"%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
-        if (!unlink(buf))
+        sprintf(buf,"%s/%s",MAGNETOMETER_DIR, list[i]->d_name); 
+        if (unlink(buf))
         {
           syslog(LOG_WARNING, "Trouble deleting %s, errno: %d\n", buf, errno); 
         }
@@ -368,7 +387,7 @@ int analyzeHeading()
 
   for (i = 0; i < NUM_HEADINGS; i++) 
   {
-    if (headingTimesA[i] < timeNow - maxHeadingAge) 
+    if (tdiff(headingTimesA[i],timeNow) < -maxHeadingAge)
     {
       headingTimesA[i] = -9999; 
       headingHistoryA[i] = -1; 
@@ -379,7 +398,7 @@ int analyzeHeading()
       headingTimesA[i] -= timeNow; 
     }
 
-    if (headingTimesB[i] < timeNow - maxHeadingAge) 
+    if (tdiff(headingTimesB[i],timeNow)  <- maxHeadingAge)
     {
       headingTimesB[i] = -9999; 
       headingHistoryB[i] = -1; 
@@ -392,7 +411,7 @@ int analyzeHeading()
 
     if (useMagnetometerForHeading) 
     {
-      if (headingTimesMag[i] < timeNow - maxHeadingAge) 
+      if (tdiff(headingTimesMag[i],timeNow) < - maxHeadingAge) 
       {
         headingTimesMag[i] = -9999; 
         headingHistoryMag[i] = -1; 
@@ -402,6 +421,26 @@ int analyzeHeading()
       {
         headingTimesMag[i] -= timeNow; 
       }
+    }
+  }
+
+
+  unwrapHeadings(headingHistoryA); 
+  unwrapHeadings(headingHistoryB); 
+  unwrapHeadings(headingHistoryMag); 
+  if (printToScreen)
+  {
+    printf("HeadingA timeHeadingA weightHeadingA HeadingB timeHeadingB weightHeadingB\n"); 
+    for (i = 0; i < NUM_HEADINGS; i++)
+    {
+
+      printf("%0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
+          headingHistoryA[i], 
+          headingTimesA[i], 
+          headingWeightsA[i], 
+          headingHistoryB[i], 
+          headingTimesB[i], 
+          headingWeightsB[i]) ; 
     }
   }
 
@@ -416,6 +455,7 @@ int analyzeHeading()
 
   if (errA && errB && errMag) 
   {
+//    printf("%d %d %d\n", errA,errB,errMag); 
     return -1;  //no information 
   }
 
@@ -493,6 +533,11 @@ int analyzeHeading()
 
       if (heading_slope_sumw2 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
         tuffStruct.startSectors[i] = (tuffStruct.startSectors[i] - 1) % 16; 
+
+      if (printToScreen)
+      {
+        printf("Setting range of notch %d to [%d,%d]\n", i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
+      }
     }
   }
 
@@ -502,7 +547,8 @@ int analyzeHeading()
 
 
 
-int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADINGS],  float weights[NUM_HEADINGS], regression_result_t * regressed){
+int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADINGS],  float weights[NUM_HEADINGS], regression_result_t * regressed)
+{
 
   float sumXXA = 0;
   float sumXYA = 0;
@@ -556,8 +602,16 @@ int writeState(int changed)
     else if (readTemperatures) 
     {
       float temp = tuff_getTemperature(device,i,1); 
-      if (temp <= -273)  // this means it timed out
+      if (temp <= -273)  // this means it timed out or other error
       {
+
+        if (temp == -991) 
+        {
+              syslog(LOG_ERR, "Tuffd self-terminating."); 
+              sleep(2); 
+              raise(SIGTERM); 
+        }
+
         syslog(LOG_ERR," Reading temperature on irfcm %d timed out or otherwise failed, could it have dropped out?\n", i); 
         tuffStruct.temperatures[i] = 127; 
       }
@@ -761,13 +815,13 @@ void setupBitmask()
     bitmask=kvpGetInt("hkDiskBitMask",0);
     disableUsb=kvpGetInt("disableUsb",1);
     if(disableUsb)
-	    bitmask&=~USB_DISK_MASK;
-//	disableNeobrick=kvpGetInt("disableNeobrick",1);
-//	if(disableNeobrick)
-//	  bitmask&=~NEOBRICK_DISK_MASK;
+           bitmask&=~USB_DISK_MASK;
+//       disableNeobrick=kvpGetInt("disableNeobrick",1);
+//       if(disableNeobrick)
+//         bitmask&=~NEOBRICK_DISK_MASK;
     disableHelium2=kvpGetInt("disableHelium2",1);
     if(disableHelium2)
-	    bitmask&=~HELIUM2_DISK_MASK;
+           bitmask&=~HELIUM2_DISK_MASK;
     disableHelium1=kvpGetInt("disableHelium1",1);
     if(disableHelium1)
         bitmask&=~HELIUM1_DISK_MASK;
@@ -789,8 +843,8 @@ int readConfig()
   kvpStatus = configLoad ("Tuffd.config","output") ;
   if(kvpStatus == CONFIG_E_OK)
   {
-   	printToScreen=kvpGetInt("printToScreen",1);
-  	verbosity=kvpGetInt("verbosity",0);
+      printToScreen=kvpGetInt("printToScreen",1);
+      verbosity=kvpGetInt("verbosity",0);
 
   }
 
@@ -931,8 +985,8 @@ int readConfig()
     if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
     {
       int i ; 
-      syslog(LOG_ERR, "Problem reading in phiSectorOffsetFromNorth, turning to -45"); 
-      for (i = 0; i < 3; i++) phiSectorOffset[i] = -45; 
+      syslog(LOG_ERR, "Problem reading in phiSectorOffsetFromNorth, turning to 45"); 
+      for (i = 0; i < 3; i++) phiSectorOffset[i] = 45; 
     }
     else
     {
@@ -1220,15 +1274,17 @@ int main(int nargs, char ** args)
         int pollRet; 
         pollstruct.fd = tuff_fd; 
         pollstruct.events = POLLIN; 
-        pollRet =  poll(&pollstruct, 1, sleepAmount < 1 ? 1 : sleepAmount); 
-        if (pollRet > 0 && pollstruct.revents & POLLIN) 
+        pollRet =  poll(&pollstruct, 1, 1000 * (sleepAmount < 1 ? 1 : sleepAmount)); 
+        while (pollRet > 0 && pollstruct.revents & POLLIN) 
         {
           char buf[256]; 
           int first_time = 1; 
+          int nread = 0; 
           memset(buf,'.' , sizeof(buf)); 
-          while (read(tuff_fd, first_time ? buf : buf + 128, first_time ? 256: 128)) 
+          while (nread  < pollRet) 
           {
             char * where; 
+            nread+= read(tuff_fd, first_time ? buf : buf + 128, first_time ? 256: 128); 
             // this is a dumb trick to avoid splitting a message across reads
             if (!first_time)
             {
@@ -1255,7 +1311,7 @@ int main(int nargs, char ** args)
             first_time = 0; 
           }
 
-
+          pollRet =  poll(&pollstruct, 1, 10); 
         }
       }
     }

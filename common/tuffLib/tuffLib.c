@@ -331,7 +331,7 @@ tuff_dev_t * tuff_open(const char * dev)
   tio.c_cflag &= ~CSTOPB;  /* Just one stop bit */  
   tio.c_cflag &= ~PARENB;  /* clear the parity bit  */
   tio.c_iflag |= IGNPAR;
-  tio.c_iflag &= ~(IXON | IXOFF | IXANY); 
+  tio.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL); 
   tio.c_lflag &= ~(ECHO | ECHOE | ICANON | ISIG );
   tio.c_oflag &= ~OPOST ; 
   tio.c_cc[VINTR]    = 0;
