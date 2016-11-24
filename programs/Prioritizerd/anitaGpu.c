@@ -153,6 +153,7 @@ unsigned int longTimeStartTime = 0;
 int debugMode = 0;
 int numGpuPacketsFilled = 0;
 int conservativeStart = 1;
+int sleepTimeAfterKillingX = 1;
 
 // For printing calibration numbers to /tmp
 FILE* gpuOutput = NULL;
@@ -191,6 +192,7 @@ void prepareGpuThings(){
   }
 
 
+
   binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",5);
   absMagnitudeThresh_dBm=kvpGetFloat("absMagnitudeThresh_dBm",50);
   interceptOfImagePeakVsHilbertPeak = kvpGetFloat ("interceptOfImagePeakVsHilbertPeak", 1715.23327523);
@@ -201,6 +203,8 @@ void prepareGpuThings(){
   thetaAnglePriorityDemotion = kvpGetInt("thetaAnglePriorityDemotion", 1);
 
   invertTopRingInSoftware = kvpGetInt("invertTopRingInSoftware", 0);
+  sleepTimeAfterKillingX=kvpGetInt("sleepTimeAfterKillingX",10);
+
   /* printf("invertTopRingInSoftware = %d\n", invertTopRingInSoftware); */
 
   printCalibTextFile = kvpGetInt("printCalibTextFile", 0);
@@ -262,7 +266,7 @@ void prepareGpuThings(){
   /* Use opencl functions to find out what platforms and devices we can use for this program. */
   myPlatform = 0; /* Here we choose platform 0 in advance of querying to see what's there. */
   myDevice = 0;   /* And device 0... one might have to change these as required. */
-  getPlatformAndDeviceInfo(platformIds, maxPlatforms, myPlatform, CL_DEVICE_TYPE_GPU);
+  getPlatformAndDeviceInfo(platformIds, maxPlatforms, myPlatform, CL_DEVICE_TYPE_GPU, sleepTimeAfterKillingX);
 
   /* Create context (list of platforms & devices which prog can use) */
   cl_context_properties properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platformIds[myPlatform], 0};

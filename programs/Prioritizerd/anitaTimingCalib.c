@@ -68,12 +68,14 @@ static fftw_complex* clockFreqHolder;
 
 static int positiveSaturation = 1000;
 static int negativeSaturation = -1000;
+static int asymSaturation = 500;
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
 void prepareTimingCalibThings(){
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
+  /* akimaSpline = gsl_interp_linear; */
 
   spline = NULL;
   interp = NULL;
@@ -122,6 +124,7 @@ void prepareTimingCalibThings(){
   }
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
+  asymSaturation = kvpGetInt("asymSaturation", 500);
   /* maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 3); */
 
   /* preCalculateTimeArrays(); */

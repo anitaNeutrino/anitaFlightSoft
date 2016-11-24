@@ -16,7 +16,7 @@
 #include <math.h>
 #include <unistd.h>
 
-void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType){
+void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType, int sleepTimeAfterKillingX){
 
   /* See how many platforms are available.*/
   cl_uint numPlatforms;
@@ -55,7 +55,7 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
     system("killall X");
-    sleep(10);
+    sleep(sleepTimeAfterKillingX);
     raise(SIGTERM);
   }
 
