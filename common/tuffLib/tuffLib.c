@@ -330,7 +330,7 @@ tuff_dev_t * tuff_open(const char * dev)
   tio.c_cflag &= ~CRTSCTS; /* NO RTSCTS */ 
   tio.c_cflag &= ~CSTOPB;  /* Just one stop bit */  
   tio.c_cflag &= ~PARENB;  /* clear the parity bit  */
-  tio.c_iflag |= IGNPAR | ICRNL;
+  tio.c_iflag |= IGNPAR;
   tio.c_iflag &= ~(IXON | IXOFF | IXANY); 
   tio.c_lflag &= ~(ECHO | ECHOE | ICANON | ISIG );
   tio.c_oflag &= ~OPOST ; 
@@ -416,6 +416,24 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
     if (c == '\n')
     {
       buf[i] = 0; 
+
+      //really dumb hack that should result in a slow painful daeth, but check for a reset here 
+      // This is the only other place we commonly read in Tuffd. The real solution is to buffer
+      // all input and check all calls for a boot, but whatever
+      
+      p = strstr(buf, "boot irfcm"); 
+      if (p) 
+      {
+
+        syslog(LOG_ERR,"Reboot detected "); 
+        return -999; 
+
+
+
+      }
+
+
+
       p = strstr(buf, "temp\":"); 
       if (p)
       {
