@@ -38,6 +38,7 @@ static int zeroes[NUM_TUFF_NOTCHES];
 static int adjustAccordingToHeading[NUM_TUFF_NOTCHES]; 
 static int useMagnetometerForHeading = 0;  
 static int degreesFromNorthToNotch[NUM_TUFF_NOTCHES]; 
+static int phiSectorOffset[NUM_TUFF_NOTCHES]; 
 static int slopeThresholdToNotchNextSector[NUM_TUFF_NOTCHES]; 
 static int maxHeadingAge = 120;  
 
@@ -478,8 +479,8 @@ int analyzeHeading()
   {
     if (adjustAccordingToHeading[i]) 
     {
-      float phi_start_notch = heading_estimate - degreesFromNorthToNotch[i] - 22.5;  // this is probably wrong
-      float phi_stop_notch = heading_estimate + degreesFromNorthToNotch[i] - 22.5; 
+      float phi_start_notch = heading_estimate - degreesFromNorthToNotch[i] + phiSectorOffset[i];  // this is probably wrong
+      float phi_stop_notch = heading_estimate + degreesFromNorthToNotch[i] + phiSectorOffset[i]; 
       if ( phi_start_notch < 0 ) phi_start_notch += 360; 
       if ( phi_stop_notch > 360 ) phi_stop_notch -= 360; 
       if ( phi_stop_notch < 0 ) phi_stop_notch += 360; 
@@ -644,7 +645,13 @@ int setNotches()
 
   if (outfile)
   {
+
     fprintf(outfile,"\n");
+
+    for (i = 0; i < NUM_RFCM; i++) 
+    {
+      if (!tuff_responds[i]) printf("IRFCM %d DID NOT RESPOND\n",i); 
+    }
     fclose(outfile); 
 
     //rename on top of old file 
@@ -919,7 +926,27 @@ int readConfig()
       memcpy(slopeThresholdToNotchNextSector, tmp, sizeof(slopeThresholdToNotchNextSector)); 
     }
 
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("phiSectorOffsetFromNorth", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      int i ; 
+      syslog(LOG_ERR, "Problem reading in phiSectorOffsetFromNorth, turning to -45"); 
+      for (i = 0; i < 3; i++) phiSectorOffset[i] = -45; 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting phiSectorOffsetFromNorth  to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
 
+      memcpy(phiSectorOffset, tmp, sizeof(phiSectorOffset)); 
+    }
+ 
 
   }
   else { configStatus+=4; }
@@ -940,7 +967,6 @@ int main(int nargs, char ** args)
   int nattempts = 0; 
   
   memset(zeroes, 0, sizeof(zeroes)); 
-
 
   retVal = sortOutPidFile(args[0]); 
   if (retVal) return retVal; 
@@ -1220,6 +1246,8 @@ int main(int nargs, char ** args)
               *whereto = 0; 
 
               syslog(LOG_ERR, "Tuffd detected irfcm reset. Message: \"%s\"", where); 
+              fprintf(stderr,"Detected irfcm reset. Quitting after 2 seconds\n"); 
+              sleep(2); 
               raise(SIGTERM); 
             }
 
