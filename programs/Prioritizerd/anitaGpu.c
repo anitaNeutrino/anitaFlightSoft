@@ -284,7 +284,8 @@ void prepareGpuThings(){
   showCompileLog = 1;
   numDevicesToUse = 1;
 
-  const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR");
+  const char* flightSoftDir="/home/anita/flightSoft";
+
   char prioritizerDir[FILENAME_MAX];
   sprintf(prioritizerDir, "%s/programs/Prioritizerd", flightSoftDir);
 
