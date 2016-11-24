@@ -42,7 +42,7 @@
 
 
 #define SEND_REAL_SLOW_DATA 1
-#define NUM_HK_TELEM_DIRS 23
+#define NUM_HK_TELEM_DIRS 26
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
