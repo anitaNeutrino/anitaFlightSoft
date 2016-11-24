@@ -39,7 +39,7 @@
 #define LOS_DEVICE "/dev/los"
 #endif
 
-#define NUM_HK_TELEM_DIRS 25
+#define NUM_HK_TELEM_DIRS 26
 
 typedef enum {
   LOS_TELEM_FIRST=0,
@@ -63,6 +63,7 @@ typedef enum {
   LOS_TELEM_TURFRATE,
   LOS_TELEM_AVGSURFHK,
   LOS_TELEM_SUMTURFRATE,
+  LOS_TELEM_SSHK,
   LOS_TELEM_OTHER,
   LOS_TELEM_PEDESTAL,
   LOS_TELEM_REQUEST,
@@ -245,31 +246,11 @@ void * watchdogThread(void * unused)
    }
 
    makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
-   makeDirectories(HEADER_TELEM_LINK_DIR);
-   makeDirectories(SURFHK_TELEM_LINK_DIR);
-   makeDirectories(TURFHK_TELEM_LINK_DIR);
-   makeDirectories(AVGSURFHK_TELEM_LINK_DIR);
-   makeDirectories(SUMTURFHK_TELEM_LINK_DIR);
-   makeDirectories(PEDESTAL_TELEM_LINK_DIR);
-   makeDirectories(HK_TELEM_LINK_DIR);
-   makeDirectories(MONITOR_TELEM_LINK_DIR);
-   makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
-   makeDirectories(G12_GGA_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
-   makeDirectories(G12_SAT_TELEM_LINK_DIR);
-   makeDirectories(G12_POS_TELEM_LINK_DIR);
-   makeDirectories(GPU_TELEM_LINK_DIR);
-   makeDirectories(RTL_TELEM_LINK_DIR);
-   makeDirectories(TUFF_TELEM_LINK_DIR);
-   makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
-   makeDirectories(REQUEST_TELEM_LINK_DIR);
+
+   
+    for(ind=0;ind<NUM_HK_TELEM_DIRS;ind++) {
+      makeDirectories(telemLinkDirs[ind]);
+    }
 
 
    //Fill event dir names
@@ -760,6 +741,7 @@ void fillBufferWithHk()
      TURFHK_TELEM_LINK_DIR,
      AVGSURFHK_TELEM_LINK_DIR,
      SUMTURFHK_TELEM_LINK_DIR,
+     SSHK_TELEM_LINK_DIR,
      OTHER_MONITOR_TELEM_LINK_DIR,
      PEDESTAL_TELEM_LINK_DIR,
      REQUEST_TELEM_LINK_DIR, 
@@ -787,6 +769,7 @@ void fillBufferWithHk()
      TURFHK_TELEM_DIR,
      AVGSURFHK_TELEM_DIR,
      SUMTURFHK_TELEM_DIR,
+     SSHK_TELEM_DIR,
      OTHER_MONITOR_TELEM_DIR,
      PEDESTAL_TELEM_DIR,
      REQUEST_TELEM_DIR, 
@@ -812,7 +795,9 @@ void fillBufferWithHk()
      sizeof(GpsGgaStruct_t),     
      sizeof(FullSurfHkStruct_t),
      sizeof(TurfRateStruct_t),
-     sizeof(Av
+     sizeof(AveragedSurfHkStruct_t),
+     sizeof(SummedTurfRateStruct_t),
+     sizeof(SSHkDataStruct_t),
      sizeof(OtherMonitorStruct_t),
      sizeof(FullLabChipPedStruct_t),
      4000, //Who knows why, 

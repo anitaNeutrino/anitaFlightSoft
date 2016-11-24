@@ -32,7 +32,7 @@
 #define SIGRTMIN 32
 #endif
 
-#define NUM_HK_TELEM_DIRS 23 
+#define NUM_HK_TELEM_DIRS 26
 #define REFRESH_LINKS_EVERY 600
 
 typedef enum {
@@ -55,11 +55,14 @@ typedef enum {
   OPENPORT_TELEM_ADU5B_GGA, //15
   OPENPORT_TELEM_SURFHK, //16
   OPENPORT_TELEM_TURFRATE, //17
-  OPENPORT_TELEM_OTHER, //18
-  OPENPORT_TELEM_PEDESTAL, //19
-  OPENPORT_TELEM_REQUEST, //20
-  OPENPORT_TELEM_RTL, //21
-  OPENPORT_TELEM_TUFF, //22
+  OPENPORT_TELEM_AVGSURFHK, //18
+  OPENPORT_TELEM_SUMTURFRATE, //19
+  OPENPORT_TELEM_SSHK, //20
+  OPENPORT_TELEM_OTHER, //21
+  OPENPORT_TELEM_PEDESTAL, //22
+  OPENPORT_TELEM_REQUEST, //23
+  OPENPORT_TELEM_RTL, //24
+  OPENPORT_TELEM_TUFF, //25
   OPENPORT_TELEM_NOT_A_TELEM
 } OPENPORTTelemType_t;
 
@@ -155,6 +158,9 @@ static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
    ADU5B_GGA_TELEM_LINK_DIR,   
    SURFHK_TELEM_LINK_DIR,
    TURFHK_TELEM_LINK_DIR,
+   AVGSURFHK_TELEM_LINK_DIR,
+   SUMTURFHK_TELEM_LINK_DIR,
+   SSHK_TELEM_LINK_DIR,
    OTHER_MONITOR_TELEM_LINK_DIR,
    PEDESTAL_TELEM_LINK_DIR,
    REQUEST_TELEM_LINK_DIR,
@@ -179,12 +185,15 @@ static char *telemDirs[NUM_HK_TELEM_DIRS]=
    ADU5A_GGA_TELEM_DIR, //14
    ADU5B_GGA_TELEM_DIR, //15
    SURFHK_TELEM_DIR, //16
-   TURFHK_TELEM_DIR,//17
-   OTHER_MONITOR_TELEM_DIR, //18
-   PEDESTAL_TELEM_DIR, //19
-   REQUEST_TELEM_DIR, //20
-   RTL_TELEM_DIR, //21
-   TUFF_TELEM_DIR //22
+   TURFHK_TELEM_DIR,//17 
+   AVGSURFHK_TELEM_DIR, //18
+   SUMTURFHK_TELEM_DIR, //19
+   SSHK_TELEM_DIR, //20
+   OTHER_MONITOR_TELEM_DIR, //21
+   PEDESTAL_TELEM_DIR, //22
+   REQUEST_TELEM_DIR, //23
+   RTL_TELEM_DIR, //24
+   TUFF_TELEM_DIR //25
   }; 
 
 static int maxPacketSize[NUM_HK_TELEM_DIRS]=
@@ -206,6 +215,9 @@ static int maxPacketSize[NUM_HK_TELEM_DIRS]=
    sizeof(GpsGgaStruct_t),     
    sizeof(FullSurfHkStruct_t),
    sizeof(TurfRateStruct_t),
+   sizeof(AveragedSurfHkStruct_t),
+   sizeof(SummedTurfRateStruct_t),
+   sizeof(SSHkDataStruct_t),
    sizeof(OtherMonitorStruct_t),
    sizeof(FullLabChipPedStruct_t),
    2000, //Who knows why
@@ -230,7 +242,7 @@ char currentOpenportDir[FILENAME_MAX];
 int main(int argc, char *argv[])
 {
     //Temporary variables
-  int retVal=0,pri=0;
+  int retVal=0,pri=0,ind=0;
   
   /* Config file thingies */
   //  int status=0;
@@ -277,32 +289,15 @@ int main(int argc, char *argv[])
 	syslog(LOG_ERR,"Error using snprintf -- %s",strerror(errno));
       }
       makeDirectories(eventTelemLinkDirs[pri]);
-    }
+    }    
     makeDirectories(OPENPORT_OUTPUT_DIR);
     makeDirectories(OPENPORT_STAGE_DIR);
     makeDirectories(OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
-    makeDirectories(HEADER_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
-    makeDirectories(G12_GGA_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
-    makeDirectories(G12_SAT_TELEM_LINK_DIR);
-    makeDirectories(G12_POS_TELEM_LINK_DIR);
-    makeDirectories(GPU_TELEM_LINK_DIR);
-    makeDirectories(PEDESTAL_TELEM_LINK_DIR);
-    makeDirectories(SURFHK_TELEM_LINK_DIR);
-    makeDirectories(TURFHK_TELEM_LINK_DIR);
-    makeDirectories(HK_TELEM_LINK_DIR);
-    makeDirectories(MONITOR_TELEM_LINK_DIR);
-    makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
-    makeDirectories(REQUEST_TELEM_LINK_DIR);
-    makeDirectories(RTL_TELEM_LINK_DIR);
-    makeDirectories(TUFF_TELEM_LINK_DIR);
+
+
+    for(ind=0;ind<NUM_HK_TELEM_DIRS;ind++) {
+      makeDirectories(telemLinkDirs[ind]);
+    }
 
 
     retVal=readConfig();
