@@ -69,10 +69,23 @@ static fftw_complex* clockFreqHolder;
 static int positiveSaturation = 1000;
 static int negativeSaturation = -1000;
 static int asymSaturation = 500;
+int anitCalibVersion = 4;
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
 void prepareTimingCalibThings(){
+
+  kvpReset();
+  KvpErrorCode err = KVP_E_OK;
+  err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+  positiveSaturation = kvpGetInt("positiveSaturation", 1000);
+  negativeSaturation = kvpGetInt("negativeSaturation", -1000);
+  asymSaturation = kvpGetInt("asymSaturation", 500);
+  anitaCalibVersion = kvpGetInt("anitaCalibVersion", 4);
+
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
   /* akimaSpline = gsl_interp_linear; */
@@ -80,7 +93,9 @@ void prepareTimingCalibThings(){
   spline = NULL;
   interp = NULL;
 
-  const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR");
+
+  /* const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR"); */
+  flightSoftDir="/home/flightSoft";
 
   char justBinByBinFileName[FILENAME_MAX];
   sprintf(justBinByBinFileName, "%s/programs/Prioritizerd/justBinByBin.dat", flightSoftDir);
@@ -99,7 +114,7 @@ void prepareTimingCalibThings(){
 
   //readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
   char relativeCableDelaysFileName[FILENAME_MAX];
-  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelays.dat", flightSoftDir);
+  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelaysAnita%d.dat", flightSoftDir, anitaCalibVerson);
   readInRelativeCableDelay(relativeCableDelaysFileName);
 
   //readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
@@ -116,15 +131,7 @@ void prepareTimingCalibThings(){
   clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain,
 					  clockTimeDomain, FFTW_MEASURE);
 
-  kvpReset();
-  KvpErrorCode err = KVP_E_OK;
-  err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
-  if(err!=KVP_E_OK){
-    fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
-  }
-  positiveSaturation = kvpGetInt("positiveSaturation", 1000);
-  negativeSaturation = kvpGetInt("negativeSaturation", -1000);
-  asymSaturation = kvpGetInt("asymSaturation", 500);
+
   /* maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 3); */
 
   /* preCalculateTimeArrays(); */
@@ -801,11 +808,10 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
-  // Now set flags...
 
-  const float asymThresh = 500;
+
   // Set surf saturation flag
-  if (fabs(eventAsym) > asymThresh || eventVMax > positiveSaturation || eventVMin < negativeSaturation){
+  if (fabs(eventAsym) > asymSaturation || eventVMax > positiveSaturation || eventVMin < negativeSaturation){
     theHeader->prioritizerStuff |= 1;
   }
 
@@ -972,6 +978,7 @@ void readInCalibratedDeltaTs(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1023,6 +1030,7 @@ void readInRcoLatchDelay(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1062,6 +1070,7 @@ void readInVoltageCalib(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1147,6 +1156,7 @@ void readInEpsilons(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   int surfInd;
   for(surfInd=0; surfInd<ACTIVE_SURFS; surfInd++){
