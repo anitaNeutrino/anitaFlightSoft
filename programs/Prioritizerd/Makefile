@@ -17,7 +17,7 @@ CALIBRATION=1
 
 
 LDFLAGS +=-lOpenCL -lgsl
-CCFLAGS +=-g
+CCFLAGS +=-g -Wall
 
 Targets = Prioritizerd fakePrioritizerd
 Objs= openCLwrapper.o anitaGpu.o anitaTimingCalib.c prioritizerdFunctions.o

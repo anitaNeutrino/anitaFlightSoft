@@ -36,7 +36,7 @@
 /*
    If you want to take a look at how long things are taking,
    then keep "#define TSTAMP", although bear in mind that
-   things are moving towareds a highly non-blocking configuration.
+   things are moving towareds a non-blocking configuration.
 */
 
 /***********************/
@@ -44,12 +44,13 @@
 /***********************/
 
 /* calculates the deltaT between two antennas for a plane wave arriving from a given direction */
-int getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
-		      const float* phiArray, const float* rArray, const float* zArray);
+float getDeltaTExpected(int ant1, int ant2,double phiWave, double thetaWave,
+			const float* phiArray, const float* rArray, const float* zArray);
 
 
 /* generates look up deltaT table for GPU interferometry calcs */
-short* fillDeltaTArrays();
+// short* fillDeltaTArrays();
+float* fillDeltaTArrays();
 
 /* for measuring speed of GPU calcs */
 void timeStamp(int stampNo, int numEvents, cl_event* waitList);
@@ -67,6 +68,13 @@ float compareForSort(const void* a, const void* b);
 
 
 int unwrapAndBaselinePedSubbedEventBen(PedSubbedEventBody_t *pedSubBdPtr, AnitaTransientBodyF_t *uwTransPtr, const int alreadyUnwrappedAndCalibrated);
+
+
+void dumpBuffersToTextFiles(int polInd, int nEvents);
+
+void updateLongDynamicPassFilter(int pol, int ant, short* longDynamicPassFilter, int* isLocalMinimum, int* isLocalMaximum,  float spikeThresh_dB, int startFreqInd, int endFreqInd);
+
+
 
 /***********************/
 /*       Structs       */
@@ -123,115 +131,110 @@ cl_platform_id platformIds[maxPlatforms];
 
 cl_int status;
 
-cl_context context;
+extern cl_context context;
 
-size_t dlistSize;
-cl_device_id deviceList[2];
+extern size_t dlistSize;
+extern cl_device_id deviceList[2];
 
-cl_command_queue commandQueue;
+extern cl_command_queue commandQueue;
 
-uint showCompileLog;
-cl_uint numDevicesToUse;
+extern uint showCompileLog;
+extern cl_uint numDevicesToUse;
 
-cl_program prog;
+extern cl_program prog;
 
-cl_mem_flags memFlags;
+extern cl_mem_flags memFlags;
 
-cl_kernel normalizationKernel;
+extern cl_kernel normalizationKernel;
 
 /* I/O buffers */
-buffer* rawBufferVPol;
-buffer* numSampsBufferVPol;
-buffer* phiSectorTriggerBufferVPol;
-buffer* rawBufferHPol;
-buffer* numSampsBufferHPol;
-buffer* phiSectorTriggerBufferHPol;
+extern buffer* rawBufferVPol;
+extern buffer* numSampsBufferVPol;
+extern buffer* phiSectorTriggerBufferVPol;
+extern buffer* rawBufferHPol;
+extern buffer* numSampsBufferHPol;
+extern buffer* phiSectorTriggerBufferHPol;
 
-buffer* numEventsInQueueBuffer;
-buffer* binToBinDifferenceThresh_dBBuffer;
-buffer* absMagnitudeThresh_dBmBuffer;
+extern buffer* numEventsInQueueBuffer;
+extern buffer* binToBinDifferenceThresh_dBBuffer;
+extern buffer* absMagnitudeThresh_dBmBuffer;
 
 /* Internal buffers */
-buffer* rmsBuffer;
-buffer* squareBuffer;
-buffer* meanBuffer;
-buffer* normalBuffer;
+extern buffer* rmsBuffer;
+extern buffer* squareBuffer;
+extern buffer* meanBuffer;
+extern buffer* normalBuffer;
 
-cl_kernel fourierKernel;
-buffer* fourierBuffer;
-buffer* complexScratchBuffer;
-buffer* numEventsBuffer;
+extern cl_kernel fourierKernel;
+extern buffer* fourierBuffer;
+extern buffer* complexScratchBuffer;
+extern buffer* numEventsBuffer;
 
-cl_kernel fourierKernel;
-buffer* fourierBuffer;
-buffer* complexScratchBuffer;
-buffer* numEventsBuffer;
+extern cl_kernel eventPowSpecKernel;
+extern buffer* powSpecBuffer;
+extern buffer* passFilterBuffer;
+extern buffer* staticPassFilterBuffer;
+extern buffer* longDynamicPassFilterBuffer;
+extern buffer* powSpecScratchBuffer;
+extern buffer* isMinimaBuffer;
+extern buffer* passFilterLocalBuffer;
 
-cl_kernel eventPowSpecKernel;
-buffer* powSpecBuffer;
-buffer* passFilterBuffer;
-buffer* staticPassFilterBuffer;
-buffer* powSpecScratchBuffer;
-buffer* isMinimaBuffer;
-buffer* passFilterLocalBuffer;
+extern cl_kernel filterWaveformsKernel;
+extern buffer* newRmsBuffer;
+extern buffer* complexSquareLocalBuffer;
 
-cl_kernel filterWaveformsKernel;
-buffer* newRmsBuffer;
-buffer* complexSquareLocalBuffer;
+extern cl_kernel circularCorrelationKernel;
+extern buffer* circularCorrelationBuffer;
+extern buffer* complexCorrScratch;
 
-cl_kernel circularCorrelationKernel;
-buffer* circularCorrelationBuffer;
-buffer* complexCorrScratch;
+extern cl_kernel imageKernel;
+extern buffer* imageBuffer;
+extern buffer* lookupBuffer;
 
-cl_kernel circularCorrelationKernel;
-buffer* circularCorrelationBuffer;
-buffer* complexCorrScratch;
+// short* offsetInd;
+extern float* offsetInd;
 
-cl_kernel imageKernel;
-buffer* imageBuffer;
-buffer* lookupBuffer;
-short* offsetInd;
+extern cl_kernel findImagePeakInThetaKernel;
+extern buffer* corrScratchBuffer4;
+extern buffer* indScratchBuffer4;
+extern buffer* maxThetaIndsBuffer;
 
-cl_kernel findImagePeakInThetaKernel;
-buffer* corrScratchBuffer4;
-buffer* indScratchBuffer4;
-buffer* maxThetaIndsBuffer;
+extern cl_kernel findImagePeakInPhiSectorKernel;
+extern buffer* imagePeakValBuffer;
+extern buffer* imagePeakThetaBuffer;
+extern buffer* imagePeakPhiBuffer;
+extern buffer* corrScratchBuffer2;
+extern buffer* phiIndScratchBuffer;
+extern buffer* thetaIndScratchBuffer;
 
-cl_kernel findImagePeakInPhiSectorKernel;
-buffer* imagePeakValBuffer;
-buffer* imagePeakThetaBuffer;
-buffer* imagePeakPhiBuffer;
-buffer* corrScratchBuffer2;
-buffer* phiIndScratchBuffer;
-buffer* thetaIndScratchBuffer;
+extern cl_kernel findMaxPhiSectorKernel;
+extern buffer* imagePeakValBuffer2;
+extern buffer* imagePeakThetaBuffer2;
+extern buffer* imagePeakPhiBuffer2;
+extern buffer* imagePeakPhiSectorBuffer;
+extern buffer* corrScratchBuffer3;
+extern buffer* phiIndScratchBuffer2;
+extern buffer* thetaIndScratchBuffer2;
+extern buffer* phiSectScratchBuffer;
 
-cl_kernel findMaxPhiSectorKernel;
-buffer* imagePeakValBuffer2;
-buffer* imagePeakThetaBuffer2;
-buffer* imagePeakPhiBuffer2;
-buffer* imagePeakPhiSectorBuffer;
-buffer* corrScratchBuffer3;
-buffer* phiIndScratchBuffer2;
-buffer* thetaIndScratchBuffer2;
-buffer* phiSectScratchBuffer;
+extern cl_kernel iFFTFilteredWaveformsKernel;
+extern buffer* complexScratchBuffer2;
 
-cl_kernel iFFTFilteredWaveformsKernel;
-buffer* complexScratchBuffer2;
+extern cl_kernel coherentSumKernel;
+extern buffer* coherentWaveBuffer;
 
-cl_kernel coherentSumKernel;
-buffer* coherentWaveBuffer;
+extern cl_kernel hilbertKernel;
+extern buffer* hilbertBuffer;
+extern buffer* complexScratchBuffer3;
 
-cl_kernel hilbertKernel;
-buffer* hilbertBuffer;
-buffer* complexScratchBuffer3;
+extern cl_kernel hilbertPeakKernel;
+extern buffer* hilbertPeakBuffer;
+extern buffer* scratchBuffer;
+extern buffer* invFftBuffer;
 
-cl_kernel hilbertPeakKernel;
-buffer* hilbertPeakBuffer;
-buffer* scratchBuffer;
-
-struct timeval startTime;
-struct timezone dummy;
-struct rusage resourcesStart;
+extern struct timeval startTime;
+extern struct timezone dummy;
+extern struct rusage resourcesStart;
 
 
 cl_event normalEvent;
@@ -295,6 +298,7 @@ static const size_t lHilbertPeakWorkSize[2] = {NUM_SAMPLES/4, 1};
 short* numEventSamples;
 float* eventData;
 short phiTrig[NUM_POLARIZATIONS*NUM_EVENTS*NUM_PHI_SECTORS];
+unsigned short* prioritizerStuffs;
 
 /* Output */
 float imagePeakVal[NUM_POLARIZATIONS*NUM_EVENTS];
@@ -304,6 +308,7 @@ int imagePeakPhi2[NUM_POLARIZATIONS*NUM_EVENTS];
 int imagePeakPhiSector[NUM_POLARIZATIONS*NUM_EVENTS];
 float* powSpec;
 short* passFilter;
+short* longDynamicPassFilter;
 short* staticPassFilter;
 float* tempPowSpecHolder;
 // short* anyFailDifference;

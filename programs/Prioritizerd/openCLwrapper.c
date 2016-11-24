@@ -13,6 +13,7 @@
 
 #include "openCLwrapper.h"
 #include <signal.h>
+#include <math.h>
 #include <unistd.h>
 
 void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType){
@@ -417,7 +418,17 @@ void printBufferToTextFile(cl_command_queue cq, const char* fileName, int polInd
 
 }
 
+
 void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents, const int numEventsToPrint){
+
+  /* If firstEvent not specified, then start from 0... */
+  printBufferToTextFile3(cq, fileName, polInd, theBuffer, numEvents, numEventsToPrint, 0);
+
+
+}
+
+
+void printBufferToTextFile3(cl_command_queue cq, const char* fileName, int polInd, buffer* theBuffer, const int numEvents, const int numEventsToPrint, int firstEvent){
 
   size_t dataSize = 0;
   int typeInd = -1;
@@ -457,8 +468,18 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   }
 
 
+  sprintf(fileNameWithFolder, "/tmp/%s_%d.err", fileName, polInd);
+  FILE* outputFileErr = NULL;
+  outputFileErr = fopen(fileNameWithFolder, "w");
+  if(outputFileErr == NULL){
+    printf("Failed to open output file in printBufferToTextFile.\n");
+    printf("Exiting Program.\n");
+    raise(SIGTERM);
+  }
+
+
   unsigned int element = 0;
-  uint event = 0;
+  uint event = firstEvent;
   /* uint nb = 0; */
   uint numElements = theBuffer->size/dataSize;
   uint elementsPerLine = numElements/numEvents;
@@ -468,7 +489,7 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
      It shouldn't be allowed, but it is...
   */
   for(element=0; element<numElements; element++){
-    if(element > 0 && element%elementsPerLine == 0){
+    if(element > 0 && (element%elementsPerLine) == 0){
       fprintf(outputFile, "\n");
       event++;
     }
@@ -480,6 +501,12 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
 
     if(typeInd == 0){
       fprintf(outputFile, "%f ", *(((float*)array)+element));
+      if(isnan(*(((float*)array)+element))){
+	fprintf(outputFileErr, "found a NaN at element %u of %u in event %u\n", (element % elementsPerLine), elementsPerLine, event);
+      }
+      else if(isinf(*(((float*)array)+element))){
+	fprintf(outputFileErr, "found an inf at element %u of %u in event %u\n", (element % elementsPerLine), elementsPerLine, event);
+      }
     }
     else if(typeInd == 1){
       fprintf(outputFile, "%i ", *(((int*)array)+element));
@@ -490,6 +517,9 @@ void printBufferToTextFile2(cl_command_queue cq, const char* fileName, int polIn
   }
   fprintf(outputFile, "\n");
   fclose(outputFile);
+
+  fclose(outputFileErr);
+
   free(array);
 }
 
