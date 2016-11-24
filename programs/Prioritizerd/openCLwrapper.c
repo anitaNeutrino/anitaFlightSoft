@@ -26,11 +26,11 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
 
 
   //overwrite the $DISPLAY because sometimes it seems messed up
-  setenv("DISPLAY",":0",1); 
-  setenv("COMPUTE",":0",1); 
+  /* setenv("DISPLAY",":0",1); */
+  /* setenv("COMPUTE",":0",1); */
 
   /* Get the names of the platforms and display to user. */
-  char platNames[maxPlatforms][100];
+  char platNames[maxPlatforms][1024];
   uint plat = 0;
   for(plat = 0; plat < numPlatforms; plat++){
     size_t nameBufferLength;
@@ -54,8 +54,9 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     fprintf(stderr, "Error! 0 devices found on platform %s!\n", platNames[myPlatform]);
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
-    sleep(10); 
-    raise(SIGTERM); 
+    system("killall X");
+    sleep(10);
+    raise(SIGTERM);
   }
 
   /* Prints useful information about the GPU architecture to the screen.*/
