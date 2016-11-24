@@ -1,5 +1,5 @@
 #include "anitaGpu.h"
-
+//#include "prioritizerdFunctions.h"
 
 cl_context context = 0;
 
@@ -152,7 +152,7 @@ unsigned int longTimeStartTime = 0;
 
 int debugMode = 0;
 int numGpuPacketsFilled = 0;
-int conservativeStart = 0;
+int conservativeStart = 1;
 
 // For printing calibration numbers to /tmp
 FILE* gpuOutput = NULL;
@@ -320,7 +320,8 @@ void prepareGpuThings(){
   squareBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES, "squareBuffer");
   meanBuffer = createLocalBuffer(sizeof(float)*NUM_SAMPLES, "meanBuffer");
   normalBuffer = createBuffer(context, memFlags, sizeof(float)*NUM_EVENTS*NUM_ANTENNAS*NUM_SAMPLES, "f", "normalBuffer");
-  #define numNormalArgs 6
+
+#define numNormalArgs 6
   buffer* normalArgs[numNormalArgs] = {numSampsBufferVPol, rmsBuffer, rawBufferVPol, normalBuffer, squareBuffer, meanBuffer};
   setKernelArgs(normalizationKernel, numNormalArgs, normalArgs, "normalizationKernel");
 
@@ -993,6 +994,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     int thetaDemotionFlag = 0;
     int inConservativeStartFlag = (conservativeStart > 0 && numGpuPacketsFilled > 1) ? 1 : 0;;
 
+    if(inConservativeStartFlag > 0){
+      priority = 6;
+    }
+
     /* Finally tweak priority based on reconstructed angle .. */
     if((thetaDegPeak > thetaAngleHighForDemotion || thetaDegPeak < thetaAngleLowForDemotion) && priority <6){
       priority += thetaAnglePriorityDemotion;
@@ -1118,6 +1123,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   // FILL GPU POWER SPECTRUM PACKET IF WE'RE ABOVE THE WRITE TIME
 
   if(header[nEvents-1].unixTime - longTimeStartTime >= writePowSpecPeriodSeconds || debugMode > 0){
+    // || currentState!=PROG_STATE_RUN){
     /* FILE* fOut = fopen("/tmp/longTimePowSpec.txt", "w"); */
     int pol = 0;
     for(pol=0; pol < NUM_POLARIZATIONS; pol++){

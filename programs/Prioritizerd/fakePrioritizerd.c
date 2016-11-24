@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
   signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
   signal(SIGTERM, handleBadSigs);
-  /* signal(SIGINT, handleBadSigs); */
+  signal(SIGINT, handleBadSigs);
   signal(SIGSEGV, handleBadSigs);
 
   //Dont' wait for children

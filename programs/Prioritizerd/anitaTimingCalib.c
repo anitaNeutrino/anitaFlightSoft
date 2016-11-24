@@ -35,6 +35,8 @@
 static gsl_interp_accel *acc;
 static const gsl_interp_type *akimaSpline;
 static gsl_spline *spline;
+static gsl_interp *interp;
+
 
 static fftw_plan clockPlanForward;
 static fftw_plan clockPlanReverse;
@@ -72,6 +74,9 @@ static int negativeSaturation = -1000;
 void prepareTimingCalibThings(){
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
+
+  spline = NULL;
+  interp = NULL;
 
   const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR");
 
@@ -125,6 +130,7 @@ void prepareTimingCalibThings(){
 void tidyUpTimingCalibThings(){
   gsl_interp_accel_free (acc);
 
+
   fftw_destroy_plan(clockPlanForward);
   fftw_destroy_plan(clockPlanReverse);
   fftw_free(clockTimeDomain);
@@ -149,6 +155,12 @@ double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
   spline = gsl_spline_alloc (akimaSpline, nRaw);
   gsl_spline_init (spline, unevenTimes, rawWave, nRaw);
 
+
+  /* interp = gsl_interp_alloc (akimaSpline, nRaw); */
+  /* gsl_interp_init (interp, unevenTimes, rawWave, nRaw); */
+
+
+
   double* interpWave = (double*) malloc(nInterp*sizeof(double));
 
   float time = t0interp;
@@ -169,7 +181,10 @@ double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
 
     /* If we are inside known time band then interpolate. */
     if(time >= unevenTimes[0] && time <= unevenTimes[nRaw-1]){
+      /* interpWave[sampInd] = gsl_interp_eval(interp, unevenTimes, rawWave, time, acc); */
+
       interpWave[sampInd] = gsl_spline_eval(spline, time, acc);
+      /* interpWave[sampInd] = gsl_spline_eval(spline, time, acc); */
       /* interpWave[sampInd] = rawWave[sampInd]; */
       if(firstGoodSamp < 0){
     	firstGoodSamp = sampInd;
@@ -193,14 +208,62 @@ double* interpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
   }
 
 
-  /* for(sampInd=0; sampInd<nInterp; sampInd++){ */
-  /*   const double omega = 2*3.14159*500/1e3; */
-  /*   interpWave[sampInd] = 10*sin(omega*time); */
-  /*   time += dtNsInterp; */
-  /* } */
-
   gsl_spline_free(spline);
+  /* gsl_interp_free(interp); */
   gsl_interp_accel_reset(acc);
+
+
+  return interpWave;
+
+}
+
+
+
+
+double* dontInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
+				int nInterp, double t0interp, double dtNsInterp){
+
+
+  double* interpWave = (double*) malloc(nInterp*sizeof(double));
+
+  int firstGoodSamp = -1;
+  double sum=0;
+  int numRealSamp = 0;
+  int outInd = 0;
+  int sampInd=0;
+  double time = t0interp;
+  for(sampInd=0; sampInd<nInterp; sampInd++){
+
+    /* If we are inside known time band then interpolate. */
+    if(time >= unevenTimes[0] && time <= unevenTimes[nRaw-1]){
+      /* interpWave[sampInd] = gsl_interp_eval(interp, unevenTimes, rawWave, time, acc); */
+
+      interpWave[sampInd] = rawWave[outInd];
+      outInd++;
+      /* interpWave[sampInd] = gsl_spline_eval(spline, time, acc); */
+      /* interpWave[sampInd] = rawWave[sampInd]; */
+      if(firstGoodSamp < 0){
+    	firstGoodSamp = sampInd;
+      }
+      sum += interpWave[sampInd];
+      numRealSamp++;
+    }
+
+    /* /\* Zero waveform outside set of known unevenTimes. *\/ */
+    else{
+      interpWave[sampInd] = 0;
+    }
+
+    time += dtNsInterp;
+  }
+
+  double mean = sum / numRealSamp;
+
+  for(sampInd = firstGoodSamp; sampInd < firstGoodSamp + numRealSamp; sampInd++){
+    interpWave[sampInd] -= mean;
+  }
+
+
 
   return interpWave;
 
@@ -702,9 +765,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 	eventVMin = vMin;
       }
 
-      if(theHeader->eventNumber==60831702){
-	printf("surf %d, chan %d, ant %d, pol %d, phi %d, ring %d\n", surf, chan, ant, pol, phi, ring);
-      }
     }
   }
 
@@ -738,7 +798,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
-
   // Now set flags...
 
   const float asymThresh = 500;
@@ -765,13 +824,14 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   /* Upsample clocks */
   double* interpClocks[ACTIVE_SURFS];
   for(surf=0; surf<ACTIVE_SURFS; surf++){
-    interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8],
-    /* interpClocks[surf] = interpolateWaveform(nSamps[surf][8], */
-    					     volts[surf][8],
-    					     times[surf][8],
-    					     numUpsampledClockSamples,
-    					     times[surf][8][0],
-    					     deltaT/upsampleFactor);
+    /* interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8], */
+    interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
+    /* interpClocks[surf] = dontInterpolateWaveform(nSamps[surf][8], */
+						 volts[surf][8],
+						 times[surf][8],
+						 numUpsampledClockSamples,
+						 times[surf][8][0],
+						 deltaT/upsampleFactor);
 
   }
 
@@ -807,15 +867,14 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
       	newTimes[samp] -= clockJitters[surf];
       }
 
-      finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan],
-      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan], */
-								      //volts2[surf][chan],
-								      volts[surf][chan],
-								      newTimes,
-								      //times[surf][chan],
-								      NUM_SAMPLES,
-								      startTime,
-								      deltaT);
+      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan], */
+      finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
+      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = dontInterpolateWaveform(nSamps[surf][chan], */
+									  volts[surf][chan],
+									  newTimes,
+									  NUM_SAMPLES,
+									  startTime,
+									  deltaT);
 
     }
   }
