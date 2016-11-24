@@ -4,6 +4,7 @@
 #include "configLib/configLib.h" 
 #include "linkWatchLib/linkWatchLib.h"
 #include "kvpLib/keyValuePair.h" 
+#include <poll.h>
 #include <unistd.h>
 #include <dirent.h> 
 #include <time.h>
@@ -18,7 +19,7 @@
  *                                                                  
  *  I guess Cmdd could just do all of this 
  *
- *  Actually now that it tries to analyze the power spectra, it's somewhat less stupid. 
+ *  Actually now that it tries to analyze the heading, it's somewhat less stupid. 
  **************************************** * * * *    *     *        * * *     ***     * * *
  */ 
 
@@ -35,12 +36,17 @@ static int telemeterAfterChange = 1;
 
 static int zeroes[NUM_TUFF_NOTCHES]; 
 static int adjustAccordingToHeading[NUM_TUFF_NOTCHES]; 
-static short degreesFromNorthDangerZone[NUM_TUFF_NOTCHES]; 
+static int useMagnetometerForHeading = 0;  
+static int degreesFromNorthToNotch[NUM_TUFF_NOTCHES]; 
+static int phiSectorOffset[NUM_TUFF_NOTCHES]; 
+static int slopeThresholdToNotchNextSector[NUM_TUFF_NOTCHES]; 
+static int maxHeadingAge = 120;  
 
 
 
 /** The device descriptor */ 
 static tuff_dev_t * device; 
+int tuff_fd; 
 
 /* Array telling us if TUFF was found at startup or not */ 
 static int tuff_responds[NUM_RFCM]; 
@@ -52,6 +58,7 @@ static const int MAX_ATTEMPTS=3;
 static AnitaHkWriterStruct_t tuffWriter; 
 static AnitaHkWriterStruct_t tuffRawCmdWriter; 
 static TuffNotchStatus_t tuffStruct; 
+static TuffNotchStatus_t configTuffStruct; 
 static TuffNotchStatus_t lastTuffStruct; 
 
 
@@ -59,18 +66,24 @@ static int telemeterCount = 0;
 
 
 
-//Store 10 values of heading history
+//Store NUM_HEADINGS values of heading history
+// in a circular buffer 
 
 #define NUM_HEADINGS 10 
+
+
+
 static float headingHistoryA[NUM_HEADINGS]; 
 static float headingHistoryB[NUM_HEADINGS]; 
 static float headingTimesA[NUM_HEADINGS]; 
 static float headingTimesB[NUM_HEADINGS]; 
 static float headingWeightsA[NUM_HEADINGS];
 static float headingWeightsB[NUM_HEADINGS];
+
 static float headingLatitudeG12; 
 static float headingLongitudeG12; 
 static float headingAltitudeG12; 
+
 static float headingHistoryMag[NUM_HEADINGS];
 static float headingTimesMag[NUM_HEADINGS];
 static float headingWeightsMag[NUM_HEADINGS];
@@ -78,7 +91,17 @@ static int headingIndexA = -1;
 static int headingIndexB = -1; 
 static int headingIndexMag = -1; 
 
-int weightedLinearRegression(float heading[NUM_HEADINGS], float times[NUM_HEADINGS], float weights[NUM_HEADINGS], float regressed[4]);
+
+typedef struct 
+{
+  float slope; 
+  float intercept; 
+  float slope_err; 
+  float intercept_err; 
+  int npoints; 
+} regression_result_t; 
+
+int weightedLinearRegression(float heading[NUM_HEADINGS], float times[NUM_HEADINGS], float weights[NUM_HEADINGS], regression_result_t * result);
 
 
 static float tdiff(float *tod1, float tod2) 
@@ -109,11 +132,26 @@ static float tdiff(float *tod1, float tod2)
 
 
 
+
 int analyzeHeading() 
 {
   char buf[FILENAME_MAX]; 
   struct dirent ** list; 
   int i; 
+  unsigned int timeNow = time(NULL); 
+  int errA, errB, errMag; 
+  regression_result_t regressedA;
+  regression_result_t regressedB;
+  regression_result_t regressedMag; 
+
+  float heading_estimate; 
+  float heading_sumw2; 
+
+  float heading_slope_estimate; 
+  float heading_slope_sumw2; 
+
+
+
 
   if (headingIndexA < 0) 
   {
@@ -140,7 +178,15 @@ int analyzeHeading()
     headingIndexMag = 0; 
   }
 
-  // read in headings from ADU5 
+
+  /* Here, we read in the magnetometer data. 
+   *
+   * We want to keep the last NUM_HEADINGS of attitude data and the last G12 data as a last resort if the ADU5's fail. 
+   *
+   * We will delete any additional files other than NUM_HEADINGS. The reason it is done in this dumb way is to preserve the 
+   * history past a reset. 
+   *
+   */
 
   i = scandir(GPSD_HEADING_LINK_DIR, &list,0,&alphasort);  
 
@@ -148,7 +194,7 @@ int analyzeHeading()
    {
      syslog(LOG_WARNING,"Trying to analyze headings, but GPSD_HEADING_LINK_DIR  doesn't exist)"); 
      free(list); 
-     return 0; 
+     return -1; 
    }
    
    
@@ -182,9 +228,11 @@ int analyzeHeading()
           syslog(LOG_ERR, "Trouble reading %s\n", buf); 
           continue; 
         }
+
+
         tod = pat.timeOfDay/1000. ; 
 
-          //only add it if at least half a second newer than last value in A 
+         //only add it if at least half a second newer than last value in A 
         if (headingTimesA[headingIndexA]  < 0 || tdiff(&tod, headingTimesA[headingIndexA]) > 0.5)
         {
           headingIndexA = (headingIndexA + 1) % NUM_HEADINGS; 
@@ -236,7 +284,7 @@ int analyzeHeading()
 	  readG12 = true;
 	}
       
-      else //weird file, or we have seen too many of these 
+  else //weird file, or we have seen too many of these so we can delete it! 
 	{
 	  //delete the link and the file
         if(!unlink(buf))
@@ -257,25 +305,26 @@ int analyzeHeading()
 
 
   //now read and process headings from magnetometer 
+  //same logic here. 
   
   i = scandir(MAGNETOMETER_LINK_DIR, &list,0,alphasort); 
   if (i < 0) 
   {
     syslog(LOG_WARNING,"Trying to analyze headings, but MAGNETOMETER_LINK_DIR  doesn't exist)"); 
     free(list); 
-    return 0; 
+    return -1; 
   }
 
 
   while(i--) 
   {
-    double time; 
+    float time; 
     int nseen = 0; 
     int past = 0;
     TimedMagnetometerDataStruct_t magdata; 
     sprintf(buf, "%s/%s",MAGNETOMETER_LINK_DIR, list[i]->d_name); 
 
-    if (nseen++ < NUM_HEADINGS) 
+    if (useMagnetometerForHeading && nseen++ < NUM_HEADINGS) 
     {
       if(past) continue; 
 
@@ -314,21 +363,146 @@ int analyzeHeading()
   
   free(list); 
 
+
+  //excise any times that are too old and set to 0 for now 
+
+  for (i = 0; i < NUM_HEADINGS; i++) 
+  {
+    if (headingTimesA[i] < timeNow - maxHeadingAge) 
+    {
+      headingTimesA[i] = -9999; 
+      headingHistoryA[i] = -1; 
+      headingWeightsA[i] = 0; 
+    }
+    else
+    {
+      headingTimesA[i] -= timeNow; 
+    }
+
+    if (headingTimesB[i] < timeNow - maxHeadingAge) 
+    {
+      headingTimesB[i] = -9999; 
+      headingHistoryB[i] = -1; 
+      headingWeightsB[i] = 0; 
+    }
+    else
+    {
+      headingTimesB[i] -= timeNow; 
+    }
+
+    if (useMagnetometerForHeading) 
+    {
+      if (headingTimesMag[i] < timeNow - maxHeadingAge) 
+      {
+        headingTimesMag[i] = -9999; 
+        headingHistoryMag[i] = -1; 
+        headingWeightsMag[i] = 0; 
+      }
+      else
+      {
+        headingTimesMag[i] -= timeNow; 
+      }
+    }
+  }
+
+
   
   // weighted linear regression
   // 0: slope 1: intercept 2: slope error 3: intercept error
-  float regressedA[4];
-  float regressedB[4];
-
-  int errA = weightedLinearRegression(headingHistoryA, headingTimesA, headingWeightsA, regressedA);
-  int errB = weightedLinearRegression(headingHistoryB, headingTimesB, headingWeightsB, regressedB);
+  errA = weightedLinearRegression(headingHistoryA, headingTimesA, headingWeightsA, &regressedA);
+  errB = weightedLinearRegression(headingHistoryB, headingTimesB, headingWeightsB, &regressedB);
+  errMag = weightedLinearRegression(headingHistoryMag, headingTimesMag, headingWeightsMag, &regressedMag);
   
+
+  if (errA && errB && errMag) 
+  {
+    return -1;  //no information 
+  }
+
+  //now let's get the value at now from weighted average 
+  //
+  
+  
+  heading_estimate = 0; 
+  heading_sumw2 = 0; 
+  heading_slope_estimate= 0; 
+  heading_slope_sumw2 = 0; 
+  
+
+  if (!errA) 
+  {
+    float w = 1./(regressedA.intercept_err * regressedA.intercept_err); 
+    float ws = 1./(regressedA.slope_err * regressedA.slope_err); 
+    heading_estimate +=  regressedA.intercept  * w; 
+    heading_slope_estimate +=  regressedA.slope * ws;
+    heading_sumw2 += w; 
+    heading_slope_sumw2 += w; 
+  }
+
+ if (!errB) 
+  {
+    float w = 1./(regressedB.intercept_err * regressedB.intercept_err); 
+    float ws = 1./(regressedB.slope_err * regressedB.slope_err); 
+    heading_estimate +=  regressedB.intercept  * w; 
+    heading_slope_estimate +=  regressedB.slope * ws;
+    heading_sumw2 += w; 
+    heading_slope_sumw2 += w; 
+  }
+
+ if (useMagnetometerForHeading && !errMag) 
+  {
+    float w = 1./(regressedMag.intercept_err * regressedMag.intercept_err); 
+    float ws = 1./(regressedMag.slope_err * regressedMag.slope_err); 
+    heading_estimate +=  regressedMag.intercept  * w; 
+    heading_slope_estimate +=  regressedMag.slope * ws;
+    heading_sumw2 += w; 
+    heading_slope_sumw2 += w; 
+  }
+
+
+    
+
+  heading_estimate /= heading_sumw2; 
+  heading_slope_estimate /= heading_slope_sumw2; 
+
+
+
+  if (printToScreen) 
+  {
+    printf("Heading estimate: %f +/= %f\n", heading_estimate, 1./sqrt(heading_sumw2)); 
+    printf("Heading slope estimate: %f +/= %f\n", heading_slope_estimate, 1./sqrt(heading_slope_sumw2)); 
+
+
+  }
+
+  for (i = 0; i < NUM_TUFF_NOTCHES; i++) 
+  {
+    if (adjustAccordingToHeading[i]) 
+    {
+      float phi_start_notch = heading_estimate - degreesFromNorthToNotch[i] + phiSectorOffset[i];  // this is probably wrong
+      float phi_stop_notch = heading_estimate + degreesFromNorthToNotch[i] + phiSectorOffset[i]; 
+      if ( phi_start_notch < 0 ) phi_start_notch += 360; 
+      if ( phi_stop_notch > 360 ) phi_stop_notch -= 360; 
+      if ( phi_stop_notch < 0 ) phi_stop_notch += 360; 
+
+      tuffStruct.startSectors[i] =   (phi_start_notch) /  22.5; 
+      tuffStruct.endSectors[i] =   (int) (ceil((phi_stop_notch) /  22.5)) % 16; 
+
+      if (heading_slope_sumw2 && heading_slope_estimate > slopeThresholdToNotchNextSector[i])
+        tuffStruct.endSectors[i] = (tuffStruct.endSectors[i] + 1) % 16; 
+
+      if (heading_slope_sumw2 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
+        tuffStruct.startSectors[i] = (tuffStruct.startSectors[i] - 1) % 16; 
+    }
+  }
+
   return 0; 
 
 }
 
 
-int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADINGS],  float weights[NUM_HEADINGS], float regressed[4]){
+
+int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADINGS],  float weights[NUM_HEADINGS], regression_result_t * regressed){
 
   float sumXXA = 0;
   float sumXYA = 0;
@@ -336,7 +510,7 @@ int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADI
   float sumYA  = 0;
   float sumWA  = 0;
   int   numA   = 0;
-
+  float delta; 
   int i=0;
   
   for (i = 0; i < NUM_HEADINGS; i++)
@@ -351,11 +525,12 @@ int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADI
     }
   } 
   
-  float delta  = (sumWA*sumXXA - sumXA*sumXA);
-  regressed[0] = (sumWA*sumXYA - sumXA*sumYA)  / delta ;        // slope
-  regressed[1] = (sumYA*sumXXA - sumXA*sumXYA) / delta ;        // intercept
-  regressed[2] = sqrt(sumWA/delta);                             // slope error
-  regressed[3] = sqrt(sumXXA/delta);                            // intercept error
+  delta  = (sumWA*sumXXA - sumXA*sumXA);
+ 
+  regressed->slope         = (sumWA*sumXYA - sumXA*sumYA)  / delta ;        // slope
+  regressed->intercept     = (sumYA*sumXXA - sumXA*sumXYA) / delta ;        // intercept
+  regressed->slope_err     = sqrt(sumWA/delta);                             // slope error
+  regressed->intercept_err = sqrt(sumXXA/delta);                            // intercept error
 
   if (numA>0) return 0;
   else return -1;
@@ -439,11 +614,48 @@ int writeState(int changed)
 int setNotches()
 {
   int i; 
+  char tmpname[512]; 
+  FILE * outfile; 
+  time_t theTime; 
 
+  time(&theTime); 
+
+  //open temporary file to avoid race conditions 
+  sprintf(tmpname,"%s~",TUFF_NOTCH_LOOKUP); 
+  outfile = fopen(tmpname,"w"); 
+  if (!outfile) syslog(LOG_ERR, "Could not open %s for writing", tmpname); 
+
+
+  if (outfile) fprintf(outfile,"Date: %s\n", ctime(&theTime));
   for (i = 0; i < NUM_TUFF_NOTCHES; i++)
   {
     syslog(LOG_INFO, "Tuffd: Setting notch %d range to [%d %d],", i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
+
+    if (outfile) fprintf(outfile, "\nNOTCH %d: ", i); 
+    if ( tuffStruct.startSectors[i] == 16 && tuffStruct.endSectors[i] == 16) 
+    {
+      if (outfile) fprintf(outfile, "DISABLED"); 
+    }
+    else
+    {
+      if (outfile) fprintf(outfile, "ENABLED FOR PHI SECTORS %d to %d", tuffStruct.startSectors[i]+1, tuffStruct.endSectors[i]+1); 
+    }
     tuff_setNotchRange(device, i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
+  }
+
+  if (outfile)
+  {
+
+    fprintf(outfile,"\n");
+
+    for (i = 0; i < NUM_RFCM; i++) 
+    {
+      if (!tuff_responds[i]) printf("IRFCM %d DID NOT RESPOND\n",i); 
+    }
+    fclose(outfile); 
+
+    //rename on top of old file 
+    rename(tmpname, TUFF_NOTCH_LOOKUP); 
   }
 
   return 0; 
@@ -605,6 +817,7 @@ int readConfig()
   {
     int notch_tmp [2*NUM_TUFF_NOTCHES]; 
     int nread = 2*NUM_TUFF_NOTCHES;
+    int tmp[3];
     int ok = 1; 
 
     kvpStatus = kvpGetIntArray("notchPhiSectors", notch_tmp, &nread); 
@@ -644,11 +857,101 @@ int readConfig()
       memcpy(&tuffStruct.endSectors, default_end_sector, sizeof(tuffStruct.endSectors)); 
     }
 
+
+    useMagnetometerForHeading = kvpGetInt("useMagnetometerForHeading", 0); 
+    maxHeadingAge = kvpGetInt("maxHeadingAge", 120); 
+
+
     nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("adjustAccordingToHeading", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      syslog(LOG_ERR, "Problem reading in adjsut according to heading, turning off"); 
+      memset(adjustAccordingToHeading,0, sizeof(adjustAccordingToHeading)); 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting adjustAccording to heading to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(adjustAccordingToHeading, tmp, sizeof(adjustAccordingToHeading)); 
+    }
+    
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("degreesFromNorthToNotch", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      int i ; 
+      syslog(LOG_ERR, "Problem reading in degreesFromNorthToNotch, turning to 90"); 
+      for (i = 0; i < 3; i++) degreesFromNorthToNotch[i] = 90; 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting degreesFromNorthToNotch to heading to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(degreesFromNorthToNotch, tmp, sizeof(degreesFromNorthToNotch)); 
+    }
+    
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("slopeThresholdToNotchNextSector", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      int i;
+      syslog(LOG_ERR, "Problem reading in slopeThresholdToNotchNextSector, turning to 23"); 
+      for (i = 0; i < 3; i++) slopeThresholdToNotchNextSector[i] = 23; 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting slopeThresholdToNotchNextSector to heading to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(slopeThresholdToNotchNextSector, tmp, sizeof(slopeThresholdToNotchNextSector)); 
+    }
+
+    nread = NUM_TUFF_NOTCHES; 
+    kvpStatus = kvpGetIntArray("phiSectorOffsetFromNorth", tmp, &nread);
+    if (kvpStatus != CONFIG_E_OK || nread != NUM_TUFF_NOTCHES) 
+    {
+      int i ; 
+      syslog(LOG_ERR, "Problem reading in phiSectorOffsetFromNorth, turning to -45"); 
+      for (i = 0; i < 3; i++) phiSectorOffset[i] = -45; 
+    }
+    else
+    {
+      if (printToScreen)
+      {
+        int i; 
+        printf(" Setting phiSectorOffsetFromNorth  to: [ "); 
+        for (i = 0; i < 3; i++) printf( "%d ", tmp[i]); 
+        printf("]\n"); 
+      }
+
+      memcpy(phiSectorOffset, tmp, sizeof(phiSectorOffset)); 
+    }
+ 
 
   }
   else { configStatus+=4; }
 
+  memcpy(&configTuffStruct, &tuffStruct, sizeof(configTuffStruct)); 
 
   return configStatus; 
 }
@@ -662,8 +965,8 @@ int main(int nargs, char ** args)
   int i;
   int wd; 
   int nattempts = 0; 
+  
   memset(zeroes, 0, sizeof(zeroes)); 
-
 
   retVal = sortOutPidFile(args[0]); 
   if (retVal) return retVal; 
@@ -680,6 +983,7 @@ int main(int nargs, char ** args)
 
   // open the tuff 
   device = tuff_open(TUFF_DEVICE);
+
 
   if (!device) 
   {
@@ -698,6 +1002,7 @@ int main(int nargs, char ** args)
   }
  
 
+  tuff_fd = tuff_getfd(device); 
 
 
   // reset and ping the tuffs 
@@ -766,6 +1071,7 @@ int main(int nargs, char ** args)
 
   // set up raw command watch director
   
+
   makeDirectories(TUFF_RAWCMD_LINK_DIR); 
   makeDirectories(GPSD_HEADING_LINK_DIR); 
   makeDirectories(MAGNETOMETER_LINK_DIR); 
@@ -811,17 +1117,6 @@ int main(int nargs, char ** args)
       syslog(LOG_ERR, "Tuffd had trouble reading the config. Returned: %d", read_config_ok); 
     }
 
-
-    //check if tuff notch status is same 
-    justChanged = justChanged || memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
-    justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
-
-    //if it changed, set the notches and copy the tuff struct to last tuff struct 
-    if (justChanged)
-    {
-      setNotches(); 
-      memcpy(&lastTuffStruct, &tuffStruct, sizeof(TuffNotchStatus_t)); 
-    }
 
     checkLinkDirs(1,0); 
     numlinks = getNumLinks(wd); 
@@ -886,12 +1181,29 @@ int main(int nargs, char ** args)
 
     while (currentState == PROG_STATE_RUN)
     {
-      // Adjust according to heading overrides everything else right now
       if (memcmp(adjustAccordingToHeading, zeroes, sizeof(zeroes)))
       {
-          justChanged = analyzeHeading(); 
+        //this means we couldn't adjust according to heading for some reason, so we should set the
+        //notches back to those specified in the config 
+        if (analyzeHeading() < 0) 
+        {
+            memcpy(tuffStruct.startSectors, configTuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
+            memcpy(tuffStruct.endSectors, configTuffStruct.endSectors, sizeof(tuffStruct.endSectors)); 
+        }
       }
- 
+
+     //check if tuff notch status is same 
+     justChanged = justChanged || memcmp(lastTuffStruct.startSectors, tuffStruct.startSectors, sizeof(tuffStruct.startSectors)); 
+     justChanged = justChanged || memcmp(lastTuffStruct.endSectors, tuffStruct.endSectors, sizeof(tuffStruct.endSectors));  
+
+     //if it changed, set the notches and copy the tuff struct to last tuff struct 
+     if (justChanged)
+     {
+        setNotches(); 
+        memcpy(&lastTuffStruct, &tuffStruct, sizeof(TuffNotchStatus_t)); 
+     }
+
+
       retVal = writeState(justChanged); 
 
       if (retVal) 
@@ -904,8 +1216,48 @@ int main(int nargs, char ** args)
 
       if (currentState == PROG_STATE_RUN) //check again, although still technically a race condition
       {
-        sleep(sleepAmount);  //this will be woken up by signals 
-     }
+        struct pollfd pollstruct; 
+        int pollRet; 
+        pollstruct.fd = tuff_fd; 
+        pollstruct.events = POLLIN; 
+        pollRet =  poll(&pollstruct, 1, sleepAmount < 1 ? 1 : sleepAmount); 
+        if (pollRet > 0 && pollstruct.revents & POLLIN) 
+        {
+          char buf[256]; 
+          int first_time = 1; 
+          memset(buf,'.' , sizeof(buf)); 
+          while (read(tuff_fd, first_time ? buf : buf + 128, first_time ? 256: 128)) 
+          {
+            char * where; 
+            // this is a dumb trick to avoid splitting a message across reads
+            if (!first_time)
+            {
+              memcpy(buf, buf+128, 128); 
+            }
+
+            if (( where = strstr(buf,"boot irfcm")))
+            {
+
+              char * whereto = strchr(where, 'v'); 
+
+              if (!whereto) // this means we haven't read this far yet, so let's continue reading 
+                continue; 
+
+              *whereto = 0; 
+
+              syslog(LOG_ERR, "Tuffd detected irfcm reset. Message: \"%s\"", where); 
+              fprintf(stderr,"Detected irfcm reset. Quitting after 2 seconds\n"); 
+              sleep(2); 
+              raise(SIGTERM); 
+            }
+
+
+            first_time = 0; 
+          }
+
+
+        }
+      }
     }
 
   } while(currentState == PROG_STATE_INIT); 

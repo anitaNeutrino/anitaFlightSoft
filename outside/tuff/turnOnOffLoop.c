@@ -3,7 +3,6 @@
 #include <unistd.h>
 
 
-
 int main(int argc, char **argv)
 {
 
@@ -29,7 +28,6 @@ int main(int argc, char **argv)
     printf("Found %02d%c%c. Has irfcm %d ch %d\n",antenna,ring,pol,irfcm, ch); 
     tuff_setChannelNotches(dev, irfcm, ch, 7);
     sleep(sleep_amount); 
-    //tuff_setChannelNotches(dev, irfcm, ch, 0);
   }; 
 
  
