@@ -96,7 +96,7 @@ void prepareTimingCalibThings(){
 
 
   /* const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR"); */
-  const char* flightSoftDir="/home/flightSoft";
+  const char* flightSoftDir="/home/anita/flightSoft";
 
   char justBinByBinFileName[FILENAME_MAX];
   sprintf(justBinByBinFileName, "%s/programs/Prioritizerd/justBinByBin.dat", flightSoftDir);
