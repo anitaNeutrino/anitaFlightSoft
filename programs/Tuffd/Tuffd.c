@@ -778,6 +778,8 @@ void setupSignals()
     syslog(LOG_ERR,"Problem setting sigaction. errno=%d\n", errno); 
   }
 
+  
+  signal(SIGCLD, SIG_IGN);
   signal(SIGUSR2, sigUsr2Handler); 
   signal(SIGTERM, handleBadSigs);
   signal(SIGINT, handleBadSigs);
