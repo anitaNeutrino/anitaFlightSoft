@@ -329,6 +329,8 @@ int main(int argc, char **argv) {
   makeDirectories(ACQD_EVENT_LINK_DIR);
   makeDirectories(SURFHK_TELEM_LINK_DIR);
   makeDirectories(TURFHK_TELEM_LINK_DIR);
+  makeDirectories(AVGSURFHK_TELEM_LINK_DIR);
+  makeDirectories(SUMTURFHK_TELEM_LINK_DIR);
   makeDirectories(CMDD_COMMAND_LINK_DIR);
   makeDirectories(REQUEST_TELEM_LINK_DIR);
 
@@ -2726,10 +2728,10 @@ void doSurfHkAverage(int flushData)
     avgSurfHk.numHks=numSurfHksInAvg;
     avgSurfHk.deltaT=theSurfHk.unixTime-avgSurfHk.unixTime;
     fillGenericHeader(&avgSurfHk,PACKET_AVG_SURF_HK,sizeof(AveragedSurfHkStruct_t)); 
-    sprintf(theFilename,"%s/avgsurfhk_%d.dat",SURFHK_TELEM_DIR,
+    sprintf(theFilename,"%s/avgsurfhk_%d.dat",AVGSURFHK_TELEM_DIR,
 	    avgSurfHk.unixTime);
     retVal+=writeStruct(&avgSurfHk,theFilename,sizeof(AveragedSurfHkStruct_t));
-    makeLink(theFilename,SURFHK_TELEM_LINK_DIR);  
+    makeLink(theFilename,AVGSURFHK_TELEM_LINK_DIR);  
     
     //      if(printToScreen && verbosity>=0) {
     //	printf("Averaged Scaler [0][0]=%d\n",avgSurfHk.avgScaler[0][0]);
@@ -2805,10 +2807,10 @@ void doTurfRateSum(int flushData) {
     sumTurf.numRates=numRates;
     sumTurf.deltaT=turfRates.unixTime-sumTurf.unixTime;
     fillGenericHeader(&sumTurf,PACKET_SUM_TURF_RATE,sizeof(SummedTurfRateStruct_t)); 
-      sprintf(theFilename,"%s/sumturfrate_%d.dat",TURFHK_TELEM_DIR,
+      sprintf(theFilename,"%s/sumturfrate_%d.dat",SUMTURFHK_TELEM_DIR,
 	      sumTurf.unixTime);
       retVal+=writeStruct(&sumTurf,theFilename,sizeof(SummedTurfRateStruct_t));
-      makeLink(theFilename,TURFHK_TELEM_LINK_DIR);  
+      makeLink(theFilename,SUMTURFHK_TELEM_LINK_DIR);  
 
       retVal=cleverHkWrite((unsigned char*)&sumTurf,
 			   sizeof(SummedTurfRateStruct_t),
