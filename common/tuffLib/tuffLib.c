@@ -404,7 +404,7 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
     {
       if (rv > 0) 
       {
-        syslog(LOG_ERR, "select returned %d in tuff_getTemperature\n"); 
+        syslog(LOG_ERR, "select returned %d in tuff_getTemperature\n", rv); 
         return -275; 
 
       }
@@ -425,9 +425,8 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
       if (p) 
       {
 
-        syslog(LOG_ERR,"Reboot detected "); 
+        syslog(LOG_ERR,"Reboot detected while reading temperature. Partial buffer: %s", p); 
         return -999; 
-
 
 
       }
