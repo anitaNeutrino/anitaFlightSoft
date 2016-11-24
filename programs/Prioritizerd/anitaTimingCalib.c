@@ -1032,7 +1032,6 @@ void readInRcoLatchDelay(const char* fileName){
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
     syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
-    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
