@@ -71,6 +71,12 @@ static int negativeSaturation = -1000;
 static int asymSaturation = 500;
 int anitaCalibVersion = 4;
 
+
+
+static float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
+static float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
+int skipBlastRatio[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
+
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
 void prepareTimingCalibThings(){
@@ -82,6 +88,34 @@ void prepareTimingCalibThings(){
     fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
     syslog(LOG_ERR, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
+
+  int numPhi = NUM_PHI;
+  err = kvpGetIntArray ("skipBlastRatioHPol", &skipBlastRatio[0][0], &numPhi);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load skipBlastRatioHPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+    syslog(LOG_ERR, "Warning! Trying to do load skipBlastRatioHPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+  err = kvpGetIntArray ("skipBlastRatioVPol", &skipBlastRatio[1][0], &numPhi);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load skipBlastRatioVPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+    syslog(LOG_ERR, "Warning! Trying to do load skipBlastRatioVPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+
+  maxThresholdBottomToTopRingPeakToPeakRatio = kvpGetFloat("blastRatioMax", 2.8);
+  minThresholdBottomToTopRingPeakToPeakRatio = kvpGetFloat("blastRatioMin", 1.1);
+
+  /* { */
+  /*   int pol=0; */
+  /*   for(pol=0; pol < 2; pol++){ */
+  /*     int phi=0; */
+  /*     for(phi=0; phi < 16; phi++){ */
+  /* 	printf("%d\t%d\t%d\n", pol, phi, skipBlastRatio[pol][phi]); */
+  /*     } */
+  /*   } */
+  /* } */
+
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
   asymSaturation = kvpGetInt("asymSaturation", 500);
@@ -779,28 +813,16 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
-  // now find largest peak-to-peak ratio for self triggered blasts.
-  const float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
-  const float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
-
   int phi=0;
-  int pol = 0;
   int maxPhi, maxPol;
-  short skipRatio[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
-  for(pol=0; pol < NUM_POLARIZATIONS; pol++){
-    for(phi=0; phi < NUM_PHI; phi++){
-      skipRatio[pol][phi] = 0;
-    }
-  }
 
-  skipRatio[1][7] = 1; // REMOVE
-
+  int pol = 0;
   int numRatiosTested = 0;
   float maxBottomToTopPeakToPeakRatio = 0;
   for(pol=0; pol < NUM_POLARIZATIONS; pol++){
     for(phi=0; phi < NUM_PHI; phi++){
       if(bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi] > maxBottomToTopPeakToPeakRatio
-	 && !skipRatio[pol][phi]){
+	 && !skipBlastRatio[pol][phi]){
 	maxBottomToTopPeakToPeakRatio = bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi];
 	maxPol = pol;
 	maxPhi = phi;

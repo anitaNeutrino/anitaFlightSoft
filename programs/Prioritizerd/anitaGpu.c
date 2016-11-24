@@ -131,7 +131,7 @@ float staticNotchesHighEdgeMHz[MAX_NOTCHES] = {0,0,0,0,0,0,0,0,0,0};
 float slopeOfImagePeakVsHilbertPeak;
 float interceptOfImagePeakVsHilbertPeak;
 float absMagnitudeThresh_dBm;
-
+float binToBinDifferenceThresh_dB;
 
 /* Use reconstructed angle to tweak priorities */
 float thetaAngleLowForDemotion =-20;
@@ -155,11 +155,11 @@ int debugMode = 0;
 int numGpuPacketsFilled = 0;
 int sleepTimeAfterKillingX = 10;
 
-float startDynamicFrequency=500;
-float endDynamicFrequency=1300;
-int useDynamicFiltering = 1;
-int conservativeStart = 0;
-float spikeThresh_dB = 2;
+static float startDynamicFrequency=500;
+static float stopDynamicFrequency=1300;
+static int useDynamicFiltering = 1;
+static int conservativeStart = 0;
+static float spikeThresh_dB = 2;
 
 
 // For printing calibration numbers to /tmp
@@ -214,10 +214,14 @@ void prepareGpuThings(){
 
 
   spikeThresh_dB=kvpGetFloat("spikeThresh_dB",1.5);
+  conservativeStart=kvpGetInt("conservativeStart",0);
   startDynamicFrequency = kvpGetFloat("startDynamicFiltering", 500);
   stopDynamicFrequency = kvpGetFloat("stopDynamicFiltering", 1300);
   useDynamicFiltering = kvpGetInt("useDynamicFiltering", 1);
+
+
   printCalibTextFile = kvpGetInt("printCalibTextFile", 0);
+  debugMode = kvpGetInt("debugMode", 0);
 
 
   gpuOutput = NULL;
@@ -1011,6 +1015,8 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
     if(inConservativeStartFlag > 0){
       priority = 6;
+      fprintf(stderr, "conservative start flag! \n");
+
     }
 
     /* Finally tweak priority based on reconstructed angle .. */
@@ -1233,7 +1239,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 	  // bounds check the dynamic filtering
 	  startInd = startInd < 0 ? 0 : startInd;
-	  endInd = endInd >= NUM_SAMPLES/2 : NUM_SAMPLES/2 - 1 : endInd;
+	  endInd = endInd >= NUM_SAMPLES/2 ? NUM_SAMPLES/2 - 1 : endInd;
 
 	  updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB, startInd, endInd);
 	}
