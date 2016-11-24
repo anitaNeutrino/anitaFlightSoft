@@ -120,8 +120,8 @@
 
 
 //Relay Bit Masks
-#define AMPLITE1_MASK 0x1
-#define AMPLITE2_MASK 0x2
+#define TUFF1_MASK 0x1
+#define TUFF2_MASK 0x2
 #define BZAMPA1_MASK 0x4
 #define BZAMPA2_MASK 0x8
 #define SB_MASK 0x10

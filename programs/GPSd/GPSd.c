@@ -27,7 +27,7 @@
 
 //#define DEBUG_FILE 1
 #define ADU5A_DEBUG "/tmp/fullAdu5A"
-#define ADU5B_DEBUG "/tmp/fullAdu5A"
+#define ADU5B_DEBUG "/tmp/fullAdu5B"
 
 
 // Forward declarations
@@ -280,7 +280,7 @@ int main (int argc, char *argv[])
 
 #ifdef DEBUG_FILE
     unlink(ADU5A_DEBUG);
-    unlink(ADU5A_DEBUG);
+    unlink(ADU5B_DEBUG);
 #endif
 
     //Main event loop
@@ -834,11 +834,12 @@ int checkAdu5A()
     static int lastStar=-10;
     retVal=isThereDataNow(fdAdu5A);
     usleep(5);
+    if(retVal!=1) return 0;
 #ifdef DEBUG_FILE
     FILE *fpTempOut=fopen(ADU5A_DEBUG,"a");
 #endif
 //    printf("Check ADU5A got retVal %d\n",retVal);
-    if(retVal!=1) return 0;
+
     retVal=read(fdAdu5A, tempData, ADU5_DATA_SIZE);  
     if(retVal>0) {
 #ifdef DEBUG_FILE

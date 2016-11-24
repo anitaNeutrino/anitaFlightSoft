@@ -1,6 +1,6 @@
 #!/bin/bash
 
-turnAmpliteOff
+turnTuffOff
 turnNtuAmpaOff
 turnBZAmpaOff
 turnSBOff

@@ -622,17 +622,17 @@ int executeCommand(CommandStruct_t *theCmd)
 
     
     /*Modification for anita3 calibd - BenS 04/07/2014*/  
-  case CMD_TURN_AMPLITES_ON:
+  case CMD_TURN_TUFFS_ON:
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_AMPLITES_OFF:
+  case CMD_TURN_TUFFS_OFF:
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -694,12 +694,9 @@ int executeCommand(CommandStruct_t *theCmd)
     
   case CMD_TURN_ALL_ON:
     //turnAllOn
-    /* Warning! Currently the mapping of on to off is reversed for amplites
-       Currently AMPLITE_ON sets state flag to 0, which is actually on
-       This is reflected in the action taken here. BenS - 04/07/2014 */
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa1",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa2",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateNTUAmpa",1,&rawtime);
@@ -714,12 +711,9 @@ int executeCommand(CommandStruct_t *theCmd)
 
   case CMD_TURN_ALL_OFF:
     //turnAllOff
-    /* Warning! Currently the mapping of on to off is reversed for amplites
-       Currently AMPLITE_OFF sets state flag to 1, which is actually off
-       This is reflected in the action taken here. BenS - 04/07/2014 */
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa1",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa2",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateNTUAmpa",0,&rawtime);
