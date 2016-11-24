@@ -193,7 +193,7 @@ void * watchdogThread(void * unused)
 
  int main(int argc, char *argv[])
  {
-   int pri,retVal,firstTime=1;
+   int pri,retVal,firstTime=1,ind=0;
    time_t lastRefresh=0;
    time_t lastUpdate=0;
    time_t currentTime=0;
