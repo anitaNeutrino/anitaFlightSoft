@@ -104,9 +104,6 @@ buffer* scratchBuffer = NULL;
 buffer* invFftBuffer = NULL;
 
 
-float spikeThresh_dB = 2; // CONFIG
-float rollOffFrequency_MHz = 600; // CONFIG
-
 
 struct timeval startTime;
 struct timezone dummy;
@@ -162,6 +159,7 @@ float startDynamicFrequency=500;
 float endDynamicFrequency=1300;
 int useDynamicFiltering = 1;
 int conservativeStart = 0;
+float spikeThresh_dB = 2;
 
 
 // For printing calibration numbers to /tmp
@@ -214,6 +212,8 @@ void prepareGpuThings(){
   invertTopRingInSoftware = kvpGetInt("invertTopRingInSoftware", 0);
   sleepTimeAfterKillingX=kvpGetInt("sleepTimeAfterKillingX",10);
 
+
+  spikeThresh_dB=kvpGetFloat("spikeThresh_dB",1.5);
   startDynamicFrequency = kvpGetFloat("startDynamicFiltering", 500);
   stopDynamicFrequency = kvpGetFloat("stopDynamicFiltering", 1300);
   useDynamicFiltering = kvpGetInt("useDynamicFiltering", 1);
