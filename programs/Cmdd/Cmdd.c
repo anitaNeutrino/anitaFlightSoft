@@ -636,17 +636,19 @@ int executeCommand(CommandStruct_t *theCmd)
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_BZ_AMPAS_ON:
+  case CMD_TURN_AMPAS_ON:
     // May as well modify both state flags, since relays lines are merged before reaching iRFCMS
     configModifyInt("Calibd.config","relays","stateBZAmpa1",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUAmpa",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_BZ_AMPAS_OFF:
+  case CMD_TURN_AMPAS_OFF:
     // May as well modify both state flags, since relays lines are merged before reaching iRFCMS
     configModifyInt("Calibd.config","relays","stateBZAmpa1",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateNTUAmpa",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -1777,7 +1779,7 @@ int executeCalibdExtraCommand(int command, unsigned char arg[2])
   printf("executeCalibdExtraCommand %d %d %d\n",command,arg[0],arg[1]);
   time_t rawtime;    
   int ivalue=arg[0] + (arg[1]<<8);
-  float fvalue=0;
+  //  float fvalue=0;
   switch(command) {
   case CALIBD_READOUT_PERIOD:
     printf("CALIBD_READOUT_PERIOD %d\n",ivalue);
