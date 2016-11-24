@@ -69,7 +69,7 @@ static fftw_complex* clockFreqHolder;
 static int positiveSaturation = 1000;
 static int negativeSaturation = -1000;
 static int asymSaturation = 500;
-int anitCalibVersion = 4;
+int anitaCalibVersion = 4;
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
@@ -80,6 +80,7 @@ void prepareTimingCalibThings(){
   err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
   if(err!=KVP_E_OK){
     fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
+    syslog(LOG_ERR, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
   }
   positiveSaturation = kvpGetInt("positiveSaturation", 1000);
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
@@ -95,7 +96,7 @@ void prepareTimingCalibThings(){
 
 
   /* const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR"); */
-  flightSoftDir="/home/flightSoft";
+  const char* flightSoftDir="/home/flightSoft";
 
   char justBinByBinFileName[FILENAME_MAX];
   sprintf(justBinByBinFileName, "%s/programs/Prioritizerd/justBinByBin.dat", flightSoftDir);
@@ -114,7 +115,7 @@ void prepareTimingCalibThings(){
 
   //readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
   char relativeCableDelaysFileName[FILENAME_MAX];
-  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelaysAnita%d.dat", flightSoftDir, anitaCalibVerson);
+  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelaysAnita%d.dat", flightSoftDir, anitaCalibVersion);
   readInRelativeCableDelay(relativeCableDelaysFileName);
 
   //readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
@@ -1030,7 +1031,7 @@ void readInRcoLatchDelay(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
-    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1058,7 +1059,7 @@ void readInRcoLatchDelay(const char* fileName){
 
 void readInVoltageCalib(const char* fileName){
   FILE* inFile = fopen(fileName, "r");
-  int defaultVal = 1;
+  float defaultVal = 1;
 
   if( inFile != NULL){
     /* Skip human friendly header, after all I am a robot. */
@@ -1069,8 +1070,8 @@ void readInVoltageCalib(const char* fileName){
     }
   }
   else{
-    fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
-    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
+    fprintf(stderr, "Couldn't find %s, assuming all calibration values = %1.1f\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %1.1f\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
