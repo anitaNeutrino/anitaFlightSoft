@@ -1,9 +1,9 @@
 #!/bin/bash
 
 if [ -f /tmp/anita/pid/calibd.pid ]; then
-    CmdTest 150
+    CmdTest 151
 else
-    logic=`getConfigValue Calibd.config relaycontrol turnAmplite1OnLogic`
+    logic=`getConfigValue Calibd.config relaycontrol turnTuff1OffLogic`
     port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
     channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
     
@@ -12,7 +12,7 @@ else
     RelayControlPSA $port $channel 0
 
 
-    logic=`getConfigValue Calibd.config relaycontrol turnAmplite2OnLogic`
+    logic=`getConfigValue Calibd.config relaycontrol turnTuff2OffLogic`
     port=`echo $logic | awk '{printf("%d\n",$1/8);}'`
     channel=`echo $logic | awk '{printf("%d\n",$1 % 8);}'`
     

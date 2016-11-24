@@ -120,8 +120,8 @@
 
 
 //Relay Bit Masks
-#define AMPLITE1_MASK 0x1
-#define AMPLITE2_MASK 0x2
+#define TUFF1_MASK 0x1
+#define TUFF2_MASK 0x2
 #define BZAMPA1_MASK 0x4
 #define BZAMPA2_MASK 0x8
 #define SB_MASK 0x10
@@ -207,9 +207,12 @@
 #define OPENPORTD_CMD_ECHO_TELEM_DIR "/tmp/anita/telem/house/cmdopenportd"
 
 #define HK_TELEM_DIR "/tmp/anita/telem/house/hk"
+#define SSHK_TELEM_DIR "/tmp/anita/telem/house/sshk"
 #define SURFHK_TELEM_DIR "/tmp/anita/telem/house/surfhk"
+#define AVGSURFHK_TELEM_DIR "/tmp/anita/telem/house/avgsurfhk"
 #define PEDESTAL_TELEM_DIR "/tmp/anita/telem/house/pedestal"
 #define TURFHK_TELEM_DIR "/tmp/anita/telem/house/turfhk"
+#define SUMTURFHK_TELEM_DIR "/tmp/anita/telem/house/sumturfhk"
 #define ADU5A_PAT_TELEM_DIR "/tmp/anita/telem/house/gps/adu5a/pat"
 #define ADU5A_SAT_TELEM_DIR "/tmp/anita/telem/house/gps/adu5a/sat"
 #define ADU5A_VTG_TELEM_DIR "/tmp/anita/telem/house/gps/adu5a/vtg"
@@ -233,9 +236,12 @@
 #define SIPD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdsipd/link"
 #define OPENPORTD_CMD_ECHO_TELEM_LINK_DIR "/tmp/anita/telem/house/cmdopenportd/link"
 #define HK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
+#define SSHK_TELEM_LINK_DIR "/tmp/anita/telem/house/hk/link"
 #define SURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/surfhk/link"
+#define AVGSURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/avgsurfhk/link"
 #define PEDESTAL_TELEM_LINK_DIR "/tmp/anita/telem/house/pedestal/link"
 #define TURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/turfhk/link"
+#define SUMTURFHK_TELEM_LINK_DIR "/tmp/anita/telem/house/sumturfhk/link"
 #define ADU5A_PAT_TELEM_LINK_DIR "/tmp/anita/telem/house/gps/adu5a/pat/link"
 #define ADU5A_SAT_TELEM_LINK_DIR "/tmp/anita/telem/house/gps/adu5a/sat/link"
 #define ADU5A_VTG_TELEM_LINK_DIR "/tmp/anita/telem/house/gps/adu5a/vtg/link"

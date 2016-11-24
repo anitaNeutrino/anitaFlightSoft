@@ -1,6 +1,6 @@
 /*! \file Prioritizerd.c
-  \brief The Prioritizerd program that creates Event objects 
-  
+  \brief The Prioritizerd program that creates Event objects
+
   Reads the event objects written by Eventd, assigns a priority to each event based on the likelihood that it is an interesting event. Events with the highest priority will be transmitted to the ground first.
   March 2005 rjn@mps.ohio-state.edu
 */
@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
   int wd=0;
   char *tempString;
   int numEventLinks;
-    
+
   /* Log stuff */
   char *progName=basename(argv[0]);
 
@@ -65,11 +65,11 @@ int main (int argc, char *argv[])
     exit(0);
   }
 #endif
-       
+
 
   //Dont' wait for children
   //RJN hack will have to fix this somehow
-  signal(SIGCLD, SIG_IGN); 
+  signal(SIGCLD, SIG_IGN);
 
   /* Set signal handlers */
   signal(SIGUSR1, sigUsr1Handler);
@@ -77,11 +77,11 @@ int main (int argc, char *argv[])
   signal(SIGTERM, handleBadSigs);
   signal(SIGINT, handleBadSigs);
   signal(SIGSEGV, handleBadSigs);
-    
+
   /* Setup log */
   setlogmask(LOG_UPTO(LOG_INFO));
   openlog (progName, LOG_PID, ANITA_LOG_FACILITY) ;
-   
+
   makeDirectories(HEADER_TELEM_LINK_DIR);
   makeDirectories(HEADER_TELEM_DIR);
   makeDirectories(EVENTD_EVENT_LINK_DIR);
@@ -106,10 +106,10 @@ int main (int argc, char *argv[])
     ///    fprintf(stderr,"RJN numEventLinks_1=%d\n",numEventLinks);
   }
 
-  /* 
-     This function  mallocs at some global pointers
-     so needs to be outside any kind of loop.
-  */
+  retVal=readConfig();
+  /* This function  mallocs at some global pointers */
+  /* so needs to be outside any kind of loop. */
+
   if(!disableGpu) {
     prepareGpuThings();
     prepareTimingCalibThings();
@@ -119,9 +119,9 @@ int main (int argc, char *argv[])
   for(phi=0; phi<NUM_PHI_SECTORS; phi++){
     memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
   }
-  retVal=readConfig();
+
   prepWriterStructs();
-  
+
   do {
     if(printToScreen) printf("Initalizing Prioritizerd\n");
     retVal=readConfig();
@@ -151,16 +151,16 @@ int main (int argc, char *argv[])
 
       if(numEventLinks > panicQueueLength || disableGpu){
 	/* Panic! Write all header files to archived directory with priority 7! */
-	panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);	
+	panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);
       }
       else {
 	/* Read data into program memory */
 	while(eventsReadIn<NUM_EVENTS && currentState==PROG_STATE_RUN){
 	  numEventLinks=getNumLinks(wd);
 	  //	  fprintf(stderr,"RJN numEventLinks_3=%d\n",numEventLinks);
-	
-	
-      	
+
+
+
 	  tempString=getFirstLink(wd);
 	  if(numEventLinks==0) break;
 	  if(tempString==NULL) continue;
@@ -169,17 +169,17 @@ int main (int argc, char *argv[])
 	    syslog(LOG_INFO,"Non-sequential event numbers %d and %d\n", lastEventNumber, doingEvent);
 	  }
 	  lastEventNumber=doingEvent;
-	  
+
 	  sprintf(linkFilename, "%s/%s", EVENTD_EVENT_LINK_DIR, tempString);
 	  sprintf(hdFilename, "%s/hd_%d.dat", EVENTD_EVENT_DIR, doingEvent);
 
 	  //RJN 4th June 2008
 	  //Switch to Acqd writing psev files
 	  sprintf(bodyFilename[eventsReadIn],"%s/psev_%d.dat", ACQD_EVENT_DIR, doingEvent);
-	  
-	  retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);	
-	
-       
+
+	  retVal=fillHeader(&theHeader[eventsReadIn],hdFilename);
+
+
 
 	  /* Then we add to GPU queue... */
 	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
@@ -192,7 +192,7 @@ int main (int argc, char *argv[])
 	  }
 	  eventsReadIn++;
 	}
-      
+
 
 	printf("eventsReadIn = %d, max is %d.\n", eventsReadIn, NUM_EVENTS);
       }
@@ -202,8 +202,9 @@ int main (int argc, char *argv[])
 	mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec, writePowSpecPeriodSeconds);
       }
 
-      if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds
-	 || currentState!=PROG_STATE_RUN){
+      if((payloadPowSpec[0].unixTimeLastEvent > 0 &&
+	  payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
+      	 || currentState!=PROG_STATE_RUN){
 	int phi=0;
 	for(phi=0; phi<NUM_PHI_SECTORS; phi++){
 	  printf("Trying to write and link for phi sector %d...\n", phi);
@@ -235,7 +236,7 @@ int main (int argc, char *argv[])
 
 	//Now Fill Generic Header and calculate checksum
 	fillGenericHeader(&theHeader[count],theHeader[count].gHdr.code,sizeof(AnitaEventHeader_t));
-  
+
 	//Rename body and write header for Archived
 	sprintf(archiveBodyFilename,"%s/psev_%u.dat",PRIORITIZERD_EVENT_DIR,
 		theHeader[count].eventNumber);
@@ -302,7 +303,6 @@ int readConfig()
 	     "Couldn't fetch printToScreen, defaulting to zero");
       printToScreen=0;
     }
-    disableGpu=kvpGetInt("disableGpu",0);
   }
   else {
     eString=configErrorString (status) ;
@@ -314,6 +314,7 @@ int readConfig()
   if(status == CONFIG_E_OK) {
       panicQueueLength=kvpGetInt("panicQueueLength",5000);
       writePowSpecPeriodSeconds=kvpGetInt("writePowSpecPeriodSeconds",60);
+      disableGpu=kvpGetInt("disableGpu",0);
   }
   else {
     eString=configErrorString (status) ;
@@ -338,9 +339,9 @@ int readConfig()
 int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi) {
     char theFilename[FILENAME_MAX];
     int retVal=0;
-    
+
     fillGenericHeader(payloadPowSpec,PACKET_GPU_AVE_POW_SPEC,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
-    
+
     //write for telemetry
     sprintf(theFilename,"%s/gpuPowSpec_%u_phi%d.dat",
 	    GPU_TELEM_DIR,payloadPowSpec->unixTimeFirstEvent,phi);
@@ -354,13 +355,13 @@ int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi)
     if(retVal<0) {
 	//Had an error
     }
-    
+
     return retVal;
 }
 
 void prepWriterStructs() {
     int diskInd;
-    //    if(printToScreen) 
+    //    if(printToScreen)
       printf("Preparing Writer Structs -- hkDiskBitMask %d\n",hkDiskBitMask);
     //Hk Writer
 

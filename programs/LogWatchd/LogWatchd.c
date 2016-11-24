@@ -122,7 +122,7 @@ int main (int argc, char *argv[])
 	catFile("/tmp/smart_sda");
 	catFile("/tmp/smart_sdb");
 	catFile("/tmp/smart_sdc");
-	catFile("/tmp/smart_sdd");
+	//catFile("/tmp/smart_sdd");
 
 
 	catFile("/home/anita/flightSoft/config/anitaSoft.config");
@@ -161,6 +161,7 @@ int main (int argc, char *argv[])
 
 	    //Do something
 	    if(!fillLogWatchRequest(&theRequest,currentFilename)) {
+	      syslog(LOG_INFO,"Got reqeust - %d %d %d %s",theRequest.logReq,theRequest.numLines,theRequest.optArg,theRequest.filename);    
 	      if(theRequest.logReq==LOG_REQUEST_FILE) {
 		if(theRequest.numLines==0)
 		  catFile(theRequest.filename);

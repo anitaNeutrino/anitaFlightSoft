@@ -25,10 +25,10 @@ int readConfigFile();
 
 //Relay locations 
 
-#define AMPLITE1_ON_LOGIC 21
-#define AMPLITE1_OFF_LOGIC 22
-#define AMPLITE2_ON_LOGIC 19
-#define AMPLITE2_OFF_LOGIC 20
+#define TUFF1_ON_LOGIC 21
+#define TUFF1_OFF_LOGIC 22
+#define TUFF2_ON_LOGIC 19
+#define TUFF2_OFF_LOGIC 20
 #define BZAMPA1_ON_LOGIC 18
 #define BZAMPA1_OFF_LOGIC 17
 #define BZAMPA2_ON_LOGIC 7

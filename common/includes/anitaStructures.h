@@ -419,7 +419,7 @@ typedef struct {
   unsigned short deadTime; ///< fraction = deadTime/64400
   unsigned int c3poNum;     ///< 1 number of trigger time ticks per PPS
   unsigned short l3TrigPattern;
-  unsigned short l3TrigPatternH;
+  unsigned short l3TrigPatternH; ///< Deprecated
   unsigned char bufferDepth; ///<bits 0,1 trigTime depth 2,3 current depth
   unsigned char reserved[3];
 } TurfioStruct_t;
@@ -900,7 +900,7 @@ typedef struct {
   int gpsSubTime;    
   unsigned int turfEventId; ///<Turf event id that doesn't roll
   unsigned int eventNumber;    ///< Global event number 
-  unsigned short calibStatus;   ///< Were we flashing the pulser? 
+  unsigned short calibStatus;   ///< Deprecated
   unsigned char priority; ///< priority and other
   unsigned char turfUpperWord; ///< The upper 8 bits from the TURF
   unsigned char otherFlag; ///< Currently the first two surf evNums 
@@ -918,9 +918,9 @@ typedef struct {
   unsigned char surfSlipFlag; ///< Sync Slip between SURF 2-9 and SURF 1
   unsigned char peakThetaBin; ///< 8-bit peak theta bin from Prioritizer
   unsigned short l2TrigMask; ///< 16-bit phi ant mask (from TURF)
-  unsigned short l2TrigMaskH; ///< 16-bit phi ant mask (from TURF)
+  unsigned short l2TrigMaskH; ///< Deprecated
   unsigned short phiTrigMask; ///< 16-bit phi mask (from TURF)
-  unsigned short phiTrigMaskH; ///< 16-bit phi mask (from TURF)
+  unsigned short phiTrigMaskH; ///< Deprecated
   unsigned short imagePeak; ///< 16-bit image peak from Prioritizer
   unsigned short coherentSumPeak; ///< 16-bit coherent sum peak from Prioritizer
   unsigned short prioritizerStuff; ///< TBD

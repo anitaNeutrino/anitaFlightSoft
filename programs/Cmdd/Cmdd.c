@@ -39,6 +39,7 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5]);
 int executeSipdControlCommand(int command, unsigned char args[3]);
 int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
+int executeCalibdExtraCommand(int command, unsigned char arg[2]);
 int executeRTLCommand(int command, unsigned char arg[2]); 
 int executeTuffCommand(int command, unsigned char arg[6]); 
 int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm ); 
@@ -621,17 +622,17 @@ int executeCommand(CommandStruct_t *theCmd)
 
     
     /*Modification for anita3 calibd - BenS 04/07/2014*/  
-  case CMD_TURN_AMPLITES_ON:
+  case CMD_TURN_TUFFS_ON:
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",1,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case CMD_TURN_AMPLITES_OFF:
+  case CMD_TURN_TUFFS_OFF:
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",0,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -693,12 +694,9 @@ int executeCommand(CommandStruct_t *theCmd)
     
   case CMD_TURN_ALL_ON:
     //turnAllOn
-    /* Warning! Currently the mapping of on to off is reversed for amplites
-       Currently AMPLITE_ON sets state flag to 0, which is actually on
-       This is reflected in the action taken here. BenS - 04/07/2014 */
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",0,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa1",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa2",1,&rawtime);
     configModifyInt("Calibd.config","relays","stateNTUAmpa",1,&rawtime);
@@ -713,12 +711,9 @@ int executeCommand(CommandStruct_t *theCmd)
 
   case CMD_TURN_ALL_OFF:
     //turnAllOff
-    /* Warning! Currently the mapping of on to off is reversed for amplites
-       Currently AMPLITE_OFF sets state flag to 1, which is actually off
-       This is reflected in the action taken here. BenS - 04/07/2014 */
     // modify both state flags, since relays lines are merged before reaching iRFCMS
-    configModifyInt("Calibd.config","relays","stateAmplite1",1,&rawtime);
-    configModifyInt("Calibd.config","relays","stateAmplite2",1,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff1",0,&rawtime);
+    configModifyInt("Calibd.config","relays","stateTuff2",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa1",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateBZAmpa2",0,&rawtime);
     configModifyInt("Calibd.config","relays","stateNTUAmpa",0,&rawtime);
@@ -962,6 +957,8 @@ int executeCommand(CommandStruct_t *theCmd)
     return executeLosdControlCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
   case GPSD_EXTRA_COMMAND:
     return executeGpsdExtracommand(theCmd->cmd[1],&(theCmd->cmd[2]));
+  case CALIBD_EXTRA_COMMAND:
+    return executeCalibdExtraCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
 
 
 	    
@@ -1772,8 +1769,49 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
     break;    
   }
   return 0;
-
 }
+
+
+int executeCalibdExtraCommand(int command, unsigned char arg[2])
+{
+  printf("executeCalibdExtraCommand %d %d %d\n",command,arg[0],arg[1]);
+  time_t rawtime;    
+  int ivalue=arg[0] + (arg[1]<<8);
+  float fvalue=0;
+  switch(command) {
+  case CALIBD_READOUT_PERIOD:
+    printf("CALIBD_READOUT_PERIOD %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","readoutPeriod",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;  
+  case CALIBD_TELEM_EVERY:
+    printf("CALIBD_TELEM_EVERY %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","telemEvery",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;   
+  case CALIBD_TELEM_AVERAGE:
+    printf("CALIBD_TELEM_AVERAGE %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","telemAverage",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;    
+  case CALIBD_ADC_AVERAGE:
+    printf("CALIBD_ADC_AVERAGE %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","adcAverage",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;    
+  case CALIBD_CALIBRATION_PERIOD:
+    printf("CALIBD_CALIBRATION_PERIOD %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","calibrationPeriod",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;  
+  default:
+    syslog(LOG_ERR,"Unknown Calibd Extra Command -- %d",command);
+    break;    
+  }
+  return 0;
+}
+
+
 
 int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalue2)
 {

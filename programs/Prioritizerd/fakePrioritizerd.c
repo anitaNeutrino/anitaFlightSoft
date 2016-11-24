@@ -33,6 +33,12 @@ GpuPhiSectorPowerSpectrumStruct_t payloadPowSpec[NUM_PHI_SECTORS];
 AnitaHkWriterStruct_t gpuWriter;
 
 
+int useWaisPulses = 0;
+
+FILE* waisPulseEventNumbers = NULL;
+int numPulsesReadIn = 0; // counter
+int numWaisPulses = 5625; //118160; // from wc -l
+int getNextEventNumber(int* run);
 
 int main(int argc, char *argv[]){
 
@@ -127,25 +133,16 @@ int main(int argc, char *argv[]){
     const char* baseDir = "/mnt/ben";
 
     // calibration badassery
-    /* FILE* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r"); */
-    FILE* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r");
     int run = 0;
-    int eventNumber;
-    const int numWaisPulses = 5625; //118160; // from wc -l
-    int numPulsesReadIn = 0; // counter
-
-
-    fscanf(waisPulseEventNumbers, "%d\t%d", &run, &eventNumber);
-    printf("I'm looking in run %d for eventNumber %d\n", run, eventNumber);
-    numPulsesReadIn++;
-
+    int eventNumber = getNextEventNumber(&run);
 
     /* This one is the main while loop */
     int entry = 0;
     for(entry=0; entry < numWaisPulses; entry++){
 
       int numEventsInGpuQueue = 0;
-      while(numEventsInGpuQueue < 100){
+      while(numEventsInGpuQueue < NUM_EVENTS-1){
+     /* while(numEventsInGpuQueue < 1){ */
 
 	numPulsesReadIn = 0;
 	//	usleep(1);
@@ -220,7 +217,7 @@ int main(int argc, char *argv[]){
 	  if(numEventLinks < panicQueueLength){
 
 	    // OK so let's skip events that aren't in the read-in list.
-	    if(theHeader[eventsReadFromDisk].eventNumber==eventNumber){
+	    if(theHeader[eventsReadFromDisk].eventNumber==eventNumber && numEventsInGpuQueue < NUM_EVENTS){
 
 	      /* printf("I found eventNumber %d in run %d\n", eventNumber, run); */
 
@@ -238,9 +235,7 @@ int main(int argc, char *argv[]){
 		free(finalVolts[chanInd]);
 	      }
 
-	      fscanf(waisPulseEventNumbers, "%d\t%d", &run, &eventNumber);
-	      /* printf("I'm looking in run %d for eventNumber %d\n", run, eventNumber); */
-	      numPulsesReadIn++;
+	      eventNumber = getNextEventNumber(&run);
 	      numEventsInGpuQueue++;
 	    }
 	    eventsReadFromDisk++;
@@ -269,20 +264,21 @@ int main(int argc, char *argv[]){
       	numPulsesReadIn = 0;
       }
 
-      /* if(payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds */
-      /* 	 || currentState!=PROG_STATE_RUN){ */
-      /* 	int phi=0; */
-      /* 	for(phi=0; phi<NUM_PHI_SECTORS; phi++){ */
-      /* 	  printf("Trying to write and link for phi sector %d...\n", phi); */
-      /* 	  writeFileAndLink(&payloadPowSpec[phi], phi); */
-      /* 	} */
-      /* 	if(currentState==PROG_STATE_RUN){ */
-      /* 	  /\* Reset average *\/ */
-      /* 	  for(phi=0; phi<NUM_PHI_SECTORS; phi++){ */
-      /* 	    memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t)); */
-      /* 	  } */
-      /* 	} */
-      /* } */
+      if((payloadPowSpec[0].unixTimeLastEvent > 0 &&
+	  payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
+      	 || currentState!=PROG_STATE_RUN){
+      	int phi=0;
+      	for(phi=0; phi<NUM_PHI_SECTORS; phi++){
+      	  printf("Trying to write and link for phi sector %d...\n", phi);
+      	  writeFileAndLink(&payloadPowSpec[phi], phi);
+      	}
+      	if(currentState==PROG_STATE_RUN){
+      	  /* Reset average */
+      	  for(phi=0; phi<NUM_PHI_SECTORS; phi++){
+      	    memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+      	  }
+      	}
+      }
 
       int count = 0;
       /* for(count=0;count<eventsReadFromDisk;count++) { */
@@ -436,7 +432,29 @@ void prepWriterStructs() {
 
     sprintf(gpuWriter.relBaseName,"%s/",GPU_ARCHIVE_DIR);
     sprintf(gpuWriter.filePrefix,"gpu");
-    for(diskInd=0;diskInd<DISK_TYPES;diskInd++)
-	gpuWriter.currentFilePtr[diskInd]=0;
+    for(diskInd=0;diskInd<DISK_TYPES;diskInd++){
+      gpuWriter.currentFilePtr[diskInd]=0;
+    }
     gpuWriter.writeBitMask=hkDiskBitMask;
+}
+
+
+int getNextEventNumber(int* run){
+
+  if(waisPulseEventNumbers==NULL){
+    numWaisPulses = 10001; //from wc -l
+    /* numWaisPulses = 2000; //499; 5625; //118160; // from wc -l     */
+    waisPulseEventNumbers = fopen("run352EventNumbers.txt", "r");
+    /* waisPulseEventNumbers = fopen("run152EventNumbers.txt", "r"); */
+    /* waisPulseEventNumbers = fopen("run130EventNumbers.txt", "r");     */
+    /* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r"); */
+    /* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r"); */
+  }
+  int eventNumber;
+  fscanf(waisPulseEventNumbers, "%d\t%d", run, &eventNumber);
+  /* printf("I'm looking in run %d for eventNumber %d\n", run[0], eventNumber); */
+  numPulsesReadIn++;
+
+  return eventNumber;
+
 }

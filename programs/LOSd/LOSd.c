@@ -39,7 +39,7 @@
 #define LOS_DEVICE "/dev/los"
 #endif
 
-#define NUM_HK_TELEM_DIRS 23 
+#define NUM_HK_TELEM_DIRS 26
 
 typedef enum {
   LOS_TELEM_FIRST=0,
@@ -61,6 +61,9 @@ typedef enum {
   LOS_TELEM_ADU5B_GGA,
   LOS_TELEM_SURFHK,
   LOS_TELEM_TURFRATE,
+  LOS_TELEM_AVGSURFHK,
+  LOS_TELEM_SUMTURFRATE,
+  LOS_TELEM_SSHK,
   LOS_TELEM_OTHER,
   LOS_TELEM_PEDESTAL,
   LOS_TELEM_REQUEST,
@@ -68,6 +71,65 @@ typedef enum {
   LOS_TELEM_TUFF, 
   LOS_TELEM_NOT_A_TELEM
 } LOSTelemType_t;
+
+ //May have to change this to be more robust and actually use a fixed string sizes, but will try this for now
+  static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
+    {LOSD_CMD_ECHO_TELEM_LINK_DIR,
+     MONITOR_TELEM_LINK_DIR,
+     HEADER_TELEM_LINK_DIR,
+     HK_TELEM_LINK_DIR,
+     ADU5A_SAT_TELEM_LINK_DIR,
+     ADU5B_SAT_TELEM_LINK_DIR,
+     G12_SAT_TELEM_LINK_DIR,
+     ADU5A_PAT_TELEM_LINK_DIR,
+     ADU5B_PAT_TELEM_LINK_DIR,
+     G12_POS_TELEM_LINK_DIR,
+     GPU_TELEM_LINK_DIR,
+     ADU5A_VTG_TELEM_LINK_DIR,
+     ADU5B_VTG_TELEM_LINK_DIR,
+     G12_GGA_TELEM_LINK_DIR,
+     ADU5A_GGA_TELEM_LINK_DIR,
+     ADU5B_GGA_TELEM_LINK_DIR,
+     SURFHK_TELEM_LINK_DIR,
+     TURFHK_TELEM_LINK_DIR,
+     AVGSURFHK_TELEM_LINK_DIR,
+     SUMTURFHK_TELEM_LINK_DIR,
+     SSHK_TELEM_LINK_DIR,
+     OTHER_MONITOR_TELEM_LINK_DIR,
+     PEDESTAL_TELEM_LINK_DIR,
+     REQUEST_TELEM_LINK_DIR, 
+     RTL_TELEM_LINK_DIR, 
+     TUFF_TELEM_LINK_DIR
+    };
+  static char *telemDirs[NUM_HK_TELEM_DIRS]=
+    {LOSD_CMD_ECHO_TELEM_DIR,
+     MONITOR_TELEM_DIR,
+     HEADER_TELEM_DIR,
+     HK_TELEM_DIR,
+     ADU5A_SAT_TELEM_DIR,
+     ADU5B_SAT_TELEM_DIR,
+     G12_SAT_TELEM_DIR,
+     ADU5A_PAT_TELEM_DIR,
+     ADU5B_PAT_TELEM_DIR,
+     G12_POS_TELEM_DIR,
+     GPU_TELEM_DIR,
+     ADU5A_VTG_TELEM_DIR,
+     ADU5B_VTG_TELEM_DIR,
+     G12_GGA_TELEM_DIR,
+     ADU5A_GGA_TELEM_DIR,
+     ADU5B_GGA_TELEM_DIR,
+     SURFHK_TELEM_DIR,
+     TURFHK_TELEM_DIR,
+     AVGSURFHK_TELEM_DIR,
+     SUMTURFHK_TELEM_DIR,
+     SSHK_TELEM_DIR,
+     OTHER_MONITOR_TELEM_DIR,
+     PEDESTAL_TELEM_DIR,
+     REQUEST_TELEM_DIR, 
+     RTL_TELEM_DIR, 
+     TUFF_TELEM_DIR
+    };
+
 
 int initDevice();
 void sendWakeUpBuffer();
@@ -190,7 +252,7 @@ void * watchdogThread(void * unused)
 
  int main(int argc, char *argv[])
  {
-   int pri,retVal,firstTime=1;
+   int pri,retVal,firstTime=1,ind=0;
    time_t lastRefresh=0;
    time_t lastUpdate=0;
    time_t currentTime=0;
@@ -243,29 +305,11 @@ void * watchdogThread(void * unused)
    }
 
    makeDirectories(PRIORITIZERD_EVENT_LINK_DIR);
-   makeDirectories(HEADER_TELEM_LINK_DIR);
-   makeDirectories(SURFHK_TELEM_LINK_DIR);
-   makeDirectories(TURFHK_TELEM_LINK_DIR);
-   makeDirectories(PEDESTAL_TELEM_LINK_DIR);
-   makeDirectories(HK_TELEM_LINK_DIR);
-   makeDirectories(MONITOR_TELEM_LINK_DIR);
-   makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
-   makeDirectories(G12_GGA_TELEM_LINK_DIR);
-   makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
-   makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
-   makeDirectories(G12_SAT_TELEM_LINK_DIR);
-   makeDirectories(G12_POS_TELEM_LINK_DIR);
-   makeDirectories(GPU_TELEM_LINK_DIR);
-   makeDirectories(RTL_TELEM_LINK_DIR);
-   makeDirectories(TUFF_TELEM_LINK_DIR);
-   makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
-   makeDirectories(REQUEST_TELEM_LINK_DIR);
+
+   
+    for(ind=0;ind<NUM_HK_TELEM_DIRS;ind++) {
+      makeDirectories(telemLinkDirs[ind]);
+    }
 
 
    //Fill event dir names
@@ -734,57 +778,7 @@ void fillBufferWithHk()
     
   static int wdHks[NUM_HK_TELEM_DIRS]={0};
   static int numHkLinks[NUM_HK_TELEM_DIRS]={0};
-  //May have to change this to be more robust and actually use a fixed string sizes, but will try this for now
-  static char *telemLinkDirs[NUM_HK_TELEM_DIRS]=
-    {LOSD_CMD_ECHO_TELEM_LINK_DIR,
-     MONITOR_TELEM_LINK_DIR,
-     HEADER_TELEM_LINK_DIR,
-     HK_TELEM_LINK_DIR,
-     ADU5A_SAT_TELEM_LINK_DIR,
-     ADU5B_SAT_TELEM_LINK_DIR,
-     G12_SAT_TELEM_LINK_DIR,
-     ADU5A_PAT_TELEM_LINK_DIR,
-     ADU5B_PAT_TELEM_LINK_DIR,
-     G12_POS_TELEM_LINK_DIR,
-     GPU_TELEM_LINK_DIR,
-     ADU5A_VTG_TELEM_LINK_DIR,
-     ADU5B_VTG_TELEM_LINK_DIR,
-     G12_GGA_TELEM_LINK_DIR,
-     ADU5A_GGA_TELEM_LINK_DIR,
-     ADU5B_GGA_TELEM_LINK_DIR,
-     SURFHK_TELEM_LINK_DIR,
-     TURFHK_TELEM_LINK_DIR,
-     OTHER_MONITOR_TELEM_LINK_DIR,
-     PEDESTAL_TELEM_LINK_DIR,
-     REQUEST_TELEM_LINK_DIR, 
-     RTL_TELEM_LINK_DIR, 
-     TUFF_TELEM_LINK_DIR
-    };
-  static char *telemDirs[NUM_HK_TELEM_DIRS]=
-    {LOSD_CMD_ECHO_TELEM_DIR,
-     MONITOR_TELEM_DIR,
-     HEADER_TELEM_DIR,
-     HK_TELEM_DIR,
-     ADU5A_SAT_TELEM_DIR,
-     ADU5B_SAT_TELEM_DIR,
-     G12_SAT_TELEM_DIR,
-     ADU5A_PAT_TELEM_DIR,
-     ADU5B_PAT_TELEM_DIR,
-     G12_POS_TELEM_DIR,
-     GPU_TELEM_DIR,
-     ADU5A_VTG_TELEM_DIR,
-     ADU5B_VTG_TELEM_DIR,
-     G12_GGA_TELEM_DIR,
-     ADU5A_GGA_TELEM_DIR,
-     ADU5B_GGA_TELEM_DIR,
-     SURFHK_TELEM_DIR,
-     TURFHK_TELEM_DIR,
-     OTHER_MONITOR_TELEM_DIR,
-     PEDESTAL_TELEM_DIR,
-     REQUEST_TELEM_DIR, 
-     RTL_TELEM_DIR, 
-     TUFF_TELEM_DIR
-    };
+ 
   static int maxPacketSize[NUM_HK_TELEM_DIRS]=
     {sizeof(CommandEcho_t),
      sizeof(MonitorStruct_t),
@@ -804,6 +798,9 @@ void fillBufferWithHk()
      sizeof(GpsGgaStruct_t),     
      sizeof(FullSurfHkStruct_t),
      sizeof(TurfRateStruct_t),
+     sizeof(AveragedSurfHkStruct_t),
+     sizeof(SummedTurfRateStruct_t),
+     sizeof(SSHkDataStruct_t),
      sizeof(OtherMonitorStruct_t),
      sizeof(FullLabChipPedStruct_t),
      4000, //Who knows why, 

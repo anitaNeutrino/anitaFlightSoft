@@ -27,7 +27,7 @@
 
 //#define DEBUG_FILE 1
 #define ADU5A_DEBUG "/tmp/fullAdu5A"
-#define ADU5B_DEBUG "/tmp/fullAdu5A"
+#define ADU5B_DEBUG "/tmp/fullAdu5B"
 
 
 // Forward declarations
@@ -83,6 +83,7 @@ int fdG12,fdAdu5A,fdAdu5B;//,fdMag
 //Output config stuff
 int printToScreen=0;
 int verbosity=0;
+int saveAttitudeForTuff = 0; 
 
 // Config stuff for G12
 float g12PpsPeriod=1;
@@ -279,7 +280,7 @@ int main (int argc, char *argv[])
 
 #ifdef DEBUG_FILE
     unlink(ADU5A_DEBUG);
-    unlink(ADU5A_DEBUG);
+    unlink(ADU5B_DEBUG);
 #endif
 
     //Main event loop
@@ -400,6 +401,7 @@ int readConfigFile()
     if(kvpStatus == CONFIG_E_OK) {
 	printToScreen=kvpGetInt("printToScreen",-1);
 	verbosity=kvpGetInt("verbosity",-1);
+        saveAttitudeForTuff = kvpGetInt("saveAttitudeForTuff",0); 
 	if(printToScreen<0) {
 	    syslog(LOG_WARNING,
 		   "Couldn't fetch printToScreen, defaulting to zero");
@@ -832,11 +834,12 @@ int checkAdu5A()
     static int lastStar=-10;
     retVal=isThereDataNow(fdAdu5A);
     usleep(5);
+    if(retVal!=1) return 0;
 #ifdef DEBUG_FILE
     FILE *fpTempOut=fopen(ADU5A_DEBUG,"a");
 #endif
 //    printf("Check ADU5A got retVal %d\n",retVal);
-    if(retVal!=1) return 0;
+
     retVal=read(fdAdu5A, tempData, ADU5_DATA_SIZE);  
     if(retVal>0) {
 #ifdef DEBUG_FILE
@@ -1251,6 +1254,9 @@ void writeSharedPosition(GpsG12PosStruct_t * pos)
 {
     char theFilename[FILENAME_MAX];
     int retVal; 
+
+    if (!saveAttitudeForTuff) return; 
+
     sprintf(theFilename, "%s/posG12_%d.dat", GPSD_HEADING_DIR, pos->unixTime); 
     retVal = writeStruct(pos, theFilename, sizeof(GpsG12PosStruct_t)); 
     if (retVal < 0) 
@@ -2005,6 +2011,7 @@ void writeSharedHeading(GpsAdu5PatStruct_t * pat, char whichPAT)
 {
     char theFilename[FILENAME_MAX];
     int retVal; 
+    if (!saveAttitudeForTuff) return; 
     sprintf(theFilename, "%s/pat%c_%d.dat", GPSD_HEADING_DIR, whichPAT, pat->unixTime); 
     retVal = writeStruct(pat, theFilename, sizeof(GpsAdu5PatStruct_t)); 
     if (retVal < 0) 

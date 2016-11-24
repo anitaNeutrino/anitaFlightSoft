@@ -8,36 +8,38 @@ export PATH=${ANITA_FLIGHT_SOFT_DIR}/bin:${PATH}
 export LD_LIBRARY_PATH=${ANITA_FLIGHT_SOFT_DIR}/lib:${LD_LIBRARY_PATH}
 
 
+systemctl start ntpd > /tmp/yesIDid
+
 ### Now Prioritizerd will try to start X... hopefully this works !
-# Start X as user 
-daemon -u anita -r X -n X 
+# Start X as user
+daemon -u anita -r X -n X --env="DISPLAY=:0"
 
 daemon -u anita -r SIPd -n SIPd
 
 #turnAllOff
 
 
-### Do this so that the RTL's can restart themselves 
+### Do this so that the RTL's can restart themselves
 chmod a+w -R /dev/bus/usb/
 
 
 #Start Cmdd
 daemon -u anita -r Cmdd -n Cmdd
 
-#Will have to change this to move 
-/usr/sbin/runuser -u anita /home/anita/flightSoft/script/startNewRun.sh 
-/usr/sbin/runuser -u anita /home/anita/flightSoft/script/createConfigAndLog.sh 
+#Will have to change this to move
+/usr/sbin/runuser -u anita /home/anita/flightSoft/script/startNewRun.sh
+/usr/sbin/runuser -u anita /home/anita/flightSoft/script/createConfigAndLog.sh
 sleep 5
 daemon -u anita -r Archived -n Archived
 daemon -u anita  -r Eventd -n Eventd
 daemon -u anita -r GPSd -n GPSd
 daemon -u anita -r Hkd -n Hkd
-daemon -u anita -r LOSd -n LOSd --attempts 20 
+daemon -u anita -r LOSd -n LOSd --attempts 20
 daemon -u anita -r Openportd -n Openportd
 
-## I don't think those environmental variables are needed anymore... perhaps even harmful? 
+## I don't think those environmental variables are needed anymore... perhaps even harmful?
 #daemon -u anita -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0 COMPUTE=:0"
-daemon -u anita -r Prioritizerd -n Prioritizerd 
+daemon -u anita -r Prioritizerd -n Prioritizerd
 daemon -u anita -r Monitord -n Monitord
 daemon -u anita -r Calibd -n Calibd
 daemon -u anita -r Playbackd -n Playbackd

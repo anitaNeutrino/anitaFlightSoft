@@ -50,8 +50,8 @@ int digitalCarrierNum=1;
 
 
 // Relay states
-int stateAmplite1=0;
-int stateAmplite2=0;
+int stateTuff1=0;
+int stateTuff2=0;
 int stateBZAmpa1=0;
 int stateBZAmpa2=0;
 int stateNTUAmpa=0;
@@ -149,7 +149,7 @@ int main (int argc, char *argv[])
 	writeSec=0;
 	while(currentState==PROG_STATE_RUN) {	  
 	    if(printToScreen) {
-	      printf("Amplite1 (%d)  Amplite2 (%d)  BZAmpa1 (%d)  BZAmpa2 (%d)  NTUAmpa (%d)\tSB (%d) SSD_5V (%d) SSD_12V (%d) SSD_Shutdown (%d)\n",stateAmplite1,stateAmplite2,stateBZAmpa1,stateBZAmpa2,stateNTUAmpa,stateSB,stateNTUSSD5V,stateNTUSSD12V,stateNTUSSDShutdown);
+	      printf("Tuff1 (%d)  Tuff2 (%d)  BZAmpa1 (%d)  BZAmpa2 (%d)  NTUAmpa (%d)\tSB (%d) SSD_5V (%d) SSD_12V (%d) SSD_Shutdown (%d)\n",stateTuff1,stateTuff2,stateBZAmpa1,stateBZAmpa2,stateNTUAmpa,stateSB,stateNTUSSD5V,stateNTUSSD12V,stateNTUSSDShutdown);
 	    }
 	    //Set Relays to correct state
 	    //	    if(relaysChanged || firstTime) retVal=setRelays();
@@ -187,10 +187,10 @@ void writeStatus()
     theStatus.unixTime=unixTime;
     theStatus.status=0;
 
-    if(stateAmplite1) 
-	theStatus.status|=AMPLITE1_MASK;
-    if(stateAmplite2) 
-	theStatus.status|=AMPLITE2_MASK;
+    if(stateTuff1) 
+	theStatus.status|=TUFF1_MASK;
+    if(stateTuff2) 
+	theStatus.status|=TUFF2_MASK;
     if(stateBZAmpa1) 
 	theStatus.status|=BZAMPA1_MASK;
     if(stateBZAmpa2) 
@@ -242,8 +242,8 @@ int readConfigFile()
 	writePeriod=kvpGetInt("writePeriod",60);
 
 	//Relay States
-	stateAmplite1=kvpGetInt("stateAmplite1",0);
-	stateAmplite2=kvpGetInt("stateAmplite2",0);
+	stateTuff1=kvpGetInt("stateTuff1",0);
+	stateTuff2=kvpGetInt("stateTuff2",0);
 	stateBZAmpa1=kvpGetInt("stateBZAmpa1",0);
 	stateBZAmpa2=kvpGetInt("stateBZAmpa2",0);
 	stateNTUAmpa=kvpGetInt("stateNTUAmpa",0);
@@ -364,15 +364,15 @@ int setRelays()
 // Sets the relays to the state specified in Calibd.config
 {
     int retVal=0;
-    if(stateAmplite1)
-	retVal+=toggleRelay(AMPLITE1_ON_LOGIC/8,AMPLITE1_ON_LOGIC%8);
+    if(stateTuff1)
+	retVal+=toggleRelay(TUFF1_ON_LOGIC/8,TUFF1_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(AMPLITE1_OFF_LOGIC/8,AMPLITE1_OFF_LOGIC%8);
+	retVal+=toggleRelay(TUFF1_OFF_LOGIC/8,TUFF1_OFF_LOGIC%8);
 
-    if(stateAmplite2)
-	retVal+=toggleRelay(AMPLITE2_ON_LOGIC/8,AMPLITE2_ON_LOGIC%8);
+    if(stateTuff2)
+	retVal+=toggleRelay(TUFF2_ON_LOGIC/8,TUFF2_ON_LOGIC%8);
     else
-	retVal+=toggleRelay(AMPLITE2_OFF_LOGIC/8,AMPLITE2_OFF_LOGIC%8);
+	retVal+=toggleRelay(TUFF2_OFF_LOGIC/8,TUFF2_OFF_LOGIC%8);
 
     if(stateBZAmpa1)
 	retVal+=toggleRelay(BZAMPA1_ON_LOGIC/8,BZAMPA1_ON_LOGIC%8);

@@ -1,6 +1,6 @@
 <relays>
-stateAmplite1#I1=0;
-stateAmplite2#I1=0;
+stateTuff1#I1=0;
+stateTuff2#I1=0;
 stateBZAmpa1#I1=0;
 stateBZAmpa2#I1=0;
 stateNTUAmpa#I1=0;
@@ -19,7 +19,7 @@ printToScreen#I1=0;
 digitalCarrierNum#I1=0;
 relayWritePeriod#I1=60;
 readoutPeriod#I1=200;
-telemEvery#I1=10;
+telemEvery#I1=60;
 telemAverage#I1=1;
 adcAverage#I1=4;
 calibrationPeriod#I1=600;
@@ -28,10 +28,10 @@ calibrationPeriod#I1=600;
 
 <relaycontrol>
 ip470BoardLocation#I1=0;
-turnAmplite1OnLogic#I1=21;
-turnAmplite1OffLogic#I1=22;
-turnAmplite2OnLogic#I1=10;
-turnAmplite3OffLogic#I1=20;
+turnTuff1OnLogic#I1=21;
+turnTuff1OffLogic#I1=22;
+turnTuff2OnLogic#I1=10;
+turnTuff3OffLogic#I1=20;
 turnBZAmpa1OnLogic#I1=18;
 turnBZAmpa1OffLogic#I1=17;
 turnBZAmpa2OnLogic#I1=7;
