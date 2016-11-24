@@ -39,6 +39,7 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5]);
 int executeSipdControlCommand(int command, unsigned char args[3]);
 int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
+int executeCalibdExtraCommand(int command, unsigned char arg[2]);
 int executeRTLCommand(int command, unsigned char arg[2]); 
 int executeTuffCommand(int command, unsigned char arg[6]); 
 int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm ); 
@@ -962,6 +963,8 @@ int executeCommand(CommandStruct_t *theCmd)
     return executeLosdControlCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
   case GPSD_EXTRA_COMMAND:
     return executeGpsdExtracommand(theCmd->cmd[1],&(theCmd->cmd[2]));
+  case CALIBD_EXTRA_COMMAND:
+    return executeCalibdExtraCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
 
 
 	    
@@ -1772,8 +1775,49 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
     break;    
   }
   return 0;
-
 }
+
+
+int executeCalibdExtraCommand(int command, unsigned char arg[2])
+{
+  printf("executeCalibdExtraCommand %d %d %d\n",command,arg[0],arg[1]);
+  time_t rawtime;    
+  int ivalue=arg[0] + (arg[1]<<8);
+  float fvalue=0;
+  switch(command) {
+  case CALIBD_READOUT_PERIOD:
+    printf("CALIBD_READOUT_PERIOD %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","readoutPeriod",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;  
+  case CALIBD_TELEM_EVERY:
+    printf("CALIBD_TELEM_EVERY %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","telemEvery",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;   
+  case CALIBD_TELEM_AVERAGE:
+    printf("CALIBD_TELEM_AVERAGE %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","telemAverage",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;    
+  case CALIBD_ADC_AVERAGE:
+    printf("CALIBD_ADC_AVERAGE %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","adcAverage",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;    
+  case CALIBD_CALIBRATION_PERIOD:
+    printf("CALIBD_CALIBRATION_PERIOD %d\n",ivalue);
+    configModifyInt("Calibd.config","calibd","calibrationPeriod",ivalue,&rawtime);
+    sendSignal(ID_CALIBD,SIGUSR1);
+    return rawtime;  
+  default:
+    syslog(LOG_ERR,"Unknown Calibd Extra Command -- %d",command);
+    break;    
+  }
+  return 0;
+}
+
+
 
 int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalue2)
 {
