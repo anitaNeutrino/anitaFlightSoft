@@ -1,5 +1,6 @@
 #!/bin/bash
 echo "Killing Programs"
+daemon --stop -n X
 daemon --stop -n Archived
 daemon --stop -n Hkd
 daemon --stop -n GPSd

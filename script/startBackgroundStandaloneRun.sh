@@ -3,6 +3,7 @@ echo "Not currently enabled"
 exit
 
 echo "Killing Programs"
+daemon --stop -n X
 daemon --stop -n Archived
 daemon --stop -n Hkd
 daemon --stop -n GPSd
@@ -62,6 +63,7 @@ sleep 2
 echo "Starting Programs"
 daemon -r Cmdd -n Cmdd
 nice -n 20 daemon -r Archived -n Archived
+daemon -r X -n X --env
 daemon -r Hkd -n Hkd
 daemon -r GPSd -n GPSd
 daemon -r Monitord -n Monitord
@@ -71,7 +73,8 @@ daemon -r RTLd -n RTLd
 daemon -r Tuffd -n Tuffd 
 
 #Just to make sure
-daemon -r Prioritizerd -n Prioritizerd #--env="DISPLAY=:0"
+daemon -r X -n X --env="DISPLAY=:0" # Required for Prioritizerd
+daemon -r Prioritizerd -n Prioritizerd --env="DISPLAY=:0"
 daemon -r Eventd -n Eventd
 daemon -r LOSd -n LOSd
 daemon -r SIPd -n SIPd
