@@ -528,10 +528,10 @@ int analyzeHeading()
       tuffStruct.startSectors[i] =   (phi_start_notch) /  22.5; 
       tuffStruct.endSectors[i] =   (int) (ceil((phi_stop_notch) /  22.5)) % 16; 
 
-      if (heading_slope_sumw2 && heading_slope_estimate > slopeThresholdToNotchNextSector[i])
+      if (heading_slope_sumw2 && slopeThresholdToNotchNextSector[i] > 0 && heading_slope_estimate > slopeThresholdToNotchNextSector[i])
         tuffStruct.endSectors[i] = (tuffStruct.endSectors[i] + 1) % 16; 
 
-      if (heading_slope_sumw2 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
+      if (heading_slope_sumw2 && slopeThresholdToNotchNextSector[i] > 0 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
         tuffStruct.startSectors[i] = (tuffStruct.startSectors[i] - 1) % 16; 
 
       if (printToScreen)
@@ -605,7 +605,7 @@ int writeState(int changed)
       if (temp <= -273)  // this means it timed out or other error
       {
 
-        if (temp == -991) 
+        if (temp == -999) 
         {
               syslog(LOG_ERR, "Tuffd self-terminating."); 
               sleep(2); 
@@ -669,14 +669,19 @@ int setNotches()
 {
   int i; 
   char tmpname[512]; 
+  char bintmpname[512]; 
   FILE * outfile; 
+  FILE * binfile; 
   time_t theTime; 
+  unsigned short binstatus;
 
   time(&theTime); 
 
   //open temporary file to avoid race conditions 
   sprintf(tmpname,"%s~",TUFF_NOTCH_LOOKUP); 
   outfile = fopen(tmpname,"w"); 
+  sprintf(bintmpname,"%s~",TUFF_NOTCH_BIN_LOOKUP); 
+  binfile = fopen(bintmpname,"w"); 
   if (!outfile) syslog(LOG_ERR, "Could not open %s for writing", tmpname); 
 
 
@@ -684,15 +689,27 @@ int setNotches()
   for (i = 0; i < NUM_TUFF_NOTCHES; i++)
   {
     syslog(LOG_INFO, "Tuffd: Setting notch %d range to [%d %d],", i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
+    binstatus = 0; 
 
     if (outfile) fprintf(outfile, "\nNOTCH %d: ", i); 
     if ( tuffStruct.startSectors[i] == 16 && tuffStruct.endSectors[i] == 16) 
     {
       if (outfile) fprintf(outfile, "DISABLED"); 
+      if (binfile) fwrite(&binstatus,2,1,binfile); 
     }
     else
     {
       if (outfile) fprintf(outfile, "ENABLED FOR PHI SECTORS %d to %d", tuffStruct.startSectors[i]+1, tuffStruct.endSectors[i]+1); 
+
+      if (binfile)
+      {
+        int j; 
+        for (j = tuffStruct.startSectors[i]; j <= tuffStruct.endSectors[i]; j=( (j+1) % 16))
+        {
+          binstatus |= (1 << j); 
+        }
+        if (binfile) fwrite(&binstatus,2,1,binfile); 
+      }
     }
     tuff_setNotchRange(device, i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
   }
@@ -710,6 +727,12 @@ int setNotches()
 
     //rename on top of old file 
     rename(tmpname, TUFF_NOTCH_LOOKUP); 
+  }
+
+  if (binfile)
+  {
+    fclose(binfile);
+    rename(bintmpname, TUFF_NOTCH_BIN_LOOKUP); 
   }
 
   return 0; 
@@ -1293,7 +1316,7 @@ int main(int nargs, char ** args)
               memcpy(buf, buf+128, 128); 
             }
 
-            if (( where = strstr(buf,"boot irfcm")))
+            if (( where = strstr(buf,"boot")))
             {
 
               char * whereto = strchr(where, 'v'); 
