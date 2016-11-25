@@ -521,9 +521,10 @@ int analyzeHeading()
     {
       float phi_start_notch = heading_estimate - degreesFromNorthToNotch[i] + phiSectorOffset[i];  // this is probably wrong
       float phi_stop_notch = heading_estimate + degreesFromNorthToNotch[i] + phiSectorOffset[i]; 
-      if ( phi_start_notch < 0 ) phi_start_notch += 360; 
-      if ( phi_stop_notch > 360 ) phi_stop_notch -= 360; 
-      if ( phi_stop_notch < 0 ) phi_stop_notch += 360; 
+      while ( phi_start_notch < 0 ) phi_start_notch += 360; 
+      while ( phi_stop_notch > 360 ) phi_stop_notch -= 360; 
+      while ( phi_stop_notch < 0 ) phi_stop_notch += 360; 
+      while ( phi_stop_notch > 360 ) phi_stop_notch -= 360; 
 
       tuffStruct.startSectors[i] =   (phi_start_notch) /  22.5; 
       tuffStruct.endSectors[i] =   (int) (ceil((phi_stop_notch) /  22.5)) % 16; 
