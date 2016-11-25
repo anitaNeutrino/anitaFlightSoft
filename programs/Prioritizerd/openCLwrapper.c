@@ -16,7 +16,7 @@
 #include <math.h>
 #include <unistd.h>
 
-void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType){
+void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType, int sleepTimeAfterKillingX){
 
   /* See how many platforms are available.*/
   cl_uint numPlatforms;
@@ -55,9 +55,11 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     fprintf(stderr, "This normally means I can't talk to the X server for some reason.\n");
     fprintf(stderr, "Exiting program.\n");
     system("killall X");
-    sleep(10);
+    sleep(sleepTimeAfterKillingX);
     raise(SIGTERM);
   }
+  syslog(LOG_INFO, "Success! %d device(s) found the platform %s\n", numDevices, platNames[myPlatform]);
+  printf("Success! %d device(s) found the platform %s\n", numDevices, platNames[myPlatform]);
 
   /* Prints useful information about the GPU architecture to the screen.*/
   size_t maxWorkGroupSize;
@@ -145,6 +147,8 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
     raise(SIGTERM);
   }
   source_str = (char *)malloc(MAX_SOURCE_SIZE);
+  memset(source_str, 0, MAX_SOURCE_SIZE);
+
   /* source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp); */
   fread(source_str, 1, MAX_SOURCE_SIZE, fp);
   fclose(fp);

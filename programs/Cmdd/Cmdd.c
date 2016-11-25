@@ -119,6 +119,8 @@ char ntuName[FILENAME_MAX];
 //Needed for commands
 int pidGoals[3];
 int surfTrigBandMasks[ACTIVE_SURFS];
+int dynamicL2ThresholdOverRate[PHI_SECTORS]={20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000};
+int dynamicL2ThresholdUnderRate[PHI_SECTORS]={10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000};
 int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
@@ -507,7 +509,9 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue2=theCmd->cmd[2];//+(theCmd->cmd[3]<<8);
     printf("CMD_DISABLE_DISK: %d %#x %#x\n",theCmd->cmd[0],theCmd->cmd[1],theCmd->cmd[2]);
     printf("ivalue2==%d ivalue==%d\n",ivalue2,ivalue);
-    return disableDisk(ivalue,ivalue2);
+    //RJN change to switch order of arguments
+
+    return disableDisk(ivalue2,ivalue);
   case CMD_MOUNT_ARGH:
     return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
@@ -2344,6 +2348,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     if(retVal) return 0;
     return rawtime;
   case ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER:
+    readAcqdConfig();
     utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2353,13 +2358,29 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
     utemp=(args[4]);
-    ivalue[0]=utemp; //This is the window size in seconds
-    configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdOverRate",uvalue[0],&rawtime);
+    ivalue[0]=utemp; //This is the phi sector
+    if(ivalue[0]<0 || ivalue[0]>15) return 0;
+    dynamicL2ThresholdOverRate[ivalue[0]]=uvalue[0];
+    configModifyIntArray("Acqd.config","rates","dynamicL2ThresholdOverRate",&dynamicL2ThresholdOverRate[0],PHI_SECTORS,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case  ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER_WINDOW:
+    utemp=(args[0]);
+    ivalue[0]=utemp;
     configModifyInt("Acqd.config","rates","dynamicL2ThresholdOverWindow",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
+  case  ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER_WINDOW:
+    utemp=(args[0]);
+    ivalue[0]=utemp;
+    configModifyInt("Acqd.config","rates","dynamicL2ThresholdUnderWindow",ivalue[0],&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
   case ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER:
+    readAcqdConfig();
     utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2369,9 +2390,10 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
     utemp=(args[4]);
-    ivalue[0]=utemp; //This is the window size in seconds
-    configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdUnderRate",uvalue[0],&rawtime);
-    configModifyInt("Acqd.config","rates","dynamicL2ThresholdUnderWindow",ivalue[0],&rawtime);
+    ivalue[0]=utemp; //This is the phi sector
+    if(ivalue[0]<0 || ivalue[0]>15) return 0;
+    dynamicL2ThresholdUnderRate[ivalue[0]]=uvalue[0];
+    configModifyIntArray("Acqd.config","rates","dynamicL2ThresholdUnderRate",&dynamicL2ThresholdUnderRate[0],PHI_SECTORS,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
@@ -2491,17 +2513,17 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_PHI_MASK_HPOL:
-    utemp=(args[0]);
-    uvalue[0]=utemp;
-    utemp=(args[1]);
-    uvalue[0]|=(utemp<<8);
-    syslog(LOG_INFO,"ACQD_RATE_SET_PHI_MASK_HPOL: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
+  /* case ACQD_RATE_SET_PHI_MASK_HPOL: 	     */
+  /*   utemp=(args[0]);	     */
+  /*   uvalue[0]=utemp; */
+  /*   utemp=(args[1]); */
+  /*   uvalue[0]|=(utemp<<8); */
+  /*   syslog(LOG_INFO,"ACQD_RATE_SET_PHI_MASK_HPOL: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]); */
 
-    configModifyUnsignedInt("Acqd.config","thresholds","phiTrigMaskH",uvalue[0],&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime;
+  /*   configModifyUnsignedInt("Acqd.config","thresholds","phiTrigMaskH",uvalue[0],&rawtime); */
+  /*   retVal=sendSignal(ID_ACQD,SIGUSR1); */
+  /*   if(retVal) return 0; */
+  /*   return rawtime; */
 
   default:
     fprintf(stderr,"Unknown Acqd Rate Command -- %d\n",command);
@@ -2988,6 +3010,27 @@ int readAcqdConfig()
 	     kvpErrorString(kvpStatus));
       if(printToScreen)
 	fprintf(stderr,"kvpGetIntArray(surfTrigBandMasks): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
+ tempNum=PHI_SECTORS;
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdOverRate",&(dynamicL2ThresholdOverRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
+    //    dynamicL2ThresholdUnderRate=kvpGetInt("dynamicL2ThresholdUnderRate",100000);
+    tempNum=PHI_SECTORS;
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdUnderRate",&(dynamicL2ThresholdUnderRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s\n",
 		kvpErrorString(kvpStatus));
     }
 
@@ -3900,6 +3943,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
 {
   time_t when;
   int notch_array[2*NUM_TUFF_NOTCHES];
+  int adjustArray[NUM_TUFF_NOTCHES];
   unsigned short cmd;
 
   switch(command)
@@ -3926,6 +3970,22 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break;
     case TUFF_SET_TELEM_AFTER_CHANGE:
        configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when);
+       break;
+    case TUFF_ADJUST_ACCORDING_TO_HEADING:
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
+       configModifyIntArray("Tuffd.config","notch","adjustAccordingToHeading",adjustArray, NUM_TUFF_NOTCHES, &when);
+       configModifyInt("GPSd.config","output", "saveAttitudeForTuff", (arg[0] || arg[1] || arg[2]) ? 1 : 0, &when);
+       break;
+    case TUFF_DEGREES_FROM_NORTH_TO_NOTCH:
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
+       configModifyIntArray("Tuffd.config","notch","tuffDegreesFromNorth",adjustArray, NUM_TUFF_NOTCHES, &when);
+       break;
+    case TUFF_SLOPE_THRESHOLD_TO_NOTCH_NEXT_SECTOR:
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
+       configModifyIntArray("Tuffd.config","notch","slopeThresholdToNotchNextSector",adjustArray, NUM_TUFF_NOTCHES, &when);
+       break;
+    case TUFF_MAX_HEADING_AGE:
+       configModifyInt("Tuffd.config","notch","maxHeadingAge",arg[0], &when);
        break;
     default:
       syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);
