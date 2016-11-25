@@ -417,18 +417,16 @@ float tuff_getTemperature(tuff_dev_t * d, unsigned int irfcm, int timeout)
     {
       buf[i] = 0; 
 
-      //really dumb hack that should result in a slow painful daeth, but check for a reset here 
+      //really dumb hack that should result in a slow painful death, but check for a reset here 
       // This is the only other place we commonly read in Tuffd. The real solution is to buffer
       // all input and check all calls for a boot, but whatever
       
-      p = strstr(buf, "boot irfcm"); 
+      p = strstr(buf, "boot"); 
       if (p) 
       {
-
+        printf("%s\n",buf); 
         syslog(LOG_ERR,"Reboot detected while reading temperature. Partial buffer: %s", p); 
         return -999; 
-
-
       }
 
 

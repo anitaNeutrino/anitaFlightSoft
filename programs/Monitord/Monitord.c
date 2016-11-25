@@ -220,10 +220,11 @@ int main (int argc, char *argv[])
 		else if(monData.diskInfo.diskSpace[0]<ramdiskKillAcqd || 
 			otherData.ramDiskInodes<inodesKillAcqd) {
 		    syslog(LOG_WARNING,"Killing Acqd -- ramDisk %d MB, %u inodes",monData.diskInfo.diskSpace[0],otherData.ramDiskInodes); 
-		    theCmd.numCmdBytes=3;
+		    theCmd.numCmdBytes=4;
 		    theCmd.cmd[0]=CMD_KILL_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
 		    theCmd.cmd[2]=0;
+		    theCmd.cmd[3]=0;
 		    writeCommandAndLink(&theCmd);
 		    killedAcqd=1;
 		    acqdKillTime=monData.unixTime;
@@ -231,10 +232,11 @@ int main (int argc, char *argv[])
 	    }
 	    else {
 		if(monData.diskInfo.diskSpace[0]>ramdiskKillAcqd+200 || (monData.unixTime-acqdKillTime)>maxAcqdWaitPeriod) {	
-		    theCmd.numCmdBytes=3;
+		    theCmd.numCmdBytes=4;
 		    theCmd.cmd[0]=CMD_START_PROGS;
 		    theCmd.cmd[1]=ACQD_ID_MASK;
 		    theCmd.cmd[2]=0;
+		    theCmd.cmd[3]=0;
 		    writeCommandAndLink(&theCmd);
 		    killedAcqd=0;
 		}
@@ -738,10 +740,11 @@ void checkProcesses(int dontStart)
     }
     if(sendCommand) {     
       theCmd.fromSipd=0;
-      theCmd.numCmdBytes=3;
+      theCmd.numCmdBytes=4;
       theCmd.cmd[0]=CMD_START_PROGS;      
       theCmd.cmd[1]=value&0xff;
       theCmd.cmd[2]=(value&0xff00)>>8;
+      theCmd.cmd[3]=(value&0xffff00)>>16;
       writeCommandAndLink(&theCmd);
     }
 }
@@ -834,10 +837,11 @@ void fillOtherStruct(OtherMonitorStruct_t *otherPtr)
 		    if(archivedCheckCount>5) {
 			if(!killedPrioritizerd) {
 			  theCmd.fromSipd=0;    
-			  theCmd.numCmdBytes=3;
+			  theCmd.numCmdBytes=4;
 			  theCmd.cmd[0]=CMD_REALLY_KILL_PROGS;
 			  theCmd.cmd[1]=0;
 			  theCmd.cmd[2]=0x1; //Prioritizerd
+			  theCmd.cmd[3]=0;
 			  writeCommandAndLink(&theCmd);
 			  killedPrioritizerd=1;
 			}
@@ -1066,8 +1070,8 @@ void checkSatasAreWorking()
 		theCmd.fromSipd=0;
 		theCmd.numCmdBytes=3;
 		theCmd.cmd[0]=CMD_DISABLE_DISK;
-		theCmd.cmd[1]=HELIUM1_DISK_MASK;
-		theCmd.cmd[2]=1;
+		theCmd.cmd[2]=HELIUM1_DISK_MASK;
+		theCmd.cmd[1]=1;
 		writeCommandAndLink(&theCmd);
 	    
 	    }
@@ -1084,8 +1088,8 @@ void checkSatasAreWorking()
 		theCmd.numCmdBytes=3;
 		theCmd.fromSipd=0;		
 		theCmd.cmd[0]=CMD_DISABLE_DISK;
-		theCmd.cmd[1]=HELIUM2_DISK_MASK;
-		theCmd.cmd[2]=1;
+		theCmd.cmd[2]=HELIUM2_DISK_MASK;
+		theCmd.cmd[1]=1;
 		writeCommandAndLink(&theCmd);
 	    
 	    }

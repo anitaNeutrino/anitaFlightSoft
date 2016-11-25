@@ -289,7 +289,7 @@ int analyzeHeading()
       if (pat.heading < 0 || pat.heading > 360) pat.heading = -1; 
       headingTimesB[headingIndexB]   = tod; 
       headingHistoryB[headingIndexB] = pat.heading;
-      headingWeightsB[headingIndexA] = 1./(pat.brms*pat.brms + pat.mrms*pat.mrms);
+      headingWeightsB[headingIndexB] = 1./(pat.brms*pat.brms + pat.mrms*pat.mrms);
       headingIndexB--; 
     }
 
@@ -578,7 +578,7 @@ int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADI
   regressed->slope_err     = sqrt(sumWA/delta);                             // slope error
   regressed->intercept_err = sqrt(sumXXA/delta);                            // intercept error
 
-  if (numA>0) return 0;
+  if (numA>1) return 0;
   else return -1;
   
 }
@@ -704,10 +704,23 @@ int setNotches()
       if (binfile)
       {
         int j; 
-        for (j = tuffStruct.startSectors[i]; j <= tuffStruct.endSectors[i]; j=( (j+1) % 16))
+        if (tuffStruct.startSectors[i] <= tuffStruct.endSectors[i]) 
         {
-          binstatus |= (1 << j); 
+          for (j = tuffStruct.startSectors[i]; j <= tuffStruct.endSectors[i]; j++)
+          {
+            binstatus |= (1 << j); 
+          }
         }
+        else 
+        {
+          for (j = tuffStruct.startSectors[i]; j <= tuffStruct.endSectors[i] + 16; j++)
+          {
+            binstatus |= (1 << (j % 16)); 
+          }
+
+        }
+
+
         if (binfile) fwrite(&binstatus,2,1,binfile); 
       }
     }

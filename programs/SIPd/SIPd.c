@@ -249,7 +249,7 @@ int numHksSent[NUM_HK_TELEM_DIRS]={0};
 int main(int argc, char *argv[])
 {
     //Temporary variables
-    int retVal,numCmds=256,count,pri;
+  int retVal,numCmds=256,count,pri,ind;
 
     /* Config file thingies */
     int status=0;
@@ -320,28 +320,10 @@ int main(int argc, char *argv[])
       makeDirectories(eventTelemLinkDirs[pri]);
     }
     makeDirectories(SIPD_CMD_ECHO_TELEM_LINK_DIR);
-    makeDirectories(HEADER_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_PAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_VTG_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_SAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_PAT_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_VTG_TELEM_LINK_DIR);
-    makeDirectories(G12_GGA_TELEM_LINK_DIR);
-    makeDirectories(ADU5A_GGA_TELEM_LINK_DIR);
-    makeDirectories(ADU5B_GGA_TELEM_LINK_DIR);
-    makeDirectories(G12_SAT_TELEM_LINK_DIR);
-    makeDirectories(G12_POS_TELEM_LINK_DIR);
-    makeDirectories(GPU_TELEM_LINK_DIR);
-    makeDirectories(PEDESTAL_TELEM_LINK_DIR);
-    makeDirectories(SURFHK_TELEM_LINK_DIR);
-    makeDirectories(TURFHK_TELEM_LINK_DIR);
-    makeDirectories(HK_TELEM_LINK_DIR);
-    makeDirectories(MONITOR_TELEM_LINK_DIR);
-    makeDirectories(OTHER_MONITOR_TELEM_LINK_DIR);
-    makeDirectories(REQUEST_TELEM_LINK_DIR);
-    makeDirectories(RTL_TELEM_LINK_DIR);
-
+    
+    for(ind=0;ind<NUM_HK_TELEM_DIRS;ind++) {
+      makeDirectories(telemLinkDirs[ind]);
+    }
 
     retVal=readConfig();
 #ifndef COMPLETELY_FAKE
