@@ -103,7 +103,7 @@ buffer* hilbertPeakBuffer = NULL;
 buffer* scratchBuffer = NULL;
 buffer* invFftBuffer = NULL;
 
-
+int anitaVersion = 4;
 
 struct timeval startTime;
 struct timezone dummy;
@@ -161,6 +161,10 @@ static int useDynamicFiltering = 1;
 static int conservativeStart = 0;
 static float spikeThresh_dB = 2;
 
+static float blastGradient = 0;
+
+static int deltaL3PhiTrig = 0;
+
 
 // For printing calibration numbers to /tmp
 FILE* gpuOutput = NULL;
@@ -199,9 +203,10 @@ void prepareGpuThings(){
   }
 
 
-
+  // these are deprecated for ANITA-4
   binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",5);
   absMagnitudeThresh_dBm=kvpGetFloat("absMagnitudeThresh_dBm",50);
+
   interceptOfImagePeakVsHilbertPeak = kvpGetFloat ("interceptOfImagePeakVsHilbertPeak", 1715.23327523);
   slopeOfImagePeakVsHilbertPeak = kvpGetFloat ("slopeOfImagePeakVsHilbertPeak", 49.10747809);
 
@@ -212,6 +217,8 @@ void prepareGpuThings(){
   invertTopRingInSoftware = kvpGetInt("invertTopRingInSoftware", 0);
   sleepTimeAfterKillingX=kvpGetInt("sleepTimeAfterKillingX",10);
 
+  blastGradient = kvpGetFloat("blastGradient", 0);
+  anitaVersion = kvpGetInt("anitaCalibVersion", 4);
 
   spikeThresh_dB=kvpGetFloat("spikeThresh_dB",1.5);
   conservativeStart=kvpGetInt("conservativeStart",0);
@@ -219,6 +226,8 @@ void prepareGpuThings(){
   stopDynamicFrequency = kvpGetFloat("stopDynamicFiltering", 1300);
   useDynamicFiltering = kvpGetInt("useDynamicFiltering", 1);
 
+
+  deltaL3PhiTrig = kvpGetInt("deltaL3PhiTrig", 1);
 
   printCalibTextFile = kvpGetInt("printCalibTextFile", 0);
   debugMode = kvpGetInt("debugMode", 0);
@@ -709,8 +718,57 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
     /* VPOL */
     phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern >> phiInd);
     /* HPOL, goes in back half of array */
-    phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
+
+
+    // OK, here I account for the fact that we don't have any HPol triggers in ANITA-4
+    if(anitaVersion >= 4){
+      phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern>>phiInd);
+    }
+    else{
+      phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
+    }
   }
+
+  short tempPhiV[NUM_PHI_SECTORS] = {0};
+  short tempPhiH[NUM_PHI_SECTORS] = {0};
+  for(phiInd=0; phiInd < NUM_PHI_SECTORS; phiInd++){
+
+    if(phiTrig[(eventInd)*NUM_PHI_SECTORS + phiInd] > 0){
+
+      int dPhi = 0;
+      for(dPhi = -deltaL3PhiTrig; dPhi <= deltaL3PhiTrig; dPhi++){
+	int thisPhi = phiInd + dPhi;
+	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
+	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
+
+	tempPhiV[thisPhi] = 1;
+      }
+    }
+
+    if(phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] > 0){
+
+      int dPhi = 0;
+      for(dPhi = -deltaL3PhiTrig; dPhi <= deltaL3PhiTrig; dPhi++){
+	int thisPhi = phiInd + dPhi;
+	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
+	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
+
+	tempPhiH[thisPhi] = 1;
+      }
+    }
+  }
+
+  for(phiInd=0; phiInd < NUM_PHI_SECTORS; phiInd++){
+    phiTrig[(eventInd)*NUM_PHI_SECTORS + phiInd] = tempPhiV[phiInd];
+    phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = tempPhiH[phiInd];
+  }
+
+
+
+  /*   phiTrig[(eventInd*NUM_PHI_SECTORS) + phiInd] */
+  /* } */
+
+
 }
 
 
@@ -987,11 +1045,13 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     unsigned short blastFlag = (header[eventInd].prioritizerStuff >> 1);
 
 
-
     float higherImagePeak = imagePeakV > imagePeakH ? imagePeakV : imagePeakH;
-    float normalizedHilbertPeak = (hilbertPeak[index2] - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
+    float higherHilbertPeak = hilbertPeak[index2];
+
+    float normalizedHilbertPeak = (higherHilbertPeak - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
     float priorityParam = sqrt(normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak);
     float thetaDegPeak = THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
+
 
 
     int priority = 0;
@@ -999,6 +1059,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       priority = 9;
     }
     else if(blastFlag > 0){
+      priority = 8;
+    }
+    else if(blastGradient > 0 && higherHilbertPeak > blastGradient*higherImagePeak){
+      // set priority 8 but don't raise blast flag
       priority = 8;
     }
     else{
