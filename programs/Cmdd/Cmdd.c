@@ -119,6 +119,8 @@ char ntuName[FILENAME_MAX];
 //Needed for commands
 int pidGoals[3];
 int surfTrigBandMasks[ACTIVE_SURFS];
+int dynamicL2ThresholdOverRate[PHI_SECTORS]={20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000};
+int dynamicL2ThresholdUnderRate[PHI_SECTORS]={10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000};
 int priDiskEncodingType[NUM_PRIORITIES];
 int priTelemEncodingType[NUM_PRIORITIES];
 int priTelemClockEncodingType[NUM_PRIORITIES];
@@ -2293,7 +2295,8 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER: 	    
+  case ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER:
+    readAcqdConfig();
     utemp=(args[0]);	    
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2303,13 +2306,29 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
     utemp=(args[4]);	          
-    ivalue[0]=utemp; //This is the window size in seconds
-    configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdOverRate",uvalue[0],&rawtime);
+    ivalue[0]=utemp; //This is the phi sector
+    if(ivalue[0]<0 || ivalue[0]>15) return 0;
+    dynamicL2ThresholdOverRate[ivalue[0]]=uvalue[0];
+    configModifyIntArray("Acqd.config","rates","dynamicL2ThresholdOverRate",&dynamicL2ThresholdOverRate[0],PHI_SECTORS,&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case  ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER_WINDOW:
+    utemp=(args[0]);
+    ivalue[0]=utemp;
     configModifyInt("Acqd.config","rates","dynamicL2ThresholdOverWindow",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER: 		    
+  case  ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER_WINDOW:
+    utemp=(args[0]);
+    ivalue[0]=utemp;
+    configModifyInt("Acqd.config","rates","dynamicL2ThresholdUnderWindow",ivalue[0],&rawtime);
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
+    if(retVal) return 0;
+    return rawtime;
+  case ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER:
+    readAcqdConfig();
     utemp=(args[0]);	    
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2319,12 +2338,13 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
     utemp=(args[4]);	          
-    ivalue[0]=utemp; //This is the window size in seconds
-    configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdUnderRate",uvalue[0],&rawtime);
-    configModifyInt("Acqd.config","rates","dynamicL2ThresholdUnderWindow",ivalue[0],&rawtime);
+    ivalue[0]=utemp; //This is the phi sector
+    if(ivalue[0]<0 || ivalue[0]>15) return 0;
+    dynamicL2ThresholdUnderRate[ivalue[0]]=uvalue[0];
+    configModifyIntArray("Acqd.config","rates","dynamicL2ThresholdUnderRate",&dynamicL2ThresholdUnderRate[0],PHI_SECTORS,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;    
+    return rawtime;
   case ACQD_RATE_SET_GLOBAL_THRESHOLD: 	    
     ivalue[0]=args[0]+(args[1]<<8);
     configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue[0],NULL);
@@ -2941,7 +2961,28 @@ int readAcqdConfig()
 		kvpErrorString(kvpStatus));
     }
 
+ tempNum=PHI_SECTORS;	       
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdOverRate",&(dynamicL2ThresholdOverRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+    
+    //    dynamicL2ThresholdUnderRate=kvpGetInt("dynamicL2ThresholdUnderRate",100000);
+    tempNum=PHI_SECTORS;	       
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdUnderRate",&(dynamicL2ThresholdUnderRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
 
+    
 
     for(surf=0;surf<ACTIVE_SURFS;surf++) {
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
