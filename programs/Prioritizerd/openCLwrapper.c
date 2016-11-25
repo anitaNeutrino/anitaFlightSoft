@@ -58,6 +58,8 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
     sleep(sleepTimeAfterKillingX);
     raise(SIGTERM);
   }
+  syslog(LOG_INFO, "Success! %d device(s) found the platform %s\n", numDevices, platNames[myPlatform]);
+  printf("Success! %d device(s) found the platform %s\n", numDevices, platNames[myPlatform]);
 
   /* Prints useful information about the GPU architecture to the screen.*/
   size_t maxWorkGroupSize;
