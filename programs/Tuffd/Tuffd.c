@@ -678,6 +678,7 @@ int setNotches()
 
   time(&theTime); 
 
+  tuffStruct.notchSetTime = theTime; 
   //open temporary file to avoid race conditions 
   sprintf(tmpname,"%s~",TUFF_NOTCH_LOOKUP); 
   outfile = fopen(tmpname,"w"); 
