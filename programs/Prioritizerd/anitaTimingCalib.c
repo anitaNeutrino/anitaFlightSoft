@@ -68,17 +68,69 @@ static fftw_complex* clockFreqHolder;
 
 static int positiveSaturation = 1000;
 static int negativeSaturation = -1000;
+static int asymSaturation = 500;
+int anitaCalibVersion = 4;
+
+
+
+static float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
+static float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
+int skipBlastRatio[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
 
 /*--------------------------------------------------------------------------------------------------------------*/
 /* Functions - initialization and clean up. */
 void prepareTimingCalibThings(){
+
+  kvpReset();
+  KvpErrorCode err = KVP_E_OK;
+  err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
+    syslog(LOG_ERR, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+  int numPhi = NUM_PHI;
+  err = kvpGetIntArray ("skipBlastRatioHPol", &skipBlastRatio[0][0], &numPhi);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load skipBlastRatioHPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+    syslog(LOG_ERR, "Warning! Trying to do load skipBlastRatioHPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+  err = kvpGetIntArray ("skipBlastRatioVPol", &skipBlastRatio[1][0], &numPhi);
+  if(err!=KVP_E_OK){
+    fprintf(stderr, "Warning! Trying to do load skipBlastRatioVPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+    syslog(LOG_ERR, "Warning! Trying to do load skipBlastRatioVPol from Prioritizerd.config returned %s\n", kvpErrorString(err));
+  }
+
+
+  maxThresholdBottomToTopRingPeakToPeakRatio = kvpGetFloat("blastRatioMax", 2.8);
+  minThresholdBottomToTopRingPeakToPeakRatio = kvpGetFloat("blastRatioMin", 1.1);
+
+  /* { */
+  /*   int pol=0; */
+  /*   for(pol=0; pol < 2; pol++){ */
+  /*     int phi=0; */
+  /*     for(phi=0; phi < 16; phi++){ */
+  /* 	printf("%d\t%d\t%d\n", pol, phi, skipBlastRatio[pol][phi]); */
+  /*     } */
+  /*   } */
+  /* } */
+
+  positiveSaturation = kvpGetInt("positiveSaturation", 1000);
+  negativeSaturation = kvpGetInt("negativeSaturation", -1000);
+  asymSaturation = kvpGetInt("asymSaturation", 500);
+  anitaCalibVersion = kvpGetInt("anitaCalibVersion", 4);
+
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
+  /* akimaSpline = gsl_interp_linear; */
 
   spline = NULL;
   interp = NULL;
 
-  const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR");
+
+  /* const char* flightSoftDir=getenv("ANITA_FLIGHT_SOFT_DIR"); */
+  const char* flightSoftDir="/home/anita/flightSoft";
 
   char justBinByBinFileName[FILENAME_MAX];
   sprintf(justBinByBinFileName, "%s/programs/Prioritizerd/justBinByBin.dat", flightSoftDir);
@@ -95,14 +147,12 @@ void prepareTimingCalibThings(){
   readInRcoLatchDelay(rcoLatchDelayFileName);
 
 
-  //readInRelativeCableDelay("/home/anita/flightSoft/programs/Prioritizerd/relativeCableDelays.dat");
   char relativeCableDelaysFileName[FILENAME_MAX];
-  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelays.dat", flightSoftDir);
+  sprintf(relativeCableDelaysFileName, "%s/programs/Prioritizerd/relativeCableDelaysAnita%d.dat", flightSoftDir, anitaCalibVersion);
   readInRelativeCableDelay(relativeCableDelaysFileName);
 
-  //readInVoltageCalib("/home/anita/flightSoft/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt");
   char simpleVoltageCalibrationHarmFileName[FILENAME_MAX];
-  sprintf(simpleVoltageCalibrationHarmFileName, "%s/programs/Prioritizerd/simpleVoltageCalibrationHarm.txt", flightSoftDir);
+  sprintf(simpleVoltageCalibrationHarmFileName, "%s/programs/Prioritizerd/simpleVoltageCalibrationAnita%d.txt", flightSoftDir, anitaCalibVersion);
   readInVoltageCalib(simpleVoltageCalibrationHarmFileName);
 
 
@@ -114,14 +164,7 @@ void prepareTimingCalibThings(){
   clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain,
 					  clockTimeDomain, FFTW_MEASURE);
 
-  kvpReset();
-  KvpErrorCode err = KVP_E_OK;
-  err = (KvpErrorCode) configLoad ("Prioritizerd.config","prioritizerd") ;
-  if(err!=KVP_E_OK){
-    fprintf(stderr, "Warning! Trying to load Prioritizerd.config returned %s\n", kvpErrorString(err));
-  }
-  positiveSaturation = kvpGetInt("positiveSaturation", 1000);
-  negativeSaturation = kvpGetInt("negativeSaturation", -1000);
+
   /* maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 3); */
 
   /* preCalculateTimeArrays(); */
@@ -768,28 +811,16 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
-  // now find largest peak-to-peak ratio for self triggered blasts.
-  const float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
-  const float minThresholdBottomToTopRingPeakToPeakRatio = 1.1;
-
   int phi=0;
-  int pol = 0;
   int maxPhi, maxPol;
-  short skipRatio[NUM_POLARIZATIONS][NUM_PHI] = {{0}};
-  for(pol=0; pol < NUM_POLARIZATIONS; pol++){
-    for(phi=0; phi < NUM_PHI; phi++){
-      skipRatio[pol][phi] = 0;
-    }
-  }
 
-  skipRatio[1][7] = 1; // REMOVE
-
+  int pol = 0;
   int numRatiosTested = 0;
   float maxBottomToTopPeakToPeakRatio = 0;
   for(pol=0; pol < NUM_POLARIZATIONS; pol++){
     for(phi=0; phi < NUM_PHI; phi++){
       if(bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi] > maxBottomToTopPeakToPeakRatio
-	 && !skipRatio[pol][phi]){
+	 && !skipBlastRatio[pol][phi]){
 	maxBottomToTopPeakToPeakRatio = bottomRingPeakToPeak[pol][phi]/topRingPeakToPeak[pol][phi];
 	maxPol = pol;
 	maxPhi = phi;
@@ -798,11 +829,10 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
     }
   }
 
-  // Now set flags...
 
-  const float asymThresh = 500;
+
   // Set surf saturation flag
-  if (fabs(eventAsym) > asymThresh || eventVMax > positiveSaturation || eventVMin < negativeSaturation){
+  if (fabs(eventAsym) > asymSaturation || eventVMax > positiveSaturation || eventVMin < negativeSaturation){
     theHeader->prioritizerStuff |= 1;
   }
 
@@ -969,6 +999,7 @@ void readInCalibratedDeltaTs(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1020,6 +1051,7 @@ void readInRcoLatchDelay(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1047,7 +1079,7 @@ void readInRcoLatchDelay(const char* fileName){
 
 void readInVoltageCalib(const char* fileName){
   FILE* inFile = fopen(fileName, "r");
-  int defaultVal = 1;
+  float defaultVal = 1;
 
   if( inFile != NULL){
     /* Skip human friendly header, after all I am a robot. */
@@ -1058,7 +1090,8 @@ void readInVoltageCalib(const char* fileName){
     }
   }
   else{
-    fprintf(stderr, "Couldn't find %s, assuming all calibration values = %d\n", fileName , defaultVal);
+    fprintf(stderr, "Couldn't find %s, assuming all calibration values = %1.1f\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %1.1f\n", fileName , defaultVal);
   }
   /* Got past header, now read in calibrated deltaTs */
   int surfInd=0;
@@ -1144,6 +1177,7 @@ void readInEpsilons(const char* fileName){
   }
   else{
     fprintf(stderr, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
+    syslog(LOG_ERR, "Couldn't find %s, assuming all calibration values = %lf\n", fileName , defaultVal);
   }
   int surfInd;
   for(surfInd=0; surfInd<ACTIVE_SURFS; surfInd++){

@@ -103,6 +103,8 @@ buffer* hilbertPeakBuffer = NULL;
 buffer* scratchBuffer = NULL;
 buffer* invFftBuffer = NULL;
 
+int anitaVersion = 4;
+
 struct timeval startTime;
 struct timezone dummy;
 struct rusage resourcesStart;
@@ -129,7 +131,7 @@ float staticNotchesHighEdgeMHz[MAX_NOTCHES] = {0,0,0,0,0,0,0,0,0,0};
 float slopeOfImagePeakVsHilbertPeak;
 float interceptOfImagePeakVsHilbertPeak;
 float absMagnitudeThresh_dBm;
-
+float binToBinDifferenceThresh_dB;
 
 /* Use reconstructed angle to tweak priorities */
 float thetaAngleLowForDemotion =-20;
@@ -138,8 +140,7 @@ int thetaAnglePriorityDemotion=1;
 
 
 /* Used for filtering in the GPU */
-float binToBinDifferenceThresh_dB;
-#define floatToShortConversionForPacket 32767./80
+#define floatToShortConversionForPacket 32767./60
 
 
 const float THETA_RANGE = 150;
@@ -152,7 +153,18 @@ unsigned int longTimeStartTime = 0;
 
 int debugMode = 0;
 int numGpuPacketsFilled = 0;
-int conservativeStart = 1;
+int sleepTimeAfterKillingX = 10;
+
+static float startDynamicFrequency=500;
+static float stopDynamicFrequency=1300;
+static int useDynamicFiltering = 1;
+static int conservativeStart = 0;
+static float spikeThresh_dB = 2;
+
+static float blastGradient = 0;
+
+static int deltaL3PhiTrig = 0;
+
 
 // For printing calibration numbers to /tmp
 FILE* gpuOutput = NULL;
@@ -191,8 +203,10 @@ void prepareGpuThings(){
   }
 
 
+  // these are deprecated for ANITA-4
   binToBinDifferenceThresh_dB=kvpGetFloat("binToBinDifferenceThresh_dB",5);
   absMagnitudeThresh_dBm=kvpGetFloat("absMagnitudeThresh_dBm",50);
+
   interceptOfImagePeakVsHilbertPeak = kvpGetFloat ("interceptOfImagePeakVsHilbertPeak", 1715.23327523);
   slopeOfImagePeakVsHilbertPeak = kvpGetFloat ("slopeOfImagePeakVsHilbertPeak", 49.10747809);
 
@@ -201,9 +215,22 @@ void prepareGpuThings(){
   thetaAnglePriorityDemotion = kvpGetInt("thetaAnglePriorityDemotion", 1);
 
   invertTopRingInSoftware = kvpGetInt("invertTopRingInSoftware", 0);
-  /* printf("invertTopRingInSoftware = %d\n", invertTopRingInSoftware); */
+  sleepTimeAfterKillingX=kvpGetInt("sleepTimeAfterKillingX",10);
+
+  blastGradient = kvpGetFloat("blastGradient", 0);
+  anitaVersion = kvpGetInt("anitaCalibVersion", 4);
+
+  spikeThresh_dB=kvpGetFloat("spikeThresh_dB",1.5);
+  conservativeStart=kvpGetInt("conservativeStart",0);
+  startDynamicFrequency = kvpGetFloat("startDynamicFiltering", 500);
+  stopDynamicFrequency = kvpGetFloat("stopDynamicFiltering", 1300);
+  useDynamicFiltering = kvpGetInt("useDynamicFiltering", 1);
+
+
+  deltaL3PhiTrig = kvpGetInt("deltaL3PhiTrig", 1);
 
   printCalibTextFile = kvpGetInt("printCalibTextFile", 0);
+  debugMode = kvpGetInt("debugMode", 0);
 
 
   gpuOutput = NULL;
@@ -262,7 +289,7 @@ void prepareGpuThings(){
   /* Use opencl functions to find out what platforms and devices we can use for this program. */
   myPlatform = 0; /* Here we choose platform 0 in advance of querying to see what's there. */
   myDevice = 0;   /* And device 0... one might have to change these as required. */
-  getPlatformAndDeviceInfo(platformIds, maxPlatforms, myPlatform, CL_DEVICE_TYPE_GPU);
+  getPlatformAndDeviceInfo(platformIds, maxPlatforms, myPlatform, CL_DEVICE_TYPE_GPU, sleepTimeAfterKillingX);
 
   /* Create context (list of platforms & devices which prog can use) */
   cl_context_properties properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platformIds[myPlatform], 0};
@@ -691,8 +718,57 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
     /* VPOL */
     phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern >> phiInd);
     /* HPOL, goes in back half of array */
-    phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
+
+
+    // OK, here I account for the fact that we don't have any HPol triggers in ANITA-4
+    if(anitaVersion >= 4){
+      phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern>>phiInd);
+    }
+    else{
+      phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
+    }
   }
+
+  short tempPhiV[NUM_PHI_SECTORS] = {0};
+  short tempPhiH[NUM_PHI_SECTORS] = {0};
+  for(phiInd=0; phiInd < NUM_PHI_SECTORS; phiInd++){
+
+    if(phiTrig[(eventInd)*NUM_PHI_SECTORS + phiInd] > 0){
+
+      int dPhi = 0;
+      for(dPhi = -deltaL3PhiTrig; dPhi <= deltaL3PhiTrig; dPhi++){
+	int thisPhi = phiInd + dPhi;
+	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
+	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
+
+	tempPhiV[thisPhi] = 1;
+      }
+    }
+
+    if(phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] > 0){
+
+      int dPhi = 0;
+      for(dPhi = -deltaL3PhiTrig; dPhi <= deltaL3PhiTrig; dPhi++){
+	int thisPhi = phiInd + dPhi;
+	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
+	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
+
+	tempPhiH[thisPhi] = 1;
+      }
+    }
+  }
+
+  for(phiInd=0; phiInd < NUM_PHI_SECTORS; phiInd++){
+    phiTrig[(eventInd)*NUM_PHI_SECTORS + phiInd] = tempPhiV[phiInd];
+    phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = tempPhiH[phiInd];
+  }
+
+
+
+  /*   phiTrig[(eventInd*NUM_PHI_SECTORS) + phiInd] */
+  /* } */
+
+
 }
 
 
@@ -969,11 +1045,13 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     unsigned short blastFlag = (header[eventInd].prioritizerStuff >> 1);
 
 
-
     float higherImagePeak = imagePeakV > imagePeakH ? imagePeakV : imagePeakH;
-    float normalizedHilbertPeak = (hilbertPeak[index2] - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
+    float higherHilbertPeak = hilbertPeak[index2];
+
+    float normalizedHilbertPeak = (higherHilbertPeak - interceptOfImagePeakVsHilbertPeak)/slopeOfImagePeakVsHilbertPeak;
     float priorityParam = sqrt(normalizedHilbertPeak*normalizedHilbertPeak + higherImagePeak*higherImagePeak);
     float thetaDegPeak = THETA_RANGE*((double)header[eventInd].peakThetaBin/NUM_BINS_THETA - 0.5);
+
 
 
     int priority = 0;
@@ -981,6 +1059,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
       priority = 9;
     }
     else if(blastFlag > 0){
+      priority = 8;
+    }
+    else if(blastGradient > 0 && higherHilbertPeak > blastGradient*higherImagePeak){
+      // set priority 8 but don't raise blast flag
       priority = 8;
     }
     else{
@@ -993,10 +1075,12 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
     }
 
     int thetaDemotionFlag = 0;
-    int inConservativeStartFlag = (conservativeStart > 0 && numGpuPacketsFilled > 1) ? 1 : 0;;
+    int inConservativeStartFlag = (conservativeStart > 0 && numGpuPacketsFilled < 1) ? 1 : 0;;
 
     if(inConservativeStartFlag > 0){
       priority = 6;
+      fprintf(stderr, "conservative start flag! \n");
+
     }
 
     /* Finally tweak priority based on reconstructed angle .. */
@@ -1140,7 +1224,7 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 	  const float deltaF = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING);
 
-	  longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]*=deltaF;
+	  longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]/=deltaF;
 
 	  // convert to dB, do I want to do this?
 	  float temp = longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd];
@@ -1157,20 +1241,14 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	/* fprintf(fOut, "\n"); */
 
 
-	const float diffThresh_dB = 1; // CONFIG
-	const float spikeThresh_dB = 2; // CONFIG
-	const float rollOffFrequency_MHz = 600; // CONFIG
-
 	// find local maxima and local minima of the power spectrum
 	int isLocalMinimum[NUM_SAMPLES/2] = {0};
 	int isLocalMaximum[NUM_SAMPLES/2] = {0};
-	int isAboveDiffThresh[NUM_SAMPLES/2] = {0};
 
 	float y0 = longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2)];
 	float y1 = longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + 1];
 	isLocalMinimum[0] = y0 < y1 ? 1 : 0;
 	isLocalMaximum[0] = y0 > y1 ? 1 : 0;
-	isAboveDiffThresh[0] = y1 - y0 > diffThresh_dB ? 1 : 0;
 
 	for(freqInd=1; freqInd < NUM_SAMPLES/2 - 1; freqInd++){
 	  float y0 = longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd - 1];
@@ -1180,7 +1258,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  isLocalMaximum[freqInd] = (y1 > y0 && y1 > y2) ? 1 : 0;
 	  isLocalMinimum[freqInd] = (y1 < y0 && y1 < y2) ? 1 : 0;
 
-	  isAboveDiffThresh[freqInd] = y2 - y1 > diffThresh_dB ? 1 : 0;
 	}
 
 	y0 = longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + NUM_SAMPLES/2 - 2];
@@ -1188,7 +1265,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	isLocalMinimum[NUM_SAMPLES/2 - 1] = y0 > y1 ? 1 : 0;
 	isLocalMaximum[NUM_SAMPLES/2 -1] = y0 < y1 ? 1 : 0;
 
-	isAboveDiffThresh[NUM_SAMPLES/2 - 1] = 0; // this point must be zero
 
 
 
@@ -1205,10 +1281,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	/*   fprintf(fOut, "%f ", isLocalMinimum[freqInd]*longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd]); */
 	/* } */
 
-	/* for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){ */
-	/*   fprintf(fOut, "%f ", isAboveDiffThresh[freqInd]*longTimeAvePowSpec[(pol*NUM_ANTENNAS + ant)*(NUM_SAMPLES/2) + freqInd]); */
-	/* } */
-
 
 
 
@@ -1223,18 +1295,19 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 	  longDynamicPassFilter[longBaseInd + freqInd] = 1;
 	}
 
+	if(useDynamicFiltering > 0){
 
-	/* const float deltaF_MHz = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING); */
-	/* int startInd = floor(rollOffFrequency_MHz/deltaF_MHz); */
-	/* int endInd = NUM_SAMPLES/2; */
-	int startInd = 0;
-	int endInd = NUM_SAMPLES/2;
+	  const float deltaF_MHz = 1e3/(NUM_SAMPLES*NOMINAL_SAMPLING);
+	  int startInd = floor(startDynamicFrequency/deltaF_MHz);
+	  int endInd = ceil(stopDynamicFrequency/deltaF_MHz);
 
-	updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB, startInd, endInd);
+	  // bounds check the dynamic filtering
+	  startInd = startInd < 0 ? 0 : startInd;
+	  endInd = endInd >= NUM_SAMPLES/2 ? NUM_SAMPLES/2 - 1 : endInd;
 
-	/* startInd = startInd + 1; */
-	/* endInd = 0; */
-	/* updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB, startInd, endInd); */
+	  updateLongDynamicPassFilter(pol, ant, longDynamicPassFilter, isLocalMinimum, isLocalMaximum,  spikeThresh_dB, startInd, endInd);
+	}
+
 
 
 	/* for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){ */
