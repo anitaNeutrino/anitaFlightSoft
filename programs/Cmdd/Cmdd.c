@@ -1965,6 +1965,7 @@ int executePrioritizerdCommand(int command, int value, int value2)
     configModifyIntArray("Prioritizerd.config","prioritizerd","skipBlastRatioHPol",skipBlastRatioHPol,16,&rawtime);
     break;
   case PRI_SKIP_BLAST_RATIO_VPOL:
+    printf("got value %d, value2 %d\n", value, value2);
     skipBlastRatioVPol[value]=value2;
     configModifyIntArray("Prioritizerd.config","prioritizerd","skipBlastRatioVPol",skipBlastRatioVPol,16,&rawtime);
     break;
