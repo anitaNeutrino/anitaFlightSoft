@@ -1648,6 +1648,7 @@ int readConfigFile()
 
     enableRateServo=kvpGetInt("enableRateServo",0);
     servoRateCalcPeriod=kvpGetInt("servoRateCalcPeriod",60);
+    printf("enableRateServo %d, servoRateCalcPeriod %d\n",enableRateServo,servoRateCalcPeriod);
     rateGoal=kvpGetFloat("rateGoal",5);
     ratePGain=kvpGetFloat("ratePGain",100);
     rateIGain=kvpGetFloat("rateIGain",1);
