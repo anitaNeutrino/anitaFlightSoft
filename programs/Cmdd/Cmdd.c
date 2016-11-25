@@ -150,6 +150,10 @@ float zArray[48]={0};
 float priorityParamsLowBinEdge[10];
 float priorityParamsHighBinEdge[10];
 
+float skipBlastRatioHPol[16];
+float skipBlastRatioVPol[16];
+float staticNotchesLowEdgeMHz[10];
+float staticNotchesHighEdgeMHz[10];
 
 
 //For GPS phi masking
@@ -1877,11 +1881,11 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
 int executePrioritizerdCommand(int command, int value, int value2)
 {
   time_t rawtime;
-  union
-  {
-    unsigned int u;
-    float f;
-  } cheat;
+  /* union */
+  /* { */
+  /*   unsigned int u; */
+  /*   float f; */
+  /* } cheat; */
   readPrioritizerdConfig();
   switch(command) {
   case PRI_PANIC_QUEUE_LENGTH:
@@ -2256,22 +2260,22 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_L1_TRIG_MASK_HPOL:
-    utemp=(args[0]);
-    uvalue[0]=utemp;
-    utemp=(args[1]);
-    uvalue[0]|=(utemp<<8);
-    utemp=(args[2]);
-    uvalue[0]|=(utemp<<16);
-    utemp=(args[3]);
-    uvalue[0]|=(utemp<<24);
-    syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK_HPOL: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
-	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
+  /* case ACQD_RATE_SET_L1_TRIG_MASK_HPOL: */
+  /*   utemp=(args[0]); */
+  /*   uvalue[0]=utemp; */
+  /*   utemp=(args[1]); */
+  /*   uvalue[0]|=(utemp<<8); */
+  /*   utemp=(args[2]); */
+  /*   uvalue[0]|=(utemp<<16); */
+  /*   utemp=(args[3]); */
+  /*   uvalue[0]|=(utemp<<24); */
+  /*   syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK_HPOL: %d %d %d %d -- %u -- %#x\n",args[0],args[1], */
+  /* 	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]); */
 
-    configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMaskH",uvalue[0],&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);
-    if(retVal) return 0;
-    return rawtime;
+  /*   configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMaskH",uvalue[0],&rawtime); */
+  /*   retVal=sendSignal(ID_ACQD,SIGUSR1); */
+  /*   if(retVal) return 0; */
+  /*   return rawtime; */
   case ACQD_RATE_SET_PHI_MASK:
     utemp=(args[0]);
     uvalue[0]=utemp;
