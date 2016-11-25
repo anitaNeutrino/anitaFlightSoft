@@ -140,7 +140,7 @@ int thetaAnglePriorityDemotion=1;
 
 
 /* Used for filtering in the GPU */
-#define floatToUCharConversionForPacket (256./60)
+#define floatToUCharConversionForPacket (255./60)
 
 
 const float THETA_RANGE = 150;
