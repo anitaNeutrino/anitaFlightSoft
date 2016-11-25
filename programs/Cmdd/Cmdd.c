@@ -1,7 +1,7 @@
 /*! \file Cmdd.c
-  \brief The Cmdd program that receives commands from SIPd 
-  and acts upon them 
-    
+  \brief The Cmdd program that receives commands from SIPd
+  and acts upon them
+
   This is the updated Cmdd program which is actually a daemon.
 
   July 2005  rjn@mps.ohio-state.edu
@@ -40,9 +40,9 @@ int executeSipdControlCommand(int command, unsigned char args[3]);
 int executeLosdControlCommand(int command, unsigned char args[2]);
 int executeGpsdExtracommand(int command, unsigned char arg[2]);
 int executeCalibdExtraCommand(int command, unsigned char arg[2]);
-int executeRTLCommand(int command, unsigned char arg[2]); 
-int executeTuffCommand(int command, unsigned char arg[6]); 
-int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm ); 
+int executeRTLCommand(int command, unsigned char arg[2]);
+int executeTuffCommand(int command, unsigned char arg[6]);
+int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm );
 int logRequestCommand(int logNum, int numLines);
 int writeCommandEcho(CommandStruct_t *theCommand, int unixTime);
 int readConfig();
@@ -214,35 +214,35 @@ int main (int argc, char *argv[])
     while(currentState==PROG_STATE_RUN) {
       //Check for new commands
       if((numCmds=checkForNewCommand())) {
-	if(printToScreen) 
-	  printf("Got %d commands\n",numCmds);		
+	if(printToScreen)
+	  printf("Got %d commands\n",numCmds);
 	//Got at least one command
 	for(count=0;count<numCmds;count++) {
-	  if(printToScreen) 
+	  if(printToScreen)
 	    printf("Checking cmd %d, (%#x)\n",count,theCmds[count].cmd[0]);
-	  printf("In loop count=%d\tnumCmds=%d\n",count,numCmds);		
+	  printf("In loop count=%d\tnumCmds=%d\n",count,numCmds);
 
 
 	  sprintf(logMessage,"Checking Cmd (%d bytes from SIPd %d)",
 		  theCmds[count].numCmdBytes,
 		  theCmds[count].fromSipd);
-	    
-		    
+
+
 	  if(checkCommand(&theCmds[count])) {
-	    for(ind=0;ind<theCmds[count].numCmdBytes;ind++) 
+	    for(ind=0;ind<theCmds[count].numCmdBytes;ind++)
 	      sprintf(logMessage,"%s %d",logMessage,(int)theCmds[count].cmd[ind]);
-	    
+
 	    syslog(LOG_INFO,"%s",logMessage);
 
-	    if(printToScreen) 
-	      printf("cmd %d good , (%#x)\n",count,theCmds[count].cmd[0]);		
+	    if(printToScreen)
+	      printf("cmd %d good , (%#x)\n",count,theCmds[count].cmd[0]);
 	    syslog(LOG_INFO,"Got Cmd %d, numBytes %d\n",
 		   theCmds[count].cmd[0],theCmds[count].numCmdBytes);
 
 	    time(&nowTime);
 	    if((nowTime-lastCmdTime)>30 ||
 	       !sameCommand(&theCmds[count],&lastCmd)) {
-			    
+
 	      retVal=executeCommand(&theCmds[count]);
 	      lastCmdTime=retVal;
 	      copyCommand(&theCmds[count],&lastCmd);
@@ -257,11 +257,11 @@ int main (int argc, char *argv[])
 
 	  }
 	}
-		
+
       }
       usleep(1000);
     }
-	
+
   } while(currentState==PROG_STATE_INIT);
   closeHkFilesAndTidy(&cmdWriter);
   unlink(CMDD_PID_FILE);
@@ -288,12 +288,12 @@ int checkForNewCommand() {
     }
     numCmdLinks=getNumLinks(wd);
   }
-    
+
   //Check for new inotify events
   retVal=checkLinkDirs(1,0);
   if(retVal || numCmdLinks)
     numCmdLinks=getNumLinks(wd);
-  
+
   if(numCmdLinks) {
     printf("There are %d cmd links\n",numCmdLinks);
     for(uptoCmd=0;uptoCmd<numCmdLinks;uptoCmd++) {
@@ -306,18 +306,18 @@ int checkForNewCommand() {
       removeFile(currentLinkname);
       printf("Removing %s -- %s\n",currentFilename,currentLinkname);
     }
-  }    
+  }
   return numCmdLinks;
 }
-    
+
 int checkCommand(CommandStruct_t *theCmd) {
   if (theCmd->numCmdBytes == 0)
   {
-    syslog(LOG_ERR,"Wrong number of command bytes for %d is %d\n",theCmd->cmd[0], theCmd->numCmdBytes);	
-    return 0; 
+    syslog(LOG_ERR,"Wrong number of command bytes for %d is %d\n",theCmd->cmd[0], theCmd->numCmdBytes);
+    return 0;
   }
   if(theCmd->numCmdBytes!=cmdLengths[(int)theCmd->cmd[0]]) {
-    syslog(LOG_ERR,"Wrong number of command bytes for %d: expected %d, got %d\n",theCmd->cmd[0],cmdLengths[(int)theCmd->cmd[0]],theCmd->numCmdBytes);	
+    syslog(LOG_ERR,"Wrong number of command bytes for %d: expected %d, got %d\n",theCmd->cmd[0],cmdLengths[(int)theCmd->cmd[0]],theCmd->numCmdBytes);
     fprintf(stderr,"Wrong number of command bytes for %d: expected %d, got %d\n",theCmd->cmd[0],cmdLengths[(int)theCmd->cmd[0]],theCmd->numCmdBytes);
     return 0;
   }
@@ -336,7 +336,7 @@ int sortOutPidFile(char *progName)
   writePidFile(CMDD_PID_FILE);
   return 0;
 }
-    
+
 
 int readConfig() {
   /* Config file thingies */
@@ -352,7 +352,7 @@ int readConfig() {
   status &= configLoad ("Cmdd.config","lengths") ;
   status &= configLoad ("Cmdd.config","output") ;
   eString = configErrorString (status) ;
-    
+
   if (status == CONFIG_E_OK) {
 
 
@@ -364,9 +364,9 @@ int readConfig() {
       syslog(LOG_ERR,"Couldn't get usbName");
       fprintf(stderr,"Couldn't get usbName\n");
     }
-	
-	
-	
+
+
+
     hkDiskBitMask=kvpGetInt("hkDiskBitMask",1);
     eventDiskBitMask=kvpGetInt("eventDiskBitMask",1);
 
@@ -390,8 +390,8 @@ int readConfig() {
       hkDiskBitMask&=(~NTU_DISK_MASK);
       eventDiskBitMask&=(~NTU_DISK_MASK);
     }
-	  
-	
+
+
 
     printToScreen=kvpGetInt("printToScreen",0);
     verbosity=kvpGetInt("verbosity",0);
@@ -402,7 +402,7 @@ int readConfig() {
       fprintf(stderr,"Problem getting cmdLengths -- %s\n",
 	      kvpErrorString(kvpStatus));
     }
-	
+
   }
   else {
     syslog(LOG_ERR,"Error reading config file: %s\n",eString);
@@ -411,11 +411,11 @@ int readConfig() {
 
 }
 
-int executeCommand(CommandStruct_t *theCmd) 
+int executeCommand(CommandStruct_t *theCmd)
 //Returns 0 if there was a problem and unixTime otherwise
 {
   printf("Have command %d\n",theCmd->cmd[0]);
-    
+
   time_t rawtime;
   int retVal=0;
   int ivalue;
@@ -425,13 +425,13 @@ int executeCommand(CommandStruct_t *theCmd)
   float fvalue;
   unsigned int uvalue,utemp;
   char theCommand[FILENAME_MAX];
-    
-    
-  printf("Command: %d\n", theCmd->cmd[0]); 
+
+
+  printf("Command: %d\n", theCmd->cmd[0]);
 
   switch(theCmd->cmd[0]) {
   case CMD_MAKE_NEW_RUN_DIRS:
-    makeNewRunDirs();	    
+    makeNewRunDirs();
     time(&rawtime);
     return rawtime;
     break;
@@ -440,7 +440,7 @@ int executeCommand(CommandStruct_t *theCmd)
     {
       killDataPrograms();
       retVal=makeNewRunDirs();
-      if(retVal==-1) return 0;	    	    
+      if(retVal==-1) return 0;
       time(&rawtime);
       startDataPrograms();
       return rawtime;
@@ -469,7 +469,7 @@ int executeCommand(CommandStruct_t *theCmd)
     retVal=system(theCommand);
     syslog(LOG_ERR,"Sending /sbin/halt -- retVal == %d -- %s\n",retVal,
 	   strerror(errno));
-    if(retVal==-1) return 0;	    
+    if(retVal==-1) return 0;
     time(&rawtime);
     return rawtime;
   case CMD_REBOOT:
@@ -479,7 +479,7 @@ int executeCommand(CommandStruct_t *theCmd)
     retVal=system(theCommand);
     syslog(LOG_ERR,"Sending /sbin/reboot -- retVal == %d -- %s\n",retVal,
 	   strerror(errno));
-    if(retVal==-1) return 0;	    
+    if(retVal==-1) return 0;
     time(&rawtime);
     return rawtime;
   case CMD_KILL_PROGS:
@@ -495,13 +495,13 @@ int executeCommand(CommandStruct_t *theCmd)
   case CMD_RESPAWN_PROGS:
     //Respawn progs
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
-    retVal=respawnPrograms(ivalue);	    
+    retVal=respawnPrograms(ivalue);
     return retVal;
   case CMD_START_PROGS:
     //Start progs
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
-    retVal=startPrograms(ivalue);	    
-    return retVal;      
+    retVal=startPrograms(ivalue);
+    return retVal;
   case CMD_DISABLE_DISK:
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2];//+(theCmd->cmd[3]<<8);
@@ -512,7 +512,7 @@ int executeCommand(CommandStruct_t *theCmd)
     return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
     printf("mount next ntu\n");
-    ivalue=theCmd->cmd[1];	    
+    ivalue=theCmd->cmd[1];
     return mountNextNtu(ivalue);
   case CMD_MOUNT_NEXT_USB:
     ivalue=theCmd->cmd[1];
@@ -576,7 +576,7 @@ int executeCommand(CommandStruct_t *theCmd)
     configModifyInt("Archived.config","archived","prioritySoft",ivalue3,&rawtime);
     retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
     return rawtime;
-  case ARCHIVE_PPS_DECIMATE:      
+  case ARCHIVE_PPS_DECIMATE:
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2];
     if(ivalue<1 || ivalue>2) return -1;
@@ -620,8 +620,8 @@ int executeCommand(CommandStruct_t *theCmd)
     retVal=sendSignal(ID_ARCHIVED,SIGUSR1);
     return rawtime;
 
-    
-    /*Modification for anita3 calibd - BenS 04/07/2014*/  
+
+    /*Modification for anita3 calibd - BenS 04/07/2014*/
   case CMD_TURN_TUFFS_ON:
     // modify both state flags, since relays lines are merged before reaching iRFCMS
     configModifyInt("Calibd.config","relays","stateTuff1",1,&rawtime);
@@ -693,7 +693,7 @@ int executeCommand(CommandStruct_t *theCmd)
     if(retVal) return 0;
     return rawtime;
 
-    
+
   case CMD_TURN_ALL_ON:
     //turnAllOn
     // modify both state flags, since relays lines are merged before reaching iRFCMS
@@ -733,9 +733,9 @@ int executeCommand(CommandStruct_t *theCmd)
     configModifyInt("Calibd.config","calibd","writePeriod",ivalue,&rawtime);
     retVal=sendSignal(ID_CALIBD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime; 
+    return rawtime;
 
-	    
+
   case SET_ADU5_PAT_PERIOD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     fvalue=((float)ivalue)/10.;
@@ -758,49 +758,49 @@ int executeCommand(CommandStruct_t *theCmd)
     configModifyFloat("GPSd.config","adu5b","vtgPeriod",((float)ivalue),&rawtime);
     retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;	    
+    return rawtime;
   case SET_G12_PPS_PERIOD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     configModifyFloat("GPSd.config","g12","ppsPeriod",((float)ivalue)/1000.,&rawtime);
     retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;    
+    return rawtime;
   case SET_G12_POS_PERIOD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     configModifyFloat("GPSd.config","g12","posPeriod",((float)ivalue)/1000.,&rawtime);
     retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;	   	    	    
-  case SET_G12_PPS_OFFSET: 
+    return rawtime;
+  case SET_G12_PPS_OFFSET:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     ivalue2=theCmd->cmd[3]+(theCmd->cmd[4]<<8);
     ivalue3=theCmd->cmd[5];
     fvalue=((float)ivalue) +((float)ivalue2)/10000.;
-    if(ivalue3==1) fvalue*=-1;	   
+    if(ivalue3==1) fvalue*=-1;
 
     //	    printf("%d %d %d -- Offset %3.4f\n",ivalue, ivalue2, ivalue3,fvalue);
     configModifyFloat("GPSd.config","g12","ppsOffset",fvalue,&rawtime);
     retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;	    	    
+    return rawtime;
   case SET_ADU5_CALIBRATION_12:
-    ivalue=theCmd->cmd[1];	  
+    ivalue=theCmd->cmd[1];
     svalue=theCmd->cmd[2];
     svalue|=(theCmd->cmd[3]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV12_1",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV12_1",((float)svalue)/1000.,&rawtime);
     svalue=theCmd->cmd[4];
     svalue|=(theCmd->cmd[5]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV12_2",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV12_2",((float)svalue)/1000.,&rawtime);
 
     svalue=theCmd->cmd[6];
     svalue|=(theCmd->cmd[7]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV12_3",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV12_3",((float)svalue)/1000.,&rawtime);
@@ -808,23 +808,23 @@ int executeCommand(CommandStruct_t *theCmd)
     if(retVal) return 0;
     return rawtime;
   case SET_ADU5_CALIBRATION_13:
-    ivalue=theCmd->cmd[1];	  
+    ivalue=theCmd->cmd[1];
     svalue=theCmd->cmd[2];
     svalue|=(theCmd->cmd[3]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV13_1",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV13_1",((float)svalue)/1000.,&rawtime);
     svalue=theCmd->cmd[4];
     svalue|=(theCmd->cmd[5]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV13_2",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV13_2",((float)svalue)/1000.,&rawtime);
 
     svalue=theCmd->cmd[6];
     svalue|=(theCmd->cmd[7]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV13_3",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV13_3",((float)svalue)/1000.,&rawtime);
@@ -832,42 +832,42 @@ int executeCommand(CommandStruct_t *theCmd)
     if(retVal) return 0;
     return rawtime;
   case SET_ADU5_CALIBRATION_14:
-    ivalue=theCmd->cmd[1];	  
+    ivalue=theCmd->cmd[1];
     svalue=theCmd->cmd[2];
     svalue|=(theCmd->cmd[3]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV14_1",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV14_1",((float)svalue)/1000.,&rawtime);
     svalue=theCmd->cmd[4];
     svalue|=(theCmd->cmd[5]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV14_2",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV14_2",((float)svalue)/1000.,&rawtime);
 
     svalue=theCmd->cmd[6];
     svalue|=(theCmd->cmd[7]<<8);
-    if(ivalue==1) 
+    if(ivalue==1)
       configModifyFloat("GPSd.config","adu5a","calibV14_3",((float)svalue)/1000.,&rawtime);
     else if(ivalue==2)
       configModifyFloat("GPSd.config","adu5b","calibV14_3",((float)svalue)/1000.,&rawtime);
     retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case SET_HK_PERIOD: 
+  case SET_HK_PERIOD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     configModifyInt("Hkd.config","hkd","readoutPeriod",ivalue,&rawtime);
     retVal=sendSignal(ID_HKD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case SET_HK_CAL_PERIOD: 
+  case SET_HK_CAL_PERIOD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     configModifyInt("Hkd.config","hkd","calibrationPeriod",ivalue,&rawtime);
     retVal=sendSignal(ID_HKD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case SET_HK_TELEM_EVERY: 
+  case SET_HK_TELEM_EVERY:
     ivalue=theCmd->cmd[1];//+(theCmd->cmd[2]<<8);
     configModifyInt("Hkd.config","hkd","telemEvery",ivalue,&rawtime);
     retVal=sendSignal(ID_HKD,SIGUSR1);
@@ -879,13 +879,13 @@ int executeCommand(CommandStruct_t *theCmd)
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_G12_TRIG_FLAG: 
+  case ACQD_G12_TRIG_FLAG:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","trigger","enablePPS2Trigger",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SOFT_TRIG_FLAG: 	    
+  case ACQD_SOFT_TRIG_FLAG:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","trigger","sendSoftTrigger",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
@@ -898,7 +898,7 @@ int executeCommand(CommandStruct_t *theCmd)
     if(retVal) return 0;
     return rawtime;
 
-  case ACQD_PEDESTAL_RUN: 	    
+  case ACQD_PEDESTAL_RUN:
     ivalue=theCmd->cmd[1];
     ivalue&=0x1;
     configModifyInt("Acqd.config","acqd","pedestalMode",ivalue,&rawtime);
@@ -906,7 +906,7 @@ int executeCommand(CommandStruct_t *theCmd)
     goto NEW_RUN;
     if(retVal) return 0;
     return rawtime;
-  case ACQD_THRESHOLD_SCAN: 	    
+  case ACQD_THRESHOLD_SCAN:
     ivalue=theCmd->cmd[1];
     ivalue&=0x1;
     configModifyInt("Acqd.config","thresholdScan","doThresholdScan",ivalue,&rawtime);
@@ -916,37 +916,37 @@ int executeCommand(CommandStruct_t *theCmd)
     return rawtime;
 
 
-  case ACQD_REPROGRAM_TURF: 	    
+  case ACQD_REPROGRAM_TURF:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","acqd","reprogramTurf",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SURFHK_TELEM_EVERY: 	    
+  case ACQD_SURFHK_TELEM_EVERY:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","acqd","surfHkTelemEvery",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_TURFHK_TELEM_EVERY: 	    
+  case ACQD_TURFHK_TELEM_EVERY:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","acqd","turfRateTelemEvery",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_NUM_EVENTS_PEDESTAL: 	    
+  case ACQD_NUM_EVENTS_PEDESTAL:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
     configModifyInt("Acqd.config","pedestal","numPedEvents",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_THRESH_SCAN_STEP_SIZE: 	    
+  case ACQD_THRESH_SCAN_STEP_SIZE:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","thresholdScan","thresholdScanStepSize",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_THRESH_SCAN_POINTS_PER_STEP: 	    
+  case ACQD_THRESH_SCAN_POINTS_PER_STEP:
     ivalue=theCmd->cmd[1];
     configModifyInt("Acqd.config","thresholdScan","thresholdScanPointsPerStep",ivalue,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
@@ -963,57 +963,57 @@ int executeCommand(CommandStruct_t *theCmd)
     return executeCalibdExtraCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
 
 
-	    
+
   case MONITORD_RAMDISK_KILL_ACQD:
     ivalue=theCmd->cmd[1];
-    configModifyInt("Monitord.config","monitord","ramdiskKillAcqd",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
-    return rawtime;		    
+    configModifyInt("Monitord.config","monitord","ramdiskKillAcqd",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
+    return rawtime;
   case MONITORD_RAMDISK_DUMP_DATA:
     ivalue=theCmd->cmd[1];
-    configModifyInt("Monitord.config","monitord","ramdiskDumpData",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
-    return rawtime;	
-	    
-	    
+    configModifyInt("Monitord.config","monitord","ramdiskDumpData",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
+    return rawtime;
+
+
   case MONITORD_MAX_ACQD_WAIT:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Monitord.config","monitord","maxAcqdWaitPeriod",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
-    return rawtime;		    
+    configModifyInt("Monitord.config","monitord","maxAcqdWaitPeriod",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
+    return rawtime;
   case MONITORD_PERIOD:
     ivalue=theCmd->cmd[1];
-    configModifyInt("Monitord.config","monitord","monitorPeriod",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
-    return rawtime;		    
+    configModifyInt("Monitord.config","monitord","monitorPeriod",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
+    return rawtime;
   case MONITORD_USB_THRESH:
     ivalue=theCmd->cmd[1];
-    configModifyInt("Monitord.config","monitord","usbSwitchMB",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
-    return rawtime;		    
+    configModifyInt("Monitord.config","monitord","usbSwitchMB",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
+    return rawtime;
   case MONITORD_NTU_THRESH:
     ivalue=theCmd->cmd[1];
     ivalue2=theCmd->cmd[2];
-    if(ivalue==0) 
-      configModifyInt("Monitord.config","monitord","ntuSwitchMB",ivalue2,&rawtime);	
+    if(ivalue==0)
+      configModifyInt("Monitord.config","monitord","ntuSwitchMB",ivalue2,&rawtime);
     else
       return -1;
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
     return rawtime;
   case MONITORD_MAX_QUEUE:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Monitord.config","monitord","maxEventQueueSize",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+    configModifyInt("Monitord.config","monitord","maxEventQueueSize",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
     return rawtime;
   case MONITORD_INODES_KILL_ACQD:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Monitord.config","monitord","inodesKillAcqd",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+    configModifyInt("Monitord.config","monitord","inodesKillAcqd",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
     return rawtime;
   case MONITORD_INODES_DUMP_DATA:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8);
-    configModifyInt("Monitord.config","monitord","inodesDumpData",ivalue,&rawtime);	
-    retVal=sendSignal(ID_MONITORD,SIGUSR1);    
+    configModifyInt("Monitord.config","monitord","inodesDumpData",ivalue,&rawtime);
+    retVal=sendSignal(ID_MONITORD,SIGUSR1);
     return rawtime;
   case ACQD_RATE_COMMAND:
     return executeAcqdRateCommand(theCmd->cmd[1],&(theCmd->cmd[2]));
@@ -1027,34 +1027,34 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue3=theCmd->cmd[4]+(theCmd->cmd[5]<<8); //command value
     return executePrioritizerdCommand(ivalue,ivalue2,ivalue3);
   case PLAYBACKD_COMMAND:
-    ivalue=theCmd->cmd[1]; //Command num	    
-    utemp=(theCmd->cmd[2]);	    
+    ivalue=theCmd->cmd[1]; //Command num
+    utemp=(theCmd->cmd[2]);
     uvalue=utemp;
     utemp=(theCmd->cmd[3]);
     uvalue|=(utemp<<8);
     utemp=(theCmd->cmd[4]);
     uvalue|=(utemp<<16);
     utemp=(theCmd->cmd[5]);
-    uvalue|=(utemp<<24);	    
+    uvalue|=(utemp<<24);
     ivalue2=theCmd->cmd[6];//+(theCmd->cmd[3]<<8); //command value
-    return executePlaybackCommand(ivalue,uvalue,ivalue2);		    
+    return executePlaybackCommand(ivalue,uvalue,ivalue2);
   case EVENTD_MATCH_GPS:
     ivalue=theCmd->cmd[1];
     if(ivalue<0 || ivalue>1) return -1;
-    configModifyInt("Eventd.config","eventd","tryToMatchGps",ivalue,&rawtime);	
-    retVal=sendSignal(ID_EVENTD,SIGUSR1);    
-    return rawtime;	
-  case CLEAN_DIRS: 	    
-    cleanDirs();
-    time(&rawtime);	    
+    configModifyInt("Eventd.config","eventd","tryToMatchGps",ivalue,&rawtime);
+    retVal=sendSignal(ID_EVENTD,SIGUSR1);
     return rawtime;
-  case CLEAR_RAMDISK: 	    
+  case CLEAN_DIRS:
+    cleanDirs();
+    time(&rawtime);
+    return rawtime;
+  case CLEAR_RAMDISK:
     clearRamdisk();
     time(&rawtime);
     return rawtime;
-  case SEND_CONFIG: 
+  case SEND_CONFIG:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
-    return sendConfig(ivalue);	    
+    return sendConfig(ivalue);
   case DEFAULT_CONFIG:
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     return defaultConfig(ivalue);
@@ -1062,15 +1062,15 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     return switchConfig(ivalue,theCmd->cmd[4]);
   case SAVE_CONFIG:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16); 
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     return saveConfig(ivalue,theCmd->cmd[4]);
   case LAST_CONFIG:
-    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16); 
+    ivalue=theCmd->cmd[1]+(theCmd->cmd[2]<<8) + (theCmd->cmd[3] << 16);
     return lastConfig(ivalue);
-  case  TUFFD_COMMAND: 
-    return executeTuffCommand(theCmd->cmd[1], theCmd->cmd+2); 
-  case  RTLD_COMMAND: 
-    return executeRTLCommand(theCmd->cmd[1], theCmd->cmd+2); 
+  case  TUFFD_COMMAND:
+    return executeTuffCommand(theCmd->cmd[1], theCmd->cmd+2);
+  case  RTLD_COMMAND:
+    return executeRTLCommand(theCmd->cmd[1], theCmd->cmd+2);
 
   default:
     syslog(LOG_WARNING,"Unrecognised command %d\n",theCmd->cmd[0]);
@@ -1082,19 +1082,19 @@ int executeCommand(CommandStruct_t *theCmd)
 
 int cleanDirs()
 {
-    
+
 
   return 0;
 }
 
-int sendConfig(int progMask) 
+int sendConfig(int progMask)
 {
   time_t rawtime=0;
   int errorCount=0;
   ProgramId_t prog;
   char configFile[FILENAME_MAX];
   char *fullFilename;
-  int testMask;	
+  int testMask;
 
   //As a freebie I'll send down anitaSoft.config
   sprintf(configFile,"anitaSoft.config");
@@ -1111,7 +1111,7 @@ int sendConfig(int progMask)
       rawtime=requestFile(fullFilename,0);
     }
   }
-  if(errorCount) return 0; 
+  if(errorCount) return 0;
   return rawtime;
 
 }
@@ -1121,7 +1121,7 @@ int defaultConfig(int progMask)
   return switchConfig(progMask,0);
 }
 
-int switchConfig(int progMask, unsigned char configId) 
+int switchConfig(int progMask, unsigned char configId)
 {
   time_t rawtime;
   //    time(&rawtime);
@@ -1129,8 +1129,8 @@ int switchConfig(int progMask, unsigned char configId)
   int errorCount=0;
   ProgramId_t prog;
   char configFile[FILENAME_MAX];
-    
-  int testMask;	
+
+  int testMask;
 
   printf("switchConfig %d %d\n",progMask,configId);
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
@@ -1140,11 +1140,11 @@ int switchConfig(int progMask, unsigned char configId)
       printf("Switching to config %s.config.%d\n",getProgName(prog),configId);
       sprintf(configFile,"%s.config",getProgName(prog));
       retVal=configSwitch(configFile,configId,&rawtime);
-      if(retVal!=CONFIG_E_OK) 
+      if(retVal!=CONFIG_E_OK)
 	errorCount++;
       else {
 	retVal=sendSignal(prog,SIGUSR1);
-	if(retVal) 
+	if(retVal)
 	  errorCount++;
       }
 
@@ -1155,7 +1155,7 @@ int switchConfig(int progMask, unsigned char configId)
 }
 
 
-int saveConfig(int progMask, unsigned char configId) 
+int saveConfig(int progMask, unsigned char configId)
 {
   //    if(configId<10) return -1;
   time_t rawtime=time(NULL);
@@ -1165,8 +1165,8 @@ int saveConfig(int progMask, unsigned char configId)
   ProgramId_t prog;
   char configFile[FILENAME_MAX];
   char configFileNew[FILENAME_MAX];
-    
-  int testMask;	
+
+  int testMask;
 
   printf("saveConfig %d %d\n",progMask,configId);
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
@@ -1198,8 +1198,8 @@ int lastConfig(int progMask)
   int errorCount=0;
   ProgramId_t prog;
   char configFile[FILENAME_MAX];
-    
-  int testMask;	
+
+  int testMask;
 
   printf("lastConfig %x\n",progMask);
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
@@ -1209,14 +1209,14 @@ int lastConfig(int progMask)
       printf("Switching to last config %s.config\n",getProgName(prog));
       sprintf(configFile,"%s.config",getProgName(prog));
       retVal=configSwitchToLast(configFile,&rawtime);
-      if(retVal!=CONFIG_E_OK) 
+      if(retVal!=CONFIG_E_OK)
 	errorCount++;
       else {
 	retVal=sendSignal(prog,SIGUSR1);
-	if(retVal) 
+	if(retVal)
 	  errorCount++;
       }
-	    
+
     }
   }
   if(errorCount) return 0;
@@ -1228,7 +1228,7 @@ int lastConfig(int progMask)
 
 
 
-int killPrograms(int progMask) 
+int killPrograms(int progMask)
 {
   time_t rawtime;
   time(&rawtime);
@@ -1237,8 +1237,8 @@ int killPrograms(int progMask)
   int retVal=0;
   int errorCount=0;
   ProgramId_t prog;
-    
-  int testMask;	
+
+  int testMask;
   syslog(LOG_INFO,"killPrograms %#x\n",progMask);
   //    printf("Kill programs %d\n",progMask);
 
@@ -1257,8 +1257,8 @@ int killPrograms(int progMask)
     //	printf("%d %d\n",progMask,testMask);
     if(progMask&testMask) {
       //	    printf("Killing prog %s\n",getProgName(prog));
-      //	   
-	    
+      //
+
       sprintf(daemonCommand,"daemon --stop -n %s",getProgName(prog));
       syslog(LOG_INFO,"Sending command: %s",daemonCommand);
       retVal=system(daemonCommand);
@@ -1286,7 +1286,7 @@ int killPrograms(int progMask)
 }
 
 
-int reallyKillPrograms(int progMask) 
+int reallyKillPrograms(int progMask)
 {
   time_t rawtime;
   time(&rawtime);
@@ -1295,8 +1295,8 @@ int reallyKillPrograms(int progMask)
   int retVal=0;
   int errorCount=0;
   ProgramId_t prog;
-    
-  int testMask;	
+
+  int testMask;
   syslog(LOG_INFO,"reallyKillPrograms %#x\n",progMask);
   //    printf("Kill programs %d\n",progMask);
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
@@ -1305,7 +1305,7 @@ int reallyKillPrograms(int progMask)
     if(progMask&testMask) {
       sprintf(fileName,"%s",getPidFile(prog));
       removeFile(fileName);
-      retVal=sendSignal(prog,-9);	    
+      retVal=sendSignal(prog,-9);
       //	    printf("Killing prog %s\n",getProgName(prog));
       if(retVal!=0) {
 	sprintf(systemCommand,"killall -9 %s",getProgName(prog));
@@ -1319,14 +1319,14 @@ int reallyKillPrograms(int progMask)
 }
 
 
-int startPrograms(int progMask) 
+int startPrograms(int progMask)
 {
   time_t rawtime;
   time(&rawtime);
   char daemonCommand[FILENAME_MAX];
   int retVal=0;
   ProgramId_t prog;
-  int testMask;	
+  int testMask;
   int errorCount=0;
   syslog(LOG_INFO,"startPrograms %#x\n",progMask);
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
@@ -1356,7 +1356,7 @@ int startPrograms(int progMask)
 	sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
-      
+
       syslog(LOG_INFO,"Sending command: %s",daemonCommand);
       retVal=system(daemonCommand);
       if(retVal!=0) {
@@ -1371,7 +1371,7 @@ int startPrograms(int progMask)
 }
 
 int respawnPrograms(int progMask)
-{   
+{
   time_t rawtime;
   time(&rawtime);
   FILE *fpPid ;
@@ -1379,7 +1379,7 @@ int respawnPrograms(int progMask)
   pid_t thePid;
   ProgramId_t prog;
   int retVal=0;
-  int testMask;	
+  int testMask;
   int errorCount=0;
   for(prog=ID_FIRST;prog<ID_NOT_AN_ID;prog++) {
     testMask=getIdMask(prog);
@@ -1399,11 +1399,11 @@ int respawnPrograms(int progMask)
 	  syslog(LOG_ERR,"Error sending SIGUSR2 to %s (pid=%d) -- %s",getProgName(prog),thePid,strerror(errno));
 	}
       }
-    } 
+    }
   }
   if(errorCount) return 0;
   return rawtime;
-	
+
 }
 
 int setEventDiskBitMask(int modOrSet, int bitMask)
@@ -1433,14 +1433,14 @@ int disableDisk(int diskMask, int disFlag)
   printf("disableDisk %#x %d\n",diskMask,disFlag);
   int diskInd=0;
   time_t rawtime=0;
-  if(disFlag<0 || disFlag>1) 
+  if(disFlag<0 || disFlag>1)
     return 0;
 
   if(disFlag==1) {
     setHkDiskBitMask(0,diskMask);
     rawtime=setEventDiskBitMask(0,diskMask);
   }
-  
+
 
   for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
     if(diskMask & diskBitMasks[diskInd]) {
@@ -1493,10 +1493,10 @@ int setHkDiskBitMask(int modOrSet, int bitMask)
   else if(modOrSet==2) {
     //Then we are in setting mode
     hkDiskBitMask=bitMask;
-  } 
+  }
   else return 0;
-  configModifyUnsignedInt("anitaSoft.config","global","hkDiskBitMask",hkDiskBitMask,&rawtime);  
-  closeHkFilesAndTidy(&cmdWriter); 
+  configModifyUnsignedInt("anitaSoft.config","global","hkDiskBitMask",hkDiskBitMask,&rawtime);
+  closeHkFilesAndTidy(&cmdWriter);
   prepWriterStructs();
   respawnPrograms(HKD_ID_MASK);
   respawnPrograms(GPSD_ID_MASK);
@@ -1593,7 +1593,7 @@ int setLosdPriorityBandwidth(int pri, int bw)
   losdBandwidths[pri]=bw;
   configModifyIntArray("LOSd.config","bandwidth","priorityBandwidths",losdBandwidths,NUM_PRIORITIES,&rawtime);
   sendSignal(ID_LOSD,SIGUSR1);
-  return rawtime;    
+  return rawtime;
 }
 
 int setSipdPriorityBandwidth(int pri, int bw)
@@ -1603,7 +1603,7 @@ int setSipdPriorityBandwidth(int pri, int bw)
   sipdBandwidths[pri]=bw;
   configModifyIntArray("SIPd.config","bandwidth","priorityBandwidths",sipdBandwidths,NUM_PRIORITIES,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
-  return rawtime;    
+  return rawtime;
 
 }
 
@@ -1614,7 +1614,7 @@ int setSipdHkTelemOrder(int hk, int order)
   sipdHkTelemOrder[hk]=order;
   configModifyIntArray("SIPd.config","bandwidth","hkTelemOrder",sipdHkTelemOrder,22,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
-  return rawtime;    
+  return rawtime;
 
 }
 
@@ -1625,7 +1625,7 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
   sipdHkTelemMaxCopy[hk]=numPackets;
   configModifyIntArray("SIPd.config","bandwidth","hkTelemMaxCopy",sipdHkTelemMaxCopy,22,&rawtime);
   sendSignal(ID_SIPD,SIGUSR1);
-  return rawtime;    
+  return rawtime;
 
 }
 
@@ -1633,7 +1633,7 @@ int setSipdHkTelemMaxPackets(int hk, int numPackets)
 int executeGpsdExtracommand(int command, unsigned char arg[2])
 {
   printf("executeGpsdExtracommand %d %d %d\n",command,arg[0],arg[1]);
-  time_t rawtime;    
+  time_t rawtime;
   int ivalue=arg[0];
   int ivalue2=arg[1];
   float fvalue=0;
@@ -1651,7 +1651,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;        
+    return rawtime;
   case GPS_SET_PAT_TELEM_EVERY:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","patTelemEvery",ivalue2,&rawtime);
@@ -1662,7 +1662,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;           
+    return rawtime;
   case GPS_SET_VTG_TELEM_EVERY:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","vtgTelemEvery",ivalue2,&rawtime);
@@ -1673,7 +1673,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;               
+    return rawtime;
   case GPS_SET_SAT_TELEM_EVERY:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","satTelemEvery",ivalue2,&rawtime);
@@ -1686,7 +1686,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;                
+    return rawtime;
   case GPS_SET_GGA_TELEM_EVERY:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","ggaTelemEvery",ivalue2,&rawtime);
@@ -1699,11 +1699,11 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;              
+    return rawtime;
   case GPS_SET_POS_TELEM_EVERY:
     configModifyInt("GPSd.config","g12","posTelemEvery",ivalue2,&rawtime);
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;              
+    return rawtime;
   case GPS_SET_INI_RESET_FLAG:
     if(ivalue==1)
       configModifyInt("GPSd.config","adu5a","iniReset",ivalue2,&rawtime);
@@ -1715,7 +1715,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       syslog(LOG_ERR,"Invalid GPS_SET_INI_RESET_FLAG argument %d",ivalue);
       return 0;
     }
-    sendSignal(ID_GPSD,SIGUSR1);           
+    sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;
   case GPS_SET_ELEVATION_MASK:
     if(ivalue==1)
@@ -1728,7 +1728,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       syslog(LOG_ERR,"Invalid GPS_SET_ELEVATION_MASK argument %d",ivalue);
       return 0;
     }
-    sendSignal(ID_GPSD,SIGUSR1);           
+    sendSignal(ID_GPSD,SIGUSR1);
     return rawtime;
   case GPS_SET_CYC_PHASE_ERROR:
     fvalue=((float)(2*ivalue2))/1000.;
@@ -1741,7 +1741,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;                         
+    return rawtime;
   case GPS_SET_MXB_BASELINE_ERROR:
     fvalue=((float)(ivalue2))/1000.;
     if(ivalue==1)
@@ -1753,7 +1753,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;                                
+    return rawtime;
   case GPS_SET_MXM_PHASE_ERROR:
     fvalue=((float)(ivalue2))/1000.;
     if(ivalue==1)
@@ -1765,10 +1765,10 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
       return 0;
     }
     sendSignal(ID_GPSD,SIGUSR1);
-    return rawtime;              
+    return rawtime;
   default:
     syslog(LOG_ERR,"Unknown GPSd Extra Command -- %d",command);
-    break;    
+    break;
   }
   return 0;
 }
@@ -1777,7 +1777,7 @@ int executeGpsdExtracommand(int command, unsigned char arg[2])
 int executeCalibdExtraCommand(int command, unsigned char arg[2])
 {
   printf("executeCalibdExtraCommand %d %d %d\n",command,arg[0],arg[1]);
-  time_t rawtime;    
+  time_t rawtime;
   int ivalue=arg[0] + (arg[1]<<8);
   //  float fvalue=0;
   switch(command) {
@@ -1785,30 +1785,30 @@ int executeCalibdExtraCommand(int command, unsigned char arg[2])
     printf("CALIBD_READOUT_PERIOD %d\n",ivalue);
     configModifyInt("Calibd.config","calibd","readoutPeriod",ivalue,&rawtime);
     sendSignal(ID_CALIBD,SIGUSR1);
-    return rawtime;  
+    return rawtime;
   case CALIBD_TELEM_EVERY:
     printf("CALIBD_TELEM_EVERY %d\n",ivalue);
     configModifyInt("Calibd.config","calibd","telemEvery",ivalue,&rawtime);
     sendSignal(ID_CALIBD,SIGUSR1);
-    return rawtime;   
+    return rawtime;
   case CALIBD_TELEM_AVERAGE:
     printf("CALIBD_TELEM_AVERAGE %d\n",ivalue);
     configModifyInt("Calibd.config","calibd","telemAverage",ivalue,&rawtime);
     sendSignal(ID_CALIBD,SIGUSR1);
-    return rawtime;    
+    return rawtime;
   case CALIBD_ADC_AVERAGE:
     printf("CALIBD_ADC_AVERAGE %d\n",ivalue);
     configModifyInt("Calibd.config","calibd","adcAverage",ivalue,&rawtime);
     sendSignal(ID_CALIBD,SIGUSR1);
-    return rawtime;    
+    return rawtime;
   case CALIBD_CALIBRATION_PERIOD:
     printf("CALIBD_CALIBRATION_PERIOD %d\n",ivalue);
     configModifyInt("Calibd.config","calibd","calibrationPeriod",ivalue,&rawtime);
     sendSignal(ID_CALIBD,SIGUSR1);
-    return rawtime;  
+    return rawtime;
   default:
     syslog(LOG_ERR,"Unknown Calibd Extra Command -- %d",command);
-    break;    
+    break;
   }
   return 0;
 }
@@ -1818,7 +1818,7 @@ int executeCalibdExtraCommand(int command, unsigned char arg[2])
 int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalue2)
 {
   PlaybackRequest_t pReq;
-  time_t rawtime;    
+  time_t rawtime;
   char filename[FILENAME_MAX];
   switch(command) {
   case PLAY_GET_EVENT:
@@ -1830,15 +1830,15 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
     makeLink(filename,PLAYBACK_LINK_DIR);
     rawtime=time(NULL);
     break;
-  case PLAY_START_PLAY:      
+  case PLAY_START_PLAY:
     configModifyInt("Playbackd.config","playbackd","sendData",1,&rawtime);
     respawnPrograms(PLAYBACKD_ID_MASK);
     break;
   case PLAY_STOP_PLAY:
-    configModifyInt("Playbackd.config","playbackd","sendData",0,&rawtime); 
+    configModifyInt("Playbackd.config","playbackd","sendData",0,&rawtime);
     respawnPrograms(PLAYBACKD_ID_MASK);
     break;
-  case PLAY_START_PRI:      
+  case PLAY_START_PRI:
     if(uvalue1<NUM_PRIORITIES) {
       configModifyInt("Playbackd.config","playbackd","startPriority",(int)uvalue1,&rawtime);
       respawnPrograms(PLAYBACKD_ID_MASK);
@@ -1847,25 +1847,25 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
     break;
   case PLAY_STOP_PRI:
     if(uvalue1<NUM_PRIORITIES) {
-      configModifyInt("Playbackd.config","playbackd","stopPriority",(int)uvalue1,&rawtime); 
+      configModifyInt("Playbackd.config","playbackd","stopPriority",(int)uvalue1,&rawtime);
       respawnPrograms(PLAYBACKD_ID_MASK);
     }
     else return -1;
     break;
   case PLAY_SLEEP_PERIOD:
-    configModifyInt("Playbackd.config","playbackd","msSleepPeriod",(int)uvalue1,&rawtime); 
+    configModifyInt("Playbackd.config","playbackd","msSleepPeriod",(int)uvalue1,&rawtime);
     respawnPrograms(PLAYBACKD_ID_MASK);
     break;
   case PLAY_USE_DISK:
-    if(uvalue1>2) 
+    if(uvalue1>2)
       return 0;
-    configModifyInt("Playbackd.config","playbackd","useDisk",uvalue1,&rawtime);	    
+    configModifyInt("Playbackd.config","playbackd","useDisk",uvalue1,&rawtime);
     return rawtime;
-      
+
   default:
     return -1;
   }
-	      
+
   return rawtime;
 }
 
@@ -1873,11 +1873,11 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
 int executePrioritizerdCommand(int command, int value, int value2)
 {
   time_t rawtime;
-  union 
+  union
   {
-    unsigned int u; 
+    unsigned int u;
     float f;
-  } cheat; 
+  } cheat;
   readPrioritizerdConfig();
   switch(command) {
   case PRI_PANIC_QUEUE_LENGTH:
@@ -1893,55 +1893,107 @@ int executePrioritizerdCommand(int command, int value, int value2)
     break;
   case PRI_SLOPE_IMAGE_HILBERT:
     configModifyFloat("Prioritizerd.config","prioritizerd","slopeOfImagePeakVsHilbertPeak",(float)value2,&rawtime);
-    break;	    
+    break;
   case PRI_INTERCEPT_IMAGE_HILBERT:
     configModifyFloat("Prioritizerd.config","prioritizerd","interceptOfImagePeakVsHilbertPeak",(float)value2,&rawtime);
     break;
   case PRI_BIN_TO_BIN_THRESH:
     configModifyFloat("Prioritizerd.config","prioritizerd","binToBinDifferenceThresh_dB",value2/10.,&rawtime);
-    break;	    
+    break;
   case PRI_ABS_MAG_THRESH:
     configModifyFloat("Prioritizerd.config","prioritizerd","absMagnitudeThresh_dBm",value2/10.,&rawtime);
-    break;	    
+    break;
   case PRI_THETA_ANGLE_DEMOTION_LOW:
     configModifyFloat("Prioritizerd.config","prioritizerd","thetaAngleLowForDemotion",value2-90,&rawtime);
-    break;	    
+    break;
   case PRI_THETA_ANGLE_DEMOTION_HIGH:
     configModifyFloat("Prioritizerd.config","prioritizerd","thetaAngleHighForDemotion",value2,&rawtime);
-    break;	    	    
+    break;
   case PRI_THETA_ANGLE_DEMOTION_PRIORITY:
     configModifyInt("Prioritizerd.config","prioritizerd","thetaAnglePriorityDemotion",value,&rawtime);
-    break;	    
+    break;
   case PRI_POWER_SPECTRUM_PERIOD:
     configModifyInt("Prioritizerd.config","prioritizerd","writePowSpecPeriodSeconds",value2,&rawtime);
-    break;	    
+    break;
   case PRI_ANT_PHI_POS:
     phiArrayDeg[value]=value2/100.;
     configModifyFloatArray("Prioritizerd.config","antennalocations","phiArrayDeg",phiArrayDeg,48,&rawtime);
-    break;	    
+    break;
   case PRI_ANT_R_POS:
     rArray[value]=value2/1000.;
     configModifyFloatArray("Prioritizerd.config","antennalocations","rArray",rArray,48,&rawtime);
-    break;	    	    
+    break;
   case PRI_ANT_Z_POS:
     zArray[value]=-1.0*value2/10000.0;
     configModifyFloatArray("Prioritizerd.config","antennalocations","zArray",zArray,48,&rawtime);
-    break;	    	    	    	    
+    break;
   case PRI_POS_SATUATION:
     configModifyInt("Prioritizerd.config","prioritizerd","positiveSaturation",value2,&rawtime);
-    break;	    	  	    
+    break;
   case PRI_NEG_SATUATION:
     configModifyInt("Prioritizerd.config","prioritizerd","negativeSaturation",-1*value2,&rawtime);
-    break;	    	   
-  case PRI_BLAST_RATIO:
-    //TODO: check this! 
-    cheat.u = (value & 0xffff)  | (( value2 & 0xffff) << 16); 
-    configModifyFloat("Prioritizerd.config","prioritizerd","blastMaxBottomToTopRatio",cheat.f,&rawtime);
-    break;	    	   
-
+    break;
+  case PRI_ASYM_SATURATION:
+    configModifyInt("Prioritizerd.config","prioritizerd","asymSaturation",value,&rawtime);
+    break;
+  case PRI_SLEEP_TIME_KILL_X:
+    configModifyInt("Prioritizerd.config","prioritizerd","sleepTimeAfterKillingX",value,&rawtime);
+    break;
+  case DISABLE_GPU:
+    configModifyInt("Prioritizerd.config","prioritizerd","disableGpu",value,&rawtime);
+    break;
+  case PRI_CALIB_VERSION:
+    configModifyInt("Prioritizerd.config","prioritizerd","anitaCalibVersion",value,&rawtime);
+    break;
+  case PRI_INVERT_TOP_RING_SOFTWARE:
+    configModifyInt("Prioritizerd.config","prioritizerd","invertTopRingInSoftware",value,&rawtime);
+    break;
+  case PRI_DEBUG_MODE:
+    configModifyInt("Prioritizerd.config","prioritizerd","debugMode",value,&rawtime);
+    break;
+  case PRI_SKIP_BLAST_RATIO_HPOL:
+    skipBlastRatioHPol[value]=value2;
+    configModifyIntArray("Prioritizerd.config","prioritizerd","skipBlastRatioHPol",skipBlastRatioHPol,16,&rawtime);
+    break;
+  case PRI_SKIP_BLAST_RATIO_VPOL:
+    skipBlastRatioVPol[value]=value2;
+    configModifyIntArray("Prioritizerd.config","prioritizerd","skipBlastRatioVPol",skipBlastRatioVPol,16,&rawtime);
+    break;
+  case PRI_BLAST_RATIO_MAX:
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastRatioMax",(1.0*value)/100.,&rawtime);
+    break;
+  case PRI_BLAST_RATIO_MIN:
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastRatioMin",(1.0*value)/100.,&rawtime);
+    break;
+  case PRI_BLAST_GRADIENT:
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastGradient",(1.0*value)/100.,&rawtime);
+    break;
+  case PRI_STATIC_NOTCH_LOW_EDGE:
+    staticNotchesLowEdgeMHz[value]=value2;
+    configModifyFloatArray("Prioritizerd.config","prioritizerd","staticNotchesLowEdgeMHz",staticNotchesLowEdgeMHz,10,&rawtime);
+    break;
+  case PRI_STATIC_NOTCH_HIGH_EDGE:
+    staticNotchesHighEdgeMHz[value]=value2;
+    configModifyFloatArray("Prioritizerd.config","prioritizerd","staticNotchesHighEdgeMHz",staticNotchesLowEdgeMHz,10,&rawtime);
+    break;
+  case PRI_USE_LONG_DYNAMIC_FILTERING:
+    configModifyInt("Prioritizerd.config","prioritizerd","useLongDynamicFiltering",value,&rawtime);
+    break;
+  case PRI_START_DYNAMIC_FREQUENCY:
+    configModifyFloat("Prioritizerd.config","prioritizerd","startDynamicFrequency",(1.0*value),&rawtime);
+    break;
+  case PRI_STOP_DYNAMIC_FREQUENCY:
+    configModifyFloat("Prioritizerd.config","prioritizerd","stopDynamicFrequency",(1.0*value),&rawtime);
+    break;
+  case PRI_CONSERVATIVE_START:
+    configModifyInt("Prioritizerd.config","prioritizerd","stopDynamicFrequency",value,&rawtime);
+    break;
+  case PRI_THRESH_DB:
+    configModifyInt("Prioritizerd.config","prioritizerd","spikeThresh_dB",value,&rawtime);
+    break;
   default:
     return -1;
-  }	    
+  }
   return rawtime;
 }
 
@@ -1954,35 +2006,35 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5])
   float fvalue=0;
   time_t rawtime;
   switch(command) {
-  case GPS_PHI_MASK_ENABLE: 	    
+  case GPS_PHI_MASK_ENABLE:
     ivalue[0]=(int)args[0];
     if(ivalue[0]==1) {
       //Enable gpsPhiMasking
       configModifyInt("GPSd.config","sourceList","enableGpsPhiMasking",1,&rawtime);
-      retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+      retVal=sendSignal(ID_GPSD,SIGUSR1);
       if(retVal) return 0;
     }
     else {
       //Disable gpsPhiMasking
       configModifyInt("GPSd.config","sourceList","enableGpsPhiMasking",0,&rawtime);
       configModifyInt("Acqd.config","thresholds","gpsPhiTrigMask",0,&rawtime);
-      retVal=sendSignal(ID_GPSD,SIGUSR1);	    
-      retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+      retVal=sendSignal(ID_GPSD,SIGUSR1);
+      retVal=sendSignal(ID_ACQD,SIGUSR1);
       if(retVal) return 0;
     }
     return rawtime;
-  case GPS_PHI_MASK_UPDATE_PERIOD: 
-    uvalue[0]=args[0]+(args[1]<<8);	    
+  case GPS_PHI_MASK_UPDATE_PERIOD:
+    uvalue[0]=args[0]+(args[1]<<8);
     configModifyInt("GPSd.config","sourceList","phiMaskingPeriod",uvalue[0],&rawtime);
-    retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+    retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case GPS_PHI_MASK_SET_SOURCE_LATITUDE: 
+  case GPS_PHI_MASK_SET_SOURCE_LATITUDE:
     readGpsdConfig();
     ivalue[0]=args[0]; //Source number
     if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
     if(ivalue[0]<=0) return 0;
-    utemp=(args[0]);	    
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -1990,24 +2042,24 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-   
+
     fvalue=((float)uvalue[0])/1e7;
-    fvalue-=180; //The latitude   
+    fvalue-=180; //The latitude
     if(ivalue[0]>numSources) {
       numSources=ivalue[0];
       configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
     }
-    sourceLats[ivalue[0]-1]=fvalue;     
+    sourceLats[ivalue[0]-1]=fvalue;
     configModifyFloatArray("GPSd.config","sourceList","sourceLats",sourceLats,MAX_PHI_SOURCES,&rawtime);
-    retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+    retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case GPS_PHI_MASK_SET_SOURCE_LONGITUDE: 
+  case GPS_PHI_MASK_SET_SOURCE_LONGITUDE:
     readGpsdConfig();
     ivalue[0]=args[0]; //Source number
     if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
     if(ivalue[0]<=0) return 0;
-    utemp=(args[0]);	    
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2015,24 +2067,24 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-   
+
     fvalue=((float)uvalue[0])/1e7;
-    fvalue-=180; //The longitude   
+    fvalue-=180; //The longitude
     if(ivalue[0]>numSources) {
       numSources=ivalue[0];
       configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
     }
-    sourceLongs[ivalue[0]-1]=fvalue;     
+    sourceLongs[ivalue[0]-1]=fvalue;
     configModifyFloatArray("GPSd.config","sourceList","sourceLongs",sourceLongs,MAX_PHI_SOURCES,&rawtime);
-    retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+    retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case GPS_PHI_MASK_SET_SOURCE_ALTITUDE: 
+  case GPS_PHI_MASK_SET_SOURCE_ALTITUDE:
     readGpsdConfig();
     ivalue[0]=args[0]; //Source number
     if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
     if(ivalue[0]<=0) return 0;
-    utemp=(args[0]);	    
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2040,23 +2092,23 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-   
+
     fvalue=((float)uvalue[0])/1e3; //Altitude
     if(ivalue[0]>numSources) {
       numSources=ivalue[0];
       configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
     }
-    sourceAlts[ivalue[0]-1]=fvalue;     
+    sourceAlts[ivalue[0]-1]=fvalue;
     configModifyFloatArray("GPSd.config","sourceList","sourceAlts",sourceAlts,MAX_PHI_SOURCES,&rawtime);
-    retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+    retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case GPS_PHI_MASK_SET_SOURCE_HORIZON: 
+  case GPS_PHI_MASK_SET_SOURCE_HORIZON:
     readGpsdConfig();
     ivalue[0]=args[0]; //Source number
     if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
     if(ivalue[0]<=0) return 0;
-    utemp=(args[0]);	    
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2064,33 +2116,33 @@ int executeGpsPhiMaskCommand(int command, unsigned char args[5])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-   
+
     fvalue=((float)uvalue[0])/1e3; //Horizon
-    //   fvalue-=180; //The latitude   
+    //   fvalue-=180; //The latitude
     if(ivalue[0]>numSources) {
       numSources=ivalue[0];
       configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
     }
-    sourceDistKm[ivalue[0]-1]=fvalue;     
+    sourceDistKm[ivalue[0]-1]=fvalue;
     configModifyFloatArray("GPSd.config","sourceList","sourceDistKm",sourceDistKm,MAX_PHI_SOURCES,&rawtime);
-    retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+    retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case GPS_PHI_MASK_SET_SOURCE_WIDTH: 
+  case GPS_PHI_MASK_SET_SOURCE_WIDTH:
     readGpsdConfig();
     ivalue[0]=args[0]; //Source number
     if(ivalue[0]>=MAX_PHI_SOURCES) return 0;
     if(ivalue[0]<=0) return 0;
     utemp=(args[0]); //Phi Width
     if(utemp>8) return 0;
- 
+
     if(ivalue[0]>numSources) {
       numSources=ivalue[0];
       configModifyInt("GPSd.config","sourceList","numSources",numSources,&rawtime);
     }
-    sourcePhiWidth[ivalue[0]-1]=utemp;     
+    sourcePhiWidth[ivalue[0]-1]=utemp;
     configModifyIntArray("GPSd.config","sourceList","sourceDistKm",sourcePhiWidth,MAX_PHI_SOURCES,&rawtime);
-    retVal=sendSignal(ID_GPSD,SIGUSR1);	    
+    retVal=sendSignal(ID_GPSD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
   default:
@@ -2110,35 +2162,35 @@ int executeAcqdExtraCommand(int command, unsigned char arg)
   int ivalue=0;
   time_t rawtime;
   switch(command) {
-  case ACQD_SET_PHOTO_SHUTTER_MASK: 	    
+  case ACQD_SET_PHOTO_SHUTTER_MASK:
     ivalue=arg&0x7;
     configModifyInt("Acqd.config","turfio","photoShutterMask",ivalue,&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_PPS_SOURCE: 	    
+  case ACQD_SET_PPS_SOURCE:
     ivalue=arg&0x3;
     configModifyInt("Acqd.config","turfio","ppsSource",ivalue,&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_REF_CLOCK_SOURCE: 	    
+  case ACQD_SET_REF_CLOCK_SOURCE:
     ivalue=arg&0x1;
     configModifyInt("Acqd.config","turfio","refClockSource",ivalue,&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_TURF_RATE_AVERAGE: 	    
+  case ACQD_SET_TURF_RATE_AVERAGE:
     ivalue=arg;
     configModifyInt("Acqd.config","acqd","turfRateAverage",ivalue,&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;	
+    return rawtime;
   default:
     syslog(LOG_ERR,"Unknown Acqd extra command -- %d\n",command);
     fprintf(stderr,"Unknown Acqd extra command -- %d\n",command);
     return -1;
-  }  
+  }
   return rawtime;
 }
 
@@ -2152,40 +2204,40 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
   float fvalue=0;
   time_t rawtime;
   switch(command) {
-  case ACQD_RATE_ENABLE_CHAN_SERVO: 	    
+  case ACQD_RATE_ENABLE_CHAN_SERVO:
     ivalue[0]=args[0];
     configModifyInt("Acqd.config","thresholds","enableChanServo",ivalue[0],&rawtime);
-    retVal=sendSignal(ID_ACQD,SIGUSR1);	    
+    retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_PID_GOALS: 	    
-    uvalue[0]=args[0]+(args[1]<<8); //top 
-    uvalue[1]=args[2]+(args[3]<<8); //middle 
+  case ACQD_RATE_SET_PID_GOALS:
+    uvalue[0]=args[0]+(args[1]<<8); //top
+    uvalue[1]=args[2]+(args[3]<<8); //middle
     uvalue[2]=args[4]+(args[5]<<8); //bottom
-    //    uvalue[3]=args[6]+(args[7]<<8);      
+    //    uvalue[3]=args[6]+(args[7]<<8);
     pidGoals[0]=uvalue[0];
     pidGoals[1]=uvalue[1];
     pidGoals[2]=uvalue[2];
-    //    pidGoals[3]=uvalue[3];      
+    //    pidGoals[3]=uvalue[3];
     configModifyIntArray("Acqd.config","thresholds","pidGoals",pidGoals,3,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_NADIR_PID_GOALS: 	    
+  case ACQD_SET_NADIR_PID_GOALS:
     uvalue[0]=args[0]+(args[1]<<8);
     uvalue[1]=args[2]+(args[3]<<8);
     uvalue[2]=args[4]+(args[5]<<8);
-    uvalue[3]=args[6]+(args[7]<<8);      
+    uvalue[3]=args[6]+(args[7]<<8);
     pidGoals[0]=uvalue[0];
     pidGoals[1]=uvalue[1];
     pidGoals[2]=uvalue[2];
-    //    pidGoals[3]=uvalue[3];      
+    //    pidGoals[3]=uvalue[3];
     //    configModifyIntArray("Acqd.config","thresholds","nadirPidGoals",pidGoals,BANDS_PER_ANT,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_L1_TRIG_MASK: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_L1_TRIG_MASK:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2195,13 +2247,13 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<24);
     syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
 	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
-      
+
     configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMask",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_L1_TRIG_MASK_HPOL: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_L1_TRIG_MASK_HPOL:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2211,23 +2263,23 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<24);
     syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK_HPOL: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
 	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
-      
+
     configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMaskH",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_PHI_MASK: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_PHI_MASK:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
     syslog(LOG_INFO,"ACQD_RATE_SET_PHI_MASK: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
-      
+
     configModifyUnsignedInt("Acqd.config","thresholds","phiTrigMask",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_SURF_BAND_TRIG_MASK: 	    
+  case ACQD_RATE_SET_SURF_BAND_TRIG_MASK:
     ivalue[0]=(args[0]); //Which Surf
     ivalue[1]=(args[1])+(args[2]<<8);
     readAcqdConfig();
@@ -2253,46 +2305,46 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
       configModifyFloat("Acqd.config","rates","rateGoal",fvalue,&rawtime);
     }
     else {
-      configModifyInt("Acqd.config","rates","enableRateServo",0,&rawtime);	    
+      configModifyInt("Acqd.config","rates","enableRateServo",0,&rawtime);
     }
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     return rawtime;
-  case ACQD_RATE_ENABLE_DYNAMIC_PHI_MASK: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_ENABLE_DYNAMIC_PHI_MASK:
+    utemp=(args[0]);
     ivalue[0]=utemp;
     configModifyInt("Acqd.config","rates","enableDynamicPhiMasking",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_ENABLE_DYNAMIC_L2_MASK: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_ENABLE_DYNAMIC_L2_MASK:
+    utemp=(args[0]);
     ivalue[0]=utemp;
     configModifyInt("Acqd.config","rates","enableDynamicL2Masking",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_PHI_MASK_OVER: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_DYNAMIC_PHI_MASK_OVER:
+    utemp=(args[0]);
     ivalue[0]=utemp; //This will be the rate
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     ivalue[1]=utemp; //This is the window size in seconds
     configModifyInt("Acqd.config","rates","dynamicPhiThresholdOverRate",ivalue[0],&rawtime);
     configModifyInt("Acqd.config","rates","dynamicPhiThresholdOverWindow",ivalue[1],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_PHI_MASK_UNDER: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_DYNAMIC_PHI_MASK_UNDER:
+    utemp=(args[0]);
     ivalue[0]=utemp; //This will be the rate
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     ivalue[1]=utemp; //This is the window size in seconds
     configModifyInt("Acqd.config","rates","dynamicPhiThresholdUnderRate",ivalue[0],&rawtime);
     configModifyInt("Acqd.config","rates","dynamicPhiThresholdUnderWindow",ivalue[1],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_DYNAMIC_L2_MASK_OVER:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2300,15 +2352,15 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-    utemp=(args[4]);	          
+    utemp=(args[4]);
     ivalue[0]=utemp; //This is the window size in seconds
     configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdOverRate",uvalue[0],&rawtime);
     configModifyInt("Acqd.config","rates","dynamicL2ThresholdOverWindow",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER: 		    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_DYNAMIC_L2_MASK_UNDER:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
@@ -2316,40 +2368,40 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-    utemp=(args[4]);	          
+    utemp=(args[4]);
     ivalue[0]=utemp; //This is the window size in seconds
     configModifyUnsignedInt("Acqd.config","rates","dynamicL2ThresholdUnderRate",uvalue[0],&rawtime);
     configModifyInt("Acqd.config","rates","dynamicL2ThresholdUnderWindow",ivalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
-    return rawtime;    
-  case ACQD_RATE_SET_GLOBAL_THRESHOLD: 	    
+    return rawtime;
+  case ACQD_RATE_SET_GLOBAL_THRESHOLD:
     ivalue[0]=args[0]+(args[1]<<8);
     configModifyInt("Acqd.config","thresholds","globalThreshold",ivalue[0],NULL);
-    if(ivalue[0]>0) 
+    if(ivalue[0]>0)
       configModifyInt("Acqd.config","thresholds","setGlobalThreshold",1,&rawtime);
     else
       configModifyInt("Acqd.config","thresholds","setGlobalThreshold",0,&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_GPS_PHI_MASK: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_GPS_PHI_MASK:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
     syslog(LOG_INFO,"ACQD_RATE_SET_GPS_PHI_MASK: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
-      
+
     configModifyUnsignedInt("Acqd.config","thresholds","gpsPhiMask",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_PID_PGAIN: 
+  case ACQD_SET_PID_PGAIN:
     readAcqdConfig();
     uvalue[0]=(args[0]);
     if(uvalue[0]>3)
       return 0;
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     uvalue[1]=utemp;
     utemp=(args[2]);
     uvalue[1]|=(utemp<<8);
@@ -2363,12 +2415,12 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_PID_IGAIN: 
+  case ACQD_SET_PID_IGAIN:
     readAcqdConfig();
     uvalue[0]=(args[0]);
     if(uvalue[0]>3)
       return 0;
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     uvalue[1]=utemp;
     utemp=(args[2]);
     uvalue[1]|=(utemp<<8);
@@ -2382,12 +2434,12 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_PID_DGAIN: 
+  case ACQD_SET_PID_DGAIN:
     readAcqdConfig();
     uvalue[0]=(args[0]);
     if(uvalue[0]>3)
       return 0;
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     uvalue[1]=utemp;
     utemp=(args[2]);
     uvalue[1]|=(utemp<<8);
@@ -2401,12 +2453,12 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_PID_IMAX: 
+  case ACQD_SET_PID_IMAX:
     readAcqdConfig();
     uvalue[0]=(args[0]);
     if(uvalue[0]>3)
       return 0;
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     uvalue[1]=utemp;
     utemp=(args[2]);
     uvalue[1]|=(utemp<<8);
@@ -2420,12 +2472,12 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_SET_PID_IMIN: 
+  case ACQD_SET_PID_IMIN:
     readAcqdConfig();
     uvalue[0]=(args[0]);
     if(uvalue[0]>3)
       return 0;
-    utemp=(args[1]);	    
+    utemp=(args[1]);
     uvalue[1]=utemp;
     utemp=(args[2]);
     uvalue[1]|=(utemp<<8);
@@ -2439,18 +2491,18 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_PHI_MASK_HPOL: 	    
-    utemp=(args[0]);	    
+  case ACQD_RATE_SET_PHI_MASK_HPOL:
+    utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
     syslog(LOG_INFO,"ACQD_RATE_SET_PHI_MASK_HPOL: %d %d -- %u -- %#x\n",args[0],args[1],uvalue[0],(unsigned int)uvalue[0]);
-      
+
     configModifyUnsignedInt("Acqd.config","thresholds","phiTrigMaskH",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-	
+
   default:
     fprintf(stderr,"Unknown Acqd Rate Command -- %d\n",command);
     syslog(LOG_ERR,"Unknown Acqd Rate Command -- %d\n",command);
@@ -2462,10 +2514,10 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
 int executeLosdControlCommand(int command, unsigned char args[2])
 {
   int ivalue=0,ivalue2=0;
-  double fvalue; 
-  time_t rawtime;    
+  double fvalue;
+  time_t rawtime;
   int retVal=0;
-  
+
   switch(command) {
   case LOSD_PRIORITY_BANDWIDTH:
     ivalue=args[0];
@@ -2476,25 +2528,25 @@ int executeLosdControlCommand(int command, unsigned char args[2])
   case LOSD_SEND_DATA:
     ivalue=args[0];
     if(ivalue>1 || ivalue<0) return -1;
-    configModifyInt("LOSd.config","losd","sendData",ivalue,&rawtime);	
-    retVal=sendSignal(ID_LOSD,SIGUSR1);    
+    configModifyInt("LOSd.config","losd","sendData",ivalue,&rawtime);
+    retVal=sendSignal(ID_LOSD,SIGUSR1);
     if(retVal!=0) return 0;
-    return rawtime;	
-  case LOSD_MIN_WAIT_TIME_B: 
-    ivalue = args[0]; 
-    fvalue = ivalue / 1000.; 
-    configModifyFloat("LOSd.config","losd","minTimeWait_b", fvalue, &rawtime); 
-    retVal=sendSignal(ID_LOSD,SIGUSR1);    
+    return rawtime;
+  case LOSD_MIN_WAIT_TIME_B:
+    ivalue = args[0];
+    fvalue = ivalue / 1000.;
+    configModifyFloat("LOSd.config","losd","minTimeWait_b", fvalue, &rawtime);
+    retVal=sendSignal(ID_LOSD,SIGUSR1);
     if(retVal!=0) return 0;
-    return rawtime;	
+    return rawtime;
 
-  case LOSD_MIN_WAIT_TIME_M: 
-    ivalue = args[0]; 
-    fvalue = ivalue / 1.e6; 
-    configModifyFloat("LOSd.config","losd","minTimeWait_m", fvalue, &rawtime); 
-    retVal=sendSignal(ID_LOSD,SIGUSR1);    
+  case LOSD_MIN_WAIT_TIME_M:
+    ivalue = args[0];
+    fvalue = ivalue / 1.e6;
+    configModifyFloat("LOSd.config","losd","minTimeWait_m", fvalue, &rawtime);
+    retVal=sendSignal(ID_LOSD,SIGUSR1);
     if(retVal!=0) return 0;
-    return rawtime;	
+    return rawtime;
 
 
   default:
@@ -2502,7 +2554,7 @@ int executeLosdControlCommand(int command, unsigned char args[2])
     fprintf(stderr,"Unknown LOSd command -- %d\n",command);
     return -1;
   }
-  
+
   return rawtime;
 }
 
@@ -2510,28 +2562,28 @@ int executeLosdControlCommand(int command, unsigned char args[2])
 int executeSipdControlCommand(int command, unsigned char args[3])
 {
   int ivalue=0,ivalue2=0;
-  time_t rawtime;    
+  time_t rawtime;
   int retVal=0;
 
   switch(command) {
   case SIPD_SEND_WAVE:
     ivalue=args[0];
     if(ivalue<0 || ivalue>1) return -1;
-    configModifyInt("SIPd.config","sipd","sendWavePackets",ivalue,&rawtime);	
+    configModifyInt("SIPd.config","sipd","sendWavePackets",ivalue,&rawtime);
     retVal=sendSignal(ID_SIPD,SIGUSR1);
     if(retVal!=0) return 0;
     return rawtime;
   case SIPD_THROTTLE_RATE:
-    ivalue=args[0]+(args[1]<<8); 
+    ivalue=args[0]+(args[1]<<8);
     //    if(ivalue>680) return -1;
-    configModifyInt("SIPd.config","sipd","throttleRate",ivalue,&rawtime);	
-    retVal=sendSignal(ID_SIPD,SIGUSR1);    
+    configModifyInt("SIPd.config","sipd","throttleRate",ivalue,&rawtime);
+    retVal=sendSignal(ID_SIPD,SIGUSR1);
     if(retVal!=0) return 0;
     return rawtime;
   case SIPD_HEADERS_PER_EVENT:
-    ivalue=args[0]; 
-    configModifyInt("SIPd.config","bandwidth","headersPerEvent",ivalue,&rawtime);	
-    retVal=sendSignal(ID_SIPD,SIGUSR1);    
+    ivalue=args[0];
+    configModifyInt("SIPd.config","bandwidth","headersPerEvent",ivalue,&rawtime);
+    retVal=sendSignal(ID_SIPD,SIGUSR1);
     if(retVal!=0) return 0;
     return rawtime;
   case SIPD_PRIORITY_BANDWIDTH:
@@ -2555,14 +2607,14 @@ int executeSipdControlCommand(int command, unsigned char args[3])
     if(ivalue2<0 || ivalue2>20) return -1;
     return setSipdHkTelemMaxPackets(ivalue,ivalue2);
     break;
-      
+
 
   default:
     syslog(LOG_ERR,"Unknown SIPd command -- %d\n",command);
     fprintf(stderr,"Unknown SIPd command -- %d\n",command);
     return -1;
   }
-	      
+
   return rawtime;
 }
 
@@ -2581,7 +2633,7 @@ int setTelemPriEncodingType(int pri, int encType,int encClockType)
   return rawtime;
 }
 
-int setPidGoalScaleFactor(int surf, int dac, float scaleFactor) 
+int setPidGoalScaleFactor(int surf, int dac, float scaleFactor)
 {
   time_t rawtime;
   char keyName[180];
@@ -2606,12 +2658,12 @@ int mountNextNtu(int whichDrive) {
   else {
     currentNum=whichDrive;
   }
-       
+
   if(currentNum>NUM_NTU_SSD) return -1;
 
   //Kill all programs that write to disk
   killDataPrograms();
-  closeHkFilesAndTidy(&cmdWriter);    
+  closeHkFilesAndTidy(&cmdWriter);
   sleep(1);
   //Change to new drive
   sprintf(ntuName,"disk%d",currentNum);
@@ -2666,11 +2718,11 @@ int mountNextUsb(int whichUsb) {
     currentDrive=(whichUsb%8)+1;
     if(currentPort>3) {
       return 0;
-    } 
+    }
   }
   //Kill all programs that write to disk
   killDataPrograms();
-  closeHkFilesAndTidy(&cmdWriter);    
+  closeHkFilesAndTidy(&cmdWriter);
   sleep(2); //Let them gzip their data
 
   //    exit(0);
@@ -2750,7 +2802,7 @@ void actuallyWriteCommandEcho(CommandEcho_t *echoPtr, const char *mainDir, const
 }
 
 
-int writeCommandEcho(CommandStruct_t *theCmd, int unixTime) 
+int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
 {
   //    if(printToScreen)
   //	printf("writeCommandEcho\n");
@@ -2793,7 +2845,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
   actuallyWriteCommandEcho(&theEcho,LOSD_CMD_ECHO_TELEM_DIR,LOSD_CMD_ECHO_TELEM_LINK_DIR);
   actuallyWriteCommandEcho(&theEcho,SIPD_CMD_ECHO_TELEM_DIR,SIPD_CMD_ECHO_TELEM_LINK_DIR);
   actuallyWriteCommandEcho(&theEcho,OPENPORTD_CMD_ECHO_TELEM_DIR,OPENPORTD_CMD_ECHO_TELEM_LINK_DIR);
-  
+
 
   //Write Archive
   cleverHkWrite((unsigned char*)&theEcho,sizeof(CommandEcho_t),
@@ -2805,7 +2857,7 @@ int writeCommandEcho(CommandStruct_t *theCmd, int unixTime)
 
 void prepWriterStructs() {
   int diskInd;
-  if(printToScreen) 
+  if(printToScreen)
     printf("Preparing Writer Structs\n");
   //Hk Writer
 
@@ -2894,7 +2946,7 @@ int readAcqdConfig()
 	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(dacPGain): %s\n",
 	      kvpErrorString(kvpStatus));
-    }    
+    }
     tempNum=BANDS_PER_ANT;
     kvpStatus=kvpGetFloatArray("dacIGain",&dacIGain[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
@@ -2902,7 +2954,7 @@ int readAcqdConfig()
 	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(dacIGain): %s\n",
 	      kvpErrorString(kvpStatus));
-    }    
+    }
     tempNum=BANDS_PER_ANT;
     kvpStatus=kvpGetFloatArray("dacDGain",&dacDGain[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
@@ -2910,8 +2962,8 @@ int readAcqdConfig()
 	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(dacDGain): %s\n",
 	      kvpErrorString(kvpStatus));
-    }    
-  
+    }
+
     tempNum=BANDS_PER_ANT;
     kvpStatus=kvpGetIntArray("dacIMin",&dacIMin[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
@@ -2919,7 +2971,7 @@ int readAcqdConfig()
 	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(dacIMin): %s\n",
 	      kvpErrorString(kvpStatus));
-    }     
+    }
     tempNum=BANDS_PER_ANT;
     kvpStatus=kvpGetIntArray("dacIMax",&dacIMax[0],&tempNum);
     if(kvpStatus!=KVP_E_OK) {
@@ -2927,7 +2979,7 @@ int readAcqdConfig()
 	     kvpErrorString(kvpStatus));
       fprintf(stderr,"kvpGetIntArray(dacIMax): %s\n",
 	      kvpErrorString(kvpStatus));
-    }   
+    }
 
     tempNum=ACTIVE_SURFS;
     kvpStatus=kvpGetIntArray("surfTrigBandMasks",&surfTrigBandMasks[0],&tempNum);
@@ -2946,7 +2998,7 @@ int readAcqdConfig()
 	pidGoalScaleFactors[surf][dac]=0;
       }
       sprintf(keyName,"pidGoalScaleSurf%d",surf+1);
-      tempNum=SCALERS_PER_SURF;	       
+      tempNum=SCALERS_PER_SURF;
       kvpStatus = kvpGetFloatArray(keyName,&(pidGoalScaleFactors[surf][0]),&tempNum);
       if(kvpStatus!=KVP_E_OK) {
 	syslog(LOG_WARNING,"kvpGetFloatArray(%s): %s",keyName,
@@ -2955,10 +3007,10 @@ int readAcqdConfig()
 	  fprintf(stderr,"kvpGetFloatArray(%s): %s\n",keyName,
 		  kvpErrorString(kvpStatus));
       }
-	    
+
     }
-	
-    	
+
+
 
 
     /* 	tempNum=12; */
@@ -3002,7 +3054,7 @@ int readAcqdConfig()
     /* 		fprintf(stderr,"Confused config file bus and slot count do not agree\n"); */
     /* 	    exit(0); */
     /* 	} */
-	
+
     /* 	tempNum=12; */
     /* 	kvpStatus = kvpGetIntArray("dacSurfs",dacSurfs,&tempNum); */
     /* 	if(kvpStatus!=KVP_E_OK) { */
@@ -3012,7 +3064,7 @@ int readAcqdConfig()
     /* 		fprintf(stderr,"kvpGetIntArray(dacSurfs): %s\n", */
     /* 			kvpErrorString(kvpStatus)); */
     /* 	} */
-	
+
     /* 	for(surf=0;surf<ACTIVE_SURFS;surf++) { */
     /* 	    for(dac=0;dac<N_RFTRIG;dac++) { */
     /* 		thresholdArray[surf][dac]=0; */
@@ -3030,20 +3082,20 @@ int readAcqdConfig()
     /* 		} */
     /* 	    } */
     /* 	} */
-    	
+
     /* 	//Pedestal things */
     /* 	writeDebugData=kvpGetInt("writeDebugData",1); */
     /* 	numPedEvents=kvpGetInt("numPedEvents",4000); */
     /* 	pedSwitchConfigAtEnd=kvpGetInt("pedSwitchConfigAtEnd",1); */
-	
-	
+
+
   }
   else {
     eString=configErrorString (status) ;
     syslog(LOG_ERR,"Error reading Acqd.config: %s\n",eString);
     //	if(printToScreen)
     fprintf(stderr,"Error reading Acqd.config: %s\n",eString);
-	    
+
   }
 
   return status;
@@ -3058,7 +3110,7 @@ void copyCommand(CommandStruct_t *theCmd, CommandStruct_t *cpCmd)
   }
 }
 
-int sameCommand(CommandStruct_t *theCmd, CommandStruct_t *lastCmd) 
+int sameCommand(CommandStruct_t *theCmd, CommandStruct_t *lastCmd)
 {
   int i;
   int different=0;
@@ -3072,7 +3124,7 @@ int sameCommand(CommandStruct_t *theCmd, CommandStruct_t *lastCmd)
 
 
 
-int readArchivedConfig() 
+int readArchivedConfig()
 /* Load Archived config stuff */
 {
   /* Config file thingies */
@@ -3084,7 +3136,7 @@ int readArchivedConfig()
   if(status == CONFIG_E_OK) {
     tempNum=10;
     kvpStatus = kvpGetIntArray("priDiskEncodingType",
-			       priDiskEncodingType,&tempNum);	
+			       priDiskEncodingType,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(priDiskEncodingType): %s",
 	     kvpErrorString(kvpStatus));
@@ -3097,7 +3149,7 @@ int readArchivedConfig()
 
     tempNum=10;
     kvpStatus = kvpGetIntArray("priTelemClockEncodingType",
-			       priTelemClockEncodingType,&tempNum);	
+			       priTelemClockEncodingType,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(priTelemClockEncodingType): %s",
 	     kvpErrorString(kvpStatus));
@@ -3109,7 +3161,7 @@ int readArchivedConfig()
 
     tempNum=10;
     kvpStatus = kvpGetIntArray("priTelemEncodingType",
-			       priTelemEncodingType,&tempNum);	
+			       priTelemEncodingType,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(priTelemEncodingType): %s",
 	     kvpErrorString(kvpStatus));
@@ -3121,7 +3173,7 @@ int readArchivedConfig()
 
     tempNum=NUM_PRIORITIES;
     kvpStatus = kvpGetFloatArray("priorityFractionGlobalDecimate",
-				 priorityFractionGlobalDecimate,&tempNum);	
+				 priorityFractionGlobalDecimate,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionGlobalDecimate): %s",
 	     kvpErrorString(kvpStatus));
@@ -3131,7 +3183,7 @@ int readArchivedConfig()
 
     tempNum=NUM_PRIORITIES;
     kvpStatus = kvpGetFloatArray("priorityFractionDeleteHelium1",
-				 priorityFractionDeleteHelium1,&tempNum);	
+				 priorityFractionDeleteHelium1,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteHelium1): %s",
 	     kvpErrorString(kvpStatus));
@@ -3141,7 +3193,7 @@ int readArchivedConfig()
 
     tempNum=NUM_PRIORITIES;
     kvpStatus = kvpGetFloatArray("priorityFractionDeleteHelium2",
-				 priorityFractionDeleteHelium2,&tempNum);	
+				 priorityFractionDeleteHelium2,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteHelium2): %s",
 	     kvpErrorString(kvpStatus));
@@ -3151,7 +3203,7 @@ int readArchivedConfig()
 
     tempNum=NUM_PRIORITIES;
     kvpStatus = kvpGetFloatArray("priorityFractionDeleteUsb",
-				 priorityFractionDeleteUsb,&tempNum);	
+				 priorityFractionDeleteUsb,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteUsb): %s",
 	     kvpErrorString(kvpStatus));
@@ -3161,7 +3213,7 @@ int readArchivedConfig()
 
     tempNum=NUM_PRIORITIES;
     kvpStatus = kvpGetFloatArray("priorityFractionDeleteNtu",
-				 priorityFractionDeleteNtu,&tempNum);	
+				 priorityFractionDeleteNtu,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeleteNtu): %s",
 	     kvpErrorString(kvpStatus));
@@ -3171,7 +3223,7 @@ int readArchivedConfig()
 
     tempNum=NUM_PRIORITIES;
     kvpStatus = kvpGetFloatArray("priorityFractionDeletePmc",
-				 priorityFractionDeletePmc,&tempNum);	
+				 priorityFractionDeletePmc,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityFractionDeletePmc): %s",
 	     kvpErrorString(kvpStatus));
@@ -3182,7 +3234,7 @@ int readArchivedConfig()
 
     tempNum=10;
     kvpStatus = kvpGetIntArray("priDiskEventMask",
-			       priDiskEventMask,&tempNum);	
+			       priDiskEventMask,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(priDiskEventMask): %s",
 	     kvpErrorString(kvpStatus));
@@ -3194,7 +3246,7 @@ int readArchivedConfig()
 
     tempNum=10;
     kvpStatus = kvpGetIntArray("alternateUsbs",
-			       alternateUsbs,&tempNum);	
+			       alternateUsbs,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(alternateUsbs): %s",
 	     kvpErrorString(kvpStatus));
@@ -3210,13 +3262,13 @@ int readArchivedConfig()
     eString=configErrorString (status) ;
     syslog(LOG_ERR,"Error reading Archived.config: %s\n",eString);
   }
-    
+
   return status;
 }
 
 
 
-int readPrioritizerdConfig() 
+int readPrioritizerdConfig()
 /* Load Prioritizerd config stuff */
 {
   /* Config file thingies */
@@ -3229,7 +3281,7 @@ int readPrioritizerdConfig()
   if(status == CONFIG_E_OK) {
     tempNum=48;
     kvpStatus = kvpGetFloatArray("phiArrayDeg",
-			       phiArrayDeg,&tempNum);	
+			       phiArrayDeg,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(phiArrayDeg): %s",
 	     kvpErrorString(kvpStatus));
@@ -3240,7 +3292,7 @@ int readPrioritizerdConfig()
 
     tempNum=48;
     kvpStatus = kvpGetFloatArray("rArray",
-			       rArray,&tempNum);	
+			       rArray,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(rArray): %s",
 	     kvpErrorString(kvpStatus));
@@ -3251,7 +3303,7 @@ int readPrioritizerdConfig()
 
     tempNum=48;
     kvpStatus = kvpGetFloatArray("zArray",
-			       zArray,&tempNum);	
+			       zArray,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(zArray): %s",
 	     kvpErrorString(kvpStatus));
@@ -3263,7 +3315,7 @@ int readPrioritizerdConfig()
 
     tempNum=10;
     kvpStatus = kvpGetFloatArray("priorityParamsLowBinEdge",
-				 priorityParamsLowBinEdge,&tempNum);	
+				 priorityParamsLowBinEdge,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityParamsLowBinEdge): %s",
 	     kvpErrorString(kvpStatus));
@@ -3272,7 +3324,7 @@ int readPrioritizerdConfig()
     }
     tempNum=10;
     kvpStatus = kvpGetFloatArray("priorityParamsHighBinEdge",
-				 priorityParamsHighBinEdge,&tempNum);	
+				 priorityParamsHighBinEdge,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetFloatArray(priorityParamsHighBinEdge): %s",
 	     kvpErrorString(kvpStatus));
@@ -3287,13 +3339,13 @@ int readPrioritizerdConfig()
     eString=configErrorString (status) ;
     syslog(LOG_ERR,"Error reading Prioritizerd.config: %s\n",eString);
   }
-    
+
   return status;
 }
 
 
 
-int readLosdConfig() 
+int readLosdConfig()
 /* Load Losd config stuff */
 {
   /* Config file thingies */
@@ -3305,7 +3357,7 @@ int readLosdConfig()
   if(status == CONFIG_E_OK) {
     tempNum=10;
     kvpStatus = kvpGetIntArray("priorityBandwidths",
-			       losdBandwidths,&tempNum);	
+			       losdBandwidths,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(priorityBandwidths): %s",
 	     kvpErrorString(kvpStatus));
@@ -3318,12 +3370,12 @@ int readLosdConfig()
     eString=configErrorString (status) ;
     syslog(LOG_ERR,"Error reading LOSd.config: %s\n",eString);
   }
-    
+
   return status;
 }
 
 
-int readGpsdConfig() 
+int readGpsdConfig()
 /* Load Gpsd config stuff */
 {
   /* Config file thingies */
@@ -3336,7 +3388,7 @@ int readGpsdConfig()
     numSources=kvpGetInt("numSources",0);
     tempNum=MAX_PHI_SOURCES;
     kvpStatus = kvpGetFloatArray("sourceLats",
-				 sourceLats,&tempNum);	
+				 sourceLats,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(sourceLats): %s",
 	     kvpErrorString(kvpStatus));
@@ -3347,7 +3399,7 @@ int readGpsdConfig()
 
     tempNum=MAX_PHI_SOURCES;
     kvpStatus = kvpGetFloatArray("sourceLongs",
-				 sourceLongs,&tempNum);	
+				 sourceLongs,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(sourceLongs): %s",
 	     kvpErrorString(kvpStatus));
@@ -3358,7 +3410,7 @@ int readGpsdConfig()
 
     tempNum=MAX_PHI_SOURCES;
     kvpStatus = kvpGetFloatArray("sourceAlts",
-				 sourceAlts,&tempNum);	
+				 sourceAlts,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(sourceAlts): %s",
 	     kvpErrorString(kvpStatus));
@@ -3369,7 +3421,7 @@ int readGpsdConfig()
 
     tempNum=MAX_PHI_SOURCES;
     kvpStatus = kvpGetFloatArray("sourceDistKm",
-				 sourceDistKm,&tempNum);	
+				 sourceDistKm,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(sourceDistKm): %s",
 	     kvpErrorString(kvpStatus));
@@ -3380,7 +3432,7 @@ int readGpsdConfig()
 
     tempNum=MAX_PHI_SOURCES;
     kvpStatus = kvpGetIntArray("sourcePhiWidth",
-			       sourcePhiWidth,&tempNum);	
+			       sourcePhiWidth,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(sourcePhiWidth): %s",
 	     kvpErrorString(kvpStatus));
@@ -3389,18 +3441,18 @@ int readGpsdConfig()
 		kvpErrorString(kvpStatus));
     }
 
-      
+
 
   }
   else {
     eString=configErrorString (status) ;
     syslog(LOG_ERR,"Error reading GPSd.config: %s\n",eString);
   }
-    
+
   return status;
 }
 
-int readSipdConfig() 
+int readSipdConfig()
 /* Load Sipd config stuff */
 {
   /* Config file thingies */
@@ -3412,7 +3464,7 @@ int readSipdConfig()
   if(status == CONFIG_E_OK) {
     tempNum=10;
     kvpStatus = kvpGetIntArray("priorityBandwidths",
-			       sipdBandwidths,&tempNum);	
+			       sipdBandwidths,&tempNum);
     if(kvpStatus!=KVP_E_OK) {
       syslog(LOG_WARNING,"kvpGetIntArray(priorityBandwidths): %s",
 	     kvpErrorString(kvpStatus));
@@ -3445,7 +3497,7 @@ int readSipdConfig()
     eString=configErrorString (status) ;
     syslog(LOG_ERR,"Error reading SIPd.config: %s\n",eString);
   }
-    
+
   return status;
 }
 
@@ -3472,17 +3524,17 @@ int makeNewRunDirs() {
     if(!(hkDiskBitMask&diskBitMasks[diskInd]) &&
        !(eventDiskBitMask&diskBitMasks[diskInd]))
       continue; // Disk not enabled
-	
+
     sprintf(newRunDir,"%s/run%d",diskNames[diskInd],runNum);
     sprintf(currentDirLink,"%s/current",diskNames[diskInd]);
-	
+
     makeDirectories(newRunDir);
     removeFile(currentDirLink);
     if(is_dir(currentDirLink)) {
       sprintf(mistakeDirName,"%s/run%d.current",diskNames[diskInd],runNum-1);
-      rename(currentDirLink,mistakeDirName);	    
+      rename(currentDirLink,mistakeDirName);
     }
-    symlink(newRunDir,currentDirLink);       
+    symlink(newRunDir,currentDirLink);
     //    char theCommand[180];
     //    sprintf(theCommand,"/home/anita/flightSoft/bin/makeNewRunDirs.sh");
     //    retVal=system(theCommand);
@@ -3491,17 +3543,17 @@ int makeNewRunDirs() {
   //Now delete dirs
   //For now with system command
   system("rm -rf /tmp/anita/acqd /tmp/anita/eventd /tmp/anita/gpsd /tmp/anita/prioritizerd /tmp/anita/calibd /tmp/buffer/*");
-    
+
   system("/home/anita/flightSoft/bin/createConfigAndLog.sh");
 
   fillGenericHeader(&runStart,PACKET_RUN_START,sizeof(RunStart_t));
   //Write file for Monitord
   normalSingleWrite((unsigned char*)&runStart,RUN_START_FILE,sizeof(RunStart_t));
-    
+
   sprintf(filename,"%s/run_%u.dat",LOSD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
   normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
   makeLink(filename,LOSD_CMD_ECHO_TELEM_LINK_DIR);
-    
+
   sprintf(filename,"%s/run_%u.dat",SIPD_CMD_ECHO_TELEM_DIR,runStart.runNumber);
   normalSingleWrite((unsigned char*)&runStart,filename,sizeof(RunStart_t));
   makeLink(filename,SIPD_CMD_ECHO_TELEM_LINK_DIR);
@@ -3542,7 +3594,7 @@ int getNewRunNumber() {
     fclose (pFile);
   }
   return runNumber;
-    
+
 }
 
 int clearRamdisk()
@@ -3560,8 +3612,8 @@ int clearRamdisk()
   makeDirectories(REQUEST_TELEM_LINK_DIR);
   makeDirectories(PLAYBACK_LINK_DIR);
   makeDirectories(LOGWATCH_LINK_DIR);
-  startPrograms(progMask); 
-  makeNewRunDirs(); 
+  startPrograms(progMask);
+  makeNewRunDirs();
   startDataPrograms();
   return retVal;
 }
@@ -3577,7 +3629,7 @@ int getLatestEventNumber() {
     syslog (LOG_ERR,"fopen: %s ---  %s\n",strerror(errno),
 	    LAST_EVENT_NUMBER_FILE);
   }
-  else {	    	    
+  else {
     retVal=fscanf(pFile,"%d",&eventNumber);
     if(retVal<0) {
       syslog (LOG_ERR,"fscanff: %s ---  %s\n",strerror(errno),
@@ -3591,17 +3643,17 @@ int getLatestEventNumber() {
 
 void handleBadSigs(int sig)
 {
-  fprintf(stderr,"Received sig %d -- will exit immediately\n",sig); 
-  syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig); 
+  fprintf(stderr,"Received sig %d -- will exit immediately\n",sig);
+  syslog(LOG_WARNING,"Received sig %d -- will exit immediately\n",sig);
   unlink(CMDD_PID_FILE);
   syslog(LOG_INFO,"Cmdd terminating");
 
-  if (sig == SIGSEGV) 
+  if (sig == SIGSEGV)
   {
-    size_t size; 
-    void * traceback[20]; 
-    size = backtrace(traceback, 20); 
-    backtrace_symbols_fd(traceback,size, STDERR_FILENO); 
+    size_t size;
+    void * traceback[20];
+    size = backtrace(traceback, 20);
+    backtrace_symbols_fd(traceback,size, STDERR_FILENO);
   }
 
 
@@ -3675,7 +3727,7 @@ int logRequestCommand(int logNum, int numLines)
     return 0;
   }
   return 0;
-  
+
 
 }
 
@@ -3693,10 +3745,10 @@ int killDataPrograms()
 		     ID_PLAYBACKD,
 		     ID_LOGWATCHD,
 		     ID_OPENPORTD,
-		     ID_NTUD};  
-  
+		     ID_NTUD};
+
   int index=0,sleepCount=0;
-  
+
   //Kill the disk writing programs
   for(index=0;index<numDataProgs;index++) {
     int progMask=getIdMask(dataProgs[index]);
@@ -3704,7 +3756,7 @@ int killDataPrograms()
     if(index==0) sleep(1);
   }
   //Give them some time
-  sleep(5); 
+  sleep(5);
 
   //Check they have actually gone away
   for(index=0;index<numDataProgs;index++) {
@@ -3716,7 +3768,7 @@ int killDataPrograms()
 	fclose(test);
 	fileExists=1;
 	sleepCount++;
-	sleep(1);	
+	sleep(1);
 	if(sleepCount>20) {
 	  syslog(LOG_INFO,"%s not dead after %d seconds\n",getProgName(dataProgs[index]),sleepCount);
 	  reallyKillPrograms(getIdMask(dataProgs[index]));
@@ -3768,139 +3820,138 @@ int tryAndMountSatadrives()
 
   char theCommand[180];
   sprintf(theCommand,"sudo /etc/init.d/anitamount start");
-  int retVal=system(theCommand);    
+  int retVal=system(theCommand);
   sleep(10);
 
   killDataPrograms();
   retVal=makeNewRunDirs();
-  if(retVal==-1) return 0;	    	    
+  if(retVal==-1) return 0;
   time(&rawtime);
   startDataPrograms();
   return rawtime;
 }
 
-int executeRTLCommand(int command, unsigned char arg[2]) 
+int executeRTLCommand(int command, unsigned char arg[2])
 {
-  time_t when; 
-  unsigned short argAsShort = arg[0] + ( arg[1] << 8); 
-  int num_rtls = NUM_RTLSDR; 
-  float gain[NUM_RTLSDR]; 
-  int disabled[NUM_RTLSDR]; 
+  time_t when;
+  unsigned short argAsShort = arg[0] + ( arg[1] << 8);
+  int num_rtls = NUM_RTLSDR;
+  float gain[NUM_RTLSDR];
+  int disabled[NUM_RTLSDR];
   switch(command)
   {
-    case RTL_SET_TELEM_EVERY: 
-      configModifyInt("RTLd.config","rtl","telemEvery",(int) arg[0], &when); 
-      break; 
-    case RTL_SET_START_FREQUENCY: 
-      configModifyInt("RTLd.config","rtl","startFreq",argAsShort * 1e6, &when); 
+    case RTL_SET_TELEM_EVERY:
+      configModifyInt("RTLd.config","rtl","telemEvery",(int) arg[0], &when);
       break;
-    case RTL_SET_END_FREQUENCY: 
-      configModifyInt("RTLd.config","rtl","endFreq",argAsShort * 1e6, &when); 
+    case RTL_SET_START_FREQUENCY:
+      configModifyInt("RTLd.config","rtl","startFreq",argAsShort * 1e6, &when);
       break;
-    case RTL_SET_FREQUENCY_STEP: 
-      configModifyInt("RTLd.config","rtl","stepFreq",argAsShort*1e3, &when); 
+    case RTL_SET_END_FREQUENCY:
+      configModifyInt("RTLd.config","rtl","endFreq",argAsShort * 1e6, &when);
       break;
-    case RTL_SET_GAIN: 
-      configLoad("RTLd.config","rtl"); 
-      kvpGetFloatArray("gain", gain, &num_rtls); 
-      gain[ argAsShort & (~(0xffff << NBITS_FOR_RTL_INDEX)) ] = 0.1  * (argAsShort >> NBITS_FOR_RTL_INDEX); 
-      configModifyFloatArray("RTLd.config","rtl","gain",gain, NUM_RTLSDR, &when); 
-      break; 
+    case RTL_SET_FREQUENCY_STEP:
+      configModifyInt("RTLd.config","rtl","stepFreq",argAsShort*1e3, &when);
+      break;
+    case RTL_SET_GAIN:
+      configLoad("RTLd.config","rtl");
+      kvpGetFloatArray("gain", gain, &num_rtls);
+      gain[ argAsShort & (~(0xffff << NBITS_FOR_RTL_INDEX)) ] = 0.1  * (argAsShort >> NBITS_FOR_RTL_INDEX);
+      configModifyFloatArray("RTLd.config","rtl","gain",gain, NUM_RTLSDR, &when);
+      break;
     case RTL_SET_DISABLED:
-      configLoad("RTLd.config","rtl"); 
-      kvpGetIntArray("disabled", disabled, &num_rtls); 
-      disabled[arg[0]] = arg[1]; 
-      configModifyIntArray("RTLd.config","rtl","disabled",disabled, NUM_RTLSDR, &when); 
+      configLoad("RTLd.config","rtl");
+      kvpGetIntArray("disabled", disabled, &num_rtls);
+      disabled[arg[0]] = arg[1];
+      configModifyIntArray("RTLd.config","rtl","disabled",disabled, NUM_RTLSDR, &when);
       break;
     case RTL_SET_GRACEFUL_TIMEOUT:
-      configModifyInt("RTLd.config","rtl","gracefulTimeout", argAsShort, &when); 
-      break; 
+      configModifyInt("RTLd.config","rtl","gracefulTimeout", argAsShort, &when);
+      break;
     case RTL_SET_FAIL_TIMEOUT:
-      configModifyInt("RTLd.config","rtl","failTimeout", argAsShort, &when); 
-      break; 
+      configModifyInt("RTLd.config","rtl","failTimeout", argAsShort, &when);
+      break;
     case RTL_SET_MAX_FAIL:
-      configModifyInt("RTLd.config","rtl","failThreshold", argAsShort, &when); 
-      break; 
+      configModifyInt("RTLd.config","rtl","failThreshold", argAsShort, &when);
+      break;
 
-    default: 
+    default:
       syslog(LOG_ERR,"Unknown RTLd command -- %d\n",command);
-      return 0; 
+      return 0;
   }
 
-  sendSignal(ID_RTLD, SIGUSR1); 
-  return when; 
+  sendSignal(ID_RTLD, SIGUSR1);
+  return when;
 
-  return 0; 
+  return 0;
 }
 
 
 static void char_arr_to_int_arr(int * vint, const unsigned char * vchar, int length)
 {
-  int i; 
-  for (i = 0; i < length; i++) 
+  int i;
+  for (i = 0; i < length; i++)
   {
-    vint[i] = vchar[i]; 
+    vint[i] = vchar[i];
   }
 }
 
 
-int executeTuffCommand(int command, unsigned char arg[6]) 
+int executeTuffCommand(int command, unsigned char arg[6])
 {
-  time_t when; 
-  int notch_array[2*NUM_TUFF_NOTCHES]; 
-  unsigned short cmd; 
+  time_t when;
+  int notch_array[2*NUM_TUFF_NOTCHES];
+  unsigned short cmd;
 
   switch(command)
   {
 
-    case TUFF_SET_NOTCH: 
-       char_arr_to_int_arr(notch_array, arg, 2 * NUM_TUFF_NOTCHES); 
-       configModifyIntArray("Tuffd.config","notch","notchPhiSectors",notch_array,2*NUM_TUFF_NOTCHES, &when); 
-       break; 
+    case TUFF_SET_NOTCH:
+       char_arr_to_int_arr(notch_array, arg, 2 * NUM_TUFF_NOTCHES);
+       configModifyIntArray("Tuffd.config","notch","notchPhiSectors",notch_array,2*NUM_TUFF_NOTCHES, &when);
+       break;
 
-    case TUFF_SEND_RAW: 
-       cmd = arg[1] + (arg[2] << 8); 
-       doTuffRawCommand(arg[0] >> 1, arg[0] & 1 ,cmd,&when); 
-       break; 
+    case TUFF_SEND_RAW:
+       cmd = arg[1] + (arg[2] << 8);
+       doTuffRawCommand(arg[0] >> 1, arg[0] & 1 ,cmd,&when);
+       break;
 
-    case TUFF_SET_SLEEP_AMOUNT: 
-       configModifyInt("Tuffd.config","behavior","sleepAmount", arg[0], &when); 
+    case TUFF_SET_SLEEP_AMOUNT:
+       configModifyInt("Tuffd.config","behavior","sleepAmount", arg[0], &when);
        break;
-    case TUFF_SET_READ_TEMPERATURE: 
-       configModifyInt("Tuffd.config","behavior","readTemperature", arg[0], &when); 
+    case TUFF_SET_READ_TEMPERATURE:
+       configModifyInt("Tuffd.config","behavior","readTemperature", arg[0], &when);
        break;
-    case TUFF_SET_TELEM_EVERY: 
-       configModifyInt("Tuffd.config","behavior","telemEvery", arg[0], &when); 
+    case TUFF_SET_TELEM_EVERY:
+       configModifyInt("Tuffd.config","behavior","telemEvery", arg[0], &when);
        break;
-    case TUFF_SET_TELEM_AFTER_CHANGE: 
-       configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when); 
+    case TUFF_SET_TELEM_AFTER_CHANGE:
+       configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when);
        break;
-    default: 
+    default:
       syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);
-      return 0; 
+      return 0;
   }
 
-  sendSignal(ID_TUFFD, SIGUSR1); 
-  return when; 
+  sendSignal(ID_TUFFD, SIGUSR1);
+  return when;
 }
 
 
 
-static int rawtuff_counter = 0; 
-int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm ) 
+static int rawtuff_counter = 0;
+int doTuffRawCommand(char rfcm, char stack, short cmd, time_t * tm )
 {
 
-  TuffRawCmd_t raw; 
-  char outName[FILENAME_MAX]; 
-  time_t now = time(0); 
-  raw.requestedTime = now; 
-  raw.cmd = cmd; 
-  raw.irfcm = rfcm; 
-  raw.tuffStack = stack; 
-  sprintf(outName,"%s/tuff_rawcmd_%d.dat",TUFF_RAWCMD_DIR, rawtuff_counter++); 
-  writeStruct(&raw, outName, sizeof(TuffRawCmd_t)); 
-  makeLink(outName,TUFF_RAWCMD_LINK_DIR); 
-  *tm = now; 
-  return 0; 
+  TuffRawCmd_t raw;
+  char outName[FILENAME_MAX];
+  time_t now = time(0);
+  raw.requestedTime = now;
+  raw.cmd = cmd;
+  raw.irfcm = rfcm;
+  raw.tuffStack = stack;
+  sprintf(outName,"%s/tuff_rawcmd_%d.dat",TUFF_RAWCMD_DIR, rawtuff_counter++);
+  writeStruct(&raw, outName, sizeof(TuffRawCmd_t));
+  makeLink(outName,TUFF_RAWCMD_LINK_DIR);
+  *tm = now;
+  return 0;
 }
-
