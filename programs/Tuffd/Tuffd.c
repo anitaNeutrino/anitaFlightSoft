@@ -387,7 +387,7 @@ int analyzeHeading()
 
   for (i = 0; i < NUM_HEADINGS; i++) 
   {
-    if (tdiff(headingTimesA[i],timeNow) < -maxHeadingAge)
+    if (maxHeadingAge && tdiff(headingTimesA[i],timeNow) < -maxHeadingAge)
     {
       headingTimesA[i] = -9999; 
       headingHistoryA[i] = -1; 
@@ -398,7 +398,7 @@ int analyzeHeading()
       headingTimesA[i] -= timeNow; 
     }
 
-    if (tdiff(headingTimesB[i],timeNow)  <- maxHeadingAge)
+    if (maxHeadingAge && tdiff(headingTimesB[i],timeNow)  <- maxHeadingAge)
     {
       headingTimesB[i] = -9999; 
       headingHistoryB[i] = -1; 
@@ -411,7 +411,7 @@ int analyzeHeading()
 
     if (useMagnetometerForHeading) 
     {
-      if (tdiff(headingTimesMag[i],timeNow) < - maxHeadingAge) 
+      if (maxHeadingAge && tdiff(headingTimesMag[i],timeNow) < - maxHeadingAge) 
       {
         headingTimesMag[i] = -9999; 
         headingHistoryMag[i] = -1; 
