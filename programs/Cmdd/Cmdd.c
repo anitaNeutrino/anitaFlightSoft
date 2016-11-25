@@ -1331,7 +1331,9 @@ int startPrograms(int progMask)
 {
   time_t rawtime;
   time(&rawtime);
+  char extraCommand[FILENAME_MAX];
   char daemonCommand[FILENAME_MAX];
+  int needExtra=0;
   int retVal=0;
   ProgramId_t prog;
   int testMask;
@@ -1345,7 +1347,9 @@ int startPrograms(int progMask)
 
 
       if(prog==ID_PRIORITIZERD) {
-	sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
+	needExtra=1;
+	sprintf(extraCommand,"daemon -r X -n X --env=\"DISPLAY=:0\"");
+	sprintf(daemonCommand,"daemon -r %s -n %s --env=\"DISPLAY=:0\"",
 		getProgName(prog),getProgName(prog));
       }
       else if(prog==ID_ACQD) {
@@ -1353,7 +1357,7 @@ int startPrograms(int progMask)
 		getProgName(prog),getProgName(prog));
       }
       else if(prog==ID_ARCHIVED) {
-	sprintf(daemonCommand,"nice -n 15 daemon -r %s -n %s ",
+	sprintf(daemonCommand,"daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
       }
       else if(prog==ID_SIPD) {
@@ -1363,6 +1367,11 @@ int startPrograms(int progMask)
       else {
 	sprintf(daemonCommand,"nice -n 20 daemon -r %s -n %s ",
 		getProgName(prog),getProgName(prog));
+      }
+
+      if(needExtra) {
+	retVal=system(extraCommand);
+	sleep(1);
       }
 
       syslog(LOG_INFO,"Sending command: %s",daemonCommand);

@@ -67,11 +67,12 @@ int readNTUTemps(SbsTempIndex_t index)
   FILE *neoFile=fopen("/tmp/lastNtuTemps","r");
   if(neoFile) {
     fscanf(neoFile,"%u %d %d %d",&unixTime,&cpuTempInt,&diskTemp[0],&diskTemp[1]);
+    //    printf("%u %d %d %d\n",unixTime,cpuTempInt,diskTemp[0],diskTemp[1]);
     fclose(neoFile);
   }
   switch(index) {
   case SBS_TEMP_3:
-    return cpuTempInt;
+    return 0.1*cpuTempInt;
   case SBS_TEMP_4:
     return diskTemp[0];
   case SBS_TEMP_5:

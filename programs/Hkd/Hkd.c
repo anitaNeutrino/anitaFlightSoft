@@ -369,7 +369,7 @@ int readSBSTemps ()
     sbsData.temp[tempIndex]=readSBSTemperature(tempIndex);
   }
   if(printToScreen) {
-    printf("SBS Temps:\t%3.1f %3.1f %3.1f %3.1f \nNTU %d %d %d %d %d %d\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),convertAnitaToHuman(sbsData.temp[3]),getNTUDiskTemp(sbsData.temp[4],0),getNTUDiskTemp(sbsData.temp[4],1),getNTUDiskTemp(sbsData.temp[4],2),getNTUDiskTemp(sbsData.temp[5],0),getNTUDiskTemp(sbsData.temp[5],1),getNTUDiskTemp(sbsData.temp[5],2));
+    printf("SBS Temps:\t%3.1f %3.1f %3.1f \nNTU %d %d %d\n",convertAnitaToHuman(sbsData.temp[0]),convertAnitaToHuman(sbsData.temp[1]),convertAnitaToHuman(sbsData.temp[2]),(unsigned short)sbsData.temp[3],sbsData.temp[4],sbsData.temp[5]);
   }
   return 0;
 }
