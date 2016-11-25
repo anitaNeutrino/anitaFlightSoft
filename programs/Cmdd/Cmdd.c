@@ -507,7 +507,9 @@ int executeCommand(CommandStruct_t *theCmd)
     ivalue2=theCmd->cmd[2];//+(theCmd->cmd[3]<<8);
     printf("CMD_DISABLE_DISK: %d %#x %#x\n",theCmd->cmd[0],theCmd->cmd[1],theCmd->cmd[2]);
     printf("ivalue2==%d ivalue==%d\n",ivalue2,ivalue);
-    return disableDisk(ivalue,ivalue2);
+    //RJN change to switch order of arguments
+
+    return disableDisk(ivalue2,ivalue);
   case CMD_MOUNT_ARGH:
     return tryAndMountSatadrives();
   case CMD_MOUNT_NEXT_NTU:   //RJN changed number of params
