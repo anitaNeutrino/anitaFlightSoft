@@ -145,6 +145,8 @@ cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_co
     raise(SIGTERM);
   }
   source_str = (char *)malloc(MAX_SOURCE_SIZE);
+  memset(source_str, 0, MAX_SOURCE_SIZE);
+
   /* source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp); */
   fread(source_str, 1, MAX_SOURCE_SIZE, fp);
   fclose(fp);
