@@ -3850,6 +3850,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
 {
   time_t when; 
   int notch_array[2*NUM_TUFF_NOTCHES]; 
+  int adjustArray[NUM_TUFF_NOTCHES]; 
   unsigned short cmd; 
 
   switch(command)
@@ -3876,6 +3877,22 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break;
     case TUFF_SET_TELEM_AFTER_CHANGE: 
        configModifyInt("Tuffd.config","behavior","telemAfterChange", arg[0], &when); 
+       break;
+    case TUFF_ADJUST_ACCORDING_TO_HEADING: 
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES); 
+       configModifyIntArray("Tuffd.config","notch","adjustAccordingToHeading",adjustArray, NUM_TUFF_NOTCHES, &when); 
+       configModifyInt("GPSd.config","output", "saveAttitudeForTuff", (arg[0] || arg[1] || arg[2]) ? 1 : 0, &when); 
+       break;
+    case TUFF_DEGREES_FROM_NORTH_TO_NOTCH: 
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES); 
+       configModifyIntArray("Tuffd.config","notch","tuffDegreesFromNorth",adjustArray, NUM_TUFF_NOTCHES, &when); 
+       break;
+    case TUFF_SLOPE_THRESHOLD_TO_NOTCH_NEXT_SECTOR: 
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES); 
+       configModifyIntArray("Tuffd.config","notch","slopeThresholdToNotchNextSector",adjustArray, NUM_TUFF_NOTCHES, &when); 
+       break;
+    case TUFF_MAX_HEADING_AGE: 
+       configModifyInt("Tuffd.config","notch","maxHeadingAge",arg[0], &when); 
        break;
     default: 
       syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);

@@ -29,7 +29,7 @@ typedef struct
 } buffer;
 
 
-void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType);
+void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms, cl_uint myPlatform, cl_device_type devType, int sleepTimeAfterKillingX);
 
 cl_program compileKernelsFromSource(const char* fileName, const char* opt, cl_context context, cl_device_id* deviceList,
 				    cl_uint numDevicesToUse, uint showCompileLog);
