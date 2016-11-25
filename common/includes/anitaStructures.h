@@ -1,8 +1,8 @@
 /*! \file anitaStructures.h
-  \brief Contains the definitions of all the structures used to store 
+  \brief Contains the definitions of all the structures used to store
   and move ANITA data and stuff.
-    
-  Some simple definitions of the structures that we'll use to store 
+
+  Some simple definitions of the structures that we'll use to store
   ANITA data. In here there will be the structures used for transient data,
   housekeeping stuff, GPS stuff and anything else that is going to be used
   by more than one of the processes. This will all change to use bit fields,
@@ -182,10 +182,10 @@
 #define VER_TURF_REG 40
 #define VER_TURF_EVENT_DATA 40
 #define VER_GPU_POW_SPEC 40
-#define VER_RTLSDR_POW_SPEC 40 
-#define VER_TUFF_STATUS 40 
-#define VER_TUFF_RAW_CMD 40 
-#define VER_TURF_RAW_BANK3 40 
+#define VER_RTLSDR_POW_SPEC 40
+#define VER_TUFF_STATUS 40
+#define VER_TUFF_RAW_CMD 40
+#define VER_TURF_RAW_BANK3 40
 #endif
 
 
@@ -214,7 +214,7 @@ typedef enum {
     PACKET_PED_SUBBED_EVENT = 0x124, ///<PedSubbedEventBody_t -- No too big
     PACKET_ENC_WV_PEDSUB = 0x125, ///< EncodedPedSubbedChannelPacketHeader_t -- Yes
     PACKET_ENC_PEDSUB_EVENT_WRAPPER = 0x126, ///<EncodedEventWrapper_t -- No
-    PACKET_PEDSUB_SURF = 0x127, ///<PedSubbedSurfPacket_t -- Yes 
+    PACKET_PEDSUB_SURF = 0x127, ///<PedSubbedSurfPacket_t -- Yes
     PACKET_LAB_PED = 0x130, ///<FullLabChipPedStruct_t -- Yes
     PACKET_FULL_PED = 0x131, ///< PedestalStruct_t -- No (Too Big)
     PACKET_GPS_ADU5_PAT = 0x200, ///<GpsAdu5PatStruct_t -- Yes
@@ -242,10 +242,10 @@ typedef enum {
     PACKET_LOGWATCHD_START = 0xc01, ///< LogWatchdStart_t -- Yes
     PACKET_ACQD_START = 0xc02, ///<AcqdStartStruct_t -- Yes
     PACKET_GPU_AVE_POW_SPEC = 0xd, ///<GpuPhiSectorPowerSpectrum_t -- Yes
-    PACKET_RTLSDR_POW_SPEC = 0xe00 , 
-    PACKET_TUFF_STATUS =0xf00, 
+    PACKET_RTLSDR_POW_SPEC = 0xe00 ,
+    PACKET_TUFF_STATUS =0xf00,
     PACKET_TUFF_RAW_CMD =0xf01
-    
+
 } PacketCode_t;
 
 typedef enum {
@@ -259,11 +259,11 @@ typedef enum {
     kNoEncoding=0
 } EventEncodingScheme_t;
 
-#ifdef SLAC_DATA06   
+#ifdef SLAC_DATA06
 typedef enum {
     ENCODE_NONE=0, ///<Done
     ENCODE_SOMETHING=0x100 ///<Done
-} ChannelEncodingType_t; 
+} ChannelEncodingType_t;
 #else
 //!  The encoding enumeration
 /*!
@@ -328,7 +328,7 @@ typedef enum {
     ENCODE_LOSSY_MULAW_7_4,
     ENCODE_LOSSY_MULAW_7_3,
     ENCODE_LOSSY_MULAW_6_4,
-    ENCODE_LOSSY_MULAW_6_3    
+    ENCODE_LOSSY_MULAW_6_3
 } ChannelEncodingType_t;
 #endif
 
@@ -344,7 +344,7 @@ typedef enum {
     PRI_3,
     PRI_4,
     PRI_TIMEOUT,
-    PRI_6, 
+    PRI_6,
     PRI_7,
     PRI_8,
     PRI_PAYLOAD
@@ -366,12 +366,12 @@ typedef enum {
 
 //!  The Generic Header
 /*!
-  This is the 16 byte header that prefaces all ANITA data. The PacketCode_t 
+  This is the 16 byte header that prefaces all ANITA data. The PacketCode_t
   tells one what kind of packet it is, and the checksum can be used to
   validate the data.
 */
 typedef struct {
-    PacketCode_t code;    
+    PacketCode_t code;
     unsigned int packetNumber; ///<Especially for Ped
     unsigned short numBytes;
     unsigned char feByte;
@@ -472,7 +472,7 @@ typedef struct {
     4-7 HITBUS offset
   */
     unsigned char chipIdFlag; // Bits 0,1 chipNum; Bit 3 hitBus wrap; 4-7 hitBusOff
-  //!  First sample of the hitbus 
+  //!  First sample of the hitbus
   /*!
     The last sample in the waveform is [firstHitbus-1] --unless wrapped.
     Otherwise it runs from firstHitbus+1 to lastHitbus-1 inclusive
@@ -576,7 +576,7 @@ typedef struct {
   The CR11 temperatue structure is in (4/100) * milli deg C
 */
 typedef struct {
-  short temp[4]; ///< 
+  short temp[4]; ///<
 } SBSTemperatureDataStruct_t;
 #else // ANITA_3_DATA
 //!  The XCR14 temperatures
@@ -584,7 +584,7 @@ typedef struct {
   The XCR14 temperatue structure is in (4/100) * milli deg C
 */
 typedef struct {
-  short temp[6]; ///< 
+  short temp[6]; ///<
 } SBSTemperatureDataStruct_t;
 #endif
 
@@ -599,22 +599,22 @@ typedef struct {
 } MagnetometerDataStruct_t;
 
 
-/** 
+/**
  *  Used for interprocess-sharing of magnetometer
  */
 typedef struct
 {
   unsigned int unixTime;
   unsigned int unixTimeUs;
-  MagnetometerDataStruct_t mag; 
-} TimedMagnetometerDataStruct_t; 
+  MagnetometerDataStruct_t mag;
+} TimedMagnetometerDataStruct_t;
 
 
 //!  Debugging use only scaler data
 /*!
   Debugging use only scaler data
 */
-typedef struct {    
+typedef struct {
   unsigned int unixTime;
   unsigned int unixTimeUs;
   unsigned short scaler[ACTIVE_SURFS][32];
@@ -660,8 +660,8 @@ typedef struct {
   [4] - /mnt/helium1       128 MB
   [5] - /mnt/helium2       128 MB
   [6] - /mnt/usbint        4 MB
-  [7] - NTU disk           16 MB 
-  
+  [7] - NTU disk           16 MB
+
 */
 typedef struct {
     unsigned short diskSpace[8]; ///<In units of 10 MegaBytes
@@ -693,7 +693,7 @@ typedef struct {
 /*!
   On board command structure
 */
-typedef struct {    
+typedef struct {
     unsigned char numCmdBytes;
     unsigned char cmd[MAX_CMD_LENGTH];
     unsigned int fromSipd; ///< 1 means it was a user command from SIPd, 0 is payload generated
@@ -756,7 +756,7 @@ typedef struct {
   //unsigned char rmsScalerRates[TRIGGER_SURFS][TRIGGERS_PER_SURF];
   //    unsigned char avgL1Rates[TRIGGER_SURFS]; ///< 3 of 8 counters --fix later
   //    unsigned char avgL2Rates[PHI_SECTORS]; ///< average of upper and lower
-  //    unsigned char avgL3Rates[PHI_SECTORS];    
+  //    unsigned char avgL3Rates[PHI_SECTORS];
     unsigned char eventRate1Min; ///<Multiplied by 8
     unsigned char eventRate10Min; ///<Multiplied by 8
 } SlowRateRFStruct_t;
@@ -814,50 +814,50 @@ typedef struct {
   unsigned int c3poNum;
   unsigned short ppsNum; ///<It's only updated every second so no need for sub-second timing
   unsigned short deadTime; ///<How much were we dead??
-  unsigned char  l3RatesGated[PHI_SECTORS]; /// to get Hz 
-  unsigned short l2Rates[PHI_SECTORS]; // 
-  unsigned char  l3Rates[PHI_SECTORS]; /// to get Hz 
+  unsigned char  l3RatesGated[PHI_SECTORS]; /// to get Hz
+  unsigned short l2Rates[PHI_SECTORS]; //
+  unsigned char  l3Rates[PHI_SECTORS]; /// to get Hz
   unsigned short l2TrigMask; ///< As read from TURF (16-bit upper phi, lower phi)
   unsigned short phiTrigMask; ///< 16 bit phi-sector mask
   unsigned char errorFlag;///<Bit 1-4 bufferdepth, Bits 5,6,7 are for upper,lower,nadir trig mask match
   unsigned char refPulses; ///< Ref pulses
   unsigned char reserved[2];
-  
+
 
 } TurfRateStruct_t;
 
 
-/** This is just a mirror of the register contents. 
+/** This is just a mirror of the register contents.
  *
- * Will be copied into TurfRateStruct as needed 
+ * Will be copied into TurfRateStruct as needed
  *
  *  NOT telemetered
- */ 
+ */
 typedef struct __attribute__((packed))
 {
-  GenericHeader_t gHdr; 
-  unsigned int unixTime; 
-  unsigned int unixTimeUs; 
+  GenericHeader_t gHdr;
+  unsigned int unixTime;
+  unsigned int unixTimeUs;
   unsigned int whichBank; //just to match TurfRegisterContents_t
-  unsigned short l2Rates[16]; 
-  unsigned int unused[8]; 
-  unsigned char l3Rates[16]; 
-  unsigned int unused2[4]; 
-  unsigned char l3RatesGated[16]; 
-  unsigned int unused3[4]; 
-  unsigned char refPulses; 
-  unsigned char unused4[3]; 
-  unsigned short deadTime; 
-  unsigned short nothingtoseehere; 
-  unsigned short rfScaler; 
-  unsigned short unused5; 
+  unsigned short l2Rates[16];
+  unsigned int unused[8];
+  unsigned char l3Rates[16];
+  unsigned int unused2[4];
+  unsigned char l3RatesGated[16];
+  unsigned int unused3[4];
+  unsigned char refPulses;
+  unsigned char unused4[3];
+  unsigned short deadTime;
+  unsigned short nothingtoseehere;
+  unsigned short rfScaler;
+  unsigned short unused5;
   unsigned int moreunused[4];
-  unsigned int c3poNum; 
-  unsigned char morejunk[6]; 
-  unsigned short ppsNum; 
-  unsigned int shadowed[6]; 
-  unsigned int garbage[16]; 
-} TurfRawBank3Struct_t; 
+  unsigned int c3poNum;
+  unsigned char morejunk[6];
+  unsigned short ppsNum;
+  unsigned int shadowed[6];
+  unsigned int garbage[16];
+} TurfRawBank3Struct_t;
 
 
 
@@ -870,11 +870,11 @@ typedef struct {
     GenericHeader_t gHdr;
     unsigned int unixTime; ///<Time of first hk
     unsigned short numRates; ///<Number of rates in average
-    unsigned short deltaT; ///<Difference in time between first and last 
+    unsigned short deltaT; ///<Difference in time between first and last
     unsigned int deadTime; ///<Summed dead time between first and last
     unsigned char bufferCount[4]; ///<Counting filled buffers
     unsigned int l2Rates[PHI_SECTORS]; ///< Divide by numRates to get Hz
-    unsigned short l3Rates[PHI_SECTORS]; ///</numRates to get Hz z  
+    unsigned short l3Rates[PHI_SECTORS]; ///</numRates to get Hz z
     unsigned short l2TrigMask; ///<As read from TURF (16-bit phi)
     unsigned short phiTrigMask; ///<16-bit phi-sector mask
     unsigned char errorFlag;///<Bit 1-4 bufferdepth, Bits 5,6,7 are for upper,lower,nadir trig mask match
@@ -888,22 +888,22 @@ typedef struct {
 typedef struct {
   GenericHeader_t gHdr;
   unsigned int unixTime;       ///< unix UTC sec
-  unsigned int unixTimeUs;     ///< unix UTC microsec 
+  unsigned int unixTimeUs;     ///< unix UTC microsec
 
   //!  GPS timestamp
   /*!
-     the GPS fraction of second (in ns) 
-     (for the X events per second that get 
+     the GPS fraction of second (in ns)
+     (for the X events per second that get
      tagged with it, note it now includes
      second offset from unixTime)
   */
-  int gpsSubTime;    
+  int gpsSubTime;
   unsigned int turfEventId; ///<Turf event id that doesn't roll
-  unsigned int eventNumber;    ///< Global event number 
+  unsigned int eventNumber;    ///< Global event number
   unsigned short calibStatus;   ///< Deprecated
   unsigned char priority; ///< priority and other
   unsigned char turfUpperWord; ///< The upper 8 bits from the TURF
-  unsigned char otherFlag; ///< Currently the first two surf evNums 
+  unsigned char otherFlag; ///< Currently the first two surf evNums
   //!  Error Flag
   /*!
     Bit 1 means sync slip between TURF and software
@@ -914,7 +914,7 @@ typedef struct {
     Bit 6 is stopBitGood (1 is good, 0 is bad);
     Bit 7-8 TURFIO photo shutter output
   */
-  unsigned char errorFlag; 
+  unsigned char errorFlag;
   unsigned char surfSlipFlag; ///< Sync Slip between SURF 2-9 and SURF 1
   unsigned char peakThetaBin; ///< 8-bit peak theta bin from Prioritizer
   unsigned short l2TrigMask; ///< 16-bit phi ant mask (from TURF)
@@ -989,7 +989,7 @@ typedef struct {
     unsigned int eventNumber;
 } EncodedSurfPacketHeader_t;
 
-//! Encoded PedSubbed Packet Header -- Telemetered  
+//! Encoded PedSubbed Packet Header -- Telemetered
 /*!
   Encoded PedSubbed Packet Header, precedes the encoded waveform data.
 */
@@ -1030,7 +1030,7 @@ typedef struct {
   GenericHeader_t gHdr;
   unsigned int unixTime;
   unsigned int unixTimeUs;
-  unsigned int timeOfDay;  
+  unsigned int timeOfDay;
   float latitude;
   float longitude;
   float altitude;
@@ -1050,7 +1050,7 @@ typedef struct {
     unsigned char prn;
     unsigned char elevation;
     unsigned char snr;
-    unsigned char flag; 
+    unsigned char flag;
     unsigned short azimuth;
 } GpsSatInfo_t;
 
@@ -1090,7 +1090,7 @@ typedef struct {
     float speedInKPH;
 } GpsAdu5VtgStruct_t;
 
-//! G12 Position and speed info -- Telemetered  
+//! G12 Position and speed info -- Telemetered
 /*!
   G12 Position and speed info
 */
@@ -1121,7 +1121,7 @@ typedef struct {
   unsigned int unixTime;
   unsigned char ackCount[3]; ///< Number of acknowledge messages from each GPS
   unsigned char nakCount[3];///< Number of NAK messages from each GPS
-  unsigned char rioBitMask; 
+  unsigned char rioBitMask;
   unsigned char tstBitMask;
 } GpsdStartStruct_t;
 
@@ -1151,12 +1151,12 @@ typedef struct {
   unsigned short threshVals[10];
   unsigned short scalerVals[TRIGGER_SURFS][SCALERS_PER_SURF][10];
 } AcqdStartStruct_t;
-  
+
 //! Hk Data Struct -- Telemetered
 /*!
   The main housekeeping data structure with acromag + SBS temps + magnetometer data
 */
-typedef struct {    
+typedef struct {
     GenericHeader_t gHdr;
     unsigned int unixTime;
     unsigned int unixTimeUs;
@@ -1170,7 +1170,7 @@ typedef struct {
 /*!
   The main housekeeping data structure with acromag + SBS temps + magnetometer data
 */
-typedef struct {    
+typedef struct {
     GenericHeader_t gHdr;
     unsigned int unixTime;
     unsigned int unixTimeUs;
@@ -1181,14 +1181,14 @@ typedef struct {
 /*!
   SURF Hk, contains thresholds, band rates (scalers) and rf power
 */
-typedef struct { 
+typedef struct {
   GenericHeader_t gHdr;
   unsigned int unixTime;
   unsigned int unixTimeUs;
   unsigned short globalThreshold; ///<set to zero if there isn't one
-  unsigned short errorFlag; ///<Will define at some point    
+  unsigned short errorFlag; ///<Will define at some point
   unsigned short scalerGoals[NUM_ANTENNA_RINGS]; ///<What are we aiming for with the scaler rate
-  unsigned short reserved;  
+  unsigned short reserved;
   unsigned short upperWords[ACTIVE_SURFS];
   unsigned short scaler[TRIGGER_SURFS][SCALERS_PER_SURF];
   unsigned short l1Scaler[TRIGGER_SURFS][L1S_PER_SURF];
@@ -1208,7 +1208,7 @@ typedef struct {
   GenericHeader_t gHdr;
   unsigned int unixTime; ///<Time of first hk
   unsigned short numHks; ///<Number of hks in average
-  unsigned short deltaT; ///<Difference in time between first and last 
+  unsigned short deltaT; ///<Difference in time between first and last
   unsigned int hadError; ///<Bit mask to be defined
   unsigned short globalThreshold;
   unsigned short scalerGoals[NUM_ANTENNA_RINGS];
@@ -1236,7 +1236,7 @@ typedef struct {
     unsigned char cmd[MAX_CMD_LENGTH]; ///< the cmd bytes
 } CommandEcho_t;
 
-//! Monitor Block -- Telemetered  
+//! Monitor Block -- Telemetered
 /*!
   Monitor stuff about disk spaces, telemetry queues and processess
 */
@@ -1248,7 +1248,7 @@ typedef struct {
   ProcessInfo_t procInfo;
 } MonitorStruct_t;
 
-//! Other Monitor Block -- Telemetered  
+//! Other Monitor Block -- Telemetered
 /*!
   Monitor inodes, inter-process communication lists and processes
 */
@@ -1276,7 +1276,7 @@ typedef struct {
     LabChipChannelPedStruct_t pedChan[CHANNELS_PER_SURF];
 } FullLabChipPedStruct_t;
 
-//! Zipped packet -- Telemetered  
+//! Zipped packet -- Telemetered
 /*!
   Just contains a gzipped version of another packet
 */
@@ -1297,7 +1297,7 @@ typedef struct {
   char filename[60];
 } ZippedFile_t;
 
-//! Run Start Block - Telemetered  
+//! Run Start Block - Telemetered
 /*!
   Run start block
 */
@@ -1308,7 +1308,7 @@ typedef struct {
     unsigned int runNumber; ///<Run number
 } RunStart_t;
 
-//! LogWatchd Start Block -- Telemetered  
+//! LogWatchd Start Block -- Telemetered
 /*!
   LogWatchd Start Block created when LogWatchd starts
 */
@@ -1324,7 +1324,7 @@ typedef struct {
 // On-board structs
 ////////////////////////////////////////////////////////////////////////////
 
-//! Raw event format 
+//! Raw event format
 /*!
   Raw event format
 */
@@ -1335,7 +1335,7 @@ typedef struct {
   SurfChannelFull_t channel[NUM_DIGITZED_CHANNELS];
 } AnitaEventBody_t;
 
-//! Pedestal subtracted event format  
+//! Pedestal subtracted event format
 /*!
   Pedestal subtracted event format
 */
@@ -1347,7 +1347,7 @@ typedef struct {
   SurfChannelPedSubbed_t channel[NUM_DIGITZED_CHANNELS];
 } PedSubbedEventBody_t;
 
-//! Full event format -- never used  
+//! Full event format -- never used
 /*!
   Full event format
 */
@@ -1356,7 +1356,7 @@ typedef struct {
     AnitaEventBody_t body;
 } AnitaEventFull_t;
 
-//! Wrapper for data that is written encoded  
+//! Wrapper for data that is written encoded
 /*!
   Wrapper for data that is written encoded
 */
@@ -1366,7 +1366,7 @@ typedef struct {
     unsigned numBytes; ///<Not including the EncodedEventWrapper_t;
 } EncodedEventWrapper_t; ///<Not implemented
 
-//! GPS Event Timestamp  
+//! GPS Event Timestamp
 /*!
   GPS Event Timestamp
 */
@@ -1401,8 +1401,8 @@ typedef struct __attribute__((packed)) RawAdu5MBNStruct {
   double full_phase; ///< Full carrier phase measurements in cycles
   double raw_range; ///< Raw range to SV (in seconds), that is, receive_time - raw_range = transmit time
   int doppler; ///< Doppler (10-4 Hz)
-  int smoothing; ///< Doppler (10-4 Hz)  
-  unsigned char checkSum; ///< Checksum, a bytewise exclusive OR (XOR) on all bytes from sequence_tag (just after header) to the byte before checksum. 
+  int smoothing; ///< Doppler (10-4 Hz)
+  unsigned char checkSum; ///< Checksum, a bytewise exclusive OR (XOR) on all bytes from sequence_tag (just after header) to the byte before checksum.
   char carriageReturn;
   char lineFeed;
 } RawAdu5MBNStruct_t;
@@ -1480,7 +1480,7 @@ typedef struct __attribute__((packed)) RawAdu5PBNStruct {
 typedef struct __attribute__((packed)) RawAdu5ATTStruct {
   char attHeader[11]; ///< $PASHR,ATT
   double head; ///< Heading in degrees
-  double pitch; ///< Pitch in degrees 
+  double pitch; ///< Pitch in degrees
   double roll; ///< Roll in degrees
   double brms; ///< BRMS in meters
   double mrms; ///< MRMS in meters
@@ -1517,8 +1517,8 @@ typedef struct __attribute__((packed)) RawAdu5BFileRawNav {
     double navt;
     double navtdot;
     unsigned short pdop;
-    char num_sats;     
-}  RawAdu5BFileRawNav_t; 
+    char num_sats;
+}  RawAdu5BFileRawNav_t;
 
 typedef struct __attribute__((packed)) RawAdu5BFileChanObs {
   double raw_range;
@@ -1530,7 +1530,7 @@ typedef struct __attribute__((packed)) RawAdu5BFileChanObs {
   unsigned char ireg;
   unsigned char qa_phase;
   int doppler;
-  double carphase;		    
+  double carphase;
 }  RawAdu5BFileChanObs_t;
 
 
@@ -1590,13 +1590,13 @@ typedef struct __attribute__((packed)) RawAdu5AFileStruct {
   double mrms; ///< MRMS in meters
   int timeOfWeek; ///< Seconds-of-Week in milliseconds
   char reset; ///< Attitude reset flag
-  char spare; ///< Spare byte which is not used                                                                                                        
+  char spare; ///< Spare byte which is not used
 } RawAdu5AFileStruct_t;
 
 ///////////////////////////////////////////////////////////////////////
 //Utility Structures
 //////////////////////////////////////////////////////////////////////
-//! No idea  
+//! No idea
 /*!
   Does something to do with encoded events
 */
@@ -1608,28 +1608,28 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////
 //Prioritizer Utitlity Structs
 ///////////////////////////////////////////////////////////////////////////
-/// @cond 
+/// @cond
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-// these are syntactic sugar to help us keep track of bit shifts 
-typedef int Fixed3_t; ///<rescaled integer left shifted 3 bits 
-typedef int Fixed6_t; ///<rescaled integer left shifted 6 bits 
-typedef int Fixed8_t; ///<rescaled integer left shifted 8 bits 
+// these are syntactic sugar to help us keep track of bit shifts
+typedef int Fixed3_t; ///<rescaled integer left shifted 3 bits
+typedef int Fixed6_t; ///<rescaled integer left shifted 6 bits
+typedef int Fixed8_t; ///<rescaled integer left shifted 8 bits
 
 
 /*    FOR THREE STRUCTS THAT FOLLOW
-      valid samples==-1 prior to unwinding 
+      valid samples==-1 prior to unwinding
 */
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
 typedef struct {
      int data[MAX_NUMBER_SAMPLES];
-     int valid_samples; 
+     int valid_samples;
 } LogicChannel_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
@@ -1639,7 +1639,7 @@ typedef struct {
      short valid_samples;
 } TransientChannel3_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
@@ -1648,7 +1648,7 @@ typedef struct {
      short valid_samples;
 } TransientChannel6_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
@@ -1658,7 +1658,7 @@ typedef struct {
      short valid_samples;
 } TransientChannel8_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
@@ -1667,7 +1667,7 @@ typedef struct {
      short valid_samples;
 } TransientChannelF_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
@@ -1678,52 +1678,52 @@ typedef struct {
      float RMSpre;
 } TransientChannelFRMS_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
 typedef struct {
-     TransientChannel3_t ch[NUM_DIGITZED_CHANNELS]; 
-} AnitaTransientBody3_t; /* final corrected transient type 
+     TransientChannel3_t ch[NUM_DIGITZED_CHANNELS];
+} AnitaTransientBody3_t; /* final corrected transient type
 			    used to calculate power */
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
 typedef struct {
-     TransientChannel6_t ch[NUM_DIGITZED_CHANNELS]; 
+     TransientChannel6_t ch[NUM_DIGITZED_CHANNELS];
 } AnitaPowerBody6_t; /* power from squaring an AnitaTransientBody3 */
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
 typedef struct {
-     TransientChannel8_t ch[NUM_DIGITZED_CHANNELS]; 
-} AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping, 
+     TransientChannel8_t ch[NUM_DIGITZED_CHANNELS];
+} AnitaTransientBody8_t; /* used for pedestal subtraction, unwrapping,
 			    averaging, and gain correction */
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
 typedef struct {
-     TransientChannelF_t ch[NUM_DIGITZED_CHANNELS]; 
+     TransientChannelF_t ch[NUM_DIGITZED_CHANNELS];
 } AnitaTransientBodyF_t;
 
-//! Prioritizer utility  
+//! Prioritizer utility
 /*!
   Prioritizer utility
 */
 typedef struct {
      TransientChannel6_t S0,S1,S2,S3;
 } AnitaStokes6_t;
-/// @endcond 
+/// @endcond
 #endif //DOXYGEN_SHOULD_SKIP_THIS
 ///////////////////////////////////////////////////////////////////////////////
 ////Pedestal Calculation and Storage  Structs
 //////////////////////////////////////////////////////////////////////////////
 
-//! Pedestal utility  
+//! Pedestal utility
 /*!
   Pedestal utility
 */
@@ -1733,7 +1733,7 @@ typedef struct {
     LabChipChannelPedStruct_t pedChan[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF];
 } FullPedStruct_t;
 
-//! Pedestal utility  
+//! Pedestal utility
 /*!
   Pedestal utility
 */
@@ -1748,20 +1748,20 @@ typedef struct {
     float frms[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES];
 } PedCalcStruct_t;
 
-//! Pedestal utility  
+//! Pedestal utility
 /*!
   Pedestal utility
 */
 typedef struct {
     unsigned int unixTime; ///< Corresponds to unixTimeEnd above
     unsigned int nsamples; ///< What was the mean occupancy
-  unsigned short thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< mean pedestal 
+  unsigned short thePeds[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< mean pedestal
     unsigned short pedsRMS[ACTIVE_SURFS][LABRADORS_PER_SURF][CHANNELS_PER_SURF][MAX_NUMBER_SAMPLES]; ///< 10 x RMS of the samples (not of mean)
 } PedestalStruct_t;
 
 
 typedef struct {
-  short bins[99];
+  unsigned char bins[99];
 } GpuAnitaBandPowerSpectrumStruct_t;
 
 typedef struct {
@@ -1770,56 +1770,58 @@ typedef struct {
   unsigned int unixTimeLastEvent;
   unsigned int numEventsAveraged;
   unsigned int firstEventInAverage;
-  unsigned char phiSector;
-  unsigned char nothing;
-  GpuAnitaBandPowerSpectrumStruct_t powSpectra[NUM_ANTENNA_RINGS][2];
+  unsigned char pol;
+  unsigned char ring;
+  // GpuAnitaBandPowerSpectrumStruct_t powSpectra[NUM_ANTENNA_RINGS][2];
+  // should be NUM_PHI
+  GpuAnitaBandPowerSpectrumStruct_t powSpectra[16];
 } GpuPhiSectorPowerSpectrumStruct_t;
 
 
 
 
-/*! Struct to store RTL data 
+/*! Struct to store RTL data
  *
  *
- *  Short is overkill for the dynamic range, and probably makes the packet too big... so maybe this will change to a char soon. 
- *  Only first nFreq of a spectrum non-zero. 
- */ 
-typedef struct 
+ *  Short is overkill for the dynamic range, and probably makes the packet too big... so maybe this will change to a char soon.
+ *  Only first nFreq of a spectrum non-zero.
+ */
+typedef struct
 {
-  GenericHeader_t gHdr; 
+  GenericHeader_t gHdr;
   unsigned int nFreq;  //< number of frequency bins actually stored
   unsigned int startFreq;  //< start frequency of output, in Hz
-  unsigned int freqStep;  //< frequency step of output, in Hz 
-  unsigned int unixTimeStart;  //< time when scan was started (unix time) 
-  unsigned short scanTime;  //<  approximate time it scan to finish finished (in decisecs). 
-  unsigned short gain;  //< LNA gain, in cBm (i.e. 10 * dBm) 
+  unsigned int freqStep;  //< frequency step of output, in Hz
+  unsigned int unixTimeStart;  //< time when scan was started (unix time)
+  unsigned short scanTime;  //<  approximate time it scan to finish finished (in decisecs).
+  unsigned short gain;  //< LNA gain, in cBm (i.e. 10 * dBm)
   unsigned char spectrum [RTLSDR_MAX_SPECTRUM_BINS]; //< power spectra... see anitaFlight.h for units
-  unsigned char rtlNum ; //<which RTL is this? This is the SERIAL NUMBER (RTL%d), not the device enumeration order ( 4 bits is sufficient for < 15 devices) 
-} RtlSdrPowerSpectraStruct_t; 
+  unsigned char rtlNum ; //<which RTL is this? This is the SERIAL NUMBER (RTL%d), not the device enumeration order ( 4 bits is sufficient for < 15 devices)
+} RtlSdrPowerSpectraStruct_t;
 
 
-/*! 
- * Struct to store TUFF start and end phi sectors 
- **/ 
-typedef struct __attribute__((packed)) 
+/*!
+ * Struct to store TUFF start and end phi sectors
+ **/
+typedef struct __attribute__((packed))
 {
-  GenericHeader_t gHdr; 
+  GenericHeader_t gHdr;
   unsigned int notchSetTime;  // The last time the notches were set
   unsigned int unixTime;  // The approximate time that this was written. If temperatures are read, the temperatures are read around this time
   unsigned char startSectors[NUM_TUFF_NOTCHES]; //start sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
   unsigned char endSectors[NUM_TUFF_NOTCHES]; //stop sectors... 0 to 15 for real sectors, start and stop on 16 means nothing is enabled
-  char temperatures[NUM_RFCM];  //-128 if temperatures are not being read , 127 if TUFF not responding. 
-} TuffNotchStatus_t; 
+  char temperatures[NUM_RFCM];  //-128 if temperatures are not being read , 127 if TUFF not responding.
+} TuffNotchStatus_t;
 
 typedef struct __attribute__((packed))
 {
-  GenericHeader_t gHdr; 
-  unsigned int requestedTime; 
-  unsigned int enactedTime; 
-  unsigned short cmd; 
-  unsigned char irfcm;    //these could be packed more strongly 
-  unsigned char tuffStack;  //these could be packed more strongly 
-} TuffRawCmd_t; 
+  GenericHeader_t gHdr;
+  unsigned int requestedTime;
+  unsigned int enactedTime;
+  unsigned short cmd;
+  unsigned char irfcm;    //these could be packed more strongly
+  unsigned char tuffStack;  //these could be packed more strongly
+} TuffRawCmd_t;
 
 
 

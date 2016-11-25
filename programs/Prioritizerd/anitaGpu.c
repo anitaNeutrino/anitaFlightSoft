@@ -140,7 +140,7 @@ int thetaAnglePriorityDemotion=1;
 
 
 /* Used for filtering in the GPU */
-#define floatToShortConversionForPacket 32767./60
+#define floatToUCharConversionForPacket (256./60)
 
 
 const float THETA_RANGE = 150;
@@ -786,24 +786,27 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
 
 
 
-void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int writePowSpecPeriodSeconds){
+void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpectrumStruct_t payloadPowSpec[][NUM_ANTENNA_RINGS], int writePowSpecPeriodSeconds){
 
 
 
   if(longTimeAvePowSpecNumEvents==0){
     longTimeStartTime = header[0].unixTime;
-  }
-
-  int phi=0;
-  for(phi=0; phi<NUM_PHI_SECTORS; phi++){
-    if(payloadPowSpec[phi].unixTimeFirstEvent==0){
-      payloadPowSpec[phi].phiSector=phi;
-      payloadPowSpec[phi].firstEventInAverage = header[0].eventNumber;
-      payloadPowSpec[phi].unixTimeFirstEvent = header[0].unixTime;
-      payloadPowSpec[phi].nothing = 0;
+    int pol;
+    for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+      int ring;
+      for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+	if(payloadPowSpec[pol][ring].unixTimeFirstEvent==0){
+	  payloadPowSpec[pol][ring].firstEventInAverage = header[0].eventNumber;
+	  payloadPowSpec[pol][ring].unixTimeFirstEvent = header[0].unixTime;
+	  payloadPowSpec[pol][ring].pol = (unsigned char)pol;
+	  payloadPowSpec[pol][ring].ring = (unsigned char)ring;
+	}
+      }
     }
   }
 
+  uint pol;
 
   /* Start time stamping. */
   uint stamp;
@@ -863,7 +866,6 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   cl_event dataFromGpuEvents[NUM_POLARIZATIONS][7];
 
   /* Loop over both polarizations */
-  uint pol=0;
   for(pol = 0; pol < NUM_POLARIZATIONS; pol++){
 
     /*
@@ -1317,23 +1319,24 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 
 	// Fill GPU power spectrum packet
-	int phi = ant % NUM_PHI;
-	int ring = ant/NUM_PHI;
+	int ring = ant/NUM_PHI_SECTORS;
+	int phi = ant % NUM_PHI_SECTORS;
 	int bin=0;
 	const int powSpecPacketBinOffset = 20;
-	printf("pol %d, ant %d, phi %d, ring %d\n", pol, ant, phi, ring);
+	/* printf("pol %d, ant %d, phi %d, ring %d\n", pol, ant, phi, ring); */
 	for(bin=0; bin<NUM_FREQ_BINS_IN_ANITA_BAND; bin++){
-	  payloadPowSpec[phi].powSpectra[ring][pol].bins[bin] = (short) (floatToShortConversionForPacket*longTimeAvePowSpec[longBaseInd + bin + powSpecPacketBinOffset]);
-	  /* payloadPowSpec[phi].powSpectra[ring][pol].bins[bin] = (short) (floatToShortConversionForPacket*longTimeAvePowSpec[longBaseInd + bin + powSpecPacketBinOffset]); */
+	  payloadPowSpec[pol][ring].powSpectra[phi].bins[bin] = (unsigned char) (floatToUCharConversionForPacket*longTimeAvePowSpec[longBaseInd + bin + powSpecPacketBinOffset]);
+	  /* payloadPowSpec[pol][ring].powSpectra[ring][pol].bins[bin] = (short) (floatToUCharConversionForPacket*longTimeAvePowSpec[longBaseInd + bin + powSpecPacketBinOffset]); */
 	}
       }
     }
-
-    for(phi=0; phi<NUM_PHI_SECTORS; phi++){
-      payloadPowSpec[phi].unixTimeLastEvent = header[nEvents-1].unixTime;
-      payloadPowSpec[phi].numEventsAveraged = longTimeAvePowSpecNumEvents;
+    for(pol=0; pol < NUM_POLARIZATIONS; pol++){
+      int ring;
+      for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+	payloadPowSpec[pol][ring].unixTimeLastEvent = header[nEvents-1].unixTime;
+	payloadPowSpec[pol][ring].numEventsAveraged = longTimeAvePowSpecNumEvents;
+      }
     }
-
 
     /* fclose(fOut); */
     /* printf("There were %d events in this longTime GPU average power spectrum\n", longTimeAvePowSpecNumEvents); */

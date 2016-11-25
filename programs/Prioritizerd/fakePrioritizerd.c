@@ -9,7 +9,7 @@
 
 int readConfig();
 void prepWriterStructs();
-int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi);
+int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int pol, int ring);
 
 int hkDiskBitMask=0;
 int panicQueueLength=5000;
@@ -17,6 +17,8 @@ int panicQueueLength=5000;
 //Global Control Variables
 int printToScreen=1;
 int verbosity=0;
+
+#define NUM_ANTENNA_RINGS 3
 
 int priorityPPS1=2;
 int priorityPPS2=3;
@@ -29,7 +31,7 @@ AnitaEventHeader_t hackyHeaders[NUM_EVENTS];
 PedSubbedEventBody_t pedSubBody[NUM_EVENTS];
 
 /* Used to telemeter average power spectrum information to the ground */
-GpuPhiSectorPowerSpectrumStruct_t payloadPowSpec[NUM_PHI_SECTORS];
+GpuPhiSectorPowerSpectrumStruct_t payloadPowSpec[NUM_POLARIZATIONS][NUM_ANTENNA_RINGS];
 AnitaHkWriterStruct_t gpuWriter;
 
 
@@ -112,9 +114,12 @@ int main(int argc, char *argv[]){
 
 
   /* Reset average */
-  int phi=0;
-  for(phi=0; phi<NUM_PHI_SECTORS; phi++){
-    memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+  int pol=0;
+  for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+    int ring=0;
+    for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+      memset(&payloadPowSpec[pol][ring], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+    }
   }
 
   prepWriterStructs();
@@ -264,18 +269,25 @@ int main(int argc, char *argv[]){
       	numPulsesReadIn = 0;
       }
 
-      if((payloadPowSpec[0].unixTimeLastEvent > 0 &&
-	  payloadPowSpec[0].unixTimeLastEvent - payloadPowSpec[0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
+      if((payloadPowSpec[0][0].unixTimeLastEvent > 0 &&
+	  payloadPowSpec[0][0].unixTimeLastEvent - payloadPowSpec[0][0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
       	 || currentState!=PROG_STATE_RUN){
-      	int phi=0;
-      	for(phi=0; phi<NUM_PHI_SECTORS; phi++){
-      	  printf("Trying to write and link for phi sector %d...\n", phi);
-      	  writeFileAndLink(&payloadPowSpec[phi], phi);
-      	}
+	int pol=0;
+	for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+	  int ring=0;
+	  for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+	    printf("Trying to write and link for pol %d, ring %d...\n", pol, ring);
+	    writeFileAndLink(&payloadPowSpec[pol][ring], pol, ring);
+	  }
+	}
+
       	if(currentState==PROG_STATE_RUN){
-      	  /* Reset average */
-      	  for(phi=0; phi<NUM_PHI_SECTORS; phi++){
-      	    memset(&payloadPowSpec[phi], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+	  int pol=0;
+	  for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+	    int ring=0;
+	    for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+	      memset(&payloadPowSpec[pol][ring], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+	    }
       	  }
       	}
       }
@@ -402,14 +414,14 @@ int readConfig()
   return status;
 }
 
-int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int phi) {
+int writeFileAndLink(GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int pol, int ring) {
     char theFilename[FILENAME_MAX];
     int retVal=0;
 
     fillGenericHeader(payloadPowSpec,PACKET_GPU_AVE_POW_SPEC,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
 
-    sprintf(theFilename,"%s/gpuPowSpec_%u_phi%d.dat",
-	    GPU_TELEM_DIR,payloadPowSpec->unixTimeFirstEvent,phi);
+    sprintf(theFilename,"%s/gpuPowSpec_%u_pol%d_ring%d.dat",
+	    GPU_TELEM_DIR,payloadPowSpec->unixTimeFirstEvent,pol, ring);
     retVal=writeStruct(payloadPowSpec,theFilename,sizeof(GpuPhiSectorPowerSpectrumStruct_t));
     retVal=makeLink(theFilename,GPU_TELEM_LINK_DIR);
 

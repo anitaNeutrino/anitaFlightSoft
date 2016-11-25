@@ -61,7 +61,7 @@ void tidyUpGpuThings();
 //void addEventToGpuQueue(int eventInd, PedSubbedEventBody_t pedSubBody, AnitaEventHeader_t theHeader, const int alreadyUnwrappedAndCalibrated);
 
 void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t theHeader);
-void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader, GpuPhiSectorPowerSpectrumStruct_t* payloadPowSpec, int writePowSpecPeriodSeconds);
+void mainGpuLoop(int nEvents, AnitaEventHeader_t* theHeader, GpuPhiSectorPowerSpectrumStruct_t payloadPowSpec[][NUM_ANTENNA_RINGS], int writePowSpecPeriodSeconds);
 
 void assignPriorities(int nEvents, AnitaEventHeader_t* theHeader, float* imagePeakVal);
 float compareForSort(const void* a, const void* b);
