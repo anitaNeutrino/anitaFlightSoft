@@ -1943,7 +1943,7 @@ int executePrioritizerdCommand(int command, int value, int value2)
   case PRI_SLEEP_TIME_KILL_X:
     configModifyInt("Prioritizerd.config","prioritizerd","sleepTimeAfterKillingX",value,&rawtime);
     break;
-  case DISABLE_GPU:
+  case PRI_DISABLE_GPU:
     configModifyInt("Prioritizerd.config","prioritizerd","disableGpu",value,&rawtime);
     break;
   case PRI_CALIB_VERSION:
