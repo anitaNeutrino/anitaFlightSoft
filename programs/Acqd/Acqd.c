@@ -205,9 +205,9 @@ int dynamicPhiThresholdOverRate=20;
 int dynamicPhiThresholdOverWindow=20;
 int dynamicPhiThresholdUnderRate=1;
 int dynamicPhiThresholdUnderWindow=50;
-int dynamicL2ThresholdOverRate=500000;
+int dynamicL2ThresholdOverRate[PHI_SECTORS]={20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000};
 int dynamicL2ThresholdOverWindow=30;
-int dynamicL2ThresholdUnderRate=100000;
+int dynamicL2ThresholdUnderRate[PHI_SECTORS]={10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000};
 int dynamicL2ThresholdUnderWindow=50;
 int enableRateServo=1;
 int servoRateCalcPeriod=60;
@@ -1619,9 +1619,30 @@ int readConfigFile()
     dynamicPhiThresholdOverWindow=kvpGetInt("dynamicPhiThresholdOverWindow",20);
     dynamicPhiThresholdUnderRate=kvpGetInt("dynamicPhiThresholdUnderRate",1);
     dynamicPhiThresholdUnderWindow=kvpGetInt("dynamicPhiThresholdUnderWindow",50);
-    dynamicL2ThresholdOverRate=kvpGetInt("dynamicL2ThresholdOverRate",500000);
+    //    dynamicL2ThresholdOverRate=kvpGetInt("dynamicL2ThresholdOverRate",500000);
+    tempNum=PHI_SECTORS;	       
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdOverRate",&(dynamicL2ThresholdOverRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+    
     dynamicL2ThresholdOverWindow=kvpGetInt("dynamicL2ThresholdOverWindow",30);
-    dynamicL2ThresholdUnderRate=kvpGetInt("dynamicL2ThresholdUnderRate",100000);
+    //    dynamicL2ThresholdUnderRate=kvpGetInt("dynamicL2ThresholdUnderRate",100000);
+    tempNum=PHI_SECTORS;	       
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdUnderRate",&(dynamicL2ThresholdUnderRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
+    
     dynamicL2ThresholdUnderWindow=kvpGetInt("dynamicL2ThresholdUnderWindow",50);
     enableRateServo=kvpGetInt("enableRateServo",0);
     servoRateCalcPeriod=kvpGetInt("servoRateCalcPeriod",60);
@@ -4508,9 +4529,9 @@ int checkTurfRates()
 	if(lastTurfRates[tInd].l3Rates[phi]<dynamicPhiThresholdUnderRate)
 	  l3MissCount[phi]++;
 	
-	if(lastTurfRates[tInd].l2Rates[phi]>dynamicL2ThresholdOverRate) 
+	if(lastTurfRates[tInd].l2Rates[phi]>dynamicL2ThresholdOverRate[phi]) 
 	  l2HitCount[phi]++;
-	if(lastTurfRates[tInd].l2Rates[phi]<dynamicL2ThresholdUnderRate)
+	if(lastTurfRates[tInd].l2Rates[phi]<dynamicL2ThresholdUnderRate[phi])
 	  l2MissCount[phi]++;
       }  
     }
