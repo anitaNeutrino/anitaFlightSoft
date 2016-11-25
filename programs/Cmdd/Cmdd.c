@@ -1960,6 +1960,7 @@ int executePrioritizerdCommand(int command, int value, int value2)
     configModifyInt("Prioritizerd.config","prioritizerd","debugMode",value,&rawtime);
     break;
   case PRI_SKIP_BLAST_RATIO_HPOL:
+    printf("got value %d, value2 %d\n", value, value2);
     skipBlastRatioHPol[value]=value2;
     configModifyIntArray("Prioritizerd.config","prioritizerd","skipBlastRatioHPol",skipBlastRatioHPol,16,&rawtime);
     break;
@@ -1968,13 +1969,13 @@ int executePrioritizerdCommand(int command, int value, int value2)
     configModifyIntArray("Prioritizerd.config","prioritizerd","skipBlastRatioVPol",skipBlastRatioVPol,16,&rawtime);
     break;
   case PRI_BLAST_RATIO_MAX:
-    configModifyFloat("Prioritizerd.config","prioritizerd","blastRatioMax",(1.0*value)/100.,&rawtime);
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastRatioMax",((float)value)/100.,&rawtime);
     break;
   case PRI_BLAST_RATIO_MIN:
-    configModifyFloat("Prioritizerd.config","prioritizerd","blastRatioMin",(1.0*value)/100.,&rawtime);
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastRatioMin",((float)value)/100.,&rawtime);
     break;
   case PRI_BLAST_GRADIENT:
-    configModifyFloat("Prioritizerd.config","prioritizerd","blastGradient",(1.0*value)/100.,&rawtime);
+    configModifyFloat("Prioritizerd.config","prioritizerd","blastGradient",(float)value,&rawtime);
     break;
   case PRI_STATIC_NOTCH_LOW_EDGE:
     staticNotchesLowEdgeMHz[value]=value2;
@@ -1982,7 +1983,7 @@ int executePrioritizerdCommand(int command, int value, int value2)
     break;
   case PRI_STATIC_NOTCH_HIGH_EDGE:
     staticNotchesHighEdgeMHz[value]=value2;
-    configModifyFloatArray("Prioritizerd.config","prioritizerd","staticNotchesHighEdgeMHz",staticNotchesLowEdgeMHz,10,&rawtime);
+    configModifyFloatArray("Prioritizerd.config","prioritizerd","staticNotchesHighEdgeMHz",staticNotchesHighEdgeMHz,10,&rawtime);
     break;
   case PRI_USE_LONG_DYNAMIC_FILTERING:
     configModifyInt("Prioritizerd.config","prioritizerd","useLongDynamicFiltering",value,&rawtime);
@@ -1994,10 +1995,10 @@ int executePrioritizerdCommand(int command, int value, int value2)
     configModifyFloat("Prioritizerd.config","prioritizerd","stopDynamicFrequency",(1.0*value),&rawtime);
     break;
   case PRI_CONSERVATIVE_START:
-    configModifyInt("Prioritizerd.config","prioritizerd","stopDynamicFrequency",value,&rawtime);
+    configModifyInt("Prioritizerd.config","prioritizerd","conservativeStart",value,&rawtime);
     break;
   case PRI_THRESH_DB:
-    configModifyInt("Prioritizerd.config","prioritizerd","spikeThresh_dB",value,&rawtime);
+    configModifyFloat("Prioritizerd.config","prioritizerd","spikeThresh_dB",((float)value)/100,&rawtime);
     break;
   default:
     return -1;
