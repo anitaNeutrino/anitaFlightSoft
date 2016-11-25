@@ -3662,6 +3662,9 @@ int clearRamdisk()
   progMask|=LOSD_ID_MASK;
   killDataPrograms();
   killPrograms(progMask);
+  system("daemon --stop -n X");
+
+
   sleep(2);
   int retVal=system("rm -rf /tmp/anita /tmp/buffer /tmp/ntu");
   makeDirectories(LOSD_CMD_ECHO_TELEM_LINK_DIR);
