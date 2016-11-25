@@ -150,8 +150,8 @@ float zArray[48]={0};
 float priorityParamsLowBinEdge[10];
 float priorityParamsHighBinEdge[10];
 
-float skipBlastRatioHPol[16];
-float skipBlastRatioVPol[16];
+int skipBlastRatioHPol[16];
+int skipBlastRatioVPol[16];
 float staticNotchesLowEdgeMHz[10];
 float staticNotchesHighEdgeMHz[10];
 
