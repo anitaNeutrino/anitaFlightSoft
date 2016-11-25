@@ -60,28 +60,22 @@ int readSBSTemperature(SbsTempIndex_t index)
 
 int readNTUTemps(SbsTempIndex_t index) 
 {
-  int diskTemp[6]={0};
-  int diskTempPacked[2]={0};
-  float cpuTemp;
+  int diskTemp[2]={0};
   int cpuTempInt;
   unsigned int unixTime;
 
   FILE *neoFile=fopen("/tmp/lastNtuTemps","r");
   if(neoFile) {
-    fscanf(neoFile,"%u %f %d %d %d %d %d %d",&unixTime,&cpuTemp,&diskTemp[0],&diskTemp[1],&diskTemp[2],&diskTemp[3],&diskTemp[4],&diskTemp[5]);
-        
-    diskTempPacked[0]=(diskTemp[0]/2)+32*(diskTemp[1]/2)+32*32*(diskTemp[2]/2);
-    diskTempPacked[1]=(diskTemp[3]/2)+32*(diskTemp[4]/2)+32*32*(diskTemp[5]/2);
-    cpuTempInt=(int)(10*cpuTemp);
+    fscanf(neoFile,"%u %d %d %d",&unixTime,&cpuTempInt,&diskTemp[0],&diskTemp[1]);
     fclose(neoFile);
   }
   switch(index) {
   case SBS_TEMP_3:
     return cpuTempInt;
   case SBS_TEMP_4:
-    return diskTempPacked[0];
+    return diskTemp[0];
   case SBS_TEMP_5:
-    return diskTempPacked[1];
+    return diskTemp[1];
   default:
     return -1;
   }

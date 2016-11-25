@@ -200,15 +200,15 @@ int calculateRateAfter=5;
 
 //Rate servo stuff
 int enableDynamicPhiMasking=0;
-int enableDynamicAntMasking=0;
+int enableDynamicL2Masking=0;
 int dynamicPhiThresholdOverRate=20;
 int dynamicPhiThresholdOverWindow=20;
 int dynamicPhiThresholdUnderRate=1;
 int dynamicPhiThresholdUnderWindow=50;
-int dynamicAntThresholdOverRate=500000;
-int dynamicAntThresholdOverWindow=30;
-int dynamicAntThresholdUnderRate=100000;
-int dynamicAntThresholdUnderWindow=50;
+int dynamicL2ThresholdOverWindow=30;
+int dynamicL2ThresholdOverRate[PHI_SECTORS]={20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000};
+int dynamicL2ThresholdUnderRate[PHI_SECTORS]={10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000};
+int dynamicL2ThresholdUnderWindow=50;
 int enableRateServo=1;
 int servoRateCalcPeriod=60;
 float rateGoal=5;
@@ -1612,18 +1612,43 @@ int readConfigFile()
   kvpReset();
   status = configLoad ("Acqd.config","rates");
   if(status == CONFIG_E_OK) {
-    enableDynamicAntMasking=kvpGetInt("enableDynamicAntMasking",0);
+    enableDynamicL2Masking=kvpGetInt("enableDynamicL2Masking",0);
+    printf("\n\n\nenableDynamicL2Masking %d\n",enableDynamicL2Masking);
     enableDynamicPhiMasking=kvpGetInt("enableDynamicPhiMasking",0);
     dynamicPhiThresholdOverRate=kvpGetInt("dynamicPhiThresholdOverRate",20);
     dynamicPhiThresholdOverWindow=kvpGetInt("dynamicPhiThresholdOverWindow",20);
     dynamicPhiThresholdUnderRate=kvpGetInt("dynamicPhiThresholdUnderRate",1);
     dynamicPhiThresholdUnderWindow=kvpGetInt("dynamicPhiThresholdUnderWindow",50);
-    dynamicAntThresholdOverRate=kvpGetInt("dynamicAntThresholdOverRate",500000);
-    dynamicAntThresholdOverWindow=kvpGetInt("dynamicAntThresholdOverWindow",30);
-    dynamicAntThresholdUnderRate=kvpGetInt("dynamicAntThresholdUnderRate",100000);
-    dynamicAntThresholdUnderWindow=kvpGetInt("dynamicAntThresholdUnderWindow",50);
+    dynamicL2ThresholdOverWindow=kvpGetInt("dynamicL2ThresholdOverWindow",30);
+	
+    //    dynamicL2ThresholdOverRate=kvpGetInt("dynamicL2ThresholdOverRate",500000);
+  
+    dynamicL2ThresholdUnderWindow=kvpGetInt("dynamicL2ThresholdUnderWindow",50);
+
+     tempNum=PHI_SECTORS;	       
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdOverRate",&(dynamicL2ThresholdOverRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdOverRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+    
+    //    dynamicL2ThresholdUnderRate=kvpGetInt("dynamicL2ThresholdUnderRate",100000);
+    tempNum=PHI_SECTORS;	       
+    kvpStatus = kvpGetIntArray("dynamicL2ThresholdUnderRate",&(dynamicL2ThresholdUnderRate[0]),&tempNum);
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s",
+	     kvpErrorString(kvpStatus));
+      if(printToScreen)
+	fprintf(stderr,"kvpGetIntArray(dynamicL2ThresholdUnderRate): %s\n",
+		kvpErrorString(kvpStatus));
+    }
+
     enableRateServo=kvpGetInt("enableRateServo",0);
     servoRateCalcPeriod=kvpGetInt("servoRateCalcPeriod",60);
+    printf("enableRateServo %d, servoRateCalcPeriod %d\n",enableRateServo,servoRateCalcPeriod);
     rateGoal=kvpGetFloat("rateGoal",5);
     ratePGain=kvpGetFloat("ratePGain",100);
     rateIGain=kvpGetFloat("rateIGain",1);
@@ -1637,7 +1662,8 @@ int readConfigFile()
     fprintf(stderr,"Error reading Acqd.config <rates>: %s\n",eString);
   }
 
-  kvpReset();
+ 
+      kvpReset();
   status = configLoad ("Acqd.config","starttest");
   if(status == CONFIG_E_OK) {
     enableStartTest=kvpGetInt("enableStartTest",1);
@@ -4507,9 +4533,9 @@ int checkTurfRates()
 	if(lastTurfRates[tInd].l3Rates[phi]<dynamicPhiThresholdUnderRate)
 	  l3MissCount[phi]++;
 	
-	if(lastTurfRates[tInd].l2Rates[phi]>dynamicAntThresholdOverRate) 
+	if(lastTurfRates[tInd].l2Rates[phi]>dynamicL2ThresholdOverRate[phi]) 
 	  l2HitCount[phi]++;
-	if(lastTurfRates[tInd].l2Rates[phi]<dynamicAntThresholdUnderRate)
+	if(lastTurfRates[tInd].l2Rates[phi]<dynamicL2ThresholdUnderRate[phi])
 	  l2MissCount[phi]++;
       }  
     }
@@ -4529,12 +4555,12 @@ int checkTurfRates()
       }
       
       //RJN need to add L2 something here      
-      if(l2HitCount[phi]>dynamicAntThresholdOverWindow) {
+      if(l2HitCount[phi]>dynamicL2ThresholdOverWindow) {
 	//Got a hot channel
 //	  printf("hot channel %d -- %d\n",phi,l2HitCount[phi]);
 	  newL2TrigMask |= (1<<phi);
       }
-      if(l2MissCount[phi]>dynamicAntThresholdUnderWindow) {
+      if(l2MissCount[phi]>dynamicL2ThresholdUnderWindow) {
 	//Got a quiet channel
 //	  printf("cold channel %d -- %d\n",phi,l2MissCount[phi]);
 	newL2TrigMask &= ~(1<<phi);
@@ -4552,7 +4578,7 @@ int checkTurfRates()
 	}
     }
     if(newL2TrigMask!=l2TrigMask) {
-	if(enableDynamicAntMasking) {
+	if(enableDynamicL2Masking) {
 	    if(printToScreen) {
 		printf("Changing antenna mask from %#x to %#x\n",l2TrigMask,newL2TrigMask);
 	    }

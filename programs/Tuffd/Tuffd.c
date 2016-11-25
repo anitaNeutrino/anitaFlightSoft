@@ -289,7 +289,7 @@ int analyzeHeading()
       if (pat.heading < 0 || pat.heading > 360) pat.heading = -1; 
       headingTimesB[headingIndexB]   = tod; 
       headingHistoryB[headingIndexB] = pat.heading;
-      headingWeightsB[headingIndexA] = 1./(pat.brms*pat.brms + pat.mrms*pat.mrms);
+      headingWeightsB[headingIndexB] = 1./(pat.brms*pat.brms + pat.mrms*pat.mrms);
       headingIndexB--; 
     }
 
@@ -387,7 +387,7 @@ int analyzeHeading()
 
   for (i = 0; i < NUM_HEADINGS; i++) 
   {
-    if (tdiff(headingTimesA[i],timeNow) < -maxHeadingAge)
+    if (maxHeadingAge && tdiff(headingTimesA[i],timeNow) < -maxHeadingAge)
     {
       headingTimesA[i] = -9999; 
       headingHistoryA[i] = -1; 
@@ -398,7 +398,7 @@ int analyzeHeading()
       headingTimesA[i] -= timeNow; 
     }
 
-    if (tdiff(headingTimesB[i],timeNow)  <- maxHeadingAge)
+    if (maxHeadingAge && tdiff(headingTimesB[i],timeNow)  <- maxHeadingAge)
     {
       headingTimesB[i] = -9999; 
       headingHistoryB[i] = -1; 
@@ -411,7 +411,7 @@ int analyzeHeading()
 
     if (useMagnetometerForHeading) 
     {
-      if (tdiff(headingTimesMag[i],timeNow) < - maxHeadingAge) 
+      if (maxHeadingAge && tdiff(headingTimesMag[i],timeNow) < - maxHeadingAge) 
       {
         headingTimesMag[i] = -9999; 
         headingHistoryMag[i] = -1; 
@@ -528,10 +528,10 @@ int analyzeHeading()
       tuffStruct.startSectors[i] =   (phi_start_notch) /  22.5; 
       tuffStruct.endSectors[i] =   (int) (ceil((phi_stop_notch) /  22.5)) % 16; 
 
-      if (heading_slope_sumw2 && heading_slope_estimate > slopeThresholdToNotchNextSector[i])
+      if (heading_slope_sumw2 && slopeThresholdToNotchNextSector[i] > 0 && heading_slope_estimate > slopeThresholdToNotchNextSector[i])
         tuffStruct.endSectors[i] = (tuffStruct.endSectors[i] + 1) % 16; 
 
-      if (heading_slope_sumw2 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
+      if (heading_slope_sumw2 && slopeThresholdToNotchNextSector[i] > 0 && heading_slope_estimate < -slopeThresholdToNotchNextSector[i])
         tuffStruct.startSectors[i] = (tuffStruct.startSectors[i] - 1) % 16; 
 
       if (printToScreen)
@@ -578,7 +578,7 @@ int weightedLinearRegression(float heading[NUM_HEADINGS],  float times[NUM_HEADI
   regressed->slope_err     = sqrt(sumWA/delta);                             // slope error
   regressed->intercept_err = sqrt(sumXXA/delta);                            // intercept error
 
-  if (numA>0) return 0;
+  if (numA>1) return 0;
   else return -1;
   
 }
@@ -605,7 +605,7 @@ int writeState(int changed)
       if (temp <= -273)  // this means it timed out or other error
       {
 
-        if (temp == -991) 
+        if (temp == -999) 
         {
               syslog(LOG_ERR, "Tuffd self-terminating."); 
               sleep(2); 
@@ -669,14 +669,19 @@ int setNotches()
 {
   int i; 
   char tmpname[512]; 
+  char bintmpname[512]; 
   FILE * outfile; 
+  FILE * binfile; 
   time_t theTime; 
+  unsigned short binstatus;
 
   time(&theTime); 
 
   //open temporary file to avoid race conditions 
   sprintf(tmpname,"%s~",TUFF_NOTCH_LOOKUP); 
   outfile = fopen(tmpname,"w"); 
+  sprintf(bintmpname,"%s~",TUFF_NOTCH_BIN_LOOKUP); 
+  binfile = fopen(bintmpname,"w"); 
   if (!outfile) syslog(LOG_ERR, "Could not open %s for writing", tmpname); 
 
 
@@ -688,15 +693,40 @@ int setNotches()
   for (i = 0; i < NUM_TUFF_NOTCHES; i++)
   {
     syslog(LOG_INFO, "Tuffd: Setting notch %d range to [%d %d],", i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
+    binstatus = 0; 
 
     if (outfile) fprintf(outfile, "\nNOTCH %d: ", i); 
     if ( tuffStruct.startSectors[i] == 16 && tuffStruct.endSectors[i] == 16) 
     {
       if (outfile) fprintf(outfile, "DISABLED"); 
+      if (binfile) fwrite(&binstatus,2,1,binfile); 
     }
     else
     {
       if (outfile) fprintf(outfile, "ENABLED FOR PHI SECTORS %d to %d", tuffStruct.startSectors[i]+1, tuffStruct.endSectors[i]+1); 
+
+      if (binfile)
+      {
+        int j; 
+        if (tuffStruct.startSectors[i] <= tuffStruct.endSectors[i]) 
+        {
+          for (j = tuffStruct.startSectors[i]; j <= tuffStruct.endSectors[i]; j++)
+          {
+            binstatus |= (1 << j); 
+          }
+        }
+        else 
+        {
+          for (j = tuffStruct.startSectors[i]; j <= tuffStruct.endSectors[i] + 16; j++)
+          {
+            binstatus |= (1 << (j % 16)); 
+          }
+
+        }
+
+
+        if (binfile) fwrite(&binstatus,2,1,binfile); 
+      }
     }
     tuff_setNotchRange(device, i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 
   }
@@ -714,6 +744,12 @@ int setNotches()
 
     //rename on top of old file 
     rename(tmpname, TUFF_NOTCH_LOOKUP); 
+  }
+
+  if (binfile)
+  {
+    fclose(binfile);
+    rename(bintmpname, TUFF_NOTCH_BIN_LOOKUP); 
   }
 
   return 0; 
@@ -1297,7 +1333,7 @@ int main(int nargs, char ** args)
               memcpy(buf, buf+128, 128); 
             }
 
-            if (( where = strstr(buf,"boot irfcm")))
+            if (( where = strstr(buf,"boot")))
             {
 
               char * whereto = strchr(where, 'v'); 
