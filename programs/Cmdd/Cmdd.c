@@ -3979,6 +3979,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
        char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
        configModifyIntArray("Tuffd.config","notch","adjustAccordingToHeading",adjustArray, NUM_TUFF_NOTCHES, &when);
        configModifyInt("GPSd.config","output", "saveAttitudeForTuff", (arg[0] || arg[1] || arg[2]) ? 1 : 0, &when);
+       sendSignal(ID_GPSD,SIGUSR1); 
        break;
     case TUFF_DEGREES_FROM_NORTH_TO_NOTCH:
        char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
