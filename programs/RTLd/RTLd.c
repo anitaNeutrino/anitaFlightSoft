@@ -195,6 +195,10 @@ void cleanup()
     unlink_shared_RTL_region(serials[i]); 
   }
 
+
+  //kill the children
+  system("killall RTL_singleshot_power"); 
+
   closeHkFilesAndTidy(&rtlWriter);
   unlink(RTLD_PID_FILE); 
   syslog(LOG_INFO,"RTLd terminating");    
@@ -286,6 +290,7 @@ void handleBadSigs(int sig)
 void setupSignals()
 {
 
+//  signal(SIGCLD, SIG_IGN); 
   signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
   signal(SIGTERM, handleBadSigs);
