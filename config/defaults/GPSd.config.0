@@ -1,6 +1,7 @@
 <output>
 printToScreen#I1=1;
 verbosity#I1=0;
+saveAttitudeForTuff#I1=0;
 </output>
 
 
@@ -8,7 +9,7 @@ verbosity#I1=0;
 iniReset#I1=0;
 enableTtt#I1=1;
 tttEpochRate#I1=10;
-ppsPeriod#F1=0.2;
+ppsPeriod#F1=0.5;
 ppsOffset#F1=0;
 ppsRorF#I1=1;
 ntpPort#I1=2;
@@ -43,14 +44,14 @@ vtgTelemEvery#I1=1;
 satTelemEvery#I1=1;
 ggaTelemEvery#I1=1;
 calibV12_1#F1=0;
-calibV12_2#F1=3.514;
-calibV12_3#F1=-0.031;
-calibV13_1#F1=-1.751;
-calibV13_2#F1=1.759;
-calibV13_3#F1=+0.010;
-calibV14_1#F1=1.743;
-calibV14_2#F1=1.756;
-calibV14_3#F1=-0.045;
+calibV12_2#F1=3.523;
+calibV12_3#F1=-0.013;
+calibV13_1#F1=-1.768;
+calibV13_2#F1=1.748;
+calibV13_3#F1=0.00;
+calibV14_1#F1=1.767;
+calibV14_2#F1=1.762;
+calibV14_3#F1=-0.016;
 </adu5a>
 
 
@@ -70,14 +71,14 @@ vtgTelemEvery#I1=1;
 satTelemEvery#I1=1;
 ggaTelemEvery#I1=1;
 calibV12_1#F1=0;
-calibV12_2#F1=2.600;
-calibV12_3#F1=0.00;
-calibV13_1#F1=-1.294;
-calibV13_2#F1=1.293;
-calibV13_3#F1=0.004;
-calibV14_1#F1=1.293;
-calibV14_2#F1=1.306;
-calibV14_3#F1=-0.002;
+calibV12_2#F1=2.573;
+calibV12_3#F1=-0.018;
+calibV13_1#F1=-1.296;
+calibV13_2#F1=1.291;
+calibV13_3#F1=-0.026;
+calibV14_1#F1=1.290;
+calibV14_2#F1=1.283;
+calibV14_3#F1=-0.022;
 </adu5b>
 
 
