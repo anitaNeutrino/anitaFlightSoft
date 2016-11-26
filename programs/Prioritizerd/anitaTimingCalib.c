@@ -28,9 +28,8 @@
 #define NUM_SURF 12
 #define NUM_RCO 2
 #define NUM_WRAP_POSSIBILITIES 2
-#define upsampleFactor 16
+#define upsampleFactor 4
 #define numUpsampledClockSamples (256*upsampleFactor)
-#define lengthClockFFT (numUpsampledClockSamples*2)
 
 static gsl_interp_accel *acc;
 static const gsl_interp_type *akimaSpline;
@@ -164,18 +163,6 @@ void prepareTimingCalibThings(){
 					  clockFreqDomain, FFTW_MEASURE);
   clockPlanReverse = fftw_plan_dft_c2r_1d(numUpsampledClockSamples, clockFreqDomain,
 					  clockTimeDomain, FFTW_MEASURE);
-  /* clockTimeDomain = (double*) fftw_malloc(sizeof(double)*lengthClockFFT); */
-  /* clockFreqDomain = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT); */
-  /* clockFreqHolder = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT); */
-  /* clockPlanForward = fftw_plan_dft_r2c_1d(lengthClockFFT, clockTimeDomain, */
-  /* 					  clockFreqDomain, FFTW_MEASURE); */
-  /* clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain, */
-  /* 					  clockTimeDomain, FFTW_MEASURE); */
-
-
-  /* maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 3); */
-
-  /* preCalculateTimeArrays(); */
 }
 
 void tidyUpTimingCalibThings(){
