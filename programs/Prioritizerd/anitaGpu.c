@@ -698,7 +698,6 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
 
     }
     /* printf("\n\n"); */
-
     numEventSamples[eventInd*NUM_ANTENNAS + antInd] = NUM_SAMPLES;
 
 
@@ -708,7 +707,18 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
       eventData[(NUM_EVENTS+eventInd)*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = ringFactor*(float)finalVolts[hPolChanInd][samp];
     }
     numEventSamples[(NUM_EVENTS+eventInd)*NUM_ANTENNAS + antInd] = NUM_SAMPLES;
+
+    /* if(!(antInd==45 || antInd==44)){ */
+    /* if(!(antInd==45 || antInd==44 || antInd == 29 || antInd == 28)){ */
+    /*   int samp = 0; */
+    /*   for(samp=0; samp<NUM_SAMPLES; samp++){ */
+    /* 	eventData[eventInd*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = 0; */
+    /* 	eventData[(eventInd+NUM_EVENTS)*NUM_ANTENNAS*NUM_SAMPLES + antInd*NUM_SAMPLES + samp] = 0; */
+    /*   } */
+    /* } */
+
   }
+
 
   prioritizerStuffs[eventInd] = header.prioritizerStuff;
 
@@ -717,15 +727,22 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
   for(phiInd=0; phiInd<NUM_PHI_SECTORS; phiInd++){
     /* VPOL */
     phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern >> phiInd);
+    /* phiTrig[eventInd*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern >> phiInd); */
     /* HPOL, goes in back half of array */
 
 
     // OK, here I account for the fact that we don't have any HPol triggers in ANITA-4
     if(anitaVersion >= 4){
+
       phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPattern>>phiInd);
+
     }
     else{
       phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1 & (header.turfio.l3TrigPatternH>>phiInd);
+
+      /* if(eventInd==0){ */
+      /* 	printf("phi %d = %d\n", phiInd, phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd]); */
+      /* } */
     }
   }
 
@@ -737,11 +754,11 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
 
       int dPhi = 0;
       for(dPhi = -deltaL3PhiTrig; dPhi <= deltaL3PhiTrig; dPhi++){
-	int thisPhi = phiInd + dPhi;
-	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
-	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
+  	int thisPhi = phiInd + dPhi;
+  	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
+  	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
 
-	tempPhiV[thisPhi] = 1;
+  	tempPhiV[thisPhi] = 1;
       }
     }
 
@@ -749,11 +766,11 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
 
       int dPhi = 0;
       for(dPhi = -deltaL3PhiTrig; dPhi <= deltaL3PhiTrig; dPhi++){
-	int thisPhi = phiInd + dPhi;
-	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
-	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
+  	int thisPhi = phiInd + dPhi;
+  	thisPhi = thisPhi < 0 ? thisPhi + NUM_PHI_SECTORS : thisPhi;
+  	thisPhi = thisPhi >= NUM_PHI_SECTORS ? thisPhi - NUM_PHI_SECTORS : thisPhi;
 
-	tempPhiH[thisPhi] = 1;
+  	tempPhiH[thisPhi] = 1;
       }
     }
   }
@@ -761,6 +778,13 @@ void addEventToGpuQueue(int eventInd, double* finalVolts[], AnitaEventHeader_t h
   for(phiInd=0; phiInd < NUM_PHI_SECTORS; phiInd++){
     phiTrig[(eventInd)*NUM_PHI_SECTORS + phiInd] = tempPhiV[phiInd];
     phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = tempPhiH[phiInd];
+    /* phiTrig[(eventInd)*NUM_PHI_SECTORS + phiInd] = 1; */
+    /* phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd] = 1; */
+    if(eventInd==0){
+      printf("phi %d = %d\n", phiInd, phiTrig[(NUM_EVENTS+eventInd)*NUM_PHI_SECTORS + phiInd]);
+    }
+
+
   }
 
 
@@ -847,20 +871,20 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
   dataToGpuEvents[1][3] = writeBuffer(commandQueue, longDynamicPassFilterBufferHPol,
 				      &longDynamicPassFilter[NUM_ANTENNAS*NUM_SAMPLES/2], 0, NULL);
 
-  if(debugMode > 0){
-    int pol=0;
-    for(pol=0; pol < NUM_POLARIZATIONS; pol++){
-      int ant=0;
-      for(ant = 0; ant < NUM_ANTENNAS; ant++){
-	int freqInd=0;
-	printf("pol %d ant %d:\n", pol, ant);
-	for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){
-	  printf("%hd ", longDynamicPassFilter[pol*(NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]);
-	}
-	printf("\n");
-      }
-    }
-  }
+  /* if(debugMode > 0){ */
+  /*   int pol=0; */
+  /*   for(pol=0; pol < NUM_POLARIZATIONS; pol++){ */
+  /*     int ant=0; */
+  /*     for(ant = 0; ant < NUM_ANTENNAS; ant++){ */
+  /* 	int freqInd=0; */
+  /* 	printf("pol %d ant %d:\n", pol, ant); */
+  /* 	for(freqInd=0; freqInd < NUM_SAMPLES/2; freqInd++){ */
+  /* 	  printf("%hd ", longDynamicPassFilter[pol*(NUM_ANTENNAS + ant)*NUM_SAMPLES/2 + freqInd]); */
+  /* 	} */
+  /* 	printf("\n"); */
+  /*     } */
+  /*   } */
+  /* } */
 
 
   cl_event dataFromGpuEvents[NUM_POLARIZATIONS][7];
@@ -1135,9 +1159,10 @@ void mainGpuLoop(int nEvents, AnitaEventHeader_t* header, GpuPhiSectorPowerSpect
 
 
     if(printCalibTextFile > 0){
-      fprintf(gpuOutput, "%u %u %f %f %d %d %d %lf %lf %lf %d ",
+      fprintf(gpuOutput, "%u %u %d %f %f %d %d %d %lf %lf %lf %d ",
 	      header[eventInd].eventNumber,
 	      header[eventInd].unixTime,
+	      polBit,
 	      imagePeakVal[index2],
 	      hilbertPeak[index2],
 	      imagePeakTheta2[index2],
@@ -1745,18 +1770,18 @@ void dumpBuffersToTextFiles(int pol, int nEvents){
 
 
   // GPU input buffers
-  printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", pol, skipUpdatingAvePowSpec, NUM_EVENTS, nEvents);
+  printBufferToTextFile2(commandQueue, "skipUpdatingAvePowSpec", pol, skipUpdatingAvePowSpec, NUM_EVENTS, 1);
 
 
   if(pol==0){
-    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", pol, longDynamicPassFilterBufferVPol, NUM_EVENTS, nEvents);
-    printBufferToTextFile2(commandQueue, "rawBuffer", pol, rawBufferVPol, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", pol, longDynamicPassFilterBufferVPol, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "rawBuffer", pol, rawBufferVPol, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", pol, phiSectorTriggerBufferVPol, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "numSampsBuffer", pol, numSampsBufferVPol, NUM_EVENTS, 1);
   }
   else{
-    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", pol, longDynamicPassFilterBufferHPol, NUM_EVENTS, nEvents);
-    printBufferToTextFile2(commandQueue, "rawBuffer", pol, rawBufferHPol, NUM_EVENTS, nEvents);
+    printBufferToTextFile2(commandQueue, "longDynamicPassFilterBuffer", pol, longDynamicPassFilterBufferHPol, NUM_EVENTS, 1);
+    printBufferToTextFile2(commandQueue, "rawBuffer", pol, rawBufferHPol, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "phiSectorTriggerBuffer", pol, phiSectorTriggerBufferHPol, NUM_EVENTS, 1);
     printBufferToTextFile2(commandQueue, "numSampsBuffer", pol, numSampsBufferHPol, NUM_EVENTS, 1);
   }
@@ -1765,13 +1790,13 @@ void dumpBuffersToTextFiles(int pol, int nEvents){
 
    printBufferToTextFile2(commandQueue, "normalBuffer", pol, normalBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "rmsBuffer", pol, rmsBuffer, NUM_EVENTS, 1);
-   printBufferToTextFile2(commandQueue, "fourierBuffer", pol, fourierBuffer, NUM_EVENTS, nEvents);
+   printBufferToTextFile2(commandQueue, "fourierBuffer", pol, fourierBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "powSpecBuffer", pol, powSpecBuffer, 1, 1);
    printBufferToTextFile2(commandQueue, "passFilterBuffer", pol, passFilterBuffer, 1, 1);
    printBufferToTextFile2(commandQueue, "staticPassFilterBuffer", pol, staticPassFilterBuffer, 1, 1);
    printBufferToTextFile2(commandQueue, "fourierBuffer2", pol, fourierBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "circularCorrelationBuffer", pol, circularCorrelationBuffer, NUM_EVENTS, 1);
-   printBufferToTextFile2(commandQueue, "image", pol, imageBuffer, NUM_EVENTS, 1);
+   printBufferToTextFile2(commandQueue, "image", pol, imageBuffer, NUM_EVENTS, 10);
    printBufferToTextFile2(commandQueue, "maxThetaInds", pol, maxThetaIndsBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "imagePeakValBuffer", pol, imagePeakValBuffer, NUM_EVENTS, 1);
    printBufferToTextFile2(commandQueue, "imagePeakValBuffer2", pol, imagePeakValBuffer2, NUM_EVENTS, 1);

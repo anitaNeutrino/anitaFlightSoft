@@ -24,6 +24,7 @@ int priorityPPS1=2;
 int priorityPPS2=3;
 
 int writePowSpecPeriodSeconds = 60;
+int disableGpu = 1;
 
 /* NUM_EVENTS is defined in the imaginatively named myInterferometryConstants.h */
 AnitaEventHeader_t theHeader[NUM_EVENTS];
@@ -41,6 +42,8 @@ FILE* waisPulseEventNumbers = NULL;
 int numPulsesReadIn = 0; // counter
 int numWaisPulses = 5625; //118160; // from wc -l
 int getNextEventNumber(int* run);
+
+
 
 int main(int argc, char *argv[]){
 
@@ -109,9 +112,16 @@ int main(int argc, char *argv[]){
      This function mallocs at some global pointers
      so needs to be outside any kind of loop.
   */
-  prepareGpuThings();
-  prepareTimingCalibThings();
 
+  retVal=readConfig();
+  if(!disableGpu){
+    prepareGpuThings();
+  }
+  else{
+    syslog(LOG_INFO, "Prioritized started in disable GPU mode. Prepare for even more terrible priorities!\n");
+    printf("Prioritized started in disable GPU mode. Prepare for even more terrible priorities!\n");
+  }
+  prepareTimingCalibThings();
 
   /* Reset average */
   int pol=0;
@@ -135,7 +145,8 @@ int main(int argc, char *argv[]){
     currentState=PROG_STATE_RUN;
 
     /* const char* baseDir = "/home/anita/anitaStorage/antarctica14/raw"; */
-    const char* baseDir = "/mnt/ben";
+    /* const char* baseDir = "/mnt/ben"; */
+    const char* baseDir = "/home/anita/anita4PulsingData";
 
     // calibration badassery
     int run = 0;
@@ -227,17 +238,20 @@ int main(int argc, char *argv[]){
 	      /* printf("I found eventNumber %d in run %d\n", eventNumber, run); */
 
 	      /* Then we add to GPU queue... */
-	      double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
-	      doTimingCalibration(eventsReadFromDisk, &theHeader[eventsReadFromDisk], pedSubBody[eventsReadFromDisk], finalVolts);
+	      double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF] = {NULL};
+	      doTimingCalibration(eventsReadFromDisk, &theHeader[eventsReadFromDisk], pedSubBody[eventsReadFromDisk], finalVolts, disableGpu);
 	      /* addEventToGpuQueue(eventsReadFromDisk, finalVolts, theHeader[eventsReadFromDisk]); */
-	      addEventToGpuQueue(numEventsInGpuQueue, finalVolts, theHeader[eventsReadFromDisk]);
-	      /* addEventToGpuQueue(numPulsesReadIn, finalVolts, theHeader[eventsReadFromDisk]);	       */
-	      /* hackyHeaders[numPulsesReadIn] = theHeader[eventsReadFromDisk]; */
+	      /* addEventToGpuQueue(numEventsInGpuQueue, finalVolts, theHeader[eventsReadFromDisk]); */
+	      if(!disableGpu){
+		addEventToGpuQueue(numEventsInGpuQueue, finalVolts, theHeader[eventsReadFromDisk]);
+	      }
 	      hackyHeaders[numEventsInGpuQueue] = theHeader[eventsReadFromDisk];
 
 	      int chanInd=0;
 	      for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
-		free(finalVolts[chanInd]);
+		if(finalVolts[chanInd]){
+		  free(finalVolts[chanInd]);
+		}
 	      }
 
 	      eventNumber = getNextEventNumber(&run);
@@ -263,34 +277,35 @@ int main(int argc, char *argv[]){
       /* 	mainGpuLoop(numPulsesReadIn, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds); */
       /* 	numPulsesReadIn = 0; */
       /* } */
-      if(numEventsInGpuQueue > 0){
+      if(numEventsInGpuQueue > 0 && !disableGpu){
       	/* mainGpuLoop(eventsReadFromDisk, theHeader, payloadPowSpec, writePowSpecPeriodSeconds); */
       	mainGpuLoop(numEventsInGpuQueue, hackyHeaders, payloadPowSpec, writePowSpecPeriodSeconds);
       	numPulsesReadIn = 0;
-      }
 
-      if((payloadPowSpec[0][0].unixTimeLastEvent > 0 &&
-	  payloadPowSpec[0][0].unixTimeLastEvent - payloadPowSpec[0][0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
-      	 || currentState!=PROG_STATE_RUN){
-	int pol=0;
-	for(pol=0; pol<NUM_POLARIZATIONS; pol++){
-	  int ring=0;
-	  for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
-	    printf("Trying to write and link for pol %d, ring %d...\n", pol, ring);
-	    writeFileAndLink(&payloadPowSpec[pol][ring], pol, ring);
-	  }
-	}
-
-      	if(currentState==PROG_STATE_RUN){
+	if((payloadPowSpec[0][0].unixTimeLastEvent > 0 &&
+	    payloadPowSpec[0][0].unixTimeLastEvent - payloadPowSpec[0][0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
+	   || currentState!=PROG_STATE_RUN){
 	  int pol=0;
 	  for(pol=0; pol<NUM_POLARIZATIONS; pol++){
 	    int ring=0;
 	    for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
-	      memset(&payloadPowSpec[pol][ring], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+	      printf("Trying to write and link for pol %d, ring %d...\n", pol, ring);
+	      writeFileAndLink(&payloadPowSpec[pol][ring], pol, ring);
 	    }
-      	  }
-      	}
+	  }
+
+	  if(currentState==PROG_STATE_RUN){
+	    int pol=0;
+	    for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+	      int ring=0;
+	      for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+		memset(&payloadPowSpec[pol][ring], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+	      }
+	    }
+	  }
+	}
       }
+
 
       int count = 0;
       /* for(count=0;count<eventsReadFromDisk;count++) { */
@@ -351,7 +366,9 @@ int main(int argc, char *argv[]){
 
   closeHkFilesAndTidy(&gpuWriter);
 
-  tidyUpGpuThings();
+  if(!disableGpu){
+    tidyUpGpuThings();
+  }
   tidyUpTimingCalibThings();
   /* Close the file which contains the high level output information */
 
@@ -392,6 +409,8 @@ int readConfig()
   if(status == CONFIG_E_OK) {
       panicQueueLength=kvpGetInt("panicQueueLength",5000);
       writePowSpecPeriodSeconds=kvpGetInt("writePowSpecPeriodSeconds",60);
+      disableGpu=kvpGetInt("disableGpu",0);
+      printf("I read disableGpu = %d\n", disableGpu);
   }
   else {
     eString=configErrorString (status) ;
@@ -454,10 +473,11 @@ void prepWriterStructs() {
 int getNextEventNumber(int* run){
 
   if(waisPulseEventNumbers==NULL){
-    numWaisPulses = 10001; //from wc -l
+    numWaisPulses = 99; //from wc -l
     /* numWaisPulses = 2000; //499; 5625; //118160; // from wc -l     */
-    waisPulseEventNumbers = fopen("run352EventNumbers.txt", "r");
-    /* waisPulseEventNumbers = fopen("run152EventNumbers.txt", "r"); */
+    waisPulseEventNumbers = fopen("run1989EventNumbers.txt", "r");
+    /* waisPulseEventNumbers = fopen("run352EventNumbers.txt", "r");     */
+   /* waisPulseEventNumbers = fopen("run152EventNumbers.txt", "r"); */
     /* waisPulseEventNumbers = fopen("run130EventNumbers.txt", "r");     */
     /* waisPulseEventNumbers = fopen("waisEventNumbers352.txt", "r"); */
     /* waisPulseEventNumbers = fopen("waisEventNumbers.txt", "r"); */

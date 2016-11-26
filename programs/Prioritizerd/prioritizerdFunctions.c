@@ -193,8 +193,8 @@ void readIn100UnzippedEvents(const char* psevFileName, PedSubbedEventBody_t *the
     /* numBytes=gzread(infile,&theBody[i],sizeof(PedSubbedEventBody_t)); */
     numElements=fread(&theBody[i],sizeof(PedSubbedEventBody_t), 1, infile);
     if(numElements!=1) {
-      printf("%s\n", psevFileName);
-      fprintf(stderr, "Balls\n");
+      printf("Balls\t%d\t%s\n", numElements, psevFileName);
+      /* fprintf(stderr, "Balls\n"); */
       break;
     }
 
@@ -230,7 +230,8 @@ void readIn100UnzippedEvents(const char* psevFileName, PedSubbedEventBody_t *the
     /*   /\* printf("%s\t%d\n", gzerror(infile,&errorNum), errorNum); *\/ */
     /* } */
     if(numElements!=1) {
-      fprintf(stderr, "Balls\n");
+      printf("Balls\t%d\t%s\t%d\t%d\n", numElements, headFileName, ferror(infile), feof(infile));
+      /* fprintf(stderr, "Balls\n"); */
     }
     /* printf("j=%d\n", j); */
     /* processHeader(version); */
@@ -240,6 +241,25 @@ void readIn100UnzippedEvents(const char* psevFileName, PedSubbedEventBody_t *the
 
 }
 
+
+void assignCpuPriorities(int eventInd, double* finalVolts[], AnitaEventHeader_t* header){
+
+  header[eventInd].priority = 6;
+
+  int pol=0;
+  for(pol=0; pol < NUM_POLARIZATIONS; pol++){
+    int ant=0;
+    for(ant=0; ant < NUM_ANTENNAS; ant++){
+      int samp=0;
+      const int baseInd = (pol*NUM_ANTENNAS + ant)*NUM_SAMPLES;
+      for(samp=0; samp < NUM_SAMPLES; samp++){
+	finalVolts[baseInd + samp];
+      }
+    }
+  }
+
+
+}
 
 
 

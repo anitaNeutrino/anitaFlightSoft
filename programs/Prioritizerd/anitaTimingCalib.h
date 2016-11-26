@@ -33,14 +33,12 @@ void readInVoltageCalib(const char* fileName);
 void readInRelativeCableDelay(const char* fileName);
 
 
-#ifdef __APPLE__
-void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[], double* finalTimes);
-#else
-void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[]);
-#endif
-double* interpolateWaveform(int nRaw, double* rawWave, double* times, 
+void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[], int disableGpu);
+
+
+double* interpolateWaveform(int nRaw, double* rawWave, double* times,
 			    int nInterp, double t0interp, double dtNsInterp);
-double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes, 
+double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
 				    int nInterp, double t0interp, double dtNsInterp);
 
 
@@ -59,7 +57,7 @@ void preCalculateTimeArrays();
 
 
 
-/* 
+/*
    These are copied from AnitaEventCalibrator.cxx (and other useful classes) in Ryan's ROOT things
    then edited to compile in C.
 */
