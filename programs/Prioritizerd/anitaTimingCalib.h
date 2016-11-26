@@ -44,7 +44,7 @@ double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTim
 
 double* simpleBandPass(double* volts, int length, double dt, double highPassMHz, double lowPassMHz);
 
-double findClockJitterCorrection(int numSamples, double* clock1, double* clock, double deltaT_ns, int surf, int lab);
+double findClockJitterCorrection(int numSamples, fftw_complex* clockFreqs1, fftw_complex* clockFreqs2, double deltaT_ns, int surf, int lab);
 
 void normalize(int numSamples, double* data);
 void readInRcoLatchDelay(const char* fileName);
