@@ -114,8 +114,13 @@ int main (int argc, char *argv[])
 
   if(!disableGpu) {
     prepareGpuThings();
-    prepareTimingCalibThings();
   }
+  else{
+    syslog(LOG_INFO, "Prioritized started with GPU disabled. Prepare for even more terrible priorities!\n");
+    printf("Prioritized started with GPU disabled. Prepare for even more terrible priorities!\n");
+  }
+  prepareTimingCalibThings();
+
   /* Reset average */
   int pol=0;
   for(pol=0; pol<NUM_POLARIZATIONS; pol++){
@@ -154,7 +159,7 @@ int main (int argc, char *argv[])
       }
       int eventsReadIn = 0;
 
-      if(numEventLinks > panicQueueLength || disableGpu){
+      if(numEventLinks > panicQueueLength){
 	/* Panic! Write all header files to archived directory with priority 7! */
 	panicWriteAllLinks(wd, 7, panicQueueLength, priorityPPS1, priorityPPS2);
       }
@@ -189,11 +194,17 @@ int main (int argc, char *argv[])
 	  /* Then we add to GPU queue... */
 	  retVal=fillPedSubbedBody(&pedSubBody,bodyFilename[eventsReadIn]);
 	  double* finalVolts[ACTIVE_SURFS*CHANNELS_PER_SURF];
-	  doTimingCalibration(eventsReadIn, &theHeader[eventsReadIn], pedSubBody, finalVolts);
-	  addEventToGpuQueue(eventsReadIn, finalVolts, theHeader[eventsReadIn]);
+	  doTimingCalibration(eventsReadIn, &theHeader[eventsReadIn], pedSubBody, finalVolts, disableGpu);
+
+	  if(!disableGpu){
+	    addEventToGpuQueue(eventsReadIn, finalVolts, theHeader[eventsReadIn]);
+	  }
+
 	  int chanInd=0;
 	  for(chanInd=0; chanInd<ACTIVE_SURFS*CHANNELS_PER_SURF; chanInd++){
-	    free(finalVolts[chanInd]);
+	    if(finalVolts){
+	      free(finalVolts[chanInd]);
+	    }
 	  }
 	  eventsReadIn++;
 	}
@@ -204,31 +215,32 @@ int main (int argc, char *argv[])
 
       /* Now use GPU to determine priority, send in arrays of length eventsReadIn... */
       if(eventsReadIn>0 && !disableGpu){
-	mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec, writePowSpecPeriodSeconds);
-      }
-      if((payloadPowSpec[0][0].unixTimeLastEvent > 0 &&
-	  payloadPowSpec[0][0].unixTimeLastEvent - payloadPowSpec[0][0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
-      	 || currentState!=PROG_STATE_RUN){
-	int pol=0;
-	for(pol=0; pol<NUM_POLARIZATIONS; pol++){
-	  int ring=0;
-	  for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
-	    printf("Trying to write and link for pol %d, ring %d...\n", pol, ring);
-	    writeFileAndLink(&payloadPowSpec[pol][ring], pol, ring);
-	  }
-	}
 
-      	if(currentState==PROG_STATE_RUN){
+	mainGpuLoop(eventsReadIn, theHeader, payloadPowSpec, writePowSpecPeriodSeconds);
+
+	if((payloadPowSpec[0][0].unixTimeLastEvent > 0 &&
+	    payloadPowSpec[0][0].unixTimeLastEvent - payloadPowSpec[0][0].unixTimeFirstEvent >= writePowSpecPeriodSeconds)
+	   || currentState!=PROG_STATE_RUN){
 	  int pol=0;
 	  for(pol=0; pol<NUM_POLARIZATIONS; pol++){
 	    int ring=0;
 	    for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
-	      memset(&payloadPowSpec[pol][ring], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+	      printf("Trying to write and link for pol %d, ring %d...\n", pol, ring);
+	      writeFileAndLink(&payloadPowSpec[pol][ring], pol, ring);
 	    }
-      	  }
-      	}
-      }
+	  }
 
+	  if(currentState==PROG_STATE_RUN){
+	    int pol=0;
+	    for(pol=0; pol<NUM_POLARIZATIONS; pol++){
+	      int ring=0;
+	      for(ring=0; ring<NUM_ANTENNA_RINGS; ring++){
+		memset(&payloadPowSpec[pol][ring], 0, sizeof(GpuPhiSectorPowerSpectrumStruct_t));
+	      }
+	    }
+	  }
+	}
+      }
 
       int count = 0;
       for(count=0;count<eventsReadIn;count++) {
@@ -285,7 +297,9 @@ int main (int argc, char *argv[])
 
   closeHkFilesAndTidy(&gpuWriter);
 
-  tidyUpGpuThings();
+  if(!disableGpu){
+    tidyUpGpuThings();
+  }
   tidyUpTimingCalibThings();
 
   printf("fakePrioritizerd exiting. Reached end of main\n.");
@@ -325,6 +339,7 @@ int readConfig()
       panicQueueLength=kvpGetInt("panicQueueLength",5000);
       writePowSpecPeriodSeconds=kvpGetInt("writePowSpecPeriodSeconds",60);
       disableGpu=kvpGetInt("disableGpu",0);
+      /* printf("I read disableGpu = %d\n", disableGpu); */
   }
   else {
     eString=configErrorString (status) ;

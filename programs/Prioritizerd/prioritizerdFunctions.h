@@ -46,4 +46,6 @@ void readIn100UnzippedEvents(const char* psevFileName,
 
 
 
+void assignCpuPriorities(int eventInd, double* finalVolts[], AnitaEventHeader_t* header);
+
 #endif /*PRIORITIZERD_FUNCTIONS*/

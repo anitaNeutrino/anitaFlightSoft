@@ -28,9 +28,8 @@
 #define NUM_SURF 12
 #define NUM_RCO 2
 #define NUM_WRAP_POSSIBILITIES 2
-#define upsampleFactor 1
-#define numUpsampledClockSamples 256*upsampleFactor
-#define lengthClockFFT numUpsampledClockSamples*2
+#define upsampleFactor 4
+#define numUpsampledClockSamples (256*upsampleFactor)
 
 static gsl_interp_accel *acc;
 static const gsl_interp_type *akimaSpline;
@@ -64,13 +63,13 @@ static int labChips[ACTIVE_SURFS];
 
 static double* clockTimeDomain;
 static fftw_complex* clockFreqDomain;
-static fftw_complex* clockFreqHolder;
+static fftw_complex* clockFreqs[ACTIVE_SURFS];
 
 static int positiveSaturation = 1000;
 static int negativeSaturation = -1000;
 static int asymSaturation = 500;
 int anitaCalibVersion = 4;
-
+int invertTopRingInSoftware2 = 0;
 
 
 static float maxThresholdBottomToTopRingPeakToPeakRatio = 2.8;
@@ -120,6 +119,7 @@ void prepareTimingCalibThings(){
   negativeSaturation = kvpGetInt("negativeSaturation", -1000);
   asymSaturation = kvpGetInt("asymSaturation", 500);
   anitaCalibVersion = kvpGetInt("anitaCalibVersion", 4);
+  invertTopRingInSoftware2 = kvpGetInt("invertTopRingInSoftware", 0);
 
   acc = gsl_interp_accel_alloc();
   akimaSpline = gsl_interp_akima;
@@ -156,18 +156,18 @@ void prepareTimingCalibThings(){
   readInVoltageCalib(simpleVoltageCalibrationHarmFileName);
 
 
-  clockTimeDomain = (double*) fftw_malloc(sizeof(double)*lengthClockFFT);
-  clockFreqDomain = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT);
-  clockFreqHolder = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*lengthClockFFT);
-  clockPlanForward = fftw_plan_dft_r2c_1d(lengthClockFFT, clockTimeDomain,
+  clockTimeDomain = (double*) fftw_malloc(sizeof(double)*numUpsampledClockSamples);
+  clockFreqDomain = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*numUpsampledClockSamples);
+
+  int surf=0;
+  for(surf=0; surf<NUM_SURF; surf++){
+    clockFreqs[surf] = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*numUpsampledClockSamples);
+  }
+  /* clockFreqHolder = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*numUpsampledClockSamples); */
+  clockPlanForward = fftw_plan_dft_r2c_1d(numUpsampledClockSamples, clockTimeDomain,
 					  clockFreqDomain, FFTW_MEASURE);
-  clockPlanReverse = fftw_plan_dft_c2r_1d(lengthClockFFT, clockFreqDomain,
+  clockPlanReverse = fftw_plan_dft_c2r_1d(numUpsampledClockSamples, clockFreqDomain,
 					  clockTimeDomain, FFTW_MEASURE);
-
-
-  /* maxBottomToTopRatio = kvpGetFloat("blastMaxBottomToTopRatio", 3); */
-
-  /* preCalculateTimeArrays(); */
 }
 
 void tidyUpTimingCalibThings(){
@@ -178,7 +178,11 @@ void tidyUpTimingCalibThings(){
   fftw_destroy_plan(clockPlanReverse);
   fftw_free(clockTimeDomain);
   fftw_free(clockFreqDomain);
-  fftw_free(clockFreqHolder);
+  int surf=0;
+  for(surf=0; surf < NUM_SURF; surf++){
+    fftw_free(clockFreqs[surf]);
+  }
+
 }
 
 
@@ -377,7 +381,7 @@ double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTim
 
 
 /* Jitter in TURF hold being implemented across surfs is fixed by cross correlating clocks */
-double findClockJitterCorrection(int numSamples, double* clock1, double* clock2, double deltaT_ns, int surf, int lab){
+double findClockJitterCorrection(int numSamples, fftw_complex* clockFreqs1, fftw_complex* clockFreqs2, double deltaT_ns, int surf, int lab){
 
   if(surf==0){
     /* by definition */
@@ -390,49 +394,50 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
   /*   return 0; */
   /* } */
 
-  const double clockFreq_MHz = 33;
-  double clockPeriod_ns = 1./(clockFreq_MHz*1e-3);
-  int clockPeriod_samples = clockPeriod_ns/deltaT_ns;
+  /* const double clockFreq_MHz = 33; */
+  /* double clockPeriod_ns = 1./(clockFreq_MHz*1e-3); */
+  /* int clockPeriod_samples = clockPeriod_ns/deltaT_ns; */
 
-  const double lowPassFreq = 150;
-  //  const double lowPassFreq = 400;
+  /* const double lowPassFreq = 150; */
+   /* const double lowPassFreq = 400; */
   //  const double lowPassFreq = clockFreq_MHz*1.5;
    /* const double lowPassFreq = 1e11; */
 
-  //  int numFreqs = numSamples/2+1;
-  int numFreqs = lengthClockFFT/2+1;
-  double deltaF_MHz = 1e3/(deltaT_ns*numSamples);
+   int numFreqs = numSamples/2+1;
+  /* int numFreqs = lengthClockFFT/2+1; */
+  /* double deltaF_MHz = 1e3/(deltaT_ns*numSamples); */
 
-  int firstRealSamp = (lengthClockFFT - numSamples)/2;
+  /* int firstRealSamp = (lengthClockFFT - numSamples)/2; */
 
-  int samp=0;
-  double y=0;
-  for(samp=0; samp<lengthClockFFT; samp++){
-    if(samp<firstRealSamp || samp>=firstRealSamp+numSamples){
-      y = 0;
-    }
-    else{
-      y = clock1[samp - firstRealSamp];
-    }
-    clockTimeDomain[samp] = y;
-  }
+  /* int samp=0; */
+  /* double y=0; */
+  /* for(samp=0; samp<lengthClockFFT; samp++){ */
+  /*   if(samp<firstRealSamp || samp>=firstRealSamp+numSamples){ */
+  /*     y = 0; */
+  /*   } */
+  /*   else{ */
+  /*     y = clock1[samp - firstRealSamp]; */
+  /*   } */
+  /*   clockTimeDomain[samp] = y; */
+  /* } */
 
-   /* memcpy(clockTimeDomain, clock1, sizeof(double)*numSamples); */
-  fftw_execute(clockPlanForward);
-  memcpy(clockFreqHolder, clockFreqDomain, sizeof(fftw_complex)*(numSamples/2+1));
+  /* memcpy(clockTimeDomain, clock1, sizeof(double)*numSamples); */
+  /* fftw_execute(clockPlanForward); */
+  /* /\* memcpy(clockFreqHolder, clockFreqDomain, sizeof(fftw_complex)*(numSamples/2+1)); *\/ */
+  /* memcpy(clockFreqHolder, clockFreqDomain, sizeof(fftw_complex)*numFreqs); */
 
 
-  for(samp=0; samp<lengthClockFFT; samp++){
-    if(samp<firstRealSamp || samp>=firstRealSamp+numSamples){
-      y = 0;
-    }
-    else{
-      y = clock2[samp - firstRealSamp];
-    }
-    clockTimeDomain[samp] = y;
-  }
+  /* for(samp=0; samp<lengthClockFFT; samp++){ */
+  /*   if(samp<firstRealSamp || samp>=firstRealSamp+numSamples){ */
+  /*     y = 0; */
+  /*   } */
+  /*   else{ */
+  /*     y = clock2[samp - firstRealSamp]; */
+  /*   } */
+  /*   clockTimeDomain[samp] = y; */
+  /* } */
   /* memcpy(clockTimeDomain, clock2, sizeof(double)*numSamples); */
-  fftw_execute(clockPlanForward);
+  /* fftw_execute(clockPlanForward); */
 
   /* Now cross correlate */
   int freqInd=0;
@@ -444,47 +449,62 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
     /* Need temp variable to hold values during multi-step calculation */
     fftw_complex X = {0, 0};
 
-    if(freq < lowPassFreq){
-      /* I am hungover so I need to write out the algebra. Don't judge me. */
-      /* (a-ib)(c+id) = ac + iad - ibc + db = (ac + bd) + i(ad - bc)  */
+    /* if(freq < lowPassFreq){ */
+    /* I am hungover so I need to write out the algebra. Don't judge me. */
+    /* (a-ib)(c+id) = ac + iad - ibc + db = (ac + bd) + i(ad - bc)  */
 
-      X[0] = (clockFreqDomain[freqInd][0]*clockFreqHolder[freqInd][0] + clockFreqDomain[freqInd][1]*clockFreqHolder[freqInd][1]);
+    X[0] = (clockFreqs[surf][freqInd][0]*clockFreqs[0][freqInd][0] + clockFreqs[surf][freqInd][1]*clockFreqs[0][freqInd][1]);
 
-      X[1] = (-clockFreqDomain[freqInd][0]*clockFreqHolder[freqInd][1] + clockFreqDomain[freqInd][1]*clockFreqHolder[freqInd][0]);
-    }
+    X[1] = (-clockFreqs[surf][freqInd][0]*clockFreqs[0][freqInd][1] + clockFreqs[surf][freqInd][1]*clockFreqs[0][freqInd][0]);
+  /* } */
 
     clockFreqDomain[freqInd][0] = X[0]/normFactor;
     clockFreqDomain[freqInd][1] = X[1]/normFactor;
 
-    freq += deltaF_MHz;
+    /* freq += deltaF_MHz; */
   }
 
   fftw_execute(clockPlanReverse);
   /*So now cross correlations should be in the clockTimeDomain array*/
 
   /* Let's give them their own array */
-  double* crossCorrelatedClocks = (double*) malloc(sizeof(double)*lengthClockFFT);
+  /* double* crossCorrelatedClocks = (double*) malloc(sizeof(double)*lengthClockFFT); */
   //  double* crossCorrelatedClocks = malloc(sizeof(double)*numSamples);
   //  memcpy(crossCorrelatedClocks, clockTimeDomain, sizeof(double)*numSamples);
-  double xVals[lengthClockFFT];
+  /* double xVals[lengthClockFFT]; */
 
-  for(samp = 0;samp<lengthClockFFT;samp++) {
-    if(samp<lengthClockFFT/2) {
-      //Positive
-      //      xVals[i+(N/2)]=(i*deltaT)+offset;
-      //      yVals[i+(N/2)]=corVals[i];
-      crossCorrelatedClocks[samp+(lengthClockFFT/2)]=clockTimeDomain[samp];
-      xVals[samp+(lengthClockFFT/2)]=(samp*deltaT_ns);
-      // xval = samp*deltaT + deltaT;
-    }
-    else {
-      //Negative
-      //      xVals[i-(N/2)]=((samp-lengthFFT)*deltaT)+offset;
-      //      yVals[i-(N/2)]=corVals[i];
-      crossCorrelatedClocks[samp-(lengthClockFFT/2)]=clockTimeDomain[samp];
-      xVals[samp-(lengthClockFFT/2)] = (samp-lengthClockFFT)*deltaT_ns;
+
+
+  /* for(samp = 0;samp<lengthClockFFT;samp++) { */
+  /*   if(samp<lengthClockFFT/2) { */
+  /*     //Positive */
+  /*     //      xVals[i+(N/2)]=(i*deltaT)+offset; */
+  /*     //      yVals[i+(N/2)]=corVals[i]; */
+  /*     crossCorrelatedClocks[samp+(lengthClockFFT/2)]=clockTimeDomain[samp]; */
+  /*     xVals[samp+(lengthClockFFT/2)]=(samp*deltaT_ns); */
+  /*     // xval = samp*deltaT + deltaT; */
+  /*   } */
+  /*   else { */
+  /*     //Negative */
+  /*     //      xVals[i-(N/2)]=((samp-lengthFFT)*deltaT)+offset; */
+  /*     //      yVals[i-(N/2)]=corVals[i]; */
+  /*     crossCorrelatedClocks[samp-(lengthClockFFT/2)]=clockTimeDomain[samp]; */
+  /*     xVals[samp-(lengthClockFFT/2)] = (samp-lengthClockFFT)*deltaT_ns; */
+  /*   } */
+  /* } */
+
+  double max = -10000;
+  int maxInd = -1;
+  int samp=0;
+  for(samp = 0;samp<numSamples;samp++) {
+    if(clockTimeDomain[samp] > max){
+      max = clockTimeDomain[samp];
+      maxInd = samp;
     }
   }
+
+
+  double clockCor = (maxInd > numSamples/2 ? maxInd - numSamples : maxInd)*deltaT_ns;
 
   /* int maxIndGr = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, 0, clockPeriod_samples/2); */
   /* int maxIndLe = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, numSamples-clockPeriod_samples/2, numSamples); */
@@ -492,13 +512,13 @@ double findClockJitterCorrection(int numSamples, double* clock1, double* clock2,
   /* int maxInd = crossCorrelatedClocks[maxIndGr] > crossCorrelatedClocks[maxIndLe] ? maxIndGr : maxIndLe; */
   /* double clockCor = maxInd > numSamples/2 ? (maxInd-numSamples)*deltaT_ns : deltaT_ns*maxInd; */
 
-  int maxInd = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, lengthClockFFT/2-clockPeriod_samples/2, lengthClockFFT/2+clockPeriod_samples/2);
-  //  double clockCor = (maxInd-lengthClockFFT/2)*deltaT_ns;
-  double clockCor = xVals[maxInd] ;//(maxInd-lengthClockFFT/2)*deltaT_ns;
+  /* int maxInd = findIndexOfMaximumWithinLimits(crossCorrelatedClocks, lengthClockFFT/2-clockPeriod_samples/2, lengthClockFFT/2+clockPeriod_samples/2); */
+  /* //  double clockCor = (maxInd-lengthClockFFT/2)*deltaT_ns; */
+  /* double clockCor = xVals[maxInd] ;//(maxInd-lengthClockFFT/2)*deltaT_ns; */
 
   /* printf("maxInd = %d, clockCor = %lf\n", maxInd, clockCor); */
 
-  free(crossCorrelatedClocks);
+  /* free(crossCorrelatedClocks); */
 
   return clockCor;
 
@@ -712,11 +732,10 @@ void processEventAG(PedSubbedEventBody_t pedSubBody){
 
 void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 			 PedSubbedEventBody_t pedSubBody,
-			 double* finalVolts[]){
+			 double* finalVolts[], int disableGpu){
 
   // Set bad event flags to zero
   theHeader->prioritizerStuff = 0;
-
 
 
   // extract SURF numbers and unwrap event
@@ -740,15 +759,8 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
   }
 
 
-
   // this puts the data into the volts[][][] global array
   processEventAG(pedSubBody);
-
-
-
-
-
-
 
 
 
@@ -783,11 +795,11 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
       float asym = vMax + vMin;
       float peakToPeak = vMax - vMin;
-
       int ant = abs(surfToAntMap[surf][chan]) - 1;
 
       int phi = ant%NUM_PHI;
       int ring = ant/NUM_PHI;
+
       int pol = surfToAntMap[surf][chan] < 0 ? 1 : 0;
 
       if(ring==0){
@@ -807,7 +819,6 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
       if(vMin < eventVMin){
 	eventVMin = vMin;
       }
-
     }
   }
 
@@ -838,8 +849,9 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
 
   // Set self triggered blast flag
-  if (numRatiosTested > 0 && (maxBottomToTopPeakToPeakRatio > maxThresholdBottomToTopRingPeakToPeakRatio ||
-			      maxBottomToTopPeakToPeakRatio < minThresholdBottomToTopRingPeakToPeakRatio) ){
+  if ((maxBottomToTopPeakToPeakRatio > maxThresholdBottomToTopRingPeakToPeakRatio ||
+       maxBottomToTopPeakToPeakRatio < minThresholdBottomToTopRingPeakToPeakRatio)
+      && numRatiosTested > 0){
     theHeader->prioritizerStuff |= 2;
   }
 
@@ -851,69 +863,189 @@ void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader,
 
 
 
-  /* Upsample clocks */
-  double* interpClocks[ACTIVE_SURFS];
-  for(surf=0; surf<ACTIVE_SURFS; surf++){
-    /* interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8], */
-    interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
-    /* interpClocks[surf] = dontInterpolateWaveform(nSamps[surf][8], */
-						 volts[surf][8],
-						 times[surf][8],
-						 numUpsampledClockSamples,
-						 times[surf][8][0],
-						 deltaT/upsampleFactor);
 
-  }
+  // If we are going to use the GPU, then we interpolate and align the clocks here...
 
-  /* Extract clock jitter from interpolated clocks relative to clock 0. */
-  clockJitters[0] = 0;
-  for(surf=1; surf<ACTIVE_SURFS; surf++){
-    /* printf("eventNumber %d, clockJitters... surf %d\n", theHeader->eventNumber, surf); */
-    clockJitters[surf] = findClockJitterCorrection(numUpsampledClockSamples, interpClocks[0],
-    						   interpClocks[surf], deltaT/upsampleFactor,
-    						   surf, labChips[surf]);
-  }
+  /* printf("I made it to here\n"); */
+  if(!disableGpu){
+    /* printf("But not here?\n"); */
 
+    /* Upsample clocks */
+    double* interpClocks[ACTIVE_SURFS];
+    for(surf=0; surf<ACTIVE_SURFS; surf++){
+      double theInterpDt = deltaT/upsampleFactor;
+      /* interpClocks[surf] = linearlyInterpolateWaveform(nSamps[surf][8], */
+      interpClocks[surf] = interpolateWaveform(nSamps[surf][8],
+					       /* interpClocks[surf] = dontInterpolateWaveform(nSamps[surf][8], */
+					       volts[surf][8],
+					       times[surf][8],
+					       numUpsampledClockSamples,
+					       times[surf][8][0],
+					       theInterpDt);
 
-  double startTime=1e9;
-  for(surf=0; surf<ACTIVE_SURFS; surf++){
-    int chan=0;
-    for(chan=0; chan<CHANNELS_PER_SURF; chan++){
-      if(times[surf][chan][0] - clockJitters[surf] < startTime){
-	startTime = times[surf][chan][0] - clockJitters[surf];
-      }
-      /* printf("eventNumber %u, surf %d, chan %d, clockJitter %lf, t0 %lf\n", theHeader->eventNumber, surf, chan, clockJitters[surf], times[surf][chan][0] - clockJitters[surf]); */
-    }
-  }
+      int samp=0;
+      double lastZcTime = -100;
+      for(samp=0; samp < numUpsampledClockSamples; samp++){
+	if(interpClocks[surf][samp] < 0 && interpClocks[surf][samp+1] >= 0){
+	  // is a zero crossing
+	  lastZcTime = theInterpDt*samp;
+	}
 
-  for(surf=0; surf<ACTIVE_SURFS; surf++){
-    int chan=0;
-    //    for(chan=0; chan<CHANNELS_PER_SURF-1; chan++){
-    for(chan=0; chan<CHANNELS_PER_SURF; chan++){
-      double newTimes[260] = {0};
-      int samp = 0;
-      for(samp=0; samp<nSamps[surf][chan]; samp++){
-	newTimes[samp] = times[surf][chan][samp];
-      	newTimes[samp] -= clockJitters[surf];
+	if(theInterpDt*samp - lastZcTime < 10){
+	  clockTimeDomain[samp] = interpClocks[surf][samp];
+	}
+	else{
+	  clockTimeDomain[samp] = 0;
+	}
       }
 
-      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan], */
-      finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
-      /* finalVolts[surf*CHANNELS_PER_SURF + chan] = dontInterpolateWaveform(nSamps[surf][chan], */
-									  volts[surf][chan],
-									  newTimes,
-									  NUM_SAMPLES,
-									  startTime,
-									  deltaT);
+      fftw_execute(clockPlanForward);
 
+      int numFreqs = (numUpsampledClockSamples/2) + 1;
+      int freqInd=0;
+      for(freqInd=0; freqInd < numFreqs; freqInd++){
+	clockFreqs[surf][freqInd][0] = clockFreqDomain[freqInd][0];
+	clockFreqs[surf][freqInd][1] = clockFreqDomain[freqInd][1];
+      }
     }
-  }
+
+    /* Extract clock jitter from interpolated clocks relative to clock 0. */
+    clockJitters[0] = 0;
+    for(surf=1; surf<ACTIVE_SURFS; surf++){
+      /* printf("eventNumber %d, clockJitters... surf %d\n", theHeader->eventNumber, surf); */
+      clockJitters[surf] = findClockJitterCorrection(numUpsampledClockSamples, clockFreqs[0],
+						     clockFreqs[surf], deltaT/upsampleFactor,
+						     surf, labChips[surf]);
+      if(entry==1){
+	printf("%u, clockJitters[%d] = %lf\n", theHeader[entry].eventNumber, surf, clockJitters[surf]);
+      }
+    }
+    double startTime=1e9;
+    for(surf=0; surf<ACTIVE_SURFS; surf++){
+      int chan=0;
+      for(chan=0; chan<CHANNELS_PER_SURF; chan++){
+	if(times[surf][chan][0] - clockJitters[surf] < startTime){
+	  startTime = times[surf][chan][0] - clockJitters[surf];
+	}
+	/* printf("eventNumber %u, surf %d, chan %d, clockJitter %lf, t0 %lf\n", theHeader->eventNumber, surf, chan, clockJitters[surf], times[surf][chan][0] - clockJitters[surf]); */
+      }
+    }
+
+    for(surf=0; surf<ACTIVE_SURFS; surf++){
+      int chan=0;
+      //    for(chan=0; chan<CHANNELS_PER_SURF-1; chan++){
+      for(chan=0; chan<CHANNELS_PER_SURF; chan++){
+	double newTimes[260] = {0};
+	int samp = 0;
+	for(samp=0; samp<nSamps[surf][chan]; samp++){
+	  newTimes[samp] = times[surf][chan][samp];
+	  newTimes[samp] -= clockJitters[surf];
+	}
+
+	/* finalVolts[surf*CHANNELS_PER_SURF + chan] = linearlyInterpolateWaveform(nSamps[surf][chan], */
+	finalVolts[surf*CHANNELS_PER_SURF + chan] = interpolateWaveform(nSamps[surf][chan],
+									/* finalVolts[surf*CHANNELS_PER_SURF + chan] = dontInterpolateWaveform(nSamps[surf][chan], */
+									volts[surf][chan],
+									newTimes,
+									NUM_SAMPLES,
+									startTime,
+									deltaT);
 
 
-  /* Tidy up. */
-  for(surf=0; surf<ACTIVE_SURFS; surf++){
-    free(interpClocks[surf]);
-  }
+      }
+    }
+    /* Tidy up. */
+    for(surf=0; surf<ACTIVE_SURFS; surf++){
+      free(interpClocks[surf]);
+    }
+
+
+  } // if we have the GPU disabled, then do something much simpler with no interpolation
+  else{
+    // first, zero the (double* finalVolts[]) arrays so we don't free them outside this function
+    int surf=0;
+    for(surf=0; surf<ACTIVE_SURFS; surf++){
+      int chan=0;
+      for(chan=0; chan<CHANNELS_PER_SURF; chan++){
+	finalVolts[surf*CHANNELS_PER_SURF + chan] = NULL;
+      }
+    }
+
+
+
+    /* const int numThresholds = 3; */
+    /* int numMaximaAbove[numNCycleThresholds] = {0}; */
+    /* int numMinimaBelow[numNCycleThresholds] = {0}; */
+    /* double nPeaksAbove[NUM_POLARIZATIONS][NUM_ANTENNAS][numNCycleThresholds]; */
+
+    /* int pol=0; */
+    /* for(pol = 0; pol < NUM_POLARIZATIONS; pol++){ */
+    /*   int antInd=0; */
+    /*   for(antInd=0; antInd<NUM_ANTENNAS; antInd++){ */
+
+    /* 	int surf = antToSurfMap[antInd]; */
+    /* 	int chan = pol == 0 ? hAntToChan[antInd] : vAntToChan[antInd]; */
+    /* 	int chanIndex = surf*CHANNELS_PER_SURF + chan; */
+
+    /* 	if(invertTopRingInSoftware2 > 0 && antInd < NUM_PHI){ */
+    /* 	  int ringFactor = -1; */
+    /* 	  for(samp=0; samp<nSamp[surf][chan]; samp++){ */
+    /* 	    volts[surf][chan][samp] = ringFactor*volts[surf][chan][samp]; */
+    /* 	  } */
+    /* 	} */
+
+    /* 	double sum = 0; */
+    /* 	double sumSq = 0; */
+    /* 	for(samp=0; samp<nSamp[surf][chan]; samp++){ */
+    /* 	  sum += volts[surf][chan][samp]; */
+    /* 	  sumSq += volts[surf][chan][samp]*volts[surf][chan][samp]; */
+    /* 	} */
+    /* 	double mean = sum/nSamp[surf][chan]; */
+    /* 	double var = sumSq/nSamp[surf][chan] - (mean*mean); */
+    /* 	double rms = sqrt(var); */
+
+    /* 	double maxVolts = -1e9; */
+    /* 	double minVolts = 1e9; */
+    /* 	// zero mean */
+    /* 	for(samp=0; samp<nSamp[surf][chan]; samp++){ */
+    /* 	  volts[surf][chan][samp] -= mean; */
+    /* 	  maxVolts = volts[surf][chan][samp] > maxVolts ? volts[surf][chan][samp] : maxVolts; */
+    /* 	  minVolts = volts[surf][chan][samp] < minVolts ? volts[surf][chan][samp] : minVolts; */
+
+    /* 	  int isMaxima = 0; */
+    /* 	  int isMinima = 0; */
+    /* 	  if(samp > 0 && samp < nSamp[surf][chan] - 1){ */
+    /* 	    isMaximum = volts[surf][chan][samp-1] < volts[surf][chan][samp] && volts[surf][chan][samp] > volts[surf][chan][samp+1]; */
+    /* 	    isMinimum = volts[surf][chan][samp-1] > volts[surf][chan][samp] && volts[surf][chan][samp] < volts[surf][chan][samp+1]; */
+    /* 	  } */
+    /* 	  else if(samp==0){ */
+    /* 	    isMaximum = volts[surf][chan][samp] > volts[surf][chan][samp+1]; */
+    /* 	    isMinimum = volts[surf][chan][samp] < volts[surf][chan][samp+1]; */
+    /* 	  } */
+    /* 	  else{ */
+    /* 	    isMaximum = volts[surf][chan][samp-1] > volts[surf][chan][samp]; */
+    /* 	    isMinimum = volts[surf][chan][samp-1] < volts[surf][chan][samp]; */
+    /* 	  } */
+
+    /* 	  if(isMaximum){ */
+
+    /* 	  } */
+    /* 	} */
+
+
+
+    /* 	double snr = (maxVolts - minVolts)/(2*rms); */
+    /*   } */
+    /* } */
+
+
+
+
+  } // else of if(!disableGpu)
+
+
+
+
 
 }
 
@@ -1148,7 +1280,7 @@ void readInRelativeCableDelay(const char* fileName){
 	double tempVal;
 	fscanf(inFile, "%d %d %lf", &surfVal, &chanVal, &tempVal);
 	relativeCableDelays[surfVal][chanVal] = tempVal;
-	/* printf("surf %d, chan %d, relativeCableDelays[surfVal][chanVal] = %lf\n", surfVal, chanVal, tempVal); */
+	printf("surf %d, chan %d, relativeCableDelays[surfVal][chanVal] = %lf\n", surfVal, chanVal, tempVal);
       }
       else{
 	relativeCableDelays[surfInd][chanInd] = defaultVal;
