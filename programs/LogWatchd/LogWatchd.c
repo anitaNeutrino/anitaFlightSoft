@@ -118,7 +118,7 @@ int main (int argc, char *argv[])
 	if(startProcInterrupts) catFile("/proc/interrupts");
 	tailJournal("",startMessageTailLines);	
 
-	system("/home/anita/flightSoft/bin/smartDump.sh");
+//system("sudo /home/anita/flightSoft/bin/smartDump.sh");
 	catFile("/tmp/smart_sda");
 	catFile("/tmp/smart_sdb");
 	catFile("/tmp/smart_sdc");
