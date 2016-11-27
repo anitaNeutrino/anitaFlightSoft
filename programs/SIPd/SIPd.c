@@ -713,10 +713,10 @@ void commandHandler(unsigned char *cmd)
 	syslog(LOG_INFO,"SIPd received respawn cmd\n");  
 	retVal=writeCommandAndLink(&theCmd);
 	sipcom_end();
-    } else if (cmd[0] == SIPD_THROTTLE_RATE) {
+    } else if (cmd[0] == SIPD_CONTROL_COMMAND && cmd[1] == SIPD_THROTTLE_RATE) {
 	// Use the MARK command to change the throttle rate. Oops, need to
 	// tell the highrate writer process to change the rate.
-	unsigned short mark = (cmd[2] << 8) | cmd[1];
+	unsigned short mark = (cmd[3] << 8) | cmd[2];
 	syslog(LOG_INFO,"SIPd changing throttle rate to %u\n", mark);
 	sipcom_highrate_set_throttle(mark);
 	retVal=writeCommandAndLink(&theCmd);
