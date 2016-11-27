@@ -351,8 +351,8 @@ int main(int argc, char *argv[])
 
     char enable=0;
     //    syslog(LOG_INFO,"SIPd setting sipcom enable mask to %#x",enable);
-    printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
-    retVal = sipcom_init(MAX_WRITE_RATE,".",enable);
+    printf("Max Write Rate %ld\n",throttleRate);
+    retVal = sipcom_init(throttleRate,".",enable);
     if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
@@ -713,10 +713,10 @@ void commandHandler(unsigned char *cmd)
 	syslog(LOG_INFO,"SIPd received respawn cmd\n");  
 	retVal=writeCommandAndLink(&theCmd);
 	sipcom_end();
-    } else if (cmd[0] == SIPD_THROTTLE_RATE) {
+    } else if (cmd[0] == SIPD_CONTROL_COMMAND && cmd[1] == SIPD_THROTTLE_RATE) {
 	// Use the MARK command to change the throttle rate. Oops, need to
 	// tell the highrate writer process to change the rate.
-	unsigned short mark = (cmd[2] << 8) | cmd[1];
+	unsigned short mark = (cmd[3] << 8) | cmd[2];
 	syslog(LOG_INFO,"SIPd changing throttle rate to %u\n", mark);
 	sipcom_highrate_set_throttle(mark);
 	retVal=writeCommandAndLink(&theCmd);
