@@ -33,20 +33,18 @@ void readInVoltageCalib(const char* fileName);
 void readInRelativeCableDelay(const char* fileName);
 
 
-#ifdef __APPLE__
-void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[], double* finalTimes);
-#else
-void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[]);
-#endif
-double* interpolateWaveform(int nRaw, double* rawWave, double* times, 
+void doTimingCalibration(int entry, AnitaEventHeader_t* theHeader, PedSubbedEventBody_t pedSubBody, double* finalVolts[], int disableGpu);
+
+
+double* interpolateWaveform(int nRaw, double* rawWave, double* times,
 			    int nInterp, double t0interp, double dtNsInterp);
-double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes, 
+double* linearlyInterpolateWaveform(int nRaw, double* rawWave, double* unevenTimes,
 				    int nInterp, double t0interp, double dtNsInterp);
 
 
 double* simpleBandPass(double* volts, int length, double dt, double highPassMHz, double lowPassMHz);
 
-double findClockJitterCorrection(int numSamples, double* clock1, double* clock, double deltaT_ns, int surf, int lab);
+double findClockJitterCorrection(int numSamples, fftw_complex* clockFreqs1, fftw_complex* clockFreqs2, double deltaT_ns, int surf, int lab);
 
 void normalize(int numSamples, double* data);
 void readInRcoLatchDelay(const char* fileName);
@@ -59,7 +57,7 @@ void preCalculateTimeArrays();
 
 
 
-/* 
+/*
    These are copied from AnitaEventCalibrator.cxx (and other useful classes) in Ryan's ROOT things
    then edited to compile in C.
 */

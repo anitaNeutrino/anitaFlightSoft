@@ -688,6 +688,10 @@ int setNotches()
 
 
   if (outfile) fprintf(outfile,"Date: %s\n", ctime(&theTime));
+
+
+  tuffStruct.notchSetTime = theTime; 
+
   for (i = 0; i < NUM_TUFF_NOTCHES; i++)
   {
     syslog(LOG_INFO, "Tuffd: Setting notch %d range to [%d %d],", i, tuffStruct.startSectors[i], tuffStruct.endSectors[i]); 

@@ -34,7 +34,17 @@ void getPlatformAndDeviceInfo(cl_platform_id* platformIds, cl_uint maxPlatforms,
   uint plat = 0;
   for(plat = 0; plat < numPlatforms; plat++){
     size_t nameBufferLength;
-    status = clGetPlatformInfo(platformIds[plat], CL_PLATFORM_NAME, sizeof(platNames[plat]), platNames[plat], &nameBufferLength);
+
+    int attemptsThisTime = 0;
+    const int maxAttemptsBeforeQuittingThisTime = 5;
+    for(attemptsThisTime = 0; attemptsThisTime < maxAttemptsBeforeQuittingThisTime; attemptsThisTime++){
+      status = clGetPlatformInfo(platformIds[plat], CL_PLATFORM_NAME, sizeof(platNames[plat]), platNames[plat], &nameBufferLength);
+
+      if(status==CL_SUCCESS){
+	break;
+      }
+      usleep(500);
+    }
     statusCheck(status, "clGetPlatformInfo");
     printf("\tPlatform %d: %s\n", plat, platNames[plat]);
   }
