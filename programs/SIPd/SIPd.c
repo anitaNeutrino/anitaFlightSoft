@@ -350,9 +350,9 @@ int main(int argc, char *argv[])
     }
 
     char enable=0;
-    //    syslog(LOG_INFO,"SIPd setting sipcom enable mask to %#x",enable);
-    printf("Max Write Rate %ld\n",MAX_WRITE_RATE);
-    retVal = sipcom_init(MAX_WRITE_RATE,".",enable);
+    syslog(LOG_INFO,"Setting throttleRate to %d",throttleRate);
+    printf("Throttle Rate %d\n",throttleRate);
+    retVal = sipcom_init(throttleRate,".",enable);
     if (retVal) {
 	char *s = sipcom_strerror();
 	fprintf(stderr, "%s\n", s);
