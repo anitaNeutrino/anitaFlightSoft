@@ -290,7 +290,7 @@ void handleBadSigs(int sig)
 void setupSignals()
 {
 
-//  signal(SIGCLD, SIG_IGN); 
+  signal(SIGCLD, SIG_IGN); 
   signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
   signal(SIGTERM, handleBadSigs);
