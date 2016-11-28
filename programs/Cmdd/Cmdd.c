@@ -2246,7 +2246,7 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
-  case ACQD_RATE_SET_L1_TRIG_MASK:
+  case ACQD_RATE_SET_L2_TRIG_MASK:
     utemp=(args[0]);
     uvalue[0]=utemp;
     utemp=(args[1]);
@@ -2255,10 +2255,10 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]|=(utemp<<16);
     utemp=(args[3]);
     uvalue[0]|=(utemp<<24);
-    syslog(LOG_INFO,"ACQD_SET_L1_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
+    syslog(LOG_INFO,"ACQD_SET_L2_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
 	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
 
-    configModifyUnsignedInt("Acqd.config","thresholds","l1TrigMask",uvalue[0],&rawtime);
+    configModifyUnsignedInt("Acqd.config","thresholds","l2TrigMask",uvalue[0],&rawtime);
     retVal=sendSignal(ID_ACQD,SIGUSR1);
     if(retVal) return 0;
     return rawtime;
