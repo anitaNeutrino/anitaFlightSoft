@@ -9,8 +9,10 @@ sendData#I1=1;
 sendWavePackets#I1=0;
 laptopDebug#I1=0;
 losBus#I1=1;
-losSlot#I1=14;
+losSlot#I1=13;
 maxEventsBetweenLists#I1=10;
+minTimeWait_b#F1=0.016; 
+minTimeWait_m#F1=0.000000; 
 </losd>
 
 

@@ -1089,7 +1089,7 @@ void processGpvtgString(char *gpsString, int gpsLength, int fromAdu5) {
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5aVtgTelemEvery) {
-      sprintf(theFilename,"%s/vtg_%d.dat",ADU5A_VTG_TELEM_DIR,theVtg.unixTime);
+      sprintf(theFilename,"%s/vtg_%d_%d.dat",ADU5A_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
       retVal=writeStruct(&theVtg,theFilename,sizeof(GpsAdu5VtgStruct_t));  
       retVal=makeLink(theFilename,ADU5A_VTG_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;
@@ -1107,7 +1107,7 @@ void processGpvtgString(char *gpsString, int gpsLength, int fromAdu5) {
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5bVtgTelemEvery) {
-      sprintf(theFilename,"%s/vtg_%d.dat",ADU5B_VTG_TELEM_DIR,theVtg.unixTime);
+      sprintf(theFilename,"%s/vtg_%d_%d.dat",ADU5B_VTG_TELEM_DIR,theVtg.unixTime,theVtg.unixTimeUs);
       retVal=writeStruct(&theVtg,theFilename,sizeof(GpsAdu5VtgStruct_t));  
       retVal=makeLink(theFilename,ADU5B_VTG_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;
@@ -1198,7 +1198,7 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=g12GgaTelemEvery) {
-      sprintf(theFilename,"%s/gga_%d.dat",G12_GGA_TELEM_DIR,theGga.unixTime);
+      sprintf(theFilename,"%s/gga_%d_%d.dat",G12_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
       retVal=writeStruct(&theGga,theFilename,sizeof(GpsGgaStruct_t));  
       retVal=makeLink(theFilename,G12_GGA_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;
@@ -1216,7 +1216,7 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5aGgaTelemEvery) {
-      sprintf(theFilename,"%s/gga_%d.dat",ADU5A_GGA_TELEM_DIR,theGga.unixTime);
+      sprintf(theFilename,"%s/gga_%d_%d.dat",ADU5A_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
       retVal=writeStruct(&theGga,theFilename,sizeof(GpsGgaStruct_t));  
       retVal=makeLink(theFilename,ADU5A_GGA_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;
@@ -1234,7 +1234,7 @@ void processGpggaString(char *gpsString, int gpsLength, int fromAdu5) {
     //Write file and link for sipd
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5bGgaTelemEvery) {
-      sprintf(theFilename,"%s/gga_%d.dat",ADU5B_GGA_TELEM_DIR,theGga.unixTime);
+      sprintf(theFilename,"%s/gga_%d_%d.dat",ADU5B_GGA_TELEM_DIR,theGga.unixTime,theGga.unixTimeUs);
       retVal=writeStruct(&theGga,theFilename,sizeof(GpsGgaStruct_t));  
       retVal=makeLink(theFilename,ADU5B_GGA_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;
@@ -1342,7 +1342,7 @@ void processPosString(char *gpsString, int gpsLength) {
     telemCount++;
     if(telemCount>=g12PosTelemEvery) {
       //Write file and link for sipd
-      sprintf(theFilename,"%s/pos_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime);
+      sprintf(theFilename,"%s/pos_%d_%d.dat",G12_POS_TELEM_DIR,thePos.unixTime,thePos.unixTimeUs);
       retVal=writeStruct(&thePos,theFilename,sizeof(GpsG12PosStruct_t));  
       retVal=makeLink(theFilename,G12_POS_TELEM_LINK_DIR);  
       telemCount=0;
@@ -1783,11 +1783,11 @@ void processAdu5aSatString(char *gpsString, int gpsLength,  int isSat) {
 		  fillGenericHeader(&theSat,PACKET_GPS_ADU5_SAT|PACKET_FROM_ADU5A,sizeof(GpsAdu5SatStruct_t));
 		  telemCount[fromAdu5]++;
 		  if(telemCount[fromAdu5]>=adu5aSatTelemEvery) {
-		      //Write file and link for sipd
-		      sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5A_SAT_TELEM_DIR,theSat.unixTime);
-		      retVal=writeStruct(&theSat,theFilename,sizeof(GpsAdu5SatStruct_t));  
-		      retVal=makeLink(theFilename,ADU5A_SAT_TELEM_LINK_DIR);  
-		      telemCount[fromAdu5]=0;
+		    //Write file and link for sipd
+		    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5A_SAT_TELEM_DIR,theSat.unixTime);
+		    retVal=writeStruct(&theSat,theFilename,sizeof(GpsAdu5SatStruct_t));  
+		    retVal=makeLink(theFilename,ADU5A_SAT_TELEM_LINK_DIR);  
+		    telemCount[fromAdu5]=0;
 		  }
 		  
 		  //Write file to main disk
@@ -1803,7 +1803,7 @@ void processAdu5aSatString(char *gpsString, int gpsLength,  int isSat) {
 		  telemCount[fromAdu5]++;
 		  if(telemCount[fromAdu5]>=adu5bSatTelemEvery) {
 		      //Write file and link for sipd
-		      sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5B_SAT_TELEM_DIR,theSat.unixTime);
+		    sprintf(theFilename,"%s/sat_adu5_%d.dat",ADU5B_SAT_TELEM_DIR,theSat.unixTime);
 		      retVal=writeStruct(&theSat,theFilename,sizeof(GpsAdu5SatStruct_t));  
 		      retVal=makeLink(theFilename,ADU5B_SAT_TELEM_LINK_DIR);  
 		      telemCount[fromAdu5]=0;
@@ -2105,7 +2105,7 @@ void processGppatString(char *gpsString, int gpsLength, int fromAdu5) {
     telemCount[fromAdu5]++;
     if(telemCount[fromAdu5]>=adu5aPatTelemEvery) {
       //Write file and link for sipd
-      sprintf(theFilename,"%s/pat_%d.dat",ADU5A_PAT_TELEM_DIR,thePat.unixTime);
+      sprintf(theFilename,"%s/pat_%d_%d.dat",ADU5A_PAT_TELEM_DIR,thePat.unixTime,thePat.unixTimeUs);
       retVal=writeStruct(&thePat,theFilename,sizeof(GpsAdu5PatStruct_t));  
       retVal=makeLink(theFilename,ADU5A_PAT_TELEM_LINK_DIR);  
       telemCount[fromAdu5]=0;

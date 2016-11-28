@@ -5,14 +5,14 @@ verbosity#I1=2;
 
 
 <monitord>
-maxEventQueueSize#I1=5000;
+maxEventQueueSize#I1=2500;
 maxHkQueueSize#I1=2000;
 ramdiskKillAcqd#I1=200;
 maxAcqdWaitPeriod#I1=180;
 inodesKillAcqd#I1=10000;
 inodesDumpData#I1=2000;
 ramdiskDumpData#I1=100;
-startProcesses#I1=1;
+startProcesses#I1=0;
 monitorPeriod#I1=10;
 usbSwitchMB#I1=50;
 ntuSwitchMB#I1=50;
