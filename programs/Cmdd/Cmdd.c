@@ -3946,6 +3946,16 @@ int executeRTLCommand(int command, unsigned char arg[2])
   return 0;
 }
 
+static void signed_char_arr_to_int_arr(int * vint, const char * vchar, int length)
+{
+  int i;
+  for (i = 0; i < length; i++)
+  {
+    vint[i] = vchar[i];
+  }
+}
+
+
 
 static void char_arr_to_int_arr(int * vint, const unsigned char * vchar, int length)
 {
@@ -3996,7 +4006,7 @@ int executeTuffCommand(int command, unsigned char arg[6])
        sendSignal(ID_GPSD,SIGUSR1); 
        break;
     case TUFF_DEGREES_FROM_NORTH_TO_NOTCH:
-       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
+       signed_char_arr_to_int_arr(adjustArray, (const char*) arg, NUM_TUFF_NOTCHES);
        configModifyIntArray("Tuffd.config","notch","tuffDegreesFromNorth",adjustArray, NUM_TUFF_NOTCHES, &when);
        break;
     case TUFF_SLOPE_THRESHOLD_TO_NOTCH_NEXT_SECTOR:
