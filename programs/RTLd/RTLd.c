@@ -287,10 +287,16 @@ void handleBadSigs(int sig)
   exit(0); 
 }
 
+//void waitForKids(int sig) 
+//{
+//  int status; 
+//  wait(&status); 
+//}
+
 void setupSignals()
 {
 
-  signal(SIGCLD, SIG_IGN); 
+//  signal(SIGCHLD, waitForKids); 
   signal(SIGUSR1, sigUsr1Handler);
   signal(SIGUSR2, sigUsr2Handler);
   signal(SIGTERM, handleBadSigs);
