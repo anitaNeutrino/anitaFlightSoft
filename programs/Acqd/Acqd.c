@@ -3806,6 +3806,7 @@ AcqdErrorCode_t readTurfHkData()
     int retVal=0;
     unsigned int uvalue;
     TurfRawBank3Struct_t rawbank3; 
+    static unsigned int myLastPPS=0;
 
     int i=0;
     struct timeval timeStruct;
@@ -3831,9 +3832,9 @@ AcqdErrorCode_t readTurfHkData()
     memcpy(&rawbank3,&theTurfReg,sizeof(TurfRegisterContents_t)); 
     copyTurfBank3Vals(&rawbank3, &turfRates); 
 
-
-    if(turfRates.ppsNum!=lastPPSNum) { //When the PPS isn't present won't get this
-    newTurfRateData=1;
+    //    printf("readTurfHkData: %d %d\n",turfRates.ppsNum,myLastPPS);
+    if(turfRates.ppsNum!=myLastPPS) { //When the PPS isn't present won't get this
+      newTurfRateData=1;
 	
 	if(writeRawScalers) {
 	    fillGenericHeader(&theTurfReg,PACKET_TURF_REGISTER,sizeof(TurfRegisterContents_t));
@@ -3861,7 +3862,7 @@ AcqdErrorCode_t readTurfHkData()
     status=readTurfioReg(TurfRegControlPhiMask,&uvalue);   
     turfRates.phiTrigMask=uvalue&0xffff;    
 
-    //    lastPPSNum=turfRates.ppsNum;
+    myLastPPS=turfRates.ppsNum;
     return status;
 }
 
