@@ -34,7 +34,7 @@ void sendEvent(PlaybackRequest_t *pReq);
 void startPlayback();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
-int cleverMountPlaybackDisk(char *diskLabel);
+//int cleverMountPlaybackDisk(char *diskLabel);
 
 // Global Variables
 int printToScreen=0;
@@ -236,7 +236,7 @@ void sendEvent(PlaybackRequest_t *pReq)
     int subDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pReq->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
     int fileNum=(EVENTS_PER_FILE)*(pReq->eventNumber/EVENTS_PER_FILE);
 
-    sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",subDirNum,dirNum,fileNum);
+    //    sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",subDirNum,dirNum,fileNum);
     
 //    syslog(LOG_INFO,"Trying to send event %u, with priority %d\n",
 //	   pReq->eventNumber,pReq->pri);
@@ -245,93 +245,70 @@ void sendEvent(PlaybackRequest_t *pReq)
     
     int numSeek=pReq->eventNumber-fileNum;
     numSeek--;
-    gzFile indFile=gzopen(indexName,"rb");
-    if(!indFile) {
-	fprintf(stderr,"Couldn't open: %s\n",indexName);
-	syslog(LOG_ERR,"Couldn't open: %s\n",indexName);
-	return;
-    }
+    //    gzFile indFile=gzopen(indexName,"rb");
+    //    if(!indFile) {
+    //	fprintf(stderr,"Couldn't open: %s\n",indexName);
+    //	syslog(LOG_ERR,"Couldn't open: %s\n",indexName);
+    //	return;
+    //    }
     
 /*     if(numSeek) { */
 /* 	gzseek(indFile,numSeek*sizeof(IndexEntry_t),SEEK_SET); */
 /*     } */
 
 
-    IndexEntry_t indEntry;
-    int count=0;
-    do {
-	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));
-	if(test<0) {
-	    fprintf(stderr,"Couldn't read from: %s\n",indexName);
-	    syslog(LOG_ERR,"Couldn't read from: %s\n",indexName);
-	    
-	    gzclose(indFile);
-	    return;
-	}
+//    IndexEntry_t indEntry;
+//    int count=0;
+//    do {
+//	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));
+//	if(test<0) {
+//	    fprintf(stderr,"Couldn't read from: %s\n",indexName);
+//	    syslog(LOG_ERR,"Couldn't read from: %s\n",indexName);
+//	    
+//	    gzclose(indFile);
+//	    return;
+//	}
 //	printf("count %d, index %u\n",count,indEntry.eventNumber);
-	count++;
-    } while (indEntry.eventNumber!=pReq->eventNumber);
-    gzclose(indFile);
+//	count++;
+//    } while (indEntry.eventNumber!=pReq->eventNumber);
+//    gzclose(indFile);
 //    printf("index: %u -- %#x\n",indEntry.eventNumber,indEntry.eventDiskBitMask);
 
-    //Now have index
+    //Now have index, okay we don't
     //Here we're going to have to add something that checks if the file we want is on one of the already mounted disks. If it is we'll go ahead and read it from there, if not we'll have to mount the disk specified by usedisk on /mnt/playback and read the file from there
     int diskInd=0;
-    int gotDisk=-1;
+    int gotDisk=useDisk;
 
-    for(diskInd=0;diskInd<DISK_TYPES;diskInd++) {
-      if(indEntry.eventDiskBitMask & diskBitMasks[diskInd]) {
-	//So the event was allegedly written to this disk type
-	if(diskInd==0) {
-	  gotDisk=0;
-	}
-	else if(diskInd==1) {
-	  gotDisk=1;
-	}
-	else if(diskInd==2) {
-	  if(strncmp(usbName,indEntry.usbLabel,12)==0) {
-	    gotDisk=2;
-	    break;
-	  }
-	}
-	else if(diskInd==3) {
-	  gotDisk=3;
+
+    int testRun=0;
+    int maxRun=getRunNumber();
+    if(gotDisk>=0 && gotDisk<=1) {
+      //Read it from the disk
+      for(testRun=1;testRun<=maxRun;testRun++) {
+	sprintf(headerFileName,"%s/run%u/event/ev%d/ev%d/hd_%d.dat.gz",
+		diskNames[gotDisk],testRun,subDirNum,dirNum,fileNum);
+	FILE *fp = fopen(headerFileName,"rb");
+	if(fp) {
+	  fclose(fp);
 	  break;
 	}
-      }      
-    }
-
-    if(gotDisk==-1) {
-      //The file isn't on one of the mounted disks will try and mount
-      //a disk on /mnt/playback
-      if(useDisk==2)  {
-	retVal=cleverMountPlaybackDisk(indEntry.usbLabel);
-	if(retVal!=0) {
-	  syslog(LOG_ERR,"Error calling cleverMountPlaybackDisk %d\n",retVal);
-	}
-      	gotDisk=4;
       }
-    }
+      
+      
+      gzFile headFile = gzopen(headerFileName,"rb");
+      if(!headFile) {
+	fprintf(stderr,"Couldn't open: %s\n",headerFileName);	    
+	return;
+      }
+      int retVal;
 
-
-    if(gotDisk>=0 && gotDisk<=4) {
-	//Read it from puck
-	sprintf(headerFileName,"%s/run%u/event/ev%d/ev%d/hd_%d.dat.gz",
-		diskNames[gotDisk],indEntry.runNumber,subDirNum,dirNum,fileNum);
-	gzFile headFile = gzopen(headerFileName,"rb");
-	if(!headFile) {
-	    fprintf(stderr,"Couldn't open: %s\n",headerFileName);	    
-	    return;
-	}
-	int retVal;
-
-	
-	if(numSeek) {
-	    gzseek(headFile,numSeek*sizeof(AnitaEventHeader_t),SEEK_SET);
-	}
-
-	int test=0;
-	do {
+      
+      if(numSeek) {
+	gzseek(headFile,numSeek*sizeof(AnitaEventHeader_t),SEEK_SET);
+      }
+      
+      int test=0;
+      do {
 	    retVal=gzread(headFile,&theHead,sizeof(AnitaEventHeader_t));
 	    printf("try %d, head %u\n",test,theHead.eventNumber);
 	    test++;
@@ -344,7 +321,7 @@ void sendEvent(PlaybackRequest_t *pReq)
 	}
 
 	sprintf(eventFileName,"%s/run%u/event/ev%d/ev%d/psev_%d.dat.gz",
-		diskNames[gotDisk],indEntry.runNumber,subDirNum,dirNum,fileNum);
+		diskNames[gotDisk],testRun,subDirNum,dirNum,fileNum);
 	gzFile eventFile = gzopen(eventFileName,"rb");
 	if(!eventFile) {
 	    fprintf(stderr,"Couldn't open: %s\n",eventFileName);	    
@@ -526,40 +503,40 @@ int sortOutPidFile(char *progName)
 }
 
 
-int cleverMountPlaybackDisk(char *diskLabel)
-{
-    char theCommand[180];
-  int retVal=0;
-  if(playbackMounted) {
-    if(strncmp(diskLabel,playbackName,12)==0) {
-      //As luck would have it that disk is mounted
-      return 0;
-    }
+/* int cleverMountPlaybackDisk(char *diskLabel) */
+/* { */
+/*     char theCommand[180]; */
+/*   int retVal=0; */
+/*   if(playbackMounted) { */
+/*     if(strncmp(diskLabel,playbackName,12)==0) { */
+/*       //As luck would have it that disk is mounted */
+/*       return 0; */
+/*     } */
 
-    //unmount playback
-    sprintf(theCommand,"sudo umount %s",PLAYBACK_MOUNT);
-    retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process
-    if (WIFSIGNALED(retVal) &&
-        (WTERMSIG(retVal) == SIGINT || WTERMSIG(retVal) == SIGQUIT))
-      return -1;
-    sleep(2); //For luck
-    playbackMounted=0;
-  }
+/*     //unmount playback */
+/*     sprintf(theCommand,"sudo umount %s",PLAYBACK_MOUNT); */
+/*     retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process */
+/*     if (WIFSIGNALED(retVal) && */
+/*         (WTERMSIG(retVal) == SIGINT || WTERMSIG(retVal) == SIGQUIT)) */
+/*       return -1; */
+/*     sleep(2); //For luck */
+/*     playbackMounted=0; */
+/*   } */
       
-  //Try to mount playback
-  sprintf(theCommand,"sudo mount -L %s %s",diskLabel,PLAYBACK_MOUNT);
-  retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process
-  if (WIFSIGNALED(retVal) &&
-      (WTERMSIG(retVal) == SIGINT || WTERMSIG(retVal) == SIGQUIT))
-    return -1;
-  sleep(2); //For luck
-  playbackMounted=1;
-  strncpy(playbackName,diskLabel,11);
+/*   //Try to mount playback */
+/*   sprintf(theCommand,"sudo mount -L %s %s",diskLabel,PLAYBACK_MOUNT); */
+/*   retVal=system(theCommand); //Should probably check if it worked and should also probably do this as some sort of forked process */
+/*   if (WIFSIGNALED(retVal) && */
+/*       (WTERMSIG(retVal) == SIGINT || WTERMSIG(retVal) == SIGQUIT)) */
+/*     return -1; */
+/*   sleep(2); //For luck */
+/*   playbackMounted=1; */
+/*   strncpy(playbackName,diskLabel,11); */
 
-  //Should really check that it is mounted will probably open /proc/mounts and oparse it for /mnt/playback but I'll do this later
-
-
-  return 0;
+/*   //Should really check that it is mounted will probably open /proc/mounts and oparse it for /mnt/playback but I'll do this later */
 
 
-}
+/*   return 0; */
+
+
+/* } */

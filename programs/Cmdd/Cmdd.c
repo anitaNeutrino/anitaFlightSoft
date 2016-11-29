@@ -2260,10 +2260,10 @@ int executeAcqdRateCommand(int command, unsigned char args[8])
     uvalue[0]=utemp;
     utemp=(args[1]);
     uvalue[0]|=(utemp<<8);
-    utemp=(args[2]);
-    uvalue[0]|=(utemp<<16);
-    utemp=(args[3]);
-    uvalue[0]|=(utemp<<24);
+    //    utemp=(args[2]);
+    //    uvalue[0]|=(utemp<<16);
+    //    utemp=(args[3]);
+    //    uvalue[0]|=(utemp<<24);
     syslog(LOG_INFO,"ACQD_SET_L2_TRIG_MASK: %d %d %d %d -- %u -- %#x\n",args[0],args[1],
 	   args[2],args[3],uvalue[0],(unsigned int)uvalue[0]);
 
