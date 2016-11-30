@@ -642,6 +642,7 @@ int writeState(int changed)
 
   telemeterCount++; 
 
+  fillGenericHeader(&tuffStruct, PACKET_TUFF_STATUS, sizeof(TuffNotchStatus_t)); 
   if ( (telemeterAfterChange && changed) || (telemeterEvery && telemeterCount >= telemeterEvery))
   {
     char fileName[FILENAME_MAX]; 
@@ -653,7 +654,6 @@ int writeState(int changed)
     }
 
 
-    fillGenericHeader(&tuffStruct, PACKET_TUFF_STATUS, sizeof(TuffNotchStatus_t)); 
     sprintf(fileName,"%s/tuff_%d.dat",TUFF_TELEM_DIR, tuffStruct.unixTime);
     retVal=writeStruct(&tuffStruct,fileName,sizeof(TuffNotchStatus_t));  
     if (retVal) syslog(LOG_ERR, "writeStruct returned %d\n", retVal); 
