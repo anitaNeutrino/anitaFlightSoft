@@ -31,7 +31,8 @@ int readConfigFile();
 int checkForRequests();
 void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,PedSubbedEventBody_t *psbPtr,int pri);
 void sendEvent(PlaybackRequest_t *pReq);
-void startPlayback();
+void startPlaybackPurged();
+void startPlaybackFromRun();
 void handleBadSigs(int sig);
 int sortOutPidFile(char *progName);
 //int cleverMountPlaybackDisk(char *diskLabel);
@@ -45,6 +46,10 @@ int msSleepPeriod=200;
 int startPriority=1;
 int stopPriority=8;
 int startEvent=0;
+
+//New run mode
+int startingRun=4;
+int playBackMode=1;
 
 
 char usbName[FILENAME_MAX];
@@ -123,10 +128,13 @@ int main (int argc, char *argv[])
 	}
 	currentState=PROG_STATE_RUN;
 	while(currentState==PROG_STATE_RUN) {
-	    if(sendData) startPlayback();
-	    retVal=checkForRequests();
-	    if(!retVal)
-	      printf("sleep\n");sleep(10);
+	  if(sendData) {
+	    if(playBackMode) startPlaybackFromRun();
+	    else startPlaybackPurged();
+	  }
+	  retVal=checkForRequests();
+	  if(!retVal)
+	    printf("sleep\n");sleep(10);
 	}
     } while(currentState==PROG_STATE_INIT);    
     unlink(PLAYBACKD_PID_FILE);
@@ -229,14 +237,12 @@ void sendEvent(PlaybackRequest_t *pReq)
     int retVal=0;
     AnitaEventHeader_t theHead;
     PedSubbedEventBody_t psBody;
-    char indexName[FILENAME_MAX];
     char eventFileName[FILENAME_MAX];
     char headerFileName[FILENAME_MAX];
     int dirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR)*(pReq->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR));
     int subDirNum=(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR)*(pReq->eventNumber/(EVENTS_PER_FILE*EVENT_FILES_PER_DIR*EVENT_FILES_PER_DIR));
     int fileNum=(EVENTS_PER_FILE)*(pReq->eventNumber/EVENTS_PER_FILE);
 
-    //    sprintf(indexName,"/mnt/data/anita/index/ev%d/ev%d/index_%d.dat.gz",subDirNum,dirNum,fileNum);
     
 //    syslog(LOG_INFO,"Trying to send event %u, with priority %d\n",
 //	   pReq->eventNumber,pReq->pri);
@@ -245,40 +251,9 @@ void sendEvent(PlaybackRequest_t *pReq)
     
     int numSeek=pReq->eventNumber-fileNum;
     numSeek--;
-    //    gzFile indFile=gzopen(indexName,"rb");
-    //    if(!indFile) {
-    //	fprintf(stderr,"Couldn't open: %s\n",indexName);
-    //	syslog(LOG_ERR,"Couldn't open: %s\n",indexName);
-    //	return;
-    //    }
     
-/*     if(numSeek) { */
-/* 	gzseek(indFile,numSeek*sizeof(IndexEntry_t),SEEK_SET); */
-/*     } */
-
-
-//    IndexEntry_t indEntry;
-//    int count=0;
-//    do {
-//	int test=gzread(indFile,&indEntry,sizeof(IndexEntry_t));
-//	if(test<0) {
-//	    fprintf(stderr,"Couldn't read from: %s\n",indexName);
-//	    syslog(LOG_ERR,"Couldn't read from: %s\n",indexName);
-//	    
-//	    gzclose(indFile);
-//	    return;
-//	}
-//	printf("count %d, index %u\n",count,indEntry.eventNumber);
-//	count++;
-//    } while (indEntry.eventNumber!=pReq->eventNumber);
-//    gzclose(indFile);
-//    printf("index: %u -- %#x\n",indEntry.eventNumber,indEntry.eventDiskBitMask);
-
-    //Now have index, okay we don't
-    //Here we're going to have to add something that checks if the file we want is on one of the already mounted disks. If it is we'll go ahead and read it from there, if not we'll have to mount the disk specified by usedisk on /mnt/playback and read the file from there
-    int diskInd=0;
+    //No longer need to do any fancy mounting nonsense since the drives a bg
     int gotDisk=useDisk;
-
 
     int testRun=0;
     int maxRun=getRunNumber();
@@ -389,7 +364,7 @@ void encodeAndWriteEvent(AnitaEventHeader_t *hdPtr,
 }
 
 
-void startPlayback() 
+void startPlaybackPurged() 
 {
     int priority;
     int eventCount=0;
@@ -419,6 +394,119 @@ void startPlayback()
 					
 		    printf("Got purgeFile: %s\n",purgeFile);
 		    gzFile Purge=gzopen(purgeFile,"r");
+		    int sentFiles=0;
+		    if(Purge) {
+			
+			while(1) {
+			    char *test=gzgets(Purge,evNumAsString,179);
+//			    printf("evNumAsString: %s\n",evNumAsString);
+			    if(test==Z_NULL) break;
+//			    printf("%d %d\n",test,evNumAsString);
+			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
+			    if(pReq.eventNumber>=startEvent) {
+				printf("Got string: %s num: %u\n",
+				       evNumAsString,pReq.eventNumber);
+				pReq.pri=0;
+//			    printf("Freda\n");
+				sendEvent(&pReq);			    
+				usleep(1000*msSleepPeriod);
+				eventCount++;
+//			    printf("Fred: eventCount: %d\n",eventCount);
+				if(eventCount+numPri0Links>100) {
+//				printf("sleep\n");sleep(60);
+				    numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
+				    eventCount=0;
+				}
+				sentFiles=1;
+			    }
+//			    printf("Fredrick\n");
+			}
+//			printf("Here\n");
+			gzclose(Purge);
+			if(sentFiles) 
+			    removeFile(purgeFile);
+		    }
+		    else {
+			unlink(purgeFile);
+		    }
+
+
+
+
+		    if(eventCount+numPri0Links>100) break;
+		}
+
+
+		for(i=0;i<numLinks;i++) {
+		    free(linkList[i]);	
+		}	    
+		free(linkList);		
+	    }
+	    printf("sleep\n");sleep(1);
+
+	}
+	printf("sleep\n");sleep(1);
+	eventCount=0;
+    }
+
+
+}
+
+
+void startPlaybackFromRun() 
+{
+    int priority;
+    int eventCount=0;
+    PlaybackRequest_t pReq;
+    char evNumAsString[180];
+    struct dirent **linkList;
+    syslog(LOG_INFO,"Playbackd Starting Playback from Run %d",startingRun);
+    printf("Playbackd Starting Playback\n");
+
+    //Step one is to create the head file list
+    char headFileListCommand[180];
+    sprintf(headFileListCommand,"makeHeadFileList.sh %d %d",startingRun,useDisk+1);
+    char headFileArray[2048][FILENAME_MAX];
+    char headFileList[FILENAME_MAX];
+    sprintf(headFileList,"/tmp/headList%d.txt",startingRun);
+    int countHeads=0;
+    FILE *fpList = fopen(headFileList,"rt");
+    if(!fpList) {
+      syslog(LOG_ERR,"Couldn't read %s",headFileList);
+      return;
+    }
+
+    
+    int retVal=fscanf(fpList,"%s",headFileArray[0]);
+    printf("retVal = %d -- %s\n",retVal,headFileArray[0]);
+    return;
+    
+
+    
+    
+
+    
+
+    
+    while(currentState==PROG_STATE_RUN) {	
+	int numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
+//	printf("Here\n");
+	if(numPri0Links<100) {
+//	    printf("Here\n");
+
+
+	  //Open head file list that we just made above
+	  //Loop through list and open header files
+	  //Loop through header files and select those events that pass our
+	  //priority selection
+	  
+	  
+	  
+	  
+	  int i;
+	  for(i=0;i<numLinks;i++) {
+	    //Loop over files;
+
 		    int sentFiles=0;
 		    if(Purge) {
 			
