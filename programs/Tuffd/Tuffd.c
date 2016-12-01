@@ -42,6 +42,11 @@ static int phiSectorOffset[NUM_TUFF_NOTCHES];
 static int slopeThresholdToNotchNextSector[NUM_TUFF_NOTCHES]; 
 static int maxHeadingAge = 120;  
 
+static int setCaps[NUM_TUFF_NOTCHES]; 
+static int capArray[NUM_TUFF_NOTCHES][NUM_RFCM][NUM_TUFFS_PER_RFCM]; 
+
+
+
 
 
 /** The device descriptor */ 
@@ -877,6 +882,82 @@ void setupBitmask()
   }
 }
 
+int handleCaps()
+{
+  int kvpStatus; 
+  int i;
+  kvpReset(); 
+  kvpStatus = configLoad("Tuffd.config","cap"); 
+  if (kvpStatus == CONFIG_E_OK) 
+  {
+    int nread = NUM_TUFF_NOTCHES; 
+    int tmp[NUM_TUFF_NOTCHES]; 
+    kvpStatus = kvpGetIntArray("setCapsOnStartup",tmp ,&nread); 
+
+    if (kvpStatus !=CONFIG_E_OK || nread != NUM_TUFFS_PER_RFCM)
+    {
+        syslog( LOG_ERR, "Problem reading in setCapsOnStartup. Turning all to zero"); 
+        memset(setCaps,0,sizeof(setCaps)); 
+    }
+    else
+    {
+      memcpy(setCaps,tmp, sizeof(setCaps)); 
+
+    }
+
+    for (i = 0; i < NUM_TUFF_NOTCHES; i++)
+    {
+      if (setCaps[i]) 
+      {
+        char key[128]; 
+        sprintf(key,"notch%dCaps",i); 
+        int captmp[NUM_RFCM * NUM_TUFFS_PER_RFCM]; 
+        nread = NUM_RFCM * NUM_TUFFS_PER_RFCM; 
+        kvpStatus = kvpGetIntArray(key, captmp, &nread) ; 
+
+        if (kvpStatus !=CONFIG_E_OK || nread != NUM_RFCM * NUM_TUFFS_PER_RFCM)
+        {
+          syslog(LOG_ERR, "Problem reading in %s Disabling setCaps[%d]", key,i); 
+          setCaps[i] = 0; 
+        }
+        else
+        {
+          memcpy(capArray[i], captmp, sizeof(captmp)); 
+        }
+      }
+    }
+  }
+  else 
+  {
+    return -1; 
+  }
+
+  int nfailed = 0; 
+
+  for (i = 0; i < NUM_TUFF_NOTCHES; i++)
+  {
+    if (setCaps[i])
+    {
+      int rfcm, chan; 
+      syslog(LOG_INFO,"Setting caps for notch %d",i); 
+      for (rfcm = 0; rfcm < NUM_RFCM; rfcm++)
+      {
+        for (chan = 0; chan < NUM_TUFFS_PER_RFCM; chan++)
+        {
+          tuff_setCap(device, rfcm, chan, i, capArray[i][rfcm][chan]); 
+          if(tuff_waitForAck(device, rfcm, 1))
+          {
+            syslog(LOG_ERR,"Timed out while trying to set cap to %d for notch %d on RFCM %d, chan %d\n", capArray[i][rfcm][chan],i,rfcm,chan); 
+            nfailed++; 
+          }
+        }
+      }
+    }
+  }
+
+  return nfailed; 
+}
+
 int readConfig() 
 {
   int kvpStatus=0;
@@ -1051,7 +1132,8 @@ int readConfig()
 
   memcpy(&configTuffStruct, &tuffStruct, sizeof(configTuffStruct)); 
 
-  return configStatus; 
+
+   return configStatus; 
 }
 
 int main(int nargs, char ** args) 
@@ -1065,6 +1147,7 @@ int main(int nargs, char ** args)
   int nattempts = 0; 
   
   memset(zeroes, 0, sizeof(zeroes)); 
+  memset(setCaps, 0, sizeof(zeroes)); 
 
   retVal = sortOutPidFile(args[0]); 
   if (retVal) return retVal; 
@@ -1163,6 +1246,9 @@ int main(int nargs, char ** args)
     printf("Ping received for %d\n", i); 
     tuff_responds[i] = 1; 
   }
+
+  //set caps if we want 
+  handleCaps(); 
 
   //shut them up
   tuff_setQuietMode(device,true); 

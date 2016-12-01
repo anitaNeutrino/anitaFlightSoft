@@ -354,6 +354,7 @@
 // TUFF stuff
 #define NUM_TUFF_NOTCHES 3
 #define NUM_RFCM 4 
+#define NUM_TUFFS_PER_RFCM 24 
 #define TUFF_DEVICE "/dev/ttyTUFF"
 #define DEFAULT_TUFF_START_SECTOR {0, 16,16}  //default is notch 0 enabled, other notches disabled
 #define DEFAULT_TUFF_END_SECTOR  {15,16,16}  //default is notch 0 enabled, other notches disabled

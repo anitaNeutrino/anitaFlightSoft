@@ -3980,6 +3980,12 @@ int executeTuffCommand(int command, unsigned char arg[6])
   time_t when;
   int notch_array[2*NUM_TUFF_NOTCHES];
   int adjustArray[NUM_TUFF_NOTCHES];
+  char notch, start_notch, end_notch; 
+  char rfcm, start_rfcm, end_rfcm; 
+  char chan, start_chan, end_chan; 
+  int capArray[NUM_TUFF_NOTCHES][NUM_RFCM][NUM_TUFFS_PER_RFCM]; 
+  unsigned char cap; 
+
   unsigned short cmd;
 
   switch(command)
@@ -4023,6 +4029,53 @@ int executeTuffCommand(int command, unsigned char arg[6])
        break;
     case TUFF_MAX_HEADING_AGE:
        configModifyInt("Tuffd.config","notch","maxHeadingAge",arg[0], &when);
+       break;
+    case TUFF_SET_CAPS_ON_STARTUP:
+       char_arr_to_int_arr(adjustArray, arg, NUM_TUFF_NOTCHES);
+       configModifyIntArray("Tuffd.config","cap","setCapsOnStartup", adjustArray, NUM_TUFF_NOTCHES, &when); 
+       break; 
+
+    case TUFF_SET_CAP_VALUE: 
+       notch = (char) arg[0]; 
+       start_notch = notch < 0 ? 0 : notch; 
+       end_notch = notch < 0 ? NUM_TUFF_NOTCHES : notch+1; 
+       rfcm = (char) arg[1]; 
+       start_rfcm = rfcm < 0 ? 0: rfcm; 
+       end_rfcm = rfcm < 0 ? NUM_RFCM : rfcm+1; 
+       chan = (char) arg[2]; 
+       start_chan = chan < 0 ? 0 : chan; 
+       end_chan = chan < 0 ? NUM_TUFFS_PER_RFCM : chan+1; 
+       cap = arg[3]; 
+       for (notch = start_notch; notch < end_notch; notch++)
+       {
+         char key[128]; 
+         int nread = NUM_TUFFS_PER_RFCM * NUM_RFCM; 
+         int kvpStatus; 
+         kvpReset();
+         sprintf(key,"notch%dCaps", notch); 
+         kvpStatus = configLoad("Tuffd.config","cap"); 
+         if (kvpStatus!= CONFIG_E_OK) 
+         {
+           syslog(LOG_WARNING, "problem when trying to load Tuffd.config section cap %s", kvpErrorString(kvpStatus)); 
+           return -1; 
+         }
+         kvpStatus = kvpGetIntArray(key, &capArray[(int) notch][0][0], &nread) ; 
+         if (kvpStatus !=CONFIG_E_OK || nread != NUM_RFCM * NUM_TUFFS_PER_RFCM)
+         {
+           syslog(LOG_ERR, "Problem reading in %s aborting set cap value",key); 
+           return -1; 
+         }
+  
+         for (rfcm = start_rfcm; rfcm < end_rfcm; rfcm++)
+         {
+           for (chan = start_chan; chan < end_chan; chan++)
+           {
+             capArray[(int)notch][(int)rfcm][(int)chan]=cap; 
+           }
+         }
+
+         configModifyIntArray("Tuffd.config","cap",key, &capArray[(int)notch][0][0],NUM_RFCM*NUM_TUFFS_PER_RFCM, &when); 
+       }
        break;
     default:
       syslog(LOG_ERR,"Unknown Tuffd command -- %d\n",command);
