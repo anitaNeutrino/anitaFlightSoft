@@ -944,10 +944,15 @@ int handleCaps()
       {
         for (chan = 0; chan < NUM_TUFFS_PER_RFCM; chan++)
         {
+          if (printToScreen) 
+          {
+            printf("trying to set cap to %d for notch %d on RFCM %d, chan %d\n", capArray[i][rfcm][chan],i,rfcm,chan); 
+          }
           tuff_setCap(device, rfcm, chan, i, capArray[i][rfcm][chan]); 
           if(tuff_waitForAck(device, rfcm, 1))
           {
             syslog(LOG_ERR,"Timed out while trying to set cap to %d for notch %d on RFCM %d, chan %d\n", capArray[i][rfcm][chan],i,rfcm,chan); 
+            fprintf(stderr,"Timed out while trying to set cap to %d for notch %d on RFCM %d, chan %d\n", capArray[i][rfcm][chan],i,rfcm,chan); 
             nfailed++; 
           }
         }
