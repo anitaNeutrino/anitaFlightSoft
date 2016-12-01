@@ -455,18 +455,22 @@ void startPlaybackPurged()
 
 void startPlaybackFromRun() 
 {
+  AnitaEventHeader_t theHead;
     int priority;
     int eventCount=0;
     PlaybackRequest_t pReq;
     char evNumAsString[180];
-    struct dirent **linkList;
-    syslog(LOG_INFO,"Playbackd Starting Playback from Run %d",startingRun);
-    printf("Playbackd Starting Playback\n");
+    //    syslog(LOG_INFO,"Playbackd Starting Playback from Run");
+
+
+    printf("Playbackd Starting Playback from run\n");
 
     //Step one is to create the head file list
     char headFileListCommand[180];
     sprintf(headFileListCommand,"makeHeadFileList.sh %d %d",startingRun,useDisk+1);
-    char headFileArray[2048][FILENAME_MAX];
+    system(headFileListCommand);
+
+    char headFileArray[100][FILENAME_MAX];
     char headFileList[FILENAME_MAX];
     sprintf(headFileList,"/tmp/headList%d.txt",startingRun);
     int countHeads=0;
@@ -476,93 +480,74 @@ void startPlaybackFromRun()
       return;
     }
 
-    
-    int retVal=fscanf(fpList,"%s",headFileArray[0]);
-    printf("retVal = %d -- %s\n",retVal,headFileArray[0]);
-    return;
-    
+    int tempDrive=0,tempRun=0;
+    int dirNum=0,subDirNum=0,fileNum=0;
+    int retVal=0;
+    int uptoFile=0;
+    while(1) {
+      retVal=fscanf(fpList,"%s",headFileArray[uptoFile]);
+      //      printf("retVal = %d -- %s\n",retVal,headFileArray[uptoFile]);
+      sscanf(headFileArray[uptoFile],"/mnt/helium%d/run%d/event/ev%d/ev%d/hd_%d.dat.gz",&tempDrive,&tempRun,&dirNum,&subDirNum,&fileNum);
+      //      printf("Got fileNum=%d\n",fileNum);
+      if(fileNum>=startEvent) {
+	uptoFile++;
+      }
+      if(uptoFile>=100) break;
+      if(retVal<=0) break;
+    }
+    fclose(fpList);
+    printf("Have %d files to process\n",uptoFile);
+
 
     
-    
+    int numFiles=uptoFile;
 
-    
 
     
     while(currentState==PROG_STATE_RUN) {	
 	int numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
-//	printf("Here\n");
+	printf("Here %d\n",numPri0Links);
 	if(numPri0Links<100) {
-//	    printf("Here\n");
+	    printf("Here\n");
+	    int countGot=0;
+	    for(uptoFile=0;uptoFile<numFiles;uptoFile++) {
+	      printf("%d -- %s\n",uptoFile,headFileArray[uptoFile]);
+	      gzFile headFile = gzopen(headFileArray[uptoFile],"rb");
+	      if(!headFile) {
+		fprintf(stderr,"Couldn't open: %s\n",headFileArray[uptoFile]);
+		continue;
+	      }
+	      
+	      do {
+		retVal=gzread(headFile,&theHead,sizeof(AnitaEventHeader_t));
+		int priority=(theHead.priority&0xf0)>>4;
+		printf("Test event %d -- priority %d\n",theHead.eventNumber,priority);
+		if(theHead.eventNumber>startEvent && (priority=startPriority && priority<=stopPriority)) {
+		  printf("Got event %d with priority %d\n",theHead.eventNumber,priority);
 
-
-	  //Open head file list that we just made above
-	  //Loop through list and open header files
-	  //Loop through header files and select those events that pass our
-	  //priority selection
-	  
-	  
-	  
-	  
-	  int i;
-	  for(i=0;i<numLinks;i++) {
-	    //Loop over files;
-
-		    int sentFiles=0;
-		    if(Purge) {
-			
-			while(1) {
-			    char *test=gzgets(Purge,evNumAsString,179);
-//			    printf("evNumAsString: %s\n",evNumAsString);
-			    if(test==Z_NULL) break;
-//			    printf("%d %d\n",test,evNumAsString);
-			    pReq.eventNumber=strtoul(evNumAsString,NULL,10);
-			    if(pReq.eventNumber>=startEvent) {
-				printf("Got string: %s num: %u\n",
-				       evNumAsString,pReq.eventNumber);
-				pReq.pri=0;
-//			    printf("Freda\n");
-				sendEvent(&pReq);			    
-				usleep(1000*msSleepPeriod);
-				eventCount++;
-//			    printf("Fred: eventCount: %d\n",eventCount);
-				if(eventCount+numPri0Links>100) {
-//				printf("sleep\n");sleep(60);
-				    numPri0Links=countFilesInDir(eventTelemLinkDirs[0]);
-				    eventCount=0;
-				}
-				sentFiles=1;
-			    }
-//			    printf("Fredrick\n");
-			}
-//			printf("Here\n");
-			gzclose(Purge);
-			if(sentFiles) 
-			    removeFile(purgeFile);
-		    }
-		    else {
-			unlink(purgeFile);
-		    }
-
-
-
-
-		    if(eventCount+numPri0Links>100) break;
+		  pReq.eventNumber=theHead.eventNumber;
+		  pReq.pri=0;
+		  sendEvent(&pReq);			    
+		  startEvent=theHead.eventNumber;
+		  countGot++;
 		}
+	      }
+	      while(retVal>0);
+	      gzclose(headFile);
+	      if(countGot>100) return;
 
-
-		for(i=0;i<numLinks;i++) {
-		    free(linkList[i]);	
-		}	    
-		free(linkList);		
+	      
+	      
+	      //Open head file list that we just made above
+	      //Loop through list and open header files
+	      //Loop through header files and select those events that pass our
+	      //priority selection
+	      
 	    }
-	    printf("sleep\n");sleep(1);
-
 	}
-	printf("sleep\n");sleep(1);
-	eventCount=0;
     }
-
-
+    
+   
 }
 
 
