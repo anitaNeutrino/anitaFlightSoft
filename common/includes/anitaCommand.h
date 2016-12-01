@@ -314,7 +314,9 @@ typedef enum {
     PLAY_START_EVENT=5,
     PLAY_START_PLAY=6,
     PLAY_STOP_PLAY=7,
-    PLAY_SLEEP_PERIOD=8
+    PLAY_SLEEP_PERIOD=8,
+    PLAY_MODE=9,
+    PLAY_STARTING_RUN=10
 } PlaybackCommandCode_t;
 
 typedef enum {

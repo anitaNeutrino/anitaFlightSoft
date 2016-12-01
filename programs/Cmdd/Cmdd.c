@@ -1878,6 +1878,14 @@ int executePlaybackCommand(int command, unsigned int uvalue1, unsigned int uvalu
       return 0;
     configModifyInt("Playbackd.config","playbackd","useDisk",uvalue1,&rawtime);
     return rawtime;
+  case PLAY_MODE:
+    configModifyInt("Playbackd.config","playbackd","playBackMode",(int)uvalue1,&rawtime);
+    respawnPrograms(PLAYBACKD_ID_MASK);
+    break;
+  case PLAY_STARTING_RUN:
+    configModifyInt("Playbackd.config","playbackd","startingRun",(int)uvalue1,&rawtime);
+    respawnPrograms(PLAYBACKD_ID_MASK);
+    break;
 
   default:
     return -1;
