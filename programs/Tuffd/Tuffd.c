@@ -894,7 +894,7 @@ int handleCaps()
     int tmp[NUM_TUFF_NOTCHES]; 
     kvpStatus = kvpGetIntArray("setCapsOnStartup",tmp ,&nread); 
 
-    if (kvpStatus !=CONFIG_E_OK || nread != NUM_TUFFS_PER_RFCM)
+    if (kvpStatus !=CONFIG_E_OK || nread != NUM_TUFF_NOTCHES)
     {
         syslog( LOG_ERR, "Problem reading in setCapsOnStartup. Turning all to zero"); 
         memset(setCaps,0,sizeof(setCaps)); 
