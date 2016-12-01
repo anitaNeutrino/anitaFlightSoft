@@ -3399,6 +3399,46 @@ int readPrioritizerdConfig()
     }
 
 
+    tempNum = 16; 
+    kvpStatus = kvpGetIntArray("skipBlastRatioHPol", skipBlastRatioHPol, &tempNum); 
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(skipBlastRatioHPol): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(skipBlastRatioHPol): %s\n",
+	      kvpErrorString(kvpStatus));
+    }
+
+    tempNum = 16; 
+    kvpStatus = kvpGetIntArray("skipBlastRatioVPol", skipBlastRatioVPol, &tempNum); 
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetIntArray(skipBlastRatioVPol): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetIntArray(skipBlastRatioVPol): %s\n",
+	      kvpErrorString(kvpStatus));
+    }
+
+    tempNum = 10; 
+    kvpStatus = kvpGetFloatArray("staticNotchesLowEdgeMHz", staticNotchesLowEdgeMHz, &tempNum); 
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(staticNotchesLowEdgeMHz): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetFloatArray(staticNotchesLowEdgeMHz): %s\n",
+	      kvpErrorString(kvpStatus));
+    }
+
+    tempNum = 10; 
+    kvpStatus = kvpGetFloatArray("staticNotchesHighEdgeMHz", staticNotchesHighEdgeMHz, &tempNum); 
+    if(kvpStatus!=KVP_E_OK) {
+      syslog(LOG_WARNING,"kvpGetFloatArray(staticNotchesHighEdgeMHz): %s",
+	     kvpErrorString(kvpStatus));
+      fprintf(stderr,"kvpGetFloatArray(staticNotchesHighEdgeMHz): %s\n",
+	      kvpErrorString(kvpStatus));
+    }
+
+
+
+
+
 
   }
   else {
