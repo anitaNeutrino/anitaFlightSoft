@@ -2679,8 +2679,8 @@ void doSurfHkAverage(int flushData)
     //      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
-      menset(l1Mean,0,sizeof(float)*TRIGGER_SURFS*L1S_PER_SURF);
-      menset(l1MeanSq,0,sizeof(float)*TRIGGER_SURFS*L1S_PER_SURF);
+      memset(l1Mean,0,sizeof(float)*TRIGGER_SURFS*L1S_PER_SURF);
+      memset(l1MeanSq,0,sizeof(float)*TRIGGER_SURFS*L1S_PER_SURF);
       memset(scalerMean,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
       memset(scalerMeanSq,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
       memset(threshMean,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
