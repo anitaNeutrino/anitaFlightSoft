@@ -2718,8 +2718,8 @@ void doSurfHkAverage(int flushData)
       }
 
       for(l1=0;l1<L1S_PER_SURF;l1++) {
-	l1Mean[surf][dac]+=theSurfHk.l1Scaler[surf][l1];
-	l1MeanSq[surf][dac]+=(theSurfHk.l1Scaler[surf][l1]*theSurfHk.l1Scaler[surf][l1]);
+	l1Mean[surf][l1]+=theSurfHk.l1Scaler[surf][l1];
+	l1MeanSq[surf][l1]+=(theSurfHk.l1Scaler[surf][l1]*theSurfHk.l1Scaler[surf][l1]);
       }
     }
     //    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
@@ -2761,14 +2761,14 @@ void doSurfHkAverage(int flushData)
       }
       
       for(l1=0;l1<L1S_PER_SURF;l1++) {
-	l1Mean[surf][dac]/=numSurfHksInAvg;
-	avgSurfHk.avgL1[surf][dac]=(int)(l1Mean[surf][dac]+0.5);
-	l1MeanSq[surf][dac]/=numSurfHksInAvg;
-	tempVal=l1MeanSq[surf][dac]-(l1Mean[surf][dac]*l1Mean[surf][dac]);
+	l1Mean[surf][l1]/=numSurfHksInAvg;
+	avgSurfHk.avgL1[surf][l1]=(int)(l1Mean[surf][l1]+0.5);
+	l1MeanSq[surf][l1]/=numSurfHksInAvg;
+	tempVal=l1MeanSq[surf][l1]-(l1Mean[surf][l1]*l1Mean[surf][l1]);
 	if(tempVal>0)
-	  avgSurfHk.rmsL1[surf][dac]=(int)(sqrt(tempVal)+0.5);
+	  avgSurfHk.rmsL1[surf][l1]=(int)(sqrt(tempVal)+0.5);
 	else
-	  avgSurfHk.rmsL1[surf][dac]=0;
+	  avgSurfHk.rmsL1[surf][l1]=0;
       }
     }
     avgSurfHk.numHks=numSurfHksInAvg;
