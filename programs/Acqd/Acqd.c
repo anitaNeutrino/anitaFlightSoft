@@ -2664,19 +2664,23 @@ float threshMean[TRIGGER_SURFS][SCALERS_PER_SURF];
 float threshMeanSq[TRIGGER_SURFS][SCALERS_PER_SURF];
 float rfPowerMean[ACTIVE_SURFS][RFCHAN_PER_SURF];
 float rfPowerMeanSq[ACTIVE_SURFS][RFCHAN_PER_SURF];
+float l1Mean[TRIGGER_SURFS][L1S_PER_SURF];
+float l1MeanSq[TRIGGER_SURFS][L1S_PER_SURF];
 unsigned short numSurfHksInAvg=0;  
 
 void doSurfHkAverage(int flushData)
 {
   char theFilename[FILENAME_MAX];
   int retVal=0;
-  int surf,dac,chan;//,ind;
+  int surf,dac,chan,l1;//,ind;
   float tempVal;
   if(!flushData) {
     if(numSurfHksInAvg==0) {
     //      printf("Zeroing arrays, numSurfHksInAvg=%d\n",numSurfHksInAvg);
       //Zero arrays
       memset(&avgSurfHk,0,sizeof(AveragedSurfHkStruct_t));
+      menset(l1Mean,0,sizeof(float)*TRIGGER_SURFS*L1S_PER_SURF);
+      menset(l1MeanSq,0,sizeof(float)*TRIGGER_SURFS*L1S_PER_SURF);
       memset(scalerMean,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
       memset(scalerMeanSq,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
       memset(threshMean,0,sizeof(float)*TRIGGER_SURFS*SCALERS_PER_SURF);
@@ -2701,7 +2705,7 @@ void doSurfHkAverage(int flushData)
     for(surf=0;surf<TRIGGER_SURFS;surf++) {
       if(theSurfHk.errorFlag & (1<<surf))
 	avgSurfHk.hadError |= (1<<(surf+16));
-
+      
       for(dac=0;dac<SCALERS_PER_SURF;dac++) {
 	scalerMean[surf][dac]+=theSurfHk.scaler[surf][dac];
 	scalerMeanSq[surf][dac]+=(theSurfHk.scaler[surf][dac]*theSurfHk.scaler[surf][dac]);
@@ -2711,6 +2715,11 @@ void doSurfHkAverage(int flushData)
 	if(theSurfHk.threshold[surf][dac]!=theSurfHk.setThreshold[surf][dac]) {
 	  avgSurfHk.hadError |= (1<<surf);
 	}
+      }
+
+      for(l1=0;l1<L1S_PER_SURF;l1++) {
+	l1Mean[surf][dac]+=theSurfHk.l1Scaler[surf][l1];
+	l1MeanSq[surf][dac]+=(theSurfHk.l1Scaler[surf][l1]*theSurfHk.l1Scaler[surf][l1]);
       }
     }
     //    printf("scalerMean[0][0]=%f (%d) numSurfHksInAvg=%d surfHkAverage=%d\n",scalerMean[0][0],numSurfHksInAvg,surfHkAverage,theSurfHk.scaler[0][0]);    
@@ -2749,6 +2758,17 @@ void doSurfHkAverage(int flushData)
 	  avgSurfHk.rmsThresh[surf][dac]=(int)(sqrt(tempVal)+0.5);
 	else
 	  avgSurfHk.rmsThresh[surf][dac]=0;
+      }
+      
+      for(l1=0;l1<L1S_PER_SURF;l1++) {
+	l1Mean[surf][dac]/=numSurfHksInAvg;
+	avgSurfHk.avgL1[surf][dac]=(int)(l1Mean[surf][dac]+0.5);
+	l1MeanSq[surf][dac]/=numSurfHksInAvg;
+	tempVal=l1MeanSq[surf][dac]-(l1Mean[surf][dac]*l1Mean[surf][dac]);
+	if(tempVal>0)
+	  avgSurfHk.rmsL1[surf][dac]=(int)(sqrt(tempVal)+0.5);
+	else
+	  avgSurfHk.rmsL1[surf][dac]=0;
       }
     }
     avgSurfHk.numHks=numSurfHksInAvg;
