@@ -4,6 +4,7 @@
   gSystem->Load("${ANITA_UTIL_INSTALL_DIR}/lib/libAnitaCorrelator.so"); 
   gSystem->Load("${ANITA_UTIL_INSTALL_DIR}/lib/libAnitaAnalysis.so"); 
   gSystem->Load("${ANITA_UTIL_INSTALL_DIR}/lib/libUCorrelator.so"); 
+  gSystem->Load("${ANITA_FLIGHT_SOFT_DIR}/lib/libMagnetic.so"); 
 
 
 //  const Int_t NRGBs = 5;

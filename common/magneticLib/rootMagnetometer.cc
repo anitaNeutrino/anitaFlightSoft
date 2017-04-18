@@ -1,12 +1,16 @@
-// this macro loops through all the adu5 and magnetometer data of one run and graphs the B fields and attitude for measured and calculated.  so far only heading works well
+// this macro loops through all the adu5 and magnetometer data of one run and graphs the B fields and attitude for measured and calculated.  heading almost works(anita 4 needs corrections for x (since it always reads positive)) 
 
-#include "magneticLib.c"
+#include "magneticLib.h"
 #include <TGraph.h>
 #include <TTree.h>
 #include <TCanvas.h>
 #include <TFile.h>
+#include <TString.h>
+#include <TAxis.h>
+#include <TMath.h>
 
 #include "Adu5Pat.h"
+#include "FFTtools.h"
 #include "PrettyAnitaHk.h"
 
 void removeSpikes(TGraph * bGraph, double delta)
@@ -25,7 +29,7 @@ void removeSpikes(TGraph * bGraph, double delta)
 
 void rootMagnetometer()
 {
-
+	int run = 126;
 	//gROOT->SetBatch(kTRUE);
 	
 	TCanvas * c1 = new TCanvas("x", "x", 800,600);
@@ -36,8 +40,12 @@ void rootMagnetometer()
 	TCanvas * c5 = new TCanvas("pitch", "pitch", 800,600);
 	TCanvas * c6 = new TCanvas("roll", "roll", 800,600);
 
-	TFile * hkFile = new TFile("/home/abl/runs/root/Anita3Data/prettyHkFile345.root");
-	TFile * adu5File = new TFile("/home/abl/runs/root/Anita3Data/gpsEvent345.root");
+	TString rootdata(getenv("ANITA_ROOT_DATA"));
+	TString runnum = TString::Itoa(run,10);
+	TString hkname = rootdata + "run" + runnum + "/prettyHkFile" + runnum + ".root"; 
+	TString adu5name = rootdata + "run" + runnum + "/gpsEvent" + runnum + ".root"; 
+	TFile * hkFile = new TFile(hkname.Data());
+	TFile * adu5File = new TFile(adu5name.Data());
 
 
 	TTree * hkTree = (TTree*)hkFile->Get("prettyHkTree");
@@ -55,7 +63,7 @@ void rootMagnetometer()
 	struct tm t;
 
 	double attitude[3];
-	double BfieldErr[3] = {-0.1,0.2,-.204}; //a rough guess at calibration
+	double BfieldErr[3] = {0.,0.,0.};//{-0.1,0.2,-.204}; //a rough guess at calibration
 	double attitudeErr[3];
 
 	int entriesNum = hkTree->GetEntries();
@@ -80,7 +88,7 @@ void rootMagnetometer()
 
 	for (int i = 0; i < entriesNum; i++)
 	{
-		if (i%10000==0) printf("i've run thru %d entries\n", i);
+		if (i%10000==0) printf("run thru %d entries\n", i);
 		hkTree->GetEntry(i);
 		adu5Tree->GetEntry(i);
 
@@ -106,21 +114,23 @@ void rootMagnetometer()
 		bMagX->SetPoint(i,i,bf[0]);
 		bMagY->SetPoint(i,i,bf[1]);
 		bMagZ->SetPoint(i,i,bf[2]);
+		double magnitude = sqrt(pow(bf[0], 2) + pow(bf[1], 2) + pow(bf[2], 2));
 		//printf("magnet reading is x = %f, y = %f, z = %f\n", bf[0], bf[1], bf[2]);
 		
-		magneticModel("IGRF12.COF", &answer, t.tm_year, t.tm_mon+1, t.tm_mday+1, lon, lat, alt/1000);
-		bModX->SetPoint(i,i,answer.N*1e-6);
-		bModY->SetPoint(i,i,answer.E*1e-6);
-		bModZ->SetPoint(i,i,answer.Z*1e-6);
+		magneticModel("IGRF12.COF", &answer, t.tm_year+1900, t.tm_mon+1, t.tm_mday+1, lon, lat, alt/1000);
+		bModX->SetPoint(i,i,answer.N*1e-5);
+		bModY->SetPoint(i,i,answer.E*1e-5);
+		bModZ->SetPoint(i,i,answer.Z*1e-5);
+		//printf("model reading is x = %f, y = %f, z = %f\n", answer.N*1e-5, answer.E*1e-5, answer.Z*1e-5);
+		//printf("modelF = %f, magF = %f\n", answer.F*1e-5, magnitude);
 	}
 
-	printf("filtering out spikes\n");
-
-	removeSpikes(bMagX, .002);
-	removeSpikes(bMagY, .002);
-	removeSpikes(bMagZ, .002);
-		
+	//printf("filtering out spikes\n");
+	//removeSpikes(bMagX, .002);
+	//removeSpikes(bMagY, .002);
+	//removeSpikes(bMagZ, .002);
 	//with the filtered magnetometer data, solve for heading, pitch, roll
+	
 	for (int i = 0; i < bMagX->GetN(); i++)
 	{
 		bf[0] = bMagX->GetY()[i];
@@ -149,7 +159,7 @@ void rootMagnetometer()
 	
 	//calc x is from .178 to .187 ish
 	c1->cd();
-	bMagX->GetYaxis()->SetRangeUser(.6, .187);
+	//bMagX->GetYaxis()->SetRangeUser(.6, .187);
 	bMagX->SetLineColor(kRed);
 	bModX->SetLineColor(kBlue);
 	bMagX->SetTitle("Magnetometer (red) model (blue) X-component");
@@ -159,7 +169,7 @@ void rootMagnetometer()
 
 	//calc Y is from -.0341 to -.0347 ish
 	c2->cd();
-	bMagY->GetYaxis()->SetRangeUser(-0.347,-.11);
+	//bMagY->GetYaxis()->SetRangeUser(-0.347,-.11);
 	bMagY->SetLineColor(kRed);
 	bModY->SetLineColor(kBlue);
 	bMagY->SetTitle("Magnetometer (red) model (blue) Y-component");
@@ -180,7 +190,9 @@ void rootMagnetometer()
 	headingCalc->SetLineColor(kRed);
 	headingMeas->SetLineColor(kBlue);
 	headingMeas->SetTitle("Magnetometer calculated (red) adu5 (blue) heading");
-	
+
+	//FFTtools::unwrap(headingMeas->GetN(), headingMeas->GetY(), 360);
+	//FFTtools::unwrap(headingCalc->GetN(), headingCalc->GetY(), 360);
 	headingMeas->Draw("al");
 	headingCalc->Draw("lsame");
 
@@ -199,4 +211,5 @@ void rootMagnetometer()
 	
 	rollCalc->Draw("al");
 	rollMeas->Draw("lsame");
+
 }

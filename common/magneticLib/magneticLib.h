@@ -3,6 +3,9 @@
 
 #include <time.h>
 
+#ifdef __cplusplus
+extern"C"{
+#endif
 
 typedef struct magnetic_answer 
 {
@@ -19,19 +22,21 @@ typedef struct magnetic_answer
 } magnetic_answer_t; 
 
 
-int magneticModel(const char * model_file, magnetic_answer_t * answer, 
+int magneticModel(const char * mdfile, magnetic_answer_t * answer, 
            int year, int month, int day, 
-           double longitude, double latitude, double altitude_in_km); 
+           double longitude, double latitude, double alt); //alt in km
 
 
 
 int solveForAttitude( const double Bfield[3], const double BfieldErr[3],
-                       double northVector[3], double northVectorErr[3], 
+                       double attitude[3], double attitudeErr[3], 
                        double lon, double lat, double alt, time_t t0 ); 
 
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

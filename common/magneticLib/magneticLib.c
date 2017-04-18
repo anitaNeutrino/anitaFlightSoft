@@ -24,7 +24,7 @@ static void crossProduct(const double a[3], const double b[3], double v[3])
 
 static double dotProduct(const double a[3], const double b[3]) 
 {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * a[2]; 
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; 
 }
 
 
@@ -46,15 +46,16 @@ int solveForAttitude( const double Bfield[3], const double BfieldErr[3],
   int ret; 
   magnetic_answer_t mag; 
   gmtime_r(&t0, &t); 
-  ret = magneticModel("IGRF12.COF", &mag, t.tm_year, t.tm_mon+1, t.tm_mday+1, lon,lat,alt/1000); 
+  ret = magneticModel("IGRF12.COF",&mag, t.tm_year+1900, t.tm_mon+1, t.tm_mday+1, lon,lat,alt/1000); 
+	//time and alt are modified to match how magneticModel expects it
 
 
   //this is the expected magnetic field in a right-handed-coordinate system
   double b[3]; 
 
-  b[0] = mag.N * 1e-6; //magnetometer reads out in gauss, program give nT
-  b[1] = mag.E * 1e-6; 
-  b[2] = mag.Z * 1e-6;
+  b[0] = mag.N * 1e-5; //magnetometer reads out in gauss, program give nT
+  b[1] = mag.E * 1e-5; 
+  b[2] = mag.Z * 1e-5;
 
   double Bf[3] = {Bfield[0], Bfield[1], Bfield[2] - BfieldErr[2]}; // correct calibration error in z
 	double v[3];
@@ -86,11 +87,10 @@ int solveForAttitude( const double Bfield[3], const double BfieldErr[3],
 
 	double roll = atan2(v[0], c - BfieldRR[0]*b[0]);
 
-	double phi_sector = 22.5; //magnetometer seems to be ~1 sector over for anita 3.  it's 3 for anita 4
-	heading = heading * RAD2DEG + 180 - 1 * phi_sector;
-	if (heading < 0) heading = 360 + heading;
+	double phi_sector = 22.5; //magnetometer seems to be ~4.5 sector over for anita 4
+	heading = -1*heading * RAD2DEG + 180 + 4.5 * phi_sector;//anita 4 needs this -1 but i dont really know why
 
-	attitude[0] = heading; //all our reading are in degrees
+	attitude[0] = heading; //all our readings are in degrees
 	attitude[1] = pitch * RAD2DEG;
 	attitude[2] = roll * RAD2DEG;
 
